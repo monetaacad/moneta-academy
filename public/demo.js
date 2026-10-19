@@ -206,7 +206,7 @@
     }
     return a && a.visit === (v && v.id) ? a : null;
   };
-  function npcAt(l, t) { var p = (t - l.start) / (l.ends - l.start); if (p < 0.06) return 0; var price = 0, target = l.min + (l.cap - l.min) * Math.min(1, p * 1.3); while (true) { var nx = Rules.auctionStep(price, l.min); if (nx > target) break; price = nx; } return price; }
+  function npcAt() { return 0; }   // NPC는 경매에 값을 부르지 않는다
   function aucLot(l, now) { var np = npcAt(l, now), top = Math.max(np, l.my), mine = l.my && l.my >= np; return { id: l.id, name: l.name, r: l.r, ilvl: l.ilvl, slot: l.slot, item: l.item, ends: l.ends, min: l.min, price: top, need: Rules.auctionStep(top, l.min), bidder: top ? (mine ? '나' : l.npc) : '', mine: !!mine, npc: !mine && !!top, bids: (np ? Math.round(Math.log(np / l.min) / Math.log(1.05)) + 1 : 0) + l.bids, done: !!l.done }; }
   LocalApi.prototype.auction = function () {
     var now = this._now(), P = this.d && this.d.P; if (!P) return Promise.resolve({ error: '로그인이 필요합니다' });

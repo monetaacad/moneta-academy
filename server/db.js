@@ -503,7 +503,7 @@ function open(dir) {
     aucOpenEnded: db.prepare(`SELECT * FROM auction WHERE done = 0 AND ends <= ?`),
     aucOpen: db.prepare(`SELECT * FROM auction WHERE done = 0`),
     aucDone: db.prepare(`UPDATE auction SET done = 1 WHERE id = ? AND done = 0`),
-    aucRecent: db.prepare(`SELECT * FROM auction WHERE done = 1 AND bidder != '' ORDER BY id DESC LIMIT 6`),
+    aucRecent: db.prepare(`SELECT * FROM auction WHERE done = 1 AND bidder != '' AND bidder NOT LIKE 'npc:%' ORDER BY id DESC LIMIT 6`),
     aucPurge: db.prepare(`DELETE FROM auction WHERE done = 1 AND ends < ?`),
     towerGet: db.prepare(`SELECT * FROM tower WHERE party = ?`),
     towerPut: db.prepare(`INSERT INTO tower (party, week, floor, log) VALUES (?, ?, ?, ?) ON CONFLICT(party) DO UPDATE SET week = excluded.week, floor = excluded.floor, log = excluded.log`),

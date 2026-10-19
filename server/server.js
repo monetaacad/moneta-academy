@@ -817,7 +817,7 @@ routes['POST /api/party'] = async (req, res) => {
 };
 
 /* ───────── NPC 학생 (결투제 대진표의 학생들) ─────────
-   서버판에서는 거래소에만 나온다: 가끔 장비·재료를 올리고, 떠돌이 상인 경매에 값을 부른다. (파티원 NPC는 아티팩트 미리보기에만) */
+   서버판에서는 거래소에만 나온다: 가끔 장비·재료를 올린다 (떠돌이 상인 경매에는 값을 부르지 않는다). (파티원 NPC는 아티팩트 미리보기에만) */
 const NPC_HOUSE = { '등불관': 'lanterna', '물시계관': 'clepsydra', '가시왕관관': 'corona', '거울관': 'speculum' };
 const NPCS = R.D.RIVALS.map((r, k) => { const h = Object.keys(NPC_HOUSE).find((x) => r.who.indexOf(x) >= 0), g = /(\d)학년/.exec(r.who); return { k, name: r.name, who: r.who, hello: r.hello, lose: r.lose, house: h ? NPC_HOUSE[h] : 'system', grade: g ? +g[1] : 8, lvl: Math.round(r.stage * 1.4) }; });
 
@@ -1116,7 +1116,7 @@ routes['POST /api/ritual'] = async (req, res) => {
 
 /* ───────── 떠돌이 상인 경매 ─────────
    하루 두 번(12시·20시, 2시간) 귀한 장비 세 점을 경매에 붙인다. 부른 값은 바로 맡겨 두고, 더 높은 값이 나오면 돌려준다.
-   끝나기 2분 안에 부르면 2분 늘어난다. 낙찰품은 우편으로. NPC 학생도 가끔 값을 부른다(한도까지). */
+   끝나기 2분 안에 부르면 2분 늘어난다. 낙찰품은 우편으로. 값은 학생만 부른다(NPC는 부르지 않는다). */
 function aucOut(r, me) { let item = null; try { item = JSON.parse(r.item); } catch (e) { } return { id: r.id, name: r.name, r: r.rarity, ilvl: r.ilvl, slot: r.slot, item, ends: r.ends, min: r.min, price: r.price, need: R.auctionStep(r.price, r.min), bidder: r.bidder_name, mine: !!me && r.bidder === me, npc: String(r.bidder).startsWith('npc:'), bids: r.bids, done: !!r.done }; }
 function aucRefund(pid, amount, name, why) {
   if (!pid || String(pid).startsWith('npc:') || !amount) return;
@@ -1130,6 +1130,8 @@ function aucBidRaw(row, amount, pid, pname, now) {
   aucRefund(row.bidder, row.price, row.name, '더 높은 값이 나와');
   const nr = dbx.q.aucGet.get(row.id); chat.pingAll('auction', aucOut(nr, null)); return nr;
 }
+// 예전에 NPC가 부른 값은 지운다 (진행 중인 경매는 입찰 없음으로 되돌린다)
+try { const n = dbx.db.prepare(`UPDATE auction SET price = 0, bidder = '', bidder_name = '', bids = 0 WHERE done = 0 AND bidder LIKE 'npc:%'`).run().changes; if (n) log('떠돌이 상인 경매: NPC 입찰 ' + n + '건을 지웠습니다'); } catch (e) { log('NPC 입찰 정리 실패', e); }
 function aucTick(now) {
   const v = R.auctionVisit(now);
   if (v && v.active && !dbx.q.aucByVisit.all(v.id).length) {
@@ -1142,8 +1144,6 @@ function aucTick(now) {
     chat.system('notice', '떠돌이 상인이 아카데미 광장에 짐을 풀었습니다. 귀한 장비 세 점이 경매에 올라왔습니다 (2시간).', Date.now() / 1000);
     chat.pingAll('auction', { visit: v.id });
   }
-  // NPC 학생이 가끔 값을 부른다
-  dbx.q.aucOpen.all().forEach((r) => { if (r.ends > now && Math.random() < 0.12 && !String(r.bidder).startsWith('npc:')) { const need = R.auctionStep(r.price, r.min); if (need <= r.npc_cap) { const n = NPCS[crypto.randomInt(NPCS.length)]; aucBidRaw(r, need, 'npc:' + n.k, n.name, now); } } });
   dbx.q.aucOpenEnded.all(Math.floor(now)).forEach((r) => {
     if (!dbx.q.aucDone.run(r.id).changes) return;
     if (r.bidder && !String(r.bidder).startsWith('npc:')) {
