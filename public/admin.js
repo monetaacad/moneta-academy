@@ -56,7 +56,7 @@
       }).join('') || '<tr><td colspan="6" class="faint">' + ($('#showres').checked ? '처리한 신고가 없습니다' : '새 신고가 없습니다') + '</td></tr>';
     });
   }
-  var MRW = [['shard', '별조각'], ['gold', CUR], ['stone', '마석'], ['mana', '마나'], ['know', '지식'], ['egg', '환수의 알'], ['ticket', '토벌 도전권'], ['rsDone', '연구 즉시 완료 물약'], ['gradeUp', '학년 진급 물약'], ['gear', '희귀 장비 상자']];
+  var MRW = [['shard', '별조각'], ['gold', CUR], ['stone', '마석'], ['mana', '마나'], ['know', '지식'], ['egg', '환수의 알'], ['ticket', '토벌 도전권'], ['respec', '망각의 차'], ['rsDone', '연구 즉시 완료 물약'], ['gradeUp', '학년 진급 물약'], ['gear', '희귀 장비 상자']];
   $('#mrw').innerHTML = MRW.map(function (k) { return '<label>' + k[1] + '<input type="number" min="0" step="1" data-rw="' + k[0] + '" placeholder="0" style="width:96px"></label>'; }).join('');
   function rwText(r) { return MRW.filter(function (k) { return r[k[0]]; }).map(function (k) { return k[1] + ' ' + r[k[0]]; }).join(', ') || '—'; }
   function day(t) { var d = new Date(t * 1000); return t >= 32503600000 ? '거의 영구' : d.getFullYear() + '.' + (d.getMonth() + 1) + '.' + d.getDate(); }

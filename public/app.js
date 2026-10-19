@@ -1631,7 +1631,7 @@
       h += '<button class="btn sm" data-act="enh" data-a="' + it.u + '"' + (okc ? '' : why(P.res.gold < cost.gold ? CUR + '가 부족합니다' : '마석이 부족합니다')) + '>강화 <span class="cost">' + fmt(cost.gold) + ' ' + CUR + ' · 마석 ' + cost.stone + '</span></button><button class="btn sm ghost" data-act="enh" data-a="' + it.u + '" data-b="until"' + (okc ? '' : why(P.res.gold < cost.gold ? CUR + '가 부족합니다' : '마석이 부족합니다')) + '>성공할 때까지</button>';
     }
     h += '<button class="btn sm ghost" data-act="do" data-a="lock" data-b="' + it.u + '">' + (it.lock ? '잠금 해제' : '잠금') + '</button>';
-    if (D.RARITY[it.r].affix && !it.lock) { var rf = R.reforgeCost(it); h += '<button class="btn sm" data-act="reforge" data-a="' + it.u + '"' + ((P.res.dust || 0) >= rf ? '' : ' disabled') + ' title="등급·레벨·강화는 그대로, 옵션만 새로">재련 <span class="cost">가루 ' + fmt(rf) + '</span></button>'; }
+    if (D.RARITY[it.r].affix && !it.lock) { var rf = R.reforgeCost(it); h += '<button class="btn sm" data-act="reforge" data-a="' + it.u + '"' + ((P.res.dust || 0) >= rf ? '' : ' disabled') + ' title="지금 옵션은 사라지고 새 옵션으로 바뀝니다 (등급·레벨·강화는 그대로)">재련 <span class="cost">가루 ' + fmt(rf) + '</span></button>'; }
     if (!eqd && !it.lock) { var dy = R.dismantleYield(it); h += '<button class="btn sm" data-act="do" data-a="dismantle" data-b="' + it.u + '">분해 <span class="cost">마석 ' + dy.stone + ' · 가루 ' + dy.dust + '</span></button>'; }
     if (!eqd && !it.lock) h += '<button class="btn sm danger" data-act="do" data-a="sell" data-b="' + it.u + '">판매 ' + fmt(R.sellPrice(it)) + ' ' + CUR + '</button><button class="btn sm" data-act="mksellgo" data-a="' + it.u + '">거래소에서 팔기</button>';
     return h + '</div><p class="tiny faint" style="margin-top:8px">' + (it.lock ? '잠긴 장비입니다. 장착 · 해제만 할 수 있고 강화 · 재련 · 분해 · 판매 · 거래소 · 창고에 넣기는 막혀 있습니다.' : '강화 실패 시 장비는 그대로입니다. 최대 +' + R.ENH_MAX + '. 잠그면 강화 · 판매 같은 실수를 막을 수 있습니다.') + '</p></div>';
@@ -1646,7 +1646,8 @@
   var SDESC = { int: '주문 공격력 +1%, 수업 효율', wil: '마나 재생, 생명력', agi: '공격 속도 +1%', vit: '물리 공격력 +1%, 생명력 +1.2%, 방어력', luk: '치명타, 전리품' };
   function allocCard() {
     var P = S.P, c = C(), PRESETS = PRESETS_(), cur = Object.keys(PRESETS).find(function (k) { return JSON.stringify(PRESETS[k]) === JSON.stringify(P.opt.allocW); });
-    var h = '<div class="card"><div class="row between"><h3>능력치</h3><span class="small">남은 포인트 <b class="num gold">' + P.pts + '</b></span></div><div class="alloc" style="margin-top:8px">';
+    var rsn = (P.tok && P.tok.respec) || 0, rsArm = S.confirm.rsp > Date.now();
+    var h = '<div class="card" data-anchor="alloc"><div class="row between"><h3>능력치</h3><span class="small">남은 포인트 <b class="num gold">' + P.pts + '</b></span></div>' + (rsn ? '<div class="row" style="margin-top:6px;gap:8px;flex-wrap:wrap"><span class="small">망각의 차 <b class="num">' + rsn + '</b>개</span><span class="tiny faint">마시면 분배한 포인트를 모두 돌려받고 자동 분배가 꺼집니다</span><span class="spacer"></span><button class="btn sm' + (rsArm ? ' primary' : '') + '" data-act="respecuse">' + (rsArm ? '한 번 더 누르면 마십니다' : '망각의 차 마시기') + '</button></div>' : '') + '<div class="alloc" style="margin-top:8px">';
     R.STATS.forEach(function (k) { h += '<span>' + D.STAT_NAMES[k] + '</span><span class="tiny faint">' + SDESC[k] + '</span><b class="num">' + fmt(c.stat[k]) + '</b><span class="row" style="gap:4px;flex-wrap:nowrap"><button class="btn sm" data-act="alloc" data-a="' + k + '" data-b="1"' + (P.pts ? '' : ' disabled') + '>+1</button><button class="btn sm ghost" data-act="alloc" data-a="' + k + '" data-b="10"' + (P.pts >= 2 ? '' : ' disabled') + '>+10</button></span>'; });
     var why = PWHY[P.cls === 'knight' ? 'knight' : 'mage'], tot = 0, W0 = cur ? PRESETS[cur] : null; if (W0) R.STATS.forEach(function (k) { tot += W0[k] || 0; });
     var info = W0 ? '<p class="tiny muted" style="margin-top:6px"><b>' + PNAMES[cur] + '</b> · ' + R.STATS.filter(function (k) { return W0[k]; }).sort(function (a, b) { return W0[b] - W0[a]; }).map(function (k) { return D.STAT_NAMES[k] + ' ' + Math.round(W0[k] / tot * 100) + '%'; }).join(' · ') + '<br>' + why[cur] + '</p>' : '<p class="tiny faint" style="margin-top:6px">직접 정한 비율입니다. 프리셋을 누르면 해당 비율로 바뀝니다.</p>';
@@ -2812,8 +2813,11 @@
   ACT['do'] = function (type, b) {
     var argf = SIMPLE[type]; if (!argf) return;
     if (type === 'sell' || type === 'equip') S.sel = type === 'sell' ? null : S.sel;
-    act(type, argf(b)).then(function (r) { if (r && MSG[type]) { var m = MSG[type](r); toast(m[0], m[1], 2200); } if (r && type === 'task') Snd.play('ach'); render(); });
+    act(type, argf(b)).then(function (r) { if (r && type === 'buy' && b === 'respec') { respecDone(r.respec); return; } if (r && MSG[type]) { var m = MSG[type](r); toast(m[0], m[1], 2200); } if (r && type === 'task') Snd.play('ach'); render(); });
   };
+  // 망각의 차를 마신 뒤: 능력치 칸으로 바로 가서 다시 나누게 한다
+  function respecDone(n) { toast('망각의 차', '능력치 포인트 ' + fmt(n || 0) + '을(를) 돌려받았습니다 · 자동 분배는 꺼 두었습니다', 3200); Snd.play('enh'); ACT.goto('gear', 'alloc'); }
+  ACT.respecuse = function () { var k = 'rsp'; if (!(S.confirm[k] > Date.now())) { S.confirm[k] = Date.now() + 4000; render(); setTimeout(render, 4100); return; } S.confirm[k] = 0; act('useRespec', {}).then(function (r) { if (r) respecDone(r.respec); else render(); }); };
   ACT['do-login'] = function () { ACT['do']('login'); };
   ACT.blesshelp = function () {
     var cal = R.calendar(wctx(), now()), left0 = 28 - cal.d + 1, wd = R.weekday(now()), DAYN = ['일', '월', '화', '수', '목', '금', '토'];
@@ -2838,7 +2842,23 @@
   ACT.opt = function (k, v, el) { act('opt', { k: k, v: el.checked }).then(function () { if (k === 'sound') { Snd.set(S.P.opt.sound); if ($('#setbox')) ACT.settings(); } if (/Title$/.test(k)) renderDock(); render(); }); };
   ACT.autosell = function () { act('autoSell', { r: +$('#autosell').value }).then(render); };
   ACT.automode = function () { act('autoMode', { dis: $('#automode').value === 'dis' }).then(render); };
-  ACT.reforge = function (u) { var k = 'rf' + u; if (!(S.confirm[k] > Date.now())) { S.confirm[k] = Date.now() + 4000; toast('재련하면 옵션이 모두 새로 굴려집니다', '한 번 더 누르면 재련합니다', 2400); return; } S.confirm[k] = 0; act('reforge', { u: u }).then(function (r) { if (r) { Snd.play('enh'); toast('재련했습니다', r.name + ' · 마석가루 -' + fmt(r.cost), 2200); } render(); }); };
+  // 재련: 먼저 지금 옵션이 사라진다는 확인 창 → 재련하면 이전 · 새 옵션을 나란히 보여 준다
+  function affList(it) { return (it.aff || []).map(function (a) { var nm = D.BONUS_NAMES[a.id] || D.STAT_NAMES[a.id] || a.id, val = (a.id === 'atk' || a.id === 'hp' || a.id === 'def' || D.STAT_NAMES[a.id]) ? '+' + fmt(a.v) : '+' + pct(a.v); return '<div class="statline"><span>' + nm + '</span><span class="d">' + val + '</span></div>'; }).join('') || '<p class="tiny faint">옵션 없음</p>'; }
+  ACT.reforge = function (u) {
+    var it = R.findItem(S.P, u); if (!it) return; var rf = R.reforgeCost(it);
+    modal(mhead('재련', esc(it.name)) + '<p class="small"><b class="bad">지금 옵션은 사라지고</b> 새로 굴린 옵션으로 바뀝니다. 되돌릴 수 없습니다. 등급 · 레벨 · 강화 · 기본 능력치는 그대로입니다.</p>' +
+      '<div class="section-t" style="margin-top:10px">사라질 옵션</div><div class="rfold">' + affList(it) + '</div>' +
+      '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn ghost" data-act="modal-close">취소</button><button class="btn primary" data-act="reforge-go" data-a="' + esc(u) + '">재련하기 <span class="cost">가루 ' + fmt(rf) + '</span></button></div>');
+  };
+  ACT['reforge-go'] = function (u) {
+    var it0 = R.findItem(S.P, u), old = it0 ? affList(it0) : '';
+    act('reforge', { u: u }).then(function (r) {
+      if (!r) { closeModal(); render(); return; } Snd.play('enh'); var it = R.findItem(S.P, u);
+      modal(mhead('재련 완료', esc(r.name) + ' · 마석가루 -' + fmt(r.cost)) + '<div class="grid g2" style="gap:10px"><div><div class="section-t">이전 옵션 (사라짐)</div><div class="rfold">' + old + '</div></div><div><div class="section-t">새 옵션</div><div class="rfnew">' + (it ? affList(it) : '') + '</div></div></div>' +
+        '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn primary" data-act="modal-close">확인</button></div>');
+      render();
+    });
+  };
   ACT.worktab = function (t) { S.workTab = t; render(); };
   ACT.rectab = function (t) { S.recTab = t; render(); };
   ACT.titleset = function (id) { act('title', { id: id || '' }).then(function (r) { if (!r) return; toast(id ? '칭호를 적용했습니다' : '칭호를 해제했습니다', r.title || '', 1800); loadMe(); render(); }); };
@@ -3787,7 +3807,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026101983;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026101984;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
