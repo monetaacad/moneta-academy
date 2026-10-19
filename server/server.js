@@ -298,10 +298,11 @@ function lecStarted(P, sid, now) {
   const need = Math.max(3, Math.ceil(active24() * 0.15));
   let x = dbx.kvGet('profline', null); if (!x || x.day !== d) x = { day: d, lines: {} };
   if (set.size >= need && !x.lines[sid] && R.D.PROF_CROWD[sid]) {
-    const L = R.D.PROF_CROWD[sid], line = L[d % L.length]; x.lines[sid] = line; dbx.kvSet('profline', x);
-    const S = R.SUBJ[sid]; chat.system('notice', '[' + S.name + '] ' + S.prof + ': “' + line + '”', Date.now() / 1000);
+    const L = R.D.PROF_CROWD[sid], line = L[d % L.length]; x.lines[sid] = line; dbx.kvSet('profline', x);   // 수업 화면에만 나온다 (공지 채널에는 올리지 않는다)
   }
 }
+// 예전에 공지 채널에 올라간 교수 한마디(「[과목] 교수: “…”」)를 한 번 지운다
+if (!dbx.kvGet('profNoticeClean', 0)) { dbx.q.recentChat.all('notice', 500).forEach((r) => { if (r.pid === 'system' || !r.pid) { const tx = sec.dec(r.text); if (/^\[[^\]]+\] [^:]+: “/.test(tx)) chat.remove(r.id); } }); dbx.kvSet('profNoticeClean', 1); }
 function aucBrief(now) { const v = R.auctionVisit(now); return v ? { start: v.start, end: v.end, active: v.active } : null; }
 function classView(now) { return { n: lecCounts(now), prof: profLines(now) }; }
 

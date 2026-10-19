@@ -1620,7 +1620,8 @@
       var hh = '<div class="card"' + (av ? '' : ' style="opacity:.55"') + '><div class="row between"><h4>' + r.name + '</h4><span class="num small ' + (max ? 'gold' : 'muted') + '">' + lv + ' / ' + (r.max >= 999 ? '∞' : r.max) + '</span></div><p class="small muted" style="margin:4px 0 8px">' + r.desc + '</p>';
       if (!av) return hh + '<span class="tag">' + r.grade + '학년부터</span></div>';
       if (max) return hh + '<span class="tag br">연구 완료</span></div>';
-      if (q) return hh + '<span class="tag ok">연구 중</span></div>';
+      if (q) { var rq = P.rsq.filter(function (x) { return x && x.id === r.id; })[0];   // 진행 막대 · 남은 시간 (화면이 저절로 갱신)
+        return hh + '<span class="tag ok">연구 중</span>' + (rq ? '<div class="bar" style="margin-top:8px"><b data-b="prog:' + rq.start + ':' + rq.end + '"></b></div><div class="row small muted" style="margin-top:4px"><span data-l="left:' + rq.end + '"></span> 남음 · ' + clock(rq.end) + '</div>' : '') + '</div>'; }
       return hh + '<div class="row"><button class="btn sm" data-act="do" data-a="resStart" data-b="' + r.id + '"' + (can ? '' : ' disabled') + '>연구 <span class="cost">' + R.fmtTime(cost.time) + '</span></button></div><div class="tiny faint" style="margin-top:4px">마나 ' + fmt(cost.mana) + (cost.know ? ' · 지식 ' + fmt(cost.know) : '') + '</div></div>';
     }).join('') + '</div>';
     return h;
@@ -2683,7 +2684,7 @@
       var plog = $('#chatlog');
       if (plog) {
         pel = plog.querySelector('[data-nonce="' + nonce + '"]');
-        pm = { id: 'p-' + nonce, ch: ch, t: Date.now() / 1000, pid: S.P.id, name: S.P.name, house: S.P.house, grade: S.P.grade, kind: kind, text: text, title: R.titleName(S.P, S.P.title), nonce: nonce };
+        pm = { id: 'p-' + nonce, ch: ch, t: Date.now() / 1000, pid: S.P.id, name: S.P.name, house: S.P.house, grade: S.P.grade, kind: kind, text: text, title: R.titleName(S.P, S.P.title), ink: (R.decoView(S.P) || {}).ink || undefined, op: S.chat.op ? 1 : undefined, nonce: nonce };   // 운영진 배지 · 이름 잉크도 서버 메아리와 같게
         if (!pel) { var em = plog.querySelector('.empty'); if (em) em.remove(); var tmp = document.createElement('div'); tmp.innerHTML = msgHtml(pm); pel = tmp.firstChild; pel.classList.add('pending'); pel.setAttribute('data-nonce', nonce); plog.insertBefore(pel, plog.querySelector('.chatnew')); plog.scrollTop = plog.scrollHeight; S.chat.stick = true; }
         else pel.classList.remove('late');
         inp.value = ''; S.chat.draft[dkey] = ''; chatCount();
@@ -3528,7 +3529,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026101957;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026101959;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
