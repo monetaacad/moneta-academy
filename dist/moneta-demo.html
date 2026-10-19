@@ -2273,7 +2273,7 @@ var DATA = (function () {
     { c: '아카데미 생활', t: '시간표 (교시 짜기)', b: '강의실 상단 「시간표」에 시간표를 세 벌까지 저장할 수 있습니다. 「만들기 · 고치기」에서 「＋ 교시 추가」를 눌러 교시마다 과목과 시간을 고르며, 모두 합쳐 4시간까지 짤 수 있습니다(예: 30분 · 1시간 · 30분 · 2시간). 「시간표 듣기」를 누르면 1교시부터 바로 시작하고, 교시가 끝날 때마다 종이 울리며 다음 교시가 저절로 이어집니다. 다음 교시가 시작되고 15분 안에 「제때 입실」을 누르면 그 교시 과목 경험치 +10%를 받습니다. 이미 수업을 듣고 있으면 시간표를 시작할 수 없고, 시간표로 듣는 중에는 다음 교시 예약을 걸 수 없습니다. 중간에 수업을 그만두면 남은 교시도 함께 멈춥니다.', go: ['lecture'] },
     { c: '전투', t: '레벨로 여는 원정 단계', b: '원정 단계는 학년 상한(학년×10+9)까지 열리며, 레벨이 그보다 높으면 레벨만큼 더 출정할 수 있습니다(학년 상한 +10단계까지). 해당 구역의 보스도 레벨이 닿으면 도전할 수 있습니다. 시간당 효율은 대체로 조금 낮은 단계가 좋고, 높은 단계는 장비 레벨과 다음 구역 재료가 좋습니다.', go: ['explore'] },
     { c: '전투', t: '쓰러짐과 귀환', b: '「무모함」 단계로 출정하면 도중에 쓰러질 수 있으며, 쓰러진 원정은 「원정 완료」를 누르면 그때까지 모은 것의 80%를 받습니다. 원정 중 「귀환」을 누르면 그때까지 모은 것을 모두 받고 즉시 돌아옵니다(수업 · 연구 취소는 절반). 이미 끝난 원정에서 「귀환」을 누르면 「원정 완료」와 같습니다.', go: ['explore'] },
-    { c: '자원', t: '분해 · 마석가루 · 재련', b: '쓰지 않는 장비는 판매(' + CUR + ') 대신 분해해 마석과 마석가루를 얻을 수 있습니다. 등급 · 레벨이 높을수록 많이 나옵니다. 마석가루로 장비를 재련하면 등급 · 레벨 · 강화는 유지한 채 옵션만 새로 정해집니다. 분류 마법을 연구하면 자동 처리를 판매 대신 분해로 바꿀 수 있습니다.', go: ['gear'] },
+    { c: '자원', t: '분해 · 마석가루 · 재련', b: '쓰지 않는 장비는 판매(' + CUR + ') 대신 분해해 마석과 마석가루를 얻을 수 있습니다. 등급 · 레벨이 높을수록 많이 나옵니다. 마석가루로 장비를 재련하면 등급 · 레벨 · 강화는 유지한 채 옵션만 새로 정해집니다. 재련하면 지금 옵션은 사라지고 새 옵션으로 바뀌며 되돌릴 수 없습니다(누르면 사라질 옵션을 먼저 보여 주고, 재련 뒤에는 이전 · 새 옵션을 나란히 보여 줍니다). 분류 마법을 연구하면 자동 처리를 판매 대신 분해로 바꿀 수 있습니다.', go: ['gear'] },
     { c: '아카데미 생활', t: '아카데미 휘장', b: '로브 가슴에 다는 브로치입니다. 2학년 기말시험을 통과해 3학년이 되면 아카데미에서 하나를 수여하며, 매점 「휘장 원석」 · 보스 전리품 · 거래소에서도 얻을 수 있습니다. 보석마다 대표 효과가 다릅니다(홍옥 공격력, 청옥 주문 위력, 석류석 물리 피해, 녹옥 생명력, 자수정 수업 효율, 황옥 ' + CUR + ', 월장석 경험치, 남옥 마나, 흑요석 치명타 피해, 단백석 전리품). 달고 있는 휘장 하나만 효과가 있으며, 원정 · 수업 · 전투에서 별빛을 모아 Lv 20까지 성장합니다. 5 · 10 · 15 · 20레벨에 세공(옵션)이 한 줄씩 붙습니다. 강화 방법: 마석가루와 ' + CUR + '로 「닦기」(별빛 · 레벨), 별조각으로 「광내기」(보석 품질 · 대표 효과, 최대 125%), 별조각으로 「세공 다시 새기기」(옵션 한 줄 재설정). 거래소에서 사고팔 수 있고, 필요 없는 휘장은 깨뜨려 마석가루로 돌려받습니다. 「잠금」을 걸면 달기 · 떼기만 가능하고 닦기 · 광내기 · 세공 · 깨뜨리기 · 거래소가 막힙니다. 원정 · 수업으로 모이는 별빛은 잠금과 관계없이 쌓입니다.', go: ['gear',  'badge'] },
     { c: '처음', t: '학기 이야기', b: '광장 상단 카드에 현재 진행할 이야기 단계가 표시됩니다. 학년마다 한 장(章)씩 진행되며, 단계마다 목표가 있어 달성하면 「보상 받기」로 다음 장면이 열립니다. 무엇을 할지 모르겠다면 「하러 가기」를 누르세요. 각 장의 마지막 단계는 해당 학년의 기말시험입니다.', go: ['home'] },
     { c: '아카데미 생활', t: '진급 안내', b: '기말시험에 합격하면 해당 학년에 새로 열린 과목 · 화면 · 연구 · 매점 품목을 모아 보여 주며, 「바로 가기」로 각 화면에 갈 수 있습니다. 창을 닫은 뒤에도 우측 상단 「알림」(종 모양)이나 시험장 「성적표」의 「안내」에서 다시 볼 수 있습니다.', go: ['exam'] },
@@ -2284,7 +2284,7 @@ var DATA = (function () {
     { c: '전투', t: '포지션: 선봉 · 후열 · 지원', b: '선봉: 누구나 고를 수 있습니다. 몬스터가 80% 확률로 선봉을 노립니다(기사 +5%p, 수호 결계 장착 시 +5%p). 방어 +25%. 후열: 공격 주문을 장착해야 고를 수 있습니다(마력 화살 · 화염구 · 연쇄 번개 · 얼음 감옥 · 환수 소환 · 별똥별 · 비전 폭발 · 방패 강타 중 하나). 공격 +10%, 받는 피해 +10%. 지원: 보호막 · 치유 주문을 장착해야 고를 수 있습니다(수호 결계 · 재생의 노래 · 수호의 함성 중 하나). 파티 전체가 받는 피해 −15%, 본인 공격 −15%. 주문은 「원정·전투 → 원정」 하단의 「장착 주문」 칸에 넣어야 하며, 칸 수는 학년에 따라 늘어납니다. 출발할 때 조건이 맞지 않으면 선봉으로 출정합니다. 마법사는 처음부터 마력 화살을 장착하고 있어 후열을 고를 수 있고, 기사는 방패 강타를 배우면 후열, 수호의 함성을 배우면 지원을 고를 수 있습니다.', go: ['explore'] },
     { c: '전투', t: '모집 알림 · 초대', b: '채팅 「모집」 탭에는 세 가지 모집 카드가 올라옵니다(모두 한 줄 메모 추가 가능). 함께 원정: 방에서 「모집 알림」을 누릅니다(방마다 1분에 한 번). 다른 학생은 「살펴보기」로 방 인원의 포지션 · 학과 · 전투력을 확인한 뒤 참가합니다. 동아리 홍보: 동아리 화면의 「모집 홍보」에서 보냅니다(초대 권한이 있는 부원, 동아리마다 10분에 한 번). 카드의 「살펴보기」로 회장 · 소개 · 부원을 보고 가입합니다. 파티원 모집: 파티장이 파티 화면의 「파티원 모집」에서 보냅니다(5분에 한 번). 별의 탑 진행 층이 함께 표시되며, 알림을 본 학생은 30분 동안 초대 없이 「파티 들어가기」로 바로 들어올 수 있습니다. 함께 원정 방에서는 「친구 · 동아리원 초대」로 한 명씩 골라 초대할 수도 있습니다(이름 검색).', go: ['explore'] },
     { c: '전투', t: '학과: 기사 · 마법사', b: '입학할 때 고르는 전투 방식입니다. 기사는 단단하고 몬스터를 잘 끌어 선봉에, 마법사는 주문이 강해 후열 · 지원에 적합합니다. 기사의 평타와 방패 강타는 물리 피해로 체력을, 마법사의 평타(마력 화살)와 모든 주문은 주문 피해로 지력을 따릅니다. 기사도 수업으로 배운 주문을 장착하면 검과 주문을 함께 쓰는 마검사가 됩니다(해당 주문은 지력을 따릅니다). 학과마다 전용 수업(기사: 검술·방패술, 마법사: 비전학)과 전용 주문(기사: 방패 강타 · 수호의 함성, 마법사: 비전 폭발 · 마나 폭주)이 있으며, 본인 학과의 것만 표시됩니다. 학과를 바꾸려면 내 정보 › 편집의 「전과시험」에서 옮길 학과로 시험관과 대련해 이겨야 합니다(응시료 필요, 패배 시 하루 뒤 재응시). 학과를 고른 적 없는 기존 학생은 시험 없이 한 번 고를 수 있습니다.' },
-    { c: '전투', t: '능력치 다섯 가지', b: '지력: 주문 공격력 +1%, 수업 효율 소폭 증가. 체력: 물리 공격력 +1%, 생명력 +1.2%, 방어력 +0.6%. 민첩: 공격 속도 +1%. 의지: 마나 재생 +4%, 생명력 소폭 증가. 행운: 치명타 확률 · 전리품 · 높은 등급 장비 확률. 피해는 물리와 주문 두 가지이며, 기사의 평타와 방패 강타는 물리 공격력, 마법사의 평타와 모든 주문은 주문 공격력(× 주문 위력)이 적용됩니다. 장비 · 연구 · 물약의 「공격력 +%」는 양쪽 모두에, 장비 옵션 · 휘장의 「물리 피해」(석류석)는 물리 쪽에만, 「주문 위력」(청옥)은 주문 쪽에만 적용됩니다. 과목 레벨이 오를 때마다 해당 과목의 능력치가 오르며, 레벨업 포인트는 직접 분배합니다. 「레벨업 시 자동 분배」를 켜면 선택한 프리셋(균형 · 공격 · 생존 · 학구, 학과별 비율)대로 자동 분배됩니다(기본값은 꺼짐).', go: ['gear'] },
+    { c: '전투', t: '능력치 다섯 가지', b: '지력: 주문 공격력 +1%, 수업 효율 소폭 증가. 체력: 물리 공격력 +1%, 생명력 +1.2%, 방어력 +0.6%. 민첩: 공격 속도 +1%. 의지: 마나 재생 +4%, 생명력 소폭 증가. 행운: 치명타 확률 · 전리품 · 높은 등급 장비 확률. 피해는 물리와 주문 두 가지이며, 기사의 평타와 방패 강타는 물리 공격력, 마법사의 평타와 모든 주문은 주문 공격력(× 주문 위력)이 적용됩니다. 장비 · 연구 · 물약의 「공격력 +%」는 양쪽 모두에, 장비 옵션 · 휘장의 「물리 피해」(석류석)는 물리 쪽에만, 「주문 위력」(청옥)은 주문 쪽에만 적용됩니다. 과목 레벨이 오를 때마다 해당 과목의 능력치가 오르며, 레벨업 포인트는 직접 분배합니다. 「레벨업 시 자동 분배」를 켜면 선택한 프리셋(균형 · 공격 · 생존 · 학구, 학과별 비율)대로 자동 분배됩니다(기본값은 꺼짐). 매점의 「망각의 차」를 마시면 분배한 포인트를 모두 돌려받으며, 다시 직접 나눌 수 있게 자동 분배가 꺼지고 능력치 칸으로 바로 이동합니다.', go: ['gear'] },
     { c: '전투', t: '장비 등급', b: '장비는 일반(회색) · 고급(초록) · 희귀(파랑) · 영웅(보라) · 전설(주황) 다섯 등급입니다. 등급이 높을수록 기본 능력치가 커지고(일반 1배 · 고급 1.3배 · 희귀 1.7배 · 영웅 2.3배 · 전설 3.2배) 붙는 추가 옵션도 늘어납니다(일반 0개 ~ 전설 4개). 원정에서 나오는 비율은 대략 일반 62% · 고급 26% · 희귀 9% · 영웅 2.6% · 전설 0.4%이며, 행운의 물약 · 행운의 별자리 연구 같은 「등급 상승」 효과가 있으면 높은 등급이 더 자주 나옵니다. 같은 등급이라도 장비 레벨(Lv)이 높을수록, 품질이 좋을수록 능력치가 높습니다. 보스 · 떠돌이 상인 경매 · 매점 장비 상자에서는 높은 등급이 나오기 쉽습니다.', go: ['gear'] },
     { c: '전투', t: '장비와 강화', b: '원정에서 장비가 나옵니다. 초록 ▲ 표시는 현재보다 전투력이 오르는 장비입니다. 강화에는 ' + CUR + '와 마석이 들며, 실패해도 장비는 사라지지 않습니다. 쓰지 않는 장비는 판매 · 분해하거나 거래소에 올리세요. 무기는 지팡이와 검이 있으며 능력치는 같습니다. 아끼는 장비는 「잠금」을 걸면 장착 · 해제만 가능하고 강화 · 재련 · 분해 · 판매 · 거래소 · 동아리 창고 보관이 모두 막힙니다(거래소 판매 목록에도 표시되지 않음).', go: ['gear'] },
     { c: '전투', t: '월드 보스', b: '매주 월요일에 새 월드 보스가 나타나며, 서버의 모든 학생이 함께 체력을 깎습니다. 도전권은 8시간마다 하나씩 충전되며 최대 3장입니다. 다음 주에 참여 · 토벌 · 피해 순위 보상이 지급됩니다.', go: ['world',  'wb'] },
@@ -2444,7 +2444,7 @@ var DATA = (function () {
     { id: 'bagslot', name: '마법 가방 확장', desc: '가방 칸 +5 (영구, 졸업 후에도 유지)', cur: 'shard', price: 'bag' },
     { id: 'badgebox', name: '휘장 원석', desc: '무작위 보석이 박힌 아카데미 휘장 1개 (Lv 1)', cur: 'shard', price: 40, grade: 3 },
     { id: 'matbox', name: '연금 재료 상자', desc: '해금된 지역 재료 무작위 12개', cur: 'shard', price: 8, grade: 2 },
-    { id: 'respec', name: '망각의 차', desc: '능력치 포인트 초기화', cur: 'shard', price: 5 }
+    { id: 'respec', name: '망각의 차', desc: '능력치 포인트 초기화 · 마시면 자동 분배가 꺼집니다', cur: 'shard', price: 5 }
   ];
 
 
@@ -3411,7 +3411,7 @@ if (typeof module !== 'undefined') module.exports = DATA;
   R.dailyReward = function (P) { return { shard: 4 + Math.min(P.grade, 8), gold: Math.floor(300 * K.KILL_GOLD * Math.pow(K.G_GOLD, Math.min(P.maxStage, R.stageCap(P)) - 1)) }; };
   R.loginReward = function (P) { var s = Math.min(P.daily.streak, 7); return { shard: 3 + s * 2, stone: 3 + s }; };
   // 우편 보상 (운영진 우편 · 별의 탑 등). 값은 정수, 너무 큰 값은 잘라 낸다.
-  R.MAIL_REWARDS = [['shard', '별조각', 100000], ['gold', CUR, 1e15], ['stone', '마석', 100000], ['mana', '마나', 1e15], ['know', '지식', 1e15], ['egg', '환수의 알', 100], ['ticket', '토벌 도전권', 100], ['gear', '희귀 장비 상자', 50], ['rsDone', '연구 즉시 완료 물약', 100], ['gradeUp', '학년 진급 물약', 10]];   // 물약 두 가지는 운영진 보상 전용 (매점에서 팔지 않음)
+  R.MAIL_REWARDS = [['shard', '별조각', 100000], ['gold', CUR, 1e15], ['stone', '마석', 100000], ['mana', '마나', 1e15], ['know', '지식', 1e15], ['egg', '환수의 알', 100], ['ticket', '토벌 도전권', 100], ['gear', '희귀 장비 상자', 50], ['rsDone', '연구 즉시 완료 물약', 100], ['respec', '망각의 차', 100], ['gradeUp', '학년 진급 물약', 10]];   // 물약 두 가지는 운영진 보상 전용 (매점에서 팔지 않음)
   R.cleanRewards = function (o) { var r = {}; o = o || {}; R.MAIL_REWARDS.forEach(function (k) { var v = Math.floor(Number(o[k[0]]) || 0); if (v > 0) r[k[0]] = Math.min(v, k[2]); });
     if (Array.isArray(o.items)) { var its = o.items.filter(function (it) { return it && SLOT[it.slot] && typeof it.name === 'string' && Array.isArray(it.aff) && D.RARITY[it.r]; }).slice(0, 10); if (its.length) r.items = its; }
     return r; };
@@ -3420,7 +3420,7 @@ if (typeof module !== 'undefined') module.exports = DATA;
     rw = R.cleanRewards(rw); var out = { items: [] };
     if (rw.shard) P.res.shard += rw.shard; if (rw.gold) addGold(P, rw.gold); if (rw.stone) P.res.stone += rw.stone;
     if (rw.mana) addMana(P, rw.mana); if (rw.know) P.res.know += rw.know; if (rw.egg) P.fam.eggs += rw.egg; if (rw.ticket) P.wb.tickets += rw.ticket;
-    if (rw.rsDone || rw.gradeUp) { var tk = P.tok || (P.tok = {}); if (rw.rsDone) tk.rsDone = (tk.rsDone || 0) + rw.rsDone; if (rw.gradeUp) tk.gradeUp = (tk.gradeUp || 0) + rw.gradeUp; }
+    if (rw.rsDone || rw.gradeUp || rw.respec) { var tk = P.tok || (P.tok = {}); if (rw.rsDone) tk.rsDone = (tk.rsDone || 0) + rw.rsDone; if (rw.gradeUp) tk.gradeUp = (tk.gradeUp || 0) + rw.gradeUp; if (rw.respec) tk.respec = (tk.respec || 0) + rw.respec; }
     for (var i = 0; i < (rw.gear || 0); i++) { var it = makeItem(P, pick(P, D.SLOTS).id, Math.max(1, Math.min(P.maxStage, R.stageCap(P))), Math.max(2, rollRarity(P, 0.6)), 2); out.items.push({ name: it.name, r: it.r, res: gainItem(P, it, now) }); }
     (rw.items || []).forEach(function (it0) { var it = JSON.parse(JSON.stringify(it0)); it.u = uid(P); it.lock = false; out.items.push({ name: it.name, r: it.r, res: gainItem(P, it, now) }); });
     out.text = R.rewardText(rw); return out;
@@ -4119,9 +4119,12 @@ if (typeof module !== 'undefined') module.exports = DATA;
     else if (id === 'ticket') { P.wb.tickets++; P.wb.bought++; }
     else if (id === 'bagslot') P.bagExtra += 5;
     else if (id === 'matbox') { var zs = D.ZONES.filter(function (z) { return z.from <= P.maxStage; }); out.mats = {}; for (var i = 0; i < 12; i++) { var z = pick(P, zs); P.mats[z.mat] = (P.mats[z.mat] || 0) + 1; out.mats[z.mat] = (out.mats[z.mat] || 0) + 1; } }
-    else if (id === 'respec') { var tot = 0; STATS.forEach(function (k) { tot += P.alloc[k]; P.alloc[k] = 0; }); P.pts += tot; if (P.opt.autoAlloc) R.autoAlloc(P); }
+    else if (id === 'respec') out.respec = respecNow(P);
     return out;
   };
+  // 망각의 차: 분배한 능력치 포인트를 모두 돌려받는다. 다시 직접 나눌 수 있게 자동 분배는 끈다 (켜 두면 곧바로 같은 대로 다시 나뉘므로)
+  function respecNow(P) { var tot = 0; STATS.forEach(function (k) { tot += P.alloc[k]; P.alloc[k] = 0; }); P.pts += tot; P.opt.autoAlloc = false; return tot; }
+  A.useRespec = function (P) { var tk = P.tok || {}; if (!(tk.respec > 0)) err('망각의 차가 없습니다'); tk.respec--; return { respec: respecNow(P) }; };   // 우편으로 받은 망각의 차
   A.login = function (P, W, now) {
     if (!P.daily.login) err('오늘의 출석 보상을 이미 받았습니다');
     P.daily.login = false; var lr = R.loginReward(P), shard = lr.shard, stone = lr.stone;
@@ -7216,7 +7219,7 @@ var Net = (function () {
       h += '<button class="btn sm" data-act="enh" data-a="' + it.u + '"' + (okc ? '' : why(P.res.gold < cost.gold ? CUR + '가 부족합니다' : '마석이 부족합니다')) + '>강화 <span class="cost">' + fmt(cost.gold) + ' ' + CUR + ' · 마석 ' + cost.stone + '</span></button><button class="btn sm ghost" data-act="enh" data-a="' + it.u + '" data-b="until"' + (okc ? '' : why(P.res.gold < cost.gold ? CUR + '가 부족합니다' : '마석이 부족합니다')) + '>성공할 때까지</button>';
     }
     h += '<button class="btn sm ghost" data-act="do" data-a="lock" data-b="' + it.u + '">' + (it.lock ? '잠금 해제' : '잠금') + '</button>';
-    if (D.RARITY[it.r].affix && !it.lock) { var rf = R.reforgeCost(it); h += '<button class="btn sm" data-act="reforge" data-a="' + it.u + '"' + ((P.res.dust || 0) >= rf ? '' : ' disabled') + ' title="등급·레벨·강화는 그대로, 옵션만 새로">재련 <span class="cost">가루 ' + fmt(rf) + '</span></button>'; }
+    if (D.RARITY[it.r].affix && !it.lock) { var rf = R.reforgeCost(it); h += '<button class="btn sm" data-act="reforge" data-a="' + it.u + '"' + ((P.res.dust || 0) >= rf ? '' : ' disabled') + ' title="지금 옵션은 사라지고 새 옵션으로 바뀝니다 (등급·레벨·강화는 그대로)">재련 <span class="cost">가루 ' + fmt(rf) + '</span></button>'; }
     if (!eqd && !it.lock) { var dy = R.dismantleYield(it); h += '<button class="btn sm" data-act="do" data-a="dismantle" data-b="' + it.u + '">분해 <span class="cost">마석 ' + dy.stone + ' · 가루 ' + dy.dust + '</span></button>'; }
     if (!eqd && !it.lock) h += '<button class="btn sm danger" data-act="do" data-a="sell" data-b="' + it.u + '">판매 ' + fmt(R.sellPrice(it)) + ' ' + CUR + '</button><button class="btn sm" data-act="mksellgo" data-a="' + it.u + '">거래소에서 팔기</button>';
     return h + '</div><p class="tiny faint" style="margin-top:8px">' + (it.lock ? '잠긴 장비입니다. 장착 · 해제만 할 수 있고 강화 · 재련 · 분해 · 판매 · 거래소 · 창고에 넣기는 막혀 있습니다.' : '강화 실패 시 장비는 그대로입니다. 최대 +' + R.ENH_MAX + '. 잠그면 강화 · 판매 같은 실수를 막을 수 있습니다.') + '</p></div>';
@@ -7231,7 +7234,8 @@ var Net = (function () {
   var SDESC = { int: '주문 공격력 +1%, 수업 효율', wil: '마나 재생, 생명력', agi: '공격 속도 +1%', vit: '물리 공격력 +1%, 생명력 +1.2%, 방어력', luk: '치명타, 전리품' };
   function allocCard() {
     var P = S.P, c = C(), PRESETS = PRESETS_(), cur = Object.keys(PRESETS).find(function (k) { return JSON.stringify(PRESETS[k]) === JSON.stringify(P.opt.allocW); });
-    var h = '<div class="card"><div class="row between"><h3>능력치</h3><span class="small">남은 포인트 <b class="num gold">' + P.pts + '</b></span></div><div class="alloc" style="margin-top:8px">';
+    var rsn = (P.tok && P.tok.respec) || 0, rsArm = S.confirm.rsp > Date.now();
+    var h = '<div class="card" data-anchor="alloc"><div class="row between"><h3>능력치</h3><span class="small">남은 포인트 <b class="num gold">' + P.pts + '</b></span></div>' + (rsn ? '<div class="row" style="margin-top:6px;gap:8px;flex-wrap:wrap"><span class="small">망각의 차 <b class="num">' + rsn + '</b>개</span><span class="tiny faint">마시면 분배한 포인트를 모두 돌려받고 자동 분배가 꺼집니다</span><span class="spacer"></span><button class="btn sm' + (rsArm ? ' primary' : '') + '" data-act="respecuse">' + (rsArm ? '한 번 더 누르면 마십니다' : '망각의 차 마시기') + '</button></div>' : '') + '<div class="alloc" style="margin-top:8px">';
     R.STATS.forEach(function (k) { h += '<span>' + D.STAT_NAMES[k] + '</span><span class="tiny faint">' + SDESC[k] + '</span><b class="num">' + fmt(c.stat[k]) + '</b><span class="row" style="gap:4px;flex-wrap:nowrap"><button class="btn sm" data-act="alloc" data-a="' + k + '" data-b="1"' + (P.pts ? '' : ' disabled') + '>+1</button><button class="btn sm ghost" data-act="alloc" data-a="' + k + '" data-b="10"' + (P.pts >= 2 ? '' : ' disabled') + '>+10</button></span>'; });
     var why = PWHY[P.cls === 'knight' ? 'knight' : 'mage'], tot = 0, W0 = cur ? PRESETS[cur] : null; if (W0) R.STATS.forEach(function (k) { tot += W0[k] || 0; });
     var info = W0 ? '<p class="tiny muted" style="margin-top:6px"><b>' + PNAMES[cur] + '</b> · ' + R.STATS.filter(function (k) { return W0[k]; }).sort(function (a, b) { return W0[b] - W0[a]; }).map(function (k) { return D.STAT_NAMES[k] + ' ' + Math.round(W0[k] / tot * 100) + '%'; }).join(' · ') + '<br>' + why[cur] + '</p>' : '<p class="tiny faint" style="margin-top:6px">직접 정한 비율입니다. 프리셋을 누르면 해당 비율로 바뀝니다.</p>';
@@ -8397,8 +8401,11 @@ var Net = (function () {
   ACT['do'] = function (type, b) {
     var argf = SIMPLE[type]; if (!argf) return;
     if (type === 'sell' || type === 'equip') S.sel = type === 'sell' ? null : S.sel;
-    act(type, argf(b)).then(function (r) { if (r && MSG[type]) { var m = MSG[type](r); toast(m[0], m[1], 2200); } if (r && type === 'task') Snd.play('ach'); render(); });
+    act(type, argf(b)).then(function (r) { if (r && type === 'buy' && b === 'respec') { respecDone(r.respec); return; } if (r && MSG[type]) { var m = MSG[type](r); toast(m[0], m[1], 2200); } if (r && type === 'task') Snd.play('ach'); render(); });
   };
+  // 망각의 차를 마신 뒤: 능력치 칸으로 바로 가서 다시 나누게 한다
+  function respecDone(n) { toast('망각의 차', '능력치 포인트 ' + fmt(n || 0) + '을(를) 돌려받았습니다 · 자동 분배는 꺼 두었습니다', 3200); Snd.play('enh'); ACT.goto('gear', 'alloc'); }
+  ACT.respecuse = function () { var k = 'rsp'; if (!(S.confirm[k] > Date.now())) { S.confirm[k] = Date.now() + 4000; render(); setTimeout(render, 4100); return; } S.confirm[k] = 0; act('useRespec', {}).then(function (r) { if (r) respecDone(r.respec); else render(); }); };
   ACT['do-login'] = function () { ACT['do']('login'); };
   ACT.blesshelp = function () {
     var cal = R.calendar(wctx(), now()), left0 = 28 - cal.d + 1, wd = R.weekday(now()), DAYN = ['일', '월', '화', '수', '목', '금', '토'];
@@ -8423,7 +8430,23 @@ var Net = (function () {
   ACT.opt = function (k, v, el) { act('opt', { k: k, v: el.checked }).then(function () { if (k === 'sound') { Snd.set(S.P.opt.sound); if ($('#setbox')) ACT.settings(); } if (/Title$/.test(k)) renderDock(); render(); }); };
   ACT.autosell = function () { act('autoSell', { r: +$('#autosell').value }).then(render); };
   ACT.automode = function () { act('autoMode', { dis: $('#automode').value === 'dis' }).then(render); };
-  ACT.reforge = function (u) { var k = 'rf' + u; if (!(S.confirm[k] > Date.now())) { S.confirm[k] = Date.now() + 4000; toast('재련하면 옵션이 모두 새로 굴려집니다', '한 번 더 누르면 재련합니다', 2400); return; } S.confirm[k] = 0; act('reforge', { u: u }).then(function (r) { if (r) { Snd.play('enh'); toast('재련했습니다', r.name + ' · 마석가루 -' + fmt(r.cost), 2200); } render(); }); };
+  // 재련: 먼저 지금 옵션이 사라진다는 확인 창 → 재련하면 이전 · 새 옵션을 나란히 보여 준다
+  function affList(it) { return (it.aff || []).map(function (a) { var nm = D.BONUS_NAMES[a.id] || D.STAT_NAMES[a.id] || a.id, val = (a.id === 'atk' || a.id === 'hp' || a.id === 'def' || D.STAT_NAMES[a.id]) ? '+' + fmt(a.v) : '+' + pct(a.v); return '<div class="statline"><span>' + nm + '</span><span class="d">' + val + '</span></div>'; }).join('') || '<p class="tiny faint">옵션 없음</p>'; }
+  ACT.reforge = function (u) {
+    var it = R.findItem(S.P, u); if (!it) return; var rf = R.reforgeCost(it);
+    modal(mhead('재련', esc(it.name)) + '<p class="small"><b class="bad">지금 옵션은 사라지고</b> 새로 굴린 옵션으로 바뀝니다. 되돌릴 수 없습니다. 등급 · 레벨 · 강화 · 기본 능력치는 그대로입니다.</p>' +
+      '<div class="section-t" style="margin-top:10px">사라질 옵션</div><div class="rfold">' + affList(it) + '</div>' +
+      '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn ghost" data-act="modal-close">취소</button><button class="btn primary" data-act="reforge-go" data-a="' + esc(u) + '">재련하기 <span class="cost">가루 ' + fmt(rf) + '</span></button></div>');
+  };
+  ACT['reforge-go'] = function (u) {
+    var it0 = R.findItem(S.P, u), old = it0 ? affList(it0) : '';
+    act('reforge', { u: u }).then(function (r) {
+      if (!r) { closeModal(); render(); return; } Snd.play('enh'); var it = R.findItem(S.P, u);
+      modal(mhead('재련 완료', esc(r.name) + ' · 마석가루 -' + fmt(r.cost)) + '<div class="grid g2" style="gap:10px"><div><div class="section-t">이전 옵션 (사라짐)</div><div class="rfold">' + old + '</div></div><div><div class="section-t">새 옵션</div><div class="rfnew">' + (it ? affList(it) : '') + '</div></div></div>' +
+        '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn primary" data-act="modal-close">확인</button></div>');
+      render();
+    });
+  };
   ACT.worktab = function (t) { S.workTab = t; render(); };
   ACT.rectab = function (t) { S.recTab = t; render(); };
   ACT.titleset = function (id) { act('title', { id: id || '' }).then(function (r) { if (!r) return; toast(id ? '칭호를 적용했습니다' : '칭호를 해제했습니다', r.title || '', 1800); loadMe(); render(); }); };
@@ -9372,7 +9395,7 @@ var Net = (function () {
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026101983;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026101984;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
