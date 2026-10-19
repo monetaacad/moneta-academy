@@ -43,6 +43,24 @@ function create(store, cfg, log) {
     log(`월드 보스 등장: ${def.name} (체력 ${R.fmt(maxHp)}, 활동 학생 ${actives}명 기준)`);
   }
 
+  /* 운영실 · 추가 보스: 이번 주 보스가 쓰러졌으면 다음 보스를 부른다. 앞서 잡은 수(kills)는 이어서 세고,
+     다음 주 정산 때 잡은 수만큼 토벌 보상이 나간다. 체력을 비워 두면 이번 주 실제 피해 속도로 남은 기간의 70% 쯤에 쓰러지게 잡는다 */
+  function summonBoss(now, hp) {
+    const week = R.weekId(now), b = W.boss;
+    if (!b || b.week !== week) throw new Error('이번 주 보스가 아직 없습니다');
+    if (!b.killedAt) throw new Error('이번 주 보스가 아직 살아 있습니다');
+    store.flushAll();
+    const ws = R.weekStart(week), end = R.weekStart(week + 1), sum = Number(q.sumDmg.get(week).s) || 0;
+    const rate = sum / Math.max(3600, now - ws), auto = Math.floor(rate * Math.max(3600, end - now) * 0.7);
+    const maxHp = Math.max(1000, Math.floor(Number(hp) > 0 ? Number(hp) : Math.max(auto, b.maxHp)));
+    const round = (b.round || 1) + 1, def = D.WORLD_BOSSES[(week + round - 1) % D.WORLD_BOSSES.length];
+    W.boss = { week, id: def.id, name: def.name, maxHp, hp: maxHp, killedAt: 0, actives: b.actives, round, kills: (b.kills || 0) + 1 };
+    W.wbAlive = true; kvSet('boss', W.boss); cache.at = 0;
+    log(`추가 월드 보스: ${def.name} (${round}번째, 체력 ${R.fmt(maxHp)})`);
+    addNotice(`추가 월드 보스 ${R.josa(def.name, '이', '가')} 나타났습니다! 토벌 보상은 잡은 보스 수만큼 다음 주에 받습니다.`, now, true);
+    return W.boss;
+  }
+
   function cupStandings(week) {
     return D.HOUSES.map((h) => {
       const r = q.houseCup.get(week, h.id, CUP_TOP);
@@ -62,14 +80,14 @@ function create(store, cfg, log) {
     const cup = cupStandings(week);
     const dmgs = q.dmgList.all(week).map((r) => Number(r.dmg));
     const at = (p) => dmgs.length ? dmgs[Math.min(dmgs.length - 1, Math.max(0, Math.ceil(dmgs.length * p) - 1))] : Infinity;
-    const killed = !!(W.boss && W.boss.week === week && W.boss.killedAt);
+    const same = W.boss && W.boss.week === week, kills = same ? (W.boss.kills || 0) + (W.boss.killedAt ? 1 : 0) : 0, killed = kills > 0;   // 추가 보스까지 잡은 수
     cup.forEach((c) => { W.hbase[c.id] = (W.hbase[c.id] || 0) + c.score; }); kvSet('hbase', W.hbase); W.hAt = 0;
-    W.results[week] = { cup: cup.map((c) => c.id), cupScores: cup, killed, tiers: [at(0.01), at(0.10), at(0.50)], bossName: W.boss && W.boss.week === week ? W.boss.name : '', participants: dmgs.length };
+    W.results[week] = { cup: cup.map((c) => c.id), cupScores: cup, killed, kills, tiers: [at(0.01), at(0.10), at(0.50)], bossName: W.boss && W.boss.week === week ? W.boss.name : '', participants: dmgs.length };
     const keys = Object.keys(W.results).map(Number).sort((a, b) => b - a);
     keys.slice(10).forEach((k) => delete W.results[k]);
     kvSet('results', W.results);
     q.purgeWeekly.run(week - 10);
-    log(`${week}주차 정산: 대항전 1위 ${cup[0] && cup[0].id}, 월드 보스 ${killed ? '토벌 성공' : '토벌 실패'}, 참여 ${dmgs.length}명`);
+    log(`${week}주차 정산: 대항전 1위 ${cup[0] && cup[0].id}, 월드 보스 ${killed ? '토벌 성공' + (kills > 1 ? ' ×' + kills : '') : '토벌 실패'}, 참여 ${dmgs.length}명`);
   }
 
   function tick(now) {
@@ -120,7 +138,7 @@ function create(store, cfg, log) {
         cup: cupStandings(week),
         topPower: q.topPower.all(20).map(pub),
         topStage: q.topStage.all(20).map(pub),
-        topDmg: q.topDmg.all(week, 20).map((r) => ({ name: r.name, house: r.house, dmg: Math.floor(r.dmg) })),
+        topDmg: q.topDmg.all(week, 20).map((r) => ({ id: r.pid, name: r.name, house: r.house, dmg: Math.floor(r.dmg) })),
         wbStats: q.sumDmg.get(week),
         players: Number(q.countPlayers.get().n)
       };
@@ -128,13 +146,13 @@ function create(store, cfg, log) {
     const b = W.boss;
     return {
       epoch: W.epoch, now, week: R.weekId(now), weekEnd: R.weekStart(R.weekId(now) + 1),
-      boss: b ? { id: b.id, name: b.name, maxHp: b.maxHp, hp: b.hp, killedAt: b.killedAt, participants: Number(cache.wbStats.n) || 0 } : null,
+      boss: b ? { id: b.id, name: b.name, maxHp: b.maxHp, hp: b.hp, killedAt: b.killedAt, round: b.round || 1, kills: (b.kills || 0) + (b.killedAt ? 1 : 0), participants: Number(cache.wbStats.n) || 0 } : null,
       cup: cache.cup, hpts: W.hpts, hfull: W.hfull, topPower: cache.topPower, topStage: cache.topStage, topDmg: cache.topDmg,
       notices: W.notices.slice(0, 8), news: W.news.slice(0, 20), players: cache.players, online: online || 0,
       lastWeek: W.results[R.weekId(now) - 1] || null
     };
   }
-  function pub(r) { return { name: r.name, house: r.house, power: Math.floor(r.power), lvl: r.lvl, grade: r.grade, stage: r.max_stage }; }
+  function pub(r) { return { id: r.id, name: r.name, house: r.house, power: Math.floor(r.power), lvl: r.lvl, grade: r.grade, stage: r.max_stage }; }
   function rankOf(power) { return Number(q.rankPower.get(power).r); }
 
   // 규칙 엔진에 넘기는 세계 (W.results로 주간 보상 판정)
@@ -142,7 +160,7 @@ function create(store, cfg, log) {
 
   // 종료 직전: 미뤄 둔 저장까지 모두 (월드 보스 체력 · 소식 · 공지 · 결과)
   function saveAll() { if (newsT) { clearTimeout(newsT); newsT = null; } kvSet('boss', W.boss); kvSet('news', W.news); kvSet('notices', W.notices); kvSet('results', W.results); bossDirty = false; }
-  const api = { W, houseView, tick, saveAll, applyDamage, addNotice, addNews, publicView, ctx, rankOf, finalizeWeek, cupStandings, invalidate() { cache.at = 0; } };
+  const api = { W, houseView, tick, summonBoss, saveAll, applyDamage, addNotice, addNews, publicView, ctx, rankOf, finalizeWeek, cupStandings, invalidate() { cache.at = 0; } };
   return api;
 }
 module.exports = { create };

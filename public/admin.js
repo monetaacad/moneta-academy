@@ -105,6 +105,11 @@
     },
     mdel: function (el) { if (!confirm('이 우편을 회수할까요? 아직 받지 않은 학생에게서 사라집니다 (이미 받은 보상은 그대로).')) return; api('POST', '/api/admin/mail/delete', { id: +el.dataset.c }).then(mails); },
     refresh: function () { enter(); },
+    wbsummon: function (el) {
+      if (el.dataset.ok !== '1') { el.dataset.ok = '1'; el.textContent = '한 번 더 누르면 부릅니다'; setTimeout(function () { el.dataset.ok = ''; el.textContent = '추가 보스 부르기'; }, 4000); return; }
+      el.dataset.ok = ''; el.textContent = '추가 보스 부르기';
+      api('POST', '/api/admin/wbsummon', { hp: +$('#wbhp').value || 0 }).then(function (j) { $('#wbmsg').textContent = j.error || (j.boss.name + ' 등장 (체력 ' + j.boss.maxHp.toLocaleString() + ')'); if (!j.error) enter(); });
+    },
     issue: function () {
       var op = $('#iop').checked; if (op && !confirm('운영자 초대코드를 발급할까요? 이 코드로 가입한 사람은 운영자가 됩니다. 믿을 수 있는 사람에게만 직접 전해 주세요.')) return;
       api('POST', '/api/admin/invites', { count: +$('#ic').value, uses: +$('#iu').value, days: +$('#id').value, note: $('#in').value, op: op }).then(function (j) {

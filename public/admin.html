@@ -31,6 +31,7 @@
     <p class="tiny faint" style="margin-top:8px">서버의 ADMIN_TOKEN 값입니다. 이 브라우저 탭을 닫으면 잊습니다.</p></div>
   <div id="main" hidden class="stack">
     <div class="card"><div class="row between"><h3>현황</h3><button class="btn sm ghost" data-a="refresh">새로고침</button></div><dl class="kv" id="stats" style="margin-top:8px"></dl></div>
+    <div class="card"><h3>추가 월드 보스</h3><p class="small faint" style="margin-top:4px">이번 주 보스가 쓰러졌을 때만 부를 수 있습니다. 토벌 보상은 잡은 보스 수만큼 다음 주에 지급됩니다. 체력을 비워 두면 이번 주 피해 속도로 남은 기간 안에 쓰러질 만큼 정합니다.</p><div class="form" style="margin-top:8px"><label>체력 (선택)<input id="wbhp" type="number" min="0" placeholder="자동"></label><button class="btn primary" data-a="wbsummon">추가 보스 부르기</button></div><p class="small" id="wbmsg" style="margin-top:6px"></p></div>
     <div class="card"><h3>초대코드 발급</h3>
       <div class="form" style="margin-top:8px"><label>개수<input id="ic" type="number" value="10" min="1" max="500" style="width:80px"></label><label>코드당 사용 횟수<input id="iu" type="number" value="1" min="1" style="width:90px"></label><label>유효 기간(일, 0=무기한)<input id="id" type="number" value="0" min="0" style="width:110px"></label><label>메모<input id="in" placeholder="예: 1차 모집 디스코드" style="width:220px"></label><label style="flex-direction:row;align-items:center;gap:6px"><input id="iop" type="checkbox"> 운영자 초대코드</label><button class="btn primary" data-a="issue">발급</button></div>
       <p class="tiny faint" style="margin-top:6px">운영자 초대코드로 가입한 학생은 바로 학생회(운영진)가 되어 칭호 「학생회」(운영진 배지)를 낄 수 있습니다. 안전을 위해 한 장 · 1회 · 최대 7일로만 발급됩니다. 이미 가입한 학생은 아래 「학생 관리」의 운영자 지정으로 바꿉니다.</p>
