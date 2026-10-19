@@ -441,7 +441,7 @@ body { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area
 .dtabs .tag { font-size: 10px; padding: 0 5px; }
 .dock-on { margin-left: auto; white-space: nowrap; }
 .icon-btn.sm { width: 28px; height: 28px; font-size: 12px; color: var(--muted); }
-.dock-peek { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 7px 12px 8px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.dock-peek { display: block; width: 100%; text-align: right; background: none; border: 0; padding: 7px 12px 8px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
 .chatlog { flex: 1; min-height: 0; overflow-y: auto; padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; overscroll-behavior: contain; }
 .chatdesc { padding: 2px 4px 8px; border-bottom: 1px dashed var(--line2); margin-bottom: 6px; }
 .chatmeta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 4px 8px; margin-bottom: 5px; border-radius: 7px; background: var(--sunk); }
@@ -466,6 +466,16 @@ i.act { color: var(--act); font-style: italic; font-family: var(--f-body); }
 .chatin textarea { min-height: 0; resize: none; font-family: var(--f-body); font-size: 14px; padding: 7px 9px; }
 .chatin .row { gap: 6px; flex-wrap: nowrap; }
 .body { padding-bottom: 96px; }
+/* 비활성 버튼은 클릭을 부모로 넘겨, 화면이 좌표로 찾아 이유를 알려 준다 */
+button[disabled][data-why] { pointer-events: none; }
+/* 가로로 넘치는 탭 줄의 ‹ › 표시 */
+.shw { position: relative; min-width: 0; flex: 1 1 auto; }
+.sharr { position: absolute; top: 50%; transform: translateY(-50%); z-index: 2; width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel); color: var(--brass2); font-size: 18px; line-height: 1; display: none; place-items: center; padding: 0 0 2px; cursor: pointer; box-shadow: 0 2px 8px var(--shadow); }
+.sharr.l { left: 2px; } .sharr.r { right: 2px; }
+.shw.more-l .sharr.l, .shw.more-r .sharr.r { display: grid; }
+/* 모바일에서 채팅을 펼쳐 둔 동안 뒤 페이지가 같이 스크롤되지 않게 */
+@media (max-width: 900px) { body.dock-lock { overflow: hidden; overscroll-behavior: none; } }
+.dock, .dock .dtabs, .memenu { overscroll-behavior: contain; }
 @media (min-width: 901px) { #toasts { right: auto; left: 50%; transform: translateX(-50%); bottom: calc(24px + env(safe-area-inset-bottom, 0px)); } }
 @media (min-width: 1280px) {
   body.dock-open .body { grid-template-columns: 200px minmax(0, 1fr) 340px; max-width: 1640px; padding-bottom: 40px; }
@@ -697,7 +707,7 @@ body.dock-open .top-row { max-width: 1640px; }
   .topmeta { flex-direction: column; align-items: flex-end; gap: 1px; line-height: 1.35; }
 }
 @media (max-width: 900px) {
-  .top-row { flex-wrap: wrap; position: relative; padding-right: 96px; gap: 6px 10px; }
+  .top-row { flex-wrap: wrap; position: relative; padding-right: var(--tbw, 96px); gap: 6px 10px; }   /* --tbw: 우측 상단 버튼 묶음의 실제 폭 (이름이 버튼 밑으로 들어가지 않게) */
   .topmeta { order: 3; width: 100%; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: flex-start; margin-left: 0; text-align: left; gap: 2px 10px; }
   .top-row .resbar { order: 4; width: 100%; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
   .top-row .resbar::-webkit-scrollbar { display: none; }
@@ -709,6 +719,7 @@ body.dock-open .top-row { max-width: 1640px; }
   .crest .mebtn .sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 }
 @media (max-width: 420px) { .logo { width: 28px; height: 28px; } .top-row { gap: 6px 8px; } }
+@media (max-width: 600px) { .crest .ws-h { display: none; } }   /* 좁은 화면: 기숙사 이름을 빼서 학년 · Lv가 잘리지 않게 (기숙사는 안내도 · 내 정보에 있다) */
 
 /* ── 동아리 · 칭호 도감 · 설정 ── */
 .gemb { display: inline-grid; place-items: center; flex: none; border-radius: 9px; background: color-mix(in srgb, var(--gc, #d6ad5f) 28%, var(--sunk)); border: 1px solid color-mix(in srgb, var(--gc, #d6ad5f) 70%, transparent); color: var(--ink); font-family: var(--f-display); font-weight: 700; }
@@ -1016,7 +1027,7 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 }
 @media (max-width: 900px) {
   /* 자원 줄은 오른쪽 버튼 아래 따로 놓이므로, 버튼 자리(padding-right)까지 다 쓴다 */
-  .top-row .resbar { width: calc(100% + 96px); margin-right: -96px; }
+  .top-row .resbar { width: calc(100% + var(--tbw, 96px)); margin-right: calc(-1 * var(--tbw, 96px)); }
 }
 /* 거래소: 장비 줄 전체를 눌러 옵션 펼치기 */
 .mki.tap { cursor: pointer; border-radius: 6px; position: relative; }
@@ -1162,7 +1173,7 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 :root[data-paper="on"] .gtabs button { border-radius: 0; padding: 10px 16px; box-shadow: inset -1px 0 0 var(--line2); }
 :root[data-paper="on"] .gtabs button:last-child { box-shadow: none; }
 :root[data-paper="on"] .dock-head { padding: 0 8px 0 0; align-items: stretch; gap: 0; }
-:root[data-paper="on"] .dock-head > :not(.dtabs) { align-self: center; }
+:root[data-paper="on"] .dock-head > :not(.dtabs):not(.shw) { align-self: center; }
 :root[data-paper="on"] .dtabs { gap: 0; }
 :root[data-paper="on"] .dtabs button { border-radius: 0; padding: 9px 12px; }
 :root[data-paper="on"] .tabs { gap: 0; }
@@ -1194,7 +1205,9 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 .gtabs { overflow-x: auto; }
 .gtabs button { border-radius: 0; padding: 6px 16px; }
 .dock-head { padding: 0 8px 0 0; align-items: stretch; gap: 0; }
-.dock-head > :not(.dtabs) { align-self: center; }
+.dock-head > :not(.dtabs):not(.shw) { align-self: center; }
+.dock-head > .shw { align-self: stretch; display: flex; }   /* 탭 줄을 감싼 ‹ › 틀도 머리 높이만큼 */
+.dock-head > .shw > .dtabs { flex: 1 1 auto; min-width: 0; }
 .dtabs { gap: 0; }
 .dtabs button { border-radius: 0; padding: 5px 12px; }
 .nav button { padding: 6px 10px; }
@@ -1372,7 +1385,7 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 @keyframes scfam { from { transform: translate(78px, 142px); } to { transform: translate(126px, 150px); } }
 @media (prefers-reduced-motion: reduce) { .scene * { animation: none !important; } }
 .scene.nofx * { animation: none !important; }
-@media (max-width: 600px) { .sc-art { height: 168px; } .sc-bar { position: static; padding: 6px 8px; background: rgba(12, 14, 28, .85); flex-wrap: wrap; } .sc-bar .sc-chip { background: none; padding: 2px 0; } .sc-chip { font-size: 11px; padding: 3px 8px; } }
+@media (max-width: 600px) { .sc-art { height: 168px; } .sc-bar { position: static; padding: 6px 8px; background: rgba(12, 14, 28, .85); flex-wrap: wrap; } .sc-bar .sc-chip { background: none; padding: 2px 0; white-space: normal; flex-wrap: wrap; max-width: 100%; overflow: visible; row-gap: 4px; } .sc-chip { font-size: 11px; padding: 3px 8px; } }
 /* 시간표: 빈자리 한 줄 */
 .tl.idlesum .tli { opacity: .8; }
 /* 광장: 카드 테두리를 줄이고 사이를 넓힌다 */
