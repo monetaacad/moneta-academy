@@ -1,0 +1,63 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Hahmlet:wght@500;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:1080px;min-height:1350px;background:radial-gradient(ellipse at 50% 0%,#2a2f5e 0%,#151a36 45%,#0d1022 100%);color:#ece4cf;font-family:'Gowun Dodum',sans-serif;position:relative;overflow:hidden}
+.stars{position:absolute;inset:0;background-image:radial-gradient(1.5px 1.5px at 8% 12%,#fff8,transparent),radial-gradient(1px 1px at 22% 30%,#fff6,transparent),radial-gradient(2px 2px at 78% 9%,#ffe9a8aa,transparent),radial-gradient(1px 1px at 90% 26%,#fff7,transparent),radial-gradient(1.5px 1.5px at 64% 18%,#fff6,transparent),radial-gradient(1px 1px at 40% 6%,#fff8,transparent),radial-gradient(1.5px 1.5px at 12% 52%,#fff4,transparent),radial-gradient(1px 1px at 94% 60%,#fff5,transparent)}
+.wrap{position:relative;padding:44px 70px 0}
+.pix{image-rendering:pixelated}
+header{text-align:center}
+header img.logo{width:124px;height:124px}
+h1{font-family:'Hahmlet',serif;font-weight:700;font-size:68px;letter-spacing:.04em;color:#f0cf8a;margin-top:2px;text-shadow:0 2px 18px rgba(240,207,138,.25)}
+.tag{font-family:'Hahmlet',serif;font-size:30px;color:#ece4cf;margin-top:6px}
+.lede{font-size:20px;color:#a3a8c6;margin-top:10px;line-height:1.6}
+.rule{height:1px;background:linear-gradient(90deg,transparent,#d6ad5f88,transparent);margin:24px 0 22px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.card{background:rgba(26,32,64,.82);border:1px solid rgba(214,173,95,.28);border-radius:16px;padding:18px 22px;display:flex;gap:18px;align-items:flex-start}
+.card img{width:58px;height:58px;flex:none}
+.card h3{font-family:'Hahmlet',serif;font-weight:700;font-size:26px;color:#f0cf8a;margin-bottom:6px}
+.card p{font-size:19px;line-height:1.55;color:#d9d2bd}
+.houses{display:flex;justify-content:space-between;margin-top:0;background:rgba(26,32,64,.82);border:1px solid rgba(214,173,95,.28);border-radius:16px;padding:16px 26px}
+.h{text-align:center;width:22%}
+.h img{width:74px;height:74px}
+.h b{display:block;font-family:'Hahmlet',serif;font-size:23px;margin-top:4px}
+.h span{font-size:15px;color:#a3a8c6;line-height:1.4;display:block;margin-top:3px}
+.sec{font-family:'Hahmlet',serif;font-size:22px;color:#d6ad5f;letter-spacing:.2em;text-align:center;margin:22px 0 12px}
+.sky{display:flex;justify-content:center;gap:34px}
+.sky div{text-align:center;font-size:17px;color:#d9d2bd}
+.sky img{width:54px;height:54px;display:block;margin:0 auto 6px}
+footer{position:relative;margin-top:26px;padding:22px 70px 34px;border-top:1px solid rgba(214,173,95,.25);background:rgba(8,10,22,.55);text-align:center}
+footer .url{font-family:'Hahmlet',serif;font-size:34px;color:#f0cf8a;letter-spacing:.02em}
+footer .how{font-size:20px;color:#a3a8c6;margin-top:8px}
+</style></head><body><div class="stars"></div><div class="wrap">
+<header>
+ <img class="logo pix" src="{{logo}}">
+ <h1>모네타 아카데미</h1>
+ <div class="tag">모두가 같은 시간을 살아가는 마법 아카데미</div>
+ <p class="lede">별의 종의 울림을 듣는 아이에게만 초대장이 날아드는 곳.<br>입학 열차 칼리오페호를 타고 구름섬 라디아로 떠납니다.</p>
+</header>
+<div class="rule"></div>
+<div class="grid">
+ <div class="card"><img class="pix" src="{{know}}"><div><h3>수업을 듣고 연구합니다</h3><p>과목을 골라 수업을 들으면 지식이 쌓이고, 서고에서 연구해 더 강해집니다. 창을 닫아도 시간은 흐릅니다.</p></div></div>
+ <div class="card"><img class="pix" src="{{knight}}"><div><h3>원정에 출정합니다</h3><p>마법사 또는 기사로 몬스터를 처치하고 장비와 아르크를 모읍니다. 단계마다 보스가 기다립니다.</p></div></div>
+ <div class="card"><img class="pix" src="{{tower}}"><div><h3>함께 모험합니다</h3><p>모든 학생이 함께 쓰러뜨리는 월드 보스, 파티로 오르는 별의 탑, 동아리와 RP 채팅.</p></div></div>
+ <div class="card"><img class="pix" src="{{dream}}"><div><h3>아카데미의 하루</h3><p>잠든 사이 꿈길을 걷고, 시험과 결투제를 치르며, 학년이 오를수록 갈 수 있는 하늘섬이 늘어납니다.</p></div></div>
+</div>
+<div class="sec">네 개의 기숙사</div>
+<div class="houses">
+ <div class="h"><img src="{{lanterna_big}}"><b style="color:#e8c36a">등불관</b><span>탐구와 기록</span></div>
+ <div class="h"><img src="{{clepsydra_big}}"><b style="color:#6fb5c9">물시계관</b><span>인내와 명상</span></div>
+ <div class="h"><img src="{{corona_big}}"><b style="color:#d9736b">가시왕관관</b><span>결투와 실전 마법</span></div>
+ <div class="h"><img src="{{speculum_big}}"><b style="color:#b99be6">거울관</b><span>환영술과 교역</span></div>
+</div>
+<p style="text-align:center;font-size:18px;color:#a3a8c6;margin-top:12px">기숙사 학생들의 활동이 쌓일수록 기숙사 혜택이 커지고, 매주 기숙사 대항전에서 겨룹니다.</p>
+<div class="sec">하루 세 번, 하늘이 열립니다</div>
+<div class="sky">
+ <div><img class="pix" src="{{sky_meteor}}">유성 소나기</div>
+ <div><img class="pix" src="{{sky_aurora}}">별샘 오로라</div>
+ <div><img class="pix" src="{{sky_comet}}">꼬리별</div>
+ <div><img class="pix" src="{{sky_whale}}">구름 위의 별고래</div>
+</div>
+</div>
+<footer><div class="url">moneta-academy.duckdns.org</div><div class="how">PC · 모바일 브라우저에서 바로 · 초대코드로 입학</div></footer>
+</body></html>
