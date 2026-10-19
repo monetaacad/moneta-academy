@@ -112,7 +112,15 @@ function create(dbx, sec, opts) {
   function adminList() {
     return [...posts.values()].filter((p) => p.priv).sort((a, b) => b.last - a.last).slice(0, 200).map((p) => Object.assign(brief(p, 'staff'), { body: p.body, comments: dbx.q.bdComs.all(p.id).map((c) => comOut(c, 'staff')) }));
   }
+  // 운영실 · 건의 모아 보기: 건의 말머리 + 관리자만 보기 글 중 해결 완료가 아닌 것을 텍스트로 (이름은 빼고 글쓴이 · 운영진 · 다른 학생으로만)
+  function exportIdeas() {
+    const ST = { wip: ' [적용 중]', done: ' [해결 완료]' };
+    return [...posts.values()].filter((p) => (p.tag === 'idea' || p.priv) && p.st !== 'done').sort((a, b) => a.id - b.id).map((p) => {
+      const coms = dbx.q.bdComs.all(p.id).map((c) => '  - ' + (c.pid === 'staff' || c.op ? '운영진' : c.pid === p.pid ? '글쓴이' : '다른 학생') + ': ' + sec.dec(c.body).replace(/\s+/g, ' '));
+      return '#' + p.id + (p.priv ? ' (관리자만)' : ' (건의)') + (ST[p.st] || '') + ' ' + p.title + '\n' + p.body + (coms.length ? '\n' + coms.join('\n') : '');
+    }).join('\n\n---\n\n');
+  }
   function deleteBy(pid) { [...posts.values()].filter((p) => p.pid === pid).forEach((p) => { dbx.q.bdDel.run(p.id); posts.delete(p.id); }); }
-  return { list, get, write, edit, del, setStatus, comment, cdel, adminList, deleteBy, forgetName: (pid) => names.delete(pid), LIM };
+  return { list, get, write, edit, del, setStatus, exportIdeas, comment, cdel, adminList, deleteBy, forgetName: (pid) => names.delete(pid), LIM };
 }
 module.exports = { create };
