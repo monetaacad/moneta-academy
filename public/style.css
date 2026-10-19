@@ -349,7 +349,7 @@ textarea { min-height: 90px; font-family: var(--f-num); font-size: 12px; resize:
 
 /* 입학 */
 .intro { max-width: 680px; margin: 0 auto; padding: 30px 0 60px; display: flex; flex-direction: column; gap: 20px; }
-.intro .crestbig { width: 96px; height: 96px; margin: 0 auto; display: block; }
+.intro .crestbig { width: 96px; height: 96px; margin: 0 auto; display: block; image-rendering: pixelated; }
 .intro h1 { font-size: 32px; text-align: center; letter-spacing: .03em; }
 .intro .lede { text-align: center; color: var(--muted); max-width: 52ch; margin: 0 auto; }
 
@@ -664,7 +664,7 @@ body.dock-resizing { user-select: none; cursor: grabbing; }
 .top { padding-block: 8px; }
 .top-row { gap: 10px 12px; flex-wrap: nowrap; }
 body.dock-open .top-row { max-width: 1640px; }
-.logo { width: 38px; height: 38px; flex: none; display: block; }
+.logo { width: 38px; height: 38px; flex: none; display: block; image-rendering: pixelated; }
 .topmeta { margin-left: auto; display: flex; gap: 4px 10px; align-items: center; flex-wrap: wrap; justify-content: flex-end; font-size: 12px; color: var(--muted); min-width: 0; text-align: right; }
 .topmeta .seg { display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
 .topmeta .cal { color: var(--brass2); }
