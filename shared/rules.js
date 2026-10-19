@@ -197,6 +197,7 @@
     if (!P.sndV && P.opt) { P.sndV = 1; P.opt.sound = true; }   // 효과음 기본값을 켬으로 (BUILD 2026101953): 예전 기본값(꺼짐) 그대로인 학생도 한 번 켠다
     // 월드 보스 추가 도전권 (2026-10-19): 충전 도전권(최대 3)과 매점 · 우편으로 받은 추가 도전권을 따로 센다. 구매 · 추가 사용은 주간 2번
     if (P.wb && P.wb.extra == null) { P.wb.extra = Math.max(0, (P.wb.tickets || 0) - K.WB_TICKET_MAX); P.wb.tickets = Math.min(P.wb.tickets || 0, K.WB_TICKET_MAX); P.wb.bought = 0; P.wb.buyWk = -1; P.wb.exUsed = 0; P.wb.exWk = -1; delete P.wb.buyDay; }
+    if (P.famGift == null && P.fam && P.grade >= 3) P.famGift = 1;   // 사역마 해금이 레벨로 바뀌기 전(3학년)에 이미 첫 알을 받은 학생
     if (P.econC == null) P.econC = P.created && P.created < R.ECON_C_AT ? 1 : 2;
     if (!P.badges) P.badges = [];
     if (P.grade >= 3 && !P.badgeGot && P.res && P.log) { P.badgeGot = 1; gainBadge(P, makeBadge(P), P.at || 0, '아카데미 휘장 수여'); }
@@ -293,6 +294,7 @@
     if (P.guildLv > 0) { var gb = R.guildBonus(P.guildLv); b.goldPct = (b.goldPct || 0) + gb; b.xpPct = (b.xpPct || 0) + gb; }   // 동아리 레벨 보너스
     if (P.partyN > 1) { var pb = 0.03 * (Math.min(P.partyN, 4) - 1); b.goldPct = (b.goldPct || 0) + pb; b.xpPct = (b.xpPct || 0) + pb; }   // 파티 보너스
     for (var id in P.rs) if (RES[id]) addEff(b, RES[id].eff, P.rs[id]);
+    var eh = R.eggHold(P); if (eh) b.xpPct = (b.xpPct || 0) + eh * R.EGG_HOLD_EACH;   // 알 품기
     for (var fid in P.fam.own) { var f = FAM[fid]; if (f) b[f.bonus] = (b[f.bonus] || 0) + R.famBonus(f, P.fam.own[fid].lv); }
     var span = Math.max(1e-6, t1 - t0);
     for (var bid in P.buffs) {
@@ -439,6 +441,12 @@
   R.spellSlots = function (P) { return 2 + (P.grade >= 3 ? 1 : 0) + (P.grade >= 5 ? 1 : 0); };
 
   /* ───────── 레벨 ───────── */
+  /* 사역마: 레벨 FAM_LV(또는 3학년)부터. 열리는 순간 고드릭 펜 교수가 첫 알을 준다 (한 번).
+     알 품기: 부화시키지 않고 지니고 있는 알 하나마다 경험치 +3% (3개까지) */
+  R.FAM_LV = 15; R.EGG_HOLD_EACH = 0.03; R.EGG_HOLD_MAX = 3;
+  R.famOpen = function (P) { return P.lvl >= R.FAM_LV || P.grade >= 3; };
+  R.eggHold = function (P) { return Math.min(R.EGG_HOLD_MAX, (P.fam && P.fam.eggs) || 0); };
+  R.famGift = function (P, t) { if (P.famGift || !R.famOpen(P)) return; P.famGift = 1; if (!Object.keys(P.fam.own).length) { P.fam.eggs++; log(P, t, '사역마를 키울 수 있게 되었습니다! 고드릭 펜 교수가 첫 환수의 알을 주었습니다.', 'story'); } };
   R.xpNeed = function (lv) { return Math.floor(K.XP_A * Math.pow(K.XP_G, lv - 1) + lv * K.XP_L); };
   function addXp(P, x, t) {
     P.xp += x; var ups = 0;
@@ -447,6 +455,7 @@
       if (P.lvl > P.st.maxLevel) P.st.maxLevel = P.lvl;
       if (P.opt.autoAlloc) R.autoAlloc(P);
       log(P, t, '레벨 ' + P.lvl + ' 달성', 'good');
+      R.famGift(P, t);
     }
     return ups;
   }
@@ -881,6 +890,7 @@
     R.spiritJar(P, now);
     P.at = now;
     if (W) { R.ensureWeek(P, W, now); R.ensureDaily(P, now); }
+    R.famGift(P, now);   // 이미 레벨이 닿은 학생도 다음 접속 때 첫 알
     checkAch(P, now);
     return P;
   };
@@ -1422,7 +1432,7 @@
       var sh = 5 + Math.floor(b / 10) * 2; P.res.shard += sh; out.shard = sh;
       var st = ri(P, 3, 6) + Math.floor(b / 10); P.res.stone += st; out.stone = st;
       var it = makeItem(P, pick(P, D.SLOTS).id, b + 2, rollRarity(P, c.rarity + 0.8), 2); out.item = { name: it.name, r: it.r, res: gainItem(P, it, now) };
-      if (P.grade >= 3 && rnd(P) < 0.35) { P.fam.eggs++; out.egg = 1; }
+      if (R.famOpen(P) && rnd(P) < 0.35) { P.fam.eggs++; out.egg = 1; }
       if (rnd(P) < 0.06) { var bd = makeBadge(P); if (gainBadge(P, bd, now, def.name + '의 전리품') === 'got') out.badge = bd.name; }
       cupAdd(P, 50);
       log(P, now, def.name + ' 처치! ' + (b + 1) + '~' + (b + 9) + '단계가 열렸습니다', 'story');
@@ -1558,7 +1568,7 @@
     P.spells[i] = id; return { ok: true };
   };
   A.egg = function (P, W, now) {
-    if (P.grade < 3) err('3학년부터 할 수 있습니다'); if (P.fam.egg) err('이미 부화 중입니다'); if (P.fam.eggs <= 0) err('알이 없습니다');
+    if (!R.famOpen(P)) err('레벨 ' + R.FAM_LV + '부터 할 수 있습니다'); if (P.fam.egg) err('이미 부화 중입니다'); if (P.fam.eggs <= 0) err('알이 없습니다');
     var cost = R.eggPrice(P, W, now); if (P.res.mana < cost) err('마나가 부족합니다');
     P.res.mana -= cost; P.fam.eggs--;
     var o = hatch(P, now); o.mana = cost; return o;
@@ -1624,7 +1634,7 @@
   }
   A.dispatch = function (P, W, now, a) {
     var id = str(a.id), d = DDUR[str(a.d)];
-    if (P.grade < 3) err('3학년부터 할 수 있습니다'); if (!P.fam.own[id]) err('없는 사역마입니다'); if (!d) err('잘못된 시간입니다');
+    if (!R.famOpen(P)) err('레벨 ' + R.FAM_LV + '부터 할 수 있습니다'); if (!P.fam.own[id]) err('없는 사역마입니다'); if (!d) err('잘못된 시간입니다');
     if (P.fam.disp[id]) err('이미 파견 중입니다'); if (P.fam.act === id) err('동행 중인 사역마는 파견할 수 없습니다');
     var b = calc(P, W, now, now + d.s).b;   // 숙면의 차 등은 파견 시간과 겹친 만큼
     P.fam.disp[id] = { start: now, end: now + d.s, dur: d.s, bonus: 1 + (b.dispPct || 0) }; return { ok: true };
@@ -1655,7 +1665,7 @@
       P.grade = run.grade + 1; if (P.grade > P.st.maxGrade) P.st.maxGrade = P.grade;
       cupAdd(P, 300);
       log(P, now, ex.title + ' 합격! ' + L + ' (' + total + '점)', 'story');
-      if (P.grade === 3 && Object.keys(P.fam.own).length === 0) { P.fam.eggs++; log(P, now, '고드릭 펜 교수가 첫 환수의 알을 주었습니다.', 'story'); }
+      R.famGift(P, now);
       if (P.grade >= 3 && !P.badgeGot) { P.badgeGot = 1; var b0 = makeBadge(P); if (gainBadge(P, b0, now, '2학년을 마친 기념') === 'got') res.badge = b0.name; }
       if (P.grade >= 8) log(P, now, '별의 종이 울렸습니다. 마스터 과정과 심연이 열립니다.', 'legend');
     } else { P.examCd = now + K.EXAM_CD; log(P, now, ex.title + ' 불합격 (' + total + '점)', 'bad'); }

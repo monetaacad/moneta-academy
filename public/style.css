@@ -1517,6 +1517,13 @@ mark.hl { color: inherit; background: linear-gradient(transparent 38%, color-mix
 .cm.staff { padding: 4px 6px; border-radius: 6px; background: color-mix(in srgb, #ffe066 9%, transparent); }
 .cm.staff .cx { font-weight: 600; }
 .cpin { flex: none; margin: 6px 10px 0; padding: 7px 10px; border-radius: 8px; border: 1px solid color-mix(in srgb, #e8b400 45%, transparent); background: color-mix(in srgb, #ffe066 12%, var(--panel)); font-size: 13px; line-height: 1.5; max-height: 30%; overflow-y: auto; }
+.cpin { position: relative; padding-right: 52px; }
+.cpin-t { position: absolute; top: 5px; right: 6px; background: none; border: 0; color: var(--muted); font-size: 12px; cursor: pointer; padding: 2px 4px; }
+.cpin-t:hover { color: var(--ink); }
+.cpin.fold { display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; cursor: pointer; }
+.cpin.fold mark { overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1; }
+.cpin.fold br { display: none; }
+.cpin.fold .cpin-t { top: 50%; transform: translateY(-50%); }
 .logobtn { background: none; border: 0; padding: 0; cursor: pointer; display: inline-flex; border-radius: 50%; flex: none; }
 .logobtn:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
 /* 소지품 */
@@ -1527,3 +1534,4 @@ mark.hl { color: inherit; background: linear-gradient(transparent 38%, color-mix
 .bagtabs button .num { opacity: .8; }
 .rnk-name { cursor: pointer; color: inherit; text-decoration: underline dotted; text-underline-offset: 3px; }
 .rnk-name:hover { color: var(--brass); }
+.cpin.fold .stag { flex: none; }
