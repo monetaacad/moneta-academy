@@ -1733,6 +1733,8 @@
   // 이번 주(월요일 KST 0시~)에 더 살 수 있는 · 더 쓸 수 있는 추가 도전권 수. 주가 바뀌었으면 센 값을 0으로
   R.wbBuyLeft = function (P, now) { var w = R.weekId(now), wb = P.wb; if (wb.buyWk !== w) { wb.buyWk = w; wb.bought = 0; } return Math.max(0, K.WB_BUY_MAX - wb.bought); };
   R.wbExtraLeft = function (P, now) { var w = R.weekId(now), wb = P.wb; if (wb.exWk !== w) { wb.exWk = w; wb.exUsed = 0; } return Math.max(0, K.WB_EXTRA_USE - wb.exUsed); };
+  // 지금부터 이번 주 끝까지 한 학생이 칠 수 있는 최대 횟수: 가득 찬 도전권 3 + 8시간마다 충전 + 추가 도전권 2 (추가 보스 체력 기준)
+  R.wbAttacksLeft = function (now) { return K.WB_TICKET_MAX + Math.floor(Math.max(0, R.weekStart(R.weekId(now) + 1) - now) / K.WB_TICKET_REGEN) + K.WB_EXTRA_USE; };
   R.wbCanAttack = function (P, now) { return P.wb.tickets > 0 || (P.wb.extra > 0 && R.wbExtraLeft(P, now) > 0); };
   R.WB_KILL_RW = { shard: 20, egg: 1 };   // 월드 보스 토벌 보상 (잡은 순간 이번 주 도전한 학생 모두에게 우편)
   A.wbAttack = function (P, W, now) {

@@ -1643,7 +1643,7 @@ routes['GET /api/admin/stats'] = (req, res) => {
   send(req, res, 200, {
     players: Number(dbx.q.countPlayers.get().n), active24h: Number(dbx.q.countActive.get(now - 86400).n), active7d: Number(dbx.q.countActive.get(now - 7 * 86400).n),
     online2m: store.online(120000), cached: store.size(), memoryMB: Math.round(process.memoryUsage().rss / 1048576), uptimeH: +(process.uptime() / 3600).toFixed(2),
-    chatConnections: chat.connections(), chatOnline: chat.online(), inviteRequired: cfg.inviteRequired, boss: world.W.boss, epoch: world.W.epoch, wbForecast: Math.floor(world.wbForecast(Math.floor(nowSec()))), wbFill: world.WB_SUMMON_FILL
+    chatConnections: chat.connections(), chatOnline: chat.online(), inviteRequired: cfg.inviteRequired, boss: world.W.boss, epoch: world.W.epoch, wbForecast: Math.floor(world.wbForecast(Math.floor(nowSec()))), wbAttacks: R.wbAttacksLeft(nowSec())
   });
 };
 routes['POST /api/admin/notice'] = async (req, res) => {
@@ -1659,7 +1659,7 @@ routes['POST /api/admin/notice'] = async (req, res) => {
 routes['POST /api/admin/wbsummon'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
   const b = await readJson(req, 256); let boss;
-  try { boss = world.summonBoss(nowSec(), b.hp); } catch (e) { return fail(req, res, 400, e.message); }
+  try { boss = world.summonBoss(nowSec(), b.hp, b.n, b.per); } catch (e) { return fail(req, res, 400, e.message); }
   world.invalidate(); const t = '추가 월드 보스 ' + R.josa(boss.name, '이', '가') + ' 나타났습니다! 잡으면 도전한 학생 모두에게 토벌 보상이 또 우편으로 갑니다.';
   chat.system('world', t, Date.now() / 1000); chat.system('notice', t, Date.now() / 1000);
   oplog('admin', '관리자', 'wbsummon', `${boss.name} (${boss.round}번째, 체력 ${R.fmt(boss.maxHp)})`); send(req, res, 200, { ok: true, boss });

@@ -44,7 +44,7 @@ function create(store, cfg, log) {
   }
 
   /* 운영실 · 추가 보스: 이번 주 보스가 쓰러졌으면 다음 보스를 부른다. 앞서 잡은 수(kills)는 이어서 세고,
-     잡을 때마다 토벌 보상이 우편으로 나간다. 체력을 비워 두면 이번 주 실제 피해 속도로 남은 기간의 85% 쯤에 쓰러지게 잡는다 */
+     잡을 때마다 토벌 보상이 우편으로 나간다 */
   const WB_SUMMON_FILL = 0.85;
   // 이번 주 지금까지의 피해 속도로 주 끝까지 더 들어올 피해 (추가 보스 체력 기준)
   function wbForecast(now) {
@@ -52,13 +52,14 @@ function create(store, cfg, log) {
     const b = W.boss && W.boss.week === week ? W.boss : null, dead = b ? (b.dead || 0) + (b.killedAt ? now - b.killedAt : 0) : 0;   // 보스가 없던(쓰러져 있던) 시간은 뺀다
     return sum / Math.max(3600, now - ws - dead) * Math.max(3600, end - now);
   }
-  function summonBoss(now, hp) {
+  // 체력: 직접 입력(hp)이 없으면 인원(n, 기본 200) × 1회 피해(per, 기본 2만) × 주 끝까지 칠 수 있는 횟수 — 모두가 끝까지 다 쳐야 쓰러지는 크기
+  function summonBoss(now, hp, n, per) {
     const week = R.weekId(now), b = W.boss;
     if (!b || b.week !== week) throw new Error('이번 주 보스가 아직 없습니다');
     if (!b.killedAt) throw new Error('이번 주 보스가 아직 살아 있습니다');
     store.flushAll();
-    const auto = Math.floor(wbForecast(now) * WB_SUMMON_FILL);
-    const maxHp = Math.max(1000, Math.floor(Number(hp) > 0 ? Number(hp) : Math.max(auto, b.maxHp)));
+    const auto = Math.floor((Number(n) > 0 ? Number(n) : 200) * (Number(per) > 0 ? Number(per) : 20000) * R.wbAttacksLeft(now));
+    const maxHp = Math.max(1000, Math.min(1e15, Math.floor(Number(hp) > 0 ? Number(hp) : auto)));
     const round = (b.round || 1) + 1, def = D.WORLD_BOSSES[(week + round - 1) % D.WORLD_BOSSES.length];
     W.boss = { week, id: def.id, name: def.name, maxHp, hp: maxHp, killedAt: 0, actives: b.actives, round, kills: (b.kills || 0) + 1, paidKills: b.paidKills || 0, dead: (b.dead || 0) + Math.max(0, now - b.killedAt) };
     W.wbAlive = true; kvSet('boss', W.boss); cache.at = 0;
