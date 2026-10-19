@@ -99,7 +99,7 @@
       var o = { title: $('#mtitle').value.trim(), body: $('#mbody').value, rewards: rw, to: to === 'all' ? '*' : $('#mnames').value, newcomers: $('#mnew').checked }, ex = $('#mexp').value;
       if (!o.title) return toast('제목 입력 필요');
       if (ex === 'forever') o.forever = true; else if (ex === 'date') { if (!$('#mdate').value) return toast('만료 날짜 선택 필요'); o.expires = Math.floor(new Date($('#mdate').value + 'T23:59:59+09:00').getTime() / 1000); } else o.days = +ex;
-      if (!confirm((to === 'all' ? '모든 학생' : '고른 학생') + '에게 「' + o.title + '」을(를) 보냅니다.\n보상: ' + rwText(rw) + '\n만료: ' + $('#mexp').selectedOptions[0].textContent)) return;
+      if (!confirm((to === 'all' ? '모든 학생' : '고른 학생') + '에게 「' + o.title + '」' + (/[가-힣]/.test((o.title || '').slice(-1)) && ((o.title.charCodeAt(o.title.length - 1) - 0xAC00) % 28) ? '을' : '를') + ' 보냅니다.\n보상: ' + rwText(rw) + '\n만료: ' + $('#mexp').selectedOptions[0].textContent)) return;
       api('POST', '/api/admin/mail', o).then(function (j) { if (j.error) { $('#mmsg').textContent = j.error; return; } $('#mmsg').textContent = '보냈습니다' + (j.missing && j.missing.length ? ' · 없는 이름: ' + j.missing.join(', ') : ''); $('#mtitle').value = ''; $('#mbody').value = ''; document.querySelectorAll('[data-rw]').forEach(function (i) { i.value = ''; }); mails(); });
     },
     mdel: function (el) { if (!confirm('이 우편을 회수할까요? 아직 받지 않은 학생에게서 사라집니다 (이미 받은 보상은 그대로).')) return; api('POST', '/api/admin/mail/delete', { id: +el.dataset.c }).then(mails); },

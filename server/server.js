@@ -372,7 +372,7 @@ routes['POST /api/rename'] = async (req, res) => {
   const real = Date.now() / 1000, lf = R.renameLeft(P, real); if (lf > 0) return fail(req, res, 400, R.fmtTime(lf) + ' 뒤에 바꿀 수 있습니다');
   const other = dbx.q.playerByKey.get(nameKey(name)); if (other && other.id !== pid) return fail(req, res, 409, '이미 쓰는 이름입니다');
   try { dbx.q.renamePlayer.run(name, nameKey(name), pid); } catch (e) { return fail(req, res, 409, '이미 쓰는 이름입니다'); }
-  const old = P.name; P.name = name; P.nameAt = Math.floor(real); R.log(P, now, '이름을 「' + name + '」(으)로 바꿨습니다', 'news');
+  const old = P.name; P.name = name; P.nameAt = Math.floor(real); R.log(P, now, '이름을 ' + R.josa('「' + name + '」', '으로', '로') + ' 바꿨습니다', 'news');
   store.markDirty(pid); board.forgetName(pid); log(`이름 변경: ${old} → ${name}`);
   send(req, res, 200, Object.assign({ ok: true }, statePayload(P, now)));
 };
@@ -947,7 +947,7 @@ routes['POST /api/market'] = async (req, res) => {
       row = ['mat', m, MAT_NAMES[m].name, '', 0, 0, qty];
     }
     dbx.q.mkInsert.run(me, row[0], row[1], row[2], row[3], row[4], row[5], row[6], price, Math.floor(real), Math.floor(real + MK.DAYS * 86400), P.name);
-    R.log(P, now, '거래소에 ' + row[2] + (row[0] !== 'item' ? ' ' + row[6] + '개' : '') + '를 ' + R.fmt(price) + ' ' + CUR + '에 올렸습니다', 'news');
+    R.log(P, now, '거래소에 ' + R.josa(row[2] + (row[0] !== 'item' ? ' ' + row[6] + '개' : ''), '을', '를') + ' ' + R.fmt(price) + ' ' + CUR + '에 올렸습니다', 'news');
     store.markDirty(me);
     return send(req, res, 200, { ok: true, P: R.publicState(P), now });
   }
@@ -969,11 +969,11 @@ routes['POST /api/market'] = async (req, res) => {
     if (!dbx.q.mkSetStatus.run('sold', me, Math.floor(real), id).changes) return fail(req, res, 409, '방금 다른 학생이 샀습니다');
     P.res.gold -= r.price;
     mkGive(P, r);
-    R.log(P, now, '거래소에서 ' + r.name + (r.kind !== 'item' ? ' ' + r.qty + '개' : '') + '를 ' + R.fmt(r.price) + ' ' + CUR + '에 샀습니다', 'good');
+    R.log(P, now, '거래소에서 ' + R.josa(r.name + (r.kind !== 'item' ? ' ' + r.qty + '개' : ''), '을', '를') + ' ' + R.fmt(r.price) + ' ' + CUR + '에 샀습니다', 'good');
     store.markDirty(me);
     const SP = String(r.seller).startsWith('npc:') ? null : store.get(r.seller);
     if (String(r.seller).startsWith('npc:')) setImmediate(() => { try { npcMarketTick(); } catch (e) { } });   // NPC 매물이 팔리면 바로 채운다
-    if (SP) addNote(r.seller, 'market', '거래소에서 ' + r.name + (r.kind !== 'item' ? ' ' + r.qty + '개' : '') + '가 팔렸습니다 · ' + R.fmt(Math.floor(r.price * (1 - MK.FEE))) + ' ' + CUR + ' (' + P.name + ' 님)', { view: 'market' });
+    if (SP) addNote(r.seller, 'market', '거래소에서 ' + R.josa(r.name + (r.kind !== 'item' ? ' ' + r.qty + '개' : ''), '이', '가') + ' 팔렸습니다 · ' + R.fmt(Math.floor(r.price * (1 - MK.FEE))) + ' ' + CUR + ' (' + P.name + ' 님)', { view: 'market' });
     if (SP) { const got = Math.floor(r.price * (1 - MK.FEE)); R.advance(SP, world.ctx(now), now); SP.res.gold += got; SP.st.goldTotal = (SP.st.goldTotal || 0) + got; R.log(SP, now, '거래소: ' + r.name + (r.kind !== 'item' ? ' ' + r.qty + '개' : '') + ' 판매 +' + R.fmt(got) + ' ' + CUR + ' (수수료 ' + Math.round(MK.FEE * 100) + '%)', 'good'); store.markDirty(r.seller); }
     log(`거래: #${id} ${r.name} ${r.price}G`);
     chat.pingAll('trade', mkTradeOut(Object.assign({}, r, { done_at: Math.floor(real) })));
@@ -1075,7 +1075,7 @@ routes['POST /api/tower'] = async (req, res) => {
     let reward = null;
     if (r.win) {
       reward = R.towerReward(f, base);
-      const exp = Math.floor(Date.now() / 1000) + 7 * 86400, body = P.name + ' 님이 파티 「' + (pa ? pa.name : '') + '」의 힘을 모아 별의 탑 ' + f + '층의 ' + foe.name + '을(를) 쓰러뜨렸습니다.\n그때 파티에 있던 모두에게 보내는 보상입니다.';
+      const exp = Math.floor(Date.now() / 1000) + 7 * 86400, body = P.name + ' 님이 파티 「' + (pa ? pa.name : '') + '」의 힘을 모아 별의 탑 ' + f + '층의 ' + R.josa(foe.name, '을', '를') + ' 쓰러뜨렸습니다.\n그때 파티에 있던 모두에게 보내는 보상입니다.';
       const skipped = [];
       team.filter((m) => !m.npc).forEach((m) => { const Q = m.id === me ? P : store.get(m.id); if (!Q) return; if (R.towerClaim(Q, now, f)) { sendMail(m.id, '별의 탑', '별의 탑 ' + f + '층 돌파', body, reward, exp, true, after); store.markDirty(m.id); } else skipped.push(Q.name); });
       later(() => {
@@ -1108,7 +1108,7 @@ routes['POST /api/ritual'] = async (req, res) => {
   const st = ritState(now); if (P.rit === st.day) return fail(req, res, 400, '오늘은 이미 봉헌했습니다');
   const cost = R.ritualCost(P, world.ctx(now), now); if (P.res.mana < cost) return fail(req, res, 400, '마나가 모자랍니다 (마나 ' + R.fmt(cost) + ' 필요)');
   P.res.mana -= cost; P.rit = st.day; P.res.shard += 1; st.pids.push(me);
-  R.log(P, now, '별샘 의식에 마나 ' + R.fmt(cost) + '을(를) 봉헌했습니다 (별조각 +1)', 'news');
+  R.log(P, now, '별샘 의식에 마나 ' + R.josa(R.fmt(cost), '을', '를') + ' 봉헌했습니다 (별조각 +1)', 'news');
   if (st.done) R.ritualBless(P, now);
   else if (st.pids.length >= st.goal) {
     st.done = now;
@@ -1155,7 +1155,7 @@ function aucTick(now) {
     if (r.bidder && !String(r.bidder).startsWith('npc:')) {
       let it = null; try { it = JSON.parse(r.item); } catch (e) { }
       if (it) sendMail(r.bidder, '떠돌이 상인', '낙찰: ' + r.name, r.bidder_name + ' 님, ' + R.fmt(r.price) + ' ' + CUR + '에 낙찰되었습니다. 좋은 주인을 만나 다행이군요.\n— 떠돌이 상인', { items: [it] }, Math.floor(Date.now() / 1000) + 14 * 86400, true);
-      chat.system('notice', '떠돌이 상인: ' + r.bidder_name + ' 님이 「' + r.name + '」을(를) ' + R.fmt(r.price) + ' ' + CUR + '에 낙찰받았습니다.', Date.now() / 1000);
+      chat.system('notice', '떠돌이 상인: ' + r.bidder_name + ' 님이 ' + R.josa('「' + r.name + '」', '을', '를') + ' ' + R.fmt(r.price) + ' ' + CUR + '에 낙찰받았습니다.', Date.now() / 1000);
     }
     chat.pingAll('auction', { done: r.id });
   });
@@ -1543,7 +1543,7 @@ routes['POST /api/guild'] = async (req, res) => {
       if (P.inv[i].lock) return fail(req, res, 400, '잠긴 장비는 넣을 수 없습니다');
       if (dbx.q.giCount.get(mine).n >= R.guildSlots(g.lv)) return fail(req, res, 400, '창고가 가득 찼습니다 (' + R.guildSlots(g.lv) + '칸)');
       const it = P.inv.splice(i, 1)[0]; dbx.q.giPut.run(mine, JSON.stringify(it), it.name + (it.enh ? ' +' + it.enh : ''), it.r, it.ilvl, it.slot, P.name, now); store.markDirty(me);
-      gLog(mine, P.name + ' 님이 ' + it.name + (it.enh ? ' +' + it.enh : '') + '을(를) 넣었습니다');
+      gLog(mine, P.name + ' 님이 ' + R.josa(it.name + (it.enh ? ' +' + it.enh : ''), '을', '를') + ' 넣었습니다');
     } else {
       const amt = Math.floor(Number(b.gold) || 0); if (!(amt >= 1) || amt > P.res.gold) return fail(req, res, 400, CUR + '를 확인 필요');
       P.res.gold -= amt; dbx.q.gGoldAdd.run(amt, mine); store.markDirty(me); gLog(mine, P.name + ' 님이 ' + R.fmt(amt) + ' ' + CUR + '를 넣었습니다');
@@ -1556,7 +1556,7 @@ routes['POST /api/guild'] = async (req, res) => {
       const r = dbx.q.giGet.get(Number(b.id) | 0, mine); if (!r) return fail(req, res, 404, '이미 누가 꺼냈습니다');
       if (P.inv.length >= R.calc(P, world.ctx(gnow), gnow).bag) return fail(req, res, 400, '가방이 가득 찼습니다');
       if (!dbx.q.giDel.run(r.id, mine).changes) return fail(req, res, 409, '이미 누가 꺼냈습니다');
-      P.inv.push(JSON.parse(r.data)); store.markDirty(me); gLog(mine, P.name + ' 님이 ' + r.name + '을(를) 꺼냈습니다');
+      P.inv.push(JSON.parse(r.data)); store.markDirty(me); gLog(mine, P.name + ' 님이 ' + R.josa(r.name, '을', '를') + ' 꺼냈습니다');
     } else {
       const amt = Math.floor(Number(b.gold) || 0); if (!(amt >= 1)) return fail(req, res, 400, CUR + '를 확인 필요');
       if (!dbx.q.gGoldTake.run(amt, mine, amt).changes) return fail(req, res, 400, '창고 ' + CUR + '가 모자랍니다');

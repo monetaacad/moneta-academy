@@ -61,7 +61,7 @@
   function clsDot(id, size) { var c = R.CLS[id]; return dotImg(id, size, c ? c.name : '', 'cdot'); }
   function icon(k) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IC[k] + '</svg>'; }
   var VIEWS = [
-    { id: 'home', name: '아카데미 광장' }, { id: 'lecture', name: '강의실' }, { id: 'explore', name: '원정' }, { id: 'exam', name: '시험·결투' },
+    { id: 'home', name: '아카데미 광장' }, { id: 'lecture', name: '강의실' }, { id: 'explore', name: '원정' }, { id: 'tower', name: '별의 탑' }, { id: 'exam', name: '시험·결투' },
     { id: 'world', name: '토벌·랭킹' }, { id: 'party', name: '파티' }, { id: 'guild', name: '동아리' }, { id: 'friends', name: '친구' }, { id: 'board', name: '게시판' }, { id: 'auction', name: '떠돌이 상인' }, { id: 'market', name: '거래소' }, { id: 'gear', name: '장비·능력' }, { id: 'work', name: '공방', grade: 2 }, { id: 'lib', name: '서고' },
     { id: 'shop', name: '매점' }, { id: 'lore', name: '세계관' }, { id: 'rec', name: '기록실' }
   ];
@@ -70,12 +70,12 @@
   var GROUPS = [
     { id: 'home', name: '아카데미 광장', icon: 'home', tabs: ['home'] },
     { id: 'study', name: '수업·연구', icon: 'lecture', tabs: ['lecture', 'lib'] },
-    { id: 'adv', name: '원정·전투', icon: 'explore', tabs: ['explore', 'exam', 'world'] },
+    { id: 'adv', name: '원정·전투', icon: 'explore', tabs: ['explore', 'tower', 'exam', 'world'] },
     { id: 'craft', name: '장비·공방', icon: 'gear', tabs: ['gear', 'work'] },
     { id: 'social', name: '교류·상점', icon: 'party', tabs: ['party', 'guild', 'friends', 'board', 'market', 'auction', 'shop'] },
     { id: 'book', name: '기록', icon: 'lore', tabs: ['lore', 'rec'] }
   ];
-  var TAB_NAMES = { auction: '떠돌이 상인', home: '광장', lecture: '강의실', lib: '서고 · 연구', explore: '원정', exam: '시험 · 결투제', world: '월드 보스 · 랭킹', gear: '장비 · 능력치', work: '공방', party: '파티', guild: '동아리', friends: '친구', board: '게시판', market: '거래소', shop: '매점', lore: '세계관', rec: '업적 · 도감' };
+  var TAB_NAMES = { auction: '떠돌이 상인', home: '광장', lecture: '강의실', lib: '서고 · 연구', explore: '원정', tower: '별의 탑', exam: '시험 · 결투제', world: '월드 보스 · 랭킹', gear: '장비 · 능력치', work: '공방', party: '파티', guild: '동아리', friends: '친구', board: '게시판', market: '거래소', shop: '매점', lore: '세계관', rec: '업적 · 도감' };
   S.gtab = {};
   function groupOf(v) { return GROUPS.find(function (g) { return g.tabs.indexOf(v) >= 0; }) || GROUPS[0]; }
 
@@ -271,7 +271,7 @@
     S.rPend = 0;   // 미뤄 둔 softRender가 있었다면 이걸로 끝
     var v = VIEWS.find(function (x) { return x.id === S.view; }) || VIEWS[0];
     var sy = window.scrollY;
-    $('#view').innerHTML = groupTabs() + (viewOpen(v) ? V[v.id]() : pageHead('잠긴 구역', v.name, '') + '<div class="card"><p>' + v.name + '은(는) ' + v.grade + '학년부터 출입할 수 있습니다.</p></div>');
+    $('#view').innerHTML = groupTabs() + (viewOpen(v) ? V[v.id]() : pageHead('잠긴 구역', v.name, '') + '<div class="card"><p>' + R.josa(v.name, '은', '는') + ' ' + v.grade + '학년부터 출입할 수 있습니다.</p></div>');
     if (Math.abs(window.scrollY - sy) > 2) window.scrollTo(0, sy);
     afterRender(); updateLive(); updateBadges(); updateSide();
   }
@@ -622,7 +622,7 @@
       // 파티원이 별의 탑에 도전하면 일지를 함께 본다
       tower: function (d) {
         if (!d) return; S.towerAt = 0;
-        if (d.start && d.by !== (S.P && S.P.name)) { if (S.view !== 'party') toast('별의 탑', d.by + ' 님이 ' + d.f + '층에 도전합니다 · 파티 창에서 관전 가능', 4000); S.twSel = null; }
+        if (d.start && d.by !== (S.P && S.P.name)) { if (S.view !== 'tower') toast('별의 탑', d.by + ' 님이 ' + d.f + '층에 도전합니다 · 별의 탑에서 관전 가능', 4000); S.twSel = null; }
         loadTower();
       },
       seq: function (d) {
@@ -914,7 +914,7 @@
     var h = '<div class="scene sc-' + ph + (P.opt && P.opt.reduceFx ? ' nofx' : '') + '" data-anchor="care"><div class="sc-art">' + svg +
       '<div class="sc-chip sc-tl">' + skyTxt + '</div>' + blessTxt + '</div><div class="sc-bar">' +
       '<div class="sc-chip"><span data-l="jarchip" data-html="1"></span> <button class="sc-btn" data-act="spirit" data-can="spirit">풀어 주기</button></div>' +
-      (au && au.active ? '<button class="sc-chip sc-go" data-act="nav" data-a="auction">떠돌이 상인 · 경매 중 ›</button>' : fam ? '<span class="sc-chip faint">' + fam.name + '와 산책 중</span>' : '') + '</div></div>';
+      (au && au.active ? '<button class="sc-chip sc-go" data-act="nav" data-a="auction">떠돌이 상인 · 경매 중 ›</button>' : fam ? '<span class="sc-chip faint">' + josa(fam.name, '과', '와') + ' 산책 중</span>' : '') + '</div></div>';
     return h;
   }
 
@@ -1092,7 +1092,7 @@
     var skv = R.skyAt(now()); if (skv && P.skyLook !== skv.key) out.push({ t: dotImg('sky_' + skv.id, 16, '', 'skyic') + '하늘에 ' + skv.name + '! 올려다보기', s: skv.text, act: 'skylook', btn: '올려다보기' });
     if (S.rit && !S.rit.mine) out.push({ t: '별샘 의식에 마나 봉헌', s: '모두 함께 ' + S.rit.n + ' / ' + S.rit.goal + '명 · 채우면 ' + R.RITUAL_BUFF.text, act: 'ritual', btn: '봉헌' });
     if (S.auc && S.auc.active) out.push({ t: '떠돌이 상인이 와 있습니다', s: '귀한 장비 세 점 경매 · ' + left(S.auc.end) + ' 남음', go: 'auction' });
-    if (S.party && R.towerLeft(P, now()) > 0) out.push({ t: '별의 탑 도전 ' + R.towerLeft(P, now()) + '번 남음', s: '파티의 힘을 모아 한 층씩 · 돌파하면 파티원 모두에게 보상 우편', go: 'party' });
+    if (S.party && R.towerLeft(P, now()) > 0) out.push({ t: '별의 탑 도전 ' + R.towerLeft(P, now()) + '번 남음', s: '파티의 힘을 모아 한 층씩 · 돌파하면 파티원 모두에게 보상 우편', go: 'tower' });
     var idleR = 0; for (var r = 0; r < c.resSlots; r++) if (!P.rsq[r]) idleR++;
     if (idleR) out.push({ t: '비어 있는 연구 자리 ' + idleR + '개', s: '', go: 'lib' });
     if (P.wb.tickets > 0 && S.W && S.W.boss && !S.W.boss.killedAt) out.push({ t: '월드 보스 도전 <span class="tiny faint">도전권 ' + P.wb.tickets + '장</span>', s: S.W.boss.name, go: 'world' });
@@ -1287,7 +1287,7 @@
       return '<div class="erroom"><div class="row between" style="gap:8px"><span><b>' + r.s + '단계</b> <span class="small muted">' + esc(r.zone) + ' · ' + R.DUR[r.d].label + '</span>' + (r.party ? ' <span class="tag br">파티</span>' : '') + '</span>' +
         '<span class="tiny faint">' + esc(r.host) + ' · <b class="num">' + r.n + '/' + r.max + '</b> · <span class="num" data-erleft="' + r.id + '">' + erLeftTxt(r) + '</span></span></div>' +
         '<div class="row" style="margin-top:4px;gap:6px"><div class="ermembers sm">' + r.members.map(function (m) { return '<span class="postag p-' + m.pos + '" title="' + esc(m.name) + '">' + R.EXP_POS[m.pos].name + '</span>'; }).join('') + '</div><span class="spacer"></span>' +
-        (er.party && er.party.can && er.party.n > 1 ? '<button class="btn sm"' + (why ? ' disabled title="' + why + '"' : ' data-act="erjoin" data-a="' + r.id + '"') + '>혼자 참가</button><button class="btn sm primary"' + (why ? ' disabled title="' + why + '"' : ' data-act="erjoin" data-a="' + r.id + '" data-b="party"') + '>파티로 참가</button>' : '<button class="btn sm"' + (why ? ' disabled title="' + why + '" data-tip="' + why + '"' : ' data-act="erjoin" data-a="' + r.id + '"') + '>' + R.EXP_POS[my].name + '으로 입장</button>') + '</div></div>';
+        (er.party && er.party.can && er.party.n > 1 ? '<button class="btn sm"' + (why ? ' disabled title="' + why + '"' : ' data-act="erjoin" data-a="' + r.id + '"') + '>혼자 참가</button><button class="btn sm primary"' + (why ? ' disabled title="' + why + '"' : ' data-act="erjoin" data-a="' + r.id + '" data-b="party"') + '>파티로 참가</button>' : '<button class="btn sm"' + (why ? ' disabled title="' + why + '" data-tip="' + why + '"' : ' data-act="erjoin" data-a="' + r.id + '"') + '>' + josa(R.EXP_POS[my].name, '으로', '로') + ' 입장</button>') + '</div></div>';
     }).join('') : '<p class="small muted" style="margin-top:6px">지금 열린 방이 없습니다. 방을 열면 다른 학생에게 보입니다.</p>') + '</div>';
     return h + '</div>';
   }
@@ -1301,7 +1301,7 @@
   }
   document.addEventListener('input', function (e) { var t = e.target; if (!t) return; if (t.id === 'gc-name' || t.id === 'gc-intro' || t.name === 'gc-mode') { var gd0 = S.gcDraft || (S.gcDraft = {}); if (t.name === 'gc-mode') gd0.mode = t.value; else gd0[t.id === 'gc-name' ? 'name' : 'intro'] = t.value; } else if (t.id === 'er-note') S.erNote = t.value; else if (t.id === 'g-rec') S.gRec = t.value; else if (t.id === 'pt-rec') S.ptRec = t.value; });
   document.addEventListener('toggle', function (e) { if (e.target.classList && e.target.classList.contains('ernew')) { S.erOpen = e.target.open; var sm = e.target.querySelector('summary'); if (sm) sm.textContent = S.erOpen ? '닫기' : '＋ 원정 방 만들기'; } }, true);
-  ACT.erpos = function (k) { S.erPos = k; if (S.er && S.er.mine) erOp({ op: 'pos', pos: k }, R.EXP_POS[k].name + '(으)로 바꿨습니다'); else render(); };
+  ACT.erpos = function (k) { S.erPos = k; if (S.er && S.er.mine) erOp({ op: 'pos', pos: k }, R.josa(R.EXP_POS[k].name, '으로', '로') + ' 바꿨습니다'); else render(); };
   ACT.ers = function (d) { var cap = Math.min(S.P.maxStage, R.stageCap(S.P)), s = (S.pick.ers || 1) + +d; if (R.isBoss(s)) s += +d; S.pick.ers = Math.max(1, Math.min(cap, s)); if (R.isBoss(S.pick.ers)) S.pick.ers--; render(); };
   ACT.ercreate = function (wp) { var po = $('#er-po'); S.erPO = !!(po && po.checked); erOp({ op: 'create', s: S.pick.ers, d: curDur('erd', '1h').k, pos: erPos(), partyOnly: S.erPO, withParty: wp === 'party' }, wp === 'party' ? null : '방을 열었습니다. 다른 학생이 들어오길 기다리는 중'); };
   ACT.erjoin = function (id, wp) { erOp({ op: 'join', id: id, pos: erPos(), withParty: wp === 'party' }, wp === 'party' ? null : '방에 들어갔습니다'); };
@@ -1326,7 +1326,7 @@
         }).join('') + Array(Math.max(0, r.max - r.n) + 1).join('<div class="row erprow faint"><span class="small">빈자리</span></div>') + '</div>' +
         '<div class="row" style="margin-top:12px;gap:6px;flex-wrap:wrap"><span class="small muted">내 포지션</span>' + ['van', 'rear', 'sup'].map(function (k) { return '<button class="btn sm ghost' + (my === k ? ' on' : '') + '" data-act="erpos2" data-a="' + k + '" data-b="' + r.id + '"' + (ok.indexOf(k) >= 0 ? '' : ' disabled') + '><span class="postag p-' + k + '">' + R.EXP_POS[k].name + '</span></button>'; }).join('') + '</div>' +
         '<p class="tiny faint" style="margin-top:4px">' + R.EXP_POS[my].desc + '</p>' +
-        '<div class="row" style="margin-top:12px;justify-content:flex-end"><button class="btn ghost" data-act="modal-close">닫기</button>' + (function () { var pc = S.er && S.er.party && S.er.party.can && S.er.party.n > 1, dis = why ? ' disabled title="' + why + '"' : ''; return (why ? '<span class="tiny faint">' + why + '</span>' : '') + (pc ? '<button class="btn"' + (why ? dis : ' data-act="erjoin2" data-a="' + r.id + '"') + '>혼자 참가</button><button class="btn primary"' + (why ? dis : ' data-act="erjoin2" data-a="' + r.id + '" data-b="party"') + '>파티로 참가</button>' : '<button class="btn primary"' + (why ? dis : ' data-act="erjoin2" data-a="' + r.id + '"') + '>' + R.EXP_POS[my].name + '(으)로 참가</button>'); })() + '</div>', false);
+        '<div class="row" style="margin-top:12px;justify-content:flex-end"><button class="btn ghost" data-act="modal-close">닫기</button>' + (function () { var pc = S.er && S.er.party && S.er.party.can && S.er.party.n > 1, dis = why ? ' disabled title="' + why + '"' : ''; return (why ? '<span class="tiny faint">' + why + '</span>' : '') + (pc ? '<button class="btn"' + (why ? dis : ' data-act="erjoin2" data-a="' + r.id + '"') + '>혼자 참가</button><button class="btn primary"' + (why ? dis : ' data-act="erjoin2" data-a="' + r.id + '" data-b="party"') + '>파티로 참가</button>' : '<button class="btn primary"' + (why ? dis : ' data-act="erjoin2" data-a="' + r.id + '"') + '>' + R.josa(R.EXP_POS[my].name, '으로', '로') + ' 참가</button>'); })() + '</div>', false);
     });
   };
   ACT.erpos2 = function (k, id) { S.erPos = k; ACT.erpeek(id); };
@@ -1409,7 +1409,7 @@
     var can = R.canChallenge(P);
     h += '<div class="card" data-anchor="boss" style="margin-top:14px"><div class="row" style="gap:14px;align-items:center"><canvas data-mon="' + bz.boss.id + '" width="72" height="72" style="width:72px;height:72px;flex:none"></canvas><div style="flex:1;min-width:200px">' +
       '<div class="tiny gold">' + b + '단계 보스 · ' + bz.name + '</div><h3>' + bz.boss.name + '</h3><p class="small muted">' + bz.boss.lore + '</p>' +
-      '<p class="small" style="margin-top:4px">' + (can ? (bpv.win && bpv.ttk < R.K.BOSS_TIME ? '<span class="good">승산 있음</span> — 약 ' + bpv.ttk.toFixed(1) + '초' : '<span class="bad">아직 버겁습니다</span> — 30초 안에 체력의 약 ' + Math.round(Math.min(1, R.K.BOSS_TIME / bpv.ttk) * 100) + '%') + ' · 이기면 ' + (b + 1) + '~' + (b + 9) + '단계가 열립니다' : '<span class="gold">' + (Math.floor(b / 10)) + '학년이 되거나 Lv ' + R.stageLvReq(b) + '이 되면 도전할 수 있습니다</span>') + '</p></div>' +
+      '<p class="small" style="margin-top:4px">' + (can ? (bpv.win && bpv.ttk < R.K.BOSS_TIME ? '<span class="good">승산 있음</span> — 약 ' + bpv.ttk.toFixed(1) + '초' : '<span class="bad">아직 버겁습니다</span> — 30초 안에 체력의 약 ' + Math.round(Math.min(1, R.K.BOSS_TIME / bpv.ttk) * 100) + '%') + ' · 이기면 ' + (b + 1) + '~' + (b + 9) + '단계가 열립니다' : '<span class="gold">' + (Math.floor(b / 10)) + '학년이 되거나 Lv ' + josa(R.stageLvReq(b), '이', '가') + ' 되면 도전할 수 있습니다</span>') + '</p></div>' +
       '<button class="btn primary" data-act="boss" data-can="boss"><span data-l="bossbtn"></span></button></div></div>';
     // 주문
     var ns = R.spellSlots(P);
@@ -1647,8 +1647,11 @@
   function allocCard() {
     var P = S.P, c = C(), PRESETS = PRESETS_(), cur = Object.keys(PRESETS).find(function (k) { return JSON.stringify(PRESETS[k]) === JSON.stringify(P.opt.allocW); });
     var rsn = (P.tok && P.tok.respec) || 0, rsArm = S.confirm.rsp > Date.now();
-    var h = '<div class="card" data-anchor="alloc"><div class="row between"><h3>능력치</h3><span class="small">남은 포인트 <b class="num gold">' + P.pts + '</b></span></div>' + (rsn ? '<div class="row" style="margin-top:6px;gap:8px;flex-wrap:wrap"><span class="small">망각의 차 <b class="num">' + rsn + '</b>개</span><span class="tiny faint">마시면 분배한 포인트를 모두 돌려받고 자동 분배가 꺼집니다</span><span class="spacer"></span><button class="btn sm' + (rsArm ? ' primary' : '') + '" data-act="respecuse">' + (rsArm ? '한 번 더 누르면 마십니다' : '망각의 차 마시기') + '</button></div>' : '') + '<div class="alloc" style="margin-top:8px">';
-    R.STATS.forEach(function (k) { h += '<span>' + D.STAT_NAMES[k] + '</span><span class="tiny faint">' + SDESC[k] + '</span><b class="num">' + fmt(c.stat[k]) + '</b><span class="row" style="gap:4px;flex-wrap:nowrap"><button class="btn sm" data-act="alloc" data-a="' + k + '" data-b="1"' + (P.pts ? '' : ' disabled') + '>+1</button><button class="btn sm ghost" data-act="alloc" data-a="' + k + '" data-b="10"' + (P.pts >= 2 ? '' : ' disabled') + '>+10</button></span>'; });
+    var dr = S.allocDraft || {}, dsum = R.STATS.reduce(function (a, k) { return a + (dr[k] || 0); }, 0), left = P.pts - dsum;   // 나눠 보는 중 (저장 전)
+    if (left < 0) { S.allocDraft = null; dr = {}; dsum = 0; left = P.pts; }   // 그사이 포인트가 줄었으면 나눠 보던 것은 버린다
+    var h = '<div class="card" data-anchor="alloc"><div class="row between"><h3>능력치</h3><span class="small">남은 포인트 <b class="num gold">' + left + '</b>' + (dsum ? ' <span class="tiny faint">(저장 전 ' + dsum + ')</span>' : '') + '</span></div>' + (rsn ? '<div class="row" style="margin-top:6px;gap:8px;flex-wrap:wrap"><span class="small">망각의 차 <b class="num">' + rsn + '</b>개</span><span class="tiny faint">마시면 분배한 포인트를 모두 돌려받고 자동 분배가 꺼집니다</span><span class="spacer"></span><button class="btn sm' + (rsArm ? ' primary' : '') + '" data-act="respecuse">' + (rsArm ? '한 번 더 누르면 마십니다' : '망각의 차 마시기') + '</button></div>' : '') + '<div class="alloc" style="margin-top:8px">';
+    R.STATS.forEach(function (k) { var d = dr[k] || 0; h += '<span>' + D.STAT_NAMES[k] + '</span><span class="tiny faint">' + SDESC[k] + '</span><b class="num">' + fmt(c.stat[k]) + (d ? ' <span class="good">+' + d + '</span>' : '') + '</b><span class="row" style="gap:4px;flex-wrap:nowrap">' + (d ? '<button class="btn sm ghost" data-act="alloc" data-a="' + k + '" data-b="-1" aria-label="' + D.STAT_NAMES[k] + ' 하나 빼기">−1</button>' : '') + '<button class="btn sm" data-act="alloc" data-a="' + k + '" data-b="1"' + (left ? '' : ' disabled') + '>+1</button><button class="btn sm ghost" data-act="alloc" data-a="' + k + '" data-b="10"' + (left >= 2 ? '' : ' disabled') + '>+10</button></span>'; });
+    if (dsum) h += '</div><div class="row allocsave" style="margin-top:8px;gap:6px"><span class="small gold">' + R.STATS.filter(function (k) { return dr[k]; }).map(function (k) { return D.STAT_NAMES[k] + ' +' + dr[k]; }).join(' · ') + '</span><span class="spacer"></span><button class="btn sm ghost" data-act="alloc-reset">되돌리기</button><button class="btn sm primary" data-act="alloc-save">저장</button><div class="alloc" style="display:none">';
     var why = PWHY[P.cls === 'knight' ? 'knight' : 'mage'], tot = 0, W0 = cur ? PRESETS[cur] : null; if (W0) R.STATS.forEach(function (k) { tot += W0[k] || 0; });
     var info = W0 ? '<p class="tiny muted" style="margin-top:6px"><b>' + PNAMES[cur] + '</b> · ' + R.STATS.filter(function (k) { return W0[k]; }).sort(function (a, b) { return W0[b] - W0[a]; }).map(function (k) { return D.STAT_NAMES[k] + ' ' + Math.round(W0[k] / tot * 100) + '%'; }).join(' · ') + '<br>' + why[cur] + '</p>' : '<p class="tiny faint" style="margin-top:6px">직접 정한 비율입니다. 프리셋을 누르면 해당 비율로 바뀝니다.</p>';
     return h + '</div><hr class="sep"><label class="tog"><input type="checkbox" id="opt-aa" data-act="opt" data-a="autoAlloc"' + (P.opt.autoAlloc ? ' checked' : '') + '> 레벨업 시 자동 분배</label>' +
@@ -1786,7 +1789,6 @@
     if (!d || Date.now() - S.partyAt > 20000) { if (Date.now() - S.partyAt > 1500) loadParty(); }
     var h = pageHead('함께 다니는 학생들', '파티', '최대 4명 · 파티원 1명당 원정 ' + CUR + '·경험치 +3%');
     if (!d) return h + '<div class="card"><p class="small muted">불러오는 중…</p></div>';
-    if (d.party && S.towerD && S.towerD.party) { var tj = towerJournal(); if (tj) h += '<div style="margin-bottom:14px">' + tj + '</div>'; }
     if (d.demo) h += '<div class="card inset" style="margin-bottom:14px"><p class="small">데모: 혼자서도 파티를 만들고, 빈자리에 NPC 학생을 불러 파티 채팅을 시험해 볼 수 있습니다. 기록은 이 브라우저에만 남습니다.</p></div>';
     h += '<div class="grid g2"><div class="stack">';
     var pa = d.party;
@@ -1800,7 +1802,7 @@
         }).join('') + '</div>' +
         '<div class="row" style="margin-top:10px"><label class="tog small"><input type="checkbox" data-act="ptallgo"' + (pa.allgo ? ' checked' : '') + (lead ? '' : ' disabled') + '> 파티원도 파티 단위로 원정 참가</label></div><p class="tiny faint">끄면 파티장만 「파티로 참가」를 쓸 수 있습니다. 누구든 「혼자 참가」는 언제나 됩니다(파티에서 나가지 않음).' + (lead ? '' : ' 파티장만 바꿀 수 있습니다.') + '</p>' +
         '<div class="row" style="margin-top:12px"><button class="btn primary sm" data-act="chattab" data-a="party">파티 채팅</button><span class="spacer"></span><button class="btn sm danger" data-act="pop" data-a="leave">파티 나가기</button></div></div>';
-      h += towerCard();
+      h += '<div class="card twlink"><div class="row" style="gap:10px;align-items:center">' + dotImg('tower', 32, '', 'twimg') + '<div style="flex:1;min-width:0"><b>별의 탑</b><div class="tiny faint">파티원들과 힘을 모아 한 주 동안 함께 오르는 탑 · 「원정·전투 → 별의 탑」</div></div><button class="btn sm primary" data-act="nav" data-a="tower">별의 탑으로</button></div></div>';
       if (lead && pa.members.length < pa.max && pa.npcPool) h += '<div class="card"><h3>아카데미 친구 부르기 <span class="tag npc">NPC</span></h3><p class="tiny faint" style="margin-top:2px">결투제 대진표의 학생들입니다. 빈자리를 채워 함께 다니고 파티 채팅에서 가끔 말을 겁니다. 파티 보너스에는 들어가지 않습니다.</p><div class="filters" style="margin-top:8px">' + pa.npcPool.filter(function (n) { return /학년|쌍둥이/.test(n.who) && !pa.members.some(function (m) { return m.id === 'npc:' + n.k; }); }).map(function (n) { return '<button class="btn sm ghost" data-act="pop" data-a="npcAdd" data-b="' + n.k + '" title="' + esc(n.who) + '">' + esc(n.name) + '</button>'; }).join('') + '</div></div>';
       if (lead && pa.members.length < pa.max) h += '<div class="card"><h3>파티원 모집</h3><p class="tiny faint" style="margin-top:2px">채팅 「모집」 탭에 알림을 올립니다. 알림을 본 학생은 30분 동안 초대 없이 바로 들어올 수 있습니다. 별의 탑을 함께 오를 사람을 찾아 보세요.</p><div class="row" style="margin-top:8px;gap:6px"><input id="pt-rec" maxlength="60" placeholder="한 줄 덧붙이기 (선택 · 60자)" style="flex:1;min-width:0" value="' + esc(S.ptRec || '') + '"><button class="btn sm primary" data-act="ptrec">모집 알림</button></div></div>';
       if (pa.members.length < pa.max) h += '<div class="card"><h3>초대하기</h3><div class="row" style="margin-top:8px"><input id="pt-inv" maxlength="12" placeholder="학생 이름" style="flex:1;min-width:0"><button class="btn sm primary" data-act="pop" data-a="invite">초대</button></div><p class="tiny faint" style="margin-top:6px">채팅에서 이름을 눌러 정보창의 「파티 초대」로도 부를 수 있습니다.</p></div>';
@@ -1856,7 +1858,7 @@
   }
   ACT.dreamgo = function () { var k = S.pick.drk || 'study', d = S.pick.drd || '8h'; act('dreamStart', { kind: k, s: S.pick.drs, d: d }).then(function (r) { if (r) { Snd.play('click'); toast(R.DREAM[k].name, clock(now() + R.DRDUR[d].s) + '에 깨어납니다', 2400); } render(); }); };
   ACT.dreamcancel = function () { if (S.confirm.dream > Date.now()) { S.confirm.dream = 0; act('dreamCancel').then(function () { toast('꿈에서 깼습니다', '이번 꿈에서는 아무것도 얻지 못했습니다'); render(); }); } else { S.confirm.dream = Date.now() + 4000; render(); setTimeout(render, 4100); } };
-  ACT.skylook = function () { act('skyLook').then(function (r) { if (!r) return; Snd.play('spirit'); toast(r.name + '을(를) 올려다봤습니다', '별조각 +' + r.shard + ' · 마나 +' + fmt(r.mana), 2600); render(); }); };
+  ACT.skylook = function () { act('skyLook').then(function (r) { if (!r) return; Snd.play('spirit'); toast(R.josa(r.name, '을', '를') + ' 올려다봤습니다', '별조각 +' + r.shard + ' · 마나 +' + fmt(r.mana), 2600); render(); }); };
   ACT.ritual = function () { if (S.busy) return; S.busy = true; API.ritual().then(function (j) { S.busy = false; if (j.error) { toast('별샘 의식', j.error); return; } absorb(j); Snd.play('ach'); toast('마나를 봉헌했습니다', S.rit && S.rit.done ? '별샘의 축복을 받았습니다 · ' + R.RITUAL_BUFF.text : '별조각 +1 · 목표까지 ' + Math.max(0, S.rit.goal - S.rit.n) + '명', 3000); render(); }, function () { S.busy = false; }); };
   // 하늘 효과 (전투 효과 줄이기를 켜면 그리지 않는다)
   function skyFx() {
@@ -1896,7 +1898,7 @@
   };
 
   /* ── 별의 탑: 파티가 한 주 동안 함께 쌓는 층 ── */
-  function loadTower() { S.towerAt = Date.now(); return API.tower().then(function (j) { if (j.error) return; if (j.now) S.twOff = j.now - Date.now() / 1000; S.towerD = j; S.towerAt = Date.now(); var l = j.log && j.log[0]; S.twEndAt = l && l.sc && l.t + l.d > twNow() ? l.t + l.d + 0.3 : 0; if (S.view === 'party' && !S.modal) render(); }); }
+  function loadTower() { S.towerAt = Date.now(); return API.tower().then(function (j) { if (j.error) return; if (j.now) S.twOff = j.now - Date.now() / 1000; S.towerD = j; S.towerAt = Date.now(); var l = j.log && j.log[0]; S.twEndAt = l && l.sc && l.t + l.d > twNow() ? l.t + l.d + 0.3 : 0; if (S.view === 'tower' && !S.modal) render(); }); }
   // 별의 탑 일지: 원정 일지처럼 한 줄씩. 서버가 정한 시각에 맞춰 흘러가므로 파티원 모두가 같은 장면을 함께 본다.
   function twNow() { return Date.now() / 1000 + (S.twOff || 0); }
   function twRuns() { var t = S.towerD; return t && t.log ? t.log.filter(function (l) { return l.sc && l.sc.length; }) : []; }
@@ -1925,7 +1927,7 @@
     var mine = S.twMine;
     if (mine && (force && S.twSkip && S.twSkip[mine.t0] || twNow() >= mine.t0 + mine.d)) { S.twMine = null; twResult(mine.r); }
     if (S.twEndAt && twNow() >= S.twEndAt) { S.twEndAt = 0; S.towerAt = 0; loadTower(); }
-    var box = $('#twlines'); if (!box || S.view !== 'party') return;
+    var box = $('#twlines'); if (!box || S.view !== 'tower') return;
     var l = twRuns().find(function (x) { return String(x.t) === box.dataset.tw; }); if (!l) return;
     var n = twShown(l); if (box.__n === n && !force) return; box.__n = n;
     logFill(box, 'tw' + l.t, twLinesHtml(l));
@@ -1936,6 +1938,15 @@
     modal(mhead(r.win ? r.floor + '층 돌파!' : '물러났습니다', r.foe.name) + (r.win ? '<p>파티원 모두에게 보상 우편이 갔습니다.</p><p class="small" style="margin-top:6px">' + esc(r.reward) + '</p>' : '<p class="small muted">상대 체력이 ' + Math.round(r.mHp * 100) + '% 남았습니다. 파티원이 늘거나 강해지면 더 높이 오를 수 있습니다.</p>') +
       '<div class="row" style="justify-content:flex-end;margin-top:14px">' + (r.win ? '<button class="btn" data-act="mailbox">우편함 열기</button>' : '') + '<button class="btn primary" data-act="modal-close" autofocus>확인</button></div>');
   }
+  // 별의 탑 화면 (원정·전투): 파티가 있으면 일지 · 도전 칸, 없으면 파티와 함께 오른다는 안내
+  V.tower = function () {
+    var h = pageHead('파티와 함께 오르는 탑', '<span class="phimg">' + dotImg('tower', 40, '', 'twimg') + '별의 탑</span>', '한 주 동안 · 월요일에 0층부터');
+    if (!S.partyD || Date.now() - S.partyAt > 20000) { if (Date.now() - S.partyAt > 1500) loadParty(); }
+    if (!S.party) return h + '<div class="card hl"><h3>파티와 함께 오르는 탑</h3><p class="small" style="margin-top:4px">별의 탑은 파티원 모두의 힘을 모아 한 층씩 오르는 곳입니다. 접속하지 않은 파티원도 힘을 보태고, 층을 처음 넘으면 그때 파티에 있던 모두에게 보상 우편이 갑니다. 도전은 학생마다 하루 ' + R.TOWER_TRIES + '번입니다.</p><p class="small muted" style="margin-top:6px">파티에 들어가 있어야 도전할 수 있습니다. 혼자서도 파티를 만들 수 있고, 빈자리는 아카데미 친구(NPC)를 불러 채울 수 있습니다.</p><div class="row" style="margin-top:10px;gap:6px"><button class="btn primary" data-act="twparty">파티 만들기</button><button class="btn ghost" data-act="nav" data-a="party">파티 화면으로</button></div></div>';
+    var tj = S.towerD && S.towerD.party ? towerJournal() : ''; if (tj) h += '<div style="margin-bottom:14px">' + tj + '</div>';
+    return h + towerCard() + '<div class="row" style="margin-top:10px"><span class="tiny faint">파티원 · 초대 · 아카데미 친구는 파티 화면에서 관리합니다.</span><span class="spacer"></span><button class="btn sm ghost" data-act="nav" data-a="party">파티 화면</button></div>';
+  };
+  ACT.twparty = function () { API.partyOp({ op: 'create', name: (S.P.name + '의 파티').slice(0, 12) }).then(function (j) { if (j.error) { toast('파티', j.error); return; } S.party = (j.party && j.party.id) || 'p'; S.partyAt = 0; S.towerAt = 0; S.towerD = null; renderDock(); toast('파티', '파티를 만들었습니다 · 이제 별의 탑에 도전할 수 있습니다', 2600); sync(true); render(); }); };
   function towerCard() {
     var t = S.towerD; if (!t || Date.now() - S.towerAt > 30000) { if (Date.now() - (S.towerAt || 0) > 1500) loadTower(); }
     if (!t) return '<div class="card" data-anchor="tower"><h3>별의 탑</h3><p class="small muted">불러오는 중…</p></div>';
@@ -1958,7 +1969,7 @@
       // 우편 수는 일지가 끝난 뒤에 받는다 (결과가 먼저 새지 않게)
       delete j.mailN; delete j.mailTop; absorb(j); var r = j.r;
       Snd.play('click'); S.twSel = r.t0; S.twMine = { t0: r.t0, d: r.d, r: r };
-      if (S.view !== 'party') ACT.nav('party');
+      if (S.view !== 'tower') ACT.nav('tower');
       S.towerAt = 0; loadTower().then(function () { var el = $('[data-anchor="twlog"]'); if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' }); });
     }, function () { S.busy = false; toast('별의 탑', '연결 오류'); });
   };
@@ -2580,7 +2591,7 @@
     abyss: ['빛이 닿지 않는 곳에서 숨소리가 들린다.', '아래로, 더 아래로 이어지는 계단이다.', '아카데미 배지를 단 그림자가 스쳐 지나갔다.']
   };
   function ro(w) { var c = w.charCodeAt(w.length - 1), j = (c >= 0xAC00 && c <= 0xD7A3) ? (c - 0xAC00) % 28 : 0; return w + (j && j !== 8 ? '으로' : '로'); }
-  function josa(w, a, b) { var c = w.charCodeAt(w.length - 1); return w + ((c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28) ? a : b); }
+  function josa(w, a, b) { return R.josa(w, a, b); }   // a = 받침 있을 때
   var EXP_TICK = 25;   // 게임 시간으로 25초마다 한 줄
   function expLine(j, k, slot) {
     var z = R.zoneOf(j.s), x = (Math.sin((j.start + k * 7919 + slot * 104729) * 12.9898) * 43758.5453) % 1; x = Math.abs(x);
@@ -2591,10 +2602,10 @@
     if (x < pk) return ['치명타! ' + josa(m.name, '이', '가') + ' 단번에 쓰러졌다', CUR + ' +' + g];
     var x2 = (x - pk) / (1 - pk);
     if (j.pt && x2 >= 0.5 && x2 < 0.75) return ptLine(j, m, y, x2);
-    if (x2 < 0.18) return [josa(m.name, '와', '과') + ' 마주쳤다. 거리를 재며 틈을 노린다.', ''];
+    if (x2 < 0.18) return [josa(m.name, '과', '와') + ' 마주쳤다. 거리를 재며 틈을 노린다.', ''];
     if (x2 < 0.3) return [josa(D.MATS[z.mat].name, '을', '를') + ' 주웠다', '재료'];
     if (x2 < 0.45) return ['잠시 숨을 고른다. 마나가 천천히 차오른다.', ''];
-    if (x2 < 0.5 && S.P.fam.act && R.FAM[S.P.fam.act]) return [R.FAM[S.P.fam.act].name + '이(가) 앞장서서 길을 찾는다', ''];
+    if (x2 < 0.5 && S.P.fam.act && R.FAM[S.P.fam.act]) return [R.josa(R.FAM[S.P.fam.act].name, '이', '가') + ' 앞장서서 길을 찾는다', ''];
     var fl = EXP_FLAVOR[z.id] || EXP_FLAVOR.cellar; return [fl[Math.floor(x2 * 97) % fl.length], ''];
   }
   // 함께 원정: 같이 간 사람의 이름 · 포지션이 나오는 줄
@@ -2816,7 +2827,7 @@
     act(type, argf(b)).then(function (r) { if (r && type === 'buy' && b === 'respec') { respecDone(r.respec); return; } if (r && MSG[type]) { var m = MSG[type](r); toast(m[0], m[1], 2200); } if (r && type === 'task') Snd.play('ach'); render(); });
   };
   // 망각의 차를 마신 뒤: 능력치 칸으로 바로 가서 다시 나누게 한다
-  function respecDone(n) { toast('망각의 차', '능력치 포인트 ' + fmt(n || 0) + '을(를) 돌려받았습니다 · 자동 분배는 꺼 두었습니다', 3200); Snd.play('enh'); ACT.goto('gear', 'alloc'); }
+  function respecDone(n) { toast('망각의 차', '능력치 포인트 ' + R.josa(fmt(n || 0), '을', '를') + ' 돌려받았습니다 · 자동 분배는 꺼 두었습니다', 3200); Snd.play('enh'); ACT.goto('gear', 'alloc'); }
   ACT.respecuse = function () { var k = 'rsp'; if (!(S.confirm[k] > Date.now())) { S.confirm[k] = Date.now() + 4000; render(); setTimeout(render, 4100); return; } S.confirm[k] = 0; act('useRespec', {}).then(function (r) { if (r) respecDone(r.respec); else render(); }); };
   ACT['do-login'] = function () { ACT['do']('login'); };
   ACT.blesshelp = function () {
@@ -2837,7 +2848,15 @@
   ACT.enh = function (u, until) { act('enhance', { u: u, until: until === 'until' }).then(function (r) { if (!r) return; Snd.play(r.success ? 'enh' : 'fail'); toast(r.success ? '강화 성공! +' + r.enh : '강화 실패', r.tries + '회 시도 · ' + MONEY(r.gold), 1800); render(); }); };
   ACT.sel = function (u) { S.sel = u || null; render(); };
   ACT.invf = function (f) { S.invF = f; render(); };
-  ACT.alloc = function (k, n) { act('alloc', { k: k, n: +n }).then(render); };
+  // 능력치 나누기: + / − 로 나눠 보고 「저장」 → 확인 창에서 한 번 더 확인하면 적용
+  ACT.alloc = function (k, n) { var d = S.allocDraft || (S.allocDraft = {}), sum = R.STATS.reduce(function (a, x) { return a + (d[x] || 0); }, 0), left = S.P.pts - sum; n = +n; if (n > 0) n = Math.min(n, left); d[k] = Math.max(0, (d[k] || 0) + n); if (!d[k]) delete d[k]; render(); };
+  ACT['alloc-reset'] = function () { S.allocDraft = null; render(); };
+  ACT['alloc-save'] = function () {
+    var d = S.allocDraft || {}, ks = R.STATS.filter(function (k) { return d[k]; }); if (!ks.length) return;
+    modal(mhead('능력치 분배 저장', ks.reduce(function (a, k) { return a + d[k]; }, 0) + '포인트') + '<p class="small">이대로 능력치를 나눌까요?</p><div class="rfnew" style="margin-top:8px">' + ks.map(function (k) { return '<div class="statline"><span>' + D.STAT_NAMES[k] + '</span><span class="d good">+' + d[k] + '</span></div>'; }).join('') + '</div>' +
+      '<p class="tiny faint" style="margin-top:8px">저장하면 되돌릴 수 없습니다. 다시 나누려면 「망각의 차」가 필요합니다.</p><div class="row" style="justify-content:flex-end;gap:8px;margin-top:12px"><button class="btn ghost" data-act="modal-close">취소</button><button class="btn primary" data-act="alloc-go">저장</button></div>');
+  };
+  ACT['alloc-go'] = function () { var d = S.allocDraft || {}; act('allocMany', { add: d }).then(function (r) { closeModal(); if (r) { S.allocDraft = null; Snd.play('click'); toast('능력치를 나눴습니다', r.n + '포인트', 1800); } render(); }); };
   ACT.preset = function (k) { act('allocW', { w: PRESETS_()[k] }).then(render); };
   ACT.opt = function (k, v, el) { act('opt', { k: k, v: el.checked }).then(function () { if (k === 'sound') { Snd.set(S.P.opt.sound); if ($('#setbox')) ACT.settings(); } if (/Title$/.test(k)) renderDock(); render(); }); };
   ACT.autosell = function () { act('autoSell', { r: +$('#autosell').value }).then(render); };
@@ -2981,7 +3000,7 @@
         Snd.play(r.pass ? 'pass' : 'fail');
         var h = mhead(r.pass ? '합격!' : '불합격', ex.title);
         h += '<div class="row" style="gap:20px;align-items:center"><div class="letter ' + (r.pass ? 'gold' : 'bad') + '">' + r.letter + '</div><div class="score-row" style="flex:1"><span>이론</span><b class="num">' + r.written.toFixed(1) + ' / 30</b><span>실기</span><b class="num">' + r.practical.toFixed(1) + ' / 40</b><span>대련 ' + (r.duelWin ? '(승리)' : '(패배)') + '</span><b class="num">' + r.duel.toFixed(1) + ' / 30</b>' + (r.bonus ? '<span>침묵달 가산점</span><b class="num">+' + r.bonus + '</b>' : '') + '<span><b>총점</b></span><b class="num gold">' + r.total + '</b></div></div>';
-        if (r.pass) h += '<hr class="sep"><p class="small">보상: 별조각 +' + r.reward.shard + ', ' + MONEY(r.reward.gold, '+') + ', <span style="color:' + rcol(r.reward.item.r) + '">' + esc(r.reward.item.name) + '</span>' + (r.reward.egg ? ', <span class="gold">환수의 알</span>' : '') + '</p>' + (r.badge ? '<p class="small gold" style="margin-top:6px">2학년을 마친 기념으로 아카데미가 「' + esc(r.badge) + '」을(를) 수여했습니다. 장비 · 능력 화면에서 볼 수 있습니다.</p>' : '') + (r.letter === 'S' ? '<p class="tiny gold" style="margin-top:4px">수석 성적! S 보상을 받았습니다.</p>' : '') + '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn" data-act="promo" data-a="' + S.P.grade + '">새로 열린 것</button><button class="btn primary" data-act="story" data-a="' + (Math.min(S.P.grade, 8) - 1) + '" autofocus>다음 이야기</button></div>';
+        if (r.pass) h += '<hr class="sep"><p class="small">보상: 별조각 +' + r.reward.shard + ', ' + MONEY(r.reward.gold, '+') + ', <span style="color:' + rcol(r.reward.item.r) + '">' + esc(r.reward.item.name) + '</span>' + (r.reward.egg ? ', <span class="gold">환수의 알</span>' : '') + '</p>' + (r.badge ? '<p class="small gold" style="margin-top:6px">2학년을 마친 기념으로 아카데미가 ' + R.josa('「' + esc(r.badge) + '」', '을', '를') + ' 수여했습니다. 장비 · 능력 화면에서 볼 수 있습니다.</p>' : '') + (r.letter === 'S' ? '<p class="tiny gold" style="margin-top:4px">수석 성적! S 보상을 받았습니다.</p>' : '') + '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn" data-act="promo" data-a="' + S.P.grade + '">새로 열린 것</button><button class="btn primary" data-act="story" data-a="' + (Math.min(S.P.grade, 8) - 1) + '" autofocus>다음 이야기</button></div>';
         else h += '<p class="small muted" style="margin-top:8px">60점 이상이면 합격입니다. 1시간 뒤 다시 응시할 수 있습니다.</p><div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>';
         if (r.pass) S.afterClose = function () { promoModal(S.P.grade); };
         modal(h); renderNav();
@@ -3063,7 +3082,8 @@
     lib: [['.page-head', '서고', '마나와 지식으로 연구를 진행합니다. 연구는 한 번에 하나만 진행되며 단계가 오를수록 오래 걸리므로, 잠들기 전에 긴 연구를 시작해 두면 좋습니다.']],
     exam: [['#view .card', '기말시험', '시험 과목이 모두 기준 레벨에 도달하면 응시할 수 있습니다. 「예상 성적」을 확인한 뒤 응시합니다. 합격하면 다음 학년으로 진급합니다.'], ['h:성적표', '성적표', '학년별 성적이 기록됩니다. 「안내」를 누르면 진급 때 열린 콘텐츠를 다시 볼 수 있습니다.'], ['h:대진표', '결투제', '라이벌과 차례로 겨뤄 별조각과 ' + CUR + '를 받습니다. 지면 1시간 뒤 다시 도전할 수 있습니다.']],
     world: [['[data-anchor="wb"]', '월드 보스', '서버의 모든 학생이 함께 체력을 깎는 보스입니다. 도전권은 8시간마다 충전됩니다.'], ['h:기숙사 대항전', '기숙사 대항전', '모든 활동이 기숙사 점수로 쌓이며, 매주 순위에 따라 보상이 지급됩니다.'], ['h:전투력 순위', '순위', '전투력 · 최고 단계 · 동아리 순위를 확인합니다.']],
-    party: [['#view .card', '파티', '최대 4명이 함께하며 파티원 한 명당 원정 ' + CUR + ' · 경험치가 오릅니다. 파티를 만든 뒤 친구를 초대하거나 아카데미 친구(NPC)를 부를 수 있습니다.'], ['[data-anchor="tower"]', '별의 탑', '파티원 모두의 능력을 합쳐 한 층씩 오릅니다. 층을 처음 넘으면 파티원 모두에게 보상 우편이 발송됩니다.']],
+    party: [['#view .card', '파티', '최대 4명이 함께하며 파티원 한 명당 원정 ' + CUR + ' · 경험치가 오릅니다. 파티를 만든 뒤 친구를 초대하거나 아카데미 친구(NPC)를 부를 수 있습니다. 파티와 함께 오르는 별의 탑은 「원정·전투 → 별의 탑」에 있습니다.']],
+    tower: [['.page-head', '별의 탑', '파티원 모두의 능력을 합쳐 한 층씩 오릅니다. 층을 처음 넘으면 파티원 모두에게 보상 우편이 발송됩니다. 파티가 없으면 먼저 파티를 만드세요(혼자서도 만들 수 있습니다).']],
     guild: [['#view .card', '동아리', '동아리를 찾아 가입하거나 직접 만들 수 있습니다. 출석과 기부로 동아리 레벨을 올리면 부원 모두가 혜택을 받습니다.']],
     friends: [['.page-head', '친구', '이름으로 친구를 신청하거나 채팅에서 이름을 눌러 신청합니다. 친구와는 1:1 대화와 파티 초대를 바로 할 수 있습니다.']],
     board: [['.page-head', '게시판', '말머리를 골라 글을 씁니다. 「관리자만 보기」로 쓰면 운영진에게 문의 · 건의 · 신고를 보낼 수 있습니다.']],
@@ -3302,7 +3322,7 @@
       P.lec.forEach(function (j, i) { if (j) add('lec' + i + ':' + j.end, 'lec', j.end, '수업이 끝났습니다', R.SUBJ[j.s].name + ' · 다음 수업 시작 가능'); });
       P.exp.forEach(function (j, i) { if (j) add('exp' + i + ':' + j.end, 'exp', R.expEnd(j), '원정대가 돌아왔습니다', j.s + '단계 ' + R.zoneOf(j.s).name + ' · 원정 완료 가능'); });
       P.rsq.forEach(function (q, i) { if (q) add('res' + i + ':' + q.end, 'res', q.end, '연구가 끝났습니다', R.RES[q.id].name + ' ' + ((P.rs[q.id] || 0) + 1) + '단계'); });
-      for (var f in P.fam.disp) add('disp' + f + ':' + P.fam.disp[f].end, 'disp', P.fam.disp[f].end, R.FAM[f].name + '이(가) 돌아왔습니다', '사역마 파견 완료');
+      for (var f in P.fam.disp) add('disp' + f + ':' + P.fam.disp[f].end, 'disp', P.fam.disp[f].end, R.josa(R.FAM[f].name, '이', '가') + ' 돌아왔습니다', '사역마 파견 완료');
       var jr = jar(); if (jr.full) add('jar:' + Math.round(jr.full), 'jar', jr.full, '반딧불 정령 병이 가득 찼습니다', '접속해 풀어 줄 수 있습니다');
       var sk = R.skyNext(now()); if (sk) add('sky:' + sk.key, 'sky', sk.start, '하늘에 ' + sk.name + '!', sk.text + ' · 올려다보면 작은 선물');
       if (S.auc && !S.auc.active) add('auc:' + S.auc.start, 'auc', S.auc.start, '떠돌이 상인이 왔습니다', '귀한 장비 세 점이 2시간 동안 경매에 오릅니다');
@@ -3745,7 +3765,7 @@
   function clsRow() {
     var P = S.P, cur = R.clsOf(P), free = R.clsCanChange(P), cd = (P.clsCd || 0) - now();
     var h = '<div class="row" style="margin-top:12px;flex-wrap:wrap;gap:6px"><span class="small muted">학과</span>' + clsDot(cur.id, 20) + '<b>' + cur.name + '</b><span class="tiny faint">' + cur.bonusText + '</span><span class="spacer"></span>';
-    if (free) h += D.CLASSES.filter(function (x) { return x.id !== cur.id; }).map(function (x) { var arm = S.clsArm === x.id && S.clsArmT > Date.now(); return '<button class="btn sm' + (arm ? ' primary' : '') + '" data-act="clsset" data-a="' + x.id + '" data-tip="' + esc(x.bonusText) + '">' + (arm ? '한 번 더 누르면 ' + x.name + '(으)로' : x.name + '(으)로 바꾸기') + '</button>'; }).join('');
+    if (free) h += D.CLASSES.filter(function (x) { return x.id !== cur.id; }).map(function (x) { var arm = S.clsArm === x.id && S.clsArmT > Date.now(); return '<button class="btn sm' + (arm ? ' primary' : '') + '" data-act="clsset" data-a="' + x.id + '" data-tip="' + esc(x.bonusText) + '">' + (arm ? '한 번 더 누르면 ' + R.josa(x.name, '으로', '로') : R.josa(x.name, '으로', '로') + '로 바꾸기') + '</button>'; }).join('');
     h += '</div>';
     if (free) return h + '<p class="tiny faint" style="margin-top:2px">예전에 입학해 학과를 고른 적이 없어 지금은 시험 없이 한 번 고를 수 있습니다(지금은 마법사). 그 뒤로는 전과시험을 봐야 합니다.</p>';
     var fee = R.clsExamFee(P);
@@ -3807,7 +3827,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026101985;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026101986;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
@@ -3930,7 +3950,7 @@
     if (n - S.lastSync > 120000) sync();
     if (S.view === 'world' && n - S.lastWorld > 60000) refreshWorld();
     if (n - liveT > 1000) { liveT = n; updateBadges(); updateExpLogs(); erTick(); }
-    if (S.twMine || S.twEndAt || S.view === 'party') twTick();
+    if (S.twMine || S.twEndAt || S.view === 'tower') twTick();
   }
 
   /* ───────── 입력 ───────── */
