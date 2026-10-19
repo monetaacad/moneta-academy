@@ -79,7 +79,7 @@ Host github-arcanum
 CFG
 ssh -T github-arcanum                # yes 입력 → "successfully authenticated" 나오면 성공
 
-git clone github-arcanum:내아이디/arcanum-server.git /opt/arcanum
+git clone github-arcanum:monetaacad/moneta-academy.git /opt/arcanum
 git config --global --add safe.directory /opt/arcanum
 useradd -r -s /usr/sbin/nologin arcanum
 mkdir -p /opt/arcanum/data && chown -R arcanum:arcanum /opt/arcanum && chmod 700 /opt/arcanum/data
