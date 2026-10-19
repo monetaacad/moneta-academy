@@ -389,12 +389,12 @@
     var b = bonuses(P, W, t0, t1), st = {};
     STATS.forEach(function (k) { st[k] = 5 + (P.alloc[k] || 0) + (P.lvl - 1) * 0.3; });
     for (var sid in P.subj) { var S = SUBJ[sid]; if (!S) continue; var L = P.subj[sid].lv; st[S.stat] += L * 1.2; st[S.stat2] += L * 0.6; }
-    var gear = { atk: 0, hp: 0, def: 0 };
+    var gear = { atk: 0, hp: 0, def: 0 }, gst = {};   // gst: 장비에서 온 능력치 (화면에 기본 · 장비로 나눠 보이기용)
     for (var s in P.eq) {
       var it = P.eq[s]; if (!it) continue; var ist = itemStats(it);
-      for (var k in ist) { if (STATS.indexOf(k) >= 0) st[k] += ist[k]; else if (k === 'atk' || k === 'hp' || k === 'def') gear[k] += ist[k]; }
+      for (var k in ist) { if (STATS.indexOf(k) >= 0) { st[k] += ist[k]; gst[k] = (gst[k] || 0) + ist[k]; } else if (k === 'atk' || k === 'hp' || k === 'def') gear[k] += ist[k]; }
     }
-    var c = { stat: st, b: b };
+    var c = { stat: st, statGear: gst, b: b };
     // 물리 공격력은 체력, 주문 공격력은 지력을 따른다. 평타는 기사는 물리(검), 마법사는 주문(마력 화살)
     var atk0 = (5 + gear.atk) * (1 + (b.atkPct || 0));
     c.patk = atk0 * (1 + st.vit * 0.01) * (1 + (b.physPct || 0)); c.matk = atk0 * (1 + st.int * 0.01);
