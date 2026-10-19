@@ -736,13 +736,13 @@
     if (j.error) { toast('우편함', j.error); return; } absorb(j);
     var g = j.got || []; if (g.length) { Snd.play('ach'); toast('우편 보상을 받았습니다', g.map(function (x) { return x.text; }).filter(Boolean).join(' · ').slice(0, 120), 3200); }
     // 장비 · 환수의 알은 받은 뒤 어디에 있는지 알려 준다 (장비 상자는 받는 순간 열린다)
-    var its = [].concat.apply([], g.map(function (x) { return x.items || []; })), egg = g.some(function (x) { return /환수의 알/.test(x.text || ''); });
+    var its = [].concat.apply([], g.map(function (x) { return x.items || []; })), egg = g.some(function (x) { return /환수의 알|토벌 도전권|망각의 차/.test(x.text || ''); });   // 소지품으로 들어가는 것
     if (its.length || egg) {
       var WHERE = { equip: '바로 장착했습니다', bag: '장비 가방에 넣었습니다', sold: '가방이 가득 차 판매했습니다', dis: '자동 분해했습니다' };
       setTimeout(function () {
         modal(mhead('받은 보상', '우편') + (its.length ? '<div class="section-t">장비 <span class="tiny faint">(장비 상자는 받는 순간 열립니다)</span></div><ul class="report" style="margin-top:4px">' + its.map(function (x) { return '<li><b style="color:' + rcol(x.r || 0) + '">' + esc(x.name) + '</b> — ' + (WHERE[x.res] || '받았습니다') + '</li>'; }).join('') + '</ul>' : '') +
-          (egg ? '<p class="small" style="margin-top:10px">환수의 알은 「장비·공방 → 공방 → 사역마」의 부화기에 보관됩니다' + (S.P.grade < 3 ? ' (3학년부터 부화할 수 있습니다)' : '') + '.</p>' : '') +
-          '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px">' + (egg ? '<button class="btn" data-act="goto" data-a="work" data-b="fam">부화기로</button>' : '') + (its.length ? '<button class="btn" data-act="goto" data-a="gear">장비 화면으로</button>' : '') + '<button class="btn primary" data-act="modal-close">확인</button></div>');
+          (egg ? '<p class="small" style="margin-top:10px">환수의 알 · 토벌 도전권 · 망각의 차는 「장비 → 소지품」에 들어갔습니다. 소지품에서 바로 쓰거나 해당 화면으로 갈 수 있습니다.</p>' : '') +
+          '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px">' + (egg ? '<button class="btn" data-act="invgo">소지품에서 보기</button>' : '') + (its.length ? '<button class="btn" data-act="goto" data-a="gear">장비 화면으로</button>' : '') + '<button class="btn primary" data-act="modal-close">확인</button></div>');
       }, 200);
     }
     loadMailbox(); render();
@@ -1550,8 +1550,9 @@
     }).join('') + '</div>';
     h += badgeCard();
     h += '<div class="grid g2 gearcols" style="margin-top:14px"><div class="stack">' + detailCard() + allocCard() + '</div>';
+    if (S.bagTab === 'inv') return h + '<div class="card" data-anchor="bag">' + bagTabs(c) + invBody() + '</div></div>';   // 소지품 (장비 아닌 것)
     var list = P.inv.filter(function (it) { return S.invF === 'all' || it.slot === S.invF; }).sort(function (a, b) { return b.r - a.r || b.ilvl - a.ilvl; });
-    h += '<div class="card"><div class="row between"><h3>가방</h3><span class="num small muted">' + P.inv.length + ' / ' + c.bag + '</span></div>' +
+    h += '<div class="card" data-anchor="bag">' + bagTabs(c) +
       '<div class="filters" style="margin:8px 0">' + [['all', '전체']].concat(D.SLOTS.map(function (s) { return [s.id, s.name]; })).map(function (f) { return '<button class="btn sm ghost' + (S.invF === f[0] ? ' on' : '') + '" data-act="invf" data-a="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '</div>';
     if (!list.length) h += '<div class="empty">가방이 비어 있습니다. 원정에서 장비를 가져옵니다.</div>';
     else h += '<div class="inv">' + list.map(function (it) {
@@ -2628,7 +2629,7 @@
     b.home = P.mq && R.mqReady(P) ? '이야기' : jar().n >= R.K.SPIRIT_JAR ? '정령' : (P.daily.login || P.daily.q.some(function (q) { return !q.done && R.dailyProg(P, q) >= q.goal; })) ? '보상' : '';
     b.lore = storyUnread() ? '새 글' : '';
     var ex = R.examFor(P); if (ex && P.grade < 8 && P.examCd <= now() && R.examEligible(P, ex)) b.exam = '응시';
-    b.gear = P.pts > 0 ? P.pts + '점' : '';
+    b.gear = P.pts > 0 ? P.pts + '점' : invNew().length ? '새 소지품' : '';
     b.party = S.pinv ? '초대 ' + S.pinv : '';
     b.friends = S.fr ? '신청 ' + S.fr : '';
     var ir = 0; for (var r = 0; r < c.resSlots; r++) if (!P.rsq[r]) ir++; b.lib = ir ? '빈 슬롯' : '';
@@ -2888,7 +2889,7 @@
   ACT['do'] = function (type, b) {
     var argf = SIMPLE[type]; if (!argf) return;
     if (type === 'sell' || type === 'equip') S.sel = type === 'sell' ? null : S.sel;
-    act(type, argf(b)).then(function (r) { if (r && type === 'buy' && b === 'respec') { respecDone(r.respec); return; } if (r && MSG[type]) { var m = MSG[type](r); toast(m[0], m[1], 2200); } if (r && type === 'task') Snd.play('ach'); render(); });
+    act(type, argf(b)).then(function (r) { if (r && type === 'buy' && b === 'respec') { respecDone(r.respec); return; } if (r && MSG[type]) { var m = MSG[type](r); toast(m[0], m[1] + (type === 'buy' && (b === 'ticket' || b === 'egg') ? ' · 「장비 → 소지품」에서 확인' : ''), 2200); } if (r && type === 'task') Snd.play('ach'); render(); });
   };
   // 망각의 차를 마신 뒤: 능력치 칸으로 바로 가서 다시 나누게 한다
   function respecDone(n) { toast('망각의 차', '능력치 포인트 ' + R.josa(fmt(n || 0), '을', '를') + ' 돌려받았습니다 · 자동 분배는 꺼 두었습니다', 3200); Snd.play('enh'); ACT.goto('gear', 'alloc'); }
@@ -2912,6 +2913,32 @@
   ACT.enh = function (u, until) { act('enhance', { u: u, until: until === 'until' }).then(function (r) { if (!r) return; Snd.play(r.success ? 'enh' : 'fail'); toast(r.success ? '강화 성공! +' + r.enh : '강화 실패', r.tries + '회 시도 · ' + MONEY(r.gold), 1800); render(); }); };
   ACT.sel = function (u) { S.sel = u || null; render(); };
   ACT.invf = function (f) { S.invF = f; render(); };
+  /* ── 소지품: 장비가 아닌 것(알 · 도전권 · 물약 · 망각의 차 등)을 한곳에. 칸 제한 없음, 바로 쓰기 · 바로가기 ── */
+  function bagTabs(c) { var nn = invNew().length; return '<div class="tabs bagtabs" role="tablist" style="margin-bottom:8px"><button role="tab" class="' + (S.bagTab !== 'inv' ? 'on' : '') + '" data-act="bagtab" data-a="eq">장비 가방 <span class="num tiny">' + S.P.inv.length + ' / ' + c.bag + '</span></button><button role="tab" class="' + (S.bagTab === 'inv' ? 'on' : '') + '" data-act="bagtab" data-a="inv">소지품' + (nn ? ' <span class="tag br">새 ' + nn + '</span>' : '') + '</button></div>'; }
+  function invItems() {
+    var P = S.P, tk = P.tok || {}, out = [], g3 = P.grade >= 3;
+    function B(act, a, b, label, primary) { return '<button class="btn sm' + (primary ? ' primary' : ' ghost') + '" data-act="' + act + '"' + (a != null ? ' data-a="' + a + '"' : '') + (b != null ? ' data-b="' + b + '"' : '') + '>' + label + '</button>'; }
+    if (P.fam.eggs > 0) out.push({ k: 'egg', name: '환수의 알', n: P.fam.eggs, desc: g3 ? '공방 부화기에서 마나로 부화시켜 사역마로 키웁니다.' : '3학년부터 공방에서 부화할 수 있습니다. 그때까지 여기에 보관됩니다.', acts: (g3 && !P.fam.egg ? B('do', 'egg', null, '바로 부화', true) : '') + B('goto', 'work', 'fam', '부화기로') });
+    if (P.wb.tickets > 0) out.push({ k: 'ticket', name: '토벌 도전권', n: P.wb.tickets, desc: '월드 보스에 한 번 도전할 때 1장씩 씁니다. 8시간마다 3장까지 충전되고, 매점 · 우편으로 받은 것은 3장을 넘어도 쌓여 다음 주 보스에도 쓸 수 있습니다.', acts: B('goto', 'world', null, '월드 보스로', true) });
+    if (tk.respec > 0) out.push({ k: 'respec', name: '망각의 차', n: tk.respec, desc: '마시면 분배한 능력치 포인트를 모두 돌려받고 자동 분배가 꺼집니다.', acts: B('respecuse', null, null, S.confirm.rsp > Date.now() ? '한 번 더 누르면 마십니다' : '바로 마시기', true) + B('goto', 'gear', 'alloc', '능력치 칸으로') });
+    D.POTIONS.forEach(function (p) { if (P.shelf[p.id] > 0) out.push({ k: 'pot:' + p.id, name: p.name, n: P.shelf[p.id], desc: p.desc, dot: p.color, acts: B('do', 'drink', p.id, '바로 마시기', true) + B('goto', 'work', 'alch', '연금술로') }); });
+    if (tk.rsDone > 0) out.push({ k: 'rsDone', name: '연구 즉시 완료 물약', n: tk.rsDone, desc: '진행 중인 연구 하나를 바로 끝냅니다. 서고에서 씁니다.', acts: B('goto', 'lib', null, '서고로', true) });
+    if (tk.gradeUp > 0) out.push({ k: 'gradeUp', name: '학년 진급 물약', n: tk.gradeUp, desc: '마시면 한 학년 진급합니다. 시험장에서 씁니다.', acts: B('goto', 'exam', null, '시험장으로', true) });
+    return out;
+  }
+  function invSeen() { try { return JSON.parse(localStorage.getItem('arc_invseen') || '{}') || {}; } catch (e) { return {}; } }
+  function invNew() { var seen = invSeen(); return invItems().filter(function (x) { return x.n > (seen[x.k] || 0); }); }
+  function invMarkSeen() { var o = {}; invItems().forEach(function (x) { o[x.k] = x.n; }); try { localStorage.setItem('arc_invseen', JSON.stringify(o)); } catch (e) { } }
+  function invBody() {
+    var items = invItems(), nw = {}; invNew().forEach(function (x) { nw[x.k] = 1; });
+    setTimeout(function () { invMarkSeen(); updateBadges(); }, 1500);   // 보고 나면 「새」 표시를 거둔다
+    if (!items.length) return '<div class="empty">소지품이 없습니다. 환수의 알 · 토벌 도전권 · 물약 · 망각의 차 같은 것을 받으면 여기에 모입니다.</div><p class="tiny faint" style="margin-top:8px">재료는 공방의 재료 보관함, 아카데미 휘장은 휘장 보관함에서 봅니다.</p>';
+    return '<div class="invlist">' + items.map(function (x) {
+      return '<div class="invrow' + (nw[x.k] ? ' new' : '') + '"><div class="invh">' + (x.dot ? '<span class="pot-ic" style="background:' + x.dot + '"></span>' : '') + '<b>' + esc(x.name) + '</b> <span class="num gold">×' + x.n + '</span>' + (nw[x.k] ? ' <span class="tag br">새</span>' : '') + '</div><div class="tiny muted">' + esc(x.desc) + '</div><div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap">' + x.acts + '</div></div>';
+    }).join('') + '</div><p class="tiny faint" style="margin-top:8px">장비 상자 · 휘장 원석 · 재료 상자는 받는 순간 열립니다. 재료는 공방의 재료 보관함, 아카데미 휘장은 휘장 보관함에서 봅니다.</p>';
+  }
+  ACT.bagtab = function (t) { S.bagTab = t === 'inv' ? 'inv' : 'eq'; render(); };
+  ACT.invgo = function () { S.bagTab = 'inv'; ACT.goto('gear', 'bag'); };
   // 능력치 나누기: + / − 로 나눠 보고 「저장」 → 확인 창에서 한 번 더 확인하면 적용
   ACT.alloc = function (k, n) { var d = S.allocDraft || (S.allocDraft = {}), sum = R.STATS.reduce(function (a, x) { return a + (d[x] || 0); }, 0), left = S.P.pts - sum; n = +n; if (n > 0) n = Math.min(n, left); d[k] = Math.max(0, (d[k] || 0) + n); if (!d[k]) delete d[k]; render(); };
   ACT['alloc-reset'] = function () { S.allocDraft = null; render(); };
@@ -3153,7 +3180,7 @@
     board: [['.page-head', '게시판', '말머리를 골라 글을 씁니다. 「관리자만 보기」로 쓰면 운영진에게 문의 · 건의 · 신고를 보낼 수 있습니다.']],
     auction: [['.page-head', '떠돌이 상인', '매일 낮 12시와 밤 8시에 2시간 동안 귀한 장비 세 점을 경매합니다. 더 높은 입찰이 나오면 입찰한 ' + CUR + '를 즉시 돌려받습니다.']],
     market: [['#view .tabs', '거래소', '「사기」에서 다른 학생의 물건을 사고, 「팔기」에서 내 물건을 올립니다. 「팔기」에는 최근 시세가 표시됩니다.']],
-    gear: [['h:장비 살펴보기', '장비', '장착 칸이나 가방의 장비를 누르면 능력치와 강화 · 재련 · 분해 · 잠금 메뉴가 표시됩니다.'], ['h:가방', '가방', '초록 ▲ 표시는 현재보다 전투력이 오르는 장비입니다.'], ['h:능력치', '능력치', '레벨업 포인트를 직접 분배하거나, 자동 분배를 켜고 프리셋을 고를 수 있습니다.'], ['[data-anchor="badge"]', '아카데미 휘장', '달고 있는 휘장 하나만 효과가 있으며, 원정 · 수업 · 전투에서 별빛을 모아 성장합니다.']],
+    gear: [['h:장비 살펴보기', '장비', '장착 칸이나 가방의 장비를 누르면 능력치와 강화 · 재련 · 분해 · 잠금 메뉴가 표시됩니다.'], ['[data-anchor="bag"]', '가방 · 소지품', '초록 ▲ 표시는 현재보다 전투력이 오르는 장비입니다. 「소지품」 탭에는 환수의 알 · 토벌 도전권 · 물약 · 망각의 차가 모이며, 바로 쓰거나 해당 화면으로 갈 수 있습니다.'], ['h:능력치', '능력치', '레벨업 포인트를 직접 분배하거나, 자동 분배를 켜고 프리셋을 고를 수 있습니다.'], ['[data-anchor="badge"]', '아카데미 휘장', '달고 있는 휘장 하나만 효과가 있으며, 원정 · 수업 · 전투에서 별빛을 모아 성장합니다.']],
     work: [['h:연금술', '연금술', '재료와 마나로 물약을 즉시 만듭니다. 물약 효과는 마신 뒤 현실 시간으로 흐릅니다.'], ['h:사역마', '사역마', '환수의 알을 부화시켜 동행하거나 파견을 보냅니다. 동행 중인 사역마는 능력치를 올려 줍니다.']],
     shop: [['.page-head', '매점', '별조각과 ' + CUR + '로 환수의 알 · 가방 확장 · 휘장 원석 등을 구입합니다.']],
     rec: [['h:업적', '기록실', '업적 · 칭호 도감 · 몬스터 도감 · 통계를 확인합니다. 업적을 달성하면 별조각을 받습니다.']]
@@ -3937,7 +3964,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026101993;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026101994;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
