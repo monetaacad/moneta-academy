@@ -186,6 +186,7 @@
     if (!P.lecQ) P.lecQ = [null, null, null]; if (!P.lecEnd) P.lecEnd = [0, 0, 0]; if (!P.tt) P.tt = [];
     if (P.res && P.res.dust == null) P.res.dust = 0; if (P.autoDis == null) P.autoDis = false;
     // 경제 조정(C안) 공지: 이 조정 전에 입학한 학생에게 한 번 보여 준다 (1 = 보여 줄 것, 2 = 봤음)
+    if (P.res && P.res.know % 1) P.res.know = Math.floor(P.res.know);   // 예전에 남은 지식 소수점 정리
     if (!P.sndV && P.opt) { P.sndV = 1; P.opt.sound = true; }   // 효과음 기본값을 켬으로 (BUILD 2026101953): 예전 기본값(꺼짐) 그대로인 학생도 한 번 켠다
     if (P.econC == null) P.econC = P.created && P.created < R.ECON_C_AT ? 1 : 2;
     if (!P.badges) P.badges = [];
@@ -641,13 +642,13 @@
     var k = frac * (canceled ? K.CANCEL_KEEP : 1);
     var lv0 = P.subj[j.s].lv;
     subjGain(P, j.s, j.xp * k, t);
-    P.res.know += j.know * k;
+    var kn = Math.round(j.know * k); P.res.know += kn;   // 지식은 정수로 (소수점이 남지 않게)
     var hours = j.dur * frac / 3600;
     if (!canceled) { P.st.lecJobs++; if (j.dur >= 28800) P.st.nightJobs++; }
     P.st.lecHours += hours * (canceled ? K.CANCEL_KEEP : 1);
     badgeGain(P, hours * (canceled ? K.CANCEL_KEEP : 1) * R.BADGE_XP.lecH, t);
     cupAdd(P, hours * 10 * (canceled ? K.CANCEL_KEEP : 1));
-    return { k: 'lec', s: j.s, xp: j.xp * k, know: j.know * k, from: lv0, to: P.subj[j.s].lv, t: t, canceled: !!canceled, peers: j.peers || 0, pb: j.pb || 0, ontime: !!j.ontime, auto: !!j.auto };
+    return { k: 'lec', s: j.s, xp: j.xp * k, know: kn, from: lv0, to: P.subj[j.s].lv, t: t, canceled: !!canceled, peers: j.peers || 0, pb: j.pb || 0, ontime: !!j.ontime, auto: !!j.auto };
   }
 
   // 함께 듣는 수업: 같은 과목을 지금 듣고 있는 다른 학생 1명당 과목 경험치 +1% (최대 +5%), 맡길 때 정해진다
@@ -1507,7 +1508,7 @@
   function dreamFinish(P, j, t) {
     var m = j.lucid ? 1.5 : 1, out = { k: 'dream', kind: j.kind, t: t, lucid: !!j.lucid, line: j.line };
     if (j.xp) { out.s = j.s; out.from = P.subj[j.s].lv; subjGain(P, j.s, j.xp * m, t); out.to = P.subj[j.s].lv; out.xp = j.xp * m; }
-    if (j.know) { P.res.know += j.know * m; out.know = j.know * m; }
+    if (j.know) { var dk = Math.round(j.know * m); P.res.know += dk; out.know = dk; }
     if (j.shard) { var sh = Math.floor(j.shard * m); P.res.shard += sh; out.shard = sh; }
     if (j.egg && rnd(P) < j.egg * m) { P.fam.eggs++; out.egg = 1; }
     if (j.gold) { addGold(P, j.gold * m); out.gold = Math.floor(j.gold * m); }

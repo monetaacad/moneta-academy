@@ -2367,7 +2367,7 @@
   var LIVE = {
     who: function () { return esc(S.P.name); },
     whosub: function () { return '<span class="ws-h">' + house().name + ' · </span>' + R.gradeLabel(S.P) + ' · Lv ' + S.P.lvl; },
-    mana: function () { return fmt(predMana()); }, gold: function () { return fmt(S.P.res.gold); }, know: function () { return fmt(S.P.res.know); },
+    mana: function () { return fmt(Math.floor(predMana())); }, gold: function () { return fmt(Math.floor(S.P.res.gold)); }, know: function () { return fmt(Math.floor(S.P.res.know)); },   // 자원은 소수점 없이 (내림)
     stone: function () { return fmt(S.P.res.stone); }, shard: function () { return fmt(S.P.res.shard); },
     cal: function () { var c = R.calendar(wctx(), now()); return '아카데미력 ' + c.year + '년 ' + c.month + ' ' + c.d + '일' + (c.weekend ? ' · ' + dotImg('sky_weekend', 14, '', 'skyic') + '유성우' : ''); },
     buffs: function () { var out = [], skv = R.skyAt(now()); if (skv) out.push('<span class="buffpill sky" title="' + skv.text + '">' + dotImg('sky_' + skv.id, 14, '', 'skyic') + '<span class="bn">' + skv.name + '</span> <span class="num">' + left(skv.end) + '</span></span>'); for (var k in S.P.buffs) { var b = S.P.buffs[k]; if (b.end > now()) out.push('<span class="buffpill" data-tip="buff:' + k + '" tabindex="0"><i style="background:' + (b.color || '#e8c36a') + '"></i><span class="bn">' + esc(b.name) + '</span> <span class="num">' + left(b.end) + '</span></span>'); } return out.join(' '); },
@@ -2903,6 +2903,8 @@
   }
   function tutGo(dir) {
     var t = S.tut; if (!t) return; var ST = tutSteps(), i = t.i;
+    // 채팅창이 화면 위에 떠 있으면(넓은 화면의 옆 칸이 아닐 때) 둘러보기 동안 접어 두었다가, 끝나면 다시 펼친다
+    if (!t.dockFold && !wide() && dockOpen()) { t.dockFold = 1; S.chat.open = false; renderDock(); document.body.classList.remove('dock-open'); }
     do { i += dir; } while (i >= 0 && i < ST.length && !tutFind(ST[i][0]));
     if (i < 0) return; if (i >= ST.length) return tutEnd();
     t.i = i; var el = tutFind(ST[i][0]), op = ST[i][3] || {};
@@ -2938,7 +2940,8 @@
   }
   function tutEnd() {
     var t = S.tut; if (t && t.timer) { clearInterval(t.timer); removeEventListener('resize', tutPlace); removeEventListener('scroll', tutPlace, true); }
-    var key = t && t.key; S.tut = null; var b = $('#tut'); if (b) b.remove(); if (!key || key === 'main') PREF.tutDone = 1; else { PREF.tutV = PREF.tutV || {}; PREF.tutV[key] = 1; } savePref();
+    var key = t && t.key; S.tut = null; var b = $('#tut'); if (b) b.remove();
+    if (t && t.dockFold) { S.chat.open = true; renderDock(); document.body.classList.toggle('dock-open', true); } if (!key || key === 'main') PREF.tutDone = 1; else { PREF.tutV = PREF.tutV || {}; PREF.tutV[key] = 1; } savePref();
     if ((!key || key === 'main') && S.onbChain) { S.onbChain = false; setTimeout(function () { S.afterClose = function () { if (S.view !== 'home') ACT.nav('home'); ACT.mqscene('intro'); }; ACT.story(0); }, 200); }
   }
   ACT['tut-next'] = function () { tutGo(1); };
@@ -3606,7 +3609,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026101965;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026101966;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
