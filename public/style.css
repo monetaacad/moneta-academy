@@ -604,6 +604,10 @@ input::placeholder, textarea::placeholder { color: var(--faint); }
 /* ───────── 원정 일지 ───────── */
 .explog { margin-top: 8px; height: 230px; overflow-y: auto; background: var(--sunk); border: 1px solid var(--line2); border-radius: 8px; padding: 8px 10px; font-size: 13px; line-height: 1.55; overscroll-behavior: contain; }
 .explog .el { display: flex; gap: 8px; }
+/* 위로 올려 읽는 중일 때 일지 아래에 뜨는 「맨 아래로」 단추 */
+.logw { position: relative; }
+.lognew { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 2; background: var(--brass); color: #1b1608; border: 0; border-radius: 999px; padding: 4px 12px; font-size: 12px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 14px var(--shadow); }
+.lognew[hidden] { display: none; }
 .explog .et { color: var(--faint); font-size: 11px; flex: none; width: 38px; padding-top: 2px; }
 .explog .el.start { color: var(--brass2); }
 .explog .eg { color: var(--brass); font-size: 11.5px; margin-left: 4px; }
@@ -1117,7 +1121,7 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 :root[data-paper="on"] .odot { box-shadow: none; }
 :root[data-paper="on"] .jar i.on { background: #f0cf8a; box-shadow: none; border-color: transparent; }
 :root[data-paper="on"] .evic { box-shadow: none; }
-:root[data-paper="on"] .chatnew, :root[data-paper="on"] .toast, :root[data-paper="on"] .mbox, :root[data-paper="on"] .dock, :root[data-paper="on"] #tip, :root[data-paper="on"] .memenu { box-shadow: none; }
+:root[data-paper="on"] .chatnew, :root[data-paper="on"] .lognew, :root[data-paper="on"] .toast, :root[data-paper="on"] .mbox, :root[data-paper="on"] .dock, :root[data-paper="on"] #tip, :root[data-paper="on"] .memenu { box-shadow: none; }
 :root[data-paper="on"] .subj.active, :root[data-paper="on"] .housepick button.on, :root[data-paper="on"] .eqslot.sel, :root[data-paper="on"] .itm.sel { box-shadow: none; }
 :root[data-paper="on"] .twjournal.live { box-shadow: none; }
 /* ── 종이 모드에서도 팝업(구매 확인·알림·새 버전·점검·확인 창)은 눈에 띄게: 테마 포인트 색 테두리 + 살짝 네온 ──

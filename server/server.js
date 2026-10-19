@@ -441,7 +441,7 @@ routes['POST /api/act'] = async (req, res) => {
     if (type === 'lecStart' || type === 'lecCancel') { lecSync(P); if (type === 'lecStart') { const j = P.lec[Number(a.slot)]; if (j) lecStarted(P, j.s, now); } }
     if (type === 'exam' && r && r.pass) world.addNews(P.name + ' 학생이 ' + (P.grade >= 8 ? '졸업 시험을 통과해 마스터 과정이 되었습니다' : P.grade + '학년으로 진급했습니다'), now);
     if ((type === 'clsExam' || type === 'setCls') && r) setImmediate(() => { try { chat.clsChanged(pid); } catch (e) { } });
-    if (type === 'inboxAck' || type === 'expCancel') setImmediate(() => { try { chat.exrChanged(pid); } catch (e) { } });   // 결과를 받으면 원정 채팅 탭을 닫는다
+    if (type === 'inboxAck' || type === 'expCancel' || type === 'expClaim') setImmediate(() => { try { chat.exrChanged(pid); } catch (e) { } });   // 결과를 받으면 원정 채팅 탭을 닫는다
     if ((type === 'exam' && r && r.pass) || (type === 'useGradeUp' && r && r.grade)) addNote(pid, 'grade', (P.grade >= 8 ? '졸업 시험을 통과해 마스터 과정이 되었습니다' : P.grade + '학년으로 진급했습니다') + ' · 새로 열린 것 보기', { grade: P.grade });
     if (type === 'wbAttack') { const killed = world.applyDamage(pid, P.wk.dmg - before, now); r.killed = killed; world.invalidate(); }
   } catch (e) {

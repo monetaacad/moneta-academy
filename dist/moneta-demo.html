@@ -623,6 +623,10 @@ input::placeholder, textarea::placeholder { color: var(--faint); }
 /* ───────── 원정 일지 ───────── */
 .explog { margin-top: 8px; height: 230px; overflow-y: auto; background: var(--sunk); border: 1px solid var(--line2); border-radius: 8px; padding: 8px 10px; font-size: 13px; line-height: 1.55; overscroll-behavior: contain; }
 .explog .el { display: flex; gap: 8px; }
+/* 위로 올려 읽는 중일 때 일지 아래에 뜨는 「맨 아래로」 단추 */
+.logw { position: relative; }
+.lognew { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 2; background: var(--brass); color: #1b1608; border: 0; border-radius: 999px; padding: 4px 12px; font-size: 12px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 14px var(--shadow); }
+.lognew[hidden] { display: none; }
 .explog .et { color: var(--faint); font-size: 11px; flex: none; width: 38px; padding-top: 2px; }
 .explog .el.start { color: var(--brass2); }
 .explog .eg { color: var(--brass); font-size: 11.5px; margin-left: 4px; }
@@ -1136,7 +1140,7 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 :root[data-paper="on"] .odot { box-shadow: none; }
 :root[data-paper="on"] .jar i.on { background: #f0cf8a; box-shadow: none; border-color: transparent; }
 :root[data-paper="on"] .evic { box-shadow: none; }
-:root[data-paper="on"] .chatnew, :root[data-paper="on"] .toast, :root[data-paper="on"] .mbox, :root[data-paper="on"] .dock, :root[data-paper="on"] #tip, :root[data-paper="on"] .memenu { box-shadow: none; }
+:root[data-paper="on"] .chatnew, :root[data-paper="on"] .lognew, :root[data-paper="on"] .toast, :root[data-paper="on"] .mbox, :root[data-paper="on"] .dock, :root[data-paper="on"] #tip, :root[data-paper="on"] .memenu { box-shadow: none; }
 :root[data-paper="on"] .subj.active, :root[data-paper="on"] .housepick button.on, :root[data-paper="on"] .eqslot.sel, :root[data-paper="on"] .itm.sel { box-shadow: none; }
 :root[data-paper="on"] .twjournal.live { box-shadow: none; }
 /* ── 종이 모드에서도 팝업(구매 확인·알림·새 버전·점검·확인 창)은 눈에 띄게: 테마 포인트 색 테두리 + 살짝 네온 ──
@@ -1633,7 +1637,7 @@ var DATA = (function () {
     { eff: { dropPct: 0.10 }, text: '별무리달 — 전리품 확률 +10%' },
     { eff: { examBonus: 5 }, text: '침묵달 — 기말시험 총점 +5점' }
   ];
-  D.WEEKEND = { eff: { manaPct: 0.25, lectureSpd: 0.10 }, text: '유성우 주말 — 마나 재생 +25%, 수업 속도 +10% (토·일)' };
+  D.WEEKEND = { eff: { manaPct: 0.25, lectureSpd: 0.10 }, text: '유성우 주말 — 마나 재생 +25%, 수업 효율 +10% (토·일)' };
 
   /* ───────── 주간 월드 보스 (서버 공동 토벌) ───────── */
   D.WORLD_BOSSES = [
@@ -1652,7 +1656,7 @@ var DATA = (function () {
     { id: 'lanterna', name: '등불관', latin: 'Lanterna', color: '#e8c36a',
       motto: '꺼지지 않는 질문이 길을 밝힌다',
       desc: '탐구와 기록을 중시하는 기숙사. 밤새 켜진 등불 아래에서 가장 많은 논문이 쓰인다.',
-      bonus: { knowPct: 0.15, lectureSpd: 0.05 }, bonusText: '지식 획득 +15%, 수업 속도 +5%' },
+      bonus: { knowPct: 0.15, lectureSpd: 0.05 }, bonusText: '지식 획득 +15%, 수업 효율 +5%' },
     { id: 'clepsydra', name: '물시계관', latin: 'Clepsydra', color: '#6fb5c9',
       motto: '한 방울씩, 그러나 멈추지 않고',
       desc: '인내와 명상의 기숙사. 탑 꼭대기의 거대한 물시계는 아카데미가 세워진 날부터 단 한 번도 멈춘 적이 없다.',
@@ -1869,7 +1873,7 @@ var DATA = (function () {
 
   /* ───────── 물약 ───────── */
   D.POTIONS = [
-    { id: 'focus', name: '집중의 물약', unlock: 1, time: 900, mana: 1500, mats: { dust: 6 }, dur: 7200, eff: { lectureSpd: 0.3 }, desc: '2시간 수업 속도 +30%', color: '#7fc8ff' },
+    { id: 'focus', name: '집중의 물약', unlock: 1, time: 900, mana: 1500, mats: { dust: 6 }, dur: 7200, eff: { lectureSpd: 0.3 }, desc: '2시간 수업 효율 +30%', color: '#7fc8ff' },
     { id: 'valor', name: '투지의 물약', unlock: 3, time: 1200, mana: 4000, mats: { dust: 4, moonherb: 4 }, dur: 7200, eff: { atkPct: 0.25 }, desc: '2시간 공격력 +25%', color: '#ff7a5a' },
     { id: 'guard', name: '수호의 물약', unlock: 4, time: 1200, mana: 4000, mats: { dust: 6, moonherb: 2 }, dur: 7200, eff: { hpPct: 0.25, defPct: 0.2 }, desc: '2시간 생명력 +25%, 방어력 +20%', color: '#8ad08a' },
     { id: 'gilded', name: '황금 물약', unlock: 6, time: 1800, mana: 12000, mats: { cog: 4, moonherb: 4 }, dur: 7200, eff: { goldPct: 0.4 }, desc: '2시간 ' + CUR + ' +40%', color: '#f2c84b' },
@@ -1901,7 +1905,7 @@ var DATA = (function () {
     { name: '전설', color: '#f2b84b', w: 2 }
   ];
   D.BONUS_NAMES = {
-    goldPct: CUR + ' 획득', atkPct: '공격력', physPct: '물리 피해', hpPct: '생명력', lectureSpd: '수업 속도', knowPct: '지식 획득',
+    goldPct: CUR + ' 획득', atkPct: '공격력', physPct: '물리 피해', hpPct: '생명력', lectureSpd: '수업 효율', knowPct: '지식 획득',
     aps: '공격 속도', dropPct: '전리품 확률', critC: '치명타 확률', critD: '치명타 피해',
     manaPct: '마나 재생', xpPct: '경험치', defPct: '방어력', spellPct: '주문 위력', leech: '생명력 흡수', rarity: '등급 상승', brewSpd: '양조 효율', manaCap: '마나 저장 한도', examBonus: '시험 가산점', bossDmg: '보스 피해', cdr: '재사용 대기 감소', killMana: '처치 시 마나(초)', hatchSpd: '부화 효율', enhBonus: '강화 성공률', dispPct: '파견 보상'
   };
@@ -1911,7 +1915,7 @@ var DATA = (function () {
   D.RESEARCH = [
     { id: 'manaspring', name: '마나 샘 개척', desc: '마나 재생 +15%', eff: { manaPct: 0.15 }, mana: 400, know: 0, g: 1.42, max: 60, time: 300, tg: 1.32 },
     { id: 'storage', name: '마나 저장고 확장', desc: '마나 저장 한도 +3시간분', eff: { manaCap: 10800 }, mana: 1500, know: 40, g: 1.9, max: 8, time: 1800, tg: 1.6 },
-    { id: 'speedread', name: '속독술', desc: '수업 속도 +2%', eff: { lectureSpd: 0.02 }, mana: 800, know: 30, g: 1.4, max: 50, time: 600, tg: 1.3 },
+    { id: 'speedread', name: '속독술', desc: '수업 효율 +2%', eff: { lectureSpd: 0.02 }, mana: 800, know: 30, g: 1.4, max: 50, time: 600, tg: 1.3 },
     { id: 'combat', name: '전투 마법 이론', desc: '공격력 +8%', eff: { atkPct: 0.08 }, mana: 1000, know: 40, g: 1.38, max: 80, time: 600, tg: 1.28 },
     { id: 'sigil', name: '수호 문양학', desc: '생명력 +8%, 방어력 +4%', eff: { hpPct: 0.08, defPct: 0.04 }, mana: 1000, know: 40, g: 1.38, max: 80, time: 600, tg: 1.28 },
     { id: 'merchant', name: '상인의 화술', desc: CUR + ' 획득 +10%', eff: { goldPct: 0.1 }, mana: 1500, know: 60, g: 1.42, max: 50, time: 900, tg: 1.3 },
@@ -2236,7 +2240,7 @@ var DATA = (function () {
   D.GUIDE = [
     { c: '처음', t: '이 게임은 어떻게 하나요?', b: '수업과 원정을 30분~3시간 단위로 진행하고, 끝나면 다음 교시를 이어 가는 방치형 게임입니다. 뽀모도로 타이머처럼 활용할 수 있습니다. 창을 닫아도 서버에서 그대로 진행되며, 다시 접속하면 끝난 작업의 결과가 표시됩니다. 잠들기 전에는 연구 · 사역마 파견처럼 오래 걸리는 작업을 시작해 두면 좋습니다.', go: ['home'] },
     { c: '처음', t: '첫날 할 일', b: '1) 「수업·연구」에서 수업을 듣고 2) 「원정·전투」에서 추천 단계로 출정하고 3) 「수업·연구 → 서고」에서 연구를 하나 시작합니다. 아카데미 광장의 「다음 할 일」이 지금 할 일을 알려 주며, 「이동」 버튼으로 해당 화면에 바로 갈 수 있습니다. 화면 좌측(모바일에서는 하단)의 안내도는 비슷한 활동끼리 묶여 있습니다.', go: ['home'] },
-    { c: '처음', t: '서버와 시간', b: '모든 학생이 같은 시간을 공유합니다. 아카데미력은 현실의 하루가 아카데미의 하루이며, 4주가 한 달, 아홉 달이 한 해입니다. 달마다 별샘의 축복이 바뀌고, 토 · 일요일에는 유성우가 내려 마나 재생과 수업 속도가 오릅니다. 학년은 달력과 관계없이 기말시험에 합격할 때마다 오릅니다.' },
+    { c: '처음', t: '서버와 시간', b: '모든 학생이 같은 시간을 공유합니다. 아카데미력은 현실의 하루가 아카데미의 하루이며, 4주가 한 달, 아홉 달이 한 해입니다. 달마다 별샘의 축복이 바뀌고, 토 · 일요일에는 유성우가 내려 마나 재생과 수업 효율이 오릅니다. 학년은 달력과 관계없이 기말시험에 합격할 때마다 오릅니다.' },
     { c: '처음', t: '아카데미 광장 화면', b: '상단의 풍경에는 현재 하늘(하늘 이벤트 · 다음 일정)과 오늘의 축복이 표시되며, 좌측의 반딧불 병을 눌러 반딧불 정령을 풀어 줄 수 있습니다. 그 아래에서 공지 · 시간표 · 다음 할 일 · 일일 목표를 확인합니다. 잠자리 · 꿈길은 광장 하단에 있습니다.', go: ['home'] },
     { c: '처음', t: '밑줄 친 용어와 화면별 안내', b: '점선 밑줄이 있는 용어는 이 게임에서만 쓰는 고유명사입니다. 마우스를 올리면(모바일에서는 누르면) 가이드 요약이 표시되며, 누르면(모바일에서는 요약을 한 번 더 누르면) 가이드에서 해당 용어를 검색합니다. 각 화면에 처음 들어가면 화면별 안내가 한 번 표시되며, 가이드 › 처음의 「화면별 둘러보기 다시 보기」로 다시 볼 수 있습니다.' },
     { c: '처음', t: '적용 중인 효과 (버프)', b: '화면 상단의 아카데미력 아래에 지금 받고 있는 효과(신입생 오리엔테이션 · 별샘의 축복 · 물약 · 하늘 이벤트 등)가 남은 시간과 함께 표시됩니다. 마우스를 올리면 효과가, 누르면 적용 중인 효과 전체와 남은 시간이 팝업으로 표시됩니다.' },
@@ -2247,7 +2251,7 @@ var DATA = (function () {
     { c: '자원', t: '마석', b: '원정 중 가끔 떨어지며, 반딧불 정령 · 사역마 파견 · 보스 · 출석 · 매점 「마석 꾸러미」 · 거래소에서도 얻습니다. 장비 강화에 씁니다.', go: ['gear'] },
     { c: '자원', t: '별조각', b: '업적 · 일일 목표 · 출석 · 보스 첫 처치 · 기말시험 · 결투제 · 교수 과제 · 월드 보스 · 기숙사 대항전에서 얻는 귀한 재화입니다. 매점에서 환수의 알, 가방 확장 등을 구입합니다.', go: ['shop'] },
     { c: '자원', t: '재료', b: '원정 지역마다 다른 재료가 나옵니다(지하 저장고: 먼지 가루, 속삭이는 숲: 월광초 등). 물약 제조에 쓰며, 남는 재료는 거래소에서 판매할 수 있습니다.', go: ['work',  'alch'] },
-    { c: '아카데미 생활', t: '수업과 과목', b: '수업은 한 번에 하나만 들을 수 있으며, 수업을 들으면 과목 경험치와 지식을 얻습니다. 과목 레벨이 오르면 능력치가 오르고, 특정 레벨에서 새 주문을 배웁니다. 수업 효율은 30분 · 1시간 100%, 2시간 97%, 3시간 94%입니다.', go: ['lecture'] },
+    { c: '아카데미 생활', t: '수업과 과목', b: '수업은 한 번에 하나만 들을 수 있으며, 수업을 들으면 과목 경험치와 지식을 얻습니다. 과목 레벨이 오르면 능력치가 오르고, 특정 레벨에서 새 주문을 배웁니다. 시간별 효율은 30분 · 1시간 100%, 2시간 97%, 3시간 94%입니다.', go: ['lecture'] },
     { c: '아카데미 생활', t: '반딧불 정령 병', b: '40분마다 한 마리씩 병에 모이며, 4마리가 되면 가득 찹니다(2시간 40분). 접속했을 때 「풀어 주기」를 누르면 마나 · ' + CUR + ' · 별조각 · 마석 중 하나씩을 남깁니다. 반딧불 병은 광장 풍경 좌측에 있습니다.', go: ['home',  'care'] },
     { c: '아카데미 생활', t: '연구와 사역마 파견 (장시간 방치)', b: '연구는 한 번에 하나만 진행되며 단계마다 몇 시간에서 이틀까지 걸리고, 사역마 파견은 2~12시간 걸립니다. 잠들기 전에 시작해 두세요. 「숙면의 차」를 마시면 파견 보상과 마나 재생이 늘어납니다.', go: ['lib'] },
     { c: '아카데미 생활', t: '물약과 부화', b: '공방에서 재료와 마나가 있으면 물약이 즉시 완성됩니다. 알 부화도 마나를 불어넣으면 그 자리에서 깨어납니다. 물약 효과는 마신 뒤 현실 시간으로 흐르며, 진행 중인 작업과 겹친 시간만큼 적용됩니다.', go: ['work',  'alch'] },
@@ -2259,20 +2263,20 @@ var DATA = (function () {
     { c: '전투', t: '레벨로 여는 원정 단계', b: '원정 단계는 학년 상한(학년×10+9)까지 열리며, 레벨이 그보다 높으면 레벨만큼 더 출정할 수 있습니다(학년 상한 +10단계까지). 해당 구역의 보스도 레벨이 닿으면 도전할 수 있습니다. 시간당 효율은 대체로 조금 낮은 단계가 좋고, 높은 단계는 장비 레벨과 다음 구역 재료가 좋습니다.', go: ['explore'] },
     { c: '전투', t: '쓰러짐과 귀환', b: '「무모함」 단계로 출정하면 도중에 쓰러져 돌아올 수 있으며, 이때는 그때까지 모은 것의 80%를 받습니다. 원정 중 「귀환」을 누르면 그때까지 모은 것을 모두 받고 즉시 돌아옵니다(수업 · 연구 취소는 절반).', go: ['explore'] },
     { c: '자원', t: '분해 · 마석가루 · 재련', b: '쓰지 않는 장비는 판매(' + CUR + ') 대신 분해해 마석과 마석가루를 얻을 수 있습니다. 등급 · 레벨이 높을수록 많이 나옵니다. 마석가루로 장비를 재련하면 등급 · 레벨 · 강화는 유지한 채 옵션만 새로 정해집니다. 분류 마법을 연구하면 자동 처리를 판매 대신 분해로 바꿀 수 있습니다.', go: ['gear'] },
-    { c: '아카데미 생활', t: '아카데미 휘장', b: '로브 가슴에 다는 브로치입니다. 2학년 기말시험을 통과해 3학년이 되면 아카데미에서 하나를 수여하며, 매점 「휘장 원석」 · 보스 전리품 · 거래소에서도 얻을 수 있습니다. 보석마다 대표 효과가 다릅니다(홍옥 공격력, 청옥 주문 위력, 석류석 물리 피해, 녹옥 생명력, 자수정 수업 속도, 황옥 ' + CUR + ', 월장석 경험치, 남옥 마나, 흑요석 치명타 피해, 단백석 전리품). 달고 있는 휘장 하나만 효과가 있으며, 원정 · 수업 · 전투에서 별빛을 모아 Lv 20까지 성장합니다. 5 · 10 · 15 · 20레벨에 세공(옵션)이 한 줄씩 붙습니다. 강화 방법: 마석가루와 ' + CUR + '로 「닦기」(별빛 · 레벨), 별조각으로 「광내기」(보석 품질 · 대표 효과, 최대 125%), 별조각으로 「세공 다시 새기기」(옵션 한 줄 재설정). 거래소에서 사고팔 수 있고, 필요 없는 휘장은 깨뜨려 마석가루로 돌려받습니다. 「잠금」을 걸면 달기 · 떼기만 가능하고 닦기 · 광내기 · 세공 · 깨뜨리기 · 거래소가 막힙니다. 원정 · 수업으로 모이는 별빛은 잠금과 관계없이 쌓입니다.', go: ['gear',  'badge'] },
+    { c: '아카데미 생활', t: '아카데미 휘장', b: '로브 가슴에 다는 브로치입니다. 2학년 기말시험을 통과해 3학년이 되면 아카데미에서 하나를 수여하며, 매점 「휘장 원석」 · 보스 전리품 · 거래소에서도 얻을 수 있습니다. 보석마다 대표 효과가 다릅니다(홍옥 공격력, 청옥 주문 위력, 석류석 물리 피해, 녹옥 생명력, 자수정 수업 효율, 황옥 ' + CUR + ', 월장석 경험치, 남옥 마나, 흑요석 치명타 피해, 단백석 전리품). 달고 있는 휘장 하나만 효과가 있으며, 원정 · 수업 · 전투에서 별빛을 모아 Lv 20까지 성장합니다. 5 · 10 · 15 · 20레벨에 세공(옵션)이 한 줄씩 붙습니다. 강화 방법: 마석가루와 ' + CUR + '로 「닦기」(별빛 · 레벨), 별조각으로 「광내기」(보석 품질 · 대표 효과, 최대 125%), 별조각으로 「세공 다시 새기기」(옵션 한 줄 재설정). 거래소에서 사고팔 수 있고, 필요 없는 휘장은 깨뜨려 마석가루로 돌려받습니다. 「잠금」을 걸면 달기 · 떼기만 가능하고 닦기 · 광내기 · 세공 · 깨뜨리기 · 거래소가 막힙니다. 원정 · 수업으로 모이는 별빛은 잠금과 관계없이 쌓입니다.', go: ['gear',  'badge'] },
     { c: '처음', t: '학기 이야기', b: '광장 상단 카드에 현재 진행할 이야기 단계가 표시됩니다. 학년마다 한 장(章)씩 진행되며, 단계마다 목표가 있어 달성하면 「보상 받기」로 다음 장면이 열립니다. 무엇을 할지 모르겠다면 「하러 가기」를 누르세요. 각 장의 마지막 단계는 해당 학년의 기말시험입니다.', go: ['home'] },
     { c: '아카데미 생활', t: '진급 안내', b: '기말시험에 합격하면 해당 학년에 새로 열린 과목 · 화면 · 연구 · 매점 품목을 모아 보여 주며, 「바로 가기」로 각 화면에 갈 수 있습니다. 창을 닫은 뒤에도 우측 상단 「알림」(종 모양)이나 시험장 「성적표」의 「안내」에서 다시 볼 수 있습니다.', go: ['exam'] },
     { c: '아카데미 생활', t: '중도 취소', b: '진행 중인 작업을 취소하면 지난 시간만큼의 보상 중 절반만 받습니다. 다시 접속할 시간에 맞춰 작업 길이를 고르세요.' },
-    { c: '전투', t: '원정과 보스', b: '원정은 한 번에 하나만 진행할 수 있으며, 고른 단계에서 정해진 시간 동안 몬스터를 사냥합니다. 원정 화면의 「원정 일지」에 진행 상황이 수십 초마다 한 줄씩 기록됩니다. 10단계마다 있는 보스를 쓰러뜨려야 다음 구역이 열리며, 학년이 오를수록 더 높은 보스에 도전할 수 있습니다. 결과는 출정 시점의 능력치로 정해집니다.', go: ['explore',  'boss'] },
-    { c: '전투', t: '함께 원정', b: '「원정·전투 → 원정」의 「함께 원정」에서 방을 열거나 열린 방에 들어가 최대 4명이 함께 출정합니다. 방장이 「지금 출발」을 누르면 출정하며(혼자여도 가능), 4명이 모이면 15초 뒤 자동으로 출정합니다. 인원이 모이지 않으면 방장이 아카데미 친구(방장 능력의 60%)를 동행시킬 수 있습니다. 처치한 몬스터는 함께 나누되 한 명 늘 때마다 각자 몫이 +5% 늘고, 전리품은 각자 따로 나옵니다. 각자 자신의 원정 슬롯을 씁니다. 파티에 소속되어 있으면 「파티로 열기 · 파티로 참가」로 출정 가능한 파티원을 함께 데려가고, 「혼자 참가」는 파티를 유지한 채 본인만 참가합니다. 파티 단위 참가는 파티장만 가능하며, 파티장이 파티 화면에서 「파티원도 파티 단위로 원정 참가」를 켜면 파티원도 가능합니다. 방에 있는 동안에는 방 카드가 원정 화면 상단에 표시되고, 원정 슬롯이 「함께 원정 출발 대기」로 잡히므로 혼자 출정할 수 없습니다. 혼자 출정하려면 먼저 방에서 나오세요. 새 버전 배포 등으로 서버가 다시 켜져도 방은 그대로 남으며, 방 사람이 모두 2시간 넘게 접속하지 않으면 닫힙니다. 방에 들어가면 채팅에 「원정」 탭이 생겨 같은 방 사람끼리 대화할 수 있습니다. 출정한 뒤에도 이어지며, 원정이 끝나 결과 보고를 확인하면(또는 방에서 나오면) 탭이 사라집니다. 방 카드의 「빈자리 채우기」에서 파티원 함께 참가 · 친구 · 동아리원 초대 · 아카데미 친구 동행을 바로 고를 수 있습니다. 출정한 뒤에는 원정 슬롯에 일행의 피해 순위(시간에 따라 위아래로 바뀜) · 포지션 · 학년 · 레벨 · 학과 · 전투력 · HP가 표시되어, 선봉이 얼마나 버티고 있는지 볼 수 있습니다. 이름을 누르면 정보 카드가 열립니다.', go: ['explore'] },
+    { c: '전투', t: '원정과 보스', b: '원정은 한 번에 하나만 진행할 수 있으며, 고른 단계에서 정해진 시간 동안 몬스터를 사냥합니다. 원정 화면의 「원정 일지」에 진행 상황이 수십 초마다 한 줄씩 기록됩니다. 원정이 끝나면 「원정 완료」를 눌러야 결과를 받고 다음 원정을 보낼 수 있습니다. 10단계마다 있는 보스를 쓰러뜨려야 다음 구역이 열리며, 학년이 오를수록 더 높은 보스에 도전할 수 있습니다. 결과는 출정 시점의 능력치로 정해집니다.', go: ['explore',  'boss'] },
+    { c: '전투', t: '함께 원정', b: '「원정·전투 → 원정」의 「함께 원정」에서 방을 열거나 열린 방에 들어가 최대 4명이 함께 출정합니다. 방장이 「지금 출발」을 누르면 출정하며(혼자여도 가능), 4명이 모이면 15초 뒤 자동으로 출정합니다. 인원이 모이지 않으면 방장이 아카데미 친구(방장 능력의 60%)를 동행시킬 수 있습니다. 처치한 몬스터는 함께 나누되 한 명 늘 때마다 각자 몫이 +5% 늘고, 전리품은 각자 따로 나옵니다. 각자 자신의 원정 슬롯을 씁니다. 파티에 소속되어 있으면 「파티로 열기 · 파티로 참가」로 출정 가능한 파티원을 함께 데려가고, 「혼자 참가」는 파티를 유지한 채 본인만 참가합니다. 파티 단위 참가는 파티장만 가능하며, 파티장이 파티 화면에서 「파티원도 파티 단위로 원정 참가」를 켜면 파티원도 가능합니다. 방에 있는 동안에는 방 카드가 원정 화면 상단에 표시되고, 원정 슬롯이 「함께 원정 출발 대기」로 잡히므로 혼자 출정할 수 없습니다. 혼자 출정하려면 먼저 방에서 나오세요. 새 버전 배포 등으로 서버가 다시 켜져도 방은 그대로 남으며, 방 사람이 모두 2시간 넘게 접속하지 않으면 닫힙니다. 방에 들어가면 채팅에 「원정」 탭이 생겨 같은 방 사람끼리 대화할 수 있습니다. 출정한 뒤에도 이어지며, 원정이 끝나 「원정 완료」를 누르면(또는 방에서 나오면) 탭이 사라집니다. 방 카드의 「빈자리 채우기」에서 파티원 함께 참가 · 친구 · 동아리원 초대 · 아카데미 친구 동행을 바로 고를 수 있습니다. 출정한 뒤에는 원정 슬롯에 일행의 피해 순위(시간에 따라 위아래로 바뀜) · 포지션 · 학년 · 레벨 · 학과 · 전투력 · HP가 표시되어, 선봉이 얼마나 버티고 있는지 볼 수 있습니다. 이름을 누르면 정보 카드가 열립니다.', go: ['explore'] },
     { c: '전투', t: '포지션: 선봉 · 후열 · 지원', b: '선봉: 누구나 고를 수 있습니다. 몬스터가 80% 확률로 선봉을 노립니다(기사 +5%p, 수호 결계 장착 시 +5%p). 방어 +25%. 후열: 공격 주문을 장착해야 고를 수 있습니다(마력 화살 · 화염구 · 연쇄 번개 · 얼음 감옥 · 환수 소환 · 별똥별 · 비전 폭발 · 방패 강타 중 하나). 공격 +10%, 받는 피해 +10%. 지원: 보호막 · 치유 주문을 장착해야 고를 수 있습니다(수호 결계 · 재생의 노래 · 수호의 함성 중 하나). 파티 전체가 받는 피해 −15%, 본인 공격 −15%. 주문은 「원정·전투 → 원정」 하단의 「장착 주문」 칸에 넣어야 하며, 칸 수는 학년에 따라 늘어납니다. 출발할 때 조건이 맞지 않으면 선봉으로 출정합니다. 마법사는 처음부터 마력 화살을 장착하고 있어 후열을 고를 수 있고, 기사는 방패 강타를 배우면 후열, 수호의 함성을 배우면 지원을 고를 수 있습니다.', go: ['explore'] },
     { c: '전투', t: '모집 알림 · 초대', b: '채팅 「모집」 탭에는 세 가지 모집 카드가 올라옵니다(모두 한 줄 메모 추가 가능). 함께 원정: 방에서 「모집 알림」을 누릅니다(방마다 1분에 한 번). 다른 학생은 「살펴보기」로 방 인원의 포지션 · 학과 · 전투력을 확인한 뒤 참가합니다. 동아리 홍보: 동아리 화면의 「모집 홍보」에서 보냅니다(초대 권한이 있는 부원, 동아리마다 10분에 한 번). 카드의 「살펴보기」로 회장 · 소개 · 부원을 보고 가입합니다. 파티원 모집: 파티장이 파티 화면의 「파티원 모집」에서 보냅니다(5분에 한 번). 별의 탑 진행 층이 함께 표시되며, 알림을 본 학생은 30분 동안 초대 없이 「파티 들어가기」로 바로 들어올 수 있습니다. 함께 원정 방에서는 「친구 · 동아리원 초대」로 한 명씩 골라 초대할 수도 있습니다(이름 검색).', go: ['explore'] },
     { c: '전투', t: '학과: 기사 · 마법사', b: '입학할 때 고르는 전투 방식입니다. 기사는 단단하고 몬스터를 잘 끌어 선봉에, 마법사는 주문이 강해 후열 · 지원에 적합합니다. 기사의 평타와 방패 강타는 물리 피해로 체력을, 마법사의 평타(마력 화살)와 모든 주문은 주문 피해로 지력을 따릅니다. 기사도 수업으로 배운 주문을 장착하면 검과 주문을 함께 쓰는 마검사가 됩니다(해당 주문은 지력을 따릅니다). 학과마다 전용 수업(기사: 검술·방패술, 마법사: 비전학)과 전용 주문(기사: 방패 강타 · 수호의 함성, 마법사: 비전 폭발 · 마나 폭주)이 있으며, 본인 학과의 것만 표시됩니다. 학과를 바꾸려면 내 정보 › 편집의 「전과시험」에서 옮길 학과로 시험관과 대련해 이겨야 합니다(응시료 필요, 패배 시 하루 뒤 재응시). 학과를 고른 적 없는 기존 학생은 시험 없이 한 번 고를 수 있습니다.' },
-    { c: '전투', t: '능력치 다섯 가지', b: '지력: 주문 공격력 +1%, 수업 속도 소폭 증가. 체력: 물리 공격력 +1%, 생명력 +1.2%, 방어력 +0.6%. 민첩: 공격 속도 +1%. 의지: 마나 재생 +4%, 생명력 소폭 증가. 행운: 치명타 확률 · 전리품 · 높은 등급 장비 확률. 피해는 물리와 주문 두 가지이며, 기사의 평타와 방패 강타는 물리 공격력, 마법사의 평타와 모든 주문은 주문 공격력(× 주문 위력)이 적용됩니다. 장비 · 연구 · 물약의 「공격력 +%」는 양쪽 모두에, 장비 옵션 · 휘장의 「물리 피해」(석류석)는 물리 쪽에만, 「주문 위력」(청옥)은 주문 쪽에만 적용됩니다. 과목 레벨이 오를 때마다 해당 과목의 능력치가 오르며, 레벨업 포인트는 직접 분배합니다. 「레벨업 시 자동 분배」를 켜면 선택한 프리셋(균형 · 공격 · 생존 · 학구, 학과별 비율)대로 자동 분배됩니다(기본값은 꺼짐).', go: ['gear'] },
+    { c: '전투', t: '능력치 다섯 가지', b: '지력: 주문 공격력 +1%, 수업 효율 소폭 증가. 체력: 물리 공격력 +1%, 생명력 +1.2%, 방어력 +0.6%. 민첩: 공격 속도 +1%. 의지: 마나 재생 +4%, 생명력 소폭 증가. 행운: 치명타 확률 · 전리품 · 높은 등급 장비 확률. 피해는 물리와 주문 두 가지이며, 기사의 평타와 방패 강타는 물리 공격력, 마법사의 평타와 모든 주문은 주문 공격력(× 주문 위력)이 적용됩니다. 장비 · 연구 · 물약의 「공격력 +%」는 양쪽 모두에, 장비 옵션 · 휘장의 「물리 피해」(석류석)는 물리 쪽에만, 「주문 위력」(청옥)은 주문 쪽에만 적용됩니다. 과목 레벨이 오를 때마다 해당 과목의 능력치가 오르며, 레벨업 포인트는 직접 분배합니다. 「레벨업 시 자동 분배」를 켜면 선택한 프리셋(균형 · 공격 · 생존 · 학구, 학과별 비율)대로 자동 분배됩니다(기본값은 꺼짐).', go: ['gear'] },
     { c: '전투', t: '장비와 강화', b: '원정에서 장비가 나옵니다. 초록 ▲ 표시는 현재보다 전투력이 오르는 장비입니다. 강화에는 ' + CUR + '와 마석이 들며, 실패해도 장비는 사라지지 않습니다. 쓰지 않는 장비는 판매 · 분해하거나 거래소에 올리세요. 무기는 지팡이와 검이 있으며 능력치는 같습니다. 아끼는 장비는 「잠금」을 걸면 장착 · 해제만 가능하고 강화 · 재련 · 분해 · 판매 · 거래소 · 동아리 창고 보관이 모두 막힙니다(거래소 판매 목록에도 표시되지 않음).', go: ['gear'] },
     { c: '전투', t: '월드 보스', b: '매주 월요일에 새 월드 보스가 나타나며, 서버의 모든 학생이 함께 체력을 깎습니다. 도전권은 8시간마다 하나씩 충전되며 최대 3장입니다. 다음 주에 참여 · 토벌 · 피해 순위 보상이 지급됩니다.', go: ['world',  'wb'] },
     { c: '전투', t: '결투제', b: '시험장에서 아카데미의 라이벌들과 차례로 겨룹니다. 이기면 별조각과 ' + CUR + '를 받고, 지면 1시간 뒤 다시 도전할 수 있습니다.', go: ['exam'] },
-    { c: '교류', t: '채팅 (공지 · 모집 · RP · 월드 · 파티 · 원정 · 동아리 · 기숙사 · 학과 · 1:1)', b: '채팅창은 모든 화면에 표시되며, 열지 않은 탭의 글도 실시간으로 받습니다. 새 글이 오면 탭에 숫자가 표시되고, 탭을 열면 「여기부터 새 글」 위치부터 보여 줍니다. 공지 탭은 운영진 공지와 월드 보스 소식, 모집 탭은 함께 원정 · 동아리 · 파티 모집 카드가 올라오는 곳으로 직접 쓸 수 없습니다. 함께 원정 방에 들어가 있거나 함께 원정 중일 때는(결과 보고를 확인할 때까지) 같은 일행끼리 대화하는 「원정」 탭이 생깁니다. 탭이 많아 넘칠 때는 탭 줄 끝이 흐려지며, 옆으로 밀거나(마우스는 휠 · 좌우 화살표) 넘겨 볼 수 있습니다. 파티 · 동아리 · 기숙사 · 학과 탭은 같은 소속끼리 대화하며, 동아리 · 기숙사 · 학과 탭에는 RP와 사담(오너) 채널이 따로 있습니다. 1:1 탭은 친구와 대화합니다. 입력 후 우측 보내기 버튼(또는 Enter)으로 전송합니다. RP에서는 대사 중간에 *별표 사이*로 행동을 넣을 수 있고, /me 로 시작하면 전체가 행동으로 표시됩니다. 이름을 누르면 해당 학생의 정보창이 열립니다. 필요 없는 탭은 설정 › 채팅 탭에서 숨길 수 있습니다(최소 하나는 유지).' },
+    { c: '교류', t: '채팅 (공지 · 모집 · RP · 월드 · 파티 · 원정 · 동아리 · 기숙사 · 학과 · 1:1)', b: '채팅창은 모든 화면에 표시되며, 열지 않은 탭의 글도 실시간으로 받습니다. 새 글이 오면 탭에 숫자가 표시되고, 탭을 열면 「여기부터 새 글」 위치부터 보여 줍니다. 공지 탭은 운영진 공지와 월드 보스 소식, 모집 탭은 함께 원정 · 동아리 · 파티 모집 카드가 올라오는 곳으로 직접 쓸 수 없습니다. 함께 원정 방에 들어가 있거나 함께 원정 중일 때는(「원정 완료」를 누를 때까지) 같은 일행끼리 대화하는 「원정」 탭이 생깁니다. 탭이 많아 넘칠 때는 탭 줄 끝이 흐려지며, 옆으로 밀거나(마우스는 휠 · 좌우 화살표) 넘겨 볼 수 있습니다. 파티 · 동아리 · 기숙사 · 학과 탭은 같은 소속끼리 대화하며, 동아리 · 기숙사 · 학과 탭에는 RP와 사담(오너) 채널이 따로 있습니다. 1:1 탭은 친구와 대화합니다. 입력 후 우측 보내기 버튼(또는 Enter)으로 전송합니다. RP에서는 대사 중간에 *별표 사이*로 행동을 넣을 수 있고, /me 로 시작하면 전체가 행동으로 표시됩니다. 이름을 누르면 해당 학생의 정보창이 열립니다. 필요 없는 탭은 설정 › 채팅 탭에서 숨길 수 있습니다(최소 하나는 유지).' },
     { c: '교류', t: '내 정보와 두상', b: '상단의 내 이름을 누르면 다른 학생에게 보이는 내 정보가 먼저 표시되며, 「편집」 탭에서 두상 · 한 줄 소개 · 자기소개 · 공개 범위를 설정합니다. 두상은 고른 그림의 가운데를 100×100으로 줄여 올립니다. 자기소개는 친구에게만 공개할 수도 있습니다.' },
     { c: '교류', t: '칭호', b: '조건을 채우면 칭호가 열립니다. 기록 → 칭호 도감의 「달기」나 내 정보 → 편집에서 골라 이름 앞에 붙일 수 있습니다. 채팅에서 칭호를 보고 싶지 않으면 설정에서 내 칭호 · 다른 학생 칭호를 각각 숨길 수 있습니다(정보창에는 그대로 표시).' },
     { c: '교류', t: '친구', b: '교류 → 친구 탭(또는 내 정보 → 친구)에서 이름으로 신청하거나, 채팅에서 이름을 눌러 신청합니다. 상대가 수락하면 접속 중인 친구가 상단에 표시되며, 1:1 대화와 파티 초대를 바로 할 수 있습니다.' },
@@ -2538,7 +2542,7 @@ if (typeof module !== 'undefined') module.exports = DATA;
   R.SKY = [
     { id: 'meteor', name: '유성 소나기', min: 40, eff: { dropPct: 0.2, goldPct: 0.1 }, text: '전리품 확률 +20%, ' + CUR + ' +10%' },
     { id: 'aurora', name: '별샘 오로라', min: 60, eff: { manaPct: 0.3, knowPct: 0.1 }, text: '마나 재생 +30%, 지식 +10%' },
-    { id: 'comet', name: '꼬리별', min: 45, eff: { xpPct: 0.15, lectureSpd: 0.05 }, text: '경험치 +15%, 수업 속도 +5%' },
+    { id: 'comet', name: '꼬리별', min: 45, eff: { xpPct: 0.15, lectureSpd: 0.05 }, text: '경험치 +15%, 수업 효율 +5%' },
     { id: 'whale', name: '구름 위의 별고래', min: 30, eff: { goldPct: 0.15 }, text: CUR + ' +15%, 올려다보면 조금 더 큰 선물' }
   ];
   function hash32(n) { n = (n ^ 61) ^ (n >>> 16); n = n + (n << 3); n = n ^ (n >>> 4); n = Math.imul(n, 0x27d4eb2d); return (n ^ (n >>> 15)) >>> 0; }
@@ -2570,8 +2574,8 @@ if (typeof module !== 'undefined') module.exports = DATA;
   R.RITUAL_BUFF = { name: '별샘의 축복', eff: { xpPct: 0.15, knowPct: 0.15, goldPct: 0.1 }, dur: 4 * 3600, color: '#9fd8ff', text: '4시간 동안 경험치·지식 +15%, ' + CUR + ' +10%' };
   R.ritualGoal = function (active) { return Math.max(5, Math.ceil((active || 0) * 0.35)); };
   R.ritualCost = function (P, W, now) { return Math.floor(calc(P, W, now).mana * 1800); };   // 마나 30분 분
-  // 효과 묶음 → 「경험치 +50%, 수업 속도 +100%」 (버프 · 날씨 설명용)
-  var EFF_NAME = { xpPct: '경험치', goldPct: CUR, knowPct: '지식', lectureSpd: '수업 속도', manaPct: '마나 재생', manaCap: '마나 저장', hpPct: '체력', atkPct: '공격력', defPct: '방어력', physPct: '물리 피해', spellPct: '주문 위력', dropPct: '전리품', dispPct: '파견 보상', hatchSpd: '부화 속도', brewSpd: '조제 속도', enhBonus: '강화 성공률', bossDmg: '보스 피해', cdr: '재사용 대기', leech: '흡혈' };
+  // 효과 묶음 → 「경험치 +50%, 수업 효율 +100%」 (버프 · 날씨 설명용)
+  var EFF_NAME = { xpPct: '경험치', goldPct: CUR, knowPct: '지식', lectureSpd: '수업 효율', manaPct: '마나 재생', manaCap: '마나 저장', hpPct: '체력', atkPct: '공격력', defPct: '방어력', physPct: '물리 피해', spellPct: '주문 위력', dropPct: '전리품', dispPct: '파견 보상', hatchSpd: '부화 속도', brewSpd: '조제 속도', enhBonus: '강화 성공률', bossDmg: '보스 피해', cdr: '재사용 대기', leech: '흡혈' };
   R.effText = function (eff) {
     var out = []; for (var k in eff || {}) { var v = eff[k]; if (!v || !EFF_NAME[k]) { if (k === 'examBonus' && v) out.push('시험 +' + v + '점'); continue; } out.push(EFF_NAME[k] + ' ' + (v > 0 ? '+' : '−') + (k === 'manaCap' ? Math.round(Math.abs(v) / 3600 * 10) / 10 + '시간' : Math.round(Math.abs(v) * 1000) / 10 + '%')); }
     return out.join(', ');
@@ -2591,7 +2595,7 @@ if (typeof module !== 'undefined') module.exports = DATA;
   R.notifyEvents = function (P, now) {
     var out = [], add = function (key, kind, t, title, body) { if (t > 0) out.push({ key: key, kind: kind, t: t, title: title, body: body }); };
     (P.lec || []).forEach(function (j, i) { if (j) add('lec' + i + ':' + j.end, 'lec', j.end, '수업이 끝났습니다', (R.SUBJ[j.s] ? R.SUBJ[j.s].name : '수업') + ' · 다음 수업 시작 가능'); });
-    (P.exp || []).forEach(function (j, i) { if (j) add('exp' + i + ':' + j.end, 'exp', j.end, '원정대가 돌아왔습니다', j.s + '단계 ' + R.zoneOf(j.s).name); });
+    (P.exp || []).forEach(function (j, i) { if (j) add('exp' + i + ':' + j.end, 'exp', R.expEnd(j), '원정대가 돌아왔습니다', j.s + '단계 ' + R.zoneOf(j.s).name + ' · 원정 완료 가능'); });
     (P.rsq || []).forEach(function (q, i) { if (q && RES[q.id]) add('res' + i + ':' + q.end, 'res', q.end, '연구가 끝났습니다', RES[q.id].name + ' ' + (((P.rs || {})[q.id] || 0) + 1) + '단계'); });
     var disp = (P.fam && P.fam.disp) || {}; for (var f in disp) if (FAM[f]) add('disp' + f + ':' + disp[f].end, 'disp', disp[f].end, FAM[f].name + '이(가) 돌아왔습니다', '사역마 파견 완료');
     var sp = P.spirit || { n: 0, at: now }, n = sp.n || 0, at = sp.at || now, k = Math.floor((now - at) / K.SPIRIT_EVERY);
@@ -2710,7 +2714,7 @@ if (typeof module !== 'undefined') module.exports = DATA;
   // W.hpts = 기숙사별 누적 점수, W.hfull = 100%가 되는 점수 (서버 HOUSE_FULL로 조절)
   R.HOUSE_BASE = 0.1; R.HOUSE_FULL = 100000;
   R.housePct = function (W, hid) { var p = W && W.hpts ? +W.hpts[hid] || 0 : 0, f = W && W.hfull || R.HOUSE_FULL; return R.HOUSE_BASE + (1 - R.HOUSE_BASE) * Math.min(1, p / f); };
-  // '지식 획득 +15%, 수업 속도 +5%' → '지식 획득 +1.5% / +15%, 수업 속도 +0.5% / +5%' (현재 / 최대)
+  // '지식 획득 +15%, 수업 효율 +5%' → '지식 획득 +1.5% / +15%, 수업 효율 +0.5% / +5%' (현재 / 최대)
   R.houseEffText = function (hid, pct) {
     var h = HOUSE[hid]; if (!h) return '';
     return h.bonusText.split(', ').map(function (s) { return s.replace(/\+(\d+(?:\.\d+)?)%/, function (m, n) { var c = Math.round(n * pct * 10) / 10; return '+' + c + '% / +' + n + '%'; }); }).join(', ');
@@ -3273,7 +3277,8 @@ if (typeof module !== 'undefined') module.exports = DATA;
     }
     function lecEv(j, i) { if (j.end <= now) ev.push({ t: j.end, f: function () { var o = lecFinish(P, j, j.end, 1, false); P.lec[i] = null; P.lecEnd[i] = j.end; inbox(P, o); qAfter(i, j.end); } }); }
     P.lec.forEach(function (j, i) { if (j) lecEv(j, i); else if (P.lecQ[i] && P.lecQ[i].at && P.lecQ[i].at <= now) { var at = P.lecQ[i].at; ev.push({ t: at, f: function () { var nj = lecQRun(P, W, i, at); if (nj) lecEv(nj, i); } }); } });
-    P.exp.forEach(function (j, i) { var te = R.expEnd(j || {}); if (j && te <= now) ev.push({ t: te, f: function () { var fell = te < j.end, o = expFinish(P, j, te, fell ? clamp((te - j.start) / j.dur, 0, 1) : 1, fell ? 'fall' : false); P.exp[i] = null; if (fell) log(P, te, j.s + '단계 원정에서 쓰러져 돌아왔습니다 (모은 것의 80%)', 'bad'); inbox(P, o); } }); });
+    // 원정은 끝나도 저절로 받지 않는다: 끝났다는 표시(done)만 남기고, 학생이 「원정 완료」(A.expClaim)를 눌러 결과를 받는다
+    P.exp.forEach(function (j) { var te = R.expEnd(j || {}); if (j && !j.done && te <= now) ev.push({ t: te, f: function () { j.done = te; if (te < j.end) log(P, te, j.s + '단계 원정에서 쓰러졌습니다 · 「원정 완료」를 누르면 모은 것의 80%를 받습니다', 'bad'); } }); });
     P.rsq.forEach(function (q, i) {
       if (q && q.end <= now) ev.push({ t: q.end, f: function () {
         P.rs[q.id] = (P.rs[q.id] || 0) + 1; P.rsq[i] = null; P.st.researchDone++; cupAdd(P, 25); if (q.end - q.start >= 28800) P.st.nightJobs++;
@@ -3744,7 +3749,7 @@ if (typeof module !== 'undefined') module.exports = DATA;
     if (R.dreaming(P, now)) err('꿈길 중에는 출정할 수 없습니다 (연구를 시작할 수 있습니다)');
     var c = calc(P, W, now), i = int(a.slot, 0, 1), s = int(a.s, 1, 100000), d = DUR[str(a.d)];
     needSlot(P.exp, i, c.expSlots); if (!d) err('잘못된 시간입니다');
-    if (P.exp[i]) err('이미 원정 중인 슬롯입니다');
+    if (P.exp[i]) err(R.expEnd(P.exp[i]) <= now ? '「원정 완료」를 눌러 결과를 먼저 받아야 합니다' : '이미 원정 중인 슬롯입니다');
     if (s > P.maxStage || s > R.stageCap(P)) err('아직 갈 수 없는 단계입니다');
     if (R.isBoss(s)) err('보스 단계는 보스 도전으로만 갈 수 있습니다');
     var pv = R.expPreview(P, W, s, d.k, now);
@@ -3756,8 +3761,16 @@ if (typeof module !== 'undefined') module.exports = DATA;
     for (var q = 0; q < made; q++) j.loot.push({ at: Math.floor(now + d.s * (q + 0.3 + rnd(P) * 0.6) / made), it: makeItem(P, pick(P, D.SLOTS).id, s, rollRarity(P, j.rarity)) });
     return { ok: true };
   };
+  A.expClaim = function (P, W, now, a) {
+    var i = int(a.slot, 0, 1), j = P.exp[i]; if (!j) err('진행 중인 원정이 없습니다');
+    var te = R.expEnd(j); if (te > now) err('아직 원정 중입니다');
+    var fell = te < j.end, o = expFinish(P, j, te, fell ? clamp((te - j.start) / j.dur, 0, 1) : 1, fell ? 'fall' : false); P.exp[i] = null;
+    log(P, now, j.s + '단계 원정 ' + (fell ? '결과를 받았습니다 (쓰러져 모은 것의 80%)' : '완료'), fell ? 'bad' : 'good');
+    return o;
+  };
   A.expCancel = function (P, W, now, a) {
     var i = int(a.slot, 0, 1), j = P.exp[i]; if (!j) err('진행 중인 원정이 없습니다');
+    if (R.expEnd(j) <= now) return A.expClaim(P, W, now, a);   // 이미 끝난 원정은 귀환이 아니라 완료로
     var o = expFinish(P, j, now, clamp((now - j.start) / j.dur, 0, 1), 'recall'); P.exp[i] = null; log(P, now, j.s + '단계 원정에서 직접 귀환했습니다', 'news'); return o;
   };
   A.boss = function (P, W, now) {
@@ -5678,7 +5691,7 @@ var Net = (function () {
   function nextEventTime() {
     var P = S.P, t = Infinity;
     P.lec.forEach(function (j) { if (j) t = Math.min(t, j.end); });
-    P.exp.forEach(function (j) { if (j) t = Math.min(t, R.expEnd(j)); });
+    P.exp.forEach(function (j) { if (j && !j.done) t = Math.min(t, R.expEnd(j)); });   // 끝나서 「원정 완료」를 기다리는 원정은 빼고
     (P.lecQ || []).forEach(function (q, i) { if (q && q.at && !P.lec[i]) t = Math.min(t, q.at); });
     P.rsq.forEach(function (q) { if (q) t = Math.min(t, q.end); });
     for (var k in P.fam.disp) t = Math.min(t, P.fam.disp[k].end);
@@ -5689,13 +5702,14 @@ var Net = (function () {
   }
 
   /* ───────── 자리 비운 동안 보고 ───────── */
+  function expReportLine(o) { return '<li><b>' + o.s + '단계 원정</b> ' + (o.fell ? '<span class="bad">쓰러져 귀환 (80%)</span>' : '귀환') + ' — ' + fmt(o.kills) + '마리, ' + MONEY(o.gold, '+') + (o.items.length ? ', 장비 ' + o.items.map(function (it) { return '<span style="color:' + rcol(it.r) + '">' + esc(it.name) + '</span>'; }).slice(0, 3).join(', ') + (o.items.length > 3 ? ' 외 ' + (o.items.length - 3) + '개' : '') : '') + '</li>'; }
   function inboxReport() {
     var items = S.P.inbox.slice(), lines = [];
     S.inboxUpto = items.reduce(function (m, o) { return Math.max(m, o.t || 0); }, 0);
     var sumExp = { kills: 0, gold: 0, xp: 0, items: 0 };
     items.forEach(function (o) {
       if (o.k === 'lec') { var pl = S.cls && S.cls.prof && S.cls.prof[o.s]; lines.push('<li><b>' + R.SUBJ[o.s].name + '</b> 수업 끝 — 과목 경험치 +' + fmt(o.xp) + ', 지식 +' + fmt(o.know) + (o.to > o.from ? ' <span class="gold">(Lv ' + o.from + '→' + o.to + ')</span>' : '') + (o.peers ? '<div class="tiny muted">함께 들은 학생 ' + o.peers + '명 · 경험치 +' + Math.round(o.pb * 100) + '%</div>' : '') + (o.ontime ? '<div class="tiny good">제때 입실 · 경험치 +' + Math.round(R.ONTIME_BONUS * 100) + '%</div>' : o.auto ? '<div class="tiny faint">예약해 둔 교시</div>' : '') + (pl ? '<div class="tiny profline">' + esc(R.SUBJ[o.s].prof) + ': “' + esc(pl) + '”</div>' : '') + '</li>'); }
-      else if (o.k === 'exp') { sumExp.kills += o.kills; sumExp.gold += o.gold; sumExp.xp += o.xp; sumExp.items += o.items.length; lines.push('<li><b>' + o.s + '단계 원정</b> ' + (o.fell ? '<span class="bad">쓰러져 귀환 (80%)</span>' : '귀환') + ' — ' + fmt(o.kills) + '마리, ' + MONEY(o.gold, '+') + (o.items.length ? ', 장비 ' + o.items.map(function (it) { return '<span style="color:' + rcol(it.r) + '">' + esc(it.name) + '</span>'; }).slice(0, 3).join(', ') + (o.items.length > 3 ? ' 외 ' + (o.items.length - 3) + '개' : '') : '') + '</li>'); }
+      else if (o.k === 'exp') { sumExp.kills += o.kills; sumExp.gold += o.gold; sumExp.xp += o.xp; sumExp.items += o.items.length; lines.push(expReportLine(o)); }
       else if (o.k === 'res') lines.push('<li><b>연구 완료</b> — ' + R.RES[o.id].name + ' ' + o.lv + '단계</li>');
       else if (o.k === 'hatch') lines.push('<li><b>부화</b> — ' + R.FAM[o.f].name + (o.isNew ? ' <span class="gold">(새 사역마)</span>' : '') + '</li>');
       else if (o.k === 'disp') lines.push('<li><b>' + R.FAM[o.f].name + '</b> 귀환 — ' + D.MATS[o.mat].name + ' ' + o.mats + ', 마석 ' + o.stones + ', ' + MONEY(o.gold, '+') + (o.egg ? ', <span class="gold">환수의 알</span>' : '') + (o.shard ? ', 별조각 +' + o.shard : '') + '</li>');
@@ -6562,7 +6576,7 @@ var Net = (function () {
     var P = S.P, c = C(), rows = [], idleS = [], t = now(), dz = R.dreaming(P, t), ot = false;
     // 진행 중인 것만 한 줄씩. 비어 있는 자리는 맨 아래 한 줄로 모은다
     for (var i = 0; i < c.lecSlots; i++) { var l = P.lec[i], q = P.lecQ && P.lecQ[i]; if (l) rows.push(tline('수업', R.SUBJ[l.s].name + ' 수업' + (q ? ' <span class="tiny faint">→ 다음 ' + R.SUBJ[q.s].name + '</span>' : ''), l, 'lecture')); else { idleS.push('lecture'); if (R.onTime(P, i, t)) ot = true; } }
-    for (var k = 0; k < c.expSlots; k++) { var e = P.exp[k]; if (e) rows.push(tline('원정', e.s + '단계 ' + R.zoneOf(e.s).name, e, 'explore')); else idleS.push('explore'); }
+    for (var k = 0; k < c.expSlots; k++) { var e = P.exp[k]; if (e && expDone(e)) rows.push('<div class="tl"><span class="tli">원정</span><div class="tlb"><div class="small">' + e.s + '단계 ' + R.zoneOf(e.s).name + '</div><div class="tiny gold">' + (e.done < e.end ? '쓰러져 돌아옴' : '원정 끝') + ' · 완료 대기</div></div><button class="btn sm primary" data-act="exp-claim" data-a="' + k + '">원정 완료</button></div>'); else if (e) rows.push(tline('원정', e.s + '단계 ' + R.zoneOf(e.s).name, e, 'explore')); else idleS.push('explore'); }
     for (var r = 0; r < c.resSlots; r++) { var rq = P.rsq[r]; if (rq) rows.push(tline('연구', R.RES[rq.id].name + ' ' + ((P.rs[rq.id] || 0) + 1) + '단계', rq, 'lib')); else idleS.push('lib'); }
     if (idleS.length) {
       var nm = { lecture: '수업', explore: '원정', lib: '연구' }, cnt = {}; idleS.forEach(function (x) { cnt[x] = (cnt[x] || 0) + 1; });
@@ -6609,7 +6623,7 @@ var Net = (function () {
   /* ── 강의실 ── */
   V.lecture = function () {
     var P = S.P, c = C(), ex = R.examFor(P);
-    var h = pageHead('일곱 과목, 일곱 해', '강의실', '수업 속도 <b class="num gold">×' + c.lecSpd.toFixed(2) + '</b>');
+    var h = pageHead('일곱 과목, 일곱 해', '강의실', '수업 효율 <b class="num gold">×' + c.lecSpd.toFixed(2) + '</b> <span class="muted">경험치 · 지식 획득량</span>');
     R.lecQ(P); h += ttCard(c);
     var nL = 0; for (var i0 = 0; i0 < 3; i0++) { if (i0 >= c.lecSlots && !P.lec[i0]) break; nL++; }
     h += '<div class="grid gauto' + (nL === 1 ? ' one' : '') + '" style="margin-bottom:16px">';   // 한 자리면 가로로 넓게
@@ -6846,7 +6860,7 @@ var Net = (function () {
     var shown = P.exp.find(Boolean), z = R.zoneOf(shown ? shown.s : (S.pick.es0 || R.bestStage(P, wctx())));
     var gcap = R.gradeCap(P), h = pageHead(z.name, '원정', '열린 단계 <b class="num gold">1–' + cap + '</b>' + (cap > gcap ? ' <span class="tag br" title="학년 상한 ' + gcap + '단계 너머를 레벨로 열었습니다">레벨로 +' + (cap - gcap) + '</span>' : ''));
     var running = P.exp.map(function (j, i) { return j ? i : -1; }).filter(function (i) { return i >= 0; });
-    h += '<div class="grid ' + (running.length > 1 ? 'g2' : '') + '">' + (running.length ? running.map(function (i) { var j = P.exp[i]; return '<div class="card explogcard"><div class="row between"><h3>원정 일지 <span class="small muted">' + j.s + '단계 · ' + R.zoneOf(j.s).name + '</span></h3><span class="tiny faint num" data-l="left:' + j.end + '"></span></div><div class="row tiny muted" style="margin-top:2px;gap:12px"><span>처치 약 <b class="num" data-l="expk:' + i + '"></b></span><span>' + CUR + ' 약 <b class="num gold" data-l="expg:' + i + '"></b></span></div><div class="explog" data-explog="' + i + '" aria-live="off"></div></div>'; }).join('')
+    h += '<div class="grid ' + (running.length > 1 ? 'g2' : '') + '">' + (running.length ? running.map(function (i) { var j = P.exp[i]; return '<div class="card explogcard"><div class="row between"><h3>원정 일지 <span class="small muted">' + j.s + '단계 · ' + R.zoneOf(j.s).name + '</span></h3><span class="tiny faint num" data-l="left:' + j.end + '"></span></div><div class="row tiny muted" style="margin-top:2px;gap:12px"><span>처치 약 <b class="num" data-l="expk:' + i + '"></b></span><span>' + CUR + ' 약 <b class="num gold" data-l="expg:' + i + '"></b></span></div><div class="logw"><div class="explog" data-explog="' + i + '" aria-live="off"></div><button class="lognew" hidden></button></div></div>'; }).join('')
       : '<div class="card inset"><p class="small muted">출정하면 이곳에 원정 일지가 몇십 초마다 한 줄씩 적힙니다. 창을 닫아 두어도 원정은 그대로 진행됩니다.</p></div>') + '</div>';
     // 함께 원정 방에 들어가 있으면: 방을 위로 올리고, 방이 떠날 때 쓸 슬롯은 「출발 대기」로 막아 둔다 (혼자 원정을 실수로 보내지 않게)
     var inRoom = !!(S.er && S.er.mine), resv = -1;
@@ -6856,7 +6870,14 @@ var Net = (function () {
     for (var i = 0; i < 2; i++) {
       if (i >= c.expSlots && !P.exp[i]) break;   // 원정은 한 자리
       var j = P.exp[i];
-      if (j) {
+      if (j && expDone(j)) {
+        var fe = R.expEnd(j), fell = fe < j.end, fk = Math.floor(j.kps * j.dur * j.eff * (fell ? Math.min(1, (fe - j.start) / j.dur) * R.K.FALL_KEEP : 1));
+        h += '<div class="card hl slotcard expdone"><span class="tiny gold">원정 ' + (i + 1) + ' · ' + (fell ? '쓰러져 돌아옴' : '원정 끝') + '</span>' +
+          '<h3>' + j.s + '단계 <span class="small muted">' + R.zoneOf(j.s).name + '</span></h3>' +
+          '<p class="small ' + (fell ? 'bad' : 'muted') + '">' + clock(fe) + (fell ? ' 쓰러져 돌아왔습니다. 그때까지 모은 것의 80%를 받습니다.' : ' 원정대가 돌아왔습니다.') + '</p>' +
+          '<div class="small">처치 약 ' + fmt(fk) + '마리 · ' + MONEY(fk * j.gEach, '+') + ' · 경험치 +' + fmt(fk * j.xEach) + '</div>' +
+          '<div class="row" style="margin-top:10px"><button class="btn primary" data-act="exp-claim" data-a="' + i + '">원정 완료</button><span class="tiny faint">눌러야 결과를 받고 다음 원정을 보낼 수 있습니다</span></div></div>';
+      } else if (j) {
         var el = Math.min(1, (now() - j.start) / j.dur), sofar = Math.floor(j.kps * j.dur * j.eff * el);
         h += '<div class="card hl slotcard"><div class="row between"><span class="tiny gold">원정 ' + (i + 1) + '</span>' + cancelBtn('exp' + i, 'expCancel', { slot: i }) + '</div>' +
           '<h3>' + j.s + '단계 <span class="small muted">' + R.zoneOf(j.s).name + '</span></h3>' + (j.pt ? '<div class="tiny" style="margin:2px 0 4px"><span class="tag br">함께 원정 ' + j.pt.n + '명</span> <span class="postag p-' + j.pt.pos + '">' + R.EXP_POS[j.pt.pos].name + '</span>' + (j.pt.team ? '' : '<span class="tiny muted">나</span>') + (j.pt.team ? '' : j.pt.with && j.pt.with.length ? '<div class="ptwith">' + j.pt.with.map(function (w) { return '<span class="erm sm' + (w.npc ? ' npc' : '') + '"><span class="postag p-' + w.pos + '">' + R.EXP_POS[w.pos].name + '</span>' + erName(w) + '</span>'; }).join('') + '</div>' : '') + '</div>' : '') + (j.pt && j.pt.team ? '<span hidden data-l="ptteam:' + i + '"></span>' + ptTeam(j, i) : '') + '<div class="bar thick"><b data-b="prog:' + j.start + ':' + j.end + '"></b></div>' +
@@ -7117,10 +7138,10 @@ var Net = (function () {
   var PNAMES = { balance: '균형', attack: '공격', guard: '생존', scholar: '학구' };
   // 프리셋을 고른 이유 (학과마다 공격 능력치가 다르다: 기사 = 체력, 마법사 = 지력)
   var PWHY = {
-    mage: { balance: '주문 공격력을 올리는 지력을 중심으로, 의지 · 체력으로 버티는 힘을 보탭니다.', attack: '지력과 민첩을 높여 주문 · 평타 화력을 최대로 끌어올립니다. 생존력은 낮은 편입니다.', guard: '체력을 높여 쉽게 쓰러지지 않게 하면서 지력도 챙깁니다. 높은 단계나 보스에 적합합니다.', scholar: '의지로 마나 재생을, 지력으로 수업 속도를 올려 성장 속도에 집중합니다.' },
-    knight: { balance: '물리 공격력과 생존을 함께 올리는 체력을 중심으로, 민첩 · 의지를 보탭니다.', attack: '체력 · 민첩 · 행운으로 평타 화력과 치명타를 끌어올립니다.', guard: '체력과 의지를 높여 선봉에서 오래 버팁니다. 함께 원정의 선봉에 적합합니다.', scholar: '의지로 마나 재생을, 지력으로 수업 속도를 올려 성장 속도에 집중합니다.' }
+    mage: { balance: '주문 공격력을 올리는 지력을 중심으로, 의지 · 체력으로 버티는 힘을 보탭니다.', attack: '지력과 민첩을 높여 주문 · 평타 화력을 최대로 끌어올립니다. 생존력은 낮은 편입니다.', guard: '체력을 높여 쉽게 쓰러지지 않게 하면서 지력도 챙깁니다. 높은 단계나 보스에 적합합니다.', scholar: '의지로 마나 재생을, 지력으로 수업 효율을 올려 성장 속도에 집중합니다.' },
+    knight: { balance: '물리 공격력과 생존을 함께 올리는 체력을 중심으로, 민첩 · 의지를 보탭니다.', attack: '체력 · 민첩 · 행운으로 평타 화력과 치명타를 끌어올립니다.', guard: '체력과 의지를 높여 선봉에서 오래 버팁니다. 함께 원정의 선봉에 적합합니다.', scholar: '의지로 마나 재생을, 지력으로 수업 효율을 올려 성장 속도에 집중합니다.' }
   };
-  var SDESC = { int: '주문 공격력 +1%, 수업 속도', wil: '마나 재생, 생명력', agi: '공격 속도 +1%', vit: '물리 공격력 +1%, 생명력 +1.2%, 방어력', luk: '치명타, 전리품' };
+  var SDESC = { int: '주문 공격력 +1%, 수업 효율', wil: '마나 재생, 생명력', agi: '공격 속도 +1%', vit: '물리 공격력 +1%, 생명력 +1.2%, 방어력', luk: '치명타, 전리품' };
   function allocCard() {
     var P = S.P, c = C(), PRESETS = PRESETS_(), cur = Object.keys(PRESETS).find(function (k) { return JSON.stringify(PRESETS[k]) === JSON.stringify(P.opt.allocW); });
     var h = '<div class="card"><div class="row between"><h3>능력치</h3><span class="small">남은 포인트 <b class="num gold">' + P.pts + '</b></span></div><div class="alloc" style="margin-top:8px">';
@@ -7391,7 +7412,7 @@ var Net = (function () {
     return '<div class="card twjournal' + (live ? ' live' : '') + '" data-anchor="twlog"><div class="row between"><h3>별의 탑 일지 <span class="small muted">' + esc(l.name) + ' · ' + l.f + '층</span></h3>' +
       (live ? '<span class="tag br"><span class="livedot"></span> 지금 도전 중</span>' : '<span class="tag ' + (l.win ? 'ok' : '') + '">' + (l.win ? '돌파' : '물러남 · ' + l.pct + '%') + '</span>') + '</div>' +
       (runs.length > 1 ? '<div class="filters" style="margin-top:6px">' + runs.map(function (x) { return '<button class="btn sm ghost' + (x === l ? ' on' : '') + '" data-act="twsel" data-a="' + x.t + '">' + esc(x.name) + ' ' + x.f + '층</button>'; }).join('') + '</div>' : '') +
-      '<div class="explog twlines" id="twlines" data-tw="' + l.t + '" aria-live="polite">' + twLinesHtml(l) + '</div>' +
+      '<div class="logw"><div class="explog twlines" id="twlines" data-tw="' + l.t + '" aria-live="polite">' + twLinesHtml(l) + '</div><button class="lognew" hidden></button></div>' +
       '<div class="row tiny faint" style="margin-top:6px"><span>파티원 모두가 같은 시각에 같은 장면을 봅니다' + (live ? ' · 결과는 일지가 끝나면 알려 드립니다' : '') + '</span><span class="spacer"></span>' + (live ? '<button class="btn sm ghost" data-act="twskip" data-a="' + l.t + '">끝까지 보기</button>' : '') + '</div></div>';
   }
   ACT.twsel = function (t) { S.twSel = +t; render(); };
@@ -7404,7 +7425,7 @@ var Net = (function () {
     var box = $('#twlines'); if (!box || S.view !== 'party') return;
     var l = twRuns().find(function (x) { return String(x.t) === box.dataset.tw; }); if (!l) return;
     var n = twShown(l); if (box.__n === n && !force) return; box.__n = n;
-    var stick = box.scrollHeight - box.scrollTop - box.clientHeight < 30; box.innerHTML = twLinesHtml(l); if (stick || !box.__init) { box.scrollTop = box.scrollHeight; box.__init = 1; }
+    logFill(box, 'tw' + l.t, twLinesHtml(l));
     if (!twLive(l) && box.closest('.twjournal.live')) render();
   }
   function twResult(r) {
@@ -8024,8 +8045,8 @@ var Net = (function () {
     if (!S.P) return;
     var P = S.P, c = C(), b = {};
     var il = 0; for (var i = 0; i < c.lecSlots; i++) if (!P.lec[i]) il++;
-    var ie = 0; for (var k = 0; k < c.expSlots; k++) if (!P.exp[k]) ie++;
-    b.lecture = il ? '빈 슬롯' : ''; b.explore = S.erInv ? '초대 ' + S.erInv : ie ? '빈 슬롯' : '';
+    var ie = 0, ed = 0; for (var k = 0; k < c.expSlots; k++) { if (!P.exp[k]) ie++; else if (expDone(P.exp[k])) ed++; }
+    b.lecture = il ? '빈 슬롯' : ''; b.explore = ed ? '완료' : S.erInv ? '초대 ' + S.erInv : ie ? '빈 슬롯' : '';
     b.home = P.mq && R.mqReady(P) ? '이야기' : jar().n >= R.K.SPIRIT_JAR ? '정령' : (P.daily.login || P.daily.q.some(function (q) { return !q.done && R.dailyProg(P, q) >= q.goal; })) ? '보상' : '';
     b.lore = storyUnread() ? '새 글' : '';
     var ex = R.examFor(P); if (ex && P.grade < 8 && P.examCd <= now() && R.examEligible(P, ex)) b.exam = '응시';
@@ -8097,8 +8118,8 @@ var Net = (function () {
       var L = expLine(j, k, i), at = j.start + k * EXP_TICK;
       // 이 줄 사이에 실제로 주운 전리품이 있으면 그것을 적는다
       var got = (j.loot || []).filter(function (x) { return x.at > at - EXP_TICK && x.at <= at; });
-      if (got.length) { out.push('<div class="el kloot"><span class="et num">' + clock(at).replace(/^(오전|오후) /, '') + '</span><span>' + got.map(function (x) { return '<b style="color:' + rcol(x.it.r) + '">' + esc(x.it.name) + '</b>'; }).join(', ') + josa(got[got.length - 1].it.name, '을', '를').slice(-1) + ' 주웠다 <span class="eg">' + got.map(function (x) { return (D.RARITY[x.it.r] ? D.RARITY[x.it.r].name : '') + ' ' + R.slotName(x.it); }).join(', ') + '</span></span></div>'); continue; }
-      out.push('<div class="el"><span class="et num">' + clock(at).replace(/^(오전|오후) /, '') + '</span><span>' + L[0] + (L[1] ? ' <span class="eg">' + L[1] + '</span>' : '') + '</span></div>'); }
+      if (got.length) { out.push('<div class="el kloot" data-k="' + k + 'l"><span class="et num">' + clock(at).replace(/^(오전|오후) /, '') + '</span><span>' + got.map(function (x) { return '<b style="color:' + rcol(x.it.r) + '">' + esc(x.it.name) + '</b>'; }).join(', ') + josa(got[got.length - 1].it.name, '을', '를').slice(-1) + ' 주웠다 <span class="eg">' + got.map(function (x) { return (D.RARITY[x.it.r] ? D.RARITY[x.it.r].name : '') + ' ' + R.slotName(x.it); }).join(', ') + '</span></span></div>'); continue; }
+      out.push('<div class="el" data-k="' + k + '"><span class="et num">' + clock(at).replace(/^(오전|오후) /, '') + '</span><span>' + L[0] + (L[1] ? ' <span class="eg">' + L[1] + '</span>' : '') + '</span></div>'); }
     if (now() >= j.end) out.push('<div class="el start"><span class="et num">' + clock(j.end).replace(/^(오전|오후) /, '') + '</span><span>원정을 마치고 아카데미로 돌아간다.</span></div>');
     return out.join('');
   }
@@ -8107,9 +8128,29 @@ var Net = (function () {
       var i = +el.dataset.explog, j = S.P.exp[i]; if (!j) return;
       var n = Math.floor((Math.min(now(), j.end) - j.start) / EXP_TICK) + (now() >= j.end ? 1 : 0);
       if (el.__n === n) return; el.__n = n;
-      var stick = el.scrollHeight - el.scrollTop - el.clientHeight < 30; el.innerHTML = expLogHtml(i); if (stick || el.__first !== 1) { el.scrollTop = el.scrollHeight; el.__first = 1; }
+      logFill(el, 'exp' + i + ':' + j.start, expLogHtml(i));
     });
   }
+  /* 일지 칸 (원정 · 별의 탑): 맨 아래를 보고 있으면 새 줄을 따라 내려가고, 위로 올려 읽는 중이면 읽던 줄을 그 자리에 붙잡아 둔다
+     (원정 일지는 최근 30줄만 보여서 위쪽 줄이 빠져도 화면이 밀리지 않게). 화면을 다시 그려도 LOGSCR에 남고, 새 줄은 아래쪽 단추로 알린다. */
+  var LOGSCR = {};
+  function logLines(box) { var out = []; Array.prototype.forEach.call(box.children, function (c, i) { if (!c.classList.contains('twdots')) out.push([c.dataset.k || 'i' + i, c]); }); return out; }
+  function logAnchor(box, st) { var y = box.scrollTop; st.anc = null; logLines(box).some(function (x) { if (x[1].offsetTop + x[1].offsetHeight > y) { st.anc = [x[0], x[1].offsetTop - y]; return true; } }); }
+  function logFill(box, key, html) {
+    var st = LOGSCR[key] || (LOGSCR[key] = { stick: true, keys: null, nw: 0, anc: null });
+    if (box.__lk !== key) {
+      box.__lk = key;
+      box.addEventListener('scroll', function () { st.stick = box.scrollHeight - box.scrollTop - box.clientHeight < 30; if (st.stick) st.nw = 0; else logAnchor(box, st); logBtn(box, st); }, { passive: true });
+      var b = box.parentNode.querySelector('.lognew'); if (b) b.addEventListener('click', function () { box.scrollTop = box.scrollHeight; });
+    } else if (!st.stick) logAnchor(box, st);
+    box.innerHTML = html;
+    var ls = logLines(box), keys = {};
+    ls.forEach(function (x) { keys[x[0]] = 1; if (st.keys && !st.stick && !st.keys[x[0]]) st.nw++; }); st.keys = keys;
+    if (st.stick) box.scrollTop = box.scrollHeight;
+    else if (st.anc) { var a = ls.find(function (x) { return x[0] === st.anc[0]; }); box.scrollTop = a ? a[1].offsetTop - st.anc[1] : 0; }
+    logBtn(box, st);
+  }
+  function logBtn(box, st) { var b = box.parentNode.querySelector('.lognew'); if (!b) return; b.hidden = st.stick; b.textContent = st.nw ? '새 줄 ' + st.nw + '개 ↓' : '맨 아래로 ↓'; }
 
   /* ───────── 전투 일지 (보스 · 결투 · 월드 보스 · 시험 대련) ─────────
      그림 대신 별의 탑처럼 글로 흘러간다. 서버가 준 전투 기록(ev)을 몇 줄로 묶어 7초쯤에 걸쳐 보여 주고, 건너뛰면 바로 끝까지. */
@@ -8202,6 +8243,16 @@ var Net = (function () {
   ACT['lec-start'] = function (i) { i = +i; var s = S.pick['ls' + i], d = curDur('ld' + i, '1h'); act('lecStart', { slot: i, s: s, d: d.k }).then(function (r) { if (r) { Snd.play('click'); toast(R.SUBJ[s].name + ' 수업 시작' + (r.ontime ? ' · 제때 입실!' : ''), clock(now() + d.s) + '에 끝납니다' + (r.ontime ? ' · 과목 경험치 +' + Math.round(R.ONTIME_BONUS * 100) + '%' : ''), 2200); } render(); }); };
   ACT.es = function (i, d) { var cap = Math.min(S.P.maxStage, R.stageCap(S.P)), s = (S.pick['es' + i] || 1) + +d; if (R.isBoss(s)) s += +d; S.pick['es' + i] = Math.max(1, Math.min(cap, s)); if (R.isBoss(S.pick['es' + i])) S.pick['es' + i]--; render(); };
   ACT['es-best'] = function (i) { S.pick['es' + i] = R.bestStage(S.P, wctx()); render(); };
+  // 끝난 원정: 끝나는 순간 다시 그리고(완료 단추), 학생이 눌러야 결과를 받는다
+  function expDone(j) { return !!j && (j.done || R.expEnd(j) <= now()); }
+  ACT['exp-claim'] = function (i) {
+    act('expClaim', { slot: +i }).then(function (o) {
+      if (!o) return; Snd.play('level');
+      modal(mhead('원정 결과', o.s + '단계') + '<ul class="report">' + expReportLine(o) + '</ul><p class="small muted" style="margin-top:6px">경험치 +' + fmt(o.xp) + (o.mats ? ' · ' + D.MATS[o.mat].name + ' ' + o.mats : '') + (o.stones ? ' · 마석 ' + o.stones : '') + '</p>' +
+        '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>');
+      render();
+    });
+  };
   ACT['exp-start'] = function (i) { i = +i; var s = S.pick['es' + i], d = curDur('ed' + i, '1h'); act('expStart', { slot: i, s: s, d: d.k }).then(function (r) { if (r) { Snd.play('click'); toast(s + '단계 원정 출발', clock(now() + d.s) + '에 돌아옵니다', 2000); } render(); }); };
   ACT.boss = function () {
     var b = R.nextBoss(S.P), def = R.zoneOf(b).boss;
@@ -8568,7 +8619,7 @@ var Net = (function () {
   // 가입 화면: 기숙사 보너스에 나오는 말(마나 · 지식 · 아르크 …)을 처음 보는 학생을 위한 짧은 풀이
   function glossCard() {
     var G = [['마나', '시간이 지나면 자동으로 차오르는 자원. 연구 · 물약 · 알 부화에 씁니다.'], ['지식', '수업을 들으면 쌓입니다. 서고의 연구에 씁니다.'], [CUR, '게임 내 화폐. 원정에서 몬스터를 처치해 얻고, 장비 강화 · 매점 · 거래소에서 씁니다.'],
-      ['수업 속도', '수업 한 교시가 끝나는 데 걸리는 시간이 그만큼 짧아집니다.'], ['사역마 파견', '키운 사역마를 몇 시간 파견해 재료와 ' + CUR + '를 받아 옵니다.'], ['공격력 · 생명력', '원정 · 보스 전투에 쓰이는 능력치. 높을수록 더 높은 단계에 출정할 수 있습니다.'], ['전리품', '원정에서 떨어지는 장비와 재료. 확률이 오르면 더 자주 나옵니다.']];
+      ['수업 효율', '수업 시간은 그대로이고, 한 번에 얻는 경험치 · 지식이 그만큼 늘어납니다.'], ['사역마 파견', '키운 사역마를 몇 시간 파견해 재료와 ' + CUR + '를 받아 옵니다.'], ['공격력 · 생명력', '원정 · 보스 전투에 쓰이는 능력치. 높을수록 더 높은 단계에 출정할 수 있습니다.'], ['전리품', '원정에서 떨어지는 장비와 재료. 확률이 오르면 더 자주 나옵니다.']];
     return '<details class="card inset gloss" style="margin-bottom:12px"><summary><b>처음 보는 고유명사가 있나요?</b> <span class="small muted">마나 · 지식 · ' + CUR + ' 등</span></summary>' +
       '<dl>' + G.map(function (g) { return '<dt>' + g[0] + '</dt><dd>' + g[1] + '</dd>'; }).join('') + '</dl>' +
       '<p class="tiny faint" style="margin-top:6px">어느 기숙사든 모든 콘텐츠를 이용할 수 있습니다. 기숙사 혜택은 조금 더 유리한 정도이며, 처음에는 1/10만 받다가 기숙사 학생들이 활동할수록 최대 값까지 커집니다.</p>' +
@@ -8727,7 +8778,7 @@ var Net = (function () {
     if (P && PREF.notify && !PREF.push && typeof Notification !== 'undefined' && Notification.permission === 'granted') {   // 푸시를 켜 두면 서버가 알린다
       var add = function (key, kind, end, title, body) { if (PREF.nt[kind] && end > now()) want[key] = { end: end, title: title, body: body }; };
       P.lec.forEach(function (j, i) { if (j) add('lec' + i + ':' + j.end, 'lec', j.end, '수업이 끝났습니다', R.SUBJ[j.s].name + ' · 다음 수업 시작 가능'); });
-      P.exp.forEach(function (j, i) { if (j) add('exp' + i + ':' + j.end, 'exp', j.end, '원정대가 돌아왔습니다', j.s + '단계 ' + R.zoneOf(j.s).name); });
+      P.exp.forEach(function (j, i) { if (j) add('exp' + i + ':' + j.end, 'exp', R.expEnd(j), '원정대가 돌아왔습니다', j.s + '단계 ' + R.zoneOf(j.s).name + ' · 원정 완료 가능'); });
       P.rsq.forEach(function (q, i) { if (q) add('res' + i + ':' + q.end, 'res', q.end, '연구가 끝났습니다', R.RES[q.id].name + ' ' + ((P.rs[q.id] || 0) + 1) + '단계'); });
       for (var f in P.fam.disp) add('disp' + f + ':' + P.fam.disp[f].end, 'disp', P.fam.disp[f].end, R.FAM[f].name + '이(가) 돌아왔습니다', '사역마 파견 완료');
       var jr = jar(); if (jr.full) add('jar:' + Math.round(jr.full), 'jar', jr.full, '반딧불 정령 병이 가득 찼습니다', '접속해 풀어 줄 수 있습니다');
@@ -9234,7 +9285,7 @@ var Net = (function () {
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026101976;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026101979;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
@@ -9340,8 +9391,13 @@ var Net = (function () {
       // 안 보이는 동안에도 작업이 끝나는 때에 한 번만 받아 와서 끝 소리를 낸다 (보고 창이 이미 떠 있어도 소리는 낸다)
       var ev = nextEventTime();
       if (isFinite(ev) && now() >= ev + 0.5 && S.bgEv !== ev) {
-        S.bgEv = ev; var n0 = (S.P.inbox || []).length, hadModal = !!S.modal;
-        sync(true).then(function () { var it = S.P.inbox || []; if (hadModal && it.length > n0) Snd.play(it.slice(n0).some(function (o) { return o.k === 'lec'; }) ? 'bell' : 'level'); });
+        var doneN = function () { return S.P.exp.filter(function (j) { return j && j.done; }).length; };
+        S.bgEv = ev; var n0 = (S.P.inbox || []).length, d0 = doneN(), hadModal = !!S.modal;
+        sync(true).then(function () {
+          var it = S.P.inbox || [];
+          if (hadModal && it.length > n0) Snd.play(it.slice(n0).some(function (o) { return o.k === 'lec'; }) ? 'bell' : 'level');
+          else if (it.length <= n0 && doneN() > d0) Snd.play('level');   // 원정은 보고함에 들어가지 않고 「원정 완료」를 기다린다 → 끝난 때 소리만
+        });
       }
       return;
     }
