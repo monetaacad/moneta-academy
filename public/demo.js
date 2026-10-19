@@ -144,6 +144,8 @@
       return Promise.resolve({ id: P.id, name: P.name, house: P.house, cls: P.cls, grade: P.grade, lvl: s.lvl, power: s.power, rank: 1, deco: Rules.decoView(P), badge: (function (b) { return b ? { gem: b.gem, lv: b.lv, name: b.name } : null; })(Rules.badgeWorn(P)), created: P.created, av: this.d.av ? 1 : 0,
         status: pr.status || '', bio: pr.bio || '', fav: pr.fav || '', avcredit: pr.avcredit || '', showStats: pr.showStats !== false, allowFriend: pr.allowFriend !== false, online: true, self: true });
     }
+    var nk = /^npc:(\d+)$/.exec(id || ''), nn = nk ? npcs()[+nk[1]] : null;   // 아카데미 친구(NPC): 검색 결과에서 정보창을 열 때
+    if (nn) return Promise.resolve({ id: id, name: nn.name, house: nn.house, grade: nn.grade, lvl: nn.lvl, status: nn.who, bio: nn.hello || '', online: true, self: false, friend: null, allowFriend: false, npc: true, av: 0 });
     var peer = (this._peers || {})[id];
     return Promise.resolve(peer ? Object.assign({ id: id, online: true, self: false, friend: null, demoPeer: true, av: 0 }, peer) : { error: '데모에서는 다른 학생의 정보를 볼 수 없습니다' });
   };
@@ -240,6 +242,8 @@
     return this._ok(now, { ok: true, msg: msg });
   };
   function R2(P) { return Rules.gradeLabel(P); }
+  // 데모 학생 검색: 아카데미 친구(NPC) 이름에서 찾는다
+  LocalApi.prototype.playerSearch = function (q) { q = String(q || '').replace(/\s+/g, '').toLowerCase(); var N = npcs(); return Promise.resolve({ demo: true, list: q ? N.map(function (n, k) { return { id: 'npc:' + k, name: n.name, house: n.house, npc: true, online: true }; }).filter(function (x) { return x.name.replace(/\s+/g, '').toLowerCase().indexOf(q) >= 0; }).slice(0, 20) : [] }); };
   LocalApi.prototype.friends = function () { return Promise.resolve({ friends: [], out: [], inc: [], demo: true }); };
   LocalApi.prototype.friendOp = function () { return Promise.resolve({ error: '데모에서는 친구를 맺을 수 없습니다. 서버를 열면 사용할 수 있습니다' }); };
   LocalApi.prototype._announce = function () { };

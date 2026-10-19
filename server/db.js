@@ -335,6 +335,7 @@ function open(dir) {
   const q = {
     insertPlayer: db.prepare(`INSERT INTO players (id, name, name_key, house, pass, created, last_seen, state) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`),
     playerByKey: db.prepare(`SELECT id, name, pass, banned FROM players WHERE name_key = ?`),
+    playerSearch: db.prepare(`SELECT id, name, house, grade, lvl, avatar_v, title, last_seen FROM players WHERE name_key LIKE ? ESCAPE '\\' AND banned = 0 AND guest = 0 ORDER BY (name_key = ?) DESC, last_seen DESC LIMIT 20`),
     playerById: db.prepare(`SELECT id, name, state, banned FROM players WHERE id = ?`),
     savePlayer: db.prepare(`UPDATE players SET state = ?, last_seen = ?, power = ?, lvl = ?, grade = ?, max_stage = ?, wb_dps = ?, house = ?, title = ? WHERE id = ?`),
     setBan: db.prepare(`UPDATE players SET banned = ? WHERE name_key = ?`),

@@ -1478,6 +1478,8 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 @media (max-width: 560px) { .ptm .ptn { display: flex; flex-direction: column; line-height: 1.25; } .ptm .ptmeta { font-size: 10px; overflow: hidden; text-overflow: ellipsis; } }
 /* 채팅 탭 새 글: 숫자 배지 대신 탭 아래에 옅은 밑줄 (선택된 탭보다 약하게, 테마 포인트 색) */
 .dtabs .ub { display: none !important; }
+/* 1:1만 안 읽은 수를 빨간 숫자 배지로 (밑줄은 그대로) */
+.dtabs .ub.dmub:not([hidden]) { display: inline-block !important; margin-left: 4px; vertical-align: 1px; background: #e0453a; color: #fff; font-weight: 700; }
 .dtabs button, .gsub button { position: relative; }
 .dtabs button.unread::after, .gsub button.unread::after { content: ''; position: absolute; left: 8px; right: 8px; bottom: 1px; height: 3px; border-radius: 3px; background: color-mix(in srgb, var(--brass) 60%, transparent); }
 .dtabs button.unread { color: var(--ink); font-weight: 700; }

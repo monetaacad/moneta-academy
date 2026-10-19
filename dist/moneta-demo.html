@@ -1497,6 +1497,8 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 @media (max-width: 560px) { .ptm .ptn { display: flex; flex-direction: column; line-height: 1.25; } .ptm .ptmeta { font-size: 10px; overflow: hidden; text-overflow: ellipsis; } }
 /* 채팅 탭 새 글: 숫자 배지 대신 탭 아래에 옅은 밑줄 (선택된 탭보다 약하게, 테마 포인트 색) */
 .dtabs .ub { display: none !important; }
+/* 1:1만 안 읽은 수를 빨간 숫자 배지로 (밑줄은 그대로) */
+.dtabs .ub.dmub:not([hidden]) { display: inline-block !important; margin-left: 4px; vertical-align: 1px; background: #e0453a; color: #fff; font-weight: 700; }
 .dtabs button, .gsub button { position: relative; }
 .dtabs button.unread::after, .gsub button.unread::after { content: ''; position: absolute; left: 8px; right: 8px; bottom: 1px; height: 3px; border-radius: 3px; background: color-mix(in srgb, var(--brass) 60%, transparent); }
 .dtabs button.unread { color: var(--ink); font-weight: 700; }
@@ -2316,7 +2318,7 @@ var DATA = (function () {
     { c: '교류', t: '학생 정보 카드', b: '채팅이나 목록에서 이름을 누르면 정보 카드가 열립니다. 기숙사 · 학년 · 학과(기사 · 마법사), 동아리 이름과 직책이 표시되며, 친구 추가 · 1:1 대화(친구끼리) · 파티 초대(파티가 없으면 새로 만들어 초대) · 동아리 초대(권한이 있을 때) 버튼이 있습니다.' },
     { c: '교류', t: '정보 카드 꾸미기', b: '내 정보 → 꾸미기에서 ' + CUR + '로 테두리 · 배경 · 인장 · 이름 잉크를 구입합니다. 항목을 눌러 미리 착용해 본 뒤 상단의 「사기」를 누르며, 구입한 것은 언제든 바꿔 달거나 뺄 수 있습니다. 모두 5만 ' + CUR + ' 이하입니다. 다른 학생이 내 이름을 누르면 꾸민 카드가 보이며, 이름 잉크는 채팅 이름에도 적용됩니다.' },
     { c: '교류', t: '칭호', b: '조건을 채우면 칭호가 열립니다. 기록 → 칭호 도감의 「달기」나 내 정보 → 편집에서 골라 이름 앞에 붙일 수 있습니다. 채팅에서 칭호를 보고 싶지 않으면 설정에서 내 칭호 · 다른 학생 칭호를 각각 숨길 수 있습니다(정보창에는 그대로 표시).' },
-    { c: '교류', t: '친구', b: '교류 → 친구 탭(또는 내 정보 → 친구)에서 이름으로 신청하거나, 채팅에서 이름을 눌러 신청합니다. 상대가 수락하면 접속 중인 친구가 상단에 표시되며, 1:1 대화와 파티 초대를 바로 할 수 있습니다.' },
+    { c: '교류', t: '친구', b: '교류 → 친구 탭(또는 내 정보 → 친구)에서 이름 일부로 학생을 검색해 정보창을 열고 「친구 추가」를 누르거나, 채팅에서 이름을 눌러 신청합니다. 1:1 탭은 안 읽은 대화 수가 빨간 숫자로 표시됩니다. 상대가 수락하면 접속 중인 친구가 상단에 표시되며, 1:1 대화와 파티 초대를 바로 할 수 있습니다.' },
     { c: '교류', t: '파티', b: '최대 4명입니다. 파티원 한 명당 원정 ' + CUR + ' · 경험치가 3%씩(최대 9%) 오르며, 파티 전용 채팅을 쓸 수 있습니다. 「교류·상점 → 파티」에서 만들고, 이름으로 초대하거나 정보창의 「파티 초대」로 초대합니다. 빈자리에는 결투제 대진표의 아카데미 친구(NPC)를 부를 수 있습니다(보너스 제외). 파티장은 파티원을 내보내거나 파티장을 넘길 수 있고, 「파티원 모집」으로 채팅 「모집」 탭에 모집 카드를 올릴 수 있습니다(알림을 본 학생은 30분 동안 초대 없이 들어올 수 있음). 파티와 함께 오르는 별의 탑은 「원정·전투 → 별의 탑」에 있습니다.', go: ['party'] },
     { c: '교류', t: '동아리 찾기 · 가입 · 만들기', b: '「교류·상점 → 동아리」의 「찾기 · 만들기」에서 동아리를 찾습니다. 「들어가기」나 「가입 신청」을 누르면 먼저 동아리 정보(회장 · 소개 · 부원 · 가입 방식)가 열리고, 그 창에서 가입합니다. 「신청 후 승인」 동아리는 한마디를 덧붙여 신청하며, 초대 권한이 있는 부원이 승인하면 들어갑니다. 동아리를 만들 때 쓰던 이름 · 소개는 다른 화면이나 채팅 탭으로 옮겨 다녀도 남아 있습니다.', go: ['guild'] },
     { c: '교류', t: '동아리 레벨과 기여도', b: '부원이 하루 한 번 동아리 출석(+10)을 하고 ' + CUR + '를 기부하면(하루 200점까지, 1점은 일일 목표 ' + CUR + ' 보상의 1/20) 기여도가 쌓이고, 그만큼 동아리 경험치가 올라 레벨이 오릅니다(최대 10). 레벨마다 정원 +2명(최대 40명), 창고 +5칸, 부원 전원 ' + CUR + ' · 경험치 +0.5%. 4레벨에 동아리 의식, 5레벨에 주간 동아리 과제와 부원 계급 1칸, 10레벨에 부원 계급 1칸이 더 열립니다.', go: ['guild'] },
@@ -4925,6 +4927,7 @@ var Net = (function () {
   ServerApi.prototype.pushUnsub = function (endpoint) { return this.req('POST', '/api/push/unsub', { endpoint: endpoint }); };
   ServerApi.prototype.setAvatar = function (dataUrl) { return this.req('POST', '/api/avatar', { img: dataUrl }); };
   ServerApi.prototype.avatarUrl = function (id, v) { return v ? '/api/avatar?id=' + encodeURIComponent(id) + '&v=' + v : ''; };
+  ServerApi.prototype.playerSearch = function (q) { return this.req('GET', '/api/players?q=' + encodeURIComponent(q)); };
   ServerApi.prototype.friends = function () { return this.req('GET', '/api/friends'); };
   ServerApi.prototype.friendOp = function (op, id, name) { return this.req('POST', '/api/friends', { op: op, id: id, name: name }); };
   ServerApi.prototype.party = function () { return this.req('GET', '/api/party'); };
@@ -5106,6 +5109,8 @@ var Net = (function () {
       return Promise.resolve({ id: P.id, name: P.name, house: P.house, cls: P.cls, grade: P.grade, lvl: s.lvl, power: s.power, rank: 1, deco: Rules.decoView(P), badge: (function (b) { return b ? { gem: b.gem, lv: b.lv, name: b.name } : null; })(Rules.badgeWorn(P)), created: P.created, av: this.d.av ? 1 : 0,
         status: pr.status || '', bio: pr.bio || '', fav: pr.fav || '', avcredit: pr.avcredit || '', showStats: pr.showStats !== false, allowFriend: pr.allowFriend !== false, online: true, self: true });
     }
+    var nk = /^npc:(\d+)$/.exec(id || ''), nn = nk ? npcs()[+nk[1]] : null;   // 아카데미 친구(NPC): 검색 결과에서 정보창을 열 때
+    if (nn) return Promise.resolve({ id: id, name: nn.name, house: nn.house, grade: nn.grade, lvl: nn.lvl, status: nn.who, bio: nn.hello || '', online: true, self: false, friend: null, allowFriend: false, npc: true, av: 0 });
     var peer = (this._peers || {})[id];
     return Promise.resolve(peer ? Object.assign({ id: id, online: true, self: false, friend: null, demoPeer: true, av: 0 }, peer) : { error: '데모에서는 다른 학생의 정보를 볼 수 없습니다' });
   };
@@ -5202,6 +5207,8 @@ var Net = (function () {
     return this._ok(now, { ok: true, msg: msg });
   };
   function R2(P) { return Rules.gradeLabel(P); }
+  // 데모 학생 검색: 아카데미 친구(NPC) 이름에서 찾는다
+  LocalApi.prototype.playerSearch = function (q) { q = String(q || '').replace(/\s+/g, '').toLowerCase(); var N = npcs(); return Promise.resolve({ demo: true, list: q ? N.map(function (n, k) { return { id: 'npc:' + k, name: n.name, house: n.house, npc: true, online: true }; }).filter(function (x) { return x.name.replace(/\s+/g, '').toLowerCase().indexOf(q) >= 0; }).slice(0, 20) : [] }); };
   LocalApi.prototype.friends = function () { return Promise.resolve({ friends: [], out: [], inc: [], demo: true }); };
   LocalApi.prototype.friendOp = function () { return Promise.resolve({ error: '데모에서는 친구를 맺을 수 없습니다. 서버를 열면 사용할 수 있습니다' }); };
   LocalApi.prototype._announce = function () { };
@@ -6136,7 +6143,7 @@ var Net = (function () {
     document.body.classList.remove('dock-lock');   // 채팅창을 열어 두어도 페이지는 스크롤된다 (채팅 글 목록 끝에서 페이지로 번지지는 않게 overscroll-behavior: contain)
     var h = '<div class="dock-head"><div class="dtabs" role="tablist">' + dockTabs().map(function (k) {
       var n = tabUnread(k), cur = tabOn(k);
-      return '<button role="tab" aria-selected="' + cur + '" class="' + (cur ? 'on' : '') + (n && !(open && cur) ? ' unread' : '') + '" data-act="chattab" data-a="' + k + '">' + CH_INFO[k].name + '<span class="ub num" data-unread="' + k + '"' + (n && !(open && cur) ? '' : ' hidden') + '>' + (n > 99 ? '99+' : n) + '</span></button>';
+      return '<button role="tab" aria-selected="' + cur + '" class="' + (cur ? 'on' : '') + (n && !(open && cur) ? ' unread' : '') + '" data-act="chattab" data-a="' + k + '">' + CH_INFO[k].name + '<span class="ub num' + (k === 'dm' ? ' dmub' : '') + '" data-unread="' + k + '"' + (n && !(open && cur) ? '' : ' hidden') + '>' + (n > 99 ? '99+' : n) + '</span></button>';
     }).join('') + '</div><button class="icon-btn sm" data-act="dock-toggle" aria-expanded="' + open + '" aria-label="채팅 ' + (open ? '접기' : '펼치기') + '">' + (open ? '▾' : '▴') + '</button></div>';
     if (!open) { h += '<button class="dock-peek" data-act="dock-toggle" id="dockpeek">' + peekText() + '</button>'; d.innerHTML = h; d.classList.add('closed'); scrollHints(); updateLive(); return; }
     h = '<div class="dgrip gl" data-grip="l" title="끌어서 폭 조절" aria-hidden="true"></div><div class="dgrip gt" data-grip="t" title="끌어서 높이 조절" aria-hidden="true"></div><div class="dgrip gc" data-grip="c" aria-hidden="true"></div>' + h;
@@ -9194,14 +9201,14 @@ var Net = (function () {
       var box = $('#flist'); if (!box) return;
       if (j.error) { box.innerHTML = '<p class="small bad">' + esc(j.error) + '</p>'; return; }
       function row(f, btns) { return '<div class="frow"><button class="avbtn" data-act="prof" data-a="' + esc(f.id) + '">' + avatarHtml(f, 36) + '</button><div style="flex:1;min-width:0"><button class="cn" style="color:' + (R.HOUSE[f.house] ? R.HOUSE[f.house].color : 'inherit') + '" data-act="prof" data-a="' + esc(f.id) + '">' + esc(f.name) + '</button>' + (f.online ? ' <span class="odot" title="접속 중"></span>' : '') + ' <span class="tiny faint">' + (f.grade >= 8 ? '마스터' : f.grade + '학년') + ' · Lv ' + f.lvl + '</span>' + (f.status ? '<div class="tiny muted ell">' + esc(f.status) + '</div>' : f.seen && !f.online ? '<div class="tiny faint">마지막 접속 ' + clock(f.seen) + '</div>' : '') + '</div>' + btns + '</div>'; }
-      var h = '<div class="row" style="margin-bottom:12px"><input id="f-name" maxlength="12" placeholder="학생 이름으로 친구 신청" style="flex:1;min-width:0"><button class="btn sm primary" data-act="fadd">신청</button></div>';
-      if (j.demo) h += '<p class="small muted">데모에서는 친구를 맺을 수 없습니다. 서버를 열면 채팅에서 이름을 눌러 친구 신청을 할 수 있습니다.</p>';
+      var h = '';
+      if (j.demo) h += '<p class="small muted">데모에서는 친구를 맺을 수 없습니다. 서버를 열면 검색하거나 채팅에서 이름을 눌러 친구 신청을 할 수 있습니다.</p>';
       if (j.inc.length) h += '<div class="section-t">받은 신청 ' + j.inc.length + '</div>' + j.inc.map(function (f) { return row(f, '<button class="btn sm primary" data-act="fop" data-a="accept" data-b="' + esc(f.id) + '">수락</button><button class="btn sm ghost" data-act="fop" data-a="decline" data-b="' + esc(f.id) + '">거절</button>'); }).join('');
       h += '<div class="section-t">친구 ' + j.friends.length + (j.friends.length ? ' · 접속 ' + j.friends.filter(function (f) { return f.online; }).length : '') + '</div>';
-      h += j.friends.length ? j.friends.slice().sort(function (a, b) { return (b.online ? 1 : 0) - (a.online ? 1 : 0); }).map(function (f) { return row(f, '<button class="btn sm" data-act="dmopen" data-a="' + esc(f.id) + '" data-b="' + esc(f.name) + '">1:1</button><button class="btn sm ghost" data-act="pinvite" data-a="' + esc(f.id) + '" title="파티 초대">파티</button><button class="btn sm ghost" data-act="fop" data-a="remove" data-b="' + esc(f.id) + '">끊기</button>'); }).join('') : '<div class="empty">아직 친구가 없습니다. 채팅에서 이름을 누르면 친구 신청을 할 수 있습니다.</div>';
+      h += j.friends.length ? j.friends.slice().sort(function (a, b) { return (b.online ? 1 : 0) - (a.online ? 1 : 0); }).map(function (f) { return row(f, '<button class="btn sm" data-act="dmopen" data-a="' + esc(f.id) + '" data-b="' + esc(f.name) + '">1:1</button><button class="btn sm ghost" data-act="pinvite" data-a="' + esc(f.id) + '" title="파티 초대">파티</button><button class="btn sm ghost" data-act="fop" data-a="remove" data-b="' + esc(f.id) + '">끊기</button>'); }).join('') : '<div class="empty">아직 친구가 없습니다. 위에서 이름을 검색하거나 채팅에서 이름을 눌러 친구 신청을 할 수 있습니다.</div>';
       if (j.out.length) h += '<div class="section-t" style="margin-top:12px">보낸 신청</div>' + j.out.map(function (f) { return row(f, '<button class="btn sm ghost" data-act="fop" data-a="cancel" data-b="' + esc(f.id) + '">취소</button>'); }).join('');
       box.innerHTML = h; S.frHtml = h; S.frAt = Date.now();
-      var inp = $('#f-name'); if (inp) inp.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); ACT.fadd(); } });
+      fSearchKeys();
     });
   }
   /* ───────── 교류 › 게시판 ─────────
@@ -9321,10 +9328,29 @@ var Net = (function () {
   // 교류 › 친구 탭
   V.friends = function () {
     if (Date.now() - (S.frAt || 0) > 15000 && Date.now() - (S.frReq || 0) > 3000) { S.frReq = Date.now(); setTimeout(loadFriends, 0); }
-    else setTimeout(function () { var inp = $('#f-name'); if (inp && !inp.__k) { inp.__k = 1; inp.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); ACT.fadd(); } }); } }, 0);
-    return pageHead('함께 다니는 학생들', '친구', '접속한 친구가 위에 · 1:1 대화와 파티 초대') + '<div class="card" id="flist">' + (S.frHtml || '<p class="small muted">불러오는 중…</p>') + '</div>';
+    setTimeout(fSearchKeys, 0);
+    return pageHead('함께 다니는 학생들', '친구', '접속한 친구가 위에 · 1:1 대화와 파티 초대') +
+      '<div class="card" style="margin-bottom:12px"><div class="row"><input id="f-q" maxlength="12" placeholder="학생 이름 검색" value="' + esc((S.frs && S.frs.q) || '') + '" style="flex:1;min-width:0"><button class="btn sm primary" data-act="fsearch">검색</button></div><div id="fsres">' + fSearchHtml() + '</div></div>' +
+      '<div class="card" id="flist">' + (S.frHtml || '<p class="small muted">불러오는 중…</p>') + '</div>';
   };
-  ACT.fadd = function () { var n = $('#f-name').value.trim(); if (!n) return; API.friendOp('add', '', n).then(function (j) { if (j.error) { toast('친구 신청', j.error); return; } toast(j.state === 'ok' ? '친구가 되었습니다' : '친구 신청을 보냈습니다', n, 1800); loadFriends(); }); };
+  // 학생 검색: 이름 일부로 찾고, 누르면 정보창이 열려 그곳에서 친구 신청한다
+  function fSearchKeys() { var inp = $('#f-q'); if (inp && !inp.__k) { inp.__k = 1; inp.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); ACT.fsearch(); } }); } }
+  function fSearchHtml() {
+    var r = S.frs; if (!r) return '<p class="tiny faint" style="margin-top:6px">이름 일부로 찾을 수 있습니다. 학생을 누르면 정보창이 열리고, 정보창에서 친구 신청 · 1:1 · 파티 초대를 할 수 있습니다.</p>';
+    if (r.busy) return '<p class="small muted" style="margin-top:8px">찾는 중…</p>';
+    if (r.err) return '<p class="small bad" style="margin-top:8px">' + esc(r.err) + '</p>';
+    if (!r.list.length) return '<p class="small muted" style="margin-top:8px">「' + esc(r.q) + '」 학생을 찾지 못했습니다.</p>';
+    var FS = { ok: '친구', out: '신청함', in: '받은 신청' };
+    return '<div style="margin-top:8px">' + r.list.map(function (f) {
+      return '<div class="frow"><button class="avbtn" data-act="prof" data-a="' + esc(f.id) + '">' + (f.npc ? '<span class="av av0" style="width:36px;height:36px;font-size:15px;--hc:' + (R.HOUSE[f.house] ? R.HOUSE[f.house].color : '#d6ad5f') + '">' + esc(f.name.slice(0, 1)) + '</span>' : avatarHtml(f, 36)) + '</button><div style="flex:1;min-width:0"><button class="cn" style="color:' + (R.HOUSE[f.house] ? R.HOUSE[f.house].color : 'inherit') + '" data-act="prof" data-a="' + esc(f.id) + '">' + esc(f.name) + '</button>' + (f.online ? ' <span class="tiny good">접속 중</span>' : '') + '<div class="tiny faint">' + (R.HOUSE[f.house] ? R.HOUSE[f.house].name : '') + '</div></div>' +
+        (f.friend && FS[f.friend] ? '<span class="tag' + (f.friend === 'ok' ? ' ok' : '') + '">' + FS[f.friend] + '</span>' : '') + '<button class="btn sm ghost" data-act="prof" data-a="' + esc(f.id) + '">정보 보기</button></div>';
+    }).join('') + '</div>';
+  }
+  ACT.fsearch = function () {
+    var q = (($('#f-q') || {}).value || '').trim(); if (!q) { toast('학생 검색', '이름 입력 필요'); return; }
+    S.frs = { q: q, list: [], busy: true }; var box = $('#fsres'); if (box) box.innerHTML = fSearchHtml();
+    API.playerSearch(q).then(function (j) { S.frs = { q: q, list: j.list || [], err: j.error || '' }; var b2 = $('#fsres'); if (b2) b2.innerHTML = fSearchHtml(); });
+  };
   function peSave(o, done) {
     var title = o.title; o = Object.assign({}, o); delete o.title;
     var av = S.peAv !== undefined ? API.setAvatar(S.peAv).then(function (j) { if (j.error) throw new Error(j.error); S.peAv = undefined; }) : Promise.resolve();
@@ -9560,7 +9586,7 @@ var Net = (function () {
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026101988;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026101989;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

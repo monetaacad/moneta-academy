@@ -654,6 +654,15 @@ routes['GET /api/friends'] = (req, res) => {
   const inc = dbx.q.friendIncoming.all(me).map((r) => ({ id: r.id, name: r.name, house: r.house, grade: r.grade, lvl: r.lvl, av: r.avatar_v, t: r.t }));
   send(req, res, 200, { friends: mine.filter((f) => f.state === 'ok').sort((a, b) => (b.online - a.online) || (b.seen - a.seen)), out: mine.filter((f) => f.state === 'out'), inc });
 };
+// 학생 이름 검색 (친구 화면): 이름 일부로 찾고, 눌러서 정보창을 열어 친구 신청한다. 게스트 · 정지 학생은 빼고 최근 접속순 20명
+routes['GET /api/players'] = (req, res) => {
+  const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
+  if (limited('ps:' + me, 1, 8)) return fail(req, res, 429, '요청이 너무 잦습니다');
+  const q = nameKey(String(new URL(req.url, 'http://x').searchParams.get('q') || '').slice(0, 12));
+  if (!q) return send(req, res, 200, { list: [] });
+  const rows = dbx.q.playerSearch.all('%' + q.replace(/[\\%_]/g, (c) => '\\' + c) + '%', q);
+  send(req, res, 200, { list: rows.filter((r) => r.id !== me).map((r) => ({ id: r.id, name: r.name, house: r.house, av: r.avatar_v, title: r.title, online: isOnline(r.id), friend: friendState(me, r.id) || null })) });
+};
 routes['POST /api/friends'] = async (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
   if (limited('fr:' + me, 0.5, 10)) return fail(req, res, 429, '잠시 후 다시 시도');
