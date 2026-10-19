@@ -141,7 +141,7 @@
     var P = this.d && this.d.P; if (!P) return Promise.resolve({ error: '로그인이 필요합니다' });
     if (!id || id === 'local' || id === P.id) {
       var pr = this.d.prof || {}, now = this._now(), s = Rules.summary(P, this.d.W, now);
-      return Promise.resolve({ id: P.id, name: P.name, house: P.house, grade: P.grade, lvl: s.lvl, power: s.power, rank: 1, deco: Rules.decoView(P), badge: (function (b) { return b ? { gem: b.gem, lv: b.lv, name: b.name } : null; })(Rules.badgeWorn(P)), created: P.created, av: this.d.av ? 1 : 0,
+      return Promise.resolve({ id: P.id, name: P.name, house: P.house, cls: P.cls, grade: P.grade, lvl: s.lvl, power: s.power, rank: 1, deco: Rules.decoView(P), badge: (function (b) { return b ? { gem: b.gem, lv: b.lv, name: b.name } : null; })(Rules.badgeWorn(P)), created: P.created, av: this.d.av ? 1 : 0,
         status: pr.status || '', bio: pr.bio || '', fav: pr.fav || '', avcredit: pr.avcredit || '', showStats: pr.showStats !== false, allowFriend: pr.allowFriend !== false, online: true, self: true });
     }
     var peer = (this._peers || {})[id];
@@ -261,7 +261,9 @@
   LocalApi.prototype.partyOp = function (o) {
     var so = this._soc(), P = this.d.P, self = this, N = npcs();
     if (o.op === 'create') { var nm = String(o.name || '').replace(/\s+/g, ' ').trim(); if (!/^[가-힣A-Za-z0-9_ ]{2,12}$/.test(nm)) return Promise.resolve({ error: '파티 이름은 한글·영문·숫자 2~12자만 가능' }); if (so.party) return Promise.resolve({ error: '이미 파티에 들어가 있습니다' }); so.party = { name: nm, npcs: [] }; so.chat.party = []; this._emitGroup('party'); this._sys('party', P.name + ' 님이 파티 「' + nm + '」를 만들었습니다.'); }
+    else if (o.op === 'joinRec') return Promise.resolve({ error: so.party ? '현재 파티 탈퇴 필요' : '데모에서는 다른 학생의 파티에 들어갈 수 없습니다' });
     else if (!so.party) return Promise.resolve({ error: '파티 생성 필요' });
+    else if (o.op === 'recruit') { var t0 = Date.now() / 1000; if (so.partyRec && t0 - so.partyRec < 300) return Promise.resolve({ error: Math.ceil((300 - (t0 - so.partyRec)) / 60) + '분 뒤에 다시 모집할 수 있습니다' }); so.partyRec = t0; this._recruitRaw({ type: 'party', party: 'demo-party', name: so.party.name || '파티', n: 1 + ((so.party.npcs || []).length), max: 4, floor: 0, note: String(o.note || '').replace(/\s+/g, ' ').trim().slice(0, 60) }); return Promise.resolve({ ok: true }); }
     else if (o.op === 'npcAdd') { if (so.party.npcs.length >= 3) return Promise.resolve({ error: '파티는 4명까지입니다' }); if (so.party.npcs.indexOf(o.k) < 0) so.party.npcs.push(o.k); this._npcSay('party', o.k, N[o.k].hello); }
     else if (o.op === 'npcRemove') { so.party.npcs = so.party.npcs.filter(function (k) { return k !== o.k; }); this._sys('party', N[o.k].name + ' 님이 파티에서 나갔습니다.'); }
     else if (o.op === 'allgo') { so.party.allgo = !!o.on; }
@@ -330,10 +332,15 @@
     var mine = so.guild ? rows.filter(function (r) { return r.id === so.guild.id; })[0] : null;
     return Promise.resolve({ sort: sort === 'power' ? 'power' : 'lv', list: rows, mine: mine || null, total: rows.length, demo: true });
   };
-  LocalApi.prototype.guild = function () { return Promise.resolve({ guild: this._guildView() }); };
+  LocalApi.prototype.guild = function (id) {
+    var so = this._soc(); if (!id || (so.guild && so.guild.id === id)) return Promise.resolve({ guild: this._guildView() });
+    var g = DEMO_GUILDS.filter(function (x) { return x.id === id; })[0], N = npcs(); if (!g) return Promise.resolve({ error: '없는 동아리입니다' });
+    return Promise.resolve({ guild: { id: g.id, name: g.name, intro: g.intro, color: g.color, mode: g.mode, lv: g.lv, n: g.npcs.length, max: Rules.guildCap(g.lv), bonus: Rules.guildBonus(g.lv), myRole: null, members: g.npcs.map(function (k, i) { return { id: 'npc:' + k, name: N[k].name, role: i ? 'member' : 'owner' }; }) } });
+  };
   LocalApi.prototype.guildOp = function (o) {
     var so = this._soc(), P = this.d.P, N = npcs(), self = this, now = this._now(), day = Rules.dayKST(now);
     function fail(m) { return Promise.resolve({ error: m }); }
+    if (o.op === 'recruit') { var g0 = so.guild; if (!g0) return fail('동아리에 들어가 있지 않습니다'); var t1 = Date.now() / 1000; if (g0.recAt && t1 - g0.recAt < 600) return fail(Math.ceil((600 - (t1 - g0.recAt)) / 60) + '분 뒤에 다시 홍보할 수 있습니다'); g0.recAt = t1; var gv = this._guildView(); this._recruitRaw({ type: 'guild', g: g0.id, name: g0.name, color: g0.color, lv: gv.lv, n: gv.n, max: gv.max, mode: g0.mode, note: String(o.note || '').replace(/\s+/g, ' ').trim().slice(0, 60) }); this._save(); return Promise.resolve({ ok: true }); }
     if (o.op === 'create') { if (so.guild) return fail('이미 동아리에 들어가 있습니다'); var nm = String(o.name || '').replace(/\s+/g, ' ').trim(); if (!/^[가-힣A-Za-z0-9_ ]{2,12}$/.test(nm)) return fail('동아리 이름은 한글·영문·숫자 2~12자만 가능');
       so.guild = gFix({ id: 'demo-g', own: true, name: nm, intro: String(o.intro || '').slice(0, 300), color: o.color || '#d6ad5f', mode: o.mode === 'apply' ? 'apply' : 'open', role: 'owner', npcs: [], notice: '' }); so.chat.grp = []; so.chat.gooc = []; this._emitGroup('guild'); this._sys('grp', P.name + ' 님이 동아리 「' + nm + '」를 열었습니다.'); this._gLog(P.name + ' 님이 동아리를 열었습니다'); }
     else if (o.op === 'join') { if (so.guild) return fail('현재 동아리 탈퇴 필요'); var g0 = DEMO_GUILDS.filter(function (x) { return x.id === o.id; })[0]; if (!g0) return fail('없는 동아리입니다');
@@ -581,7 +588,7 @@
     var slot; try { slot = Rules.expCanGo(P, W, now, r.s); } catch (e) { E.gone = { ok: false, why: e.message, s: r.s }; return { n: 0 }; }
     var me = r.members.filter(function (m) { return !m.npc; })[0]; if (Rules.expPositions(P).indexOf(me.pos) < 0) me.pos = 'van';
     var pv = Rules.expPartyPreview(this._erCs(r, now), r.s, r.d), mi = r.members.indexOf(me);
-    Rules.expPartyApply(P, now, slot, r.s, r.d, pv.each[mi], { n: r.members.length, pos: me.pos, with: r.members.filter(function (m) { return m !== me; }).map(function (m) { return { name: m.name, pos: m.pos, npc: true, k: m.k }; }) });
+    Rules.expPartyApply(P, now, slot, r.s, r.d, pv.each[mi], { n: r.members.length, pos: me.pos, with: r.members.filter(function (m) { return m !== me; }).map(function (m) { return { name: m.name, pos: m.pos, npc: true, k: m.k }; }), team: Rules.expTeam(pv, r.members), me: mi });
     E.gone = { ok: true, s: r.s, n: r.members.length }; this._save(); return { n: r.members.length };
   };
   LocalApi.prototype._erView = function () {
@@ -612,6 +619,9 @@
   LocalApi.prototype.expRooms = function () { return Promise.resolve(this._erView()); };
   LocalApi.prototype.expPeek = function (id) { var v = this._erView().rooms.filter(function (r) { return r.id === id; })[0]; return Promise.resolve(v ? { room: v } : { error: '이미 출정했거나 닫힌 방입니다', _status: 404 }); };
   // 데모 모집 탭: 내 알림 + 가끔 NPC 방의 알림
+  LocalApi.prototype._recruitRaw = function (data) {
+    var P = this.d.P; this._keepSoc({ id: 'rc' + Date.now() + Math.random(), ch: 'recruit', t: Date.now() / 1000, pid: P.id, name: P.name, house: P.house, grade: P.grade, kind: 'recruit', text: JSON.stringify(data) });
+  };
   LocalApi.prototype._recruit = function (pid, name, house, grade, r, note) {
     var so = this._soc(); if (!so.chat.recruit) so.chat.recruit = [];
     var m = { id: 'rc' + Date.now() + Math.random(), ch: 'recruit', t: Date.now() / 1000, pid: pid, name: name, house: house, grade: grade, kind: 'recruit', text: JSON.stringify({ room: r.id, s: r.s, d: r.d, zone: Rules.zoneOf(r.s).name, n: r.members.length, max: 4, pos: r.members.map(function (x) { return x.pos; }), note: note || '' }) };

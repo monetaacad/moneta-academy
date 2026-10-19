@@ -34,7 +34,10 @@ with sync_playwright() as p:
     A.screenshot(path=f'{OUT}/g-A-guild.png', full_page=True)
     # M: 찾아서 신청
     nav(M, 'guild'); M.fill('#gq', '달빛' + sfx); M.click('[data-act=gsearch]'); M.wait_for_timeout(600)
-    M.click('[data-act=gjoin]'); M.wait_for_timeout(700)
+    M.click('[data-act=gjoin]'); M.wait_for_timeout(700)   # 먼저 동아리 정보 창
+    check(M.query_selector('#gpeek') is not None and '밤마다 별을 봅니다' in M.inner_text('#gpeek'), 'guild peek missing intro')
+    M.screenshot(path=f'{OUT}/g-M-peek.png')
+    M.fill('#gp-msg', '안녕하세요'); M.click('[data-act=gjoingo]'); M.wait_for_timeout(700)
     check(M.query_selector('[data-act=gop][data-a=cancelApp]') is not None, 'M apply not shown')
     # A: 승인
     nav(A, 'home'); nav(A, 'guild'); A.wait_for_timeout(500)

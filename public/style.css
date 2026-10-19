@@ -1436,3 +1436,37 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 .qbox .qrow > .btn { flex: none; }
 .evimg { flex: none; width: 30px; height: 30px; margin-right: 2px; }
 .evimg.dim { opacity: .55; filter: grayscale(.4); }
+/* 함께 원정: 빈자리 채우기 타일 */
+.erfill { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; margin-top: 6px; }
+.ertile { display: flex; align-items: center; gap: 10px; text-align: left; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--brass); background: color-mix(in srgb, var(--brass) 10%, transparent); color: var(--ink); cursor: pointer; font: inherit; box-shadow: 0 2px 0 color-mix(in srgb, var(--brass) 35%, transparent); transition: transform .1s, background .15s; }
+.ertile:hover { background: color-mix(in srgb, var(--brass) 20%, transparent); }
+.ertile:active { transform: translateY(1px); box-shadow: none; }
+.ertile svg { width: 26px; height: 26px; flex: none; color: var(--brass); }
+.ertile > span { display: flex; flex-direction: column; gap: 2px; }
+/* 적용 중인 효과 팝업 */
+.buffpill[data-act] { cursor: pointer; }
+.bufflist { display: flex; flex-direction: column; gap: 8px; }
+.buffrow { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel2); }
+.buffrow .bdot { width: 12px; height: 12px; border-radius: 50%; flex: none; margin-top: 4px; }
+/* 수업 · 원정 슬롯이 하나뿐이면 가로로 넓게 */
+.gauto.one { grid-template-columns: minmax(0, 1fr); }
+.gauto.one .durs { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); }
+@media (min-width: 700px) { .gauto.one .slotcard > .btn.primary { align-self: flex-end; min-width: 240px; } }
+/* 바탕에 바로 놓이는 움푹한 칸(안내 카드 · 주문 칸)은 바탕색과 겹치지 않게 한 단 밝게 */
+.card.inset { background: var(--panel2); border-color: var(--line); }
+.spellbar .spell { background: var(--panel); border-color: var(--line); }
+:root[data-paper="on"] .card.inset { background-color: color-mix(in srgb, var(--brass) 9%, var(--panel)); }
+:root[data-paper="on"] .card .card.inset { background-color: color-mix(in srgb, var(--brass) 7%, var(--sunk)); }
+/* 함께 원정 일행 현황 */
+.ptteam { display: flex; flex-direction: column; gap: 5px; margin: 6px 0 4px; padding: 8px 10px; border-radius: 8px; background: var(--sunk); border: 1px solid var(--line2); }
+.ptm { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(70px, 1.2fr) auto; align-items: center; gap: 8px; font-size: 12.5px; }
+.ptm.me .ptn { color: var(--brass2); font-weight: 600; }
+.pthp { height: 7px; border-radius: 4px; background: color-mix(in srgb, var(--ink) 12%, transparent); overflow: hidden; }
+.pthp b { display: block; height: 100%; border-radius: 4px; transition: width .8s ease, background-color .8s; }
+.ptd { min-width: 64px; text-align: right; }
+/* 채팅 탭 새 글: 숫자 배지 대신 탭 아래에 옅은 밑줄 (선택된 탭보다 약하게, 테마 포인트 색) */
+.dtabs .ub { display: none !important; }
+.dtabs button, .gsub button { position: relative; }
+.dtabs button.unread::after, .gsub button.unread::after { content: ''; position: absolute; left: 8px; right: 8px; bottom: 1px; height: 3px; border-radius: 3px; background: color-mix(in srgb, var(--brass) 60%, transparent); }
+.dtabs button.unread { color: var(--ink); font-weight: 700; }
+.dock-peek .pkch { display: inline-block; font-size: 10.5px; padding: 0 6px; margin-right: 6px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); vertical-align: 1px; }

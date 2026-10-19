@@ -129,6 +129,12 @@
   R.RITUAL_BUFF = { name: '별샘의 축복', eff: { xpPct: 0.15, knowPct: 0.15, goldPct: 0.1 }, dur: 4 * 3600, color: '#9fd8ff', text: '4시간 동안 경험치·지식 +15%, ' + CUR + ' +10%' };
   R.ritualGoal = function (active) { return Math.max(5, Math.ceil((active || 0) * 0.35)); };
   R.ritualCost = function (P, W, now) { return Math.floor(calc(P, W, now).mana * 1800); };   // 마나 30분 분
+  // 효과 묶음 → 「경험치 +50%, 수업 속도 +100%」 (버프 · 날씨 설명용)
+  var EFF_NAME = { xpPct: '경험치', goldPct: CUR, knowPct: '지식', lectureSpd: '수업 속도', manaPct: '마나 재생', manaCap: '마나 저장', hpPct: '체력', atkPct: '공격력', defPct: '방어력', physPct: '물리 피해', spellPct: '주문 위력', dropPct: '전리품', dispPct: '파견 보상', hatchSpd: '부화 속도', brewSpd: '조제 속도', enhBonus: '강화 성공률', bossDmg: '보스 피해', cdr: '재사용 대기', leech: '흡혈' };
+  R.effText = function (eff) {
+    var out = []; for (var k in eff || {}) { var v = eff[k]; if (!v || !EFF_NAME[k]) { if (k === 'examBonus' && v) out.push('시험 +' + v + '점'); continue; } out.push(EFF_NAME[k] + ' ' + (v > 0 ? '+' : '−') + (k === 'manaCap' ? Math.round(Math.abs(v) / 3600 * 10) / 10 + '시간' : Math.round(Math.abs(v) * 1000) / 10 + '%')); }
+    return out.join(', ');
+  };
   R.ritualBless = function (P, start) { P.buffs.ritual = { name: R.RITUAL_BUFF.name, eff: R.RITUAL_BUFF.eff, start: start, end: start + R.RITUAL_BUFF.dur, color: R.RITUAL_BUFF.color }; };
 
   /* ───────── 떠돌이 상인 (하루 두 번, 한국 시간 12시·20시부터 2시간 경매) ───────── */
@@ -563,11 +569,13 @@
     var out = ms.map(function (m, i) {
       var c = m.c, kps = kpsAll * share, kills = kps * d.s * d.eff;
       var gEach = K.KILL_GOLD * Math.pow(K.G_GOLD, s - 1) * c.gold * K.EXP_RATE * K.EXP_GOLD * K.KILL_PACK, xEach = K.KILL_XP * Math.pow(K.G_XP, s - 1) * c.xp * K.EXP_RATE * K.KILL_PACK;
-      return { kps: kps, kills: kills, gold: kills * gEach, xp: kills * xEach, gEach: gEach, xEach: xEach, drop: c.drop, rarity: c.rarity, killMana: c.killMana * c.mana * K.KILL_PACK, risk: each[i].risk, surv: each[i].surv, frac: each[i].frac };
+      return { kps: kps, kills: kills, gold: kills * gEach, xp: kills * xEach, gEach: gEach, xEach: xEach, drop: c.drop, rarity: c.rarity, killMana: c.killMana * c.mana * K.KILL_PACK, risk: each[i].risk, surv: each[i].surv, frac: each[i].frac, dmg: c.totalDps * posOf(m).dps / Math.max(1e-9, dps) };
     });
     return { s: s, dur: d.s, eff: d.eff, d: d.k, n: n, kills: kpsAll * d.s * d.eff, risk: worst, red: red, each: out, label: worst <= 0.25 ? '안정' : worst <= 0.5 ? '적정' : worst <= 1 ? '위험' : '무모함' };
   };
   // 서버(또는 미리보기)가 출발시킬 때만 부른다 — 학생이 직접 부르는 행동(A)이 아니다
+  // 함께 원정 일행 현황 (출발할 때 적어 두고 화면이 HP · 피해 몫을 그린다)
+  R.expTeam = function (pv, members) { return members.map(function (m, i) { var e = pv.each[i] || {}; return { name: m.name, pos: m.pos, npc: !!m.npc, dmg: Math.round((e.dmg || 0) * 1000) / 1000, risk: Math.round((e.risk || 0) * 1000) / 1000 }; }); };
   R.expPartyApply = function (P, now, slot, s, durK, pv, info) {
     var d = DUR[durK] || DUR['1h'];
     var j = P.exp[slot] = { s: s, start: now, end: now + d.s, dur: d.s, eff: d.eff, kps: pv.kps, gEach: pv.gEach, xEach: pv.xEach, drop: pv.drop, rarity: pv.rarity, killMana: pv.killMana, risk: pv.risk, pt: info };
