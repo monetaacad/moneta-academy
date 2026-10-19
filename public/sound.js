@@ -76,8 +76,9 @@ var Snd = (function () {
 /* 배경음악 (Web Audio 합성) — 설정에서 켤 때만. 이 브라우저에만 기억한다.
    낮(한국 시간 06~18시)·밤 × 광장·전투 네 곡. 화음 진행은 돌고, 선율·아르페지오는 매번 조금씩 다르게 흘러간다. */
 var Bgm = (function () {
-  var B = { on: false, vol: 0.5, mood: null, bg: false }, ctx = null, out = null, dry = null, conv = null, noise = null, bus = null, timer = 0, nextT = 0, step = 0, ci = 0, leadIdx = 3, arp = 0, want = null;
-  try { B.on = localStorage.getItem('arc_bgm') === '1'; B.bg = localStorage.getItem('arc_bgm_bg') === '1'; var v = parseFloat(localStorage.getItem('arc_bgm_vol')); if (isFinite(v)) B.vol = Math.max(0, Math.min(1, v)); } catch (e) { }
+  // 배경음악은 기본으로 켠다 (직접 끈 경우만 꺼짐). 브라우저 정책상 첫 클릭 · 키 입력 뒤에 소리가 난다
+  var B = { on: true, vol: 0.5, mood: null, bg: false }, ctx = null, out = null, dry = null, conv = null, noise = null, bus = null, timer = 0, nextT = 0, step = 0, ci = 0, leadIdx = 3, arp = 0, want = null;
+  try { B.on = localStorage.getItem('arc_bgm') !== '0'; B.bg = localStorage.getItem('arc_bgm_bg') === '1'; var v = parseFloat(localStorage.getItem('arc_bgm_vol')); if (isFinite(v)) B.vol = Math.max(0, Math.min(1, v)); } catch (e) { }
   function mtof(m) { return 440 * Math.pow(2, (m - 69) / 12); }
   function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
   var ARP = [[0, 1, 2, 3, 4, 3, 2, 1], [0, 2, 1, 3, 2, 4, 3, 1], [4, 3, 2, 1, 0, 1, 2, 3], [0, 1, 2, 1, 3, 2, 4, 2]];
