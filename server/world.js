@@ -44,21 +44,34 @@ function create(store, cfg, log) {
   }
 
   /* 운영실 · 추가 보스: 이번 주 보스가 쓰러졌으면 다음 보스를 부른다. 앞서 잡은 수(kills)는 이어서 세고,
-     다음 주 정산 때 잡은 수만큼 토벌 보상이 나간다. 체력을 비워 두면 이번 주 실제 피해 속도로 남은 기간의 70% 쯤에 쓰러지게 잡는다 */
+     잡을 때마다 토벌 보상이 우편으로 나간다. 체력을 비워 두면 이번 주 실제 피해 속도로 남은 기간의 85% 쯤에 쓰러지게 잡는다 */
+  const WB_SUMMON_FILL = 0.85;
+  // 이번 주 지금까지의 피해 속도로 주 끝까지 더 들어올 피해 (추가 보스 체력 기준)
+  function wbForecast(now) {
+    const week = R.weekId(now), ws = R.weekStart(week), end = R.weekStart(week + 1), sum = Number(q.sumDmg.get(week).s) || 0;
+    const b = W.boss && W.boss.week === week ? W.boss : null, dead = b ? (b.dead || 0) + (b.killedAt ? now - b.killedAt : 0) : 0;   // 보스가 없던(쓰러져 있던) 시간은 뺀다
+    return sum / Math.max(3600, now - ws - dead) * Math.max(3600, end - now);
+  }
   function summonBoss(now, hp) {
     const week = R.weekId(now), b = W.boss;
     if (!b || b.week !== week) throw new Error('이번 주 보스가 아직 없습니다');
     if (!b.killedAt) throw new Error('이번 주 보스가 아직 살아 있습니다');
     store.flushAll();
-    const ws = R.weekStart(week), end = R.weekStart(week + 1), sum = Number(q.sumDmg.get(week).s) || 0;
-    const rate = sum / Math.max(3600, now - ws), auto = Math.floor(rate * Math.max(3600, end - now) * 0.7);
+    const auto = Math.floor(wbForecast(now) * WB_SUMMON_FILL);
     const maxHp = Math.max(1000, Math.floor(Number(hp) > 0 ? Number(hp) : Math.max(auto, b.maxHp)));
     const round = (b.round || 1) + 1, def = D.WORLD_BOSSES[(week + round - 1) % D.WORLD_BOSSES.length];
-    W.boss = { week, id: def.id, name: def.name, maxHp, hp: maxHp, killedAt: 0, actives: b.actives, round, kills: (b.kills || 0) + 1 };
+    W.boss = { week, id: def.id, name: def.name, maxHp, hp: maxHp, killedAt: 0, actives: b.actives, round, kills: (b.kills || 0) + 1, paidKills: b.paidKills || 0, dead: (b.dead || 0) + Math.max(0, now - b.killedAt) };
     W.wbAlive = true; kvSet('boss', W.boss); cache.at = 0;
     log(`추가 월드 보스: ${def.name} (${round}번째, 체력 ${R.fmt(maxHp)})`);
-    addNotice(`추가 월드 보스 ${R.josa(def.name, '이', '가')} 나타났습니다! 토벌 보상은 잡은 보스 수만큼 다음 주에 받습니다.`, now, true);
+    addNotice(`추가 월드 보스 ${R.josa(def.name, '이', '가')} 나타났습니다! 잡으면 도전한 학생 모두에게 토벌 보상이 또 우편으로 갑니다.`, now, true);
     return W.boss;
+  }
+
+  // 토벌 보상: 이번 주에 도전한 학생 모두에게 우편 (server.js가 api.payKillTo로 보낸다). 한 보스에 한 번만
+  function payKill(killer) {
+    const b = W.boss; if (!b || !b.killedAt || b.paid || !api.payKillTo) return;
+    b.paid = 1; b.paidKills = (b.paidKills || 0) + 1; kvSet('boss', b);
+    try { api.payKillTo(b, killer); } catch (e) { log('토벌 보상 우편 실패', e); }
   }
 
   function cupStandings(week) {
@@ -80,9 +93,9 @@ function create(store, cfg, log) {
     const cup = cupStandings(week);
     const dmgs = q.dmgList.all(week).map((r) => Number(r.dmg));
     const at = (p) => dmgs.length ? dmgs[Math.min(dmgs.length - 1, Math.max(0, Math.ceil(dmgs.length * p) - 1))] : Infinity;
-    const same = W.boss && W.boss.week === week, kills = same ? (W.boss.kills || 0) + (W.boss.killedAt ? 1 : 0) : 0, killed = kills > 0;   // 추가 보스까지 잡은 수
+    const same = W.boss && W.boss.week === week, paidKills = same ? W.boss.paidKills || 0 : 0, kills = same ? (W.boss.kills || 0) + (W.boss.killedAt ? 1 : 0) : 0, killed = kills > 0;   // 추가 보스까지 잡은 수
     cup.forEach((c) => { W.hbase[c.id] = (W.hbase[c.id] || 0) + c.score; }); kvSet('hbase', W.hbase); W.hAt = 0;
-    W.results[week] = { cup: cup.map((c) => c.id), cupScores: cup, killed, kills, tiers: [at(0.01), at(0.10), at(0.50)], bossName: W.boss && W.boss.week === week ? W.boss.name : '', participants: dmgs.length };
+    W.results[week] = { cup: cup.map((c) => c.id), cupScores: cup, killed, kills, paidKills, tiers: [at(0.01), at(0.10), at(0.50)], bossName: W.boss && W.boss.week === week ? W.boss.name : '', participants: dmgs.length };
     const keys = Object.keys(W.results).map(Number).sort((a, b) => b - a);
     keys.slice(10).forEach((k) => delete W.results[k]);
     kvSet('results', W.results);
@@ -98,6 +111,7 @@ function create(store, cfg, log) {
       newBoss(week, now);
     }
     W.wbAlive = !W.boss.killedAt;
+    if (W.boss.killedAt && !W.boss.paid) payKill();   // 예전에 잡혔지만 아직 보상을 안 보낸 보스 (이 기능 이전 · 보내기 전 종료)
     if (now - W.hAt > 30) refreshHouses(now, cupStandings(week));
     if (bossDirty) { kvSet('boss', W.boss); bossDirty = false; }
   }
@@ -109,8 +123,9 @@ function create(store, cfg, log) {
       W.boss.killedAt = now; W.wbAlive = false;
       kvSet('boss', W.boss);
       log(`월드 보스 토벌: ${W.boss.name}`);
-      addNotice(`${W.boss.name} 토벌 성공! 다음 주에 토벌 보상을 받을 수 있습니다.`, now, true);
+      addNotice(`${W.boss.name} 토벌 성공! 이번 주에 도전한 학생 모두에게 토벌 보상 우편을 보냈습니다.`, now, true);
       if (api.onKill) try { api.onKill(W.boss.name, now); } catch (e) { }
+      payKill(pid);
       return true;
     }
     bossDirty = true;
@@ -160,7 +175,7 @@ function create(store, cfg, log) {
 
   // 종료 직전: 미뤄 둔 저장까지 모두 (월드 보스 체력 · 소식 · 공지 · 결과)
   function saveAll() { if (newsT) { clearTimeout(newsT); newsT = null; } kvSet('boss', W.boss); kvSet('news', W.news); kvSet('notices', W.notices); kvSet('results', W.results); bossDirty = false; }
-  const api = { W, houseView, tick, summonBoss, saveAll, applyDamage, addNotice, addNews, publicView, ctx, rankOf, finalizeWeek, cupStandings, invalidate() { cache.at = 0; } };
+  const api = { W, houseView, tick, summonBoss, wbForecast, WB_SUMMON_FILL, saveAll, applyDamage, addNotice, addNews, publicView, ctx, rankOf, finalizeWeek, cupStandings, invalidate() { cache.at = 0; } };
   return api;
 }
 module.exports = { create };

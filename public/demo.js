@@ -8,13 +8,18 @@
   function LocalApi() { this.mode = 'local'; this.d = null; try { var s = localStorage.getItem(KEY) || localStorage.getItem('arcanum_demo_v3'); if (s) this.d = JSON.parse(s); if (this.d && this.d.P && window.Rules && Rules.fixState) Rules.fixState(this.d.P); } catch (e) { } }
   LocalApi.prototype._save = function () { try { localStorage.setItem(KEY, JSON.stringify(this.d)); } catch (e) { } };
   LocalApi.prototype._now = function () { return Date.now() / 1000; };
+  // 월드 보스 토벌 보상: 잡은 순간 (미리보기는 우편 대신 바로)
+  LocalApi.prototype._wbPay = function (now) {
+    var W = this.d.W, P = this.d.P; if (W.boss.paidKills) return; W.boss.paidKills = 1;
+    if (P && P.wk.att > 0 && P.wk.id === W.boss.week) { P.res.shard += Rules.WB_KILL_RW.shard; P.fam.eggs += Rules.WB_KILL_RW.egg; Rules.log(P, now, W.boss.name + ' 토벌 보상: 별조각 +' + Rules.WB_KILL_RW.shard + ', 환수의 알', 'good'); }
+  };
   LocalApi.prototype._world = function (now) {
     var d = this.d, W = d.W, wk = Rules.weekId(now);
     if (!W.boss || W.boss.week !== wk) {
       if (W.boss) {
         D2().HOUSES.forEach(function (h) { W.hbase[h.id] = (W.hbase[h.id] || 0) + (W.cup[h.id] || 0); });   // 기숙사 성장 누적
         var cup = D2().HOUSES.map(function (h) { return h.id; }).sort(function (a, b) { return (W.cup[b] || 0) - (W.cup[a] || 0); });
-        W.results[W.boss.week] = { cup: cup, killed: !!W.boss.killedAt, tiers: [Infinity, Infinity, 0] };
+        W.results[W.boss.week] = { cup: cup, killed: !!W.boss.killedAt, kills: W.boss.killedAt ? 1 : 0, paidKills: W.boss.paidKills || 0, tiers: [Infinity, Infinity, 0] };
       }
       var def = D2().WORLD_BOSSES[wk % D2().WORLD_BOSSES.length];
       var P = d.P, dps = P ? Rules.summary(P, W, now).wbDps : 1000;
@@ -23,7 +28,7 @@
     }
     // 가상의 다른 학생들이 보스를 조금씩 공격하고 대항전 점수를 쌓는다
     var dt = Math.max(0, now - (W.boss.lastSim || now)); W.boss.lastSim = now;
-    if (!W.boss.killedAt) { W.boss.hp = Math.max(0, W.boss.hp - W.boss.maxHp * 0.12 * dt / 86400); if (W.boss.hp <= 0) W.boss.killedAt = now; }
+    if (!W.boss.killedAt) { W.boss.hp = Math.max(0, W.boss.hp - W.boss.maxHp * 0.12 * dt / 86400); if (W.boss.hp <= 0) { W.boss.killedAt = now; this._wbPay(now); } }
     var mine = d.P ? d.P.wk.cup : 0, rate = Math.max(0.05, mine / Math.max(3600, now - Rules.weekStart(wk)));
     D2().HOUSES.forEach(function (h, i) { if (!d.P || h.id !== d.P.house) W.cup[h.id] = rate * (now - Rules.weekStart(wk)) * [1.15, 0.85, 1.0, 0.7][i]; });
     if (d.P) W.cup[d.P.house] = mine;
@@ -691,7 +696,7 @@
       if (type === 'exam' && r && r.pass) { var nw = this.d.news || (this.d.news = []); nw.unshift({ t: now, text: P.name + ' 학생이 ' + (P.grade >= 8 ? '졸업 시험을 통과해 마스터 과정이 되었습니다' : P.grade + '학년으로 진급했습니다') }); if (nw.length > 50) nw.length = 50; }
       if ((type === 'clsExam' || type === 'setCls') && r && this._chat && this._chat.h && this._chat.h.cls) { var so3 = this._soc(); this._chat.h.cls({ cls: P.cls || null, crp: so3.chat.crp = [], cooc: so3.chat.cooc = [] }); }
       if ((type === 'exam' && r && r.pass) || (type === 'useGradeUp' && r && r.grade)) this._note('grade', (P.grade >= 8 ? '졸업 시험을 통과해 마스터 과정이 되었습니다' : P.grade + '학년으로 진급했습니다') + ' · 새로 열린 것 보기', { grade: P.grade });
-      if (type === 'wbAttack') { W.boss.hp = Math.max(0, W.boss.hp - (P.wk.dmg - before)); if (W.boss.hp <= 0 && !W.boss.killedAt) { W.boss.killedAt = now; r.killed = true; } }
+      if (type === 'wbAttack') { W.boss.hp = Math.max(0, W.boss.hp - (P.wk.dmg - before)); if (W.boss.hp <= 0 && !W.boss.killedAt) { W.boss.killedAt = now; r.killed = true; this._wbPay(now); } }
     } catch (e) { if (!e.game) throw e; this._save(); return Promise.resolve({ error: e.message, P: Rules.publicState(P), now: now, _status: 400 }); }
     return this._ok(now, { r: r });
   };
