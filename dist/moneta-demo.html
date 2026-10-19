@@ -480,10 +480,11 @@ i.act { color: var(--act); font-style: italic; font-family: var(--f-body); }
 }
 @media (max-width: 900px) {
   .top { position: relative; top: 0; }
-  .dock { left: 0; right: 0; width: auto; bottom: calc(58px + env(safe-area-inset-bottom, 0px)); border-radius: 12px 12px 0 0; border-left: 0; border-right: 0; box-shadow: 0 -10px 30px rgba(0, 0, 0, .4); }
+  /* --navh: 하단 안내도의 실제 높이 (글자 크기 · 줄바꿈 · 기기마다 다르므로 화면이 재서 넣는다) */
+  .dock { left: 0; right: 0; width: auto; bottom: var(--navh, calc(58px + env(safe-area-inset-bottom, 0px))); border-radius: 12px 12px 0 0; border-left: 0; border-right: 0; box-shadow: 0 -10px 30px rgba(0, 0, 0, .4); }
   .dock:not(.closed) { height: 62vh; height: 62dvh; }
-  .body { padding-bottom: calc(150px + env(safe-area-inset-bottom, 0px)); }
-  #toasts { top: auto; bottom: calc(150px + env(safe-area-inset-bottom, 0px)); }
+  .body { padding-bottom: calc(var(--navh, calc(58px + env(safe-area-inset-bottom, 0px))) + 92px); }
+  #toasts { top: auto; bottom: calc(var(--navh, calc(58px + env(safe-area-inset-bottom, 0px))) + 92px); }
 }
 
 /* ───────── 내 정보 · 두상 · 친구 ───────── */
@@ -537,8 +538,8 @@ details[open] > summary .chev { transform: rotate(-135deg) translate(-2px, -2px)
 .flash { animation: flash 1.6s ease-out 1; }
 
 /* ───────── 가이드 ───────── */
-.icon-btn.guidebtn { width: auto; display: inline-flex; align-items: center; gap: 5px; padding: 0 10px; height: 34px; color: inherit; font: inherit; font-size: 13px; }
-.guidebtn svg { width: 16px; height: 16px; }
+.icon-btn.guidebtn { color: inherit; }   /* 다른 아이콘 버튼과 같은 정사각형 (글자 없이) */
+.guidebtn svg { width: 18px; height: 18px; }
 .glist { display: flex; flex-direction: column; gap: 10px; max-height: 58vh; overflow-y: auto; padding-right: 4px; }
 .gitem { background: var(--sunk); border: 1px solid var(--line2); border-radius: 10px; padding: 10px 12px; }
 .gitem h4 { color: var(--brass2); font-size: 14.5px; }
@@ -5558,8 +5559,12 @@ var Net = (function () {
     });
     if (!lines.length) { act('inboxAck', { upto: S.inboxUpto }); return; }
     Snd.play(items.some(function (o) { return o.k === 'lec'; }) ? 'bell' : 'level');
+    // 끝난 작업마다 바로가기: 확인하고 그 화면으로 가서 다음 연구 · 수업 · 원정을 바로 시작한다
+    var GO = [['res', 'lib', '서고로'], ['lec', 'lecture', '강의실로'], ['exp', 'explore', '원정으로'], ['disp', 'work', '공방으로'], ['hatch', 'work', '공방으로']], seen = {};
+    var gos = GO.filter(function (g) { if (seen[g[1]] || !items.some(function (o) { return o.k === g[0]; })) return false; seen[g[1]] = 1; return true; });
     modal(mhead('끝난 작업 보고', items.length + '건') + '<ul class="report">' + lines.join('') + '</ul>' +
-      '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn primary" data-act="inbox-ok" autofocus>확인하고 다음 작업 시작</button></div>');
+      '<div class="row" style="justify-content:flex-end;margin-top:14px;gap:8px"><button class="btn ghost" data-act="inbox-ok"' + (gos.length ? '' : ' autofocus') + '>확인</button>' +
+      gos.map(function (g, k) { return '<button class="btn ' + (k ? '' : 'primary') + '" data-act="inbox-go" data-a="' + g[1] + '"' + (k ? '' : ' autofocus') + '>확인하고 ' + g[2] + '</button>'; }).join('') + '</div>');
   }
 
   /* ───────── 껍데기 ───────── */
@@ -5576,12 +5581,17 @@ var Net = (function () {
       '<div class="memenu" id="memenu" role="menu" hidden><button role="menuitem" data-act="me" data-a="view">' + icon('user') + '내 정보</button><button role="menuitem" data-act="me" data-a="friends">' + icon('chat') + '친구<span class="tag br num" id="mm-fr" hidden></span></button><button role="menuitem" data-act="nav" data-a="party">' + icon('party') + '파티<span class="tag br num" id="mm-pt" hidden></span></button><button role="menuitem" data-act="nav" data-a="guild">' + icon('guild') + '동아리</button><button role="menuitem" data-act="goto" data-a="rec" data-b="titles">' + icon('rec') + '칭호 도감</button></div></div>' +
       '<div class="topmeta"><span class="seg cal" data-l="cal" data-html="1"></span><span class="seg" data-l="buffs" data-html="1"></span><span class="seg conn" id="conn" hidden>서버 연결이 끊겼습니다 · 다시 연결 중</span></div>' +
       '<div class="resbar">' + chip('mana', '마나', '#7fb8ff') + chip('gold', CUR, '#f0cf8a') + chip('know', '지식', '#a6e3cf') + chip('stone', '마석', '#c4a5ff') + chip('shard', '별조각', '#fff0a0') + '</div>' +
-      '<div class="topbtns"><button class="icon-btn notebtn" data-act="notes" aria-label="알림" title="알림">' + icon('bell') + '<span class="ibadge" id="notebadge" hidden></span></button><button class="icon-btn mailbtn" data-act="mailbox" aria-label="우편함" title="우편함">' + icon('mail') + '<span class="ibadge" id="mailbadge" hidden></span></button><button class="icon-btn guidebtn" data-act="guide" aria-label="플레이 가이드">' + icon('guide') + '<span>가이드</span></button><button class="icon-btn" data-act="settings" aria-label="설정" title="설정">' + icon('cog') + '</button></div>' +
+      '<div class="topbtns"><button class="icon-btn notebtn" data-act="notes" aria-label="알림" title="알림">' + icon('bell') + '<span class="ibadge" id="notebadge" hidden></span></button><button class="icon-btn mailbtn" data-act="mailbox" aria-label="우편함" title="우편함">' + icon('mail') + '<span class="ibadge" id="mailbadge" hidden></span></button><button class="icon-btn guidebtn" data-act="guide" aria-label="플레이 가이드" title="플레이 가이드">' + icon('guide') + '</button><button class="icon-btn" data-act="settings" aria-label="설정" title="설정">' + icon('cog') + '</button></div>' +
       '</div></header>' +
       '<div class="body"><nav class="nav" id="nav" aria-label="아카데미 안내도"></nav><main id="view"></main><aside id="chatdock" class="dock" aria-label="실시간 채팅"></aside></div>';
     updateMeBadge();
   }
   function chip(k, lbl, col) { return '<span class="chip" data-tip="' + k + '" tabindex="0" aria-label="' + lbl + ' 설명">' + dotImg(k, 18) + '<span class="lbl">' + lbl + '</span><span class="num" data-l="' + k + '"></span></span>'; }
+  // 모바일: 하단 안내도의 실제 높이를 재서 채팅창 · 토스트 · 본문 여백이 그 위에 오게 한다 (--navh)
+  function syncNavH() { var n = $('#nav'), root = document.documentElement; if (!n || innerWidth > 900) { root.style.removeProperty('--navh'); return; } root.style.setProperty('--navh', n.offsetHeight + 'px'); }
+  var navRO = null;
+  function watchNav() { var n = $('#nav'); if (!n) return; syncNavH(); if (window.ResizeObserver) { if (navRO) navRO.disconnect(); navRO = new ResizeObserver(syncNavH); navRO.observe(n); } }
+  window.addEventListener('resize', syncNavH);
   function renderNav() {
     var nav = $('#nav'); if (!nav) return;
     var cur = groupOf(S.view).id;
@@ -7901,6 +7911,7 @@ var Net = (function () {
   ACT['mc-yes'] = function () { S.peDraft = null; S.peAv = undefined; closeModal(); };
   ACT.pick = function (k, v) { S.pick[k] = v; render(); };
   ACT['inbox-ok'] = function () { var upto = S.inboxUpto; closeModal(); act('inboxAck', { upto: upto }).then(function () { render(); if (S.P.inbox.length) inboxReport(); }); };
+  ACT['inbox-go'] = function (view) { var upto = S.inboxUpto; closeModal(); ACT.nav(view); act('inboxAck', { upto: upto }).then(function () { render(); }); };
   ACT.cancel = function (key, type, el) {
     if (S.confirm[key] && S.confirm[key] > Date.now()) { S.confirm[key] = 0; act(type, JSON.parse(el.dataset.c)).then(function (r) { if (r) { if (type === 'expCancel') toast('원정에서 귀환했습니다', fmt(r.kills || 0) + '마리 · ' + MONEY(r.gold || 0, '+') + (r.items && r.items.length ? ' · 장비 ' + r.items.length + '개' : '') + ' — 모은 것을 모두 받았습니다', 2800); else toast('작업을 취소했습니다', '지난 시간의 절반만큼 받았습니다'); } render(); }); }
     else { S.confirm[key] = Date.now() + 4000; render(); setTimeout(render, 4100); }
@@ -8161,7 +8172,7 @@ var Net = (function () {
     modal(mhead('처음 오셨나요?', '플레이 가이드 「처음」 · ' + (i + 1) + ' / ' + n) +
       '<div class="onbpage"><h3>' + esc(g.t) + '</h3><p style="white-space:pre-line">' + esc(g.b) + '</p></div>' +
       '<div class="onbdots" aria-hidden="true">' + list.map(function (x, k) { return '<i class="' + (k === i ? 'on' : '') + '"></i>'; }).join('') + '</div>' +
-      '<div class="row" style="margin-top:14px"><span class="tiny faint">가이드 › 처음에서 언제든 다시 볼 수 있습니다</span><span class="spacer"></span>' +
+      '<p class="tiny faint" style="margin-top:14px">가이드 › 처음에서 언제든 다시 볼 수 있습니다</p><div class="row" style="margin-top:8px;justify-content:flex-end;flex-wrap:nowrap">' +
       (i > 0 ? '<button class="btn ghost" data-act="onb-g" data-a="' + (i - 1) + '">이전</button>' : '') +
       (i < n - 1 ? '<button class="btn primary" data-act="onb-g" data-a="' + (i + 1) + '" autofocus>다음</button>' : '<button class="btn primary" data-act="modal-close" autofocus>' + (thenTour ? '화면 둘러보기' : '닫기') + '</button>') + '</div>');
   }
@@ -8246,7 +8257,7 @@ var Net = (function () {
     box.classList.toggle('live', !!op.wait);   // 직접 해 보는 단계: 화면을 누를 수 있다
     box.querySelector('.tut-tip').innerHTML = '<div class="row" style="margin-bottom:4px"><span class="tiny gold">' + (t.key === 'main' ? '화면 둘러보기' : /^mq/.test(t.key) ? '학기 이야기' : '이 화면 둘러보기') + ' ' + pos + ' / ' + shown.length + '</span><span class="spacer"></span><button class="btn sm ghost" data-act="tut-skip">건너뛰기</button></div>' +
       '<h4>' + ST[i][1] + '</h4><p class="small" style="margin-top:4px">' + ST[i][2] + '</p>' + (op.wait ? '<p class="tiny gold" style="margin-top:6px">직접 해 보면 다음으로 넘어갑니다.</p>' : '') +
-      '<div class="row" style="margin-top:10px;justify-content:flex-end">' + (pos > 1 ? '<button class="btn sm ghost" data-act="tut-prev">이전</button>' : '') + '<button class="btn sm ' + (op.wait ? 'ghost' : 'primary') + '" data-act="tut-next">' + (last ? '끝' : op.wait ? '넘기기' : '다음') + '</button></div>';
+      '<div class="row" style="margin-top:10px;justify-content:flex-end;flex-wrap:nowrap">' + (pos > 1 ? '<button class="btn sm ghost" data-act="tut-prev">이전</button>' : '') + '<button class="btn sm ' + (op.wait ? 'ghost' : 'primary') + '" data-act="tut-next">' + (last ? '끝' : op.wait ? '넘기기' : '다음') + '</button></div>';
     tutPlace(); var nb = box.querySelector('[data-act=tut-next]'); if (nb && !op.wait) setTimeout(function () { nb.focus({ preventScroll: true }); }, 30);
     if (!t.timer) { t.timer = setInterval(tutPlace, 400); addEventListener('resize', tutPlace); addEventListener('scroll', tutPlace, true); }
   }
@@ -8904,7 +8915,7 @@ var Net = (function () {
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026101960;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026101961;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
@@ -8994,7 +9005,7 @@ var Net = (function () {
 
   /* ───────── 시작 · 반복 ───────── */
   var loopT = 0, liveT = 0;
-  function start() { shell(); renderNav(); render(); renderDock(); document.body.classList.toggle('dock-open', dockOpen()); updateMeBadge(); Snd.on = !!(S.P.opt && S.P.opt.sound); if (!loopT) loopT = setInterval(loop, 250); chatConnect(); loadMe(); }
+  function start() { shell(); renderNav(); watchNav(); render(); renderDock(); document.body.classList.toggle('dock-open', dockOpen()); updateMeBadge(); Snd.on = !!(S.P.opt && S.P.opt.sound); if (!loopT) loopT = setInterval(loop, 250); chatConnect(); loadMe(); }
   function stopLoop() { if (loopT) { clearInterval(loopT); loopT = 0; } Bgm.want(null, now()); }
   // 원정·시험·토벌 화면은 전투곡, 나머지는 광장곡
   var BATTLE_VIEWS = { explore: 1, exam: 1, world: 1 };

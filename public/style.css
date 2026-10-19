@@ -474,10 +474,11 @@ i.act { color: var(--act); font-style: italic; font-family: var(--f-body); }
 }
 @media (max-width: 900px) {
   .top { position: relative; top: 0; }
-  .dock { left: 0; right: 0; width: auto; bottom: calc(58px + env(safe-area-inset-bottom, 0px)); border-radius: 12px 12px 0 0; border-left: 0; border-right: 0; box-shadow: 0 -10px 30px rgba(0, 0, 0, .4); }
+  /* --navh: 하단 안내도의 실제 높이 (글자 크기 · 줄바꿈 · 기기마다 다르므로 화면이 재서 넣는다) */
+  .dock { left: 0; right: 0; width: auto; bottom: var(--navh, calc(58px + env(safe-area-inset-bottom, 0px))); border-radius: 12px 12px 0 0; border-left: 0; border-right: 0; box-shadow: 0 -10px 30px rgba(0, 0, 0, .4); }
   .dock:not(.closed) { height: 62vh; height: 62dvh; }
-  .body { padding-bottom: calc(150px + env(safe-area-inset-bottom, 0px)); }
-  #toasts { top: auto; bottom: calc(150px + env(safe-area-inset-bottom, 0px)); }
+  .body { padding-bottom: calc(var(--navh, calc(58px + env(safe-area-inset-bottom, 0px))) + 92px); }
+  #toasts { top: auto; bottom: calc(var(--navh, calc(58px + env(safe-area-inset-bottom, 0px))) + 92px); }
 }
 
 /* ───────── 내 정보 · 두상 · 친구 ───────── */
@@ -531,8 +532,8 @@ details[open] > summary .chev { transform: rotate(-135deg) translate(-2px, -2px)
 .flash { animation: flash 1.6s ease-out 1; }
 
 /* ───────── 가이드 ───────── */
-.icon-btn.guidebtn { width: auto; display: inline-flex; align-items: center; gap: 5px; padding: 0 10px; height: 34px; color: inherit; font: inherit; font-size: 13px; }
-.guidebtn svg { width: 16px; height: 16px; }
+.icon-btn.guidebtn { color: inherit; }   /* 다른 아이콘 버튼과 같은 정사각형 (글자 없이) */
+.guidebtn svg { width: 18px; height: 18px; }
 .glist { display: flex; flex-direction: column; gap: 10px; max-height: 58vh; overflow-y: auto; padding-right: 4px; }
 .gitem { background: var(--sunk); border: 1px solid var(--line2); border-radius: 10px; padding: 10px 12px; }
 .gitem h4 { color: var(--brass2); font-size: 14.5px; }
