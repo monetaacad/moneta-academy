@@ -263,8 +263,15 @@ function serveStatic(req, res, urlPath) {
 }
 
 /* ───────── 게임 상태 ───────── */
+// 운영자 여부를 P.op로 (규칙 엔진의 운영진 전용 칭호 판정용). 해제되면 운영진 칭호도 뗀다
+function syncOp(P) {
+  const op = isChatOp(P.id) ? 1 : 0; let ch = (P.op || 0) !== op; P.op = op;
+  if (!op && P.title && !R.titleOk(P, P.title)) { P.title = ''; ch = true; }
+  if (ch) store.markDirty(P.id);
+}
 function loadPlayer(pid, now) {
   const P = store.get(pid); if (!P) return null;
+  syncOp(P);
   const fp = R.fingerprint(P);
   const pc = setPartyN(P) | setGuildLv(P);
   R.advance(P, world.ctx(now), now);
@@ -340,7 +347,7 @@ routes['POST /api/register'] = async (req, res) => {
     });
   } catch (e) { return fail(req, res, e.status || 409, e.status ? e.message : '이미 쓰는 이름이나 아이디입니다'); }
   store.put(P);
-  if (opInv) { dbx.q.setRole.run('admin', id); adminIds.add(id); oplog('admin', '관리자', 'role', `${name} → admin (운영자 초대코드)`); }
+  if (opInv) { dbx.q.setRole.run('admin', id); adminIds.add(id); P.op = 1; oplog('admin', '관리자', 'role', `${name} → admin (운영자 초대코드)`); }
   const token = newSession(id);
   log(`입학: ${name} (${house})${code ? ' 초대코드 ' + code : ''}${opInv ? ' · 운영자' : ''}`);
   world.addNews(P.name + ' 학생이 ' + (R.HOUSE[P.house] ? R.HOUSE[P.house].name : '아카데미') + '에 입학했습니다', now);
@@ -417,6 +424,7 @@ routes['POST /api/act'] = async (req, res) => {
   const b = await readJson(req, 8192);
   const type = String(b.type || ''), a = b.a && typeof b.a === 'object' ? b.a : {};
   const now = nowSec(), P = store.get(pid); if (!P) return fail(req, res, 401, '학생 정보를 찾을 수 없습니다');
+  syncOp(P);
   world.tick(now);
   // 함께 원정 방에서 출발을 기다리는 중이면, 방이 쓸 마지막 빈 원정 슬롯으로 혼자 원정은 못 보낸다
   if (type === 'expStart' && exprooms.inRoom(pid)) { const c0 = R.calc(P, world.ctx(now), now); let free = 0; for (let i = 0; i < c0.expSlots; i++) if (!P.exp[i]) free++; if (free <= 1) return send(req, res, 400, { error: '함께 원정 방에서 출발을 기다리는 중입니다. 혼자 출정하려면 먼저 방 나가기 필요', P: R.publicState(P), now }); }
@@ -1541,6 +1549,7 @@ routes['POST /api/admin/ops'] = async (req, res) => {
   const b = await readJson(req, 1024), row = dbx.q.playerByKey.get(nameKey(String(b.name || '')));
   if (!row) return fail(req, res, 404, '없는 학생입니다');
   const on = b.op !== false; dbx.q.setRole.run(on ? 'admin' : 'user', row.id); if (on) adminIds.add(row.id); else adminIds.delete(row.id);
+  { const P = store.get(row.id); if (P) syncOp(P); }
   oplog('admin', '관리자', 'role', `${row.name || b.name} → ${on ? 'admin' : 'user'}`); chat.opChanged(row.id); send(req, res, 200, { ok: true, op: on });
 };
 routes['POST /api/admin/slow'] = async (req, res) => {

@@ -707,7 +707,13 @@ var DATA = (function () {
     { id: 'honor', name: '수석', stat: 'sGrades', n: 3, how: '기말시험 S 세 번' },
     { id: 'summa', name: '전 학년 수석', stat: 'sGrades', n: 7, how: '일곱 기말시험 모두 S' },
     { id: 'loyal', name: '개근상', stat: 'streak', n: 30, how: '30일 연속 출석' },
-    { id: 'house', name: '', house: true, how: '내 기숙사의 상징 (기숙사마다 다름)' }
+    { id: 'house', name: '', house: true, how: '내 기숙사의 상징 (기숙사마다 다름)' },
+    // 운영진 전용 칭호: 서버가 운영자에게만 P.op를 켜 준다. 운영자가 아니면 목록에도 나오지 않고 달 수도 없다
+    { id: 'op_bell', name: '종지기', op: true, how: '운영진 전용' },
+    { id: 'op_clerk', name: '아카데미 서기', op: true, how: '운영진 전용' },
+    { id: 'op_warden', name: '사감', op: true, how: '운영진 전용' },
+    { id: 'op_admit', name: '입학처장', op: true, how: '운영진 전용' },
+    { id: 'op_dean', name: '학장 대리', op: true, how: '운영진 전용' }
   ];
   D.HOUSE_TITLE = { lanterna: '등불관의 별', clepsydra: '물시계관의 물방울', corona: '가시왕관관의 칼날', speculum: '거울관의 그림자' };
 
