@@ -493,13 +493,12 @@
       '<div class="row chatmeta"><span class="tiny faint" id="chatcount"></span><span class="spacer"></span><span class="tiny bad" id="chatmsg"></span></div>' +
       (c.blocked.length && ch !== 'dm' ? '<p class="tiny faint">가린 학생 ' + c.blocked.length + '명 · <button class="btn sm ghost" data-act="unblockall">모두 다시 보기</button></p>' : '') + '</div>';
   }
-  // 접힌 채팅창: 보이는 탭 전체에서 가장 최근 글 한 줄 (숫자 배지 없이, 어느 탭 글인지 함께)
+  // 접힌 채팅창: 지금 고른 탭의 최근 글 한 줄 (글이 없으면 우측에 「채팅 열기」)
   function peekText() {
-    var m = null, mk = null;
-    chans().forEach(function (k) { if (k === 'dm') return; (S.chat.msgs[k] || []).forEach(function (x) { if (S.chat.blocked.indexOf(x.pid) < 0 && (!m || (x.t || 0) >= (m.t || 0))) { m = x; mk = k; } }); });
+    var arr = (S.chat.msgs[S.chat.ch === 'dm' ? 'world' : S.chat.ch] || []).filter(function (m) { return S.chat.blocked.indexOf(m.pid) < 0; }), m = arr[arr.length - 1];
     if (!m) return '<span class="faint">채팅 열기</span>';
     var tx = m.text; if (m.kind === 'recruit') { try { var rc = JSON.parse(m.text); tx = (rc.type === 'guild' ? '동아리 모집 · ' + rc.name : rc.type === 'party' ? '파티원 모집 · ' + rc.name : '함께 원정 모집 · ' + rc.s + '단계') + ' ' + rc.n + '/' + rc.max + (rc.note ? ' · ' + rc.note : ''); } catch (e) { tx = '모집 알림'; } }
-    return '<span class="pkch">' + esc((CH_INFO[mk] || {}).name || '') + '</span><b style="color:' + (R.HOUSE[m.house] ? R.HOUSE[m.house].color : 'var(--brass2)') + '">' + esc(m.name) + '</b> <span class="muted">' + chatText(String(tx).replace(/\s+/g, ' ').slice(0, 90)) + '</span>';
+    return '<span class="pkmsg"><b style="color:' + (R.HOUSE[m.house] ? R.HOUSE[m.house].color : 'var(--brass2)') + '">' + esc(m.name) + '</b> <span class="muted">' + chatText(String(tx).replace(/\s+/g, ' ').slice(0, 90)) + '</span></span>';
   }
   function updateUnread() {
     var open = dockOpen();
@@ -3687,7 +3686,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026101968;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026101969;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

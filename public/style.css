@@ -1469,4 +1469,4 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 .dtabs button, .gsub button { position: relative; }
 .dtabs button.unread::after, .gsub button.unread::after { content: ''; position: absolute; left: 8px; right: 8px; bottom: 1px; height: 3px; border-radius: 3px; background: color-mix(in srgb, var(--brass) 60%, transparent); }
 .dtabs button.unread { color: var(--ink); font-weight: 700; }
-.dock-peek .pkch { display: inline-block; font-size: 10.5px; padding: 0 6px; margin-right: 6px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); vertical-align: 1px; }
+.dock-peek:has(.pkmsg) { text-align: left; }   /* 최근 글은 좌측, 「채팅 열기」만 우측 */
