@@ -89,6 +89,14 @@ let MAINT = Object.assign({ on: false, start: 0, until: 0, msg: '' }, dbx.kvGet(
 function maintView(pid) { if (!MAINT.on && !MAINT.start) return null; return { on: !!MAINT.on, start: MAINT.start || 0, until: MAINT.until || 0, msg: MAINT.msg || '', bypass: !!(pid && isChatOp(pid)) }; }
 function maintPing() { chat.pingEach('maint', (pid) => maintView(pid) || { on: false }); }
 function maintSet(m, by) { MAINT = { on: !!m.on, start: m.on ? 0 : Math.max(0, +m.start || 0), until: Math.max(0, +m.until || 0), msg: String(m.msg || '').slice(0, 300) }; dbx.kvSet('maint', MAINT); maintPing(); oplog(by || 'admin', '', 'maint', MAINT.on ? '점검 시작' : MAINT.start ? '점검 예고 ' + new Date(MAINT.start * 1000).toISOString() : '점검 끝'); }
+// 예전에 운영실에서 올린 공지(일반 소식으로 저장됨)를 한 번 「운영진 공지」로 바꾼다: 운영실 공지 기록(world notices, auto 아님)과 글이 같은 것만
+if (!dbx.kvGet('staffNoticeMig', 0)) {
+  try {
+    const mine = new Set((dbx.kvGet('notices', []) || []).filter((n) => n && !n.auto).map((n) => String(n.text).slice(0, 300)));
+    let n = 0; if (mine.size) dbx.q.recentChat.all('notice', 500).forEach((r) => { if (r.pid !== 'system') return; let tx = ''; try { tx = sec.dec(r.text); } catch (e) { return; } if (mine.has(String(tx).slice(0, 300))) { dbx.db.prepare("UPDATE chat SET kind = 'staff', pid = 'staff', name = '운영진' WHERE id = ?").run(r.id); n++; } });
+    dbx.kvSet('staffNoticeMig', 1); if (n) log('예전 운영진 공지 ' + n + '건을 강조 표시로 바꿨습니다');
+  } catch (e) { log('운영진 공지 이주 실패', e); }
+}
 const chat = Chat.create(dbx, log, { initExtra: (pid) => ({ build: BUILD.build, minBuild: BUILD.minBuild, maint: maintView(pid), pin: dbx.kvGet('pinNotice', null) }), sec, gzip: process.env.SSE_GZIP !== '0', isOp: (pid) => isChatOp(pid), slow: { world: dbx.kvGet('chat_slow', 0) }, partyOf: (pid) => partyOf.get(pid) || null, exrOf: (pid) => exprooms.chatKey(pid) || R.expChatKey(store.peek(pid)), guildOf: (pid) => guildOf.get(pid) || null, houseOf: (pid) => { const P = store.get(pid); return P && R.HOUSE[P.house] ? P.house : null; }, clsOf: (pid) => { const P = store.get(pid); return P && R.CLS[P.cls] ? P.cls : null; }, titleOf: (P) => R.titleName(P, P.title), inkOf: (P) => R.decoView(P).ink || '', canDm: (a, b) => friendState(a, b) === 'ok' });
 const Board = require('./board.js');
 // 알림 기록: 우편과 따로, 일어난 일을 모아 보여 준다 (최근 100개, 30일)
