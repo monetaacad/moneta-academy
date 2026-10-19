@@ -1246,7 +1246,7 @@
       h += '<p class="small muted" style="margin-top:10px">비어 있는 원정 슬롯이 있어야 함께 원정에 참가할 수 있습니다.</p>';
     } else {
       var cap = Math.min(P.maxStage, R.stageCap(P)), s0 = S.pick.ers; if (!s0 || s0 > cap || R.isBoss(s0)) { s0 = R.bestStage(P, wctx()); S.pick.ers = s0; }
-      h += '<details class="ernew"' + (S.erOpen ? ' open' : '') + ' data-act-toggle="eropen"><summary class="btn primary ernew-btn">' + (S.erOpen ? '닫기' : '＋ 원정 방 만들기') + '</summary><p class="tiny faint" style="margin-top:6px">단계와 시간을 정해 모두에게 방을 엽니다. 방에 들어가 있는 동안 채팅에 「원정」 탭이 생깁니다.</p>' +
+      h += '<details class="ernew"' + (S.erOpen ? ' open' : '') + ' data-act-toggle="eropen"><summary class="btn primary ernew-btn">' + (S.erOpen ? '닫기' : '＋ 원정 방 만들기') + '</summary><p class="tiny faint" style="margin-top:6px">단계와 시간을 정해 모두에게 방을 엽니다. 방에 들어가면 채팅에 「원정」 탭이 생기고, 원정이 끝나 결과를 받을 때까지 이어집니다.</p>' +
         '<div class="stagectl" style="margin-top:8px"><button class="btn sm" data-act="ers" data-a="-1" aria-label="이전 단계">◀</button><span class="big num">' + s0 + '</span><button class="btn sm" data-act="ers" data-a="1" aria-label="다음 단계">▶</button><span class="tiny faint">' + R.zoneOf(s0).name + '</span></div>' +
         durPicker('erd', D.DURATIONS, '1h') +
         (er.party && er.party.n > 1 ? '<p class="small" style="margin-top:8px">' + (er.party.can ? '파티에 들어가 있습니다. 「파티로 열기」를 누르면 파티원 ' + er.party.n + '명이 함께 방에 들어갑니다.' : '파티로 열기는 파티장만 가능합니다. 파티장이 파티 화면에서 「파티원도 파티 단위로 원정 참가」를 켜면 누구나 열 수 있습니다.') + '</p>' : '') +
@@ -1346,7 +1346,7 @@
       if (j) {
         var el = Math.min(1, (now() - j.start) / j.dur), sofar = Math.floor(j.kps * j.dur * j.eff * el);
         h += '<div class="card hl slotcard"><div class="row between"><span class="tiny gold">원정 ' + (i + 1) + '</span>' + cancelBtn('exp' + i, 'expCancel', { slot: i }) + '</div>' +
-          '<h3>' + j.s + '단계 <span class="small muted">' + R.zoneOf(j.s).name + '</span></h3>' + (j.pt ? '<div class="tiny" style="margin:2px 0 4px"><span class="tag br">함께 원정 ' + j.pt.n + '명</span> <span class="postag p-' + j.pt.pos + '">' + R.EXP_POS[j.pt.pos].name + '</span>' + '<span class="tiny muted">나</span>' + (j.pt.team ? '' : j.pt.with && j.pt.with.length ? '<div class="ptwith">' + j.pt.with.map(function (w) { return '<span class="erm sm' + (w.npc ? ' npc' : '') + '"><span class="postag p-' + w.pos + '">' + R.EXP_POS[w.pos].name + '</span>' + erName(w) + '</span>'; }).join('') + '</div>' : '') + '</div>' : '') + (j.pt && j.pt.team ? '<div class="ptteam" data-l="ptteam:' + i + '" data-html="1">' + ptTeam(j) + '</div>' : '') + '<div class="bar thick"><b data-b="prog:' + j.start + ':' + j.end + '"></b></div>' +
+          '<h3>' + j.s + '단계 <span class="small muted">' + R.zoneOf(j.s).name + '</span></h3>' + (j.pt ? '<div class="tiny" style="margin:2px 0 4px"><span class="tag br">함께 원정 ' + j.pt.n + '명</span> <span class="postag p-' + j.pt.pos + '">' + R.EXP_POS[j.pt.pos].name + '</span>' + (j.pt.team ? '' : '<span class="tiny muted">나</span>') + (j.pt.team ? '' : j.pt.with && j.pt.with.length ? '<div class="ptwith">' + j.pt.with.map(function (w) { return '<span class="erm sm' + (w.npc ? ' npc' : '') + '"><span class="postag p-' + w.pos + '">' + R.EXP_POS[w.pos].name + '</span>' + erName(w) + '</span>'; }).join('') + '</div>' : '') + '</div>' : '') + (j.pt && j.pt.team ? '<span hidden data-l="ptteam:' + i + '"></span>' + ptTeam(j, i) : '') + '<div class="bar thick"><b data-b="prog:' + j.start + ':' + j.end + '"></b></div>' +
           '<div class="row small muted"><span data-l="left:' + j.end + '"></span> 남음 · ' + clock(j.end) + '</div>' + (j.fallAt ? '<p class="tiny bad">무모한 원정 · ' + clock(j.fallAt) + '쯤 쓰러져 돌아옵니다 (그때까지 모은 것의 80%). 먼저 「귀환」하면 모은 것을 모두 받습니다.</p>' : '') +
           '<div class="small">예상 처치 ' + fmt(Math.round(j.kps * j.dur * j.eff)) + '마리 · ' + MONEY(j.kps * j.dur * j.eff * j.gEach, '+') + ' · 경험치 +' + fmt(j.kps * j.dur * j.eff * j.xEach) + '</div><div class="tiny faint">지금까지 약 ' + fmt(sofar) + '마리 처치</div></div>';
       } else if (i === resv) {
@@ -2462,20 +2462,42 @@
     boss: function () { return S.P.bossCd <= now() && R.canChallenge(S.P); },
     spirit: function () { return jar().n > 0; }
   };
-  // 함께 원정 일행: 포지션 · HP 막대 · 지금까지 넣은 피해. HP는 위험도만큼 싸울 때 깎이고 쉬는 동안 차오르는 모습을 시각으로 그린다
-  function ptTeam(j) {
-    var t = now(), el = Math.max(0, Math.min(1, (t - j.start) / j.dur)), tm = j.pt.team, n = tm.length, done = t >= j.end;
-    var partyKills = j.kps * j.dur * j.eff * el / Math.max(1e-9, (1 + R.EXP_PARTY_BONUS * (n - 1)) / n), total = partyKills * R.monHp(j.s) * R.K.KILL_PACK;
-    return tm.map(function (m, k) {
+  // 함께 원정 일행: 순위(피해 몫이 시간에 따라 엎치락뒤치락) · 포지션 · 이름(누르면 정보 카드) · HP 막대와 수치.
+  // HP는 위험도만큼 싸울 때 깎이고 쉬는 동안 차오르는 모습을 시각으로 그린다. 줄은 한 번만 그리고 순위 · HP만 매초 바꾼다(자리 이동 애니메이션)
+  var PT_ROW = 40;
+  function ptState(j) {
+    var t = now(), done = t >= j.end, tm = j.pt.team;
+    var st = tm.map(function (m, k) {
       var me = k === j.pt.me, r = Math.min(1.4, m.risk || 0), ph = Math.abs(Math.sin(t / 7 + k * 1.9)) * 0.6 + Math.abs(Math.sin(t / 2.3 + k)) * 0.4;
       var hp = done ? 1 : Math.max(0.05, 1 - Math.min(0.95, r * (0.35 + 0.65 * ph)));
       if (me && j.fallAt && t >= j.fallAt) hp = 0;
-      var col = hp > 0.6 ? 'var(--verd)' : hp > 0.3 ? 'var(--brass)' : 'var(--rose)';
-      return '<div class="ptm' + (me ? ' me' : '') + '"><span class="postag p-' + m.pos + '">' + R.EXP_POS[m.pos].name + '</span><span class="ptn ell">' + esc(m.name) + (me ? ' <span class="tiny faint">나</span>' : m.npc ? ' <span class="tiny faint">동행</span>' : '') + '</span>' +
-        '<span class="pthp" title="HP"><b style="width:' + Math.round(hp * 100) + '%;background:' + col + '"></b></span><span class="ptd num" title="넣은 피해 · 몫">' + fmt(Math.round(total * (m.dmg || 0))) + ' <span class="tiny faint">' + Math.round((m.dmg || 0) * 100) + '%</span></span></div>';
-    }).join('');
+      return { k: k, hp: hp, sc: (m.dmg || 0) * (0.7 + 0.6 * Math.abs(Math.sin(t / 11 + k * 2.3))) };
+    });
+    st.slice().sort(function (a, b) { return b.sc - a.sc; }).forEach(function (x, i) { x.rank = i; });
+    return st;
   }
-  LIVE.ptteam = function (i) { var j = S.P.exp[+i]; return j && j.pt && j.pt.team ? ptTeam(j) : undefined; };
+  function ptHpTxt(m, hp) { return m.hp ? fmt(Math.round(m.hp * hp)) + ' / ' + fmt(m.hp) : Math.round(hp * 100) + '%'; }
+  function ptHpCol(hp) { return hp > 0.6 ? 'var(--verd)' : hp > 0.3 ? 'var(--brass)' : 'var(--rose)'; }
+  function ptTeam(j, i) {
+    var st = ptState(j);
+    return '<div class="ptteam" data-pt="' + i + '" style="height:' + (j.pt.team.length * PT_ROW) + 'px">' + j.pt.team.map(function (m, k) {
+      var me = k === j.pt.me, x = st[k], meta = m.npc ? '동행 · 방장 힘의 60%' : [(m.grade >= 8 ? '마스터' : (m.grade || 1) + '학년'), 'Lv ' + (m.lvl || 1), R.CLS[m.cls] ? R.CLS[m.cls].name : '', m.power ? '전투력 ' + fmt(m.power) : ''].filter(Boolean).join(' · ');
+      var nm = m.npc ? '<button class="cn" data-act="npccard" data-a="' + (+m.k || 0) + '">' + esc(m.name) + '</button>' : m.id ? '<button class="cn" data-act="prof" data-a="' + esc(m.id) + '">' + esc(m.name) + '</button>' : esc(m.name);
+      return '<div class="ptm' + (me ? ' me' : '') + '" data-k="' + k + '" style="transform:translateY(' + (x.rank * PT_ROW) + 'px)"><span class="ptr num">' + (x.rank + 1) + '</span><span class="postag p-' + m.pos + '">' + R.EXP_POS[m.pos].name + '</span>' +
+        '<span class="ptn">' + nm + ' <span class="tiny faint ptmeta">' + esc(meta) + '</span></span>' +
+        '<span class="pthpw"><span class="pthp" title="HP"><b style="width:' + Math.round(x.hp * 100) + '%;background:' + ptHpCol(x.hp) + '"></b></span><span class="tiny num pthpt">HP ' + ptHpTxt(m, x.hp) + '</span></span></div>';
+    }).join('') + '</div>';
+  }
+  // 매초: 줄을 다시 그리지 않고 순위 자리 · HP만 바꾼다
+  LIVE.ptteam = function (i) {
+    var j = S.P.exp[+i], box = document.querySelector('[data-pt="' + (+i) + '"]'); if (!j || !j.pt || !j.pt.team || !box) return undefined;
+    ptState(j).forEach(function (x) {
+      var row = box.querySelector('[data-k="' + x.k + '"]'); if (!row) return; var m = j.pt.team[x.k];
+      row.style.transform = 'translateY(' + (x.rank * PT_ROW) + 'px)'; row.querySelector('.ptr').textContent = x.rank + 1;
+      var b = row.querySelector('.pthp b'); b.style.width = Math.round(x.hp * 100) + '%'; b.style.background = ptHpCol(x.hp); row.querySelector('.pthpt').textContent = 'HP ' + ptHpTxt(m, x.hp);
+    });
+    return undefined;
+  };
   function callKey(map, key) { var p = key.split(':'), f = map[p[0]]; return f ? f.apply(null, p.slice(1)) : undefined; }
   function updateLive() {
     if (!S.P) return;
@@ -3692,7 +3714,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026101973;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026101974;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

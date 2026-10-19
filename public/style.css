@@ -1457,13 +1457,17 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 .spellbar .spell { background: var(--panel); border-color: var(--line); }
 :root[data-paper="on"] .card.inset { background-color: color-mix(in srgb, var(--brass) 9%, var(--panel)); }
 :root[data-paper="on"] .card .card.inset { background-color: color-mix(in srgb, var(--brass) 7%, var(--sunk)); }
-/* 함께 원정 일행 현황 */
-.ptteam { display: flex; flex-direction: column; gap: 5px; margin: 6px 0 4px; padding: 8px 10px; border-radius: 8px; background: var(--sunk); border: 1px solid var(--line2); }
-.ptm { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(70px, 1.2fr) auto; align-items: center; gap: 8px; font-size: 12.5px; }
-.ptm.me .ptn { color: var(--brass2); font-weight: 600; }
+/* 함께 원정 일행 현황: 순위대로 줄이 위아래로 미끄러진다 */
+.ptteam { position: relative; box-sizing: content-box; margin: 6px 0 4px; padding: 6px 10px; border-radius: 8px; background: var(--sunk); border: 1px solid var(--line2); }
+.ptm { position: absolute; left: 10px; right: 10px; top: 6px; height: 40px; display: grid; grid-template-columns: 18px auto minmax(0, 1fr) minmax(96px, 38%); align-items: center; gap: 8px; font-size: 12.5px; transition: transform .7s cubic-bezier(.3, .8, .3, 1); }
+.ptm .ptr { font-size: 12px; color: var(--faint); text-align: center; }
+.ptm .ptn { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ptm.me .ptn .cn { color: var(--brass2); font-weight: 700; }
+.pthpw { display: flex; flex-direction: column; gap: 2px; }
 .pthp { height: 7px; border-radius: 4px; background: color-mix(in srgb, var(--ink) 12%, transparent); overflow: hidden; }
 .pthp b { display: block; height: 100%; border-radius: 4px; transition: width .8s ease, background-color .8s; }
-.ptd { min-width: 64px; text-align: right; }
+.pthpt { color: var(--muted); text-align: right; font-size: 10.5px; }
+@media (max-width: 560px) { .ptm .ptn { display: flex; flex-direction: column; line-height: 1.25; } .ptm .ptmeta { font-size: 10px; overflow: hidden; text-overflow: ellipsis; } }
 /* 채팅 탭 새 글: 숫자 배지 대신 탭 아래에 옅은 밑줄 (선택된 탭보다 약하게, 테마 포인트 색) */
 .dtabs .ub { display: none !important; }
 .dtabs button, .gsub button { position: relative; }
@@ -1471,3 +1475,4 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 .dtabs button.unread { color: var(--ink); font-weight: 700; }
 .dock-peek:has(.pkmsg) { text-align: left; }   /* 최근 글은 좌측, 「채팅 열기」만 우측 */
 .gsuggest { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line2); }
+.ptm .ptn { align-items: flex-start; text-align: left; }

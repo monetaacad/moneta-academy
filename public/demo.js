@@ -587,8 +587,8 @@
     Rules.advance(P, W, now);
     var slot; try { slot = Rules.expCanGo(P, W, now, r.s); } catch (e) { E.gone = { ok: false, why: e.message, s: r.s }; return { n: 0 }; }
     var me = r.members.filter(function (m) { return !m.npc; })[0]; if (Rules.expPositions(P).indexOf(me.pos) < 0) me.pos = 'van';
-    var pv = Rules.expPartyPreview(this._erCs(r, now), r.s, r.d), mi = r.members.indexOf(me);
-    Rules.expPartyApply(P, now, slot, r.s, r.d, pv.each[mi], { n: r.members.length, pos: me.pos, with: r.members.filter(function (m) { return m !== me; }).map(function (m) { return { name: m.name, pos: m.pos, npc: true, k: m.k }; }), team: Rules.expTeam(pv, r.members), me: mi });
+    var cs = this._erCs(r, now), pv = Rules.expPartyPreview(cs, r.s, r.d), mi = r.members.indexOf(me), sm = Rules.summary(P, W, now);
+    Rules.expPartyApply(P, now, slot, r.s, r.d, pv.each[mi], { n: r.members.length, pos: me.pos, with: r.members.filter(function (m) { return m !== me; }).map(function (m) { return { name: m.name, pos: m.pos, npc: true, k: m.k }; }), team: Rules.expTeam(pv, r.members.map(function (m) { return m === me ? { id: P.id, name: P.name, pos: m.pos, cls: P.cls, grade: P.grade, lvl: sm.lvl, power: Math.round(sm.power) } : m; }), cs), me: mi });
     E.gone = { ok: true, s: r.s, n: r.members.length }; this._save(); return { n: r.members.length };
   };
   LocalApi.prototype._erView = function () {

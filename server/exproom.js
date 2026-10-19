@@ -177,11 +177,12 @@ function create(o) {
     if (!people(r).length) return { n: 0 };
     if (!r.members.some((m) => m.id === r.host)) r.host = people(r)[0].id;
     const st = stats(r); if (!st.every(Boolean)) return { n: 0 };
-    const pv = R.expPartyPreview(st, r.s, r.d), names = r.members.map((m) => ({ id: m.npc ? undefined : m.id, k: m.npc ? m.k : undefined, name: m.name, pos: m.pos, npc: !!m.npc })), team = R.expTeam(pv, r.members);
+    const pv = R.expPartyPreview(st, r.s, r.d), names = r.members.map((m) => ({ id: m.npc ? undefined : m.id, k: m.npc ? m.k : undefined, name: m.name, pos: m.pos, npc: !!m.npc })), team = R.expTeam(pv, r.members, st);
+    if (!r.ck) r.ck = Date.now().toString(36) + '-' + r.id;   // 떠난 뒤에도 원정 채팅이 이어지도록 열쇠를 일정에 남긴다
     r.members.forEach((m, i) => {
       if (m.npc) return;
       const P = st[i].P, slot = R.expCanGo(P, W, now, r.s);
-      R.expPartyApply(P, now, slot, r.s, r.d, pv.each[i], { n: r.members.length, pos: m.pos, with: names.filter((y, k) => k !== i), team, me: i });
+      R.expPartyApply(P, now, slot, r.s, r.d, pv.each[i], { n: r.members.length, pos: m.pos, with: names.filter((y, k) => k !== i), team, me: i, ck: r.ck });
       markDirty(m.id); gone.set(m.id, { at: real(), ok: true, s: r.s, n: r.members.length });
     });
     log(`함께 원정 출발: ${r.s}단계 ${people(r).length}명 + 동행 ${r.members.length - people(r).length}`);
