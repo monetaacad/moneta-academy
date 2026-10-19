@@ -1646,6 +1646,14 @@ routes['POST /api/admin/notice'] = async (req, res) => {
   if (b.pin) { const pin = { id: m.id, t, text }; dbx.kvSet('pinNotice', pin); chat.pingAll('pin', { pin }); }   // 공지 탭 상단에 고정
   send(req, res, 200, { ok: true, pin: b.pin ? dbx.kvGet('pinNotice', null) : undefined });
 };
+routes['POST /api/admin/wbsummon'] = async (req, res) => {
+  if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
+  const b = await readJson(req, 256); let boss;
+  try { boss = world.summonBoss(nowSec(), b.hp); } catch (e) { return fail(req, res, 400, e.message); }
+  world.invalidate(); const t = '추가 월드 보스 ' + R.josa(boss.name, '이', '가') + ' 나타났습니다! 잡은 보스 수만큼 다음 주에 토벌 보상을 받습니다.';
+  chat.system('world', t, Date.now() / 1000); chat.system('notice', t, Date.now() / 1000);
+  oplog('admin', '관리자', 'wbsummon', `${boss.name} (${boss.round}번째, 체력 ${R.fmt(boss.maxHp)})`); send(req, res, 200, { ok: true, boss });
+};
 routes['POST /api/admin/grant'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
   const b = await readJson(req, 4096), row = dbx.q.playerByKey.get(nameKey(String(b.name || '')));

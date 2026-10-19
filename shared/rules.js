@@ -38,7 +38,7 @@
     CANCEL_KEEP: 0.5,
     BAG_BASE: 40,
     EXAM_CD: 3600, BOSS_CD: 600, DUEL_CD: 1800, DUEL_LOSE_CD: 3600,
-    WB_TICKET_REGEN: 28800, WB_TICKET_MAX: 3, WB_BUY_MAX: 2,
+    WB_TICKET_REGEN: 28800, WB_TICKET_MAX: 3, WB_BUY_MAX: 2, WB_EXTRA_USE: 2,   // 매점 구매 · 추가 도전권 사용: 주마다(월요일 KST 0시) 2번씩
     SPIRIT_EVERY: 2400, SPIRIT_JAR: 4,   // 정령은 40분마다 병에 한 마리, 최대 4마리
     EGG_TIME: 21600,
     TZ: 9 * 3600
@@ -195,6 +195,8 @@
     // 경제 조정(C안) 공지: 이 조정 전에 입학한 학생에게 한 번 보여 준다 (1 = 보여 줄 것, 2 = 봤음)
     if (P.res && P.res.know % 1) P.res.know = Math.floor(P.res.know);   // 예전에 남은 지식 소수점 정리
     if (!P.sndV && P.opt) { P.sndV = 1; P.opt.sound = true; }   // 효과음 기본값을 켬으로 (BUILD 2026101953): 예전 기본값(꺼짐) 그대로인 학생도 한 번 켠다
+    // 월드 보스 추가 도전권 (2026-10-19): 충전 도전권(최대 3)과 매점 · 우편으로 받은 추가 도전권을 따로 센다. 구매 · 추가 사용은 주간 2번
+    if (P.wb && P.wb.extra == null) { P.wb.extra = Math.max(0, (P.wb.tickets || 0) - K.WB_TICKET_MAX); P.wb.tickets = Math.min(P.wb.tickets || 0, K.WB_TICKET_MAX); P.wb.bought = 0; P.wb.buyWk = -1; P.wb.exUsed = 0; P.wb.exWk = -1; delete P.wb.buyDay; }
     if (P.econC == null) P.econC = P.created && P.created < R.ECON_C_AT ? 1 : 2;
     if (!P.badges) P.badges = [];
     if (P.grade >= 3 && !P.badgeGot && P.res && P.log) { P.badgeGot = 1; gainBadge(P, makeBadge(P), P.at || 0, '아카데미 휘장 수여'); }
@@ -240,7 +242,7 @@
         aGrades: 0, epicFound: 0, legendFound: 0, maxEnh: 0, enh: 0, brews: 0, spirits: 0, maxLevel: 1, manaTotal: 0, goldTotal: 0,
         streak: 0, famKinds: 0, dispatches: 0, researchDone: 0, wbAttacks: 0, wbKills: 0, cupWins: 0, duelWins: 0, duelBest: 0, tasksDone: 0 },
       daily: { day: -1, q: [], streak: 0, login: false },
-      wk: { id: 0, cup: 0, dmg: 0, att: 0 }, wkPrev: null, wb: { tickets: K.WB_TICKET_MAX, at: now, bought: 0, buyDay: -1 },
+      wk: { id: 0, cup: 0, dmg: 0, att: 0 }, wkPrev: null, wb: { tickets: K.WB_TICKET_MAX, at: now, extra: 0, bought: 0, buyWk: -1, exUsed: 0, exWk: -1 },
       spirit: { n: 1, at: now },
       opt: { autoEquip: true, autoAlloc: false, allocW: { int: 3, wil: 1.5, agi: 1, vit: 1.5, luk: 1 }, sound: true, reduceFx: false },
       log: [], inbox: [], story: 0
@@ -972,7 +974,7 @@
   R.grantMail = function (P, W, now, rw) {
     rw = R.cleanRewards(rw); var out = { items: [] };
     if (rw.shard) P.res.shard += rw.shard; if (rw.gold) addGold(P, rw.gold); if (rw.stone) P.res.stone += rw.stone;
-    if (rw.mana) addMana(P, rw.mana); if (rw.know) P.res.know += rw.know; if (rw.egg) P.fam.eggs += rw.egg; if (rw.ticket) P.wb.tickets += rw.ticket;
+    if (rw.mana) addMana(P, rw.mana); if (rw.know) P.res.know += rw.know; if (rw.egg) P.fam.eggs += rw.egg; if (rw.ticket) P.wb.extra = (P.wb.extra || 0) + rw.ticket;
     if (rw.rsDone || rw.gradeUp || rw.respec) { var tk = P.tok || (P.tok = {}); if (rw.rsDone) tk.rsDone = (tk.rsDone || 0) + rw.rsDone; if (rw.gradeUp) tk.gradeUp = (tk.gradeUp || 0) + rw.gradeUp; if (rw.respec) tk.respec = (tk.respec || 0) + rw.respec; }
     for (var i = 0; i < (rw.gear || 0); i++) { var it = makeItem(P, pick(P, D.SLOTS).id, Math.max(1, Math.min(P.maxStage, R.stageCap(P))), Math.max(2, rollRarity(P, 0.6)), 2); out.items.push({ name: it.name, r: it.r, res: gainItem(P, it, now) }); }
     (rw.items || []).forEach(function (it0) { var it = JSON.parse(JSON.stringify(it0)); it.u = uid(P); it.lock = false; out.items.push({ name: it.name, r: it.r, res: gainItem(P, it, now) }); });
@@ -1686,7 +1688,7 @@
     var id = str(a.id), s = SHOP[id]; if (!s) err('없는 물건입니다'); if (s.grade && P.grade < s.grade) err(s.grade + '학년부터 살 수 있습니다');
     if (id === 'bagslot' && P.bagExtra >= 60) err('더 늘릴 수 없습니다');
     if (id === 'badgebox' && (P.badges || []).length >= R.BADGE_HOLD) err('휘장 보관함이 가득 찼습니다 (' + R.BADGE_HOLD + '개)');
-    if (id === 'ticket') { var day = R.dayKST(now); if (P.wb.buyDay !== day) { P.wb.buyDay = day; P.wb.bought = 0; } if (P.wb.bought >= K.WB_BUY_MAX) err('오늘은 더 살 수 없습니다'); }
+    if (id === 'ticket' && R.wbBuyLeft(P, now) <= 0) err('이번 주에는 더 살 수 없습니다 (월요일 KST 0시 초기화)');
     var price = R.shopPrice(P, id), cur = s.cur === 'gold' ? 'gold' : 'shard'; if (P.res[cur] < price) err((cur === 'gold' ? CUR : '별조각') + '가 부족합니다');
     P.res[cur] -= price; var out = { id: id };
     if (id === 'stone10') P.res.stone += 10;
@@ -1694,7 +1696,7 @@
     else if (id === 'egg') P.fam.eggs++;
     else if (id === 'badgebox') { var nb = makeBadge(P); gainBadge(P, nb, now, '매점 휘장 원석'); out.badge = { name: nb.name, gem: nb.gem }; }
     else if (id === 'manavial') { var m = calc(P, W, now).mana * 14400; addMana(P, m); out.mana = m; }
-    else if (id === 'ticket') { P.wb.tickets++; P.wb.bought++; }
+    else if (id === 'ticket') { R.wbBuyLeft(P, now); P.wb.extra++; P.wb.bought++; }
     else if (id === 'bagslot') P.bagExtra += 5;
     else if (id === 'matbox') { var zs = D.ZONES.filter(function (z) { return z.from <= P.maxStage; }); out.mats = {}; for (var i = 0; i < 12; i++) { var z = pick(P, zs); P.mats[z.mat] = (P.mats[z.mat] || 0) + 1; out.mats[z.mat] = (out.mats[z.mat] || 0) + 1; } }
     else if (id === 'respec') out.respec = respecNow(P);
@@ -1728,10 +1730,15 @@
     }
     return out;
   };
+  // 이번 주(월요일 KST 0시~)에 더 살 수 있는 · 더 쓸 수 있는 추가 도전권 수. 주가 바뀌었으면 센 값을 0으로
+  R.wbBuyLeft = function (P, now) { var w = R.weekId(now), wb = P.wb; if (wb.buyWk !== w) { wb.buyWk = w; wb.bought = 0; } return Math.max(0, K.WB_BUY_MAX - wb.bought); };
+  R.wbExtraLeft = function (P, now) { var w = R.weekId(now), wb = P.wb; if (wb.exWk !== w) { wb.exWk = w; wb.exUsed = 0; } return Math.max(0, K.WB_EXTRA_USE - wb.exUsed); };
+  R.wbCanAttack = function (P, now) { return P.wb.tickets > 0 || (P.wb.extra > 0 && R.wbExtraLeft(P, now) > 0); };
   A.wbAttack = function (P, W, now) {
     if (!W || !W.wbAlive) err('이번 주 월드 보스는 이미 쓰러졌습니다');
-    if (P.wb.tickets <= 0) err('도전권이 없습니다');
-    P.wb.tickets--; if (P.wb.tickets < K.WB_TICKET_MAX && P.wb.at > now) P.wb.at = now;
+    if (P.wb.tickets > 0) { P.wb.tickets--; if (P.wb.tickets < K.WB_TICKET_MAX && P.wb.at > now) P.wb.at = now; }   // 충전 도전권부터
+    else if (P.wb.extra > 0) { if (R.wbExtraLeft(P, now) <= 0) err('추가 도전권은 이번 주에 ' + K.WB_EXTRA_USE + '번 모두 썼습니다 (월요일 KST 0시 초기화)'); P.wb.extra--; P.wb.exUsed++; }
+    else err('도전권이 없습니다');
     var c = calc(P, W, now), f = fight(P, c, R.wbEnemy(P), 30, false), dmg = Math.floor(f.dealt);
     P.wk.dmg += dmg; P.wk.att++; P.st.wbAttacks++; cupAdd(P, 30);
     badgeGain(P, R.BADGE_XP.fight, now);
@@ -1748,7 +1755,7 @@
     }
     if (pv.att > 0) {
       out.shard += 10; out.wbKilled = !!r.killed;
-      if (r.killed) { out.shard += 20; P.fam.eggs++; out.egg = 1; P.st.wbKills++; }
+      if (r.killed) { var kn = Math.max(1, r.kills || 1); out.shard += 20 * kn; P.fam.eggs += kn; out.egg = kn; out.kills = kn; P.st.wbKills += kn; }   // 추가 보스까지 잡았으면 잡은 수만큼
       var t = r.tiers || [], tier = pv.dmg >= (t[0] || Infinity) ? 1 : pv.dmg >= (t[1] || Infinity) ? 2 : pv.dmg >= (t[2] || Infinity) ? 3 : 4;
       out.tier = tier; out.shard += [0, 40, 20, 8, 0][tier];
       if (tier <= 2) { var it2 = makeItem(P, pick(P, D.SLOTS).id, Math.min(P.maxStage, R.stageCap(P)) + 3, tier === 1 && rnd(P) < 0.25 ? 4 : 3, 3); out.items.push({ name: it2.name, r: it2.r, res: gainItem(P, it2, now) }); }
@@ -1812,7 +1819,7 @@
     log(P, now, b.name + ' 세공 다시 새기기: ' + nm(old) + ' → ' + nm(b.aff[i]), 'good');
     return { i: i, id: x.id, v: b.aff[i].v, cost: c, name: b.name, text: nm(b.aff[i]), was: nm(old) };
   };
-  R.fingerprint = function (P) { return [P.inbox.length, P.inbox.length ? P.inbox[P.inbox.length - 1].t : 0, P.log.length, P.log[0] ? P.log[0].t : 0, P.daily.day, P.wk.id, P.spirit.at, P.wb.tickets].join('|'); };
+  R.fingerprint = function (P) { return [P.inbox.length, P.inbox.length ? P.inbox[P.inbox.length - 1].t : 0, P.log.length, P.log[0] ? P.log[0].t : 0, P.daily.day, P.wk.id, P.spirit.at, P.wb.tickets, P.wb.extra].join('|'); };
   /* ───────── 학기 이야기 (메인 퀘스트): 상태 P.mq = { g: 장(1~8, 9 = 다 읽음), i: 단계, b: 단계 시작 때 통계 } ───────── */
   R.mqStep = function (P) { var m = P && P.mq; if (!m) return null; var ch = D.MQ[m.g - 1]; return ch && ch.steps[m.i] ? { g: m.g, i: m.i, ch: ch, st: ch.steps[m.i] } : null; };
   function mqBase(P) { var s = R.mqStep(P), b = {}; if (s) s.st.g.forEach(function (q) { if (q.k === 'cnt') b[q.s] = P.st[q.s] || 0; if (q.k === 'lecRun') b.lecJobs = P.st.lecJobs || 0; if (q.k === 'expRun') b.expJobs = P.st.expJobs || 0; if (q.k === 'resRun') b.researchDone = P.st.researchDone || 0; }); P.mq.b = b; }

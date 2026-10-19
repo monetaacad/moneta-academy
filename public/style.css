@@ -1523,3 +1523,5 @@ mark.hl { color: inherit; background: linear-gradient(transparent 38%, color-mix
 .invrow.new { border-color: var(--brass); box-shadow: 0 0 0 1px color-mix(in srgb, var(--brass) 30%, transparent); }
 .invh { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
 .bagtabs button .num { opacity: .8; }
+.rnk-name { cursor: pointer; color: inherit; text-decoration: underline dotted; text-underline-offset: 3px; }
+.rnk-name:hover { color: var(--brass); }
