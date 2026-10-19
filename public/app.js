@@ -3055,7 +3055,7 @@
     return '<div class="pedit"><div id="pe-av">' + avatarHtml(avShow, 100) + '</div><div class="stack" style="gap:6px;flex:1;min-width:0">' +
       '<div class="row"><label class="btn sm filebtn">이미지 고르기<input type="file" id="pe-file" accept="image/png,image/jpeg,image/webp,image/gif" aria-label="두상 이미지 고르기"></label>' + (hasAv ? '<button class="btn sm ghost" data-act="av-clear">이미지 제거</button>' : '') + '</div>' +
       (S.peAv !== undefined ? '<p class="tiny gold">' + (S.peAv ? '새 두상' : '두상 제거') + ' · 아래 「저장」을 눌러야 적용됩니다</p>' : '') +
-      '<p class="tiny faint">그림을 고르면 확대 · 이동해 두상으로 쓸 영역을 정할 수 있습니다. 100×100으로 줄여 저장을 누를 때 올라갑니다.</p><p class="tiny" id="pe-avmsg"></p>' +
+      '<p class="tiny faint">그림을 고르면 확대 · 이동해 두상으로 쓸 영역을 정할 수 있습니다. 배경이 투명한 PNG는 투명한 채로 쓰입니다. 100×100으로 줄여 저장을 누를 때 올라갑니다.</p><p class="tiny" id="pe-avmsg"></p>' +
       '<div class="field" style="margin-top:4px"><label class="tiny muted" for="pe-avc">두상 출처 <span class="faint">(선택 · 60자)</span></label><input id="pe-avc" maxlength="60" value="' + esc(me.avcredit || '') + '" placeholder="예: 그림 @작가이름 · 직접 그림"></div></div></div>' +
       nameRow() + clsRow() +
       '<div class="row" style="margin-top:12px"><span class="small muted">칭호</span>' + (S.P.title ? '<span class="ttl">' + esc(R.titleName(S.P, S.P.title)) + '</span>' : '<span class="small faint">없음</span>') + '<span class="spacer"></span><button class="btn sm" data-act="goto" data-a="rec" data-b="titles">칭호 도감에서 고르기 (' + titles.length + '/' + D.TITLES.length + ')</button></div>' +
@@ -3341,14 +3341,16 @@
       img.src = url;
     });
   }
-  // img의 (sx, sy)에서 한 변 sw인 정사각형 → 100×100 JPEG
+  // img의 (sx, sy)에서 한 변 sw인 정사각형 → 100×100. 투명한 부분이 있으면 PNG(배경 투명 그대로), 없으면 JPEG
   function cropAvatar(img, sx, sy, sw) {
     var cv = document.createElement('canvas'), cur = Math.max(100, Math.min(Math.round(sw), 1600));
     cv.width = cv.height = cur; var cx = cv.getContext('2d'); cx.imageSmoothingQuality = 'high';
-    cx.fillStyle = '#1a2040'; cx.fillRect(0, 0, cur, cur); cx.drawImage(img, sx, sy, sw, sw, 0, 0, cur, cur);
+    cx.drawImage(img, sx, sy, sw, sw, 0, 0, cur, cur);
     while (cur / 2 >= 100) { var n2 = document.createElement('canvas'), half = Math.max(100, Math.floor(cur / 2)); n2.width = n2.height = half; var c2 = n2.getContext('2d'); c2.imageSmoothingQuality = 'high'; c2.drawImage(cv, 0, 0, cur, cur, 0, 0, half, half); cv = n2; cur = half; }
     var out = document.createElement('canvas'); out.width = out.height = 100; var co = out.getContext('2d');
-    co.fillStyle = '#1a2040'; co.fillRect(0, 0, 100, 100); co.imageSmoothingQuality = 'high'; co.drawImage(cv, 0, 0, cur, cur, 0, 0, 100, 100);
+    co.imageSmoothingQuality = 'high'; co.drawImage(cv, 0, 0, cur, cur, 0, 0, 100, 100);
+    var px = co.getImageData(0, 0, 100, 100).data, clear = false; for (var i = 3; i < px.length; i += 4) if (px[i] < 250) { clear = true; break; }
+    if (clear) return out.toDataURL('image/png');
     var q = 0.9, data = out.toDataURL('image/jpeg', q);
     while (data.length > 30000 && q > 0.5) { q -= 0.1; data = out.toDataURL('image/jpeg', q); }
     return data;
@@ -3369,7 +3371,7 @@
     cv.width = cv.height = Math.round(V * dpr); cv.style.width = cv.style.height = V + 'px';
     function sc() { return s0 * z; }
     function clamp() { var k = sc(); ox = Math.min(0, Math.max(V - W * k, ox)); oy = Math.min(0, Math.max(V - H * k, oy)); }
-    function draw() { cx.setTransform(dpr, 0, 0, dpr, 0, 0); cx.fillStyle = '#1a2040'; cx.fillRect(0, 0, V, V); cx.imageSmoothingQuality = 'high'; cx.drawImage(img, ox, oy, W * sc(), H * sc()); }
+    function draw() { cx.setTransform(dpr, 0, 0, dpr, 0, 0); cx.clearRect(0, 0, V, V); cx.imageSmoothingQuality = 'high'; cx.drawImage(img, ox, oy, W * sc(), H * sc()); }
     // 화면의 (px, py)를 고정점으로 확대
     function zoomTo(nz, px, py) { nz = Math.max(1, Math.min(Z, nz)); var k = sc(), ix = (px - ox) / k, iy = (py - oy) / k; z = nz; ox = px - ix * sc(); oy = py - iy * sc(); clamp(); zr.value = z; draw(); }
     ox = (V - W * s0) / 2; oy = (V - H * s0) / 2; draw();
@@ -3526,7 +3528,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026101953;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026101954;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

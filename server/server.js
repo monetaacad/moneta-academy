@@ -572,6 +572,11 @@ routes['POST /api/profile'] = async (req, res) => {
   send(req, res, 200, { ok: true });
 };
 // 두상: 브라우저가 100×100 JPEG로 줄여서 보낸다. 서버는 형식·크기만 확인하고 그대로 보관한다.
+function pngSize(buf) {
+  const SIG = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+  if (buf.length < 33 || SIG.some((v, i) => buf[i] !== v) || buf.toString('latin1', 12, 16) !== 'IHDR') return null;
+  return { w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) };
+}
 function jpegSize(buf) {
   if (buf.length < 4 || buf[0] !== 0xFF || buf[1] !== 0xD8 || buf[2] !== 0xFF) return null;
   let i = 2;
@@ -588,13 +593,14 @@ routes['POST /api/avatar'] = async (req, res) => {
   if (limited('av:' + me, 10 / 3600, 10)) return fail(req, res, 429, '두상은 한 시간에 10번까지 바꿀 수 있습니다');
   const b = await readJson(req, 64 * 1024);
   if (b.img === null) { dbx.q.clearAvatar.run(me); return send(req, res, 200, { ok: true, av: 0 }); }
-  const m = /^data:image\/jpeg;base64,([A-Za-z0-9+/=]+)$/.exec(String(b.img || ''));
-  if (!m) return fail(req, res, 400, 'JPEG 이미지만 받습니다');
-  const buf = Buffer.from(m[1], 'base64');
-  if (buf.length > 40 * 1024) return fail(req, res, 400, '이미지가 너무 큽니다');
-  const sz = jpegSize(buf);
-  if (!sz || sz.w < 16 || sz.h < 16 || sz.w > 100 || sz.h > 100) return fail(req, res, 400, '100×100 이하의 JPEG만 받습니다');
-  dbx.q.setAvatar.run(sec.encBuf(buf), 'image/jpeg', me);
+  // JPEG 또는 배경 투명 PNG (100×100 이하). 형식은 머리 바이트로 다시 확인한다
+  const m = /^data:image\/(jpeg|png);base64,([A-Za-z0-9+/=]+)$/.exec(String(b.img || ''));
+  if (!m) return fail(req, res, 400, 'JPEG · PNG 이미지만 받습니다');
+  const buf = Buffer.from(m[2], 'base64'), png = m[1] === 'png';
+  if (buf.length > 46 * 1024) return fail(req, res, 400, '이미지가 너무 큽니다');
+  const sz = png ? pngSize(buf) : jpegSize(buf);
+  if (!sz || sz.w < 16 || sz.h < 16 || sz.w > 100 || sz.h > 100) return fail(req, res, 400, '100×100 이하의 JPEG · PNG만 받습니다');
+  dbx.q.setAvatar.run(sec.encBuf(buf), png ? 'image/png' : 'image/jpeg', me);
   send(req, res, 200, { ok: true, av: dbx.q.getAvatar.get(me).avatar_v });
 };
 routes['GET /api/avatar'] = (req, res) => {
@@ -604,7 +610,7 @@ routes['GET /api/avatar'] = (req, res) => {
   const row = /^[A-Za-z0-9_-]{4,40}$/.test(id) && dbx.q.getAvatar.get(id);
   if (!row || !row.avatar) { res.writeHead(404, SEC_HEADERS); return res.end(); }
   const etag = '"av' + row.avatar_v + '"';
-  const h = Object.assign({}, SEC_HEADERS, { 'Content-Type': 'image/jpeg', 'Cache-Control': String(row.avatar_v) === uq.get('v') ? 'private, max-age=31536000, immutable' : 'private, no-cache', ETag: etag, 'Content-Security-Policy': "default-src 'none'; sandbox", 'Content-Disposition': 'inline' });
+  const h = Object.assign({}, SEC_HEADERS, { 'Content-Type': row.avatar_type === 'image/png' ? 'image/png' : 'image/jpeg', 'Cache-Control': String(row.avatar_v) === uq.get('v') ? 'private, max-age=31536000, immutable' : 'private, no-cache', ETag: etag, 'Content-Security-Policy': "default-src 'none'; sandbox", 'Content-Disposition': 'inline' });
   if (req.headers['if-none-match'] === etag) { res.writeHead(304, h); return res.end(); }
   let img; try { img = sec.decBuf(row.avatar); } catch (e) { res.writeHead(404, SEC_HEADERS); return res.end(); }
   h['Content-Length'] = img.length; res.writeHead(200, h); res.end(img);
