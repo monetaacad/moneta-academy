@@ -46,6 +46,7 @@ var Net = (function () {
         es.addEventListener('seq', function (e) { if (h.seq) h.seq(JSON.parse(e.data)); });
         es.addEventListener('tower', function (e) { if (h.tower) h.tower(JSON.parse(e.data)); });
         es.addEventListener('op', function (e) { if (h.op) h.op(JSON.parse(e.data)); });
+        es.addEventListener('pin', function (e) { if (h.pin) h.pin(JSON.parse(e.data)); });
         es.addEventListener('guild', function (e) { if (h.guild) h.guild(JSON.parse(e.data)); });
         es.addEventListener('cls', function (e) { if (h.cls) h.cls(JSON.parse(e.data)); });
         es.addEventListener('gapp', function (e) { if (h.gapp) h.gapp(JSON.parse(e.data)); });
