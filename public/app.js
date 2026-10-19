@@ -2474,6 +2474,7 @@
     return { gold: g, xp: x, know: k, ne: ne, nl: nl };
   }
   var TIP = {
+    gi: function (i) { var g = D.GUIDE[+i]; if (!g) return ''; var sn = g.b.slice(0, 150); return '<b>' + esc(g.t) + '</b><p>' + esc(sn) + (g.b.length > 150 ? '…' : '') + '</p><p class="tiny gold" style="margin-top:4px">' + (matchMedia('(hover: none)').matches ? '한 번 더 누르면 이 안내로 이동합니다' : '누르면 이 안내로 이동합니다') + '</p>'; },
     g: function (q) { var g = guideFind(q); if (!g) return ''; var b = g.b, k = b.indexOf(q), st = k > 60 ? b.lastIndexOf('. ', k) + 2 : 0, sn = b.slice(Math.max(0, st), Math.max(0, st) + 150); return '<b>' + esc(q) + '</b><p>' + esc(sn) + (b.length > st + 150 ? '…' : '') + '</p><p class="tiny gold" style="margin-top:4px">' + (matchMedia('(hover: none)').matches ? '한 번 더 누르면 가이드로 이동합니다' : '클릭하면 가이드에서 보기') + '</p>'; },
     house: function () { var hh = house(); return '<b>' + houseDot(S.P.house, 18) + ' ' + hh.name + ' <span class="faint">' + hh.latin + '</span></b><p class="muted">“' + hh.motto + '”</p><p>기숙사 혜택 (현재 / 최대)</p>' + houseGrow(S.P.house, wctx()) + '<p class="tt-src">처음에는 적힌 효과의 1/10만 받습니다. 기숙사 학생들의 활동이 대항전 점수로 쌓일수록 커져, 기숙사 성장 100%가 되면 적힌 효과(최대)를 그대로 받습니다.</p>'; },
     mana: function () {
@@ -2496,10 +2497,11 @@
     power: function () { var c = C(); return '<b>전투력</b><p>공격력·생명력·주문을 합친 강함의 척도이고 랭킹 기준입니다.</p><dl class="kv"><dt>초당 피해</dt><dd>' + fmt(c.totalDps) + '</dd><dt>생명력</dt><dd>' + fmt(c.hp) + '</dd></dl><p class="tt-src">올리는 법: 장비 교체·강화, 능력치 분배, 과목 레벨, 사역마, 연구</p>'; },
     buff: function (id) { var b = S.P.buffs[id]; if (!b) return ''; return '<b>' + esc(b.name) + '</b><p>' + esc(R.effText(b.eff)) + '</p><dl class="kv"><dt>남은 시간</dt><dd>' + left(b.end) + '</dd></dl><p class="tiny faint">누르면 적용 중인 효과를 모두 봅니다</p>'; }
   };
-  var tipEl = null, tipFor = null;
+  var tipEl = null, tipFor = null, tipAt = 0;
   function showTip(el) {
     var html = callKey(TIP, el.dataset.tip); if (!html) return;
     if (!tipEl) { tipEl = document.createElement('div'); tipEl.id = 'tip'; tipEl.setAttribute('role', 'tooltip'); document.body.appendChild(tipEl); }
+    if (tipFor !== el || !tipEl || tipEl.hidden) tipAt = Date.now();
     tipEl.innerHTML = html; tipEl.hidden = false; tipFor = el;
     var r = el.getBoundingClientRect(), w = tipEl.offsetWidth, x = Math.max(8, Math.min(window.innerWidth - w - 8, r.left + r.width / 2 - w / 2)), y = r.bottom + 8;
     if (y + tipEl.offsetHeight > window.innerHeight - 8) y = Math.max(8, r.top - tipEl.offsetHeight - 8);
@@ -2508,41 +2510,79 @@
   function hideTip() { if (tipEl) tipEl.hidden = true; tipFor = null; }
   document.addEventListener('mouseover', function (e) { if (matchMedia('(hover: none)').matches) return; var el = e.target.closest && e.target.closest('[data-tip]'); if (el) { if (el !== tipFor) showTip(el); } else if (tipFor) hideTip(); });
   document.addEventListener('focusin', function (e) { var el = e.target.closest && e.target.closest('[data-tip]'); if (el) showTip(el); else hideTip(); });
-  document.addEventListener('click', function (e) { var el = e.target.closest && e.target.closest('[data-tip]'); if (el && matchMedia('(hover: none)').matches) { if (tipFor === el) hideTip(); else showTip(el); } else if (!el && tipFor && !(tipEl && tipEl.contains(e.target))) hideTip(); }, true);
+  document.addEventListener('click', function (e) { var el = e.target.closest && e.target.closest('[data-tip]'); if (el && matchMedia('(hover: none)').matches) { if (tipFor === el && Date.now() - tipAt > 400) { if (!(el.dataset.gq || el.dataset.gi)) hideTip(); } else showTip(el); } else if (!el && tipFor && !(tipEl && tipEl.contains(e.target))) hideTip(); }, true);
   window.addEventListener('scroll', function () { if (tipFor) hideTip(); }, { passive: true });
   // 용어 → 가이드: PC는 용어를 누르면, 모바일은 열린 요약을 한 번 더 누르면 가이드에서 그 말을 찾아 보여 준다
   document.addEventListener('click', function (e) {
     var t = e.target.closest && e.target.closest('.gterm');
-    if (t && !matchMedia('(hover: none)').matches) { e.preventDefault(); e.stopPropagation(); hideTip(); ACT.guide(t.dataset.gq); return; }
-    if (tipEl && !tipEl.hidden && tipEl.contains(e.target) && tipFor && tipFor.dataset.gq) { var q = tipFor.dataset.gq; hideTip(); ACT.guide(q); }
+    var touch = matchMedia('(hover: none)').matches;
+    if (t && (!touch || (tipFor === t && Date.now() - tipAt > 400))) { e.preventDefault(); e.stopPropagation(); hideTip(); if (t.dataset.gi) ACT.gjump(t.dataset.gi); else ACT.guide(t.dataset.gq); return; }   // 모바일: 한 번 누르면 요약, 한 번 더 누르면(용어나 요약) 이동
+    if (tipEl && !tipEl.hidden && tipEl.contains(e.target) && tipFor && (tipFor.dataset.gq || tipFor.dataset.gi)) { var gf = tipFor; hideTip(); if (gf.dataset.gi) ACT.gjump(gf.dataset.gi); else ACT.guide(gf.dataset.gq); }
   });
   setInterval(function () { if (tipFor && tipEl && !tipEl.hidden && document.body.contains(tipFor)) showTip(tipFor); else if (tipFor) hideTip(); }, 1000);
 
   /* ── 플레이 가이드 (검색) ── */
   S.gcat = '';
+  /* 가이드 안의 다른 안내 이름에 밑줄 · 툴팁 · 이동. 이름은 제목을 「 · 」로 나눈 조각(괄호 빼고) + 항목의 k(덧붙일 말).
+     너무 흔한 말은 빼고, 한 글에서 같은 안내로는 처음 한 번만, 최대 5개 */
+  var GL_STOP = { '처음': 1, '레벨': 1, '장비': 1, '보상': 1, '파티': 0 };
+  var GLINK = null;
+  function glinkIndex() {
+    if (GLINK) return GLINK; var map = {};
+    D.GUIDE.forEach(function (g, i) {
+      var ks = g.t.replace(/\([^)]*\)/g, '').split(/\s*[·,/]\s*/).concat(g.k || []);
+      ks.forEach(function (k) { k = k.trim(); if (k.length < 2 || GL_STOP[k] || k.indexOf('?') >= 0) return; if (!(k in map)) map[k] = i; });
+    });
+    var keys = Object.keys(map).sort(function (a, b) { return b.length - a.length; });
+    GLINK = { map: map, re: keys.length ? new RegExp('(' + keys.map(function (k) { return esc(k).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }).join('|') + ')', 'g') : null };
+    return GLINK;
+  }
+  function glinkBody(g, self) {
+    var L = glinkIndex(), h = esc(g.b); if (!L.re) return h; var used = {}, n = 0;
+    return h.replace(L.re, function (m) { var to = L.map[m]; if (to == null || to === self || used[to] || n >= 5) return m; used[to] = 1; n++; return '<span class="gterm glink" data-tip="gi:' + to + '" data-gi="' + to + '" tabindex="0">' + m + '</span>'; });
+  }
+  // 이동한 안내에서 읽던 글로 돌아가기 (여러 번 타고 들어가도 한 단계씩)
+  S.ghist = []; S.gfocus = null;
+  ACT.gjump = function (i) {
+    i = +i; if (!D.GUIDE[i]) return;
+    if (!$('#g-list')) { ACT.guide('', i); return; }
+    var box = $('#g-list'), q = $('#g-q');
+    S.ghist.push({ q: q ? q.value : '', cat: S.gcat, focus: S.gfocus, top: box ? box.scrollTop : 0, from: S.gfocus != null ? D.GUIDE[S.gfocus].t : (q && q.value ? '「' + q.value + '」 검색' : S.gcat || '가이드') });
+    S.gfocus = i; gRedraw(); if (box) box.scrollTop = 0;
+  };
+  ACT.gback = function () {
+    var st = S.ghist.pop(); if (!st) return; S.gfocus = st.focus; S.gcat = st.cat; var q = $('#g-q'); if (q) q.value = st.q;
+    $$('.mbox .filters .btn').forEach(function (b) { b.classList.toggle('on', b.dataset.a === st.cat); });
+    gRedraw(); var box = $('#g-list'); if (box) box.scrollTop = st.top;
+  };
+  function gRedraw() { var l = $('#g-list'), q = $('#g-q'); if (l) l.innerHTML = guideList(q ? q.value : ''); }
   function guideList(q) {
+    var back = S.ghist.length ? '<button class="btn sm gback" data-act="gback">← ' + esc(R.josa(S.ghist[S.ghist.length - 1].from, '으로', '로')) + ' 돌아가기</button>' : '';
+    if (S.gfocus != null && D.GUIDE[S.gfocus]) { var fg = D.GUIDE[S.gfocus]; return back + gItem(fg, glinkBody(fg, S.gfocus), esc(fg.t)) + '<div class="row" style="margin-top:8px"><button class="btn sm ghost" data-act="gall">전체 안내 보기</button></div>'; }
     var norm = function (t) { return String(t).toLowerCase().replace(/\s+/g, ''); }, nq = norm(q), words = q.trim().split(/\s+/).filter(Boolean);
     var list = D.GUIDE.filter(function (g) { return (!S.gcat || g.c === S.gcat) && (!nq || norm(g.t + ' ' + g.b + ' ' + g.c).indexOf(nq) >= 0 || words.length > 1 && words.every(function (w) { return norm(g.t + g.b).indexOf(norm(w)) >= 0; })); });
     function mark(t) { var h = esc(t); words.forEach(function (w) { var ew = esc(w).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); if (ew) h = h.replace(new RegExp('(' + ew + ')', 'gi'), '<mark>$1</mark>'); }); return h; }
     if (!list.length) return '<div class="empty">「' + esc(q) + '」에 맞는 안내가 없습니다. 다른 말로 검색 가능.</div>';
     var again = S.gcat === '처음' && !nq ? '<div class="gitem onbagain"><div class="row" style="gap:8px;flex-wrap:wrap"><span class="small" style="flex:1;min-width:160px">처음 들어왔을 때 본 안내를 다시 볼 수 있습니다.</span><button class="btn sm" data-act="onb-again">처음 안내 다시 보기</button>' + (S.P ? '<button class="btn sm primary" data-act="tut-again">화면 둘러보기 다시 하기</button><button class="btn sm ghost" data-act="tutv-reset">화면별 둘러보기 다시 보기</button>' : '') + '</div></div>' : '';
-    return again + list.map(function (g) { return '<div class="gitem"><div class="row between"><h4>' + mark(g.t) + '</h4><span class="tag">' + g.c + '</span></div><p class="small">' + mark(g.b) + '</p>' + (g.go && S.P ? '<div class="row" style="margin-top:6px"><button class="btn sm" data-act="goto" data-a="' + g.go[0] + '" data-b="' + (g.go[1] || '') + '">바로 가기</button></div>' : '') + '</div>'; }).join('');
+    return back + again + list.map(function (g) { return gItem(g, nq ? mark(g.b) : glinkBody(g, D.GUIDE.indexOf(g)), mark(g.t)); }).join('');
   }
-  ACT.guide = function (pre) {
-    pre = typeof pre === 'string' ? pre : ''; if (pre) S.gcat = '';
+  function gItem(g, body, title) { return '<div class="gitem"><div class="row between"><h4>' + title + '</h4><span class="tag">' + g.c + '</span></div><p class="small">' + body + '</p>' + (g.go && S.P ? '<div class="row" style="margin-top:6px"><button class="btn sm" data-act="goto" data-a="' + g.go[0] + '" data-b="' + (g.go[1] || '') + '">바로 가기</button></div>' : '') + '</div>'; }
+  ACT.gall = function () { S.gfocus = null; S.ghist = []; gRedraw(); };
+  ACT.guide = function (pre, focus) {
+    pre = typeof pre === 'string' ? pre : ''; if (pre) S.gcat = ''; S.ghist = []; S.gfocus = typeof focus === 'number' ? focus : null;
     modal(mhead('플레이 가이드', '궁금한 것을 검색하거나 분류 선택') +
       '<input id="g-q" type="search" placeholder="예: 마나, 거래소, 파티, 시험" autocomplete="off" style="margin-bottom:10px">' +
       '<div class="filters" style="margin-bottom:12px">' + [''].concat(D.GUIDE_CATS).map(function (c) { return '<button class="btn sm ghost' + (S.gcat === c ? ' on' : '') + '" data-act="gcat" data-a="' + c + '">' + (c || '전체') + '</button>'; }).join('') + '</div>' +
       '<div id="g-list" class="glist">' + guideList(pre) + '</div>' +
       '<div class="gsuggest"><span class="small muted">찾는 내용이 없거나 바라는 점이 있나요?</span><button class="btn primary sm" data-act="suggest">건의하기</button></div>', true);
-    var q = $('#g-q'); if (pre) q.value = pre; q.addEventListener('input', function () { $('#g-list').innerHTML = guideList(q.value); }); setTimeout(function () { q.focus(); }, 40);
+    var q = $('#g-q'); if (pre) q.value = pre; q.addEventListener('input', function () { S.gfocus = null; S.ghist = []; $('#g-list').innerHTML = guideList(q.value); }); setTimeout(function () { q.focus(); }, 40);
   };
   // 가이드 › 건의하기: 게시판 글쓰기를 「건의」 말머리로 바로 연다 (쓰던 건의 글이 있으면 이어서)
   ACT.suggest = function () {
     closeModal(); var b = S.bd; if (!b.draft || b.draft.id || b.draft.tag !== 'idea') b.draft = { tag: 'idea', title: '', body: '', priv: false };
     b.mode = 'write'; ACT.nav('board'); window.scrollTo(0, 0); setTimeout(function () { var t = $('#bd-title'); if (t && !t.value) t.focus(); }, 80);
   };
-  ACT.gcat = function (c) { S.gcat = c; var q = $('#g-q') ? $('#g-q').value : ''; $$('.mbox .filters .btn').forEach(function (b) { b.classList.toggle('on', b.dataset.a === c); }); $('#g-list').innerHTML = guideList(q); };
+  ACT.gcat = function (c) { S.gcat = c; S.gfocus = null; S.ghist = []; var q = $('#g-q') ? $('#g-q').value : ''; $$('.mbox .filters .btn').forEach(function (b) { b.classList.toggle('on', b.dataset.a === c); }); $('#g-list').innerHTML = guideList(q); };
 
   /* ── 세계관 ── */
   V.lore = function () {
@@ -3989,7 +4029,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102004;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102005;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
