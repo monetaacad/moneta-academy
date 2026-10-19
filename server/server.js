@@ -625,6 +625,19 @@ routes['GET /api/avatar'] = (req, res) => {
   h['Content-Length'] = img.length; res.writeHead(200, h); res.end(img);
 };
 const FRIEND_MAX = 100, FRIEND_PENDING_MAX = 30;
+// 푸시 알림: 게임을 닫아 두어도 작업이 끝나면 기기로 알린다 (server/push.js)
+const push = require('./push.js').create(dbx, sec, { log, nowSec, store, dataDir: cfg.dataDir, subject: cfg.publicOrigin || undefined });
+routes['GET /api/push/key'] = (req, res) => { if (!authed(req)) return fail(req, res, 401, '로그인이 필요합니다'); send(req, res, 200, { key: push.publicKey }); };
+routes['POST /api/push/sub'] = async (req, res) => {
+  const pid = authed(req); if (!pid) return fail(req, res, 401, '로그인이 필요합니다');
+  if (limited('push:' + pid, 10 / 60, 10)) return fail(req, res, 429, '잠시 후 다시 시도');
+  const why = push.subscribe(pid, await readJson(req, 4096)); if (why) return fail(req, res, 400, why);
+  send(req, res, 200, { ok: true });
+};
+routes['POST /api/push/unsub'] = async (req, res) => {
+  const pid = authed(req); if (!pid) return fail(req, res, 401, '로그인이 필요합니다');
+  const b = await readJson(req, 4096); push.unsubscribe(pid, b.endpoint); send(req, res, 200, { ok: true });
+};
 routes['GET /api/friends'] = (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
   if (limited('fl:' + me, 1, 10)) return fail(req, res, 429, '요청이 너무 잦습니다');

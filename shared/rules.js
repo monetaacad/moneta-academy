@@ -138,6 +138,36 @@
     for (var dd = d; dd <= d + 1 && !out; dd++) R.AUCTION_HOURS.forEach(function (h, i) { var s = dd * 86400 - K.TZ + h * 3600; if (!out && s + R.AUCTION_LEN > t) out = { id: dd * 2 + i, start: s, end: s + R.AUCTION_LEN, active: t >= s }; });
     return out;
   };
+  // 알림을 보낼 일: 화면(창을 내렸을 때 알림)과 서버(푸시 알림)가 같은 목록을 쓴다
+  // kind = 설정에서 고르는 종류, key = 같은 일을 두 번 알리지 않기 위한 이름, t = 일어나는 시각
+  R.NOTIFY_KINDS = [['lec', '수업'], ['exp', '원정'], ['res', '연구'], ['disp', '사역마 파견'], ['jar', '정령 병이 가득 참'], ['sky', '하늘 이벤트 시작'], ['auc', '떠돌이 상인 도착']];
+  R.notifyEvents = function (P, now) {
+    var out = [], add = function (key, kind, t, title, body) { if (t > 0) out.push({ key: key, kind: kind, t: t, title: title, body: body }); };
+    (P.lec || []).forEach(function (j, i) { if (j) add('lec' + i + ':' + j.end, 'lec', j.end, '수업이 끝났습니다', (R.SUBJ[j.s] ? R.SUBJ[j.s].name : '수업') + ' · 다음 수업 시작 가능'); });
+    (P.exp || []).forEach(function (j, i) { if (j) add('exp' + i + ':' + j.end, 'exp', j.end, '원정대가 돌아왔습니다', j.s + '단계 ' + R.zoneOf(j.s).name); });
+    (P.rsq || []).forEach(function (q, i) { if (q && RES[q.id]) add('res' + i + ':' + q.end, 'res', q.end, '연구가 끝났습니다', RES[q.id].name + ' ' + (((P.rs || {})[q.id] || 0) + 1) + '단계'); });
+    var disp = (P.fam && P.fam.disp) || {}; for (var f in disp) if (FAM[f]) add('disp' + f + ':' + disp[f].end, 'disp', disp[f].end, FAM[f].name + '이(가) 돌아왔습니다', '사역마 파견 완료');
+    var sp = P.spirit || { n: 0, at: now }, n = sp.n || 0, at = sp.at || now, k = Math.floor((now - at) / K.SPIRIT_EVERY);
+    if (k > 0) { n = Math.min(K.SPIRIT_JAR, n + k); at += k * K.SPIRIT_EVERY; }
+    if (n < K.SPIRIT_JAR) { var full = at + (K.SPIRIT_JAR - n) * K.SPIRIT_EVERY; add('jar:' + Math.round(full), 'jar', full, '반딧불 정령 병이 가득 찼습니다', '접속해 풀어 줄 수 있습니다'); }
+    var sk = R.skyNext(now); if (sk) add('sky:' + sk.key, 'sky', sk.start, '하늘에 ' + sk.name + '!', sk.text + ' · 올려다보면 작은 선물');
+    var av = R.auctionVisit(now); if (av && !av.active) add('auc:' + av.start, 'auc', av.start, '떠돌이 상인이 왔습니다', '귀한 장비 세 점이 2시간 동안 경매에 오릅니다');
+    return out;
+  };
+  // 이미 서버가 처리해 보고함(inbox)에 들어간 일 (접속 중이라 상태가 먼저 갱신된 경우도 알림이 빠지지 않게)
+  R.notifyInbox = function (P) {
+    var T = { lec: '수업이 끝났습니다', exp: '원정대가 돌아왔습니다', res: '연구가 끝났습니다', disp: '사역마가 돌아왔습니다' };
+    return (P.inbox || []).filter(function (o) { return T[o.k] && o.t && !o.canceled; }).map(function (o) {
+      var body = o.k === 'lec' && R.SUBJ[o.s] ? R.SUBJ[o.s].name : o.k === 'exp' ? o.s + '단계' : o.k === 'res' && RES[o.id] ? RES[o.id].name + ' ' + o.lv + '단계' : o.k === 'disp' && FAM[o.f] ? FAM[o.f].name : '';
+      return { key: 'ib:' + o.k + ':' + o.t, kind: o.k, t: o.t, title: T[o.k], body: body };
+    });
+  };
+  // 몇 개가 한꺼번에 끝나면 알림 한 건으로 묶는다
+  R.notifyBundle = function (evs, prefix) {
+    if (!evs.length) return null; if (evs.length === 1 && !prefix) return { title: evs[0].title, body: evs[0].body };
+    var seen = {}, heads = evs.filter(function (e) { if (seen[e.title]) return false; seen[e.title] = 1; return true; }).map(function (e) { return e.title.replace(/[.!]$/, ''); });
+    return { title: (prefix || '') + (evs.length > 1 ? '아카데미 소식 ' + evs.length + '건' : evs[0].title), body: heads.join(' · ') };
+  };
   R.auctionStep = function (price, min) { return price ? Math.ceil(price * 1.05) : min; };
 
   /* ───────── 새 학생 ───────── */
