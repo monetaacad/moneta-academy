@@ -26,6 +26,7 @@ function create(dbx, log) {
   function markDirty(pid) { const e = cache.get(pid); if (e) e.dirty = true; }
 
   function writeOne(P) {
+    if (api.beforeWrite) try { api.beforeWrite(P); } catch (e) { log('저장 전 처리 실패', e); }
     const W = worldRef && worldRef.W;
     const now = Date.now() / 1000;
     const s = R.summary(P, W, Math.min(now, P.at));
@@ -54,6 +55,7 @@ function create(dbx, log) {
   function online(windowMs) { const now = Date.now(); let n = 0; cache.forEach((e) => { if (now - e.touched < windowMs) n++; }); return n; }
   function peek(pid) { const e = cache.get(pid); return e ? e.P : null; }
   function seen(pid) { const e = cache.get(pid); return e ? e.touched : 0; }
-  return { get, peek, seen, put, markDirty, touch, flushAll, evictIdle, online, isBanned, size: () => cache.size, setWorld(w) { worldRef = w; }, drop(pid) { cache.delete(pid); } };
+  const api = { get, peek, seen, put, markDirty, touch, flushAll, evictIdle, online, isBanned, size: () => cache.size, setWorld(w) { worldRef = w; }, drop(pid) { cache.delete(pid); } };
+  return api;
 }
 module.exports = { create };

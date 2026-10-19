@@ -62,7 +62,9 @@
     return { n: n, prof: prof };
   };
   LocalApi.prototype._ok = function (now, extra) {
-    var P = this.d.P; if (P) this._auc(now); this._save();
+    var P = this.d.P; if (P) this._auc(now);
+    if (P && P.mailQ && P.mailQ.length) { var q = P.mailQ; P.mailQ = []; for (var qi = 0; qi < q.length; qi += 10) this._sendMail('원정대', '가방이 가득 차 맡겨 둔 장비', '가방이 가득 차 있어 얻은 장비를 우편으로 보관했습니다. 가방을 비운 뒤 받아 가세요.', { items: q.slice(qi, qi + 10) }, 30); }   // 가방이 넘친 장비
+    this._save();
     var so = this.d.soc, o = { now: now, P: P ? Rules.publicState(P) : null, W: this._view(now), rank: 1, party: so && so.party ? 'demo-party' : null, guild: so && so.guild ? so.guild.id : null, mailN: this._mailList(now).filter(function (m) { return !m.read; }).length, mailTop: this._mailList(now).reduce(function (a, m) { return Math.max(a, m.id); }, 0), cls: P ? this._cls(now) : null, rit: P ? this._rit(now) : null, auc: (function () { var v = Rules.auctionVisit(now); return v ? { start: v.start, end: v.end, active: v.active } : null; })() };
     for (var k in extra) o[k] = extra[k];
     return Promise.resolve(o);
@@ -177,8 +179,10 @@
     if (!pick.length && o.op !== 'claimAll') return Promise.resolve({ error: '없는 우편이거나 기한이 지났습니다' });
     if (o.op === 'read') { pick.forEach(function (x) { x.read = true; }); this._save(); return Promise.resolve({ ok: true }); }
     var W = this._world(now); Rules.advance(P, W, now); var got = [];
-    pick.forEach(function (x) { if (x.claimed) return; x.claimed = true; x.read = true; var g = Rules.grantMail(P, W, now, x.rewards); Rules.log(P, now, '우편 「' + x.title + '」 보상을 받았습니다' + (g.text ? ': ' + g.text : ''), 'news'); got.push({ id: x.id, text: g.text, items: g.items }); });
-    return this._ok(now, { ok: true, got: got });
+    var bag = Rules.calc(P, W, now).bag, full = 0;
+    pick.forEach(function (x) { if (x.claimed) return; var need = Rules.mailNeedSlots(x.rewards); if (need && P.inv.length + need > bag) { full++; return; } x.claimed = true; x.read = true; var g = Rules.grantMail(P, W, now, x.rewards); Rules.log(P, now, '우편 「' + x.title + '」 보상을 받았습니다' + (g.text ? ': ' + g.text : ''), 'news'); got.push({ id: x.id, text: g.text, items: g.items }); });
+    if (!got.length && full) return Promise.resolve({ error: '가방 칸이 모자랍니다. 장비를 정리한 뒤 받으세요' });
+    return this._ok(now, { ok: true, got: got, full: full });
   };
   // 데모 별샘 의식: 가상의 학생들이 하루 동안 조금씩 봉헌하고, 마지막 한 자리는 내가 채운다
   var RIT_GOAL = 12;

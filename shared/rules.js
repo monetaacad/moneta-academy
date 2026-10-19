@@ -278,7 +278,9 @@
     var h = HOUSE[hid]; if (!h) return '';
     return h.bonusText.split(', ').map(function (s) { return s.replace(/\+(\d+(?:\.\d+)?)%/, function (m, n) { var c = Math.round(n * pct * 10) / 10; return '+' + c + '% / +' + n + '%'; }); }).join(', ');
   };
-  R.famBonus = function (f, lv) { return f.base * (1 + 0.25 * (lv - 1)); };
+  // 환수생태학: 레벨마다 사역마 동행 보너스 +3%(곱), 파견 보상 +2%, 부화 속도 +1%
+  R.BEAST_FAM = 0.03; R.BEAST_DISP = 0.02;
+  R.famBonus = function (f, lv, P) { return f.base * (1 + 0.25 * (lv - 1)) * (1 + (P && P.subj && P.subj.beast ? P.subj.beast.lv : 0) * R.BEAST_FAM); };
   R.CODEX_TIERS = [1, 10, 100]; R.BOSS_TIERS = [1, 5, 20]; R.CODEX_EACH = 0.004;
   R.tiersFor = function (id) { return BOSS_IDS[id] ? R.BOSS_TIERS : R.CODEX_TIERS; };
   R.codexTiers = function (P) {
@@ -295,7 +297,7 @@
     if (P.partyN > 1) { var pb = 0.03 * (Math.min(P.partyN, 4) - 1); b.goldPct = (b.goldPct || 0) + pb; b.xpPct = (b.xpPct || 0) + pb; }   // 파티 보너스
     for (var id in P.rs) if (RES[id]) addEff(b, RES[id].eff, P.rs[id]);
     var eh = R.eggHold(P); if (eh) b.xpPct = (b.xpPct || 0) + eh * R.EGG_HOLD_EACH;   // 알 품기
-    for (var fid in P.fam.own) { var f = FAM[fid]; if (f) b[f.bonus] = (b[f.bonus] || 0) + R.famBonus(f, P.fam.own[fid].lv); }
+    for (var fid in P.fam.own) { var f = FAM[fid]; if (f) b[f.bonus] = (b[f.bonus] || 0) + R.famBonus(f, P.fam.own[fid].lv, P); }
     var span = Math.max(1e-6, t1 - t0);
     for (var bid in P.buffs) {
       var bf = P.buffs[bid], ov;
@@ -441,10 +443,10 @@
   R.spellSlots = function (P) { return 2 + (P.grade >= 3 ? 1 : 0) + (P.grade >= 5 ? 1 : 0); };
 
   /* ───────── 레벨 ───────── */
-  /* 사역마: 레벨 FAM_LV(또는 3학년)부터. 열리는 순간 고드릭 펜 교수가 첫 알을 준다 (한 번).
+  /* 사역마: 환수생태학 FAM_SUBJ레벨 또는 레벨 FAM_LV(또는 3학년)부터. 열리는 순간 고드릭 펜 교수가 첫 알을 준다 (한 번).
      알 품기: 부화시키지 않고 지니고 있는 알 하나마다 경험치 +3% (3개까지) */
-  R.FAM_LV = 15; R.EGG_HOLD_EACH = 0.03; R.EGG_HOLD_MAX = 3;
-  R.famOpen = function (P) { return P.lvl >= R.FAM_LV || P.grade >= 3; };
+  R.FAM_SUBJ = 5; R.FAM_LV = 15; R.FAM_OPEN_TEXT = '환수생태학 ' + R.FAM_SUBJ + '레벨 또는 레벨 ' + R.FAM_LV; R.EGG_HOLD_EACH = 0.03; R.EGG_HOLD_MAX = 3;
+  R.famOpen = function (P) { return (P.subj && P.subj.beast && P.subj.beast.lv >= R.FAM_SUBJ) || P.lvl >= R.FAM_LV || P.grade >= 3; };
   R.eggHold = function (P) { return Math.min(R.EGG_HOLD_MAX, (P.fam && P.fam.eggs) || 0); };
   R.famGift = function (P, t) { if (P.famGift || !R.famOpen(P)) return; P.famGift = 1; if (!Object.keys(P.fam.own).length) { P.fam.eggs++; log(P, t, '사역마를 키울 수 있게 되었습니다! 고드릭 펜 교수가 첫 환수의 알을 주었습니다.', 'story'); } };
   R.xpNeed = function (lv) { return Math.floor(K.XP_A * Math.pow(K.XP_G, lv - 1) + lv * K.XP_L); };
@@ -651,6 +653,7 @@
     while (sj.xp >= R.subjXpNeed(sj.lv) && ups < 500) { sj.xp -= R.subjXpNeed(sj.lv); sj.lv++; ups++; }
     if (ups) {
       log(P, t, SUBJ[sid].name + ' ' + sj.lv + '레벨', 'good');
+      if (sid === 'beast') R.famGift(P, t);
       D.SPELLS.forEach(function (sp) {
         if (sp.req && sp.req[0] === sid && sj.lv >= sp.req[1] && sj.lv - ups < sp.req[1]) {
           log(P, t, '새 주문 습득: ' + sp.name, 'story');
@@ -734,11 +737,11 @@
     }
     return storeOrSell(P, it, false);
   }
-  R.gainItem = gainItem;
+  R.gainItem = gainItem; R.MAILQ_MAX = 100;
   function storeOrSell(P, it, wasEq) {
     var bag = calc(P, null).bag;
     if (!wasEq && P.rs.sorter && P.autoSell >= 0 && it.r <= P.autoSell && !it.lock) { if (P.autoDis) { dismantleGive(P, it); return 'dis'; } addGold(P, R.sellPrice(it)); return 'sold'; }
-    if (P.inv.length >= bag) { addGold(P, R.sellPrice(it)); return 'sold'; }
+    if (P.inv.length >= bag) { if (!wasEq && !R.noMailQ && (P.mailQ || (P.mailQ = [])).length < R.MAILQ_MAX) { P.mailQ.push(it); return 'mail'; } addGold(P, R.sellPrice(it)); return 'sold'; }   // 가방이 가득 차면 우편으로 (서버가 P.mailQ를 우편으로 보낸다)
     P.inv.push(it); return 'bag';
   }
   R.powerWith = function (P, it) { var old = P.eq[it.slot]; P.eq[it.slot] = it; var p = calc(P, null).power; P.eq[it.slot] = old; return p; };
@@ -981,13 +984,15 @@
     if (Array.isArray(o.items)) { var its = o.items.filter(function (it) { return it && SLOT[it.slot] && typeof it.name === 'string' && Array.isArray(it.aff) && D.RARITY[it.r]; }).slice(0, 10); if (its.length) r.items = its; }
     return r; };
   R.rewardText = function (r) { return R.MAIL_REWARDS.filter(function (k) { return r && r[k[0]]; }).map(function (k) { return k[1] + ' ' + R.fmt(r[k[0]]); }).concat(r && r.items ? r.items.map(function (it) { return it.name + (it.enh ? ' +' + it.enh : ''); }) : []).join(', '); };
+  R.mailNeedSlots = function (rw) { rw = rw || {}; return (Array.isArray(rw.items) ? rw.items.length : 0) + (Math.floor(Number(rw.gear) || 0)); };
   R.grantMail = function (P, W, now, rw) {
-    rw = R.cleanRewards(rw); var out = { items: [] };
+    rw = R.cleanRewards(rw); var out = { items: [] }; R.noMailQ = true;   // 우편에서 받는 장비는 다시 우편으로 돌리지 않는다 (받기 전에 가방 칸을 확인)
     if (rw.shard) P.res.shard += rw.shard; if (rw.gold) addGold(P, rw.gold); if (rw.stone) P.res.stone += rw.stone;
     if (rw.mana) addMana(P, rw.mana); if (rw.know) P.res.know += rw.know; if (rw.egg) P.fam.eggs += rw.egg; if (rw.ticket) P.wb.extra = (P.wb.extra || 0) + rw.ticket;
     if (rw.rsDone || rw.gradeUp || rw.respec) { var tk = P.tok || (P.tok = {}); if (rw.rsDone) tk.rsDone = (tk.rsDone || 0) + rw.rsDone; if (rw.gradeUp) tk.gradeUp = (tk.gradeUp || 0) + rw.gradeUp; if (rw.respec) tk.respec = (tk.respec || 0) + rw.respec; }
     for (var i = 0; i < (rw.gear || 0); i++) { var it = makeItem(P, pick(P, D.SLOTS).id, Math.max(1, Math.min(P.maxStage, R.stageCap(P))), Math.max(2, rollRarity(P, 0.6)), 2); out.items.push({ name: it.name, r: it.r, res: gainItem(P, it, now) }); }
     (rw.items || []).forEach(function (it0) { var it = JSON.parse(JSON.stringify(it0)); it.u = uid(P); it.lock = false; out.items.push({ name: it.name, r: it.r, res: gainItem(P, it, now) }); });
+    R.noMailQ = false;
     out.text = R.rewardText(rw); return out;
   };
   R.dailyProg = function (P, q) { return Math.min(q.goal, (P.st[q.type] || 0) - q.base); };
@@ -1568,7 +1573,7 @@
     P.spells[i] = id; return { ok: true };
   };
   A.egg = function (P, W, now) {
-    if (!R.famOpen(P)) err('레벨 ' + R.FAM_LV + '부터 할 수 있습니다'); if (P.fam.egg) err('이미 부화 중입니다'); if (P.fam.eggs <= 0) err('알이 없습니다');
+    if (!R.famOpen(P)) err(R.FAM_OPEN_TEXT + '부터 할 수 있습니다'); if (P.fam.egg) err('이미 부화 중입니다'); if (P.fam.eggs <= 0) err('알이 없습니다');
     var cost = R.eggPrice(P, W, now); if (P.res.mana < cost) err('마나가 부족합니다');
     P.res.mana -= cost; P.fam.eggs--;
     var o = hatch(P, now); o.mana = cost; return o;
@@ -1608,6 +1613,7 @@
     if (kind === 'study') { var one = lec(SUBJ[sid] ? sid : top.id); out.xp = one.xp * h * 0.35; out.know = one.know * h * 0.25; }
     else if (kind === 'stars') { out.shard = Math.floor(h * 0.6); out.know = lec(top.id).know * h * 0.3; out.egg = h * 0.004; }
     else { var z = R.zoneOf(Math.min(P.maxStage, R.stageCap(P))); out.mat = z.mat; out.mats = Math.floor(h * 3.5); out.stones = Math.floor(h * 0.45); out.gold = Math.floor(h * 22 * K.KILL_GOLD * Math.pow(K.G_GOLD, z.from - 1) * (1 + (c.b.goldPct || 0))); }
+    var dm = 1 + (c.b.offlineEff || 0); if (dm > 1) ['xp', 'know', 'shard', 'egg', 'gold', 'mats', 'stones'].forEach(function (k) { if (out[k]) out[k] = k === 'egg' || k === 'xp' || k === 'know' ? out[k] * dm : Math.floor(out[k] * dm); });   // 꿈나방: 꿈길 보상 +
     return out;
   };
   A.dreamStart = function (P, W, now, a) {
@@ -1634,10 +1640,10 @@
   }
   A.dispatch = function (P, W, now, a) {
     var id = str(a.id), d = DDUR[str(a.d)];
-    if (!R.famOpen(P)) err('레벨 ' + R.FAM_LV + '부터 할 수 있습니다'); if (!P.fam.own[id]) err('없는 사역마입니다'); if (!d) err('잘못된 시간입니다');
+    if (!R.famOpen(P)) err(R.FAM_OPEN_TEXT + '부터 할 수 있습니다'); if (!P.fam.own[id]) err('없는 사역마입니다'); if (!d) err('잘못된 시간입니다');
     if (P.fam.disp[id]) err('이미 파견 중입니다'); if (P.fam.act === id) err('동행 중인 사역마는 파견할 수 없습니다');
     var b = calc(P, W, now, now + d.s).b;   // 숙면의 차 등은 파견 시간과 겹친 만큼
-    P.fam.disp[id] = { start: now, end: now + d.s, dur: d.s, bonus: 1 + (b.dispPct || 0) }; return { ok: true };
+    P.fam.disp[id] = { start: now, end: now + d.s, dur: d.s, bonus: 1 + (b.dispPct || 0) + P.subj.beast.lv * R.BEAST_DISP }; return { ok: true };
   };
   // 이론 30: 시험 과목 평균 레벨이 기준이면 21점, 기준보다 3 높으면 30점 (문제 풀이 없음)
   R.examTheory = function (P, ex) { var avg = ex.subj.reduce(function (s2, k) { return s2 + P.subj[k].lv; }, 0) / ex.subj.length; return clamp(21 + (avg - ex.req) * 3, 0, 30); };
