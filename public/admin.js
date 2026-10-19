@@ -19,6 +19,7 @@
   function stats(j) {
     var rows = [['학생 수', j.players], ['24시간 활동', j.active24h], ['7일 활동', j.active7d], ['지금 접속(2분)', j.online2m], ['채팅 연결', j.chatConnections + ' (' + j.chatOnline + '명)'], ['메모리', j.memoryMB + 'MB'], ['가동 시간', j.uptimeH + '시간'],
       ['가입', (j.inviteRequired ? '초대코드 필요' : '초대코드 없이') + ' · 게스트 ' + (j.guestSignup ? '켜짐' : '꺼짐')], ['이번 주 보스', j.boss ? j.boss.name + ' ' + Math.round(j.boss.hp / j.boss.maxHp * 100) + '%' + (j.boss.killedAt ? ' (토벌됨)' : '') : '—'], ['개교일', when(j.epoch)]];
+    if ($('#wbest')) $('#wbest').textContent = j.wbForecast ? '지금까지의 피해 속도라면 이번 주 끝까지 약 ' + j.wbForecast.toLocaleString() + ' 피해가 더 들어옵니다. 자동은 그 ' + Math.round(j.wbFill * 100) + '%(' + Math.floor(j.wbForecast * j.wbFill).toLocaleString() + ')로 정해 주 끝 무렵 쓰러지게 합니다. 끝까지 버티게 하려면 이 값보다 크게 입력하세요.' : '';
     $('#stats').innerHTML = rows.map(function (r) { return '<dt>' + r[0] + '</dt><dd>' + esc(r[1]) + '</dd>'; }).join('');
   }
   try { if (localStorage.getItem('arc_admin_ihide') !== '0') $('#ihide').checked = true; } catch (e) { $('#ihide').checked = true; }

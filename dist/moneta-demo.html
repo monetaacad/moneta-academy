@@ -2328,7 +2328,7 @@ var DATA = (function () {
     { c: '전투', t: '능력치 다섯 가지', b: '지력: 주문 공격력 +1%, 수업 효율 소폭 증가. 체력: 물리 공격력 +1%, 생명력 +1.2%, 방어력 +0.6%. 민첩: 공격 속도 +1%. 의지: 마나 재생 +4%, 생명력 소폭 증가. 행운: 치명타 확률 · 전리품 · 높은 등급 장비 확률. 피해는 물리와 주문 두 가지이며, 기사의 평타와 방패 강타는 물리 공격력, 마법사의 평타와 모든 주문은 주문 공격력(× 주문 위력)이 적용됩니다. 장비 · 연구 · 물약의 「공격력 +%」는 양쪽 모두에, 장비 옵션 · 휘장의 「물리 피해」(석류석)는 물리 쪽에만, 「주문 위력」(청옥)은 주문 쪽에만 적용됩니다. 과목 레벨이 오를 때마다 해당 과목의 능력치가 오르며, 레벨업 포인트는 직접 분배합니다. 「레벨업 시 자동 분배」를 켜면 선택한 프리셋(균형 · 공격 · 생존 · 학구, 학과별 비율)대로 자동 분배됩니다(기본값은 꺼짐). 매점의 「망각의 차」를 마시면 분배한 포인트를 모두 돌려받으며, 다시 직접 나눌 수 있게 자동 분배가 꺼지고 능력치 칸으로 바로 이동합니다.', go: ['gear'] },
     { c: '전투', t: '장비 등급', b: '장비는 일반(회색) · 고급(초록) · 희귀(파랑) · 영웅(보라) · 전설(주황) 다섯 등급입니다. 등급이 높을수록 기본 능력치가 커지고(일반 1배 · 고급 1.3배 · 희귀 1.7배 · 영웅 2.3배 · 전설 3.2배) 붙는 추가 옵션도 늘어납니다(일반 0개 ~ 전설 4개). 원정에서 나오는 비율은 대략 일반 62% · 고급 26% · 희귀 9% · 영웅 2.6% · 전설 0.4%이며, 행운의 물약 · 행운의 별자리 연구 같은 「등급 상승」 효과가 있으면 높은 등급이 더 자주 나옵니다. 같은 등급이라도 장비 레벨(Lv)이 높을수록, 품질이 좋을수록 능력치가 높습니다. 보스 · 떠돌이 상인 경매 · 매점 장비 상자에서는 높은 등급이 나오기 쉽습니다.', go: ['gear'] },
     { c: '전투', t: '장비와 강화', b: '원정에서 장비가 나옵니다. 초록 ▲ 표시는 현재보다 전투력이 오르는 장비입니다. 강화에는 ' + CUR + '와 마석이 들며, 실패해도 장비는 사라지지 않습니다. 쓰지 않는 장비는 판매 · 분해하거나 거래소에 올리세요. 무기는 지팡이와 검이 있으며 능력치는 같습니다. 아끼는 장비는 「잠금」을 걸면 장착 · 해제만 가능하고 강화 · 재련 · 분해 · 판매 · 거래소 · 동아리 창고 보관이 모두 막힙니다(거래소 판매 목록에도 표시되지 않음).', go: ['gear'] },
-    { c: '전투', t: '월드 보스', b: '매주 월요일 KST 0시에 새 월드 보스가 나타나며, 서버의 모든 학생이 함께 체력을 깎습니다. 도전권은 8시간마다 하나씩 충전되며 최대 3장입니다. 매점 · 우편으로 받은 추가 도전권은 충전 도전권을 다 쓴 뒤에 쓰이며, 사는 것과 쓰는 것 모두 한 주에 2번까지입니다(월요일 KST 0시 초기화). 남은 추가 도전권은 다음 주로 넘어갑니다. 보스가 일찍 쓰러지면 운영진이 추가 보스를 부를 수 있고, 토벌 보상은 잡은 보스 수만큼 받습니다. 다음 주에 참여 · 토벌 · 피해 순위 보상이 지급됩니다.', go: ['world',  'wb'] },
+    { c: '전투', t: '월드 보스', b: '매주 월요일 KST 0시에 새 월드 보스가 나타나며, 서버의 모든 학생이 함께 체력을 깎습니다. 도전권은 8시간마다 하나씩 충전되며 최대 3장입니다. 매점 · 우편으로 받은 추가 도전권은 충전 도전권을 다 쓴 뒤에 쓰이며, 사는 것과 쓰는 것 모두 한 주에 2번까지입니다(월요일 KST 0시 초기화). 남은 추가 도전권은 다음 주로 넘어갑니다. 보스를 쓰러뜨리는 순간 이번 주에 도전한 학생 모두에게 토벌 보상(별조각 · 환수의 알)이 우편으로 갑니다. 보스가 일찍 쓰러지면 운영진이 추가 보스를 부를 수 있고, 추가 보스도 잡을 때마다 토벌 보상이 나갑니다. 다음 주에 참여 · 토벌 · 피해 순위 보상이 지급됩니다.', go: ['world',  'wb'] },
     { c: '전투', t: '별의 탑 (파티와 함께)', b: '「원정·전투 → 별의 탑」에서 파티원들과 함께 한 주 동안 오르는 탑입니다. 파티에 들어가 있어야 도전할 수 있으며, 혼자서도 파티를 만들 수 있습니다(별의 탑 화면의 「파티 만들기」). 도전 횟수는 파티가 아니라 학생마다 하루 3회이며 매일 KST 자정에 초기화됩니다. 도전한 학생의 전투에 파티원 모두의 능력(미접속 포함)이 합산됩니다. NPC 파티원은 내 능력의 30%씩 보탭니다. 층을 처음 넘을 때마다 당시 파티원 모두에게 보상 우편이 발송됩니다(5층마다 장비 상자, 10층마다 환수의 알). 1층 난이도는 그 주 첫 도전 시 파티원들의 진도에 맞춰 정해지며, 매주 월요일 KST 0시에 0층부터 다시 시작합니다.', go: ['tower'] },
     { c: '전투', t: '별의 탑 일지 · 파티가 없어지면', b: '누군가 도전하면 별의 탑 화면 상단 「별의 탑 일지」에 전투가 원정 일지처럼 한 줄씩 기록됩니다(최대 30초). 파티원 모두가 같은 시각에 같은 장면을 보며, 결과와 보상 우편은 일지가 끝난 뒤 알려 줍니다. 일지가 진행되는 동안에는 다른 파티원이 도전할 수 없습니다. 파티장이 나가면 다음 파티원이 파티장이 되며 탑 기록은 유지됩니다. 마지막 한 명까지 나가 파티가 해산되면 그 주의 탑 기록도 사라집니다. 이미 받은 보상은 유지되며, 새 파티에서 다시 오를 때 이번 주에 보상받은 층까지는 보상 없이 지나갑니다.', go: ['tower'] },
     { c: '전투', t: '결투제', b: '시험장에서 아카데미의 라이벌들과 차례로 겨룹니다. 이기면 별조각과 ' + CUR + '를 받고, 지면 1시간 뒤 다시 도전할 수 있습니다.', go: ['exam'] },
@@ -4228,6 +4228,7 @@ if (typeof module !== 'undefined') module.exports = DATA;
   R.wbBuyLeft = function (P, now) { var w = R.weekId(now), wb = P.wb; if (wb.buyWk !== w) { wb.buyWk = w; wb.bought = 0; } return Math.max(0, K.WB_BUY_MAX - wb.bought); };
   R.wbExtraLeft = function (P, now) { var w = R.weekId(now), wb = P.wb; if (wb.exWk !== w) { wb.exWk = w; wb.exUsed = 0; } return Math.max(0, K.WB_EXTRA_USE - wb.exUsed); };
   R.wbCanAttack = function (P, now) { return P.wb.tickets > 0 || (P.wb.extra > 0 && R.wbExtraLeft(P, now) > 0); };
+  R.WB_KILL_RW = { shard: 20, egg: 1 };   // 월드 보스 토벌 보상 (잡은 순간 이번 주 도전한 학생 모두에게 우편)
   A.wbAttack = function (P, W, now) {
     if (!W || !W.wbAlive) err('이번 주 월드 보스는 이미 쓰러졌습니다');
     if (P.wb.tickets > 0) { P.wb.tickets--; if (P.wb.tickets < K.WB_TICKET_MAX && P.wb.at > now) P.wb.at = now; }   // 충전 도전권부터
@@ -4249,7 +4250,7 @@ if (typeof module !== 'undefined') module.exports = DATA;
     }
     if (pv.att > 0) {
       out.shard += 10; out.wbKilled = !!r.killed;
-      if (r.killed) { var kn = Math.max(1, r.kills || 1); out.shard += 20 * kn; P.fam.eggs += kn; out.egg = kn; out.kills = kn; P.st.wbKills += kn; }   // 추가 보스까지 잡았으면 잡은 수만큼
+      if (r.killed) { var kn = Math.max(1, r.kills || 1), un = Math.max(0, kn - (r.paidKills || 0)); P.st.wbKills += kn; out.kills = kn; if (un) { out.shard += R.WB_KILL_RW.shard * un; P.fam.eggs += R.WB_KILL_RW.egg * un; out.egg = un; } }   // 토벌 보상은 잡은 순간 우편으로(paidKills). 그때 못 낸 것만 여기서
       var t = r.tiers || [], tier = pv.dmg >= (t[0] || Infinity) ? 1 : pv.dmg >= (t[1] || Infinity) ? 2 : pv.dmg >= (t[2] || Infinity) ? 3 : 4;
       out.tier = tier; out.shard += [0, 40, 20, 8, 0][tier];
       if (tier <= 2) { var it2 = makeItem(P, pick(P, D.SLOTS).id, Math.min(P.maxStage, R.stageCap(P)) + 3, tier === 1 && rnd(P) < 0.25 ? 4 : 3, 3); out.items.push({ name: it2.name, r: it2.r, res: gainItem(P, it2, now) }); }
@@ -5002,13 +5003,18 @@ var Net = (function () {
   function LocalApi() { this.mode = 'local'; this.d = null; try { var s = localStorage.getItem(KEY) || localStorage.getItem('arcanum_demo_v3'); if (s) this.d = JSON.parse(s); if (this.d && this.d.P && window.Rules && Rules.fixState) Rules.fixState(this.d.P); } catch (e) { } }
   LocalApi.prototype._save = function () { try { localStorage.setItem(KEY, JSON.stringify(this.d)); } catch (e) { } };
   LocalApi.prototype._now = function () { return Date.now() / 1000; };
+  // 월드 보스 토벌 보상: 잡은 순간 (미리보기는 우편 대신 바로)
+  LocalApi.prototype._wbPay = function (now) {
+    var W = this.d.W, P = this.d.P; if (W.boss.paidKills) return; W.boss.paidKills = 1;
+    if (P && P.wk.att > 0 && P.wk.id === W.boss.week) { P.res.shard += Rules.WB_KILL_RW.shard; P.fam.eggs += Rules.WB_KILL_RW.egg; Rules.log(P, now, W.boss.name + ' 토벌 보상: 별조각 +' + Rules.WB_KILL_RW.shard + ', 환수의 알', 'good'); }
+  };
   LocalApi.prototype._world = function (now) {
     var d = this.d, W = d.W, wk = Rules.weekId(now);
     if (!W.boss || W.boss.week !== wk) {
       if (W.boss) {
         D2().HOUSES.forEach(function (h) { W.hbase[h.id] = (W.hbase[h.id] || 0) + (W.cup[h.id] || 0); });   // 기숙사 성장 누적
         var cup = D2().HOUSES.map(function (h) { return h.id; }).sort(function (a, b) { return (W.cup[b] || 0) - (W.cup[a] || 0); });
-        W.results[W.boss.week] = { cup: cup, killed: !!W.boss.killedAt, tiers: [Infinity, Infinity, 0] };
+        W.results[W.boss.week] = { cup: cup, killed: !!W.boss.killedAt, kills: W.boss.killedAt ? 1 : 0, paidKills: W.boss.paidKills || 0, tiers: [Infinity, Infinity, 0] };
       }
       var def = D2().WORLD_BOSSES[wk % D2().WORLD_BOSSES.length];
       var P = d.P, dps = P ? Rules.summary(P, W, now).wbDps : 1000;
@@ -5017,7 +5023,7 @@ var Net = (function () {
     }
     // 가상의 다른 학생들이 보스를 조금씩 공격하고 대항전 점수를 쌓는다
     var dt = Math.max(0, now - (W.boss.lastSim || now)); W.boss.lastSim = now;
-    if (!W.boss.killedAt) { W.boss.hp = Math.max(0, W.boss.hp - W.boss.maxHp * 0.12 * dt / 86400); if (W.boss.hp <= 0) W.boss.killedAt = now; }
+    if (!W.boss.killedAt) { W.boss.hp = Math.max(0, W.boss.hp - W.boss.maxHp * 0.12 * dt / 86400); if (W.boss.hp <= 0) { W.boss.killedAt = now; this._wbPay(now); } }
     var mine = d.P ? d.P.wk.cup : 0, rate = Math.max(0.05, mine / Math.max(3600, now - Rules.weekStart(wk)));
     D2().HOUSES.forEach(function (h, i) { if (!d.P || h.id !== d.P.house) W.cup[h.id] = rate * (now - Rules.weekStart(wk)) * [1.15, 0.85, 1.0, 0.7][i]; });
     if (d.P) W.cup[d.P.house] = mine;
@@ -5685,7 +5691,7 @@ var Net = (function () {
       if (type === 'exam' && r && r.pass) { var nw = this.d.news || (this.d.news = []); nw.unshift({ t: now, text: P.name + ' 학생이 ' + (P.grade >= 8 ? '졸업 시험을 통과해 마스터 과정이 되었습니다' : P.grade + '학년으로 진급했습니다') }); if (nw.length > 50) nw.length = 50; }
       if ((type === 'clsExam' || type === 'setCls') && r && this._chat && this._chat.h && this._chat.h.cls) { var so3 = this._soc(); this._chat.h.cls({ cls: P.cls || null, crp: so3.chat.crp = [], cooc: so3.chat.cooc = [] }); }
       if ((type === 'exam' && r && r.pass) || (type === 'useGradeUp' && r && r.grade)) this._note('grade', (P.grade >= 8 ? '졸업 시험을 통과해 마스터 과정이 되었습니다' : P.grade + '학년으로 진급했습니다') + ' · 새로 열린 것 보기', { grade: P.grade });
-      if (type === 'wbAttack') { W.boss.hp = Math.max(0, W.boss.hp - (P.wk.dmg - before)); if (W.boss.hp <= 0 && !W.boss.killedAt) { W.boss.killedAt = now; r.killed = true; } }
+      if (type === 'wbAttack') { W.boss.hp = Math.max(0, W.boss.hp - (P.wk.dmg - before)); if (W.boss.hp <= 0 && !W.boss.killedAt) { W.boss.killedAt = now; r.killed = true; this._wbPay(now); } }
     } catch (e) { if (!e.game) throw e; this._save(); return Promise.resolve({ error: e.message, P: Rules.publicState(P), now: now, _status: 400 }); }
     return this._ok(now, { r: r });
   };
@@ -6930,7 +6936,7 @@ var Net = (function () {
   }
   function cancelBtn(key, type, a) {
     var armed = S.confirm[key] && S.confirm[key] > Date.now(), rc = type === 'expCancel';
-    return '<button class="btn sm ' + (armed ? (rc ? 'primary' : 'danger') : 'ghost') + '" data-act="cancel" data-a="' + key + '" data-b="' + type + '" data-c=\'' + JSON.stringify(a) + '\'>' + (armed ? (rc ? '정말 귀환? (모은 것 모두 받음)' : '정말 취소? (절반만 받음)') : (rc ? '귀환' : '취소')) + '</button>';
+    return '<button class="btn sm ' + (armed ? (rc ? 'primary' : 'danger') : 'ghost') + '" data-act="cancel" data-a="' + key + '" data-b="' + type + '" data-c=\'' + JSON.stringify(a) + '\'>' + (armed ? (rc ? '한 번 더 누르면 귀환합니다 · 모은 것은 모두 받습니다' : '한 번 더 누르면 취소합니다 · 절반만 받습니다') : (rc ? '귀환' : '취소')) + '</button>';
   }
   function taskBox(sid) {
     var P = S.P, o = R.taskOf(P, sid), done = P.tasks[sid] || 0;
@@ -7204,9 +7210,9 @@ var Net = (function () {
       var wbDef = D.WORLD_BOSSES.find(function (x) { return x.id === b.id; }) || D.WORLD_BOSSES[0];
       h += '<div class="card hl" data-anchor="wb"><div class="row" style="gap:14px;align-items:center"><canvas data-mon="' + b.id + '" width="96" height="96" style="width:96px;height:96px;flex:none"></canvas><div style="flex:1;min-width:0"><div class="tiny gold">이번 주 월드 보스' + (b.round > 1 ? ' · 추가 보스 ' + b.round + '번째' : '') + ' · ' + left(W.weekEnd) + ' 남음</div><h3>' + esc(b.name) + '</h3><p class="small muted">' + wbDef.lore + '</p></div></div>' +
         '<div class="bar rose thick" style="margin-top:10px"><b style="width:' + (b.hp / b.maxHp * 100).toFixed(2) + '%"></b></div><div class="row small muted" style="margin-top:4px"><span class="num">' + fmt(b.hp) + ' / ' + fmt(b.maxHp) + '</span><span class="spacer"></span><span>참여 ' + fmt(b.participants) + '명</span></div>' +
-        (b.killedAt ? '<p class="good" style="margin-top:8px">토벌 성공! 다음 주에 모든 참여자가 토벌 보상을 받습니다.' + (b.kills > 1 ? ' (이번 주 ' + b.kills + '마리 토벌 · 보상도 ' + b.kills + '배)' : '') + '</p>' :
+        (b.killedAt ? '<p class="good" style="margin-top:8px">토벌 성공! 이번 주에 도전한 모든 학생에게 토벌 보상 우편을 보냈습니다.' + (b.kills > 1 ? ' (이번 주 ' + b.kills + '마리 토벌)' : '') + '</p>' :
           '<div class="row" style="margin-top:12px"><span class="small">도전권 <b class="num gold">' + P.wb.tickets + '</b> / ' + R.K.WB_TICKET_MAX + (P.wb.tickets < R.K.WB_TICKET_MAX ? ' · 다음 충전 <span class="num" data-l="left:' + (P.wb.at + R.K.WB_TICKET_REGEN) + '"></span>' : '') + (P.wb.extra > 0 ? ' · 추가 도전권 <b class="num">' + P.wb.extra + '</b> <span class="tiny faint">(이번 주 ' + R.wbExtraLeft(P, now()) + '번 더 사용 가능)</span>' : '') + '</span><span class="spacer"></span><button class="btn primary" data-act="wb"' + (R.wbCanAttack(P, now()) ? '' : ' disabled') + '>30초 공격</button></div>') +
-        '<p class="tiny faint" style="margin-top:8px">이번 주 내 피해 ' + fmt(P.wk.dmg) + ' (' + P.wk.att + '회). 보상: 참여 별조각 10, 토벌 성공 시 +20과 환수의 알, 피해 상위 1%·10%·50%에 추가 보상.</p></div>';
+        '<p class="tiny faint" style="margin-top:8px">이번 주 내 피해 ' + fmt(P.wk.dmg) + ' (' + P.wk.att + '회). 보상: 토벌하는 순간 도전한 학생 모두에게 별조각 20과 환수의 알(우편). 다음 주에 참여 별조각 10과 피해 상위 1%·10%·50% 추가 보상.</p></div>';
     }
     h += '<div class="card"><h3>이번 주 피해 순위</h3>' + rankList((W.topDmg || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: fmt(r.dmg) }; })) + '</div>';
     h += '</div><div class="stack">';
@@ -7293,7 +7299,7 @@ var Net = (function () {
     if (rest.length) h += '<div class="section-t" style="margin-top:12px;font-size:13px">보관 중인 휘장</div><div class="bdglist">' + rest.map(function (x) {
       var g2 = R.GEM[x.gem], armed = S.confirm['bb' + x.u] > Date.now();
       return '<div class="bdgrow"><div style="flex:1;min-width:0"><div class="small ell">' + esc(x.name) + ' ' + badgeSvg(x) + ' <span class="num faint">Lv ' + x.lv + '</span></div><div class="tiny faint ell">' + badgeBrief(x) + '</div></div>' +
-        '<span class="frbtns"><button class="btn sm" data-act="bwear" data-a="' + x.u + '">달기</button>' + (x.lock ? '' : '<button class="btn sm ghost" data-act="mksellbadge" data-a="' + x.u + '">거래소</button><button class="btn sm ' + (armed ? 'danger' : 'ghost') + '" data-act="bbreak" data-a="' + x.u + '">' + (armed ? '정말 깨뜨리기' : '깨뜨리기') + ' <span class="cost">가루 +' + R.badgeBreakDust(x) + '</span></button>') + lockBtn(x) + '</span></div>';
+        '<span class="frbtns"><button class="btn sm" data-act="bwear" data-a="' + x.u + '">달기</button>' + (x.lock ? '' : '<button class="btn sm ghost" data-act="mksellbadge" data-a="' + x.u + '">거래소</button><button class="btn sm ' + (armed ? 'danger' : 'ghost') + '" data-act="bbreak" data-a="' + x.u + '">' + (armed ? '한 번 더 누르면 깨뜨립니다' : '깨뜨리기') + ' <span class="cost">가루 +' + R.badgeBreakDust(x) + '</span></button>') + lockBtn(x) + '</span></div>';
     }).join('') + '</div>';
     return h + '<p class="tiny faint" style="margin-top:10px">달고 있는 휘장 하나만 효과가 있고 별빛을 모읍니다 · 원정 1시간 +' + R.BADGE_XP.expH + ', 수업 1시간 +' + R.BADGE_XP.lecH + ', 보스 · 결투 · 월드 보스 한 번 +' + R.BADGE_XP.fight + '(이기면 두 배) · ' + D.BADGE_FACET_LV.join(' · ') + '레벨에 세공이 한 줄씩 늘어납니다 · 거래소에서 사고팔 수 있습니다</p></div>';
   }
@@ -7306,7 +7312,7 @@ var Net = (function () {
     return '<div class="bdgups">' +
       '<div class="bdgup"><div class="bdgut"><b class="small">닦기</b><span class="tiny faint">마석가루로 별빛을 채워 레벨을 올립니다</span></div>' + (full ? '<span class="tag br">완성</span>' : lk ? lkTag : '<button class="btn sm primary" data-act="bpolish" data-a="' + b.u + '"' + (can ? '' : ' disabled') + '>별빛 +' + R.badgePolishXp(b) + ' <span class="cost">가루 ' + pc.dust + ' · ' + fmt(pc.gold) + ' ' + CUR + '</span></button>') + '</div>' +
       '<div class="bdgup"><div class="bdgut"><b class="small">' + gterm('광내기') + '</b><span class="tiny faint">별조각으로 보석 품질을 올려 대표 효과를 키웁니다 · 지금 ' + (Math.round(q * 1000) / 10) + '% / 최대 ' + Math.round(R.BADGE_Q_MAX * 100) + '%</span></div>' + (qmax ? '<span class="tag br">최고 품질</span>' : lk ? lkTag : '<button class="btn sm" data-act="bshine" data-a="' + b.u + '"' + (sh >= sc ? '' : ' disabled') + '>품질 +' + (R.BADGE_Q_STEP * 100) + '% <span class="cost">별조각 ' + sc + '</span></button>') + '</div>' +
-      ((b.aff || []).length ? '<div class="bdgup"><div class="bdgut"><b class="small">' + gterm('세공 다시 새기기', '세공') + '</b><span class="tiny faint">별조각으로 고른 세공 한 줄을 새로 굴립니다 (이름의 앞말은 첫 줄을 따릅니다)</span></div><span class="row" style="gap:6px;flex-wrap:nowrap"><select id="brc-line" aria-label="다시 새길 세공" style="width:auto;max-width:230px">' + b.aff.map(function (a, i) { return '<option value="' + i + '"' + (i === li ? ' selected' : '') + '>' + (i + 1) + '. ' + (D.BONUS_NAMES[a.id] || a.id) + ' +' + pct(a.v) + '</option>'; }).join('') + '</select>' + (lk ? lkTag : '<button class="btn sm' + (armed ? ' primary' : '') + '" data-act="brecut" data-a="' + b.u + '"' + (sh >= rc ? '' : ' disabled') + '>' + (armed ? '한 번 더 누르면 새김' : '새기기') + ' <span class="cost">별조각 ' + rc + '</span></button>') + '</span></div>' : '') +
+      ((b.aff || []).length ? '<div class="bdgup"><div class="bdgut"><b class="small">' + gterm('세공 다시 새기기', '세공') + '</b><span class="tiny faint">별조각으로 고른 세공 한 줄을 새로 굴립니다 (이름의 앞말은 첫 줄을 따릅니다)</span></div><span class="row" style="gap:6px;flex-wrap:nowrap"><select id="brc-line" aria-label="다시 새길 세공" style="width:auto;max-width:230px">' + b.aff.map(function (a, i) { return '<option value="' + i + '"' + (i === li ? ' selected' : '') + '>' + (i + 1) + '. ' + (D.BONUS_NAMES[a.id] || a.id) + ' +' + pct(a.v) + '</option>'; }).join('') + '</select>' + (lk ? lkTag : '<button class="btn sm' + (armed ? ' primary' : '') + '" data-act="brecut" data-a="' + b.u + '"' + (sh >= rc ? '' : ' disabled') + '>' + (armed ? '한 번 더 누르면 새깁니다' : '새기기') + ' <span class="cost">별조각 ' + rc + '</span></button>') + '</span></div>' : '') +
       '</div>';
   }
   ACT.bshine = function (u) { act('badgeShine', { u: u }).then(function (r) { if (r) { Snd.play('enh'); toast('광을 냈습니다', r.name + ' · 품질 ' + (Math.round(r.q * 1000) / 10) + '% · 별조각 -' + r.cost, 2200); } render(); }); };
@@ -7555,7 +7561,7 @@ var Net = (function () {
     if (j && j.end > now()) {
       var dn = R.DREAM[j.kind];
       h += '<div class="row">' + dotImg('dream', 28, '', 'evimg') + '<div style="flex:1;min-width:0"><b>' + dn.name + '</b>' + (j.s ? ' <span class="tiny muted">' + R.SUBJ[j.s].name + '</span>' : '') + '<div class="bar" style="margin-top:4px;height:6px"><b data-b="prog:' + j.start + ':' + j.end + '" style="--bfill:#8f86d8;background:linear-gradient(90deg,#8f86d8,#c8b8ff)"></b></div><div class="tiny faint" style="margin-top:3px"><span data-l="left:' + j.end + '"></span> 남음 · ' + clock(j.end) + '에 깹니다</div></div>' +
-        (S.confirm.dream > Date.now() ? '<button class="btn sm danger" data-act="dreamcancel">정말 깨우기</button>' : '<button class="btn sm ghost" data-act="dreamcancel" title="깨우면 꿈에서 얻을 것이 사라집니다">깨우기</button>') + '</div>';
+        (S.confirm.dream > Date.now() ? '<button class="btn sm danger" data-act="dreamcancel">한 번 더 누르면 깨웁니다</button>' : '<button class="btn sm ghost" data-act="dreamcancel" title="깨우면 꿈에서 얻을 것이 사라집니다">깨우기</button>') + '</div>';
       sum = dn.name + ' · <span data-l="left:' + j.end + '"></span>';
     } else {
       var kind = S.pick.drk || 'study', subs = R.availableSubjects(P), sid = S.pick.drs; if (!subs.some(function (x) { return x.id === sid; })) { sid = defaultSubject(subs); S.pick.drs = sid; }
@@ -7962,7 +7968,7 @@ var Net = (function () {
   ACT.gdisband = function () {
     var g = S.gd; if (!g) return;
     var rows = [[g.myRole === 'owner', '동아리 회장이어야 합니다'], [g.n <= 1, '다른 부원이 없어야 합니다' + (g.n > 1 ? ' (지금 ' + (g.n - 1) + '명) · 부원 탭에서 모두 내보낸 뒤에 해체할 수 있습니다' : '')]], ok = rows.every(function (r) { return r[0]; });
-    modal(mhead('동아리 해체', esc(g.name)) + (ok ? '<p class="small">정말 「' + esc(g.name) + '」 동아리를 해체하시겠습니까? 되돌릴 수 없습니다.</p><p class="tiny faint" style="margin-top:6px">창고에 남은 ' + CUR + ' · 장비는 우편으로 돌려받습니다.</p>' : '<p class="small">아래 조건을 모두 만족해야 동아리를 해체할 수 있습니다.</p>') + gCond(rows) +
+    modal(mhead('동아리 해체', esc(g.name)) + (ok ? '<p class="small">「' + esc(g.name) + '」 동아리를 해체하시겠습니까? 되돌릴 수 없습니다.</p><p class="tiny faint" style="margin-top:6px">창고에 남은 ' + CUR + ' · 장비는 우편으로 돌려받습니다.</p>' : '<p class="small">아래 조건을 모두 만족해야 동아리를 해체할 수 있습니다.</p>') + gCond(rows) +
       '<div class="row" style="justify-content:flex-end;margin-top:14px;gap:8px"><button class="btn ghost" data-act="modal-close"' + (ok ? '' : ' autofocus') + '>' + (ok ? '취소' : '확인') + '</button>' + (ok ? '<button class="btn danger" data-act="gdisbandgo">해체하기</button>' : '') + '</div>');
   };
   ACT.gdisbandgo = function () { closeModal(); API.guildOp({ op: 'disband' }).then(function (j) { gDone(j, '동아리를 해체했습니다'); }); };
@@ -7973,7 +7979,7 @@ var Net = (function () {
         '<div class="row" style="justify-content:flex-end;margin-top:14px;gap:8px"><button class="btn ghost" data-act="modal-close" autofocus>확인</button>' + (g.n > 1 ? '<button class="btn" data-act="gquitgo2">부원 탭으로</button>' : '<button class="btn danger" data-act="gdisband">동아리 해체</button>') + '</div>');
       return;
     }
-    modal(mhead('동아리 탈퇴', esc(g.name)) + '<p class="small">정말 「' + esc(g.name) + '」 동아리에서 탈퇴하시겠습니까?</p><p class="tiny faint" style="margin-top:6px">쌓은 기여도는 사라지며, 다시 들어오면 0부터 시작합니다.</p>' +
+    modal(mhead('동아리 탈퇴', esc(g.name)) + '<p class="small">「' + esc(g.name) + '」 동아리에서 탈퇴하시겠습니까?</p><p class="tiny faint" style="margin-top:6px">쌓은 기여도는 사라지며, 다시 들어오면 0부터 시작합니다.</p>' +
       '<div class="row" style="justify-content:flex-end;margin-top:14px;gap:8px"><button class="btn ghost" data-act="modal-close" autofocus>취소</button><button class="btn danger" data-act="gquitgo">탈퇴하기</button></div>');
   };
   ACT.gquitgo = function () { closeModal(); API.guildOp({ op: 'leave' }).then(function (j) { gDone(j, '동아리에서 탈퇴했습니다'); }); };
@@ -8152,7 +8158,7 @@ var Net = (function () {
     return { gold: g, xp: x, know: k, ne: ne, nl: nl };
   }
   var TIP = {
-    g: function (q) { var g = guideFind(q); if (!g) return ''; var b = g.b, k = b.indexOf(q), st = k > 60 ? b.lastIndexOf('. ', k) + 2 : 0, sn = b.slice(Math.max(0, st), Math.max(0, st) + 150); return '<b>' + esc(q) + '</b><p>' + esc(sn) + (b.length > st + 150 ? '…' : '') + '</p><p class="tiny gold" style="margin-top:4px">' + (matchMedia('(hover: none)').matches ? '한 번 더 누르면 가이드로 이동' : '클릭하면 가이드에서 보기') + '</p>'; },
+    g: function (q) { var g = guideFind(q); if (!g) return ''; var b = g.b, k = b.indexOf(q), st = k > 60 ? b.lastIndexOf('. ', k) + 2 : 0, sn = b.slice(Math.max(0, st), Math.max(0, st) + 150); return '<b>' + esc(q) + '</b><p>' + esc(sn) + (b.length > st + 150 ? '…' : '') + '</p><p class="tiny gold" style="margin-top:4px">' + (matchMedia('(hover: none)').matches ? '한 번 더 누르면 가이드로 이동합니다' : '클릭하면 가이드에서 보기') + '</p>'; },
     house: function () { var hh = house(); return '<b>' + houseDot(S.P.house, 18) + ' ' + hh.name + ' <span class="faint">' + hh.latin + '</span></b><p class="muted">“' + hh.motto + '”</p><p>기숙사 혜택 (현재 / 최대)</p>' + houseGrow(S.P.house, wctx()) + '<p class="tt-src">처음에는 적힌 효과의 1/10만 받습니다. 기숙사 학생들의 활동이 대항전 점수로 쌓일수록 커져, 기숙사 성장 100%가 되면 적힌 효과(최대)를 그대로 받습니다.</p>'; },
     mana: function () {
       var c = C(), cur = predMana(), full = cur >= c.manaCap ? 0 : (c.manaCap - cur) / Math.max(1e-9, c.mana);
@@ -8558,7 +8564,7 @@ var Net = (function () {
       if (!r) return;
       replay({ title: def.name, sub: '월드 보스 · 30초 공격', enemy: { id: def.id, arch: def.arch, c1: def.c1, c2: def.c2, boss: true, name: def.name }, ev: r.ev, infinite: true }, function () {
         Snd.play('boss');
-        modal(mhead('공격 완료', def.name) + '<p>피해 <b class="num gold">' + fmt(r.dmg) + '</b>를 입혔습니다.' + (r.killed ? ' <b class="good">마지막 일격으로 토벌에 성공했습니다!</b>' : '') + '</p><p class="small muted" style="margin-top:6px">이번 주 누적 ' + fmt(S.P.wk.dmg) + '</p>' +
+        modal(mhead('공격 완료', def.name) + '<p>피해 <b class="num gold">' + fmt(r.dmg) + '</b>를 입혔습니다.' + (r.killed ? ' <b class="good">마지막 일격으로 토벌에 성공했습니다!</b> 토벌 보상이 우편으로 도착합니다.' : '') + '</p><p class="small muted" style="margin-top:6px">이번 주 누적 ' + fmt(S.P.wk.dmg) + '</p>' +
           '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>');
         refreshWorld();
       });
@@ -9075,7 +9081,7 @@ var Net = (function () {
     h += '<div class="setsec"><div class="section-t">계정</div><p class="small muted">' + (API.mode === 'local' ? '미리보기: 진행 상황은 이 브라우저에만 저장됩니다.' : '진행 상황은 아카데미 서버에 저장됩니다. 글씨 크기·소리·알림 설정은 이 브라우저에만 기억합니다.') + '</p><p class="tiny faint">화면 버전 ' + BUILD + '</p>';
     if (API.mode === 'server') h += '<hr class="sep"><div class="field"><label class="small muted" for="pw-old">비밀번호 바꾸기</label><input id="pw-old" type="password" placeholder="현재 비밀번호" autocomplete="current-password"><input id="pw-new" type="password" placeholder="새 비밀번호 (8자 이상)" autocomplete="new-password"><div class="row"><button class="btn sm" data-act="pw">변경</button><span class="tiny faint" id="pw-msg"></span></div></div>' +
       '<div class="row"><button class="btn danger sm" data-act="logout">로그아웃</button></div>';
-    else h += '<hr class="sep"><div class="row"><button class="btn danger sm" data-act="demo-reset">' + (S.resetArm > Date.now() ? '처음부터 다시 시작합니다. 한 번 더 누르면 확정' : '데모 처음부터 다시') + '</button></div>';
+    else h += '<hr class="sep"><div class="row"><button class="btn danger sm" data-act="demo-reset">' + (S.resetArm > Date.now() ? '한 번 더 누르면 처음부터 다시 시작합니다' : '데모 처음부터 다시') + '</button></div>';
     return h + '</div>';
   }
   ACT.settings = function () { S.meModal = false; var y = $('.mbox') ? $('.mbox').scrollTop : 0, keep = S.modal && $('#setbox'); modal(mhead('설정', '') + '<div id="setbox" class="stack" style="gap:14px">' + settingsBody() + '</div>'); if (keep) $('.mbox').scrollTop = y; };
@@ -9323,7 +9329,7 @@ var Net = (function () {
   function bdPost(p) {
     var b = S.bd, armed = S.confirm['bd' + p.id] > Date.now();
     var h = '<div class="row" style="margin-bottom:10px"><button class="btn sm ghost" data-act="bdback">← 목록</button><span class="spacer"></span>' +
-      (p.canEdit ? '<button class="btn sm ghost" data-act="bdedit">고치기</button>' : '') + (p.canDel ? '<button class="btn sm ' + (armed ? 'danger' : 'ghost') + '" data-act="bddel" data-a="' + p.id + '">' + (armed ? '정말 지우기' : '지우기') + '</button>' : '') + '</div>';
+      (p.canEdit ? '<button class="btn sm ghost" data-act="bdedit">고치기</button>' : '') + (p.canDel ? '<button class="btn sm ' + (armed ? 'danger' : 'ghost') + '" data-act="bddel" data-a="' + p.id + '">' + (armed ? '한 번 더 누르면 지웁니다' : '지우기') + '</button>' : '') + '</div>';
     h += '<article class="card bdpost"><div class="row" style="gap:6px">' + bdTag(p.tag) + (p.priv ? '<span class="btag lock">관리자만 보기</span>' : '') + '</div><h2 class="bdh">' + esc(p.title) + '</h2>' +
       '<div class="tiny faint"><button class="cn" data-act="prof" data-a="' + esc(p.aid) + '">' + esc(p.author) + '</button>' + (p.aop && R.OP_TITLES[p.aop] ? ' <span class="ttl' + R.opTitleCls(p.aop) + '">' + esc(p.aop) + '</span>' : '') + ' · ' + new Date(p.created * 1000).toLocaleString('ko-KR') + (p.updated > p.created + 60 ? ' · 고침' : '') + '</div>' +
       (p.priv ? '<p class="tiny gold" style="margin-top:8px">쓴 사람과 운영진만 볼 수 있는 글입니다. 운영진이 답하면 우편으로 알려 드립니다.</p>' : '') +
@@ -9334,7 +9340,7 @@ var Net = (function () {
       var ca = S.confirm['bdc' + c.id] > Date.now();
       return '<div class="bdcom' + (c.op ? ' op' : '') + (isReply ? ' reply' : '') + '"><div class="row" style="gap:6px">' + (isReply ? '<span class="tiny faint">↳</span>' : '') + '<b class="small">' + (c.aid === 'staff' ? '운영진' : '<button class="cn" data-act="prof" data-a="' + esc(c.aid) + '">' + esc(c.author) + '</button>') + '</b>' + (c.aid === 'staff' ? opBadge() : c.badge && R.OP_TITLES[c.badge] ? '<span class="ttl' + R.opTitleCls(c.badge) + '">' + esc(c.badge) + '</span>' : '') + '<span class="tiny faint">' + bdWhen(c.created) + '</span><span class="spacer"></span>' +
         (p.priv ? '' : '<button class="linkbtn tiny" data-act="bdreplyto" data-a="' + c.id + '" data-b="' + (root || c.id) + '">답글</button>') +
-        (c.mine || (S.bd.data && S.bd.data.op) ? '<button class="linkbad tiny" data-act="bdcdel" data-a="' + c.id + '">' + (ca ? '정말 지우기' : '지우기') + '</button>' : '') + '</div><div class="small bdct">' + (p.tag === 'rp' ? rpText(c.body) : esc(c.body)) + '</div>' +
+        (c.mine || (S.bd.data && S.bd.data.op) ? '<button class="linkbad tiny" data-act="bdcdel" data-a="' + c.id + '">' + (ca ? '한 번 더 누르면 지웁니다' : '지우기') + '</button>' : '') + '</div><div class="small bdct">' + (p.tag === 'rp' ? rpText(c.body) : esc(c.body)) + '</div>' +
         (!isReply && S.bd.replyTo === c.id ? '<div class="bdcform reply"><textarea id="bd-rep" maxlength="500" rows="2" placeholder="' + esc((p.comments.filter(function (x) { return x.id === S.bd.replyFrom; })[0] || c).author) + ' 님에게 답글 (500자)">' + esc(S.bd.rep || '') + '</textarea><div class="stack" style="gap:4px"><button class="btn sm primary" data-act="bdrep" data-a="' + (S.bd.replyFrom || c.id) + '" data-b="' + c.id + '">답글 등록</button><button class="btn sm ghost" data-act="bdreplyto" data-a="">취소</button></div></div>' : '') + '</div>';
     }
     h += '<div class="card"><h3>댓글 ' + p.comments.length + '</h3><div class="bdcoms">' + (tops.length ? tops.map(function (c) {
@@ -9598,14 +9604,14 @@ var Net = (function () {
   function clsRow() {
     var P = S.P, cur = R.clsOf(P), free = R.clsCanChange(P), cd = (P.clsCd || 0) - now();
     var h = '<div class="row" style="margin-top:12px;flex-wrap:wrap;gap:6px"><span class="small muted">학과</span>' + clsDot(cur.id, 20) + '<b>' + cur.name + '</b><span class="tiny faint">' + cur.bonusText + '</span><span class="spacer"></span>';
-    if (free) h += D.CLASSES.filter(function (x) { return x.id !== cur.id; }).map(function (x) { var arm = S.clsArm === x.id && S.clsArmT > Date.now(); return '<button class="btn sm' + (arm ? ' primary' : '') + '" data-act="clsset" data-a="' + x.id + '" data-tip="' + esc(x.bonusText) + '">' + (arm ? '한 번 더 누르면 ' + R.josa(x.name, '으로', '로') : R.josa(x.name, '으로', '로') + '로 바꾸기') + '</button>'; }).join('');
+    if (free) h += D.CLASSES.filter(function (x) { return x.id !== cur.id; }).map(function (x) { var arm = S.clsArm === x.id && S.clsArmT > Date.now(); return '<button class="btn sm' + (arm ? ' primary' : '') + '" data-act="clsset" data-a="' + x.id + '" data-tip="' + esc(x.bonusText) + '">' + (arm ? '한 번 더 누르면 ' + R.josa(x.name, '으로', '로') + ' 바꿉니다' : R.josa(x.name, '으로', '로') + ' 바꾸기') + '</button>'; }).join('');
     h += '</div>';
     if (free) return h + '<p class="tiny faint" style="margin-top:2px">예전에 입학해 학과를 고른 적이 없어 지금은 시험 없이 한 번 고를 수 있습니다(지금은 마법사). 그 뒤로는 전과시험을 봐야 합니다.</p>';
     var fee = R.clsExamFee(P);
     return h + '<div class="clsexam"><div class="tiny muted">전과시험 · 옮길 학과의 몸으로 시험관과 대련해 이기면 옮깁니다 · 응시료 ' + MONEY(fee) + '(이기든 지든) · 지면 하루 뒤 다시</div>' +
       (cd > 0 ? '<p class="tiny gold" style="margin-top:4px">다음 응시까지 ' + R.fmtTime(cd) + '</p>' : '<div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap">' + D.CLASSES.filter(function (x) { return x.id !== cur.id; }).map(function (x) {
         var pv = R.clsExamPreview(P, wctx(), x.id, now()), arm = S.clsArm === x.id && S.clsArmT > Date.now();
-        return '<button class="btn sm' + (arm ? ' primary' : '') + '" data-act="clsexam" data-a="' + x.id + '" data-tip="' + esc(x.bonusText) + '">' + (arm ? '한 번 더 누르면 응시' : x.name + ' 전과시험') + ' <span class="tiny ' + (pv.win ? 'good' : 'bad') + '">' + (pv.win ? '승산 있음' : '버거움 · ' + Math.round(pv.frac * 100) + '%') + '</span></button>';
+        return '<button class="btn sm' + (arm ? ' primary' : '') + '" data-act="clsexam" data-a="' + x.id + '" data-tip="' + esc(x.bonusText) + '">' + (arm ? '한 번 더 누르면 응시합니다' : x.name + ' 전과시험') + ' <span class="tiny ' + (pv.win ? 'good' : 'bad') + '">' + (pv.win ? '승산 있음' : '버거움 · ' + Math.round(pv.frac * 100) + '%') + '</span></button>';
       }).join('') + '</div>') + '</div>';
   }
   ACT.clsset = function (id) {
@@ -9660,7 +9666,7 @@ var Net = (function () {
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026101995;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026101996;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

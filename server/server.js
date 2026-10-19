@@ -116,7 +116,17 @@ const exprooms = ExpRoom.create({ loadPlayer: (pid, now) => loadPlayer(pid, now)
   partyInfo: (pid) => { const id = partyOf.get(pid); if (!id) return null; const pa = dbx.q.partyGet.get(id); if (!pa) return null; return { id, leader: pa.leader, allgo: !!pa.allgo, members: dbx.q.partyMembers.all(id).map((m) => m.id) }; },
   canInvite: (a, b) => friendState(a, b) === 'ok' || (guildOf.get(a) && guildOf.get(a) === guildOf.get(b)),
   nameOf: (pid) => { const r = dbx.q.getProfile.get(pid); return r ? r.name : ''; } });
-world.onKill = (name) => { const t = name + ' 토벌 성공! 다음 주에 참여한 모든 학생이 토벌 보상을 받습니다.'; chat.system('world', t, Date.now() / 1000); chat.system('notice', t, Date.now() / 1000); };
+world.onKill = (name) => { const t = name + ' 토벌 성공! 이번 주에 도전한 모든 학생에게 토벌 보상 우편을 보냈습니다.'; chat.system('world', t, Date.now() / 1000); chat.system('notice', t, Date.now() / 1000); };
+
+// 월드 보스 토벌 보상: 이번 주에 한 번이라도 도전한 학생 모두에게 우편 (막 잡은 학생은 아직 저장 전일 수 있어 따로 넣는다)
+world.payKillTo = (boss, killer) => {
+  store.flushAll();
+  const ids = new Set(dbx.db.prepare('SELECT pid FROM weekly WHERE week = ? AND att > 0').all(boss.week).map((r) => r.pid)); if (killer) ids.add(killer);
+  const exp = Math.floor(Date.now() / 1000) + 14 * 86400, title = '월드 보스 토벌 보상: ' + boss.name;
+  const body = R.josa(boss.name, '을', '를') + ' 쓰러뜨렸습니다.\n이번 주에 함께 도전한 모든 학생에게 보내는 토벌 보상입니다. 피해 순위 보상은 다음 주 월요일에 받을 수 있습니다.';
+  ids.forEach((pid) => { try { sendMail(pid, '월드 보스', title, body, R.WB_KILL_RW, exp, true); } catch (e) { log('토벌 보상 우편 실패', pid, e); } });
+  log(`토벌 보상 우편: ${boss.name} → ${ids.size}명`);
+};
 
 /* ───────── 보안 도구 ───────── */
 // 비밀번호 해시는 스레드 풀에서 (입학 몰림에도 게임 응답이 멈추지 않도록)
@@ -1633,7 +1643,7 @@ routes['GET /api/admin/stats'] = (req, res) => {
   send(req, res, 200, {
     players: Number(dbx.q.countPlayers.get().n), active24h: Number(dbx.q.countActive.get(now - 86400).n), active7d: Number(dbx.q.countActive.get(now - 7 * 86400).n),
     online2m: store.online(120000), cached: store.size(), memoryMB: Math.round(process.memoryUsage().rss / 1048576), uptimeH: +(process.uptime() / 3600).toFixed(2),
-    chatConnections: chat.connections(), chatOnline: chat.online(), inviteRequired: cfg.inviteRequired, boss: world.W.boss, epoch: world.W.epoch
+    chatConnections: chat.connections(), chatOnline: chat.online(), inviteRequired: cfg.inviteRequired, boss: world.W.boss, epoch: world.W.epoch, wbForecast: Math.floor(world.wbForecast(Math.floor(nowSec()))), wbFill: world.WB_SUMMON_FILL
   });
 };
 routes['POST /api/admin/notice'] = async (req, res) => {
@@ -1650,7 +1660,7 @@ routes['POST /api/admin/wbsummon'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
   const b = await readJson(req, 256); let boss;
   try { boss = world.summonBoss(nowSec(), b.hp); } catch (e) { return fail(req, res, 400, e.message); }
-  world.invalidate(); const t = '추가 월드 보스 ' + R.josa(boss.name, '이', '가') + ' 나타났습니다! 잡은 보스 수만큼 다음 주에 토벌 보상을 받습니다.';
+  world.invalidate(); const t = '추가 월드 보스 ' + R.josa(boss.name, '이', '가') + ' 나타났습니다! 잡으면 도전한 학생 모두에게 토벌 보상이 또 우편으로 갑니다.';
   chat.system('world', t, Date.now() / 1000); chat.system('notice', t, Date.now() / 1000);
   oplog('admin', '관리자', 'wbsummon', `${boss.name} (${boss.round}번째, 체력 ${R.fmt(boss.maxHp)})`); send(req, res, 200, { ok: true, boss });
 };

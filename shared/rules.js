@@ -1734,6 +1734,7 @@
   R.wbBuyLeft = function (P, now) { var w = R.weekId(now), wb = P.wb; if (wb.buyWk !== w) { wb.buyWk = w; wb.bought = 0; } return Math.max(0, K.WB_BUY_MAX - wb.bought); };
   R.wbExtraLeft = function (P, now) { var w = R.weekId(now), wb = P.wb; if (wb.exWk !== w) { wb.exWk = w; wb.exUsed = 0; } return Math.max(0, K.WB_EXTRA_USE - wb.exUsed); };
   R.wbCanAttack = function (P, now) { return P.wb.tickets > 0 || (P.wb.extra > 0 && R.wbExtraLeft(P, now) > 0); };
+  R.WB_KILL_RW = { shard: 20, egg: 1 };   // 월드 보스 토벌 보상 (잡은 순간 이번 주 도전한 학생 모두에게 우편)
   A.wbAttack = function (P, W, now) {
     if (!W || !W.wbAlive) err('이번 주 월드 보스는 이미 쓰러졌습니다');
     if (P.wb.tickets > 0) { P.wb.tickets--; if (P.wb.tickets < K.WB_TICKET_MAX && P.wb.at > now) P.wb.at = now; }   // 충전 도전권부터
@@ -1755,7 +1756,7 @@
     }
     if (pv.att > 0) {
       out.shard += 10; out.wbKilled = !!r.killed;
-      if (r.killed) { var kn = Math.max(1, r.kills || 1); out.shard += 20 * kn; P.fam.eggs += kn; out.egg = kn; out.kills = kn; P.st.wbKills += kn; }   // 추가 보스까지 잡았으면 잡은 수만큼
+      if (r.killed) { var kn = Math.max(1, r.kills || 1), un = Math.max(0, kn - (r.paidKills || 0)); P.st.wbKills += kn; out.kills = kn; if (un) { out.shard += R.WB_KILL_RW.shard * un; P.fam.eggs += R.WB_KILL_RW.egg * un; out.egg = un; } }   // 토벌 보상은 잡은 순간 우편으로(paidKills). 그때 못 낸 것만 여기서
       var t = r.tiers || [], tier = pv.dmg >= (t[0] || Infinity) ? 1 : pv.dmg >= (t[1] || Infinity) ? 2 : pv.dmg >= (t[2] || Infinity) ? 3 : 4;
       out.tier = tier; out.shard += [0, 40, 20, 8, 0][tier];
       if (tier <= 2) { var it2 = makeItem(P, pick(P, D.SLOTS).id, Math.min(P.maxStage, R.stageCap(P)) + 3, tier === 1 && rnd(P) < 0.25 ? 4 : 3, 3); out.items.push({ name: it2.name, r: it2.r, res: gainItem(P, it2, now) }); }
