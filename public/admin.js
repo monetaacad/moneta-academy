@@ -16,10 +16,17 @@
       $('#login').hidden = true; $('#main').hidden = false; stats(j); invites(); reports(); mails(); oplog(); sys(); bdload();
     });
   }
+  var WBA = 0, WBF = 0;
+  // 추가 보스 체력 미리 보기: 인원 × 1회 피해 × 주 끝까지 칠 수 있는 횟수 (참고: 지금까지 피해 속도로 본 남은 기간 예상 피해)
+  function wbEst() {
+    var hp = +$('#wbhp').value || (+$('#wbn').value || 200) * (+$('#wbper').value || 20000) * WBA;
+    $('#wbest').textContent = '지금 부르면 한 학생이 주 끝까지 최대 ' + WBA + '번 칠 수 있습니다 → 체력 ' + hp.toLocaleString() + (WBF ? ' · 참고로 지금까지의 피해 속도라면 주 끝까지 약 ' + WBF.toLocaleString() + ' 피해가 들어옵니다' : '');
+  }
+  ['#wbn', '#wbper', '#wbhp'].forEach(function (s) { $(s).addEventListener('input', wbEst); });
   function stats(j) {
     var rows = [['학생 수', j.players], ['24시간 활동', j.active24h], ['7일 활동', j.active7d], ['지금 접속(2분)', j.online2m], ['채팅 연결', j.chatConnections + ' (' + j.chatOnline + '명)'], ['메모리', j.memoryMB + 'MB'], ['가동 시간', j.uptimeH + '시간'],
       ['가입', (j.inviteRequired ? '초대코드 필요' : '초대코드 없이') + ' · 게스트 ' + (j.guestSignup ? '켜짐' : '꺼짐')], ['이번 주 보스', j.boss ? j.boss.name + ' ' + Math.round(j.boss.hp / j.boss.maxHp * 100) + '%' + (j.boss.killedAt ? ' (토벌됨)' : '') : '—'], ['개교일', when(j.epoch)]];
-    if ($('#wbest')) $('#wbest').textContent = j.wbForecast ? '지금까지의 피해 속도라면 이번 주 끝까지 약 ' + j.wbForecast.toLocaleString() + ' 피해가 더 들어옵니다. 자동은 그 ' + Math.round(j.wbFill * 100) + '%(' + Math.floor(j.wbForecast * j.wbFill).toLocaleString() + ')로 정해 주 끝 무렵 쓰러지게 합니다. 끝까지 버티게 하려면 이 값보다 크게 입력하세요.' : '';
+    WBA = j.wbAttacks || 0; WBF = j.wbForecast || 0; wbEst();
     $('#stats').innerHTML = rows.map(function (r) { return '<dt>' + r[0] + '</dt><dd>' + esc(r[1]) + '</dd>'; }).join('');
   }
   try { if (localStorage.getItem('arc_admin_ihide') !== '0') $('#ihide').checked = true; } catch (e) { $('#ihide').checked = true; }
@@ -109,7 +116,7 @@
     wbsummon: function (el) {
       if (el.dataset.ok !== '1') { el.dataset.ok = '1'; el.textContent = '한 번 더 누르면 부릅니다'; setTimeout(function () { el.dataset.ok = ''; el.textContent = '추가 보스 부르기'; }, 4000); return; }
       el.dataset.ok = ''; el.textContent = '추가 보스 부르기';
-      api('POST', '/api/admin/wbsummon', { hp: +$('#wbhp').value || 0 }).then(function (j) { $('#wbmsg').textContent = j.error || (j.boss.name + ' 등장 (체력 ' + j.boss.maxHp.toLocaleString() + ')'); if (!j.error) enter(); });
+      api('POST', '/api/admin/wbsummon', { hp: +$('#wbhp').value || 0, n: +$('#wbn').value || 200, per: +$('#wbper').value || 20000 }).then(function (j) { $('#wbmsg').textContent = j.error || (j.boss.name + ' 등장 (체력 ' + j.boss.maxHp.toLocaleString() + ')'); if (!j.error) enter(); });
     },
     issue: function () {
       var op = $('#iop').checked; if (op && !confirm('운영자 초대코드를 발급할까요? 이 코드로 가입한 사람은 운영자가 됩니다. 믿을 수 있는 사람에게만 직접 전해 주세요.')) return;
