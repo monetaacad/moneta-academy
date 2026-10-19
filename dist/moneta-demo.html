@@ -1526,6 +1526,16 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 .chname { flex: 1; cursor: grab; font-size: 14px; }
 .chud { display: flex; flex-direction: column; gap: 2px; }
 .chud .btn { padding: 0 8px; font-size: 10px; line-height: 16px; min-height: 0; }
+/* 운영진 공지: 형광펜 강조 · 공지 탭 상단 고정 */
+mark.hl { color: inherit; background: linear-gradient(transparent 38%, color-mix(in srgb, #ffe066 62%, transparent) 38%); padding: 0 2px; border-radius: 2px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+:root[data-skintone="dark"] mark.hl { background: linear-gradient(transparent 38%, rgba(255, 214, 80, .32) 38%); }
+.stag { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 0 6px; border-radius: 4px; color: #6b4a00; background: #ffe58a; margin-right: 4px; vertical-align: 1px; }
+:root[data-skintone="dark"] .stag { color: #2a1f00; background: #e8c45a; }
+.cm.staff { padding: 4px 6px; border-radius: 6px; background: color-mix(in srgb, #ffe066 9%, transparent); }
+.cm.staff .cx { font-weight: 600; }
+.cpin { flex: none; margin: 6px 10px 0; padding: 7px 10px; border-radius: 8px; border: 1px solid color-mix(in srgb, #e8b400 45%, transparent); background: color-mix(in srgb, #ffe066 12%, var(--panel)); font-size: 13px; line-height: 1.5; max-height: 30%; overflow-y: auto; }
+.logobtn { background: none; border: 0; padding: 0; cursor: pointer; display: inline-flex; border-radius: 50%; flex: none; }
+.logobtn:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
 
 </style>
 <canvas id="sky" aria-hidden="true"></canvas>
@@ -2270,6 +2280,7 @@ var DATA = (function () {
     { c: '처음', t: '학기 이야기', b: '광장 상단 카드에 현재 진행할 이야기 단계가 표시됩니다. 학년마다 한 장(章)씩 진행되며, 단계마다 목표가 있어 달성하면 「보상 받기」로 다음 장면이 열립니다. 무엇을 할지 모르겠다면 「하러 가기」를 누르세요. 각 장의 마지막 단계는 해당 학년의 기말시험입니다.', go: ['home'] },
     { c: '처음', t: '아카데미 공지와 아카데미 소식', b: '아카데미 광장 풍경 아래 한 줄에 가장 최근 공지나 소식(새 학생 입학, 진급)이 표시됩니다. 「더보기」로 지난 공지와 소식을 모아 볼 수 있습니다.', go: ['home'] },
     { c: '처음', t: '적용 중인 효과 (버프)', b: '화면 상단의 아카데미력 아래에 지금 받고 있는 효과(신입생 오리엔테이션 · 별샘의 축복 · 물약 · 하늘 이벤트 등)가 남은 시간과 함께 표시됩니다. 마우스를 올리면 효과가, 누르면 적용 중인 효과 전체와 남은 시간이 팝업으로 표시됩니다.' },
+    { c: '처음', t: '초기화 시각 (KST 자정)', b: '하루 단위로 정해진 횟수는 모두 매일 한국 시간(KST) 자정에 초기화됩니다: 출석 도장 · 일일 목표(목표 바꾸기 무료 1번 포함), 별의 탑 도전 3번(파티가 아니라 학생마다), 매점 토벌 도전권 구매 2번, 별샘 의식 봉헌, 동아리 출석 · 기부 한도 · 동아리 의식 봉헌. 한 주 단위인 별의 탑 층 · 월드 보스 · 기숙사 대항전은 매주 월요일 KST 0시에 새로 시작합니다. 월드 보스 도전권은 날짜와 상관없이 8시간마다 하나씩 충전됩니다.' },
     { c: '처음', t: '밑줄 친 용어와 화면별 안내', b: '점선 밑줄이 있는 용어는 이 게임에서만 쓰는 고유명사입니다. 마우스를 올리면(모바일에서는 누르면) 가이드 요약이 표시되며, 누르면(모바일에서는 요약을 한 번 더 누르면) 가이드에서 해당 용어를 검색합니다. 각 화면에 처음 들어가면 화면별 안내가 한 번 표시되며, 가이드 › 처음의 「화면별 둘러보기 다시 보기」로 다시 볼 수 있습니다.' },
     { c: '처음', t: '툴팁과 이동 버튼', b: '화면 우측 상단의 마나 · ' + CUR + ' · 지식 · 마석 · 별조각에 마우스를 올리면(모바일에서는 누르면) 얻는 방법과 현재 획득량이 표시됩니다. 일일 목표 · 업적 옆의 「이동」 버튼을 누르면 해당 화면으로 바로 이동합니다.' },
     { c: '자원', t: '마나', b: '시간이 지나면 자동으로 차오르며, 창을 닫아도 계속 쌓입니다. 저장 한도에 도달하면 더 이상 쌓이지 않으므로 한도를 늘리거나 틈틈이 사용하는 편이 좋습니다. 연구 · 물약 · 알 부화에 씁니다. 늘리는 방법: 의지 능력치, 연구 「마나 샘 개척」「마나 저장고 확장」, 물시계관, 물시계달, 유성우 주말, 숙면의 차, 반딧불 정령.', go: ['lib'] },
@@ -2288,9 +2299,9 @@ var DATA = (function () {
     { c: '아카데미 생활', t: '연구와 사역마 파견 (장시간 방치)', b: '연구는 한 번에 하나만 진행되며 단계마다 몇 시간에서 이틀까지 걸리고, 사역마 파견은 2~12시간 걸립니다. 잠들기 전에 시작해 두세요. 「숙면의 차」를 마시면 파견 보상과 마나 재생이 늘어납니다.', go: ['lib'] },
     { c: '아카데미 생활', t: '물약과 부화', b: '공방에서 재료와 마나가 있으면 물약이 즉시 완성됩니다. 알 부화도 마나를 불어넣으면 그 자리에서 깨어납니다. 물약 효과는 마신 뒤 현실 시간으로 흐르며, 진행 중인 작업과 겹친 시간만큼 적용됩니다.', go: ['work',  'alch'] },
     { c: '아카데미 생활', t: '반딧불 정령 병', b: '40분마다 한 마리씩 병에 모이며, 4마리가 되면 가득 찹니다(2시간 40분). 접속했을 때 「풀어 주기」를 누르면 마나 · ' + CUR + ' · 별조각 · 마석 중 하나씩을 남깁니다. 반딧불 병은 광장 풍경 좌측에 있습니다.', go: ['home',  'care'] },
-    { c: '아카데미 생활', t: '일일 목표와 출석', b: '매일 자정(한국 시간)에 일일 목표 세 개가 새로 나옵니다. 목표마다 보상(별조각 · ' + CUR + ')이 표시되며, 「이동」을 누르면 해당 화면으로 갑니다. 마음에 들지 않는 목표는 「바꾸기」로 교체할 수 있습니다(하루 1회 무료, 이후 별조각 5 · 10 · 20…). 출석은 연속일수록 보상이 커집니다.', go: ['home'] },
+    { c: '아카데미 생활', t: '일일 목표와 출석', b: '매일 한국 시간(KST) 자정에 일일 목표 세 개가 새로 나오고 출석 도장도 다시 받을 수 있습니다. 목표마다 보상(별조각 · ' + CUR + ')이 표시되며, 「이동」을 누르면 해당 화면으로 갑니다. 마음에 들지 않는 목표는 「바꾸기」로 교체할 수 있습니다(하루 1회 무료, 이후 별조각 5 · 10 · 20…). 출석은 연속일수록 보상이 커집니다.', go: ['home'] },
     { c: '아카데미 생활', t: '하늘 이벤트', b: '하루 세 번 유성 소나기 · 별샘 오로라 · 꼬리별 · 구름 위의 별고래 중 하나가 30~60분 동안 나타납니다. 모든 학생이 같은 하늘을 봅니다. 진행 중인 작업에는 겹친 시간만큼 효과가 적용되며, 「올려다보기」를 누르면 작은 선물을 받습니다. 지금 하늘과 다음 일정은 광장 풍경 상단에 표시됩니다.', go: ['home',  'events'] },
-    { c: '아카데미 생활', t: '별샘 의식', b: '하루 한 번 마나를 조금 봉헌해 모두 함께 목표를 채웁니다. 목표를 채우면 봉헌한 모두에게 4시간 동안 경험치 · 지식 +15%, ' + CUR + ' +10% 축복이 적용됩니다. 목표를 채운 뒤에 봉헌해도 축복을 받습니다.', go: ['home',  'events'] },
+    { c: '아카데미 생활', t: '별샘 의식', b: '하루 한 번(매일 KST 자정 초기화) 마나를 조금 봉헌해 모두 함께 목표를 채웁니다. 목표를 채우면 봉헌한 모두에게 4시간 동안 경험치 · 지식 +15%, ' + CUR + ' +10% 축복이 적용됩니다. 목표를 채운 뒤에 봉헌해도 축복을 받습니다.', go: ['home',  'events'] },
     { c: '아카데미 생활', t: '잠자리 · 꿈길 (1학년부터)', b: '광장 하단의 「잠자리 · 꿈길」에서 잠들기 전에 6~12시간짜리 꿈을 꿉니다. 꿈을 꾸는 동안에는 새로 수업을 듣거나 출정할 수 없습니다(진행 중인 것은 계속되며, 연구 · 물약 · 사역마 파견은 가능). 복습하는 꿈(고른 과목 경험치 · 지식), 별을 헤아리는 꿈(별조각 · 지식 · 가끔 환수의 알), 구름섬을 떠도는 꿈(' + CUR + ' · 재료 · 마석)이 있습니다. 10% 확률로 자각몽이 되어 1.5배를 받습니다. 도중에 깨우면 아무것도 얻지 못합니다.', go: ['home',  'dream'] },
     { c: '아카데미 생활', t: '기말시험', b: '이론 30점(시험 과목 평균 레벨) + 실기 40점(시험 과목 레벨) + 대련 30점(시험관과의 전투) 합계 60점 이상이면 진급합니다. 문제를 풀 필요는 없으며, 시험 과목이 모두 기준 레벨에 도달하면 응시 버튼으로 바로 채점합니다. 기준보다 레벨이 높을수록 점수가 오릅니다.', go: ['exam'] },
     { c: '아카데미 생활', t: '시험 등급 (S · A · B · C)', b: '95점 이상 S, 85점 A, 75점 B, 60점 C입니다. 합격하면 즉시 다음 학년이 되어 같은 시험은 다시 볼 수 없으므로, 시험장의 「예상 성적」을 확인한 뒤 응시할지 과목 레벨을 더 올릴지 정합니다. S는 별조각 · ' + CUR + ' 2배와 영웅 이상 장비 · 환수의 알, A는 1.5배와 희귀 이상 장비를 받습니다. S를 받으려면 대련에서 이겨야 합니다. 성적은 칭호 「우등생」(A 이상 3회) · 「수석」(S 3회) · 「전 학년 수석」(S 7회)으로 남습니다.', go: ['exam'] },
@@ -2308,8 +2319,8 @@ var DATA = (function () {
     { c: '전투', t: '능력치 다섯 가지', b: '지력: 주문 공격력 +1%, 수업 효율 소폭 증가. 체력: 물리 공격력 +1%, 생명력 +1.2%, 방어력 +0.6%. 민첩: 공격 속도 +1%. 의지: 마나 재생 +4%, 생명력 소폭 증가. 행운: 치명타 확률 · 전리품 · 높은 등급 장비 확률. 피해는 물리와 주문 두 가지이며, 기사의 평타와 방패 강타는 물리 공격력, 마법사의 평타와 모든 주문은 주문 공격력(× 주문 위력)이 적용됩니다. 장비 · 연구 · 물약의 「공격력 +%」는 양쪽 모두에, 장비 옵션 · 휘장의 「물리 피해」(석류석)는 물리 쪽에만, 「주문 위력」(청옥)은 주문 쪽에만 적용됩니다. 과목 레벨이 오를 때마다 해당 과목의 능력치가 오르며, 레벨업 포인트는 직접 분배합니다. 「레벨업 시 자동 분배」를 켜면 선택한 프리셋(균형 · 공격 · 생존 · 학구, 학과별 비율)대로 자동 분배됩니다(기본값은 꺼짐). 매점의 「망각의 차」를 마시면 분배한 포인트를 모두 돌려받으며, 다시 직접 나눌 수 있게 자동 분배가 꺼지고 능력치 칸으로 바로 이동합니다.', go: ['gear'] },
     { c: '전투', t: '장비 등급', b: '장비는 일반(회색) · 고급(초록) · 희귀(파랑) · 영웅(보라) · 전설(주황) 다섯 등급입니다. 등급이 높을수록 기본 능력치가 커지고(일반 1배 · 고급 1.3배 · 희귀 1.7배 · 영웅 2.3배 · 전설 3.2배) 붙는 추가 옵션도 늘어납니다(일반 0개 ~ 전설 4개). 원정에서 나오는 비율은 대략 일반 62% · 고급 26% · 희귀 9% · 영웅 2.6% · 전설 0.4%이며, 행운의 물약 · 행운의 별자리 연구 같은 「등급 상승」 효과가 있으면 높은 등급이 더 자주 나옵니다. 같은 등급이라도 장비 레벨(Lv)이 높을수록, 품질이 좋을수록 능력치가 높습니다. 보스 · 떠돌이 상인 경매 · 매점 장비 상자에서는 높은 등급이 나오기 쉽습니다.', go: ['gear'] },
     { c: '전투', t: '장비와 강화', b: '원정에서 장비가 나옵니다. 초록 ▲ 표시는 현재보다 전투력이 오르는 장비입니다. 강화에는 ' + CUR + '와 마석이 들며, 실패해도 장비는 사라지지 않습니다. 쓰지 않는 장비는 판매 · 분해하거나 거래소에 올리세요. 무기는 지팡이와 검이 있으며 능력치는 같습니다. 아끼는 장비는 「잠금」을 걸면 장착 · 해제만 가능하고 강화 · 재련 · 분해 · 판매 · 거래소 · 동아리 창고 보관이 모두 막힙니다(거래소 판매 목록에도 표시되지 않음).', go: ['gear'] },
-    { c: '전투', t: '월드 보스', b: '매주 월요일에 새 월드 보스가 나타나며, 서버의 모든 학생이 함께 체력을 깎습니다. 도전권은 8시간마다 하나씩 충전되며 최대 3장입니다. 다음 주에 참여 · 토벌 · 피해 순위 보상이 지급됩니다.', go: ['world',  'wb'] },
-    { c: '전투', t: '별의 탑 (파티와 함께)', b: '「원정·전투 → 별의 탑」에서 파티원들과 함께 한 주 동안 오르는 탑입니다. 파티에 들어가 있어야 도전할 수 있으며, 혼자서도 파티를 만들 수 있습니다(별의 탑 화면의 「파티 만들기」). 도전은 학생마다 하루 3회이며, 도전한 학생의 전투에 파티원 모두의 능력(미접속 포함)이 합산됩니다. NPC 파티원은 내 능력의 30%씩 보탭니다. 층을 처음 넘을 때마다 당시 파티원 모두에게 보상 우편이 발송됩니다(5층마다 장비 상자, 10층마다 환수의 알). 1층 난이도는 그 주 첫 도전 시 파티원들의 진도에 맞춰 정해지며, 매주 월요일에 0층부터 다시 시작합니다.', go: ['tower'] },
+    { c: '전투', t: '월드 보스', b: '매주 월요일 KST 0시에 새 월드 보스가 나타나며, 서버의 모든 학생이 함께 체력을 깎습니다. 도전권은 8시간마다 하나씩 충전되며 최대 3장입니다. 다음 주에 참여 · 토벌 · 피해 순위 보상이 지급됩니다.', go: ['world',  'wb'] },
+    { c: '전투', t: '별의 탑 (파티와 함께)', b: '「원정·전투 → 별의 탑」에서 파티원들과 함께 한 주 동안 오르는 탑입니다. 파티에 들어가 있어야 도전할 수 있으며, 혼자서도 파티를 만들 수 있습니다(별의 탑 화면의 「파티 만들기」). 도전 횟수는 파티가 아니라 학생마다 하루 3회이며 매일 KST 자정에 초기화됩니다. 도전한 학생의 전투에 파티원 모두의 능력(미접속 포함)이 합산됩니다. NPC 파티원은 내 능력의 30%씩 보탭니다. 층을 처음 넘을 때마다 당시 파티원 모두에게 보상 우편이 발송됩니다(5층마다 장비 상자, 10층마다 환수의 알). 1층 난이도는 그 주 첫 도전 시 파티원들의 진도에 맞춰 정해지며, 매주 월요일 KST 0시에 0층부터 다시 시작합니다.', go: ['tower'] },
     { c: '전투', t: '별의 탑 일지 · 파티가 없어지면', b: '누군가 도전하면 별의 탑 화면 상단 「별의 탑 일지」에 전투가 원정 일지처럼 한 줄씩 기록됩니다(최대 30초). 파티원 모두가 같은 시각에 같은 장면을 보며, 결과와 보상 우편은 일지가 끝난 뒤 알려 줍니다. 일지가 진행되는 동안에는 다른 파티원이 도전할 수 없습니다. 파티장이 나가면 다음 파티원이 파티장이 되며 탑 기록은 유지됩니다. 마지막 한 명까지 나가 파티가 해산되면 그 주의 탑 기록도 사라집니다. 이미 받은 보상은 유지되며, 새 파티에서 다시 오를 때 이번 주에 보상받은 층까지는 보상 없이 지나갑니다.', go: ['tower'] },
     { c: '전투', t: '결투제', b: '시험장에서 아카데미의 라이벌들과 차례로 겨룹니다. 이기면 별조각과 ' + CUR + '를 받고, 지면 1시간 뒤 다시 도전할 수 있습니다.', go: ['exam'] },
     { c: '교류', t: '채팅 (공지 · 모집 · RP · 월드 · 파티 · 원정 · 동아리 · 기숙사 · 학과 · 1:1)', b: '채팅창은 모든 화면에 표시되며, 열지 않은 탭의 글도 실시간으로 받습니다. 새 글이 오면 탭에 숫자가 표시되고, 탭을 열면 「여기부터 새 글」 위치부터 보여 줍니다. 공지 탭은 운영진 공지와 월드 보스 소식, 모집 탭은 함께 원정 · 동아리 · 파티 모집 카드가 올라오는 곳으로 직접 쓸 수 없습니다. 함께 원정 방에 들어가 있거나 함께 원정 중일 때는(「원정 완료」를 누를 때까지) 같은 일행끼리 대화하는 「원정」 탭이 생깁니다. 탭이 많아 넘칠 때는 탭 줄 끝이 흐려지며, 옆으로 밀거나(마우스는 휠 · 좌우 화살표) 넘겨 볼 수 있습니다. 파티 · 동아리 · 기숙사 · 학과 탭은 같은 소속끼리 대화하며, 동아리 · 기숙사 · 학과 탭에는 RP와 사담(오너) 채널이 따로 있습니다. 1:1 탭은 친구와 대화합니다. 입력 후 우측 보내기 버튼(또는 Enter)으로 전송합니다. RP에서는 대사 중간에 *별표 사이*로 행동을 넣을 수 있고, /me 로 시작하면 전체가 행동으로 표시됩니다. 이름을 누르면 해당 학생의 정보창이 열립니다. 필요 없는 탭은 설정 › 채팅 탭에서 숨길 수 있고(최소 하나는 유지), 「탭 순서 바꾸기」로 탭 순서를 정할 수 있습니다(이 기기에 저장).' },
@@ -2322,13 +2333,13 @@ var DATA = (function () {
     { c: '교류', t: '친구', b: '교류 → 친구 탭(또는 내 정보 → 친구)에서 이름 일부로 학생을 검색해 정보창을 열고 「친구 추가」를 누르거나, 채팅에서 이름을 눌러 신청합니다. 1:1 탭은 안 읽은 대화 수가 빨간 숫자로 표시됩니다. 상대가 수락하면 접속 중인 친구가 상단에 표시되며, 1:1 대화와 파티 초대를 바로 할 수 있습니다.' },
     { c: '교류', t: '파티', b: '최대 4명입니다. 파티원 한 명당 원정 ' + CUR + ' · 경험치가 3%씩(최대 9%) 오르며, 파티 전용 채팅을 쓸 수 있습니다. 「교류·상점 → 파티」에서 만들고, 이름으로 초대하거나 정보창의 「파티 초대」로 초대합니다. 빈자리에는 결투제 대진표의 아카데미 친구(NPC)를 부를 수 있습니다(보너스 제외). 파티장은 파티원을 내보내거나 파티장을 넘길 수 있고, 「파티원 모집」으로 채팅 「모집」 탭에 모집 카드를 올릴 수 있습니다(알림을 본 학생은 30분 동안 초대 없이 들어올 수 있음). 파티와 함께 오르는 별의 탑은 「원정·전투 → 별의 탑」에 있습니다.', go: ['party'] },
     { c: '교류', t: '동아리 찾기 · 가입 · 만들기', b: '「교류·상점 → 동아리」의 「찾기 · 만들기」에서 동아리를 찾습니다. 「들어가기」나 「가입 신청」을 누르면 먼저 동아리 정보(회장 · 소개 · 부원 · 가입 방식)가 열리고, 그 창에서 가입합니다. 「신청 후 승인」 동아리는 한마디를 덧붙여 신청하며, 초대 권한이 있는 부원이 승인하면 들어갑니다. 동아리를 만들 때 쓰던 이름 · 소개는 다른 화면이나 채팅 탭으로 옮겨 다녀도 남아 있습니다.', go: ['guild'] },
-    { c: '교류', t: '동아리 레벨과 기여도', b: '부원이 하루 한 번 동아리 출석(+10)을 하고 ' + CUR + '를 기부하면(하루 200점까지, 1점은 일일 목표 ' + CUR + ' 보상의 1/20) 기여도가 쌓이고, 그만큼 동아리 경험치가 올라 레벨이 오릅니다(최대 10). 레벨마다 정원 +2명(최대 40명), 창고 +5칸, 부원 전원 ' + CUR + ' · 경험치 +0.5%. 4레벨에 동아리 의식, 5레벨에 주간 동아리 과제와 부원 계급 1칸, 10레벨에 부원 계급 1칸이 더 열립니다.', go: ['guild'] },
+    { c: '교류', t: '동아리 레벨과 기여도', b: '부원이 하루 한 번 동아리 출석(+10)을 하고 ' + CUR + '를 기부하면(하루 200점까지 · 출석과 기부 한도는 매일 KST 자정 초기화, 1점은 일일 목표 ' + CUR + ' 보상의 1/20) 기여도가 쌓이고, 그만큼 동아리 경험치가 올라 레벨이 오릅니다(최대 10). 레벨마다 정원 +2명(최대 40명), 창고 +5칸, 부원 전원 ' + CUR + ' · 경험치 +0.5%. 4레벨에 동아리 의식, 5레벨에 주간 동아리 과제와 부원 계급 1칸, 10레벨에 부원 계급 1칸이 더 열립니다.', go: ['guild'] },
     { c: '교류', t: '동아리 의식', b: '동아리 4레벨부터 「정보·기여」 탭에서 하루 한 번 마나 30분 분을 봉헌할 수 있습니다. 그날 부원 수의 절반(1인 동아리는 1명)이 봉헌하면 봉헌한 부원 모두에게 「동아리의 결속」(4시간 동안 지식 · 전리품 +5%)이 내립니다. 의식이 이루어진 뒤에 봉헌해도 축복을 받습니다.', go: ['guild'] },
     { c: '교류', t: '주간 동아리 과제', b: '동아리 5레벨부터 「정보·기여」 탭에 한 주 동안 부원들이 함께 채우는 과제(원정 완료 15회 · 수업 15교시 · 연구 완료 3회)가 표시됩니다. 부원들이 이번 주에 한 일을 합쳐 세며, 혼자서도 한 주에 채울 수 있는 크기입니다. 목표를 채우면 그 과제에 목표의 1/5 이상 보탠 부원이 각자 「보상 받기」로 별조각을 받고, 동아리 경험치도 오릅니다. 매주 월요일에 새로 시작합니다.', go: ['guild'] },
     { c: '교류', t: '동아리 부실 창고', b: '동아리 화면의 「부실 창고」에 ' + CUR + '와 장비를 보관할 수 있습니다. 보관은 누구나, 꺼내기는 「창고에서 꺼내기」 권한이 있는 부원만 가능하며, 모든 출입은 「기록」에 남습니다. 동아리를 해산하면 남은 물품은 회장에게 우편으로 돌아갑니다.', go: ['guild'] },
     { c: '교류', t: '동아리 계급과 권한', b: '회장 아래에 부회장(최대 2명)과, 회장이 이름과 권한을 정하는 부원 계급(기본 「부원」 외 3개까지, 동아리 5레벨 · 10레벨에 한 칸씩 더)이 있습니다. 권한: 초대 · 가입 승인, 부원 내보내기, 공지 · 소개 수정, 창고에서 꺼내기. 부원이 있으면 회장은 탈퇴하거나 동아리를 해산할 수 없으므로 먼저 회장을 넘겨야 합니다. 채팅창의 「동아리 정보」를 누르면 현재 화면에서 바로 요약을 볼 수 있습니다.', go: ['guild'] },
     { c: '교류', t: '다른 동아리 · 순위', b: '동아리에 소속되어 있으면 동아리 탭 › 「다른 동아리」, 아니면 「목록 · 순위」에서 모든 동아리의 소개와 순위를 봅니다. 레벨순(같으면 경험치) · 부원 전투력 합 · 부원 수 · 최신순으로 정렬하며, 이름이나 소개로 검색할 수 있습니다. 랭킹 탭에도 상위 10곳이 표시됩니다. 1분마다 갱신됩니다.' },
-    { c: '교류', t: '기숙사 대항전', b: '모든 활동이 내 기숙사 점수로 쌓입니다. 매주 기숙사별 상위 30명의 점수 합계로 순위를 정하며, 다음 주에 순위 보상이 지급됩니다.', go: ['world'] },
+    { c: '교류', t: '기숙사 대항전', b: '모든 활동이 내 기숙사 점수로 쌓입니다. 매주(월요일 KST 0시 기준) 기숙사별 상위 30명의 점수 합계로 순위를 정하며, 다음 주에 순위 보상이 지급됩니다.', go: ['world'] },
     { c: '교류', t: '기숙사 성장', b: '기숙사 혜택은 처음에 적힌 효과의 1/10만 받습니다. 대항전 점수가 기숙사에 쌓일수록 혜택이 커져, 기숙사 성장 100%가 되면 적힌 효과를 그대로 받습니다(그 이상 커지지는 않습니다). 기숙사 혜택은 「지금 받는 값 / 최대 값」으로 표시되며, 월드 보스 · 랭킹 화면의 「기숙사 성장」에서 모든 기숙사의 성장을 볼 수 있습니다.', go: ['world'] },
     { c: '교류', t: '게시판', b: '교류 → 게시판. 질문 · 모집 · 거래 · RP · 잡담 · 건의 말머리를 골라 글을 쓰며, 말머리별로 보거나 제목+내용 · 제목 · 작성자로 검색할 수 있습니다. 「관리자만 보기」로 쓰면 목록에 나오지 않고 본인과 운영진만 볼 수 있어 문의 · 건의 · 신고 창구로 쓰입니다. 운영진이 답하면 우편으로 알려 드리며, 「내 글」에서 이어서 볼 수 있습니다. 댓글에는 답글을 달 수 있으며(3개 이상이면 2개만 표시되고 「더보기」로 펼침), 내 글에 댓글이 달리거나 내 댓글에 답글이 달리면 알림(종 모양)으로 알려 드립니다. 글은 30초에 하나, 하루 30개까지 쓸 수 있습니다.' },
     { c: '교류', t: '거래소', b: '2학년부터 이용할 수 있습니다. 장비 · 재료 · 연금술 물약 · 아카데미 휘장을 ' + CUR + '로 사고팝니다(착용 중인 휘장은 등록 불가). 「사기」 목록은 한 줄씩 표시되며, 장비 이름을 누르면 능력치가 펼쳐집니다. 「팔기」에서는 물건마다 최근 30일 시세(평균가와 최근 판매 5건)를 보여 주며 「평균가」로 가격을 바로 입력할 수 있습니다. 「실시간 거래」에는 방금 팔린 물건이 표시됩니다(구매자 비공개). 가방에서 장비를 누르고 「거래소에서 팔기」로 바로 이동할 수도 있습니다. 판매되면 수수료 5%를 뺀 ' + CUR + '가 들어오며, 3일 안에 팔리지 않으면 돌려받습니다. 한 번에 10개까지 등록할 수 있습니다. 「사기」에서는 장비 종류(지팡이 · 검 · 로브 · 모자 · 장신구 · 마도서)와 등급으로 골라 볼 수 있습니다.', go: ['market'] },
@@ -2356,7 +2367,7 @@ var DATA = (function () {
     { name: '다리우스 크로', who: '가시왕관관 4학년', stage: 39, hello: '작년 결투제 준우승. 올해는 우승이다.', lose: '올해도 준우승이면… 나쁘지 않을지도.' },
     { name: '엘라 미스트', who: '거울관 5학년', stage: 45, hello: '거래하자. 네가 지면 금화 한 자루.', lose: '거래는 거래지. 이건 네 몫이야.' },
     { name: '오르와 렌', who: '가시왕관관 쌍둥이', stage: 51, hello: '둘이서 하나야. 반칙 아니야!', lose: '다음엔 셋이서 올게.' },
-    { name: '세레나 볼', who: '학생회장 · 등불관 6학년', stage: 57, hello: '학생회장으로서, 그리고 선배로서 상대해 줄게.', lose: '훌륭해. 학생회에 들어올 생각 없어?' },
+    { name: '세레나 볼', who: '학생회 · 등불관 6학년', stage: 57, hello: '학생회 선배로서 상대해 줄게.', lose: '훌륭해. 학생회에 들어올 생각 없어?' },
     { name: '펠릭스 조교', who: '졸업생 · 원소역학 조교', stage: 63, hello: '이그나 교수님이 너를 잘 봐 두라고 하셨어.', lose: '보고서에 "기대 이상"이라고 쓸게.' },
     { name: '카야 린 교관', who: '체술·비행 교관', stage: 69, hello: '착지 연습은 충분히 했지?', lose: '좋아! 이제 넘어지는 법은 안 가르쳐도 되겠네.' },
     { name: '브람 하일 교수', who: '결계공학 교수', stage: 76, hello: '내 결계의 금을 찾을 수 있겠나?', lose: '찾았군. 그거면 됐네.' },
@@ -4888,6 +4899,7 @@ var Net = (function () {
         es.addEventListener('seq', function (e) { if (h.seq) h.seq(JSON.parse(e.data)); });
         es.addEventListener('tower', function (e) { if (h.tower) h.tower(JSON.parse(e.data)); });
         es.addEventListener('op', function (e) { if (h.op) h.op(JSON.parse(e.data)); });
+        es.addEventListener('pin', function (e) { if (h.pin) h.pin(JSON.parse(e.data)); });
         es.addEventListener('guild', function (e) { if (h.guild) h.guild(JSON.parse(e.data)); });
         es.addEventListener('cls', function (e) { if (h.cls) h.cls(JSON.parse(e.data)); });
         es.addEventListener('gapp', function (e) { if (h.gapp) h.gapp(JSON.parse(e.data)); });
@@ -5879,7 +5891,7 @@ var Net = (function () {
   function shell() {
     $('#app').innerHTML =
       '<header class="top"><div class="top-row">' +
-      '<img class="logo" src="' + LOGO_URL + '" width="38" height="38" alt="모네타 아카데미">' +
+      '<button class="logobtn" data-act="nav" data-a="home" title="아카데미 광장으로" aria-label="아카데미 광장으로"><img class="logo" src="' + LOGO_URL + '" width="38" height="38" alt=""></button>' +
       '<div class="crest memenu-wrap"><button class="mebtn" data-act="memenu" aria-haspopup="menu" aria-expanded="false" title="내 정보 · 친구 · 파티"><span id="head-av"></span><span class="who"><h1><span data-l="who"></span> <span class="caret">▾</span></h1><span class="sub" data-l="whosub" data-html="1"></span></span><span class="ibadge" id="mebadge" hidden></span></button>' +
       '<div class="memenu" id="memenu" role="menu" hidden><button role="menuitem" data-act="me" data-a="view">' + icon('user') + '내 정보</button><button role="menuitem" data-act="me" data-a="friends">' + icon('chat') + '친구<span class="tag br num" id="mm-fr" hidden></span></button><button role="menuitem" data-act="nav" data-a="party">' + icon('party') + '파티<span class="tag br num" id="mm-pt" hidden></span></button><button role="menuitem" data-act="nav" data-a="guild">' + icon('guild') + '동아리</button><button role="menuitem" data-act="goto" data-a="rec" data-b="titles">' + icon('rec') + '칭호 도감</button></div></div>' +
       '<div class="topmeta"><span class="seg cal" data-l="cal" data-html="1"></span><span class="seg" data-l="buffs" data-html="1"></span><span class="seg conn" id="conn" hidden>서버 연결이 끊겼습니다 · 다시 연결 중</span></div>' +
@@ -6154,6 +6166,7 @@ var Net = (function () {
       var x = ''; if (!drew && div != null && div > 0 && isNum(m.id) && m.id > div && m.pid !== S.P.id) { drew = true; x = '<div class="newline"><span>여기부터 새 글</span></div>'; }
       return x + msgHtml(m);
     }).join('');
+    if (ch === 'notice' && S.pin && S.pin.text) h += '<div class="cpin"><span class="stag">고정 공지</span><mark class="hl">' + chatText(S.pin.text) + '</mark></div>';   // 공지 탭 상단 고정 (경매 · 의식 소식이 쌓여도 묻히지 않게)
     h += '<div id="chatlog" class="chatlog ch-' + ch + '" aria-live="polite">' +
       (c.more[ch] && API.mode === 'server' && c.msgs[ch].length >= 80 ? '<button class="btn sm ghost chatmore" data-act="chatmore">이전 대화 더 보기</button>' : '') +
       '<div class="chatdesc"><div class="chatmeta tiny"><span class="ondot" aria-hidden="true"></span><span class="gold" data-l="chatonline"></span>' + (c.loading === ch ? '<span class="faint">새 글 불러오는 중…</span>' : '') + (ch === 'world' && c.slow.world ? '<span class="tag br">슬로우 모드 ' + c.slow.world + '초</span>' : '') + (ch === 'world' && isOp() ? '<button class="btn sm ghost" data-act="slowset" style="padding:0 7px">슬로우 모드 설정</button>' : '') + '</div>' +
@@ -6194,6 +6207,7 @@ var Net = (function () {
     var t = new Date(m.t * 1000), hh = t.getHours(), mm = t.getMinutes(), time = (hh < 10 ? '0' : '') + hh + ':' + (mm < 10 ? '0' : '') + mm;
     var hc = R.HOUSE[m.house] ? R.HOUSE[m.house].color : 'var(--brass2)', me = S.P && m.pid === S.P.id;
     if (m.kind === 'sys') return '<div class="cm sys" data-id="' + m.id + '"><span class="ct num">' + time + '</span><span class="cx">' + chatText(m.text) + '</span></div>';
+    if (m.kind === 'staff') return '<div class="cm staff" data-id="' + m.id + '"><span class="ct num">' + time + '</span><span class="cx"><span class="stag">운영진 공지</span> <mark class="hl">' + chatText(m.text) + '</mark></span></div>';   // 운영진 공지: 형광펜
     if (m.kind === 'recruit') {   // 함께 원정 모집 카드
       var rc = {}; try { rc = JSON.parse(m.text) || {}; } catch (e) { }
       if (rc.type === 'guild') return '<div class="cm rcm' + (me ? ' mine' : '') + '" data-id="' + m.id + '"><span class="ct num">' + time + '</span><span class="cx"><span class="rchead"><b>' + esc(m.name) + '</b> 님의 동아리 홍보 · ' + gEmblem(/^#[0-9a-fA-F]{3,8}$/.test(rc.color || '') ? rc.color : '#d6ad5f', rc.name || '', 18) + ' <b>' + esc(rc.name || '') + '</b> Lv ' + (+rc.lv || 1) + ' · <b class="num">' + (+rc.n || 1) + '/' + (+rc.max || 0) + '</b> · ' + (rc.mode === 'apply' ? '신청 후 승인' : '누구나 가입') + '</span>' +
@@ -6240,6 +6254,7 @@ var Net = (function () {
       },
       party: function (d) { S.party = d.party; S.chat.msgs.party = d.msgs || []; if (S.read && S.read.party == null) { S.read.party = 0; saveRead(); } S.chat.more.party = (d.msgs || []).length >= 80; S.partyAt = 0; renderDock(); if (S.view === 'party' && !S.modal) loadParty(); },
       init: function (d) {
+        S.pin = d.pin || null;   // 운영진이 공지 탭 상단에 고정한 공지
         if (d.party !== undefined) S.party = d.party;
         if (d.exr !== undefined) S.exr = d.exr;
         if (d.guild !== undefined) S.guild = d.guild;
@@ -6285,6 +6300,7 @@ var Net = (function () {
         if (!d || d.ch !== 'world') return; var was = S.chat.slow.world; S.chat.slow.world = Math.max(0, +d.sec || 0);
         if (was !== S.chat.slow.world) { toast('채팅 안내', S.chat.slow.world ? '월드 채팅에 슬로우 모드가 걸렸습니다 · ' + S.chat.slow.world + '초에 한 번' : '월드 채팅의 슬로우 모드가 풀렸습니다', 3500); if (S.chat.ch === 'world' && dockOpen()) renderDock(); }
       },
+      pin: function (d) { S.pin = (d && d.pin) || null; if (S.chat.ch === 'notice') renderDock(); },
       op: function (d) { S.chat.op = !!(d && d.op); if (S.chat.ch === 'world' && dockOpen()) renderDock(); },
       ver: function (d) { verCheck(d); },
       maint: function (d) { maintCheck(d); },
@@ -6709,7 +6725,7 @@ var Net = (function () {
         var p = R.dailyProg(P, q);
         return '<div class="quest"><div><div class="small">' + q.name + ' <span class="num muted">' + Math.max(0, p) + ' / ' + q.goal + '</span>' + (q.done ? '' : ' ' + rwTag) + '</div><div class="bar brass" style="margin-top:4px"><b style="width:' + Math.max(0, p / q.goal * 100) + '%"></b></div></div>' +
           (q.done ? '<span class="tag ok">완료</span>' : p >= q.goal ? '<button class="btn sm primary" data-act="do" data-a="daily" data-b="' + i + '">보상</button>' : '<span class="row" style="gap:4px;flex-wrap:nowrap">' + goBtn(q.type) + '<button class="btn sm ghost" data-act="reroll" data-a="' + i + '" title="다른 목표로 바꾸기">바꾸기' + (R.rerollCost(P) ? ' <span class="cost">✦' + R.rerollCost(P) + '</span>' : '') + '</button></span>') + '</div>';
-      }).join('') + '</div><p class="tiny faint" style="margin-top:10px' + (newbie() ? '' : ';display:none') + '">매일 자정(한국 시간)에 바뀝니다. 목표 바꾸기는 하루 1번 무료, 그다음부터 별조각 ' + (R.rerollCost(P) || 5) + '개' + (R.rerollCost(P) ? '' : '부터') + '.</p>';
+      }).join('') + '</div><p class="tiny faint" style="margin-top:10px">출석 · 일일 목표는 매일 한국 시간(KST) 자정에 바뀝니다. 목표 바꾸기는 하루 1번 무료, 그다음부터 별조각 ' + (R.rerollCost(P) || 5) + '개' + (R.rerollCost(P) ? '' : '부터') + '.</p>';
     var qDone = P.daily.q.filter(function (q) { return q.done; }).length;
     var dailyH = fold('daily', '일일 목표', dq, true, '<span class="tag br daily-st">출석 ' + P.daily.streak + '일째</span>' + (P.daily.login || claim ? '<span class="tag ok">받을 보상</span>' : ''), '', '<b class="num">' + qDone + '/' + P.daily.q.length + '</b>' + (qDone >= P.daily.q.length ? ' 완료' : ''));
     // 내 정보 · 능력치 · 기숙사는 왼쪽 「내 정보」에, 하늘 · 오늘의 축복은 풍경 위에. 잠자리 · 꿈길은 평소엔 볼 일이 없어 맨 아래
@@ -6761,7 +6777,7 @@ var Net = (function () {
     var skv = R.skyAt(now()); if (skv && P.skyLook !== skv.key) out.push({ t: dotImg('sky_' + skv.id, 16, '', 'skyic') + '하늘에 ' + skv.name + '! 올려다보기', s: skv.text, act: 'skylook', btn: '올려다보기' });
     if (S.rit && !S.rit.mine) out.push({ t: '별샘 의식에 마나 봉헌', s: '모두 함께 ' + S.rit.n + ' / ' + S.rit.goal + '명 · 채우면 ' + R.RITUAL_BUFF.text, act: 'ritual', btn: '봉헌' });
     if (S.auc && S.auc.active) out.push({ t: '떠돌이 상인이 와 있습니다', s: '귀한 장비 세 점 경매 · ' + left(S.auc.end) + ' 남음', go: 'auction' });
-    if (S.party && R.towerLeft(P, now()) > 0) out.push({ t: '별의 탑 도전 ' + R.towerLeft(P, now()) + '번 남음', s: '파티의 힘을 모아 한 층씩 · 돌파하면 파티원 모두에게 보상 우편', go: 'tower' });
+    if (S.party && R.towerLeft(P, now()) > 0) out.push({ t: '별의 탑 도전 ' + R.towerLeft(P, now()) + '번 남음 (내 횟수)', s: '파티의 힘을 모아 한 층씩 · 돌파하면 파티원 모두에게 보상 우편', go: 'tower' });
     var idleR = 0; for (var r = 0; r < c.resSlots; r++) if (!P.rsq[r]) idleR++;
     if (idleR) out.push({ t: '비어 있는 연구 자리 ' + idleR + '개', s: '', go: 'lib' });
     if (P.wb.tickets > 0 && S.W && S.W.boss && !S.W.boss.killedAt) out.push({ t: '월드 보스 도전 <span class="tiny faint">도전권 ' + P.wb.tickets + '장</span>', s: S.W.boss.name, go: 'world' });
@@ -7493,9 +7509,9 @@ var Net = (function () {
     var t = now(), ev = R.skyAt(t), nx = R.skyNext(t), today = R.skyToday(t), P = S.P, rt = S.rit, au = S.auc;
     var h = newbie() ? '<p class="tiny faint" style="margin:-4px 0 6px">모두에게 같은 시각에 일어납니다 · 하늘은 위 풍경에서 봅니다</p>' : '';
     // 별샘 의식
-    if (rt) h += '<div class="evrow"><span class="evic rit' + (rt.done ? ' done' : '') + '" aria-hidden="true"></span><div style="flex:1;min-width:0"><b>' + gterm('별샘 의식') + '</b> <span class="tiny faint num">' + rt.n + ' / ' + rt.goal + '명</span>' +
+    if (rt) h += '<div class="evrow"><span class="evic rit' + (rt.done ? ' done' : '') + '" aria-hidden="true"></span><div style="flex:1;min-width:0"><b>' + gterm('별샘 의식') + '</b> <span class="tiny faint num">' + rt.n + ' / ' + rt.goal + '명</span> <span class="tiny faint">· KST 자정 초기화</span>' +
       '<div class="bar" style="margin-top:4px;height:6px"><b style="width:' + Math.min(100, rt.n / Math.max(1, rt.goal) * 100).toFixed(1) + '%;--bfill:#6fb5c9;background:linear-gradient(90deg,#6fb5c9,#9fd8ff)"></b></div>' +
-      '<div class="tiny faint" style="margin-top:3px">' + (rt.done ? '<span class="good">오늘의 의식이 이루어졌습니다</span> · 봉헌하면 ' + R.RITUAL_BUFF.text : newbie() ? '하루 한 번 마나를 봉헌해 모두 함께 채웁니다. 채우면 봉헌한 모두에게 ' + R.RITUAL_BUFF.text : '채우면 ' + R.RITUAL_BUFF.text) + '</div></div>' +
+      '<div class="tiny faint" style="margin-top:3px">' + (rt.done ? '<span class="good">오늘의 의식이 이루어졌습니다</span> · 봉헌하면 ' + R.RITUAL_BUFF.text : newbie() ? '하루 한 번(KST 자정 초기화) 마나를 봉헌해 모두 함께 채웁니다. 채우면 봉헌한 모두에게 ' + R.RITUAL_BUFF.text : '채우면 ' + R.RITUAL_BUFF.text) + '</div></div>' +
       (rt.mine ? '<span class="tag ok">봉헌함</span>' : '<button class="btn sm" data-act="ritual"' + (predMana() >= rt.cost ? '' : why('마나가 부족합니다')) + '>봉헌 <span class="cost">마나 ' + fmt(rt.cost) + '</span></button>') + '</div>';
     // 떠돌이 상인
     if (au) h += '<div class="evrow">' + dotImg('merchant', 30, '', 'evimg' + (au.active ? '' : ' dim')) + '<div style="flex:1;min-width:0"><b>떠돌이 상인</b><div class="tiny faint">' + (au.active ? '<span class="gold">광장에 와 있습니다</span> · <span data-l="left:' + au.end + '"></span> 남음 · 귀한 장비 세 점 경매' : '다음 방문 ' + clock(au.start) + ' · 2시간 동안 경매') + '</div></div><button class="btn sm' + (au.active ? ' primary' : ' ghost') + '" data-act="nav" data-a="auction">' + (au.active ? '경매 보기' : '둘러보기') + '</button></div>';
@@ -7613,7 +7629,7 @@ var Net = (function () {
   V.tower = function () {
     var h = pageHead('파티와 함께 오르는 탑', '<span class="phimg">' + dotImg('tower', 40, '', 'twimg') + '별의 탑</span>', '한 주 동안 · 월요일에 0층부터');
     if (!S.partyD || Date.now() - S.partyAt > 20000) { if (Date.now() - S.partyAt > 1500) loadParty(); }
-    if (!S.party) return h + '<div class="card hl"><h3>파티와 함께 오르는 탑</h3><p class="small" style="margin-top:4px">별의 탑은 파티원 모두의 힘을 모아 한 층씩 오르는 곳입니다. 접속하지 않은 파티원도 힘을 보태고, 층을 처음 넘으면 그때 파티에 있던 모두에게 보상 우편이 갑니다. 도전은 학생마다 하루 ' + R.TOWER_TRIES + '번입니다.</p><p class="small muted" style="margin-top:6px">파티에 들어가 있어야 도전할 수 있습니다. 혼자서도 파티를 만들 수 있고, 빈자리는 아카데미 친구(NPC)를 불러 채울 수 있습니다.</p><div class="row" style="margin-top:10px;gap:6px"><button class="btn primary" data-act="twparty">파티 만들기</button><button class="btn ghost" data-act="nav" data-a="party">파티 화면으로</button></div></div>';
+    if (!S.party) return h + '<div class="card hl"><h3>파티와 함께 오르는 탑</h3><p class="small" style="margin-top:4px">별의 탑은 파티원 모두의 힘을 모아 한 층씩 오르는 곳입니다. 접속하지 않은 파티원도 힘을 보태고, 층을 처음 넘으면 그때 파티에 있던 모두에게 보상 우편이 갑니다. 도전은 파티가 아니라 학생마다 하루 ' + R.TOWER_TRIES + '번이며 매일 한국 시간(KST) 자정에 초기화됩니다.</p><p class="small muted" style="margin-top:6px">파티에 들어가 있어야 도전할 수 있습니다. 혼자서도 파티를 만들 수 있고, 빈자리는 아카데미 친구(NPC)를 불러 채울 수 있습니다.</p><div class="row" style="margin-top:10px;gap:6px"><button class="btn primary" data-act="twparty">파티 만들기</button><button class="btn ghost" data-act="nav" data-a="party">파티 화면으로</button></div></div>';
     var tj = S.towerD && S.towerD.party ? towerJournal() : ''; if (tj) h += '<div style="margin-bottom:14px">' + tj + '</div>';
     return h + towerCard() + '<div class="row" style="margin-top:10px"><span class="tiny faint">파티원 · 초대 · 아카데미 친구는 파티 화면에서 관리합니다.</span><span class="spacer"></span><button class="btn sm ghost" data-act="nav" data-a="party">파티 화면</button></div>';
   };
@@ -7624,12 +7640,12 @@ var Net = (function () {
     if (!t.party) return '';
     var n = t.next, est = n.est, top = t.team.reduce(function (a, m) { return Math.max(a, m.dps); }, 1);
     var h = '<div class="card tower" data-anchor="tower"><div class="row between"><h3 class="twhead">' + dotImg('tower', 32, '', 'twimg') + '별의 탑 <span class="tag br">이번 주 ' + t.floor + '층</span></h3><span class="tiny faint">월요일에 0층부터 · ' + left(t.weekEnd) + ' 남음</span></div>' +
-      '<p class="tiny faint" style="margin-top:2px">파티원 모두의 힘을 모아 한 층씩 오릅니다. 접속하지 않은 파티원도 힘을 보태고, 층을 넘으면 그때 파티에 있던 모두에게 보상 우편이 갑니다. 도전은 학생마다 하루 ' + t.tries + '번. 탑 기록은 파티의 것이라 새로 들어온 파티원은 지금 층부터 함께 오르고, 나간 사람은 기록을 가져가지 않습니다. 마지막 한 명까지 나가 파티가 없어지면 그 주의 탑 기록도 함께 사라집니다(이미 받은 보상은 그대로). 파티를 옮기거나 새로 만들어도 같은 층 보상은 한 주에 한 번만 받습니다.</p>' +
+      '<p class="tiny faint" style="margin-top:2px">파티원 모두의 힘을 모아 한 층씩 오릅니다. 접속하지 않은 파티원도 힘을 보태고, 층을 넘으면 그때 파티에 있던 모두에게 보상 우편이 갑니다. 도전 횟수는 파티가 아니라 학생마다 하루 ' + t.tries + '번이며 매일 한국 시간(KST) 자정에 초기화됩니다. 탑 기록은 파티의 것이라 새로 들어온 파티원은 지금 층부터 함께 오르고, 나간 사람은 기록을 가져가지 않습니다. 마지막 한 명까지 나가 파티가 없어지면 그 주의 탑 기록도 함께 사라집니다(이미 받은 보상은 그대로). 파티를 옮기거나 새로 만들어도 같은 층 보상은 한 주에 한 번만 받습니다.</p>' +
       '<div class="twnext"><div class="twf num">' + n.floor + '<span>층</span></div><div style="flex:1;min-width:0"><b>' + esc(n.name) + '</b><div class="tiny faint">' + n.stage + '단계 수준 · 체력 ' + fmt(n.hp) + '</div>' +
       '<div class="small" style="margin-top:4px">' + (est.win ? '<span class="good">승산 있음</span> — 약 ' + est.ttk.toFixed(1) + '초' : '<span class="bad">아직 버겁습니다</span> — 45초 안에 체력의 약 ' + Math.round(est.frac * 100) + '%') + '</div>' +
       '<div class="tiny" style="margin-top:4px">보상(모두에게) <span class="rwd">' + esc(R.rewardText(n.reward)) + '</span>' + (t.myBest >= n.floor ? ' <span class="tiny gold">· 나는 이번 주에 ' + t.myBest + '층까지 이미 받아서 이 층 보상은 건너뜁니다</span>' : '') + '</div></div></div>' +
       '<div class="twteam">' + t.team.map(function (m) { return '<div class="twm"><span class="small ell" style="color:' + (R.HOUSE[m.house] ? R.HOUSE[m.house].color : 'inherit') + '">' + esc(m.name) + (m.npc ? ' <span class="tag npc">NPC</span>' : '') + (m.me ? ' <span class="tag">나</span>' : '') + '</span><div class="bar brass" style="height:5px"><b style="width:' + (m.dps / top * 100).toFixed(1) + '%"></b></div><span class="tiny faint num">' + fmt(m.dps) + '/초</span></div>'; }).join('') + '</div>' +
-      '<div class="row" style="margin-top:10px"><span class="tiny faint">파티 합계 초당 피해 <b class="num">' + fmt(t.teamDps) + '</b></span><span class="spacer"></span>' + (t.playing ? '<span class="tag br">' + esc(t.playing.name) + ' 님 도전 중</span>' : '<button class="btn primary" data-act="tower"' + (t.left > 0 ? '' : ' disabled') + '>' + n.floor + '층 도전 <span class="cost">오늘 ' + t.left + '/' + t.tries + '</span></button>') + '</div>';
+      '<div class="row" style="margin-top:10px"><span class="tiny faint">파티 합계 초당 피해 <b class="num">' + fmt(t.teamDps) + '</b></span><span class="spacer"></span>' + (t.playing ? '<span class="tag br">' + esc(t.playing.name) + ' 님 도전 중</span>' : '<button class="btn primary" data-act="tower"' + (t.left > 0 ? '' : ' disabled') + '>' + n.floor + '층 도전 <span class="cost">내 도전 ' + t.left + '/' + t.tries + '</span></button>') + '<div class="tiny faint" style="width:100%;text-align:right;margin-top:4px">내 도전 횟수 · 학생마다 하루 ' + t.tries + '번 · KST 자정 초기화</div>' + '</div>';
     if (t.log.length) h += '<div class="twlog">' + t.log.slice(0, 6).map(function (l) { return '<div class="tiny"><span class="faint num">' + clock(l.t) + '</span> ' + esc(l.name) + ' · ' + l.f + '층 ' + (l.sc && twLive(l) ? '<span class="gold">도전 중…</span>' : l.win ? '<span class="good">돌파</span>' : '<span class="faint">' + l.pct + '%</span>') + '</div>'; }).join('') + '</div>';
     return h + '</div>';
   }
@@ -7691,7 +7707,7 @@ var Net = (function () {
   }
   function gInfoTab(g) {
     var my = g.my || {}, left = Math.max(0, my.cap - my.dpts);
-    var h = '<div class="grid g2"><div class="card"><h3>기여하기</h3><p class="tiny faint">기여도가 곧 동아리 경험치입니다. 하루 한 번 출석(+' + my.bonusIn + '), ' + CUR + ' 기부(하루 ' + my.cap + '점까지).</p>' +
+    var h = '<div class="grid g2"><div class="card"><h3>기여하기</h3><p class="tiny faint">기여도가 곧 동아리 경험치입니다. 하루 한 번 출석(+' + my.bonusIn + '), ' + CUR + ' 기부(하루 ' + my.cap + '점까지). 출석 · 기부 한도는 매일 KST 자정에 초기화됩니다.</p>' +
       '<div class="row small" style="margin-top:8px"><span class="muted">오늘 기부</span><b class="num">' + my.dpts + ' / ' + my.cap + '</b><span class="spacer"></span><span class="tiny faint">1점 = ' + MONEY(my.unit) + '</span></div>' +
       (left ? '<div class="row" style="margin-top:8px"><input id="g-don" type="number" min="1" max="' + left + '" step="1" inputmode="numeric" placeholder="점수 (최대 ' + left + ')" style="width:150px"><button class="btn sm primary" data-act="gdonate">기부</button>' + [10, 50, left].filter(function (v, i, a) { return v <= left && a.indexOf(v) === i; }).map(function (v) { return '<button class="btn sm ghost" data-act="gdonate" data-a="' + v + '">' + v + '점 <span class="cost">' + fmt(v * my.unit) + ' ' + CUR + '</span></button>'; }).join('') + '</div>' : '<p class="small good" style="margin-top:8px">오늘 기부를 모두 채웠습니다.</p>') + '</div>' +
       '<div class="card"><h3>레벨 혜택</h3><dl class="kv" style="margin-top:6px"><dt>정원</dt><dd>' + g.max + '명</dd><dt>창고</dt><dd>' + g.slots + '칸</dd><dt>' + CUR + '·경험치</dt><dd>+' + (g.bonus * 100).toFixed(1).replace(/\.0$/, '') + '%</dd></dl>' +
@@ -7707,7 +7723,7 @@ var Net = (function () {
   function gRitCard(g) {
     if (!g.rit) return '<div class="card inset" style="margin-top:12px"><h4>동아리 의식 <span class="tag">Lv ' + R.GRIT_LV + '</span></h4><p class="tiny faint" style="margin-top:2px">동아리 ' + R.GRIT_LV + '레벨에 열립니다. 하루 한 번 부원들이 마나를 봉헌해 「' + R.GRIT_BUFF.name + '」(' + R.GRIT_BUFF.text + ')을 받습니다.</p></div>';
     var r = g.rit, pc = Math.min(100, r.n / r.goal * 100);
-    return '<div class="card" style="margin-top:12px"><div class="row between"><h4>동아리 의식</h4>' + (r.done ? '<span class="tag ok">오늘 이루어짐</span>' : '<span class="num small">' + r.n + ' / ' + r.goal + '명</span>') + '</div>' +
+    return '<div class="card" style="margin-top:12px"><div class="row between"><h4>동아리 의식 <span class="tiny faint">KST 자정 초기화</span></h4>' + (r.done ? '<span class="tag ok">오늘 이루어짐</span>' : '<span class="num small">' + r.n + ' / ' + r.goal + '명</span>') + '</div>' +
       '<p class="tiny faint" style="margin-top:2px">하루 한 번 마나 30분 분을 봉헌합니다. 부원 절반(' + r.goal + '명)이 봉헌하면 봉헌한 부원에게 「' + R.GRIT_BUFF.name + '」 — ' + R.GRIT_BUFF.text + '. 이루어진 뒤에 봉헌해도 받습니다.</p>' +
       '<div class="bar brass" style="margin-top:6px;height:6px"><b style="width:' + pc.toFixed(1) + '%"></b></div>' +
       '<div class="row" style="margin-top:8px">' + (r.mine ? '<span class="tag ok">오늘 봉헌함</span>' : '<button class="btn sm primary" data-act="grit">봉헌 <span class="cost">마나 ' + fmt(r.cost) + '</span></button>') + '</div></div>';
@@ -9105,10 +9121,10 @@ var Net = (function () {
     var tabs = [['view', '보이는 모습'], ['profile', '편집'], ['deco', '꾸미기'], ['friends', '친구' + (S.fr ? ' ' + S.fr : '')]];
     var h = mhead('내 정보', esc(S.P.name) + ' · ' + house().name) + '<div class="tabs" role="tablist">' + tabs.map(function (t) { return '<button role="tab" class="' + (S.meTab === t[0] ? 'on' : '') + '" data-act="me" data-a="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
     if (S.meTab !== 'friends' && S.meTab !== 'view' && S.meTab !== 'deco') S.meTab = 'profile';
-    h += S.meTab === 'view' ? '<div id="pbox">' + myCard() + '</div>' : S.meTab === 'deco' ? decoBody() : S.meTab === 'profile' ? profileBody() : '<div id="flist"><p class="small muted">불러오는 중…</p></div>';
+    h += S.meTab === 'view' ? '<div id="pbox">' + myCard() + '</div>' : S.meTab === 'deco' ? decoBody() : S.meTab === 'profile' ? profileBody() : '<div class="fsearchtop" style="margin-bottom:12px">' + fSearchBox() + '</div><div id="flist"><p class="small muted">불러오는 중…</p></div>';
     modal(h);
     if (S.meTab === 'view' && !S.me) loadMe().then(function () { if (S.modal && S.meTab === 'view' && $('#pbox')) $('#pbox').innerHTML = myCard(); });
-    if (S.meTab === 'friends') loadFriends();
+    if (S.meTab === 'friends') { loadFriends(); fSearchKeys(); }
     if (S.meTab === 'profile') { var bio = $('#pe-bio'), lab = bio && bio.parentNode.querySelector('label'); if (lab) lab.insertAdjacentHTML('beforeend', ' <button class="btn sm ghost" data-act="pewide" style="padding:1px 8px;margin-left:4px">' + (S.peWide ? '좁게' : '더보기') + '</button>'); if (S.peDraft) { var mm = $('#pe-msg'); if (mm) mm.textContent = '저장하지 않은 변경이 있습니다'; } }
     if (S.meTab === 'profile' && !S.me) loadMe().then(function () { if (S.modal && S.meTab === 'profile' && $('#pe-status')) ACT.me('profile'); });
   };
@@ -9332,10 +9348,12 @@ var Net = (function () {
     if (Date.now() - (S.frAt || 0) > 15000 && Date.now() - (S.frReq || 0) > 3000) { S.frReq = Date.now(); setTimeout(loadFriends, 0); }
     setTimeout(fSearchKeys, 0);
     return pageHead('함께 다니는 학생들', '친구', '접속한 친구가 위에 · 1:1 대화와 파티 초대') +
-      '<div class="card" style="margin-bottom:12px"><div class="row"><input id="f-q" maxlength="12" placeholder="학생 이름 검색" value="' + esc((S.frs && S.frs.q) || '') + '" style="flex:1;min-width:0"><button class="btn sm primary" data-act="fsearch">검색</button></div><div id="fsres">' + fSearchHtml() + '</div></div>' +
+      '<div class="card" style="margin-bottom:12px">' + fSearchBox() + '</div>' +
       '<div class="card" id="flist">' + (S.frHtml || '<p class="small muted">불러오는 중…</p>') + '</div>';
   };
   // 학생 검색: 이름 일부로 찾고, 누르면 정보창이 열려 그곳에서 친구 신청한다
+  // 학생 이름 검색 칸 (친구 화면 · 내 정보 › 친구 탭 맨 위)
+  function fSearchBox() { return '<div class="row"><input id="f-q" maxlength="12" placeholder="학생 이름 검색" value="' + esc((S.frs && S.frs.q) || '') + '" style="flex:1;min-width:0"><button class="btn sm primary" data-act="fsearch">검색</button></div><div id="fsres">' + fSearchHtml() + '</div>'; }
   function fSearchKeys() { var inp = $('#f-q'); if (inp && !inp.__k) { inp.__k = 1; inp.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); ACT.fsearch(); } }); } }
   function fSearchHtml() {
     var r = S.frs; if (!r) return '<p class="tiny faint" style="margin-top:6px">이름 일부로 찾을 수 있습니다. 학생을 누르면 정보창이 열리고, 정보창에서 친구 신청 · 1:1 · 파티 초대를 할 수 있습니다.</p>';
@@ -9588,7 +9606,7 @@ var Net = (function () {
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026101990;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026101992;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

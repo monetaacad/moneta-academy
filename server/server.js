@@ -89,7 +89,7 @@ let MAINT = Object.assign({ on: false, start: 0, until: 0, msg: '' }, dbx.kvGet(
 function maintView(pid) { if (!MAINT.on && !MAINT.start) return null; return { on: !!MAINT.on, start: MAINT.start || 0, until: MAINT.until || 0, msg: MAINT.msg || '', bypass: !!(pid && isChatOp(pid)) }; }
 function maintPing() { chat.pingEach('maint', (pid) => maintView(pid) || { on: false }); }
 function maintSet(m, by) { MAINT = { on: !!m.on, start: m.on ? 0 : Math.max(0, +m.start || 0), until: Math.max(0, +m.until || 0), msg: String(m.msg || '').slice(0, 300) }; dbx.kvSet('maint', MAINT); maintPing(); oplog(by || 'admin', '', 'maint', MAINT.on ? '점검 시작' : MAINT.start ? '점검 예고 ' + new Date(MAINT.start * 1000).toISOString() : '점검 끝'); }
-const chat = Chat.create(dbx, log, { initExtra: (pid) => ({ build: BUILD.build, minBuild: BUILD.minBuild, maint: maintView(pid) }), sec, gzip: process.env.SSE_GZIP !== '0', isOp: (pid) => isChatOp(pid), slow: { world: dbx.kvGet('chat_slow', 0) }, partyOf: (pid) => partyOf.get(pid) || null, exrOf: (pid) => exprooms.chatKey(pid) || R.expChatKey(store.peek(pid)), guildOf: (pid) => guildOf.get(pid) || null, houseOf: (pid) => { const P = store.get(pid); return P && R.HOUSE[P.house] ? P.house : null; }, clsOf: (pid) => { const P = store.get(pid); return P && R.CLS[P.cls] ? P.cls : null; }, titleOf: (P) => R.titleName(P, P.title), inkOf: (P) => R.decoView(P).ink || '', canDm: (a, b) => friendState(a, b) === 'ok' });
+const chat = Chat.create(dbx, log, { initExtra: (pid) => ({ build: BUILD.build, minBuild: BUILD.minBuild, maint: maintView(pid), pin: dbx.kvGet('pinNotice', null) }), sec, gzip: process.env.SSE_GZIP !== '0', isOp: (pid) => isChatOp(pid), slow: { world: dbx.kvGet('chat_slow', 0) }, partyOf: (pid) => partyOf.get(pid) || null, exrOf: (pid) => exprooms.chatKey(pid) || R.expChatKey(store.peek(pid)), guildOf: (pid) => guildOf.get(pid) || null, houseOf: (pid) => { const P = store.get(pid); return P && R.HOUSE[P.house] ? P.house : null; }, clsOf: (pid) => { const P = store.get(pid); return P && R.CLS[P.cls] ? P.cls : null; }, titleOf: (P) => R.titleName(P, P.title), inkOf: (P) => R.decoView(P).ink || '', canDm: (a, b) => friendState(a, b) === 'ok' });
 const Board = require('./board.js');
 // 알림 기록: 우편과 따로, 일어난 일을 모아 보여 준다 (최근 100개, 30일)
 function pname(pid) { const w = dbx.q.getProfile.get(pid); return w ? w.name : '학생'; }
@@ -1630,8 +1630,13 @@ routes['GET /api/admin/stats'] = (req, res) => {
 };
 routes['POST /api/admin/notice'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
-  const b = await readJson(req, 4096); if (!b.text) return fail(req, res, 400, 'text가 필요합니다');
-  world.addNotice(b.text, nowSec(), false); world.invalidate(); chat.system('notice', String(b.text).slice(0, 500), Date.now() / 1000); send(req, res, 200, { ok: true });
+  const b = await readJson(req, 4096);
+  if (b.unpin) { dbx.kvSet('pinNotice', null); chat.pingAll('pin', { pin: null }); oplog('admin', '관리자', 'notice', '상단 고정 해제'); return send(req, res, 200, { ok: true, pin: null }); }   // 고정 해제만
+  if (!b.text) return fail(req, res, 400, 'text가 필요합니다');
+  const text = String(b.text).slice(0, 500), t = Date.now() / 1000;
+  world.addNotice(text, nowSec(), false); world.invalidate(); const m = chat.staffNotice(text, t);
+  if (b.pin) { const pin = { id: m.id, t, text }; dbx.kvSet('pinNotice', pin); chat.pingAll('pin', { pin }); }   // 공지 탭 상단에 고정
+  send(req, res, 200, { ok: true, pin: b.pin ? dbx.kvGet('pinNotice', null) : undefined });
 };
 routes['POST /api/admin/grant'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
@@ -1819,7 +1824,7 @@ routes['POST /api/admin/chat/system'] = async (req, res) => {
   const b = await readJson(req, 2048); if (!chat.CHANNELS[b.ch] || !b.text) return fail(req, res, 400, 'ch, text가 필요합니다');
   chat.system(b.ch, String(b.text).slice(0, 300), Date.now() / 1000); send(req, res, 200, { ok: true });
 };
-routes['GET /api/admin/sys'] = (req, res) => { if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다'); send(req, res, 200, { build: BUILD, maint: MAINT }); };
+routes['GET /api/admin/sys'] = (req, res) => { if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다'); send(req, res, 200, { build: BUILD, maint: MAINT, pin: dbx.kvGet('pinNotice', null) }); };
 // 새 버전 알리기: {build, minBuild} — 접속한 모두에게 'ver'을 보낸다
 routes['POST /api/admin/build'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
