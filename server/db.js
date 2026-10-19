@@ -148,6 +148,9 @@ function open(dir) {
   if (cols.indexOf('avatar_type') < 0) db.exec(`ALTER TABLE players ADD COLUMN avatar_type TEXT NOT NULL DEFAULT ''`);
   if (cols.indexOf('role') < 0) db.exec(`ALTER TABLE players ADD COLUMN role TEXT NOT NULL DEFAULT 'user'`);   // 'admin' 운영자 | 'user'
   if (cols.indexOf('avatar_v') < 0) db.exec(`ALTER TABLE players ADD COLUMN avatar_v INTEGER NOT NULL DEFAULT 0`);
+  // 로그인 아이디: 평문 대신 HMAC 색인(sec.index)만 둔다. 게임 안에는 나오지 않는다. 빈 값은 server.js가 시작할 때 채운다
+  if (cols.indexOf('login_key') < 0) db.exec(`ALTER TABLE players ADD COLUMN login_key TEXT NOT NULL DEFAULT ''`);
+  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS players_login ON players(login_key) WHERE login_key <> ''`);
   const ccols = db.prepare(`PRAGMA table_info(chat)`).all().map((c) => c.name);
   if (ccols.indexOf('title') < 0) db.exec(`ALTER TABLE chat ADD COLUMN title TEXT NOT NULL DEFAULT ''`);
   if (ccols.indexOf('ink') < 0) db.exec(`ALTER TABLE chat ADD COLUMN ink TEXT NOT NULL DEFAULT ''`);   // 이름 잉크 (꾸미기)
@@ -353,7 +356,11 @@ function open(dir) {
     dmgList: db.prepare(`SELECT dmg FROM weekly WHERE week = ? AND dmg > 0 ORDER BY dmg DESC`),
     sumDmg: db.prepare(`SELECT COALESCE(SUM(dmg), 0) AS s, COUNT(*) AS n FROM weekly WHERE week = ? AND dmg > 0`),
     purgeWeekly: db.prepare(`DELETE FROM weekly WHERE week < ?`),
-    insertPlayerFull: db.prepare(`INSERT INTO players (id, name, name_key, house, pass, created, last_seen, state, guest, invite) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
+    insertPlayerFull: db.prepare(`INSERT INTO players (id, name, name_key, house, pass, created, last_seen, state, guest, invite, login_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
+    playerByLogin: db.prepare(`SELECT id, name, pass, banned FROM players WHERE login_key = ?`),
+    passById: db.prepare(`SELECT pass FROM players WHERE id = ?`),
+    noLoginKey: db.prepare(`SELECT id, name_key FROM players WHERE login_key = ''`),
+    setLoginKey: db.prepare(`UPDATE players SET login_key = ? WHERE id = ?`),
     playerMeta: db.prepare(`SELECT id, name, guest, muted_until, banned, invite, role FROM players WHERE id = ?`),
     admins: db.prepare(`SELECT id FROM players WHERE role = 'admin'`),
     setRole: db.prepare(`UPDATE players SET role = ? WHERE id = ?`),

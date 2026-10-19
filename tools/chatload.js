@@ -43,7 +43,7 @@ function pct(a, p) { if (!a.length) return 0; const s = a.slice().sort((x, y) =>
   const users = [], t0 = Date.now(), tag = (Date.now() % 100000).toString(36);
   for (let i = 0; i < N; i += 100) {
     await Promise.all(Array.from({ length: Math.min(100, N - i) }, async (_, k) => {
-      const j = await post('/api/register', { name: ('c' + tag + (i + k).toString(36)).slice(0, 12), password: 'chatload' + (i + k) + 'pw', cls: 'mage', house: ['lanterna', 'clepsydra', 'corona', 'speculum'][(i + k) % 4] });
+      const j = await post('/api/register', { login: 'cl' + tag + (i + k), name: ('c' + tag + (i + k).toString(36)).slice(0, 12), password: 'chatload' + (i + k) + 'pw', cls: 'mage', house: ['lanterna', 'clepsydra', 'corona', 'speculum'][(i + k) % 4] });
       if (j.token) users.push(j.token);
     }));
   }

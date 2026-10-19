@@ -4560,10 +4560,10 @@ var Net = (function () {
   ServerApi.prototype.state = function () { return this.req('GET', '/api/state'); };
   ServerApi.prototype.world = function () { return this.req('GET', '/api/world'); };
   ServerApi.prototype.act = function (type, a) { return this.req('POST', '/api/act', { type: type, a: a || {} }); };
-  ServerApi.prototype.login = function (name, password) { var s = this; return this.req('POST', '/api/login', { name: name, password: password }).then(function (j) { if (j.token) s.saveToken(j.token); return j; }); };
+  ServerApi.prototype.login = function (login, password) { var s = this; return this.req('POST', '/api/login', { login: login, password: password }).then(function (j) { if (j.token) s.saveToken(j.token); return j; }); };
   ServerApi.prototype.logout = function () { var s = this; return this.req('POST', '/api/logout').then(function (j) { s.saveToken(null); return j; }); };
   ServerApi.prototype.password = function (old, pw) { return this.req('POST', '/api/password', { old: old, password: pw }); };
-  ServerApi.prototype.register = function (name, password, house, invite, cls) { var s = this; return this.req('POST', '/api/register', { name: name, password: password, house: house, invite: invite, cls: cls }).then(function (j) { if (j.token) s.saveToken(j.token); return j; }); };
+  ServerApi.prototype.register = function (name, password, house, invite, cls, login) { var s = this; return this.req('POST', '/api/register', { login: login, name: name, password: password, house: house, invite: invite, cls: cls }).then(function (j) { if (j.token) s.saveToken(j.token); return j; }); };
   // 이름 바꾸기 (30일 제한은 서버가 확인한다)
   ServerApi.prototype.rename = function (name) { return this.req('POST', '/api/rename', { name: name }); };
   // 채팅: 서버 이벤트 스트림
@@ -8685,12 +8685,15 @@ var Net = (function () {
     if (tabs.length > 1) h += '<div class="tabs" role="tablist">' + tabs.map(function (t) { return '<button role="tab" class="' + (tab === t[0] ? 'on' : '') + '" data-act="authtab" data-a="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
     h += '<form id="authform" class="card stack" style="gap:12px" autocomplete="on">';
     if (tab === 'guest') h += '<p class="small muted">이름과 기숙사만 정하면 바로 시작합니다.</p>';
-    h += '<div class="field"><label for="a-name">학생 이름</label><input id="a-name" maxlength="12" placeholder="한글·영문·숫자 2~12자 · 띄어쓰기 가능" autocomplete="username" value="' + esc(S.authName || '') + '">' + (tab !== 'login' ? '<span class="tiny faint">' + NAME_RULE_SIGNUP + '</span>' : '') + '</div>';
+    // 아이디는 가입 · 로그인에만 쓰고 게임 안에는 나오지 않는다. 학생 이름은 따로
+    if (tab === 'login' || tab === 'signup') h += '<div class="field"><label for="a-id">아이디</label><input id="a-id" maxlength="20" placeholder="' + (tab === 'login' ? '' : '영문·숫자·밑줄(_) 4~20자') + '" autocomplete="username" autocapitalize="none" spellcheck="false" value="' + esc(S.authId || '') + '">' + (tab === 'signup' ? '<span class="tiny faint">아이디는 로그인에만 쓰이며, 게임 안에서 다른 학생에게 보이지 않습니다. 학생 이름과 다르게 정해 주세요.</span>' : '') + '</div>';
     if (tab === 'login' || tab === 'signup') h += '<div class="field"><label for="a-pw">비밀번호</label><input id="a-pw" type="password" maxlength="72" placeholder="' + (tab === 'login' ? '' : '8자 이상, 글자와 숫자 섞어서') + '" autocomplete="' + (tab === 'login' ? 'current-password' : 'new-password') + '"></div>';
     if (tab === 'signup') {
       h += '<div class="field"><label for="a-pw2">비밀번호 확인</label><input id="a-pw2" type="password" maxlength="72" autocomplete="new-password"></div>';
+      h += nameField();
       if (M.inviteRequired !== false) h += '<div class="field"><label for="a-code">초대코드</label><input id="a-code" maxlength="20" placeholder="ARC-XXXX-XXXX" autocapitalize="characters" spellcheck="false" style="font-family:var(--f-num);letter-spacing:.06em"><span class="tiny faint">초대코드는 아카데미 운영진에게 받을 수 있습니다.</span></div>';
     }
+    if (tab === 'guest') h += nameField();
     h += '</form>';
     if (tab !== 'login') h += '<div><div class="section-t">기숙사 선택</div><p class="small muted" style="margin-bottom:10px">기숙사는 바꿀 수 없습니다. 매주 기숙사 대항전에서 함께 겨룹니다.</p>' + glossCard() + '<div class="housepick">' + D.HOUSES.map(function (hh) {
       return '<button data-act="ihouse" data-a="' + hh.id + '" class="' + (S.ihouse === hh.id ? 'on' : '') + '"><span class="hhead">' + dotImg(hh.id + '_big', 72, hh.name + ' 문장', 'hdot hbig') + '<span class="hn" style="color:' + hh.color + '">' + hh.name + ' <span class="faint small">' + hh.latin + '</span></span></span><span class="hm">“' + hh.motto + '”</span><span class="small muted">' + hh.desc + '</span><span class="hb gold">' + hh.bonusText + '</span></button>';
@@ -8702,26 +8705,29 @@ var Net = (function () {
     h += '<div class="row" style="justify-content:center"><button class="btn primary" data-act="auth-go" data-a="' + tab + '">' + btn + '</button></div><p class="small" id="a-msg" style="text-align:center;min-height:1.4em;color:var(--rose)"></p>';
     h += '</div></main></div>';
     $('#app').innerHTML = h; afterRender();
+    function nameField() { return '<div class="field"><label for="a-name">학생 이름</label><input id="a-name" maxlength="12" placeholder="한글·영문·숫자 2~12자 · 띄어쓰기 가능" autocomplete="off" value="' + esc(S.authName || '') + '"><span class="tiny faint">게임 안에서 다른 학생에게 보이는 이름입니다. ' + NAME_RULE_SIGNUP + '</span></div>'; }
     function go() { ACT['auth-go'](tab); }
     $('#authform').addEventListener('submit', function (e) { e.preventDefault(); go(); });
     $$('#authform input').forEach(function (i) { i.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); go(); } }); });
   }
-  ACT.authtab = function (t) { var n = $('#a-name'); if (n) S.authName = n.value; S.authTab = t; authScreen(); };
+  ACT.authtab = function (t) { var n = $('#a-name'), i = $('#a-id'); if (n) S.authName = n.value; if (i) S.authId = i.value; S.authTab = t; authScreen(); };
   ACT.ihouse = function (id) { S.ihouse = id; $$('.housepick:not(.clspick) button').forEach(function (b) { b.classList.toggle('on', b.dataset.a === id); }); };
   ACT.icls = function (id) { S.icls = id; $$('.clspick button').forEach(function (b) { b.classList.toggle('on', b.dataset.a === id); }); };
   ACT['auth-go'] = function (tab) {
-    var name = $('#a-name').value.trim(), pw = $('#a-pw') ? $('#a-pw').value : '', msg = $('#a-msg');
-    S.authName = name;
+    var name = $('#a-name') ? $('#a-name').value.trim() : '', id = $('#a-id') ? $('#a-id').value.trim() : '', pw = $('#a-pw') ? $('#a-pw').value : '', msg = $('#a-msg');
+    if ($('#a-name')) S.authName = name; if ($('#a-id')) S.authId = id;
     function done(j) { if (j.error) { msg.textContent = j.error; return; } absorb(j); start(); if (tab === 'login') afterSync(); else if (!PREF.tutDone) { S.onbChain = true; onbGuide(0, true); } else { S.afterClose = function () { if (S.view !== 'home') ACT.nav('home'); ACT.mqscene('intro'); }; ACT.story(0); } }
-    if (tab === 'login') { msg.textContent = '확인 중…'; return API.login(name, pw).then(done); }
+    if (tab === 'login') { if (!id) { msg.textContent = '아이디 입력 필요'; return; } msg.textContent = '확인 중…'; return API.login(id, pw).then(done); }
     if (!S.ihouse) { msg.textContent = '기숙사 선택 필요'; return; }
     if (!S.icls) { msg.textContent = '학과 선택 필요'; return; }
     if (tab === 'signup') {
+      if (!/^[A-Za-z0-9_]{4,20}$/.test(id)) { msg.textContent = '아이디는 영문·숫자·밑줄(_) 4~20자'; return; }
       if (pw.length < 8) { msg.textContent = '비밀번호는 8자 이상'; return; }
+      if (!name) { msg.textContent = '학생 이름 입력 필요'; return; }
       if (pw !== $('#a-pw2').value) { msg.textContent = '비밀번호 확인이 맞지 않습니다'; return; }
       var code = $('#a-code') ? $('#a-code').value.trim() : '';
       if ($('#a-code') && !code) { msg.textContent = '초대코드 입력 필요'; return; }
-      msg.textContent = '입학 처리 중…'; return API.register(name, pw, S.ihouse, code, S.icls).then(done);
+      msg.textContent = '입학 처리 중…'; return API.register(name, pw, S.ihouse, code, S.icls, id).then(done);
     }
     if (API.mode !== 'local') return;
     msg.textContent = '입학 처리 중…'; API.guest(name, S.ihouse, S.icls).then(done);
@@ -8797,7 +8803,7 @@ var Net = (function () {
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026101947;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026101948;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
