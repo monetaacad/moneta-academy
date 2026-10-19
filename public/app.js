@@ -212,7 +212,7 @@
   function shell() {
     $('#app').innerHTML =
       '<header class="top"><div class="top-row">' +
-      '<img class="logo" src="' + LOGO_URL + '" width="38" height="38" alt="모네타 아카데미">' +
+      '<button class="logobtn" data-act="nav" data-a="home" title="아카데미 광장으로" aria-label="아카데미 광장으로"><img class="logo" src="' + LOGO_URL + '" width="38" height="38" alt=""></button>' +
       '<div class="crest memenu-wrap"><button class="mebtn" data-act="memenu" aria-haspopup="menu" aria-expanded="false" title="내 정보 · 친구 · 파티"><span id="head-av"></span><span class="who"><h1><span data-l="who"></span> <span class="caret">▾</span></h1><span class="sub" data-l="whosub" data-html="1"></span></span><span class="ibadge" id="mebadge" hidden></span></button>' +
       '<div class="memenu" id="memenu" role="menu" hidden><button role="menuitem" data-act="me" data-a="view">' + icon('user') + '내 정보</button><button role="menuitem" data-act="me" data-a="friends">' + icon('chat') + '친구<span class="tag br num" id="mm-fr" hidden></span></button><button role="menuitem" data-act="nav" data-a="party">' + icon('party') + '파티<span class="tag br num" id="mm-pt" hidden></span></button><button role="menuitem" data-act="nav" data-a="guild">' + icon('guild') + '동아리</button><button role="menuitem" data-act="goto" data-a="rec" data-b="titles">' + icon('rec') + '칭호 도감</button></div></div>' +
       '<div class="topmeta"><span class="seg cal" data-l="cal" data-html="1"></span><span class="seg" data-l="buffs" data-html="1"></span><span class="seg conn" id="conn" hidden>서버 연결이 끊겼습니다 · 다시 연결 중</span></div>' +
@@ -3442,10 +3442,10 @@
     var tabs = [['view', '보이는 모습'], ['profile', '편집'], ['deco', '꾸미기'], ['friends', '친구' + (S.fr ? ' ' + S.fr : '')]];
     var h = mhead('내 정보', esc(S.P.name) + ' · ' + house().name) + '<div class="tabs" role="tablist">' + tabs.map(function (t) { return '<button role="tab" class="' + (S.meTab === t[0] ? 'on' : '') + '" data-act="me" data-a="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
     if (S.meTab !== 'friends' && S.meTab !== 'view' && S.meTab !== 'deco') S.meTab = 'profile';
-    h += S.meTab === 'view' ? '<div id="pbox">' + myCard() + '</div>' : S.meTab === 'deco' ? decoBody() : S.meTab === 'profile' ? profileBody() : '<div id="flist"><p class="small muted">불러오는 중…</p></div>';
+    h += S.meTab === 'view' ? '<div id="pbox">' + myCard() + '</div>' : S.meTab === 'deco' ? decoBody() : S.meTab === 'profile' ? profileBody() : '<div class="fsearchtop" style="margin-bottom:12px">' + fSearchBox() + '</div><div id="flist"><p class="small muted">불러오는 중…</p></div>';
     modal(h);
     if (S.meTab === 'view' && !S.me) loadMe().then(function () { if (S.modal && S.meTab === 'view' && $('#pbox')) $('#pbox').innerHTML = myCard(); });
-    if (S.meTab === 'friends') loadFriends();
+    if (S.meTab === 'friends') { loadFriends(); fSearchKeys(); }
     if (S.meTab === 'profile') { var bio = $('#pe-bio'), lab = bio && bio.parentNode.querySelector('label'); if (lab) lab.insertAdjacentHTML('beforeend', ' <button class="btn sm ghost" data-act="pewide" style="padding:1px 8px;margin-left:4px">' + (S.peWide ? '좁게' : '더보기') + '</button>'); if (S.peDraft) { var mm = $('#pe-msg'); if (mm) mm.textContent = '저장하지 않은 변경이 있습니다'; } }
     if (S.meTab === 'profile' && !S.me) loadMe().then(function () { if (S.modal && S.meTab === 'profile' && $('#pe-status')) ACT.me('profile'); });
   };
@@ -3669,10 +3669,12 @@
     if (Date.now() - (S.frAt || 0) > 15000 && Date.now() - (S.frReq || 0) > 3000) { S.frReq = Date.now(); setTimeout(loadFriends, 0); }
     setTimeout(fSearchKeys, 0);
     return pageHead('함께 다니는 학생들', '친구', '접속한 친구가 위에 · 1:1 대화와 파티 초대') +
-      '<div class="card" style="margin-bottom:12px"><div class="row"><input id="f-q" maxlength="12" placeholder="학생 이름 검색" value="' + esc((S.frs && S.frs.q) || '') + '" style="flex:1;min-width:0"><button class="btn sm primary" data-act="fsearch">검색</button></div><div id="fsres">' + fSearchHtml() + '</div></div>' +
+      '<div class="card" style="margin-bottom:12px">' + fSearchBox() + '</div>' +
       '<div class="card" id="flist">' + (S.frHtml || '<p class="small muted">불러오는 중…</p>') + '</div>';
   };
   // 학생 검색: 이름 일부로 찾고, 누르면 정보창이 열려 그곳에서 친구 신청한다
+  // 학생 이름 검색 칸 (친구 화면 · 내 정보 › 친구 탭 맨 위)
+  function fSearchBox() { return '<div class="row"><input id="f-q" maxlength="12" placeholder="학생 이름 검색" value="' + esc((S.frs && S.frs.q) || '') + '" style="flex:1;min-width:0"><button class="btn sm primary" data-act="fsearch">검색</button></div><div id="fsres">' + fSearchHtml() + '</div>'; }
   function fSearchKeys() { var inp = $('#f-q'); if (inp && !inp.__k) { inp.__k = 1; inp.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); ACT.fsearch(); } }); } }
   function fSearchHtml() {
     var r = S.frs; if (!r) return '<p class="tiny faint" style="margin-top:6px">이름 일부로 찾을 수 있습니다. 학생을 누르면 정보창이 열리고, 정보창에서 친구 신청 · 1:1 · 파티 초대를 할 수 있습니다.</p>';
@@ -3925,7 +3927,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026101991;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026101992;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
