@@ -485,7 +485,7 @@ button[disabled][data-why] { pointer-events: none; }
 .shw > .tdrag { cursor: grabbing; user-select: none; }
 .shw > .tdrag * { pointer-events: none; }
 /* 모바일에서 채팅을 펼쳐 둔 동안 뒤 페이지가 같이 스크롤되지 않게 */
-@media (max-width: 900px) { body.dock-lock { overflow: hidden; overscroll-behavior: none; } }
+
 .dock, .dock .dtabs, .memenu { overscroll-behavior: contain; }
 @media (min-width: 901px) { #toasts { right: auto; left: 50%; transform: translateX(-50%); bottom: calc(24px + env(safe-area-inset-bottom, 0px)); } }
 @media (min-width: 1280px) {
@@ -1489,3 +1489,8 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 .ttlist .ttph { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
 .ttlist .ttps { line-height: 1.45; }
 .ttedit .ttrow select { min-width: 0; }
+/* 운영진 칭호 = 운영진 배지: 학생회장(분홍~노랑) · 학생회(보라). 서버가 확인한 등급이 있어야 낄 수 있다 */
+.ttl.op { display: inline-flex; align-items: center; gap: 3px; font-weight: 700; }
+.ttl.op::before { content: ''; width: 10px; height: 10px; flex: none; background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M6 1l4 1.6v3C10 8.3 8.2 10.2 6 11 3.8 10.2 2 8.3 2 5.6v-3z'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M6 1l4 1.6v3C10 8.3 8.2 10.2 6 11 3.8 10.2 2 8.3 2 5.6v-3z'/%3E%3C/svg%3E") center / contain no-repeat; }
+.ttl.op.chief { color: #7a3448; background: linear-gradient(135deg, #ffc6d9, #ffd9c2 50%, #fff0b3); border-color: rgba(214, 120, 150, .45); }
+.ttl.op.council { color: #4b2a7a; background: linear-gradient(135deg, #e6d9ff, #d4c2ff 50%, #f1e8ff); border-color: rgba(140, 110, 210, .45); }

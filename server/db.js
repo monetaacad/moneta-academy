@@ -151,6 +151,7 @@ function open(dir) {
   // 로그인 아이디: 평문 대신 HMAC 색인(sec.index)만 둔다. 게임 안에는 나오지 않는다. 빈 값은 server.js가 시작할 때 채운다
   { const ic = db.prepare(`PRAGMA table_info(invites)`).all().map((c) => c.name); if (ic.indexOf('op') < 0) db.exec(`ALTER TABLE invites ADD COLUMN op INTEGER NOT NULL DEFAULT 0`); }   // 운영자 초대코드
   if (cols.indexOf('login_key') < 0) db.exec(`ALTER TABLE players ADD COLUMN login_key TEXT NOT NULL DEFAULT ''`);
+  if (cols.indexOf('login_enc') < 0) db.exec(`ALTER TABLE players ADD COLUMN login_enc TEXT NOT NULL DEFAULT ''`);   // 아이디 (암호화 · 운영실 확인용)
   if (cols.indexOf('deleted') < 0) db.exec(`ALTER TABLE players ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0`);   // 캐릭터 초기화로 남은 예전 캐릭터
   db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS players_login ON players(login_key) WHERE login_key <> ''`);
   const ccols = db.prepare(`PRAGMA table_info(chat)`).all().map((c) => c.name);
@@ -364,7 +365,7 @@ function open(dir) {
     noLoginKey: db.prepare(`SELECT id, name_key FROM players WHERE login_key = ''`),
     setLoginKey: db.prepare(`UPDATE players SET login_key = ? WHERE id = ?`),
     playerMeta: db.prepare(`SELECT id, name, guest, muted_until, banned, invite, role FROM players WHERE id = ?`),
-    admins: db.prepare(`SELECT id FROM players WHERE role = 'admin'`),
+    admins: db.prepare(`SELECT id, role FROM players WHERE role IN ('admin', 'chief')`),   // admin 학생회 · chief 학생회장
     setRole: db.prepare(`UPDATE players SET role = ? WHERE id = ?`),
     oplogAdd: db.prepare(`INSERT INTO oplog (t, actor, name, action, detail) VALUES (?, ?, ?, ?, ?)`),
     oplogList: db.prepare(`SELECT * FROM oplog ORDER BY id DESC LIMIT ?`),

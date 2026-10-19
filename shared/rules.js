@@ -937,12 +937,15 @@
   };
   R.rerollCost = function (P) { var n = P.daily.rr || 0; return n === 0 ? 0 : Math.min(40, 5 * Math.pow(2, n - 1)); };
   // 칭호
-  R.titleName = function (P, id) { var t = D.TITLES.find(function (x) { return x.id === id; }); if (!t || t.op && !P.op) return ''; return t.house ? D.HOUSE_TITLE[P.house] || '' : t.name; };
-  R.titleList = function (P) { return D.TITLES.filter(function (t) { return !t.op || P.op; }); };   // 운영진 전용 칭호는 운영자에게만 보인다
-  R.OP_TITLES = {}; D.TITLES.forEach(function (t) { if (t.op) R.OP_TITLES[t.name] = 1; });
+  // 운영 등급: P.op (서버가 정한다. 1 학생회 · 2 학생회장). 운영진 칭호는 등급이 맞는 학생에게만 보이고 낄 수 있다
+  function opLv(P) { return P && P.op ? (P.op >= 2 ? 2 : 1) : 0; }
+  R.titleName = function (P, id) { var t = D.TITLES.find(function (x) { return x.id === id; }); if (!t || t.op && opLv(P) < t.op) return ''; return t.house ? D.HOUSE_TITLE[P.house] || '' : t.name; };
+  R.titleList = function (P) { return D.TITLES.filter(function (t) { return !t.op || opLv(P) >= t.op; }); };
+  R.OP_TITLES = {}; D.TITLES.forEach(function (t) { if (t.op) R.OP_TITLES[t.name] = t.op; });
+  R.opTitleCls = function (name) { var v = R.OP_TITLES[name]; return v ? ' op ' + (v >= 2 ? 'chief' : 'council') : ''; };   // 칭호 이름 → 배지 모양
   R.titleOk = function (P, id) {
     var t = D.TITLES.find(function (x) { return x.id === id; }); if (!t) return false;
-    if (t.op) return !!P.op;
+    if (t.op) return opLv(P) >= t.op;
     if (t.grade) return P.grade >= t.grade || (P.st.maxGrade || 1) >= t.grade;
     if (t.stat) return (P.st[t.stat] || 0) >= t.n;
     return true;

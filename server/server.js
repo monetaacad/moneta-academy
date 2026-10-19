@@ -70,7 +70,7 @@ const guildOf = new Map();   // 학생 → 동아리 id
 // 운영자: players.role = 'admin' (DB에서 직접 바꾸거나 /api/admin/ops) 또는 환경 변수 ADMIN_NAMES=이름1,이름2
 // 운영자인지는 서버만 판단한다. 클라이언트가 보낸 값은 쓰지 않는다.
 const ADMIN_NAMES = new Set((process.env.ADMIN_NAMES || process.env.CHAT_OPS || '').split(',').map((x) => R.nameKey(x)).filter(Boolean));
-const adminIds = new Set(dbx.q.admins.all().map((r) => r.id));
+const adminIds = new Set(dbx.q.admins.all().map((r) => r.id)), chiefIds = new Set(dbx.q.admins.all().filter((r) => r.role === 'chief').map((r) => r.id));
 dbx.kvGet('chat_ops', []).forEach((id) => { dbx.q.setRole.run('admin', id); adminIds.add(id); }); dbx.kvSet('chat_ops', []);   // 예전 방식 옮기기
 function isChatOp(pid) {
   if (adminIds.has(pid)) return true;
@@ -98,7 +98,7 @@ function addNote(pid, kind, text, link) {
   try { dbx.q.noteInsert.run(pid, Math.floor(Date.now() / 1000), kind, sec.enc(String(text).slice(0, 300)), link ? JSON.stringify(link) : ''); chat.ping(pid, 'note', { n: Number(dbx.q.noteUnread.get(pid).n) }); } catch (e) { log('알림 저장 실패', e); }
 }
 setInterval(() => { try { dbx.q.notePrune.run(Math.floor(Date.now() / 1000) - 30 * 86400); } catch (e) { } }, 3600000).unref();
-const board = Board.create(dbx, sec, { isOp: (pid) => pid !== 'staff' && isChatOp(pid), sendMail: (...a) => sendMail(...a), note: (...a) => addNote(...a), log });
+const board = Board.create(dbx, sec, { isOp: (pid) => pid !== 'staff' && isChatOp(pid), badgeOf: (pid) => { if (pid === 'staff' || !isChatOp(pid)) return ''; const P = store.peek(pid), t = P ? R.titleName(P, P.title) : ((dbx.q.getProfile.get(pid) || {}).title || ''); return R.OP_TITLES[t] ? t : ''; }, sendMail: (...a) => sendMail(...a), note: (...a) => addNote(...a), log });
 const ExpRoom = require('./exproom.js');
 const exprooms = ExpRoom.create({ loadPlayer: (pid, now) => loadPlayer(pid, now), ctx: () => world.ctx(nowSec()), gameNow: () => nowSec(), markDirty: (pid) => store.markDirty(pid), partyOf, log,
   onRoom: (pid) => chat.exrChanged(pid),   // 방 출입 → 원정 채팅 탭
@@ -266,9 +266,11 @@ function serveStatic(req, res, urlPath) {
 
 /* ───────── 게임 상태 ───────── */
 // 운영자 여부를 P.op로 (규칙 엔진의 운영진 전용 칭호 판정용). 해제되면 운영진 칭호도 뗀다
+// 운영 등급: 2 학생회장(chief) · 1 학생회(admin) · 0. 칭호(운영진 배지)는 이 등급으로만 열린다
+function opLevel(pid) { return chiefIds.has(pid) ? 2 : isChatOp(pid) ? 1 : 0; }
 function syncOp(P) {
-  const op = isChatOp(P.id) ? 1 : 0; let ch = (P.op || 0) !== op; P.op = op;
-  if (!op && P.title && !R.titleOk(P, P.title)) { P.title = ''; ch = true; }
+  const op = opLevel(P.id); let ch = (P.op || 0) !== op; P.op = op;
+  if (P.title && !R.titleOk(P, P.title)) { P.title = ''; ch = true; }
   if (ch) store.markDirty(P.id);
 }
 function loadPlayer(pid, now) {
@@ -349,6 +351,7 @@ routes['POST /api/register'] = async (req, res) => {
       dbx.q.insertPlayerFull.run(id, name, nameKey(name), house, hashed, Math.floor(now), Math.floor(now), JSON.stringify(P), 0, code, lkey);
     });
   } catch (e) { return fail(req, res, e.status || 409, e.status ? e.message : '이미 쓰는 이름이나 아이디입니다'); }
+  try { dbx.db.prepare('UPDATE players SET login_enc = ? WHERE id = ?').run(sec.enc(login), id); } catch (e) { }   // 운영실 확인용 (암호화)
   store.put(P);
   if (opInv) { dbx.q.setRole.run('admin', id); adminIds.add(id); P.op = 1; oplog('admin', '관리자', 'role', `${name} → admin (운영자 초대코드)`); }
   const token = newSession(id);
@@ -385,6 +388,7 @@ routes['POST /api/login'] = async (req, res) => {
   if (!(await checkPass(pw, row.pass))) return fail(req, res, 401, '아이디나 비밀번호가 맞지 않습니다');
   if (row.banned) return fail(req, res, 403, '이용이 정지된 계정입니다');
   if (needsRehash(row.pass)) dbx.q.setPass.run(await hashPass(pw), row.id);
+  try { const le = dbx.db.prepare('SELECT login_enc FROM players WHERE id = ?').get(row.id); if (le && !le.login_enc && LOGIN_RE.test(login.toLowerCase())) dbx.db.prepare('UPDATE players SET login_enc = ? WHERE id = ?').run(sec.enc(login.toLowerCase()), row.id); } catch (e) { }   // 예전 학생은 로그인할 때 아이디를 기록
   const token = newSession(row.id), now = nowSec();
   const P = loadPlayer(row.id, now);
   send(req, res, 200, Object.assign({ token }, statePayload(P, now)), { 'Set-Cookie': cookie(token, cfg.sessionDays * 86400) });
@@ -1596,9 +1600,10 @@ routes['POST /api/admin/ops'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
   const b = await readJson(req, 1024), row = dbx.q.playerByKey.get(nameKey(String(b.name || '')));
   if (!row) return fail(req, res, 404, '없는 학생입니다');
-  const on = b.op !== false; dbx.q.setRole.run(on ? 'admin' : 'user', row.id); if (on) adminIds.add(row.id); else adminIds.delete(row.id);
+  const on = b.op !== false, role = !on ? 'user' : b.rank === 'chief' ? 'chief' : 'admin';   // admin 학생회 · chief 학생회장
+  dbx.q.setRole.run(role, row.id); if (on) adminIds.add(row.id); else adminIds.delete(row.id); if (role === 'chief') chiefIds.add(row.id); else chiefIds.delete(row.id);
   { const P = store.get(row.id); if (P) syncOp(P); }
-  oplog('admin', '관리자', 'role', `${row.name || b.name} → ${on ? 'admin' : 'user'}`); chat.opChanged(row.id); send(req, res, 200, { ok: true, op: on });
+  oplog('admin', '관리자', 'role', `${row.name || b.name} → ${role === 'chief' ? '학생회장' : role === 'admin' ? '학생회' : '운영자 해제'}`); chat.opChanged(row.id); send(req, res, 200, { ok: true, op: on, rank: role });
 };
 routes['POST /api/admin/slow'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
@@ -1646,14 +1651,27 @@ function resetCharacter(oldId) {
     try { D('UPDATE push_subs SET pid = ? WHERE pid = ?', newId, oldId); } catch (e) { }
     D("UPDATE players SET deleted = 1, banned = 1, name_key = ?, login_key = '', pass = '' WHERE id = ?", '~del:' + oldId, oldId);
     dbx.q.insertPlayerFull.run(newId, '새 학생', '~new:' + newId, row.house, row.pass, real, real, JSON.stringify(P0), 0, row.invite || '', row.login_key);
-    if (row.role === 'admin') dbx.q.setRole.run('admin', newId);
+    if (row.role === 'admin' || row.role === 'chief') dbx.q.setRole.run(row.role, newId);
+    D('UPDATE players SET login_enc = ? WHERE id = ?', row.login_enc || '', newId);
   });
   if (adminIds.has(oldId)) { adminIds.delete(oldId); adminIds.add(newId); }
+  if (chiefIds.has(oldId)) { chiefIds.delete(oldId); chiefIds.add(newId); }
   for (const [k, v] of sessionCache) if (v.pid === oldId) sessionCache.delete(k);
   store.drop(oldId); chat.kick(oldId);
   oplog('admin', '관리자', 'reset', row.name + ' 캐릭터 초기화');
   return { name: row.name, id: newId };
 }
+// 운영실: 학생 이름 ↔ 아이디 확인 (크로스체크용). 아이디는 암호화해 두었다가 여기서만 풀어 보여 준다
+routes['POST /api/admin/lookup'] = async (req, res) => {
+  if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
+  const b = await readJson(req, 1024), lg = String(b.login || '').trim(), nm = String(b.name || '').trim();
+  const sel = 'SELECT id, name, role, login_enc, banned, deleted FROM players WHERE ';
+  const row = nm ? dbx.db.prepare(sel + 'name_key = ?').get(nameKey(nm)) : lg ? dbx.db.prepare(sel + 'login_key = ?').get(loginKey(lg)) : null;
+  if (!row) return fail(req, res, 404, nm ? '없는 학생 이름입니다' : lg ? '없는 아이디입니다' : '이름이나 아이디 입력 필요');
+  let login = ''; try { login = row.login_enc ? sec.dec(row.login_enc) : ''; } catch (e) { }
+  oplog('admin', '관리자', 'lookup', (row.name || '') + ' 아이디 확인');
+  send(req, res, 200, { name: row.name, login: login || null, rank: row.role === 'chief' ? '학생회장' : row.role === 'admin' ? '학생회' : '', banned: !!row.banned });
+};
 routes['POST /api/admin/reset'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
   const b = await readJson(req, 1024), row = dbx.q.playerByKey.get(nameKey(String(b.name || '')));

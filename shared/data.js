@@ -708,12 +708,9 @@ var DATA = (function () {
     { id: 'summa', name: '전 학년 수석', stat: 'sGrades', n: 7, how: '일곱 기말시험 모두 S' },
     { id: 'loyal', name: '개근상', stat: 'streak', n: 30, how: '30일 연속 출석' },
     { id: 'house', name: '', house: true, how: '내 기숙사의 상징 (기숙사마다 다름)' },
-    // 운영진 전용 칭호: 서버가 운영자에게만 P.op를 켜 준다. 운영자가 아니면 목록에도 나오지 않고 달 수도 없다
-    { id: 'op_bell', name: '종지기', op: true, how: '운영진 전용' },
-    { id: 'op_clerk', name: '아카데미 서기', op: true, how: '운영진 전용' },
-    { id: 'op_warden', name: '사감', op: true, how: '운영진 전용' },
-    { id: 'op_admit', name: '입학처장', op: true, how: '운영진 전용' },
-    { id: 'op_dean', name: '학장 대리', op: true, how: '운영진 전용' }
+    // 운영진 칭호 = 운영진 배지 (끼우면 배지가 보이고 빼면 안 보인다). op: 필요한 운영 등급 (1 학생회 · 2 학생회장). 서버가 확인한 등급이 있어야만 보이고 낄 수 있다
+    { id: 'op_council', name: '학생회', op: 1, how: '운영진 전용' },
+    { id: 'op_chief', name: '학생회장', op: 2, how: '운영진 전용' }
   ];
   D.HOUSE_TITLE = { lanterna: '등불관의 별', clepsydra: '물시계관의 물방울', corona: '가시왕관관의 칼날', speculum: '거울관의 그림자' };
 
