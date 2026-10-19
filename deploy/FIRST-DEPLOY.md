@@ -149,7 +149,7 @@ git init -b main
 git remote add origin github-moneta:monetaacad/moneta-academy.git
 git fetch origin
 git reset --hard origin/main     # 코드만 깃 버전으로 맞춤. data/ 는 .gitignore 라 지워지지 않음
-git config --global --add safe.directory /opt/moneta
+git config --system --add safe.directory /opt/moneta
 chown -R moneta:moneta /opt/moneta
 ```
 처음부터 깃으로 시작한다면 3번 대신 `git clone github-moneta:monetaacad/moneta-academy.git /opt/moneta` 후 3번의 `useradd` · `mkdir data` · `chown` 줄만 실행합니다.

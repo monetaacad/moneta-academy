@@ -80,7 +80,7 @@ CFG
 ssh -T github-moneta                # yes 입력 → "successfully authenticated" 나오면 성공
 
 git clone github-moneta:monetaacad/moneta-academy.git /opt/moneta
-git config --global --add safe.directory /opt/moneta
+git config --system --add safe.directory /opt/moneta
 useradd -r -s /usr/sbin/nologin moneta
 mkdir -p /opt/moneta/data && chown -R moneta:moneta /opt/moneta && chmod 700 /opt/moneta/data
 ```
