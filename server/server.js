@@ -328,7 +328,16 @@ if (!dbx.kvGet('profNoticeClean', 0)) { dbx.q.recentChat.all('notice', 500).forE
 function aucBrief(now) { const v = R.auctionVisit(now); return v ? { start: v.start, end: v.end, active: v.active } : null; }
 function classView(now) { return { n: lecCounts(now), prof: profLines(now) }; }
 
+// 가방이 가득 차서 넘친 장비(P.mailQ)를 우편으로 보낸다 (10개씩, 30일). 응답을 보낼 때와 저장할 때
+function drainMailQ(P) {
+  const q = P.mailQ; if (!q || !q.length) return; P.mailQ = [];
+  const exp = Math.floor(Date.now() / 1000) + 30 * 86400;
+  for (let i = 0; i < q.length; i += 10) sendMail(P.id, '원정대', '가방이 가득 차 맡겨 둔 장비', '가방이 가득 차 있어 얻은 장비를 우편으로 보관했습니다. 가방을 비운 뒤 받아 가세요.', { items: q.slice(i, i + 10) }, exp, true);
+  store.markDirty(P.id);
+}
+store.beforeWrite = drainMailQ;
 function statePayload(P, now) {
+  drainMailQ(P);
   let mrow;
   return { now, scale: cfg.timeScale, P: R.publicState(P), W: world.publicView(now, store.online(120000)), rank: world.rankOf(R.summary(P, world.W, now).power), fr: Number(dbx.q.friendIncomingCount.get(P.id).n), pinv: Number(dbx.q.partyInviteCount.get(P.id).n), party: partyOf.get(P.id) || null, guild: guildOf.get(P.id) || null, mailN: (mrow = mailNewRow(P.id), Number(mrow.n)), mailTop: Number(mrow.top), cls: classView(now), rit: ritView(P, now), auc: aucBrief(now), erInv: exprooms.invN(P.id), noteN: Number(dbx.q.noteUnread.get(P.id).n) };
 }
@@ -1304,17 +1313,19 @@ routes['POST /api/mail'] = async (req, res) => {
   if (op === 'read') { pick.forEach((r) => dbx.q.mailRead.run(r.id, me)); return send(req, res, 200, { ok: true }); }
   if (op !== 'claim' && op !== 'claimAll') return fail(req, res, 400, '알 수 없는 요청입니다');
   const P = loadPlayer(me, now); if (!P) return fail(req, res, 401, '학생 정보를 찾을 수 없습니다');
-  const got = [];
+  const got = [], full = [], bag = R.calc(P, world.ctx(now), now).bag;
   pick.forEach((r) => {
     if (r.cl) return;
-    if (!dbx.q.mailClaim.run(r.id, me).changes) return;   // 이미 받은 우편 (동시에 두 번 눌러도 한 번만)
     let rw = {}; try { rw = JSON.parse(r.rewards); } catch (e) { }
+    const need = R.mailNeedSlots(rw); if (need && P.inv.length + need > bag) { full.push(r.id); return; }   // 장비는 가방에 자리가 있어야 받는다
+    if (!dbx.q.mailClaim.run(r.id, me).changes) return;   // 이미 받은 우편 (동시에 두 번 눌러도 한 번만)
     const o = R.grantMail(P, world.ctx(now), now, rw);
     R.log(P, now, '우편 「' + sec.dec(r.title) + '」 보상을 받았습니다' + (o.text ? ': ' + o.text : ''), 'news');
     got.push({ id: r.id, text: o.text, items: o.items });
   });
   if (got.length) store.markDirty(me);
-  send(req, res, 200, Object.assign(statePayload(P, now), { ok: true, got }));
+  if (!got.length && full.length) return fail(req, res, 400, '가방 칸이 모자랍니다. 장비를 정리한 뒤 받으세요');
+  send(req, res, 200, Object.assign(statePayload(P, now), { ok: true, got, full: full.length }));
 };
 routes['POST /api/admin/mail'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');

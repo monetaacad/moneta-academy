@@ -178,7 +178,7 @@
   }
 
   /* ───────── 자리 비운 동안 보고 ───────── */
-  function expReportLine(o) { return '<li><b>' + o.s + '단계 원정</b> ' + (o.fell ? '<span class="bad">쓰러져 귀환 (80%)</span>' : '귀환') + ' — ' + fmt(o.kills) + '마리, ' + MONEY(o.gold, '+') + (o.items.length ? ', 장비 ' + o.items.map(function (it) { return '<span style="color:' + rcol(it.r) + '">' + esc(it.name) + '</span>'; }).slice(0, 3).join(', ') + (o.items.length > 3 ? ' 외 ' + (o.items.length - 3) + '개' : '') : '') + '</li>'; }
+  function expReportLine(o) { return '<li><b>' + o.s + '단계 원정</b> ' + (o.fell ? '<span class="bad">쓰러져 귀환 (80%)</span>' : '귀환') + ' — ' + fmt(o.kills) + '마리, ' + MONEY(o.gold, '+') + (o.items.length ? ', 장비 ' + o.items.map(function (it) { return '<span style="color:' + rcol(it.r) + '">' + esc(it.name) + '</span>'; }).slice(0, 3).join(', ') + (o.items.length > 3 ? ' 외 ' + (o.items.length - 3) + '개' : '') + (o.items.some(function (it) { return it.res === 'mail'; }) ? ' <span class="tiny gold">(가방이 가득 차 ' + o.items.filter(function (it) { return it.res === 'mail'; }).length + '개는 우편함으로)</span>' : '') : '') + '</li>'; }
   function inboxReport() {
     var items = S.P.inbox.slice(), lines = [];
     S.inboxUpto = items.reduce(function (m, o) { return Math.max(m, o.t || 0); }, 0);
@@ -734,11 +734,12 @@
   };
   function mailGot(j) {
     if (j.error) { toast('우편함', j.error); return; } absorb(j);
-    var g = j.got || []; if (g.length) { Snd.play('ach'); toast('우편 보상을 받았습니다', g.map(function (x) { return x.text; }).filter(Boolean).join(' · ').slice(0, 120), 3200); }
+    var g = j.got || []; if (j.full) setTimeout(function () { toast('우편함', '가방 칸이 모자라 장비 우편 ' + j.full + '통은 그대로 두었습니다', 3500); }, g.length ? 3300 : 0);
+    if (g.length) { Snd.play('ach'); toast('우편 보상을 받았습니다', g.map(function (x) { return x.text; }).filter(Boolean).join(' · ').slice(0, 120), 3200); }
     // 장비 · 환수의 알은 받은 뒤 어디에 있는지 알려 준다 (장비 상자는 받는 순간 열린다)
     var its = [].concat.apply([], g.map(function (x) { return x.items || []; })), egg = g.some(function (x) { return /환수의 알|토벌 도전권|망각의 차/.test(x.text || ''); });   // 소지품으로 들어가는 것
     if (its.length || egg) {
-      var WHERE = { equip: '바로 장착했습니다', bag: '장비 가방에 넣었습니다', sold: '가방이 가득 차 판매했습니다', dis: '자동 분해했습니다' };
+      var WHERE = { equip: '바로 장착했습니다', bag: '장비 가방에 넣었습니다', sold: '가방이 가득 차 판매했습니다', dis: '자동 분해했습니다', mail: '가방이 가득 차 우편함으로 보냈습니다' };
       setTimeout(function () {
         modal(mhead('받은 보상', '우편') + (its.length ? '<div class="section-t">장비 <span class="tiny faint">(장비 상자는 받는 순간 열립니다)</span></div><ul class="report" style="margin-top:4px">' + its.map(function (x) { return '<li><b style="color:' + rcol(x.r || 0) + '">' + esc(x.name) + '</b> — ' + (WHERE[x.res] || '받았습니다') + '</li>'; }).join('') + '</ul>' : '') +
           (egg ? '<p class="small" style="margin-top:10px">환수의 알 · 토벌 도전권 · 망각의 차는 「장비 → 소지품」에 들어갔습니다. 소지품에서 바로 쓰거나 해당 화면으로 갈 수 있습니다.</p>' : '') +
@@ -1022,6 +1023,7 @@
     var P = S.P, lv = P.subj[sid].lv, a = [], ex = R.examFor(P), cls = P.cls || 'mage';
     D.SPELLS.forEach(function (sp) { if (sp.req && sp.req[0] === sid && lv < sp.req[1] && (!sp.cls || sp.cls.indexOf(cls) >= 0)) a.push([sp.req[1], '주문 「' + sp.name + '」']); });
     if (sid === 'alch') D.POTIONS.forEach(function (p) { if (lv < p.unlock) a.push([p.unlock, '물약 「' + p.name + '」']); });
+    if (sid === 'beast' && !R.famOpen(P)) a.push([R.FAM_SUBJ, '사역마 · 첫 환수의 알']);
     if (ex && P.grade < 8 && ex.subj.indexOf(sid) >= 0 && lv < ex.req) a.push([ex.req, '기말 기준']);
     var s = R.mqStep(P); if (s) s.st.g.forEach(function (q) { if (q.k === 'subj' && q.s === sid && lv < q.n) a.push([q.n, '학기 이야기']); });
     a.sort(function (x, y) { return x[0] - y[0]; });
@@ -1685,7 +1687,7 @@
   V.work = function () {
     var h = pageHead('연금화학 실습실 · 환수 사육장', '공방', ''), g2 = S.P.grade >= 2;
     if (!g2) S.workTab = 'fam';
-    h += '<div class="tabs" role="tablist"><button role="tab" class="' + (S.workTab === 'alch' ? 'on' : '') + '" data-act="worktab" data-a="alch"' + (g2 ? '' : ' disabled') + '>연금술' + (g2 ? '' : ' (2학년)') + '</button><button role="tab" class="' + (S.workTab === 'fam' ? 'on' : '') + '" data-act="worktab" data-a="fam">사역마' + (R.famOpen(S.P) ? '' : ' (Lv ' + R.FAM_LV + ')') + '</button></div>';
+    h += '<div class="tabs" role="tablist"><button role="tab" class="' + (S.workTab === 'alch' ? 'on' : '') + '" data-act="worktab" data-a="alch"' + (g2 ? '' : ' disabled') + '>연금술' + (g2 ? '' : ' (2학년)') + '</button><button role="tab" class="' + (S.workTab === 'fam' ? 'on' : '') + '" data-act="worktab" data-a="fam">사역마' + (R.famOpen(S.P) ? '' : ' (잠김)') + '</button></div>';
     return h + (S.workTab === 'alch' ? alchView() : famView());
   };
   function matTag(m, need) { var have = S.P.mats[m] || 0; return '<span class="tag ' + (have >= need ? 'ok' : 'no') + '">' + D.MATS[m].name + ' ' + fmt(have) + '/' + need + '</span>'; }
@@ -1709,8 +1711,8 @@
     return h;
   }
   function famView() {
-    var P = S.P, eh = R.eggHold(P), hold = '<p class="small" style="margin-top:8px">알 품기: 지니고 있는 알 <b class="num">' + P.fam.eggs + '</b>개' + (eh ? ' · <span class="good">경험치 +' + Math.round(eh * R.EGG_HOLD_EACH * 100) + '%</span>' : '') + ' <span class="tiny faint">(부화시키지 않은 알 하나마다 경험치 +' + Math.round(R.EGG_HOLD_EACH * 100) + '%, ' + R.EGG_HOLD_MAX + '개까지)</span></p>';
-    if (!R.famOpen(P)) return '<div class="card"><h3>사역마는 레벨 ' + R.FAM_LV + '부터</h3><p class="small muted" style="margin-top:4px">레벨 ' + R.FAM_LV + '이 되면 고드릭 펜 교수가 첫 환수의 알을 주고, 알을 부화시켜 동행하거나 파견할 수 있습니다. 그전에도 환수생태학 수업은 들을 수 있습니다(부화 속도 +1%/레벨). 지금 레벨 ' + P.lvl + '.</p>' + hold + '</div>';
+    var P = S.P, eh = R.eggHold(P), hold = '<p class="small" style="margin-top:8px">알 품기: 지니고 있는 알 <b class="num">' + P.fam.eggs + '</b>개' + (eh ? ' · <span class="good">경험치 +' + Math.round(eh * R.EGG_HOLD_EACH * 100) + '%</span>' : '') + ' <span class="tiny faint">(부화시키지 않은 알 하나마다 경험치 +' + Math.round(R.EGG_HOLD_EACH * 100) + '%, ' + R.EGG_HOLD_MAX + '개까지)</span></p>' + (P.subj.beast.lv ? '<p class="small" style="margin-top:4px">환수생태학 ' + P.subj.beast.lv + '레벨: 사역마 동행 보너스 +' + Math.round(P.subj.beast.lv * R.BEAST_FAM * 100) + '% · 파견 보상 +' + Math.round(P.subj.beast.lv * R.BEAST_DISP * 100) + '% · 부화 속도 +' + P.subj.beast.lv + '%</p>' : '<p class="tiny faint" style="margin-top:4px">환수생태학을 들으면 레벨마다 사역마 동행 보너스 +' + Math.round(R.BEAST_FAM * 100) + '%, 파견 보상 +' + Math.round(R.BEAST_DISP * 100) + '%, 부화 속도 +1%</p>');
+    if (!R.famOpen(P)) return '<div class="card"><h3>사역마는 ' + R.FAM_OPEN_TEXT + '부터</h3><p class="small muted" style="margin-top:4px">환수생태학 수업을 들어 ' + R.FAM_SUBJ + '레벨이 되거나 레벨 ' + R.FAM_LV + '이 되면 고드릭 펜 교수가 첫 환수의 알을 주고, 알을 부화시켜 동행하거나 파견할 수 있습니다. 지금 환수생태학 ' + P.subj.beast.lv + '레벨 · 레벨 ' + P.lvl + '.</p><div class="row" style="margin-top:8px"><button class="btn sm primary" data-act="nav" data-a="lecture">수업 듣기</button></div>' + hold + '</div>';
     var price = R.eggPrice(P, wctx(), now());
     var h = '<div class="grid g2" style="margin-bottom:14px"><div class="card hl"><h3>부화기</h3><p class="small muted">보관 중인 알 <b class="num gold">' + P.fam.eggs + '</b>개. 보스 첫 처치, 월드 보스 토벌, 12시간 파견, 매점에서 얻습니다. 마나를 불어넣으면 그 자리에서 깨어납니다.</p>' + hold;
     h += '<div class="row" style="margin-top:10px"><button class="btn primary" data-act="do" data-a="egg"' + (P.fam.eggs > 0 && predMana() >= price ? '' : ' disabled') + '>부화시키기 <span class="cost">마나 ' + fmt(price) + '</span></button></div>';
@@ -1721,7 +1723,7 @@
       if (!o) { h += '<div class="card famcard unk"><div><div class="small">???</div><div class="tiny" style="color:' + fr.color + '">' + fr.name + '</div><div class="tiny faint">' + D.BONUS_NAMES[f.bonus] + '</div></div></div>'; return; }
       var act2 = P.fam.act === f.id, disp = P.fam.disp[f.id], cost = o.lv < 20 ? R.feedCost(P, f.id) : 0;
       h += '<div class="card famcard' + (act2 ? ' act' : '') + '"><div style="flex:1;min-width:0"><div class="row" style="gap:6px"><b>' + f.name + '</b><span class="num tiny gold">Lv ' + o.lv + '</span></div><div class="tiny" style="color:' + fr.color + '">' + fr.name + '</div>' +
-        '<div class="small">' + D.BONUS_NAMES[f.bonus] + ' +' + pct(R.famBonus(f, o.lv)) + '</div>' + (disp ? '<div class="tiny gold">파견 중 · ' + clock(disp.end) + ' 귀환</div>' : '<div class="tiny faint">' + f.desc + '</div>') +
+        '<div class="small">' + D.BONUS_NAMES[f.bonus] + ' +' + pct(R.famBonus(f, o.lv, P)) + '</div>' + (disp ? '<div class="tiny gold">파견 중 · ' + clock(disp.end) + ' 귀환</div>' : '<div class="tiny faint">' + f.desc + '</div>') +
         '<div class="row" style="margin-top:6px;gap:6px">' + (o.lv < 20 ? '<button class="btn sm" data-act="do" data-a="feed" data-b="' + f.id + '"' + (P.res.gold >= cost ? '' : ' disabled') + '>먹이 <span class="cost">' + fmt(cost) + ' ' + CUR + '</span></button>' : '<span class="tag br">최대 레벨</span>') +
         (act2 ? '<span class="tag ok">동행 중</span>' : disp ? '' : '<button class="btn sm ghost" data-act="do" data-a="famAct" data-b="' + f.id + '">동행</button><button class="btn sm ghost" data-act="dispatch" data-a="' + f.id + '">' + R.DDUR[dk].label + ' 파견</button>') + '</div></div></div>';
     });
@@ -2925,7 +2927,7 @@
   function invItems() {
     var P = S.P, tk = P.tok || {}, out = [], g3 = R.famOpen(P);
     function B(act, a, b, label, primary) { return '<button class="btn sm' + (primary ? ' primary' : ' ghost') + '" data-act="' + act + '"' + (a != null ? ' data-a="' + a + '"' : '') + (b != null ? ' data-b="' + b + '"' : '') + '>' + label + '</button>'; }
-    if (P.fam.eggs > 0) out.push({ k: 'egg', name: '환수의 알', n: P.fam.eggs, desc: (g3 ? '공방 부화기에서 마나로 부화시켜 사역마로 키웁니다.' : '레벨 ' + R.FAM_LV + '부터 공방에서 부화할 수 있습니다. 그때까지 여기에 보관됩니다.') + ' 지니고 있는 동안 알 품기로 경험치 +' + Math.round(R.EGG_HOLD_EACH * 100) + '%(' + R.EGG_HOLD_MAX + '개까지).', acts: (g3 && !P.fam.egg ? B('do', 'egg', null, '바로 부화', true) : '') + B('goto', 'work', 'fam', '부화기로') });
+    if (P.fam.eggs > 0) out.push({ k: 'egg', name: '환수의 알', n: P.fam.eggs, desc: (g3 ? '공방 부화기에서 마나로 부화시켜 사역마로 키웁니다.' : R.FAM_OPEN_TEXT + '부터 공방에서 부화할 수 있습니다. 그때까지 여기에 보관됩니다.') + ' 지니고 있는 동안 알 품기로 경험치 +' + Math.round(R.EGG_HOLD_EACH * 100) + '%(' + R.EGG_HOLD_MAX + '개까지).', acts: (g3 && !P.fam.egg ? B('do', 'egg', null, '바로 부화', true) : '') + B('goto', 'work', 'fam', '부화기로') });
     if (P.wb.tickets + (P.wb.extra || 0) > 0) out.push({ k: 'ticket', name: '토벌 도전권', n: P.wb.tickets + (P.wb.extra || 0), desc: '충전 도전권 ' + P.wb.tickets + ' / ' + R.K.WB_TICKET_MAX + (P.wb.extra > 0 ? ' · 추가 도전권 ' + P.wb.extra + '장 (이번 주 ' + R.wbExtraLeft(P, now()) + '번 더 사용 가능)' : '') + '. 월드 보스에 한 번 도전할 때 1장씩 씁니다. 충전 도전권은 8시간마다 3장까지 차고, 매점 · 우편으로 받은 추가 도전권은 충전 도전권을 다 쓴 뒤 한 주에 ' + R.K.WB_EXTRA_USE + '번까지 쓸 수 있으며 남은 것은 다음 주로 넘어갑니다.', acts: B('goto', 'world', null, '월드 보스로', true) });
     if (tk.respec > 0) out.push({ k: 'respec', name: '망각의 차', n: tk.respec, desc: '마시면 분배한 능력치 포인트를 모두 돌려받고 자동 분배가 꺼집니다.', acts: B('respecuse', null, null, S.confirm.rsp > Date.now() ? '한 번 더 누르면 마십니다' : '바로 마시기', true) + B('goto', 'gear', 'alloc', '능력치 칸으로') });
     D.POTIONS.forEach(function (p) { if (P.shelf[p.id] > 0) out.push({ k: 'pot:' + p.id, name: p.name, n: P.shelf[p.id], desc: p.desc, dot: p.color, acts: B('do', 'drink', p.id, '바로 마시기', true) + B('goto', 'work', 'alch', '연금술로') }); });
@@ -3971,7 +3973,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026101998;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102000;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
