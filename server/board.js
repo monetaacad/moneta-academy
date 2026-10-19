@@ -9,7 +9,7 @@ const LIM = { TITLE: 40, BODY: 3000, COM: 500, PAGE: 20, DAY: 30 };
 function create(dbx, sec, opts) {
   const isOp = opts.isOp, sendMail = opts.sendMail || (() => {}), log = opts.log || (() => {});
   const posts = new Map();   // id → {id, pid, tag, priv, title, body, created, updated, last, ncom}
-  dbx.q.bdAll.all().forEach((r) => { try { posts.set(r.id, { id: r.id, pid: r.pid, tag: r.tag, priv: !!r.priv, title: sec.dec(r.title), body: sec.dec(r.body), created: r.created, updated: r.updated, last: r.last, ncom: r.ncom }); } catch (e) { } });
+  dbx.q.bdAll.all().forEach((r) => { try { posts.set(r.id, { id: r.id, pid: r.pid, tag: r.tag, priv: !!r.priv, title: sec.dec(r.title), body: sec.dec(r.body), created: r.created, updated: r.updated, last: r.last, ncom: r.ncom, st: r.st || '' }); } catch (e) { } });
   const names = new Map();
   function nameOf(pid) {
     if (pid === 'staff') return '운영진';
@@ -20,7 +20,7 @@ function create(dbx, sec, opts) {
   const canSee = (me, p) => !p.priv || p.pid === me || isOp(me);
   const clean = (v, max) => String(v == null ? '' : v).replace(/\r\n?/g, '\n').replace(/[\u0000-\u0009\u000B-\u001F\u007F​-‏‪-‮⁦-⁩]/g, '').replace(/\n{4,}/g, '\n\n\n').trim().slice(0, max);
   function brief(p, me) {
-    return { id: p.id, tag: p.tag, priv: p.priv, title: p.title, author: nameOf(p.pid), aid: p.pid, aop: (opts.badgeOf || (() => ''))(p.pid), mine: p.pid === me, created: p.created, updated: p.updated, last: p.last, ncom: p.ncom };
+    return { id: p.id, tag: p.tag, priv: p.priv, title: p.title, author: nameOf(p.pid), aid: p.pid, aop: (opts.badgeOf || (() => ''))(p.pid), mine: p.pid === me, created: p.created, updated: p.updated, last: p.last, ncom: p.ncom, st: p.st || '' };
   }
   // f: {tag: ''|태그|'priv'|'mine', q, qt: 'author'|'title'|'all', page}
   function list(me, f) {
@@ -30,6 +30,7 @@ function create(dbx, sec, opts) {
       if (tag === 'priv') { if (!op || !p.priv) return; }
       else if (tag === 'mine') { if (p.pid !== me) return; }
       else { if (p.priv) return; if (tag && p.tag !== tag) return; }   // 관리자만 보기 글은 일반 목록에 나오지 않는다 (운영진 포함)
+      if (f.hideDone && p.st === 'done') return;   // 해결 완료 숨기기
       if (q) {
         const hit = qt === 'author' ? nameOf(p.pid).toLowerCase().replace(/ /g, '').indexOf(q.replace(/ /g, '')) >= 0
           : qt === 'title' ? p.title.toLowerCase().indexOf(q) >= 0 : (p.title + '\n' + p.body).toLowerCase().indexOf(q) >= 0;
@@ -47,7 +48,17 @@ function create(dbx, sec, opts) {
   function note(to, text, post) { if (!to || to === 'staff') return; (opts.note || (() => {}))(to, 'board', text, { view: 'board', post: post }); }
   function get(me, id) {
     const p = posts.get(Number(id) | 0); if (!p || !canSee(me, p)) return null;
-    return Object.assign(brief(p, me), { body: p.body, canEdit: p.pid === me, canDel: p.pid === me || isOp(me), comments: dbx.q.bdComs.all(p.id).map((c) => comOut(c, me)) });
+    return Object.assign(brief(p, me), { body: p.body, canEdit: p.pid === me, canDel: p.pid === me || isOp(me), canStatus: stOk(me, p), comments: dbx.q.bdComs.all(p.id).map((c) => comOut(c, me)) });
+  }
+  /* 건의 처리 상태(적용 중 · 해결 완료): 건의 말머리나 관리자만 보기 글에, 학생회장만 붙인다. 바뀌면 쓴 학생에게 알림 */
+  const ST = { '': '', wip: '적용 중', done: '해결 완료' };
+  const stOk = (me, p) => !!(opts.isChief && opts.isChief(me)) && (p.tag === 'idea' || p.priv);
+  function setStatus(me, id, st) {
+    const p = posts.get(Number(id) | 0); if (!p || !stOk(me, p)) fail('상태를 바꿀 수 없는 글입니다');
+    st = String(st || ''); if (!(st in ST)) fail('알 수 없는 상태입니다'); if (p.st === st) return p.id;
+    dbx.q.bdStatus.run(st, p.id); p.st = st;
+    if (st && p.pid !== me) note(p.pid, '내 건의 「' + (p.title.length > 20 ? p.title.slice(0, 20) + '…' : p.title) + '」: ' + ST[st], p.id);
+    log(`게시판 #${p.id} 상태 → ${ST[st] || '없음'}`); return p.id;
   }
   function fail(msg) { const e = new Error(msg); e.status = 400; throw e; }
   function check(b) {
@@ -102,6 +113,6 @@ function create(dbx, sec, opts) {
     return [...posts.values()].filter((p) => p.priv).sort((a, b) => b.last - a.last).slice(0, 200).map((p) => Object.assign(brief(p, 'staff'), { body: p.body, comments: dbx.q.bdComs.all(p.id).map((c) => comOut(c, 'staff')) }));
   }
   function deleteBy(pid) { [...posts.values()].filter((p) => p.pid === pid).forEach((p) => { dbx.q.bdDel.run(p.id); posts.delete(p.id); }); }
-  return { list, get, write, edit, del, comment, cdel, adminList, deleteBy, forgetName: (pid) => names.delete(pid), LIM };
+  return { list, get, write, edit, del, setStatus, comment, cdel, adminList, deleteBy, forgetName: (pid) => names.delete(pid), LIM };
 }
 module.exports = { create };
