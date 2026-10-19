@@ -544,6 +544,7 @@ details[open] > summary .chev { transform: rotate(-135deg) translate(-2px, -2px)
 
 /* ───────── 툴팁 ───────── */
 #tip { position: fixed; z-index: 90; width: min(320px, calc(100vw - 16px)); background: var(--tipbg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 12.5px; line-height: 1.5; box-shadow: 0 14px 40px rgba(0, 0, 0, .55); pointer-events: none; }
+@media (hover: none) { #tip { pointer-events: auto; } }   /* 모바일: 요약을 눌러 가이드로 이동 */
 #tip > b { font-family: var(--f-display); color: var(--brass2); font-size: 14px; display: block; margin-bottom: 2px; }
 #tip p { margin: 2px 0 6px; color: var(--ink); }
 #tip .kv { font-size: 12px; margin: 4px 0 6px; }
@@ -1490,6 +1491,7 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 .dtabs button.unread::after, .gsub button.unread::after { content: ''; position: absolute; left: 8px; right: 8px; bottom: 1px; height: 3px; border-radius: 3px; background: color-mix(in srgb, var(--brass) 60%, transparent); }
 .dtabs button.unread { color: var(--ink); font-weight: 700; }
 .dock-peek:has(.pkmsg) { text-align: left; }   /* 최근 글은 좌측, 「채팅 열기」만 우측 */
+.gback { margin-bottom: 10px; }
 .gsuggest { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line2); }
 .ptm .ptn { align-items: flex-start; text-align: left; }
 /* 시간표 프리셋: 세 칸 카드 */
