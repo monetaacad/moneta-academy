@@ -97,7 +97,7 @@
   R.SKY = [
     { id: 'meteor', name: '유성 소나기', min: 40, eff: { dropPct: 0.2, goldPct: 0.1 }, text: '전리품 확률 +20%, ' + CUR + ' +10%' },
     { id: 'aurora', name: '별샘 오로라', min: 60, eff: { manaPct: 0.3, knowPct: 0.1 }, text: '마나 재생 +30%, 지식 +10%' },
-    { id: 'comet', name: '꼬리별', min: 45, eff: { xpPct: 0.15, lectureSpd: 0.05 }, text: '경험치 +15%, 수업 속도 +5%' },
+    { id: 'comet', name: '꼬리별', min: 45, eff: { xpPct: 0.15, lectureSpd: 0.05 }, text: '경험치 +15%, 수업 효율 +5%' },
     { id: 'whale', name: '구름 위의 별고래', min: 30, eff: { goldPct: 0.15 }, text: CUR + ' +15%, 올려다보면 조금 더 큰 선물' }
   ];
   function hash32(n) { n = (n ^ 61) ^ (n >>> 16); n = n + (n << 3); n = n ^ (n >>> 4); n = Math.imul(n, 0x27d4eb2d); return (n ^ (n >>> 15)) >>> 0; }
@@ -129,8 +129,8 @@
   R.RITUAL_BUFF = { name: '별샘의 축복', eff: { xpPct: 0.15, knowPct: 0.15, goldPct: 0.1 }, dur: 4 * 3600, color: '#9fd8ff', text: '4시간 동안 경험치·지식 +15%, ' + CUR + ' +10%' };
   R.ritualGoal = function (active) { return Math.max(5, Math.ceil((active || 0) * 0.35)); };
   R.ritualCost = function (P, W, now) { return Math.floor(calc(P, W, now).mana * 1800); };   // 마나 30분 분
-  // 효과 묶음 → 「경험치 +50%, 수업 속도 +100%」 (버프 · 날씨 설명용)
-  var EFF_NAME = { xpPct: '경험치', goldPct: CUR, knowPct: '지식', lectureSpd: '수업 속도', manaPct: '마나 재생', manaCap: '마나 저장', hpPct: '체력', atkPct: '공격력', defPct: '방어력', physPct: '물리 피해', spellPct: '주문 위력', dropPct: '전리품', dispPct: '파견 보상', hatchSpd: '부화 속도', brewSpd: '조제 속도', enhBonus: '강화 성공률', bossDmg: '보스 피해', cdr: '재사용 대기', leech: '흡혈' };
+  // 효과 묶음 → 「경험치 +50%, 수업 효율 +100%」 (버프 · 날씨 설명용)
+  var EFF_NAME = { xpPct: '경험치', goldPct: CUR, knowPct: '지식', lectureSpd: '수업 효율', manaPct: '마나 재생', manaCap: '마나 저장', hpPct: '체력', atkPct: '공격력', defPct: '방어력', physPct: '물리 피해', spellPct: '주문 위력', dropPct: '전리품', dispPct: '파견 보상', hatchSpd: '부화 속도', brewSpd: '조제 속도', enhBonus: '강화 성공률', bossDmg: '보스 피해', cdr: '재사용 대기', leech: '흡혈' };
   R.effText = function (eff) {
     var out = []; for (var k in eff || {}) { var v = eff[k]; if (!v || !EFF_NAME[k]) { if (k === 'examBonus' && v) out.push('시험 +' + v + '점'); continue; } out.push(EFF_NAME[k] + ' ' + (v > 0 ? '+' : '−') + (k === 'manaCap' ? Math.round(Math.abs(v) / 3600 * 10) / 10 + '시간' : Math.round(Math.abs(v) * 1000) / 10 + '%')); }
     return out.join(', ');
@@ -150,7 +150,7 @@
   R.notifyEvents = function (P, now) {
     var out = [], add = function (key, kind, t, title, body) { if (t > 0) out.push({ key: key, kind: kind, t: t, title: title, body: body }); };
     (P.lec || []).forEach(function (j, i) { if (j) add('lec' + i + ':' + j.end, 'lec', j.end, '수업이 끝났습니다', (R.SUBJ[j.s] ? R.SUBJ[j.s].name : '수업') + ' · 다음 수업 시작 가능'); });
-    (P.exp || []).forEach(function (j, i) { if (j) add('exp' + i + ':' + j.end, 'exp', j.end, '원정대가 돌아왔습니다', j.s + '단계 ' + R.zoneOf(j.s).name); });
+    (P.exp || []).forEach(function (j, i) { if (j) add('exp' + i + ':' + j.end, 'exp', R.expEnd(j), '원정대가 돌아왔습니다', j.s + '단계 ' + R.zoneOf(j.s).name + ' · 원정 완료 가능'); });
     (P.rsq || []).forEach(function (q, i) { if (q && RES[q.id]) add('res' + i + ':' + q.end, 'res', q.end, '연구가 끝났습니다', RES[q.id].name + ' ' + (((P.rs || {})[q.id] || 0) + 1) + '단계'); });
     var disp = (P.fam && P.fam.disp) || {}; for (var f in disp) if (FAM[f]) add('disp' + f + ':' + disp[f].end, 'disp', disp[f].end, FAM[f].name + '이(가) 돌아왔습니다', '사역마 파견 완료');
     var sp = P.spirit || { n: 0, at: now }, n = sp.n || 0, at = sp.at || now, k = Math.floor((now - at) / K.SPIRIT_EVERY);
@@ -269,7 +269,7 @@
   // W.hpts = 기숙사별 누적 점수, W.hfull = 100%가 되는 점수 (서버 HOUSE_FULL로 조절)
   R.HOUSE_BASE = 0.1; R.HOUSE_FULL = 100000;
   R.housePct = function (W, hid) { var p = W && W.hpts ? +W.hpts[hid] || 0 : 0, f = W && W.hfull || R.HOUSE_FULL; return R.HOUSE_BASE + (1 - R.HOUSE_BASE) * Math.min(1, p / f); };
-  // '지식 획득 +15%, 수업 속도 +5%' → '지식 획득 +1.5% / +15%, 수업 속도 +0.5% / +5%' (현재 / 최대)
+  // '지식 획득 +15%, 수업 효율 +5%' → '지식 획득 +1.5% / +15%, 수업 효율 +0.5% / +5%' (현재 / 최대)
   R.houseEffText = function (hid, pct) {
     var h = HOUSE[hid]; if (!h) return '';
     return h.bonusText.split(', ').map(function (s) { return s.replace(/\+(\d+(?:\.\d+)?)%/, function (m, n) { var c = Math.round(n * pct * 10) / 10; return '+' + c + '% / +' + n + '%'; }); }).join(', ');
@@ -832,7 +832,8 @@
     }
     function lecEv(j, i) { if (j.end <= now) ev.push({ t: j.end, f: function () { var o = lecFinish(P, j, j.end, 1, false); P.lec[i] = null; P.lecEnd[i] = j.end; inbox(P, o); qAfter(i, j.end); } }); }
     P.lec.forEach(function (j, i) { if (j) lecEv(j, i); else if (P.lecQ[i] && P.lecQ[i].at && P.lecQ[i].at <= now) { var at = P.lecQ[i].at; ev.push({ t: at, f: function () { var nj = lecQRun(P, W, i, at); if (nj) lecEv(nj, i); } }); } });
-    P.exp.forEach(function (j, i) { var te = R.expEnd(j || {}); if (j && te <= now) ev.push({ t: te, f: function () { var fell = te < j.end, o = expFinish(P, j, te, fell ? clamp((te - j.start) / j.dur, 0, 1) : 1, fell ? 'fall' : false); P.exp[i] = null; if (fell) log(P, te, j.s + '단계 원정에서 쓰러져 돌아왔습니다 (모은 것의 80%)', 'bad'); inbox(P, o); } }); });
+    // 원정은 끝나도 저절로 받지 않는다: 끝났다는 표시(done)만 남기고, 학생이 「원정 완료」(A.expClaim)를 눌러 결과를 받는다
+    P.exp.forEach(function (j) { var te = R.expEnd(j || {}); if (j && !j.done && te <= now) ev.push({ t: te, f: function () { j.done = te; if (te < j.end) log(P, te, j.s + '단계 원정에서 쓰러졌습니다 · 「원정 완료」를 누르면 모은 것의 80%를 받습니다', 'bad'); } }); });
     P.rsq.forEach(function (q, i) {
       if (q && q.end <= now) ev.push({ t: q.end, f: function () {
         P.rs[q.id] = (P.rs[q.id] || 0) + 1; P.rsq[i] = null; P.st.researchDone++; cupAdd(P, 25); if (q.end - q.start >= 28800) P.st.nightJobs++;
@@ -1303,7 +1304,7 @@
     if (R.dreaming(P, now)) err('꿈길 중에는 출정할 수 없습니다 (연구를 시작할 수 있습니다)');
     var c = calc(P, W, now), i = int(a.slot, 0, 1), s = int(a.s, 1, 100000), d = DUR[str(a.d)];
     needSlot(P.exp, i, c.expSlots); if (!d) err('잘못된 시간입니다');
-    if (P.exp[i]) err('이미 원정 중인 슬롯입니다');
+    if (P.exp[i]) err(R.expEnd(P.exp[i]) <= now ? '「원정 완료」를 눌러 결과를 먼저 받아야 합니다' : '이미 원정 중인 슬롯입니다');
     if (s > P.maxStage || s > R.stageCap(P)) err('아직 갈 수 없는 단계입니다');
     if (R.isBoss(s)) err('보스 단계는 보스 도전으로만 갈 수 있습니다');
     var pv = R.expPreview(P, W, s, d.k, now);
@@ -1315,8 +1316,16 @@
     for (var q = 0; q < made; q++) j.loot.push({ at: Math.floor(now + d.s * (q + 0.3 + rnd(P) * 0.6) / made), it: makeItem(P, pick(P, D.SLOTS).id, s, rollRarity(P, j.rarity)) });
     return { ok: true };
   };
+  A.expClaim = function (P, W, now, a) {
+    var i = int(a.slot, 0, 1), j = P.exp[i]; if (!j) err('진행 중인 원정이 없습니다');
+    var te = R.expEnd(j); if (te > now) err('아직 원정 중입니다');
+    var fell = te < j.end, o = expFinish(P, j, te, fell ? clamp((te - j.start) / j.dur, 0, 1) : 1, fell ? 'fall' : false); P.exp[i] = null;
+    log(P, now, j.s + '단계 원정 ' + (fell ? '결과를 받았습니다 (쓰러져 모은 것의 80%)' : '완료'), fell ? 'bad' : 'good');
+    return o;
+  };
   A.expCancel = function (P, W, now, a) {
     var i = int(a.slot, 0, 1), j = P.exp[i]; if (!j) err('진행 중인 원정이 없습니다');
+    if (R.expEnd(j) <= now) return A.expClaim(P, W, now, a);   // 이미 끝난 원정은 귀환이 아니라 완료로
     var o = expFinish(P, j, now, clamp((now - j.start) / j.dur, 0, 1), 'recall'); P.exp[i] = null; log(P, now, j.s + '단계 원정에서 직접 귀환했습니다', 'news'); return o;
   };
   A.boss = function (P, W, now) {
