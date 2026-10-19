@@ -27,6 +27,6 @@ ${strip(R('public/demo.js'))}
 ${strip(R('public/app.js'))}
 </script>
 `;
-fs.writeFileSync(p.join(__dirname, '..', 'dist', 'arcanum-demo.html'), html);
+fs.writeFileSync(p.join(__dirname, '..', 'dist', 'moneta-demo.html'), html);
 fs.writeFileSync(p.join(__dirname, '..', 'dist', 'demo-test.html'), '<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body>' + html + '</body></html>');
 console.log('demo', (html.length / 1024).toFixed(0) + 'KB');

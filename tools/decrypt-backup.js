@@ -1,5 +1,5 @@
 'use strict';
-// 암호화된 백업 풀기: BACKUP_KEY=... node tools/decrypt-backup.js data/backups/arcanum-2026111200.db.enc [출력.db]
+// 암호화된 백업 풀기: BACKUP_KEY=... node tools/decrypt-backup.js data/backups/moneta-2026111200.db.enc [출력.db]
 const fs = require('fs'), crypto = require('crypto');
 const [, , src, dst] = process.argv, key0 = process.env.BACKUP_KEY;
 if (!src || !key0) { console.error('사용법: BACKUP_KEY=키 node tools/decrypt-backup.js 백업파일.db.enc [출력.db]'); process.exit(1); }

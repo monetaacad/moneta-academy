@@ -4664,8 +4664,8 @@ var Net = (function () {
 
   /* ───────── 데모 (서버 없이) ─────────
      같은 규칙 엔진을 브라우저에서 돌린다. 다른 학생·월드 보스·대항전은 가상으로 흉내 낸다. */
-  var KEY = 'arcanum_demo_v3';
-  function LocalApi() { this.mode = 'local'; this.d = null; try { var s = localStorage.getItem(KEY); if (s) this.d = JSON.parse(s); if (this.d && this.d.P && window.Rules && Rules.fixState) Rules.fixState(this.d.P); } catch (e) { } }
+  var KEY = 'moneta_demo_v3';
+  function LocalApi() { this.mode = 'local'; this.d = null; try { var s = localStorage.getItem(KEY) || localStorage.getItem('arcanum_demo_v3'); if (s) this.d = JSON.parse(s); if (this.d && this.d.P && window.Rules && Rules.fixState) Rules.fixState(this.d.P); } catch (e) { } }
   LocalApi.prototype._save = function () { try { localStorage.setItem(KEY, JSON.stringify(this.d)); } catch (e) { } };
   LocalApi.prototype._now = function () { return Date.now() / 1000; };
   LocalApi.prototype._world = function (now) {
@@ -4744,11 +4744,11 @@ var Net = (function () {
     return this._ok(now, { ok: true });
   };
   // 데모 채팅: 아티팩트의 실시간 방(room)이 있으면 같은 페이지를 연 사람끼리, 없으면 이 브라우저 안에서만
-  var CKEY = 'arcanum_demo_chat';
+  var CKEY = 'moneta_demo_chat';
   function c0slow(self) { return (self._chat && self._chat.slow) || 0; }
   LocalApi.prototype.chatConnect = function (h) {
     var self = this, saved = { rp: [], world: [] };
-    try { var s = JSON.parse(localStorage.getItem(CKEY) || 'null'); if (s && s.rp) saved = s; } catch (e) { }
+    try { var s = JSON.parse(localStorage.getItem(CKEY) || localStorage.getItem('arcanum_demo_chat') || 'null'); if (s && s.rp) saved = s; } catch (e) { }
     self._chat = { h: h, saved: saved, room: null, seq: Date.now() };
     function keep(m) { var arr = saved[m.ch]; if (!arr) return; arr.push(m); if (arr.length > 60) arr.shift(); try { localStorage.setItem(CKEY, JSON.stringify(saved)); } catch (e) { } }
     self._chat.keep = keep;
@@ -8797,7 +8797,7 @@ var Net = (function () {
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026101946;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026101947;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

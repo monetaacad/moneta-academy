@@ -125,7 +125,7 @@ async function checkPass(pw, stored) {
 }
 const needsRehash = (stored) => !String(stored).startsWith('s3$');
 // 비밀번호 규칙: 8~72자, 흔한 비밀번호와 이름이 들어간 비밀번호 거절
-const COMMON_PW = new Set(['12345678', '123456789', '1234567890', 'password', 'password1', 'qwer1234', 'qwerty123', 'qwertyui', '11111111', '00000000', '1q2w3e4r', '1q2w3e4r5t', 'asdf1234', 'abcd1234', 'iloveyou', 'aaaaaaaa', '88888888', 'zxcvbnm1', 'q1w2e3r4', 'a1234567', 'arcanum1', 'arcanum123', 'password123', 'admin123', 'abc12345', '12341234', 'qwerasdf']);
+const COMMON_PW = new Set(['12345678', '123456789', '1234567890', 'password', 'password1', 'qwer1234', 'qwerty123', 'qwertyui', '11111111', '00000000', '1q2w3e4r', '1q2w3e4r5t', 'asdf1234', 'abcd1234', 'iloveyou', 'aaaaaaaa', '88888888', 'zxcvbnm1', 'q1w2e3r4', 'a1234567', 'moneta1', 'moneta123', 'password123', 'admin123', 'abc12345', '12341234', 'qwerasdf']);
 function pwProblem(pw, name) {
   if (pw.length < 8 || pw.length > 72) return '비밀번호는 8자 이상 72자 이하';
   const low = pw.toLowerCase();
@@ -1647,7 +1647,7 @@ server.requestTimeout = 30000;
 function backup() {
   const dir = path.join(cfg.dataDir, 'backups'); fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
   store.flushAll();
-  const base = 'arcanum-' + new Date().toISOString().slice(0, 13).replace(/[-T:]/g, ''), plain = path.join(dir, base + '.db');
+  const base = 'moneta-' + new Date().toISOString().slice(0, 13).replace(/[-T:]/g, ''), plain = path.join(dir, base + '.db');
   for (const f of [plain, plain + '.enc']) { try { fs.unlinkSync(f); } catch (e) { } }
   dbx.backup(plain);
   let file = plain;
@@ -1661,7 +1661,7 @@ function backup() {
     fs.unlinkSync(plain);
   }
   try { fs.chmodSync(file, 0o600); } catch (e) { }
-  const files = fs.readdirSync(dir).filter((f) => /^arcanum-.*\.db(\.enc)?$/.test(f)).sort();
+  const files = fs.readdirSync(dir).filter((f) => /^moneta-.*\.db(\.enc)?$/.test(f)).sort();
   files.slice(0, Math.max(0, files.length - 14)).forEach((f) => fs.unlinkSync(path.join(dir, f)));
   log('백업 완료:', path.basename(file) + (cfg.backupKey ? ' (암호화)' : ''));
   return path.basename(file);

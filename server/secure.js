@@ -15,9 +15,9 @@ function create(dataDir, log) {
     const f = path.join(dataDir, '.data.key');
     try { master = fs.readFileSync(f, 'utf8').trim(); }
     catch (e) { master = crypto.randomBytes(33).toString('base64'); fs.mkdirSync(dataDir, { recursive: true }); fs.writeFileSync(f, master, { mode: 0o600 }); }
-    log('경고: DATA_KEY가 없어 ' + f + ' 의 키를 씁니다. 운영 서버에서는 이 값을 /etc/arcanum.env 의 DATA_KEY로 옮기고 파일을 지우세요. 키를 잃으면 비밀번호와 개인정보를 되살릴 수 없습니다.');
+    log('경고: DATA_KEY가 없어 ' + f + ' 의 키를 씁니다. 운영 서버에서는 이 값을 /etc/moneta.env 의 DATA_KEY로 옮기고 파일을 지우세요. 키를 잃으면 비밀번호와 개인정보를 되살릴 수 없습니다.');
   }
-  const derive = (info) => Buffer.from(crypto.hkdfSync('sha256', Buffer.from(master), Buffer.from('arcanum'), Buffer.from(info), 32));
+  const derive = (info) => Buffer.from(crypto.hkdfSync('sha256', Buffer.from(master), Buffer.from('moneta'), Buffer.from(info), 32));
   const dataKey = derive('data-v1'), pepperKey = derive('pepper-v1'), idxKey = derive('index-v1');
   const fp = crypto.createHash('sha256').update(dataKey).digest('base64url').slice(0, 12);  // 키가 바뀌었는지 알아보는 지문
 
