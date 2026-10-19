@@ -13,7 +13,7 @@ with sync_playwright() as p:
     b = p.chromium.launch()
     c = b.new_context(viewport={'width': 1360, 'height': 900}); c.route('**/fonts.g*/**', lambda r: r.abort()); c.add_init_script("if(!localStorage.getItem('arc_pref'))localStorage.setItem('arc_pref','{\"tutDone\":1,\"tutV\":{\"lecture\":1,\"explore\":1,\"lib\":1,\"exam\":1,\"world\":1,\"party\":1,\"guild\":1,\"friends\":1,\"board\":1,\"auction\":1,\"market\":1,\"gear\":1,\"work\":1,\"shop\":1,\"rec\":1}}')")   # 처음 안내·둘러보기는 따로 시험(e2e_onb)
     pg = c.new_page(); pg.on('pageerror', lambda e: errs.append(f'[S] {e}')); pg.goto(B); pg.wait_for_timeout(700)
-    pg.click('[data-act=authtab][data-a=signup]'); pg.fill('#a-name', '우편' + sfx); pg.fill('#a-pw', 'secret123'); pg.fill('#a-pw2', 'secret123'); pg.fill('#a-code', invite())
+    pg.click('[data-act=authtab][data-a=signup]'); pg.fill('#a-id', 'u' + __import__('hashlib').md5(('우편' + sfx).encode()).hexdigest()[:10]); pg.fill('#a-name', '우편' + sfx); pg.fill('#a-pw', 'secret123'); pg.fill('#a-pw2', 'secret123'); pg.fill('#a-code', invite())
     pg.click('[data-act=ihouse][data-a=speculum]'); pg.click('[data-act=icls][data-a=mage]'); pg.click('[data-act=auth-go]'); pg.wait_for_timeout(900); [ (pg.evaluate("()=>document.querySelectorAll('.mbox [data-act=modal-close]').forEach(c=>c.click())"), pg.wait_for_timeout(300)) for _ in range(3) ]; pg.wait_for_timeout(1500)
     # 운영실에서 보내기
     ad = c.new_page(); ad.on('pageerror', lambda e: errs.append(f'[A] {e}')); ad.goto(B + '/admin.html'); ad.fill('#tok', TOK); ad.click('#go'); ad.wait_for_timeout(800)

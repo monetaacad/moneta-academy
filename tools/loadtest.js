@@ -31,7 +31,7 @@ function pct(a, p) { if (!a || !a.length) return 0; const s = a.slice().sort((x,
   for (let i = 0; i < N; i += 50) {
     await Promise.all(Array.from({ length: Math.min(50, N - i) }, async (_, k) => {
       const name = 'lt' + (Date.now() % 100000).toString(36) + (i + k).toString(36);
-      const r = await req('POST', '/api/register', { name: name.slice(0, 12), password: 'loadpw' + (i + k) + 'xyz', house: houses[(i + k) % 4], cls: ['mage', 'knight'][(i + k) % 2] });
+      const r = await req('POST', '/api/register', { login: 'lt' + (Date.now() % 1e9).toString(36) + (i + k), name: name.slice(0, 12), password: 'loadpw' + (i + k) + 'xyz', house: houses[(i + k) % 4], cls: ['mage', 'knight'][(i + k) % 2] });
       if (r.j && r.j.token) users.push({ token: r.j.token, name });
     }));
   }

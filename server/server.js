@@ -126,16 +126,22 @@ async function checkPass(pw, stored) {
 const needsRehash = (stored) => !String(stored).startsWith('s3$');
 // 비밀번호 규칙: 8~72자, 흔한 비밀번호와 이름이 들어간 비밀번호 거절
 const COMMON_PW = new Set(['12345678', '123456789', '1234567890', 'password', 'password1', 'qwer1234', 'qwerty123', 'qwertyui', '11111111', '00000000', '1q2w3e4r', '1q2w3e4r5t', 'asdf1234', 'abcd1234', 'iloveyou', 'aaaaaaaa', '88888888', 'zxcvbnm1', 'q1w2e3r4', 'a1234567', 'moneta1', 'moneta123', 'password123', 'admin123', 'abc12345', '12341234', 'qwerasdf']);
-function pwProblem(pw, name) {
+function pwProblem(pw, name, login) {
   if (pw.length < 8 || pw.length > 72) return '비밀번호는 8자 이상 72자 이하';
   const low = pw.toLowerCase();
   if (COMMON_PW.has(low) || /^(.)\1+$/.test(pw) || /^\d+$/.test(pw) && pw.length < 10) return '너무 쉬운 비밀번호입니다. 글자와 숫자 혼합 필요';
   if (name && name.length >= 2 && low.includes(name.toLowerCase())) return '비밀번호에 이름을 넣지 마세요';
+  if (login && login.length >= 4 && low.includes(login)) return '비밀번호에 아이디를 넣지 마세요';
   return null;
 }
 const sha256 = (s) => crypto.createHash('sha256').update(String(s)).digest('base64url');
 const tokKey = (t) => 'h:' + sha256(t);  // DB에는 토큰의 해시만 저장한다
 const NAME_RE = R.NAME_RE;
+// 로그인 아이디: 영문 소문자·숫자·밑줄 4~20자. DB에는 HMAC 색인만 저장하고 게임 안 어디에도 보내지 않는다
+const LOGIN_RE = /^[a-z0-9_]{4,20}$/, LOGIN_RULE = '아이디는 영문·숫자·밑줄(_) 4~20자';
+const loginNorm = (s) => { const t = String(s || '').trim().toLowerCase(); return LOGIN_RE.test(t) ? t : nameKey(t); };   // 아이디 이전에 가입한 학생은 이름이 아이디
+const loginKey = (s) => sec.index('login:' + loginNorm(s));
+dbx.q.noLoginKey.all().forEach((r) => dbx.q.setLoginKey.run(sec.index('login:' + r.name_key), r.id));
 const CODE_ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 function newCode() { let c = ''; for (let i = 0; i < 8; i++) c += CODE_ABC[crypto.randomInt(CODE_ABC.length)]; return 'ARC-' + c.slice(0, 4) + '-' + c.slice(4); }
 function normCode(s) { const c = String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^ARC/, ''); return c.length === 8 ? 'ARC-' + c.slice(0, 4) + '-' + c.slice(4) : ''; }
@@ -306,27 +312,31 @@ routes['POST /api/register'] = async (req, res) => {
   if (!cfg.registerOpen) return fail(req, res, 403, '지금은 입학 신청을 받지 않습니다');
   if (!cfg.testMode && limited('reg:' + clientIp(req), 5 / 3600, 5)) return fail(req, res, 429, '입학 신청이 너무 잦습니다. 잠시 후 다시 시도');
   const b = await readJson(req, 2048);
-  const name = R.cleanName(b.name), pw = String(b.password || ''), house = String(b.house || '');
+  const name = R.cleanName(b.name), pw = String(b.password || ''), house = String(b.house || ''), login = String(b.login || '').trim().toLowerCase();
+  if (!LOGIN_RE.test(login)) return fail(req, res, 400, LOGIN_RULE);
   if (!NAME_RE.test(name)) return fail(req, res, 400, R.NAME_RULE);
+  if (login === nameKey(name)) return fail(req, res, 400, '아이디는 학생 이름과 다르게 정해 주세요');   // 이름은 모두에게 보이므로
   if (R.badName(name) && !ADMIN_NAMES.has(nameKey(name))) return fail(req, res, 400, '쓸 수 없는 말이 들어 있는 이름입니다');   // 운영자로 지정한 이름만 예외
-  { const why = pwProblem(pw, name); if (why) return fail(req, res, 400, why); }
+  { const why = pwProblem(pw, name, login); if (why) return fail(req, res, 400, why); }
   if (!R.HOUSE[house]) return fail(req, res, 400, '기숙사 선택 필요');
   const cls = String(b.cls || ''); if (!R.CLS[cls]) return fail(req, res, 400, '학과 선택 필요');
   if (Number(dbx.q.countPlayers.get().n) >= cfg.maxPlayers) return fail(req, res, 403, '정원이 가득 찼습니다');
   if (dbx.q.playerByKey.get(nameKey(name))) return fail(req, res, 409, '이미 쓰는 이름입니다');
+  const lkey = loginKey(login); if (dbx.q.playerByLogin.get(lkey)) return fail(req, res, 409, '이미 쓰는 아이디입니다');
   const code = cfg.inviteRequired ? normCode(b.invite) : '';
   if (cfg.inviteRequired) { const why = checkInvite(code); if (why) return fail(req, res, 403, why); }
   const hashed = await hashPass(pw);
   if (dbx.q.playerByKey.get(nameKey(name))) return fail(req, res, 409, '이미 쓰는 이름입니다');
+  if (dbx.q.playerByLogin.get(lkey)) return fail(req, res, 409, '이미 쓰는 아이디입니다');
   const id = crypto.randomUUID(), now = nowSec();
   const P = R.newPlayer(id, name, house, now, crypto.randomInt(1, 2147483647)); R.clsStart(P, cls);
   R.advance(P, world.ctx(now), now);
   try {
     dbx.tx(() => {
       if (code && !dbx.q.useInvite.run(code).changes) throw Object.assign(new Error('이미 다 쓴 초대코드입니다'), { status: 403 });
-      dbx.q.insertPlayerFull.run(id, name, nameKey(name), house, hashed, Math.floor(now), Math.floor(now), JSON.stringify(P), 0, code);
+      dbx.q.insertPlayerFull.run(id, name, nameKey(name), house, hashed, Math.floor(now), Math.floor(now), JSON.stringify(P), 0, code, lkey);
     });
-  } catch (e) { return fail(req, res, e.status || 409, e.status ? e.message : '이미 쓰는 이름입니다'); }
+  } catch (e) { return fail(req, res, e.status || 409, e.status ? e.message : '이미 쓰는 이름이나 아이디입니다'); }
   store.put(P);
   const token = newSession(id);
   log(`입학: ${name} (${house})${code ? ' 초대코드 ' + code : ''}`);
@@ -354,12 +364,12 @@ routes['POST /api/login'] = async (req, res) => {
   const ip = clientIp(req);
   if (!cfg.testMode && limited('login:' + ip, 10 / 60, 10)) return fail(req, res, 429, '로그인 시도가 너무 많습니다. 1분 뒤 다시 시도');
   const b = await readJson(req, 2048);
-  const name = String(b.name || '').trim().slice(0, 20), pw = String(b.password || '').slice(0, 72);
-  // 여러 IP에서 한 계정을 노리는 경우도 막는다: 이름당 10분에 10번
-  if (!cfg.testMode && limited('loginN:' + nameKey(name), 10 / 600, 10)) return fail(req, res, 429, '이 이름으로 로그인 시도가 너무 많습니다. 10분 뒤 다시 시도');
-  const row = dbx.q.playerByKey.get(nameKey(name));
-  if (!row) { await hashPass(pw); return fail(req, res, 401, '이름이나 비밀번호가 맞지 않습니다'); } // 없는 이름도 같은 시간이 걸리게
-  if (!(await checkPass(pw, row.pass))) return fail(req, res, 401, '이름이나 비밀번호가 맞지 않습니다');
+  const login = String(b.login || '').trim().slice(0, 20), pw = String(b.password || '').slice(0, 72), lkey = loginKey(login);
+  // 여러 IP에서 한 계정을 노리는 경우도 막는다: 아이디당 10분에 10번
+  if (!cfg.testMode && limited('loginN:' + lkey, 10 / 600, 10)) return fail(req, res, 429, '이 아이디로 로그인 시도가 너무 많습니다. 10분 뒤 다시 시도');
+  const row = login ? dbx.q.playerByLogin.get(lkey) : null;
+  if (!row) { await hashPass(pw); return fail(req, res, 401, '아이디나 비밀번호가 맞지 않습니다'); } // 없는 아이디도 같은 시간이 걸리게
+  if (!(await checkPass(pw, row.pass))) return fail(req, res, 401, '아이디나 비밀번호가 맞지 않습니다');
   if (row.banned) return fail(req, res, 403, '이용이 정지된 계정입니다');
   if (needsRehash(row.pass)) dbx.q.setPass.run(await hashPass(pw), row.id);
   const token = newSession(row.id), now = nowSec();
@@ -374,7 +384,7 @@ routes['POST /api/password'] = async (req, res) => {
   const pid = authed(req); if (!pid) return fail(req, res, 401, '로그인이 필요합니다');
   if (limited('pw:' + pid, 3 / 60, 3)) return fail(req, res, 429, '잠시 후 다시 시도');
   const b = await readJson(req, 2048), P = store.get(pid);
-  const row = dbx.q.playerByKey.get(nameKey(P.name));
+  const row = dbx.q.passById.get(pid);
   if (!row || !(await checkPass(String(b.old || ''), row.pass))) return fail(req, res, 401, '현재 비밀번호가 맞지 않습니다');
   const pw = String(b.password || ''); { const why = pwProblem(pw, P.name); if (why) return fail(req, res, 400, why); }
   dbx.q.setPass.run(await hashPass(pw), pid);

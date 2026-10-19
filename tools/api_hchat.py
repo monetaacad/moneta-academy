@@ -13,7 +13,7 @@ class U:
 sfx = str(int(time.time()) % 100000)
 users = {}
 for nm, house, cls in (('가', 'lanterna', 'knight'), ('나', 'lanterna', 'mage'), ('다', 'corona', 'knight')):
-    u = U(); r = u.req('POST', '/api/register', {'name': nm + '학생' + sfx, 'password': 'secret123', 'house': house, 'invite': admin_invite(), 'cls': cls}); users[nm] = u
+    u = U(); r = u.req('POST', '/api/register', {'login': 'u' + __import__('secrets').token_hex(6), 'name': nm + '학생' + sfx, 'password': 'secret123', 'house': house, 'invite': admin_invite(), 'cls': cls}); users[nm] = u
     if r.get('error'): errs.append('reg ' + r['error'])
 A, Bb, C = users['가'], users['나'], users['다']
 for ch, txt in (('hrp', '기숙사 RP 안녕'), ('hooc', '기숙사 사담'), ('crp', '학과 RP'), ('cooc', '학과 사담')):

@@ -12,8 +12,8 @@ class U:
         except urllib.error.HTTPError as e: return json.loads(e.read() or b'{}') | {'_status': e.code}
 sfx = str(int(time.time()) % 100000)
 A, Bu = U(), U()
-A.req('POST', '/api/register', {'name': '파장' + sfx, 'password': 'secret123', 'house': 'lanterna', 'invite': admin_invite(), 'cls': 'knight'})
-Bu.req('POST', '/api/register', {'name': '파원' + sfx, 'password': 'secret123', 'house': 'corona', 'invite': admin_invite(), 'cls': 'mage'})
+A.req('POST', '/api/register', {'login': 'u' + __import__('secrets').token_hex(6), 'name': '파장' + sfx, 'password': 'secret123', 'house': 'lanterna', 'invite': admin_invite(), 'cls': 'knight'})
+Bu.req('POST', '/api/register', {'login': 'u' + __import__('secrets').token_hex(6), 'name': '파원' + sfx, 'password': 'secret123', 'house': 'corona', 'invite': admin_invite(), 'cls': 'mage'})
 r = A.req('POST', '/api/party', {'op': 'create', 'name': '시험파티' + sfx[-3:]}); time.sleep(2.1)
 pa = r.get('party') or {}
 if not pa.get('npcPool'): errs.append('no npcPool')

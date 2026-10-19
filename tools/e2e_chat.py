@@ -19,12 +19,12 @@ with sync_playwright() as p:
         pg = c.new_page(); pg.on('pageerror', lambda e: errs.append(f'[{tag}] {e}')); pg.goto(B); pg.wait_for_timeout(700); return pg
     A = page(1280, 900, 'A'); G = page(390, 844, 'G', True)
     # A: 초대코드 가입
-    A.click('[data-act=authtab][data-a=signup]'); A.fill('#a-name', '에이' + sfx); A.fill('#a-pw', 'secret123'); A.fill('#a-pw2', 'secret123'); A.fill('#a-code', invite().lower())
+    A.click('[data-act=authtab][data-a=signup]'); A.fill('#a-id', 'u' + __import__('hashlib').md5(('에이' + sfx).encode()).hexdigest()[:10]); A.fill('#a-name', '에이' + sfx); A.fill('#a-pw', 'secret123'); A.fill('#a-pw2', 'secret123'); A.fill('#a-code', invite().lower())
     A.click('[data-act=ihouse][data-a=lanterna]'); A.click('[data-act=icls][data-a=mage]'); A.click('[data-act=auth-go]'); A.wait_for_timeout(800); [ (A.evaluate("()=>document.querySelectorAll('.mbox [data-act=modal-close]').forEach(c=>c.click())"), A.wait_for_timeout(300)) for _ in range(3) ]
     # G: 모바일에서 초대코드 가입 (게스트 탭이 없어야 한다)
     G.screenshot(path=f'{OUT}/chat-G-0-login.png', full_page=True)
     if G.query_selector('[data-act=authtab][data-a=guest]'): errs.append('guest tab still shown')
-    G.click('[data-act=authtab][data-a=signup]'); G.fill('#a-name', '손님' + sfx); G.fill('#a-pw', 'guestpw1'); G.fill('#a-pw2', 'guestpw1'); G.fill('#a-code', invite()); G.click('[data-act=ihouse][data-a=speculum]'); G.click('[data-act=icls][data-a=mage]')
+    G.click('[data-act=authtab][data-a=signup]'); G.fill('#a-id', 'u' + __import__('hashlib').md5(('손님' + sfx).encode()).hexdigest()[:10]); G.fill('#a-name', '손님' + sfx); G.fill('#a-pw', 'guestpw1'); G.fill('#a-pw2', 'guestpw1'); G.fill('#a-code', invite()); G.click('[data-act=ihouse][data-a=speculum]'); G.click('[data-act=icls][data-a=mage]')
     G.click('[data-act=auth-go]'); G.wait_for_timeout(800); [ (G.evaluate("()=>document.querySelectorAll('.mbox [data-act=modal-close]').forEach(c=>c.click())"), G.wait_for_timeout(300)) for _ in range(3) ]
     try:
         urllib.request.urlopen(urllib.request.Request(B + '/api/guest', data=b'{"name":"xx12","house":"lanterna"}', headers={'content-type': 'application/json'})); errs.append('/api/guest still open')
@@ -62,7 +62,7 @@ with sync_playwright() as p:
     A.reload(); A.wait_for_timeout(900); dock(A); A.click('[data-act=chattab][data-a=world]'); A.wait_for_timeout(500)
     if not any('반가워요' in x for x in texts(A)): errs.append('history missing after reload')
     # 다른 기기에서 같은 계정으로 로그인
-    C = page(1280, 900, 'C'); C.fill('#a-name', '손님' + sfx); C.fill('#a-pw', 'guestpw1'); C.click('[data-act=auth-go]'); C.wait_for_timeout(900)
+    C = page(1280, 900, 'C'); C.fill('#a-id', 'u' + __import__('hashlib').md5(('손님' + sfx).encode()).hexdigest()[:10]); C.fill('#a-pw', 'guestpw1'); C.click('[data-act=auth-go]'); C.wait_for_timeout(900)
     if not C.query_selector('#nav'): errs.append('G could not log in elsewhere')
     for pg, tag in [(A, 'A'), (G, 'G')]:
         ow = pg.evaluate('() => document.documentElement.scrollWidth - window.innerWidth')
