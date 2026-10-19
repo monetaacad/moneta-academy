@@ -75,7 +75,7 @@ dbx.kvGet('chat_ops', []).forEach((id) => { dbx.q.setRole.run('admin', id); admi
 function isChatOp(pid) {
   if (adminIds.has(pid)) return true;
   if (!ADMIN_NAMES.size) return false;
-  const m = dbx.q.playerMeta.get(pid); return !!m && !m.guest && ADMIN_NAMES.has(nameKey(m.name));
+  const m = dbx.q.playerMeta.get(pid); return !!m && !m.guest && ADMIN_NAMES.has(R.nameKey(m.name));
 }
 // 운영 로그: 누가 언제 무엇을 바꿨는지
 function oplog(actor, name, action, detail) { dbx.q.oplogAdd.run(Math.floor(Date.now() / 1000), actor, name || '', action, String(detail || '').slice(0, 300)); log(`[운영] ${name || actor} ${action} ${detail || ''}`); }
@@ -89,7 +89,7 @@ let MAINT = Object.assign({ on: false, start: 0, until: 0, msg: '' }, dbx.kvGet(
 function maintView(pid) { if (!MAINT.on && !MAINT.start) return null; return { on: !!MAINT.on, start: MAINT.start || 0, until: MAINT.until || 0, msg: MAINT.msg || '', bypass: !!(pid && isChatOp(pid)) }; }
 function maintPing() { chat.pingEach('maint', (pid) => maintView(pid) || { on: false }); }
 function maintSet(m, by) { MAINT = { on: !!m.on, start: m.on ? 0 : Math.max(0, +m.start || 0), until: Math.max(0, +m.until || 0), msg: String(m.msg || '').slice(0, 300) }; dbx.kvSet('maint', MAINT); maintPing(); oplog(by || 'admin', '', 'maint', MAINT.on ? '점검 시작' : MAINT.start ? '점검 예고 ' + new Date(MAINT.start * 1000).toISOString() : '점검 끝'); }
-const chat = Chat.create(dbx, log, { initExtra: (pid) => ({ build: BUILD.build, minBuild: BUILD.minBuild, maint: maintView(pid) }), sec, gzip: process.env.SSE_GZIP !== '0', isOp: (pid) => isChatOp(pid), slow: { world: dbx.kvGet('chat_slow', 0) }, partyOf: (pid) => partyOf.get(pid) || null, guildOf: (pid) => guildOf.get(pid) || null, houseOf: (pid) => { const P = store.get(pid); return P && R.HOUSE[P.house] ? P.house : null; }, clsOf: (pid) => { const P = store.get(pid); return P && R.CLS[P.cls] ? P.cls : null; }, titleOf: (P) => R.titleName(P, P.title), inkOf: (P) => R.decoView(P).ink || '', canDm: (a, b) => friendState(a, b) === 'ok' });
+const chat = Chat.create(dbx, log, { initExtra: (pid) => ({ build: BUILD.build, minBuild: BUILD.minBuild, maint: maintView(pid) }), sec, gzip: process.env.SSE_GZIP !== '0', isOp: (pid) => isChatOp(pid), slow: { world: dbx.kvGet('chat_slow', 0) }, partyOf: (pid) => partyOf.get(pid) || null, exrOf: (pid) => exprooms.chatKey(pid), guildOf: (pid) => guildOf.get(pid) || null, houseOf: (pid) => { const P = store.get(pid); return P && R.HOUSE[P.house] ? P.house : null; }, clsOf: (pid) => { const P = store.get(pid); return P && R.CLS[P.cls] ? P.cls : null; }, titleOf: (P) => R.titleName(P, P.title), inkOf: (P) => R.decoView(P).ink || '', canDm: (a, b) => friendState(a, b) === 'ok' });
 const Board = require('./board.js');
 // 알림 기록: 우편과 따로, 일어난 일을 모아 보여 준다 (최근 100개, 30일)
 function pname(pid) { const w = dbx.q.getProfile.get(pid); return w ? w.name : '학생'; }
@@ -101,6 +101,7 @@ setInterval(() => { try { dbx.q.notePrune.run(Math.floor(Date.now() / 1000) - 30
 const board = Board.create(dbx, sec, { isOp: (pid) => pid !== 'staff' && isChatOp(pid), sendMail: (...a) => sendMail(...a), note: (...a) => addNote(...a), log });
 const ExpRoom = require('./exproom.js');
 const exprooms = ExpRoom.create({ loadPlayer: (pid, now) => loadPlayer(pid, now), ctx: () => world.ctx(nowSec()), gameNow: () => nowSec(), markDirty: (pid) => store.markDirty(pid), partyOf, log,
+  onRoom: (pid) => chat.exrChanged(pid),   // 방 출입 → 원정 채팅 탭
   recruit: (P, data) => chat.recruit(P, data, Date.now() / 1000),
   note: (...a) => addNote(...a),
   partyInfo: (pid) => { const id = partyOf.get(pid); if (!id) return null; const pa = dbx.q.partyGet.get(id); if (!pa) return null; return { id, leader: pa.leader, allgo: !!pa.allgo, members: dbx.q.partyMembers.all(id).map((m) => m.id) }; },
@@ -547,7 +548,7 @@ routes['GET /api/profile'] = (req, res) => {
   if (LP) { const s = R.summary(LP, world.W, Math.min(nowSec(), LP.at)); lvl = s.lvl; grade = s.grade; power = s.power; }
   const out = { id, op: isChatOp(id) || undefined, name: row.name, house: row.house, grade, guest: !!row.guest, created: row.created, av: row.avatar_v && dbx.q.getAvatar.get(id).avatar ? row.avatar_v : 0,
     status: pr.status, bio: pr.bio, fav: pr.fav, avcredit: pr.avcredit || '', online: self || isOnline(id), self, title: LP ? R.titleName(LP, LP.title) : row.title };
-  { const DP = LP || store.get(id); out.deco = R.decoView(DP); const bw = DP && R.badgeWorn(DP); if (bw) out.badge = { gem: bw.gem, lv: bw.lv, name: bw.name }; }   // 정보 카드 꾸미기
+  { const DP = LP || store.get(id); out.deco = R.decoView(DP); if (DP && R.CLS[DP.cls]) out.cls = DP.cls; const bw = DP && R.badgeWorn(DP); if (bw) out.badge = { gem: bw.gem, lv: bw.lv, name: bw.name }; }   // 정보 카드 꾸미기
   if (pr.showStats || self) Object.assign(out, { lvl, power, rank: world.rankOf(power) });
   // 동아리 이름 · 직책
   const tg = guildOf.get(id), tgr = tg && dbx.q.gGet.get(tg);
@@ -711,6 +712,9 @@ function partyView(me) {
       .concat(partyNpcs(pa).map((k) => { const n = NPCS[k]; return { id: 'npc:' + k, npc: true, online: true, name: n.name, who: n.who, house: n.house, grade: n.grade, title: 'NPC' }; })),
     npcPool: NPCS.map((n) => ({ k: n.k, name: n.name, who: n.who })) };
 }
+const partyRec = new Map();   // 파티 → 마지막 모집 알림 시각 (실제 초)
+const gRecAt = new Map();     // 동아리 → 마지막 모집 홍보 시각
+function recNote(v) { return String(v || '').replace(/[\u0000-\u001F\u007F]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60); }
 routes['GET /api/party'] = (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
   if (limited('pg:' + me, 1, 10)) return fail(req, res, 429, '요청이 너무 잦습니다');
@@ -757,6 +761,24 @@ routes['POST /api/party'] = async (req, res) => {
     return send(req, res, 200, { ok: true, party: partyView(me) });
   }
   if (op === 'decline') { dbx.q.partyInviteDel.run(me, String(b.party || '')); return send(req, res, 200, { ok: true }); }
+  if (op === 'recruit') {   // 채팅 「모집」 탭에 파티원 모집 (별의 탑 함께 오를 사람). 파티장만, 5분에 한 번. 알림을 본 학생은 30분 동안 바로 들어올 수 있다
+    const pa = mine && dbx.q.partyGet.get(mine); if (!pa || pa.leader !== me) return fail(req, res, 403, '파티장만 모집할 수 있습니다');
+    if (partyCount(mine) >= PARTY_MAX) return fail(req, res, 400, '파티 자리가 가득 찼습니다');
+    const real = Date.now() / 1000, last = partyRec.get(mine) || 0; if (real - last < 300) return fail(req, res, 400, Math.ceil((300 - (real - last)) / 60) + '분 뒤에 다시 모집할 수 있습니다');
+    partyRec.set(mine, real);
+    chat.recruit(P, { type: 'party', party: mine, name: pa.name, n: partyCount(mine), max: PARTY_MAX, floor: towerState(mine, nowSec()).floor, note: recNote(b.note) }, real);
+    return send(req, res, 200, { ok: true });
+  }
+  if (op === 'joinRec') {   // 모집 알림을 보고 들어가기
+    const party = String(b.party || ''), real = Date.now() / 1000;
+    if (mine) return fail(req, res, 400, mine === party ? '이미 같은 파티입니다' : '현재 파티 탈퇴 필요');
+    const at = partyRec.get(party); if (!at || real - at > 1800) return fail(req, res, 400, '모집이 끝난 파티입니다');
+    const pa = dbx.q.partyGet.get(party); if (!pa) { partyRec.delete(party); return fail(req, res, 404, '없어진 파티입니다'); }
+    if (partyCount(party) >= PARTY_MAX) return fail(req, res, 400, '파티 자리가 가득 찼습니다');
+    joinParty(me, party); refreshParty(party);
+    chat.system('party', P.name + ' 님이 모집을 보고 파티에 들어왔습니다.', now, party); chat.partyChanged(me);
+    return send(req, res, 200, { ok: true, party: partyView(me) });
+  }
   if (op === 'leave') {
     if (!mine) return fail(req, res, 400, '파티에 들어가 있지 않습니다');
     const r = leaveParty(me); if (r && !r.gone) chat.system('party', P.name + ' 님이 파티에서 나갔습니다.', now, r.party);
@@ -1400,6 +1422,14 @@ routes['POST /api/guild'] = async (req, res) => {
   }
   if (!mine) return fail(req, res, 400, '동아리에 들어가 있지 않습니다');
   const g = dbx.q.gGet.get(mine), ranks = gRanksOf(g), meRow = dbx.q.gMember.get(me) || {}, can = (perm) => R.guildCan(ranks, role, meRow.rank, perm), day = R.dayKST(gnow);
+  if (op === 'recruit') {   // 채팅 「모집」 탭에 동아리 홍보 (초대 권한, 동아리마다 10분에 한 번)
+    if (!can('invite')) return fail(req, res, 403, '모집 홍보는 초대 권한이 있어야 합니다');
+    if (gCount(mine) >= R.guildCap(g.lv)) return fail(req, res, 400, '정원이 가득 찼습니다');
+    const real = Date.now() / 1000, last = gRecAt.get(mine) || 0; if (real - last < 600) return fail(req, res, 400, Math.ceil((600 - (real - last)) / 60) + '분 뒤에 다시 홍보할 수 있습니다');
+    gRecAt.set(mine, real);
+    chat.recruit(P, { type: 'guild', g: mine, name: g.name, color: g.color, lv: g.lv || 1, n: gCount(mine), max: R.guildCap(g.lv || 1), mode: g.mode, note: recNote(b.note) }, real);
+    return send(req, res, 200, { ok: true });
+  }
   if (op === 'invite') {
     if (!can('invite')) return fail(req, res, 403, '초대 권한이 없습니다');
     const row = b.id ? dbx.q.getProfile.get(String(b.id)) : dbx.q.playerByKey.get(nameKey(String(b.name || '').trim()));

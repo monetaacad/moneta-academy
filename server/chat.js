@@ -9,6 +9,7 @@ const CHANNELS = {
   rp: { name: 'RP', max: 500 },
   world: { name: '월드', max: 300 },
   party: { name: '파티', max: 500 },
+  exr: { name: '원정', max: 500 },                      // 같은 함께 원정 방 사람끼리 (방에 있는 동안만)
   grp: { name: '동아리 RP', max: 500 },                 // 동아리원끼리 (캐릭터로)
   gooc: { name: '동아리 오너', max: 500 },              // 동아리원끼리 (캐릭터 밖, 오너끼리)
   hrp: { name: '기숙사 RP', max: 500 },                 // 같은 기숙사끼리 (캐릭터로)
@@ -34,14 +35,15 @@ function create(dbx, log, opts) {
   const guildOf = opts.guildOf || (() => null);
   const houseOf = opts.houseOf || (() => null);
   const clsOf = opts.clsOf || (() => null);
+  const exrOf = opts.exrOf || (() => null);
   const isOp = opts.isOp || (() => false);
   // 월드 슬로우 모드 (운영자가 유사시에 건다). 운영자는 걸리지 않는다.
   const slow = { world: Math.max(0, Math.min(600, (opts.slow && opts.slow.world) | 0)) };
   const lastWorld = new Map();   // pid → 마지막 월드 글 시각
-  const GROUP = { party: 1, grp: 1, gooc: 1, hrp: 1, hooc: 1, crp: 1, cooc: 1 };
+  const GROUP = { party: 1, exr: 1, grp: 1, gooc: 1, hrp: 1, hooc: 1, crp: 1, cooc: 1 };
   // 묶음 종류: 채널 → 묶음(파티 · 동아리 · 기숙사 · 학과)
-  const KIND = { party: 'party', grp: 'guild', gooc: 'guild', hrp: 'house', hooc: 'house', crp: 'cls', cooc: 'cls' };
-  const OF = { party: partyOf, guild: guildOf, house: houseOf, cls: clsOf };
+  const KIND = { party: 'party', exr: 'exr', grp: 'guild', gooc: 'guild', hrp: 'house', hooc: 'house', crp: 'cls', cooc: 'cls' };
+  const OF = { party: partyOf, exr: exrOf, guild: guildOf, house: houseOf, cls: clsOf };
   const groupOf = (ch, pid) => KIND[ch] ? OF[KIND[ch]](pid) : null;
   const clients = new Set();           // {res, pid, id, cid, watch}
   const byCid = new Map();             // cid → 연결
@@ -59,8 +61,8 @@ function create(dbx, log, opts) {
   let seq = 0;
 
   const PFX = { grp: ['g', 'rp'], gooc: ['g', 'oc'], hrp: ['h', 'rp'], hooc: ['h', 'oc'], crp: ['c', 'rp'], cooc: ['c', 'oc'] };
-  const dbCh = (ch, g) => ch === 'party' ? 'p:' + g : PFX[ch] ? PFX[ch][0] + ':' + g + ':' + PFX[ch][1] : ch;
-  const chOf = (c) => { c = String(c); if (c.startsWith('p:')) return 'party'; const o = c.endsWith(':oc'); return c.startsWith('g:') ? (o ? 'gooc' : 'grp') : c.startsWith('h:') ? (o ? 'hooc' : 'hrp') : c.startsWith('c:') ? (o ? 'cooc' : 'crp') : c; };
+  const dbCh = (ch, g) => ch === 'party' ? 'p:' + g : ch === 'exr' ? 'x:' + g : PFX[ch] ? PFX[ch][0] + ':' + g + ':' + PFX[ch][1] : ch;
+  const chOf = (c) => { c = String(c); if (c.startsWith('p:')) return 'party'; if (c.startsWith('x:')) return 'exr'; const o = c.endsWith(':oc'); return c.startsWith('g:') ? (o ? 'gooc' : 'grp') : c.startsWith('h:') ? (o ? 'hooc' : 'hrp') : c.startsWith('c:') ? (o ? 'cooc' : 'crp') : c; };
   function row(r) { return { id: r.id, ch: chOf(r.ch), t: r.t, pid: r.pid, name: r.name, house: r.house, grade: r.grade, guest: !!r.guest, kind: r.kind, text: sec.dec(r.text), title: r.title || '', ink: r.ink || '', op: isOp(r.pid) ? 1 : undefined }; }   // 운영자 표시는 지금 권한으로 (사칭 불가)
   const titleOf = opts.titleOf || (() => '');
   const inkOf = opts.inkOf || (() => '');
@@ -129,13 +131,18 @@ function create(dbx, log, opts) {
     clients.add(c); byCid.set(c.cid, c); byPid.set(pid, (byPid.get(pid) || 0) + 1);
     const gd = guildOf(pid);
     // 월드·RP 글 목록은 보내지 않는다 (탭을 열면 /api/chat/watch + history?after= 로 받는다)
-    write(c, 'init', { lazy: true, cid: c.cid, seq: { world: seqN.world, rp: seqN.rp }, channels: { notice: recent.notice, recruit: recent.recruit, party: partyList(partyOf(pid)), grp: groupList('grp', gd), gooc: groupList('gooc', gd), hrp: groupList('hrp', houseOf(pid)), hooc: groupList('hooc', houseOf(pid)), crp: groupList('crp', clsOf(pid)), cooc: groupList('cooc', clsOf(pid)) }, house: houseOf(pid), cls: clsOf(pid), party: partyOf(pid), guild: gd, online: online(), me: pid, op: !!isOp(pid), slow: { world: slow.world }, ...(opts.initExtra ? opts.initExtra(pid) : {}) });
+    write(c, 'init', { lazy: true, cid: c.cid, seq: { world: seqN.world, rp: seqN.rp }, channels: { notice: recent.notice, recruit: recent.recruit, party: partyList(partyOf(pid)), exr: groupList('exr', exrOf(pid)), grp: groupList('grp', gd), gooc: groupList('gooc', gd), hrp: groupList('hrp', houseOf(pid)), hooc: groupList('hooc', houseOf(pid)), crp: groupList('crp', clsOf(pid)), cooc: groupList('cooc', clsOf(pid)) }, house: houseOf(pid), cls: clsOf(pid), party: partyOf(pid), exr: exrOf(pid) || null, guild: gd, online: online(), me: pid, op: !!isOp(pid), slow: { world: slow.world }, ...(opts.initExtra ? opts.initExtra(pid) : {}) });
     req.on('close', () => forget(c));
   }
   // 파티에 들어가거나 나가면 그 학생의 파티 채널을 새로 보낸다
   function partyChanged(pid) {
     const party = partyOf(pid), msgs = partyList(party);
     clients.forEach((c) => { if (c.pid === pid) write(c, 'party', { party, msgs }); });
+  }
+  // 함께 원정 방에 들어가거나 나가면(출발 · 닫힘 포함) 원정 채널을 새로 보낸다
+  function exrChanged(pid) {
+    const exr = exrOf(pid) || null, msgs = groupList('exr', exr);
+    clients.forEach((c) => { if (c.pid === pid) write(c, 'exr', { exr, msgs }); });
   }
   function pingAll(event, data) { broadcast(event, data); }
   function ping(pid, event, data) { clients.forEach((c) => { if (c.pid === pid) write(c, event, data); }); }
@@ -185,7 +192,7 @@ function create(dbx, log, opts) {
     gap(P, now); slowCheck(P, ch, now);
     const C = CHANNELS[ch]; if (!C || C.readonly || ch === 'dm') throw new Error('보낼 수 없는 채널입니다');
     const party = GROUP[ch] ? groupOf(ch, P.id) : null;
-    if (GROUP[ch] && !party) throw new Error(ch === 'party' ? '파티에 들어가 있지 않습니다' : KIND[ch] === 'guild' ? '동아리에 들어가 있지 않습니다' : KIND[ch] === 'cls' ? '학과 선택 필요' : '보낼 수 없는 채널입니다');
+    if (GROUP[ch] && !party) throw new Error(ch === 'party' ? '파티에 들어가 있지 않습니다' : ch === 'exr' ? '함께 원정 방에 들어가 있지 않습니다' : KIND[ch] === 'guild' ? '동아리에 들어가 있지 않습니다' : KIND[ch] === 'cls' ? '학과 선택 필요' : '보낼 수 없는 채널입니다');
     if (meta.muted_until && meta.muted_until > now) throw new Error('채팅이 금지된 상태입니다 (' + Math.ceil((meta.muted_until - now) / 60) + '분 남음)');
     kind = kind === 'me' ? 'me' : 'say';
     const t = clean(text, C.max); if (!t) throw new Error('내용 입력 필요');
@@ -271,6 +278,6 @@ function create(dbx, log, opts) {
   ];
   timers.forEach((t) => t.unref());
 
-  return { CHANNELS, stream, send, sendDm, dmHistory, dmThreads, npcSay, system, recruit, history, historyAfter, watch, saveSeq, remove, removeBy, kick, isOnline, online, partyChanged, guildChanged, clsChanged, ping, pingAll, pingEach(event, fn) { clients.forEach((c) => write(c, event, fn(c.pid))); }, dropParty: (party) => partyRecent.delete('p:' + party), dropGuild: (g) => { partyRecent.delete('g:' + g + ':rp'); partyRecent.delete('g:' + g + ':oc'); }, connections: () => clients.size, getSlow: () => slow.world, setSlow(sec) { slow.world = Math.max(0, Math.min(600, Math.floor(+sec || 0))); pingAll('slow', { ch: 'world', sec: slow.world }); return slow.world; }, opChanged(pid) { clients.forEach((c) => { if (c.pid === pid) write(c, 'op', { op: !!isOp(pid) }); }); }, flush, closeAll() { flush(); saveSeq(); clients.forEach(drop); } };
+  return { CHANNELS, stream, send, sendDm, dmHistory, dmThreads, npcSay, system, recruit, history, historyAfter, watch, saveSeq, remove, removeBy, kick, isOnline, online, partyChanged, exrChanged, guildChanged, clsChanged, ping, pingAll, pingEach(event, fn) { clients.forEach((c) => write(c, event, fn(c.pid))); }, dropParty: (party) => partyRecent.delete('p:' + party), dropGuild: (g) => { partyRecent.delete('g:' + g + ':rp'); partyRecent.delete('g:' + g + ':oc'); }, connections: () => clients.size, getSlow: () => slow.world, setSlow(sec) { slow.world = Math.max(0, Math.min(600, Math.floor(+sec || 0))); pingAll('slow', { ch: 'world', sec: slow.world }); return slow.world; }, opChanged(pid) { clients.forEach((c) => { if (c.pid === pid) write(c, 'op', { op: !!isOp(pid) }); }); }, flush, closeAll() { flush(); saveSeq(); clients.forEach(drop); } };
 }
 module.exports = { create, CHANNELS };

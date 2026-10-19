@@ -13,6 +13,10 @@ function create(o) {
   const invites = new Map();      // pid → [{room, from, at}] (10분 동안, 최대 20개)
   const rooms = new Map();        // id → room
   const roomOf = new Map();       // pid → room id
+  // 방에 들어가거나 나갈 때마다 알린다 (원정 채팅 탭을 열고 닫기). 바뀐 학생은 한 박자 늦게 모아서 한 번씩
+  const onRoom = o.onRoom || (() => {}), changed = new Set();
+  function touchRoom(pid) { changed.add(pid); if (changed.size === 1) setImmediate(() => { const a = [...changed]; changed.clear(); a.forEach((p) => { try { onRoom(p); } catch (e) { } }); }); }
+  const roomSet = (pid, id) => { roomOf.set(pid, id); touchRoom(pid); }, roomDel = (pid) => { roomOf.delete(pid); touchRoom(pid); };
   const gone = new Map();         // pid → {at, ok, why, s, n}  (방이 떠나거나 닫힌 뒤 한 번 알려 주기)
   let seq = 1;
   const real = () => Date.now() / 1000;
@@ -26,7 +30,7 @@ function create(o) {
   const people = (r) => r.members.filter((m) => !m.npc);
   function full(r) { if (r.members.length >= R.EXP_PARTY_MAX) { if (!r.fullAt) r.fullAt = real(); } else r.fullAt = 0; }
   function leaveAny(me) {
-    const id = roomOf.get(me); if (!id) return; roomOf.delete(me);
+    const id = roomOf.get(me); if (!id) return; roomDel(me);
     const r = rooms.get(id); if (!r) return;
     r.members = r.members.filter((m) => m.id !== me); full(r); r.touched = real();
     const ps = people(r);
@@ -85,7 +89,7 @@ function create(o) {
       if (roomOf.get(pid)) { skipped.push(Q.name + '(다른 방에 있음)'); return; }
       try { R.expCanGo(Q, ctx(), gameNow(), r.s); } catch (e) { if (!e.game) throw e; skipped.push(Q.name + '(' + e.message + ')'); return; }
       const ok = R.expPositions(Q), pos = Q.cls === 'knight' && ok.indexOf('van') >= 0 ? 'van' : ok.indexOf('rear') >= 0 ? 'rear' : ok[0];
-      r.members.push(member(Q, pos)); roomOf.set(pid, r.id); added.push(Q.name);
+      r.members.push(member(Q, pos)); roomSet(pid, r.id); added.push(Q.name);
       if (o.note) o.note(pid, 'exp', P.name + ' 님이 파티로 함께 원정(' + r.s + '단계 · ' + R.zoneOf(r.s).name + ')에 참가시켰습니다. 원정 화면에서 포지션을 바꾸거나 나올 수 있습니다', { view: 'explore', anchor: 'exproom' });
     });
     full(r); r.touched = real();
@@ -103,7 +107,7 @@ function create(o) {
       leaveAny(me);
       const id = 'r' + (seq++);
       rooms.set(id, { id, host: me, s, d, party, created: real(), touched: real(), fullAt: 0, members: [member(P, pos)] });
-      roomOf.set(me, id);
+      roomSet(me, id);
       if (b.withParty) return Object.assign({ ok: true, id }, bringParty(rooms.get(id), me, P));
       return { ok: true, id };
     }
@@ -113,7 +117,7 @@ function create(o) {
       if (r.members.length >= R.EXP_PARTY_MAX) fail('방이 가득 찼습니다');
       const pos = String(b.pos || ''); check(P, r.s); posOk(P, pos);
       leaveAny(me);
-      r.members.push(member(P, pos)); roomOf.set(me, r.id); full(r); r.touched = real();
+      r.members.push(member(P, pos)); roomSet(me, r.id); full(r); r.touched = real();
       const iv = (invites.get(me) || []).filter((x) => x.room !== r.id); if (iv.length) invites.set(me, iv); else invites.delete(me);
       if (b.withParty) return Object.assign({ ok: true, id: r.id }, bringParty(r, me, P));
       return { ok: true, id: r.id };
@@ -160,7 +164,7 @@ function create(o) {
   }
   // 출발: 그 사이 슬롯이 찼거나 꿈길에 든 학생은 빼고 남은 사람끼리 떠난다
   function depart(r) {
-    rooms.delete(r.id); people(r).forEach((m) => roomOf.delete(m.id));
+    rooms.delete(r.id); people(r).forEach((m) => roomDel(m.id));
     const now = gameNow(), W = ctx(), fails = [];
     people(r).forEach((m) => {
       const P = loadPlayer(m.id, now); if (!P) { fails.push({ m, why: '학생 정보를 찾을 수 없습니다' }); return; }
@@ -172,11 +176,11 @@ function create(o) {
     if (!people(r).length) return { n: 0 };
     if (!r.members.some((m) => m.id === r.host)) r.host = people(r)[0].id;
     const st = stats(r); if (!st.every(Boolean)) return { n: 0 };
-    const pv = R.expPartyPreview(st, r.s, r.d), names = r.members.map((m) => ({ id: m.npc ? undefined : m.id, k: m.npc ? m.k : undefined, name: m.name, pos: m.pos, npc: !!m.npc }));
+    const pv = R.expPartyPreview(st, r.s, r.d), names = r.members.map((m) => ({ id: m.npc ? undefined : m.id, k: m.npc ? m.k : undefined, name: m.name, pos: m.pos, npc: !!m.npc })), team = R.expTeam(pv, r.members);
     r.members.forEach((m, i) => {
       if (m.npc) return;
       const P = st[i].P, slot = R.expCanGo(P, W, now, r.s);
-      R.expPartyApply(P, now, slot, r.s, r.d, pv.each[i], { n: r.members.length, pos: m.pos, with: names.filter((y, k) => k !== i) });
+      R.expPartyApply(P, now, slot, r.s, r.d, pv.each[i], { n: r.members.length, pos: m.pos, with: names.filter((y, k) => k !== i), team, me: i });
       markDirty(m.id); gone.set(m.id, { at: real(), ok: true, s: r.s, n: r.members.length });
     });
     log(`함께 원정 출발: ${r.s}단계 ${people(r).length}명 + 동행 ${r.members.length - people(r).length}`);
@@ -187,10 +191,12 @@ function create(o) {
     const t = real(); if (t - lastTick < 1) return; lastTick = t;
     [...rooms.values()].forEach((r) => {
       if (r.fullAt && t >= r.fullAt + FULL_WAIT) { try { depart(r); } catch (e) { log('함께 원정 출발 실패: ' + e.message); } return; }
-      if (t - r.touched > IDLE) { rooms.delete(r.id); people(r).forEach((m) => { roomOf.delete(m.id); gone.set(m.id, { at: t, ok: false, why: '30분 동안 출발하지 않아 방이 닫혔습니다', s: r.s }); }); }
+      if (t - r.touched > IDLE) { rooms.delete(r.id); people(r).forEach((m) => { roomDel(m.id); gone.set(m.id, { at: t, ok: false, why: '30분 동안 출발하지 않아 방이 닫혔습니다', s: r.s }); }); }
     });
     gone.forEach((g, pid) => { if (t - g.at > 600) gone.delete(pid); });
   }
-  return { inRoom: (pid) => roomOf.has(pid), list, op, tick, peek, forget: (pid) => { leaveAny(pid); invites.delete(pid); }, invN: (pid) => myInvites(pid).length, size: () => rooms.size };
+  // 원정 채팅 열쇠: 방 번호는 서버를 켤 때마다 1부터라 예전 방 대화와 겹치지 않게 만든 시각을 붙인다
+  function chatKey(pid) { const r = rooms.get(roomOf.get(pid)); if (!r) return null; if (!r.ck) r.ck = Date.now().toString(36) + '-' + r.id; return r.ck; }
+  return { inRoom: (pid) => roomOf.has(pid), chatKey, list, op, tick, peek, forget: (pid) => { leaveAny(pid); invites.delete(pid); }, invN: (pid) => myInvites(pid).length, size: () => rooms.size };
 }
 module.exports = { create };

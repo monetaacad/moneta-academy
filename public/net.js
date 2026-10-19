@@ -40,6 +40,7 @@ var Net = (function () {
         es.addEventListener('del', function (e) { h.del(JSON.parse(e.data).id); });
         es.addEventListener('online', function (e) { h.online(JSON.parse(e.data).online); });
         es.addEventListener('party', function (e) { if (h.party) h.party(JSON.parse(e.data)); });
+        es.addEventListener('exr', function (e) { if (h.exr) h.exr(JSON.parse(e.data)); });   // 함께 원정 방 채팅
         es.addEventListener('dm', function (e) { if (h.dm) h.dm(JSON.parse(e.data)); });
         es.addEventListener('slow', function (e) { if (h.slow) h.slow(JSON.parse(e.data)); });
         es.addEventListener('seq', function (e) { if (h.seq) h.seq(JSON.parse(e.data)); });
