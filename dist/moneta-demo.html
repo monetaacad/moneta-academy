@@ -787,8 +787,8 @@ body.dock-open .top-row { max-width: 1640px; }
 .buffpill.sky { border-color: rgba(159, 216, 255, .5); }
 .auclot.mine { border-color: var(--verd); }
 #skyfx { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
-#skyfx.fx-meteor i { position: absolute; width: 120px; height: 2px; background: linear-gradient(90deg, rgba(255, 240, 190, 0), #fff4c8); border-radius: 2px; transform: rotate(-30deg); opacity: 0; animation: meteor 4.5s linear infinite; }
-@keyframes meteor { 0% { opacity: 0; translate: 0 0; } 8% { opacity: 1; } 30% { opacity: 0; translate: -260px 150px; } 100% { opacity: 0; translate: -260px 150px; } }
+#skyfx.fx-meteor i { position: absolute; width: 120px; height: 2px; background: linear-gradient(90deg, rgba(255, 240, 190, 0), #fff4c8); border-radius: 2px; transform: rotate(30deg); opacity: 0; animation: meteor 4.5s linear infinite; }   /* 「\」 모양, 밝은 머리가 우측 아래 */
+@keyframes meteor { 0% { opacity: 0; translate: 0 0; } 8% { opacity: 1; } 30% { opacity: 0; translate: 260px 150px; } 100% { opacity: 0; translate: 260px 150px; } }   /* 우측 아래로 떨어진다 */
 #skyfx.fx-aurora b { position: absolute; left: -10%; right: -10%; top: 4%; height: 26vh; background: linear-gradient(90deg, rgba(110, 240, 190, 0), rgba(110, 240, 190, .16), rgba(150, 170, 255, .14), rgba(110, 240, 190, 0)); filter: blur(18px); animation: aurora 14s ease-in-out infinite alternate; }
 #skyfx.fx-aurora b + b { top: 12%; animation-duration: 19s; opacity: .7; }
 @keyframes aurora { from { transform: translateX(-6%) skewY(-3deg); } to { transform: translateX(6%) skewY(3deg); } }
@@ -1356,7 +1356,7 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 @keyframes scfly { to { transform: translate(8px, -10px); } }
 .scene .cloud { animation: sccl 60s linear infinite alternate; }
 @keyframes sccl { to { transform: translateX(40px); } }
-@keyframes scmet { 0% { transform: translate(0, 0); opacity: 0; } 10% { opacity: 1; } 60% { transform: translate(-60px, 40px); opacity: 0; } 100% { opacity: 0; } }
+@keyframes scmet { 0% { transform: translate(0, 0); opacity: 0; } 10% { opacity: 1; } 60% { transform: translate(75px, 40px); opacity: 0; } 100% { opacity: 0; } }   /* 광장 풍경: 줄의 기울기대로 우측 아래로 */
 @keyframes scaur { from { opacity: .55; transform: translateX(-4px); } to { opacity: 1; transform: translateX(4px); } }
 @keyframes scwh { from { transform: translate(-110px, 58px); } to { transform: translate(620px, 44px); } }
 @keyframes scfam { from { transform: translate(78px, 142px); } to { transform: translate(126px, 150px); } }
@@ -7116,7 +7116,7 @@ var Net = (function () {
     var ev = R.skyAt(now()), id = ev && !(S.P.opt && S.P.opt.reduceFx) ? ev.id : '';
     if (document.body.dataset.sky === id) return; document.body.dataset.sky = id;
     var fx = $('#skyfx'); if (!fx) { fx = document.createElement('div'); fx.id = 'skyfx'; fx.setAttribute('aria-hidden', 'true'); var skyc = $('#sky'); if (skyc) skyc.parentNode.insertBefore(fx, skyc.nextSibling); else document.body.appendChild(fx); }
-    var inner = ''; if (id === 'meteor') for (var i = 0; i < 9; i++) inner += '<i style="left:' + (10 + i * 10) + '%;top:' + (5 + (i * 37) % 30) + '%;animation-delay:' + (i * 1.3) + 's"></i>';
+    var inner = ''; if (id === 'meteor') for (var i = 0; i < 9; i++) inner += '<i style="left:' + (i * 10 - 6) + '%;top:' + (5 + (i * 37) % 30) + '%;animation-delay:' + (i * 1.3) + 's"></i>';
     else if (id === 'aurora') inner = '<b></b><b></b>'; else if (id === 'comet') inner = '<i class="comet"></i>'; else if (id === 'whale') inner = '<i class="whale"></i>';
     fx.className = id ? 'fx-' + id : ''; fx.innerHTML = inner;
     if (ev && S.view === 'home' && !S.modal) render();
@@ -8877,7 +8877,7 @@ var Net = (function () {
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026101954;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026101955;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
