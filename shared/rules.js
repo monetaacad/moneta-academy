@@ -227,6 +227,15 @@
 
   /* ───────── 보너스 집계 ───────── */
   function addEff(b, eff, k) { k = k == null ? 1 : k; for (var key in eff) b[key] = (b[key] || 0) + eff[key] * k; }
+  // 기숙사 성장: 처음에는 적힌 효과의 10%만. 기숙사 학생들의 활동(대항전 점수, 주마다 상위 30명 합계)이 쌓일수록 100%까지
+  // W.hpts = 기숙사별 누적 점수, W.hfull = 100%가 되는 점수 (서버 HOUSE_FULL로 조절)
+  R.HOUSE_BASE = 0.1; R.HOUSE_FULL = 300000;
+  R.housePct = function (W, hid) { var p = W && W.hpts ? +W.hpts[hid] || 0 : 0, f = W && W.hfull || R.HOUSE_FULL; return R.HOUSE_BASE + (1 - R.HOUSE_BASE) * Math.min(1, p / f); };
+  // '지식 획득 +15%, 수업 속도 +5%' → '지식 획득 +1.5% / +15%, 수업 속도 +0.5% / +5%' (현재 / 최대)
+  R.houseEffText = function (hid, pct) {
+    var h = HOUSE[hid]; if (!h) return '';
+    return h.bonusText.split(', ').map(function (s) { return s.replace(/\+(\d+(?:\.\d+)?)%/, function (m, n) { var c = Math.round(n * pct * 10) / 10; return '+' + c + '% / +' + n + '%'; }); }).join(', ');
+  };
   R.famBonus = function (f, lv) { return f.base * (1 + 0.25 * (lv - 1)); };
   R.CODEX_TIERS = [1, 10, 100]; R.BOSS_TIERS = [1, 5, 20]; R.CODEX_EACH = 0.004;
   R.tiersFor = function (id) { return BOSS_IDS[id] ? R.BOSS_TIERS : R.CODEX_TIERS; };
@@ -238,7 +247,7 @@
   function bonuses(P, W, t0, t1) {
     var b = {};
     var cn = R.codexTiers(P); if (cn) { b.atkPct = cn * R.CODEX_EACH; b.goldPct = cn * R.CODEX_EACH; }
-    var h = HOUSE[P.house]; if (h) addEff(b, h.bonus);
+    var h = HOUSE[P.house]; if (h) addEff(b, h.bonus, R.housePct(W, P.house));
     var cl = R.CLS[P.cls || 'mage']; if (cl) addEff(b, cl.bonus);   // 학과
     if (P.guildLv > 0) { var gb = R.guildBonus(P.guildLv); b.goldPct = (b.goldPct || 0) + gb; b.xpPct = (b.xpPct || 0) + gb; }   // 동아리 레벨 보너스
     if (P.partyN > 1) { var pb = 0.03 * (Math.min(P.partyN, 4) - 1); b.goldPct = (b.goldPct || 0) + pb; b.xpPct = (b.xpPct || 0) + pb; }   // 파티 보너스
@@ -784,7 +793,7 @@
     P.exp.forEach(function (j, i) { var te = R.expEnd(j || {}); if (j && te <= now) ev.push({ t: te, f: function () { var fell = te < j.end, o = expFinish(P, j, te, fell ? clamp((te - j.start) / j.dur, 0, 1) : 1, fell ? 'fall' : false); P.exp[i] = null; if (fell) log(P, te, j.s + '단계 원정에서 쓰러져 돌아왔습니다 (모은 것의 80%)', 'bad'); inbox(P, o); } }); });
     P.rsq.forEach(function (q, i) {
       if (q && q.end <= now) ev.push({ t: q.end, f: function () {
-        P.rs[q.id] = (P.rs[q.id] || 0) + 1; P.rsq[i] = null; P.st.researchDone++; if (q.end - q.start >= 28800) P.st.nightJobs++;
+        P.rs[q.id] = (P.rs[q.id] || 0) + 1; P.rsq[i] = null; P.st.researchDone++; cupAdd(P, 25); if (q.end - q.start >= 28800) P.st.nightJobs++;
         if (q.id === 'sorter' && P.autoSell < 0) P.autoSell = 0;
         log(P, q.end, '연구 완료: ' + RES[q.id].name + ' ' + P.rs[q.id] + '단계', 'good'); inbox(P, { k: 'res', id: q.id, lv: P.rs[q.id], t: q.end });
       } });
@@ -1213,7 +1222,7 @@
     var i = int(a.slot, 0, 1), q = P.rsq[i]; if (!q) err('진행 중인 연구가 없습니다');
     var tk = P.tok || {}; if (!(tk.rsDone > 0)) err('연구 즉시 완료 물약이 없습니다');
     tk.rsDone--; q.end = now;
-    P.rs[q.id] = (P.rs[q.id] || 0) + 1; P.rsq[i] = null; P.st.researchDone++;
+    P.rs[q.id] = (P.rs[q.id] || 0) + 1; P.rsq[i] = null; P.st.researchDone++; cupAdd(P, 25);
     if (q.id === 'sorter' && P.autoSell < 0) P.autoSell = 0;
     log(P, now, '연구 즉시 완료 물약: ' + RES[q.id].name + ' ' + P.rs[q.id] + '단계 완료', 'good');
     return { ok: true, id: q.id, lv: P.rs[q.id] };
@@ -1388,7 +1397,7 @@
     while (tries < (until ? 60 : 1)) {
       if (it.enh >= R.ENH_MAX) { if (!tries) err('최대 강화입니다'); break; }
       var cost = R.enhCost(P, it); if (P.res.gold < cost.gold || P.res.stone < cost.stone) { if (!tries) err(CUR + '나 마석이 부족합니다'); break; }
-      P.res.gold -= cost.gold; P.res.stone -= cost.stone; P.st.enh++; tries++;
+      P.res.gold -= cost.gold; P.res.stone -= cost.stone; P.st.enh++; tries++; cupAdd(P, 2);
       if (rnd(P) < R.enhChance(P, it)) { it.enh++; success = true; if (it.enh > P.st.maxEnh) P.st.maxEnh = it.enh; if (it.enh >= 10) log(P, now, it.name + ' +' + it.enh + ' 강화 성공', 'good'); break; }
     }
     return { success: success, tries: tries, enh: it.enh, gold: g0 - P.res.gold };
@@ -1531,7 +1540,7 @@
   A.task = function (P, W, now, a) {
     var sid = str(a.s), o = R.taskOf(P, sid); if (!o) err('남은 과제가 없습니다');
     if (R.taskProg(P, sid, o.t) < o.t.n) err('아직 과제를 마치지 못했습니다');
-    P.tasks[sid] = o.i + 1; var shard = 5 + o.i * 8; P.res.shard += shard; P.st.tasksDone++;
+    P.tasks[sid] = o.i + 1; var shard = 5 + o.i * 8; P.res.shard += shard; P.st.tasksDone++; cupAdd(P, 15);
     var out = { shard: shard, prof: SUBJ[sid].prof };
     if (o.t.item) { var it = makeItem(P, o.t.item, Math.max(P.maxStage, 10), 3, 3); it.name = SUBJ[sid].prof.split(' ')[0] + '의 ' + R.baseName(it); out.item = { name: it.name, r: it.r, res: gainItem(P, it, now) }; }
     log(P, now, SUBJ[sid].prof + '의 과제 완료', 'good'); return out;

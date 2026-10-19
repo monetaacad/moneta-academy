@@ -1,0 +1,7 @@
+[Unit]
+Description=Moneta Academy auto update (git pull + restart when main changes)
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh /opt/moneta/deploy/autoupdate.sh

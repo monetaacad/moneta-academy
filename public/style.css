@@ -336,12 +336,16 @@ main { min-width: 0; container-type: inline-size; container-name: page; }
 .pcard .small .hdot { vertical-align: -3px; }
 .dimg { display: inline-block; vertical-align: middle; flex: none; object-fit: contain; }
 .chip .dimg { width: 18px; height: 18px; margin: -2px 0; }
+.dimg.cdot { image-rendering: pixelated; }
+.dimg.skyic { image-rendering: pixelated; vertical-align: -3px; margin-right: 4px; }
 #tip > b .dimg { vertical-align: -3px; margin-right: 2px; }
 .cdot { vertical-align: -3px; }
 .housepick .hhead .cdot { padding: 3px; border-radius: 8px; background: rgba(255, 255, 255, .07); }
 :root[data-skintone="light"] .housepick .hhead .cdot { background: rgba(80, 60, 20, .05); }
 .housepick .hm { font-size: 12px; color: var(--muted); font-style: italic; }
 .housepick .hb { font-size: 12px; }
+.hgrow { display: block; margin-top: 4px; }
+.hgrowrow .hb { font-size: 12.5px; display: block; margin-top: 2px; }
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field input, textarea, select { background: var(--sunk); border: 1px solid var(--line2); border-radius: 8px; padding: 9px 11px; color: var(--ink); font: inherit; width: 100%; }
 textarea { min-height: 90px; font-family: var(--f-num); font-size: 12px; resize: vertical; }

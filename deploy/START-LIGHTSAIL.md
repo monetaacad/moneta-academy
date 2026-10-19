@@ -142,8 +142,19 @@ git add -A && git commit -m "무엇을 바꿨는지" && git push
 sudo sh /opt/moneta/deploy/update.sh
 ```
 운영실 「새 버전 알림」에 화면 빌드 번호(`public/app.js`의 `BUILD`)를 넣으면 접속자에게 새로고침 안내가 나갑니다.
-되돌리기: `cd /opt/moneta && git log --oneline` → `git reset --hard 이전번호 && systemctl restart moneta`.
 서버에서 직접 파일을 고치지 않습니다(다음 pull이 막힘). 고칠 것은 늘 내 컴퓨터 → push → 서버 update.
+
+### 자동 반영 (권장)
+main에 합쳐지면 3분 안에 서버가 알아서 받아 다시 켭니다. 서버(SSH 창)에서 한 번만:
+```bash
+sudo -i
+cp /opt/moneta/deploy/moneta-update.service /opt/moneta/deploy/moneta-update.timer /etc/systemd/system/
+systemctl daemon-reload && systemctl enable --now moneta-update.timer
+systemctl list-timers moneta-update.timer --no-pager     # 다음 실행 시각이 보이면 성공
+```
+- 기록 보기: `journalctl -u moneta-update -n 30`
+- 잠시 멈추기: `systemctl stop moneta-update.timer` (다시 켜기 `systemctl start moneta-update.timer`)
+- 되돌리기: 자동 반영이 켜져 있으면 서버에서 `git reset`을 해도 다시 main을 받습니다. 깃허브에서 문제 커밋을 되돌리는(revert) 커밋을 main에 합치거나, 타이머를 멈춘 뒤 `cd /opt/moneta && git reset --hard 이전번호 && systemctl restart moneta`.
 
 ## 나중에 .app 도메인으로 옮길 때
 1. 새 도메인 DNS에 A 레코드 → `1.2.3.4`.
