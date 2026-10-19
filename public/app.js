@@ -56,7 +56,7 @@
   // 기숙사 성장: 효과 현재 / 최대 + 성장 막대. Wl = 세계(hpts · hfull)
   function houseGrow(hid, Wl) {
     var p = R.housePct(Wl, hid), g = Math.round((p - R.HOUSE_BASE) / (1 - R.HOUSE_BASE) * 100), hh = R.HOUSE[hid];
-    return '<span class="hb gold">' + R.houseEffText(hid, p) + '</span><span class="hgrow"><span class="tiny faint">기숙사 성장 <b class="num">' + g + '%</b> · 효과 ' + Math.round(p * 100) + '%</span><span class="bar" style="height:5px;display:block;margin-top:2px"><b style="width:' + g + '%;background:' + hh.color + '"></b></span></span>';
+    return '<span class="hb gold">' + R.houseEffText(hid, p) + '</span><span class="hgrow"><span class="tiny faint">기숙사 성장 <b class="num">' + g + '%</b></span><span class="bar" style="height:5px;display:block;margin-top:2px"><b style="width:' + g + '%;background:' + hh.color + '"></b></span></span>';
   }
   function clsDot(id, size) { var c = R.CLS[id]; return dotImg(id, size, c ? c.name : '', 'cdot'); }
   function icon(k) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IC[k] + '</svg>'; }
@@ -414,6 +414,8 @@
   })();
   ACT['dock-reset'] = function () { DSZ = { w: 340, fw: 380, fh: 560, mh: 0 }; try { localStorage.removeItem('arc_dock_size'); } catch (e) { } applyDockSize(); };
   function dockOpen() { return S.chat.open == null ? wide() : S.chat.open; }
+  // 운영진 표시: 서버가 권한을 확인해 붙인 op 값으로만 그린다. 칭호 · 이름 · 글로는 흉내 낼 수 없다
+  function opBadge() { return '<span class="opbadge" title="아카데미 운영진 (서버가 확인한 표시)"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 1l4 1.6v3C10 8.3 8.2 10.2 6 11 3.8 10.2 2 8.3 2 5.6v-3z"/></svg>운영진</span>'; }
   function titleHtml(t, mine) { if (!t) return ''; if (t === 'NPC') return '<span class="tag npc">NPC</span>'; var o = S.P.opt || {}; if (mine ? o.hideMyTitle : o.hideOtherTitle) return ''; return '<span class="ttl">' + esc(t) + '</span>'; }
   function renderDock() {
     var d = $('#chatdock'); if (!d || !S.P) return; if (!S.read) loadRead();
@@ -486,7 +488,7 @@
         (rc.note ? '<span class="rcnote">“' + esc(rc.note) + '”</span>' : '') + (me ? '' : '<button class="btn sm" data-act="erpeek" data-a="' + esc(String(rc.room || '')) + '">살펴보기</button>') + '</span></div>';
     }
     var npc = String(m.pid).indexOf('npc:') === 0;
-    var name = titleHtml(m.title, me) + '<button class="cn" data-act="' + (npc ? 'npcinfo' : 'cprof') + '" data-a="' + m.id + '">' + inkName(m.name, m.ink) + '</button>' + '<span class="tiny faint">' + (m.grade >= 8 ? '마스터' : m.grade + '학년') + '</span>';
+    var name = (m.op ? opBadge() : '') + titleHtml(m.title, me) + '<button class="cn" data-act="' + (npc ? 'npcinfo' : 'cprof') + '" data-a="' + m.id + '">' + inkName(m.name, m.ink) + '</button>' + '<span class="tiny faint">' + (m.grade >= 8 ? '마스터' : m.grade + '학년') + '</span>';
     if (m.kind === 'me') return '<div class="cm' + (me ? ' mine' : '') + '" data-id="' + m.id + '"><span class="ct num">' + time + '</span><span class="cx">' + name + ' <i class="act">' + esc(m.text).replace(/\n/g, '<br>') + '</i></span></div>';
     return '<div class="cm' + (me ? ' mine' : '') + '" data-id="' + m.id + '"><span class="ct num">' + time + '</span><span class="cx">' + name + ' <span class="cb">' + chatText(m.text) + '</span></span></div>';
   }
@@ -684,7 +686,7 @@
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeMenu(); });
   function profileCard(p, m) {
     var hh = R.HOUSE[p.house], dc = p.deco || {}, fr = decoFrame(dc.frame), bgs = decoBg(dc.bg), dk = dc.frame || dc.bg;
-    var h = (p.preview ? '<p class="tiny gold" style="margin-bottom:10px">미리보기 · 저장하지 않은 내용이 들어 있습니다</p>' : '') + '<div class="pcard' + (dk ? ' deco ' + fr.cls : '') + '"' + (dk ? ' style="' + fr.style + bgs + '"' : '') + '>' + (dc.stamp && R.DECO[dc.stamp] ? '<span class="pstamp" title="' + R.DECO[dc.stamp].name + '" aria-hidden="true">' + R.DECO[dc.stamp].glyph + '</span>' : '') + '<div class="pav">' + avatarHtml(p, 100) + (p.avcredit && (p.av || p.avData) ? '<span class="avcredit" title="두상 출처">' + esc(p.avcredit) + '</span>' : '') + '</div>' + '<div style="min-width:0">' + (p.title ? '<div class="pttl">' + esc(p.title) + '</div>' : '') + '<h2 class="pname">' + inkName(p.name, dc.ink) + (p.badge && R.GEM[p.badge.gem] ? ' <span class="pbdg" title="' + esc((p.badge.name || '') + ' · Lv ' + p.badge.lv) + '">' + badgeSvg(p.badge, 26) + '</span>' : '') + (p.online ? ' <span class="odot" title="접속 중"></span>' : '') + '</h2>' +
+    var h = (p.preview ? '<p class="tiny gold" style="margin-bottom:10px">미리보기 · 저장하지 않은 내용이 들어 있습니다</p>' : '') + '<div class="pcard' + (dk ? ' deco ' + fr.cls : '') + '"' + (dk ? ' style="' + fr.style + bgs + '"' : '') + '>' + (dc.stamp && R.DECO[dc.stamp] ? '<span class="pstamp" title="' + R.DECO[dc.stamp].name + '" aria-hidden="true">' + R.DECO[dc.stamp].glyph + '</span>' : '') + '<div class="pav">' + avatarHtml(p, 100) + (p.avcredit && (p.av || p.avData) ? '<span class="avcredit" title="두상 출처">' + esc(p.avcredit) + '</span>' : '') + '</div>' + '<div style="min-width:0">' + (p.op ? '<div style="margin-bottom:3px">' + opBadge() + '</div>' : '') + (p.title ? '<div class="pttl">' + esc(p.title) + '</div>' : '') + '<h2 class="pname">' + inkName(p.name, dc.ink) + (p.badge && R.GEM[p.badge.gem] ? ' <span class="pbdg" title="' + esc((p.badge.name || '') + ' · Lv ' + p.badge.lv) + '">' + badgeSvg(p.badge, 26) + '</span>' : '') + (p.online ? ' <span class="odot" title="접속 중"></span>' : '') + '</h2>' +
       '<div class="small">' + (hh ? houseDot(p.house, 16) + ' ' : '') + '<span style="color:' + (hh ? hh.color : 'inherit') + '">' + (hh ? hh.name : '') + '</span> · ' + (p.grade >= 8 ? '마스터 과정' : p.grade + '학년') + (p.lvl ? ' · Lv ' + p.lvl : '') + '</div>' +
       (p.guild ? '<div class="pguild">' + gEmblem(p.guild.color, p.guild.name, 20) + '<b>' + esc(p.guild.name) + '</b><span class="tiny faint">Lv ' + (p.guild.lv || 1) + '</span>' + (p.guild.rank ? '<span class="tag' + (p.guild.role === 'owner' ? ' br' : p.guild.role === 'officer' ? ' ok' : '') + '">' + esc(p.guild.rank) + '</span>' : '') + '</div>' : '') +
       (p.status ? '<div class="pstatus">' + esc(p.status) + '</div>' : '') + '</div></div>';
@@ -1409,7 +1411,7 @@
       return '<div><div class="row small"><span class="num faint" style="width:16px">' + (i + 1) + '</span>' + houseDot(r.id, 18) + '<span style="color:' + hh.color + '">' + hh.name + '</span>' + (me ? '<span class="tag br">내 기숙사</span>' : '') + '<span class="spacer"></span><span class="num">' + fmt(r.score) + '</span></div><div class="bar" style="margin-top:3px;height:6px"><b style="width:' + (r.score / top * 100).toFixed(1) + '%;background:' + hh.color + '"></b></div></div>';
     }).join('') + '</div><p class="tiny faint" style="margin-top:8px">기숙사마다 상위 30명의 점수 합계. 내 이번 주 점수 <b class="num">' + fmt(P.wk.cup) + '</b>. 수업 시간, 처치, 보스, 시험, 결투, 정령, 양조, 파견, 연구, 강화, 과제가 모두 점수가 됩니다. 순위 보상: 별조각 25·15·10·6, 1위 기숙사는 영웅 장비.</p>' +
       (W.lastWeek ? '<p class="tiny muted" style="margin-top:4px">지난주: 1위 ' + R.HOUSE[W.lastWeek.cup[0]].name + ', 월드 보스 ' + (W.lastWeek.killed ? '토벌 성공' : '토벌 실패') + '</p>' : '') + '</div>';
-    h += '<div class="card"><h3>기숙사 성장</h3><p class="tiny faint" style="margin:2px 0 8px">대항전 점수가 주마다 쌓여 기숙사 혜택이 10%에서 100%까지 커집니다. 혜택은 현재 / 최대.</p><div class="stack" style="gap:10px">' + D.HOUSES.map(function (hh) {
+    h += '<div class="card"><h3>기숙사 성장</h3><p class="tiny faint" style="margin:2px 0 8px">대항전 점수가 쌓일수록 기숙사 혜택이 1/10에서 최대 값까지 커집니다. 혜택은 현재 / 최대.</p><div class="stack" style="gap:10px">' + D.HOUSES.map(function (hh) {
       return '<div><div class="row small">' + houseDot(hh.id, 18) + '<span style="color:' + hh.color + '">' + hh.name + '</span>' + (hh.id === P.house ? '<span class="tag br">내 기숙사</span>' : '') + '</div><div class="hgrowrow">' + houseGrow(hh.id, W) + '</div></div>';
     }).join('') + '</div></div>';
     h += '<div class="card"><div class="row between"><h3>전투력 순위</h3><span class="small">내 순위 <b class="num gold">' + S.rank + '</b></span></div>' + rankList((W.topPower || []).map(function (r) { return { name: r.name, house: r.house, v: fmt(r.power), sub: R.gradeLabel({ grade: r.grade }) + ' · Lv ' + r.lvl }; })) + '</div>';
@@ -2239,7 +2241,7 @@
   }
   var TIP = {
     g: function (q) { var g = guideFind(q); if (!g) return ''; var b = g.b, k = b.indexOf(q), st = k > 60 ? b.lastIndexOf('. ', k) + 2 : 0, sn = b.slice(Math.max(0, st), Math.max(0, st) + 150); return '<b>' + esc(q) + '</b><p>' + esc(sn) + (b.length > st + 150 ? '…' : '') + '</p><p class="tiny gold" style="margin-top:4px">' + (matchMedia('(hover: none)').matches ? '한 번 더 누르면 가이드로 이동' : '클릭하면 가이드에서 보기') + '</p>'; },
-    house: function () { var hh = house(); return '<b>' + houseDot(S.P.house, 18) + ' ' + hh.name + ' <span class="faint">' + hh.latin + '</span></b><p class="muted">“' + hh.motto + '”</p><p>기숙사 혜택 (현재 / 최대)</p>' + houseGrow(S.P.house, wctx()) + '<p class="tt-src">처음에는 효과의 10%만 받습니다. 기숙사 학생들의 활동이 대항전 점수로 쌓일수록 최대 100%까지 커집니다.</p>'; },
+    house: function () { var hh = house(); return '<b>' + houseDot(S.P.house, 18) + ' ' + hh.name + ' <span class="faint">' + hh.latin + '</span></b><p class="muted">“' + hh.motto + '”</p><p>기숙사 혜택 (현재 / 최대)</p>' + houseGrow(S.P.house, wctx()) + '<p class="tt-src">처음에는 적힌 효과의 1/10만 받습니다. 기숙사 학생들의 활동이 대항전 점수로 쌓일수록 커져, 기숙사 성장 100%가 되면 적힌 효과(최대)를 그대로 받습니다.</p>'; },
     mana: function () {
       var c = C(), cur = predMana(), full = cur >= c.manaCap ? 0 : (c.manaCap - cur) / Math.max(1e-9, c.mana);
       return '<b>' + dotImg('mana', 18) + '마나</b><p>연구·물약·알 부화에 씁니다.</p><dl class="kv"><dt>지금 들어오는 양</dt><dd class="good">시간당 +' + fmt(c.mana * 3600) + '</dd><dt>저장 한도</dt><dd>' + fmt(c.manaCap) + '</dd><dt>가득 차기까지</dt><dd>' + (full ? R.fmtTime(full) : '<span class="gold">가득 참 · 더 차지 않음</span>') + '</dd></dl>' +
@@ -2905,7 +2907,7 @@
       ['수업 속도', '수업 한 교시가 끝나는 데 걸리는 시간이 그만큼 짧아집니다.'], ['사역마 파견', '키운 사역마를 몇 시간 파견해 재료와 ' + CUR + '를 받아 옵니다.'], ['공격력 · 생명력', '원정 · 보스 전투에 쓰이는 능력치. 높을수록 더 높은 단계에 출정할 수 있습니다.'], ['전리품', '원정에서 떨어지는 장비와 재료. 확률이 오르면 더 자주 나옵니다.']];
     return '<details class="card inset gloss" style="margin-bottom:12px"><summary><b>처음 보는 고유명사가 있나요?</b> <span class="small muted">마나 · 지식 · ' + CUR + ' 등</span></summary>' +
       '<dl>' + G.map(function (g) { return '<dt>' + g[0] + '</dt><dd>' + g[1] + '</dd>'; }).join('') + '</dl>' +
-      '<p class="tiny faint" style="margin-top:6px">어느 기숙사든 모든 콘텐츠를 이용할 수 있습니다. 기숙사 혜택은 조금 더 유리한 정도이며, 처음에는 10%만 받다가 기숙사 학생들이 활동할수록 커집니다.</p>' +
+      '<p class="tiny faint" style="margin-top:6px">어느 기숙사든 모든 콘텐츠를 이용할 수 있습니다. 기숙사 혜택은 조금 더 유리한 정도이며, 처음에는 1/10만 받다가 기숙사 학생들이 활동할수록 최대 값까지 커집니다.</p>' +
       '<div class="row" style="margin-top:8px"><button class="btn sm" data-act="guide">플레이 가이드 열기</button></div></details>';
   }
   /* ── 사이트 설정 (이 브라우저에 기억: 글씨 크기·소리·알림) ── */
@@ -3204,7 +3206,7 @@
     if (!d.list.length) return h + '<div class="empty">' + (b.q ? '찾는 글이 없습니다.' : '아직 글이 없습니다. 첫 글을 남길 차례.') + '</div>';
     h += '<div class="card bdlist">' + d.list.map(function (p) {
       return '<button class="bdrow" data-act="bdopen" data-a="' + p.id + '">' + bdTag(p.tag) + (p.priv ? '<span class="btag lock" title="쓴 사람과 운영진만 볼 수 있습니다">관리자만</span>' : '') +
-        '<span class="bdt ell">' + esc(p.title) + (p.ncom ? ' <b class="bdc num">[' + p.ncom + ']</b>' : '') + '</span><span class="bda ell">' + esc(p.author) + (p.aop ? ' <span class="tag br">운영진</span>' : '') + '</span><span class="bdw tiny faint num">' + bdWhen(p.created) + '</span></button>';
+        '<span class="bdt ell">' + esc(p.title) + (p.ncom ? ' <b class="bdc num">[' + p.ncom + ']</b>' : '') + '</span><span class="bda ell">' + esc(p.author) + (p.aop ? ' ' + opBadge() : '') + '</span><span class="bdw tiny faint num">' + bdWhen(p.created) + '</span></button>';
     }).join('') + '</div>';
     if (d.pages > 1) {
       var pg = [], from = Math.max(1, d.page - 3), to = Math.min(d.pages, from + 6);
@@ -3219,14 +3221,14 @@
     var h = '<div class="row" style="margin-bottom:10px"><button class="btn sm ghost" data-act="bdback">← 목록</button><span class="spacer"></span>' +
       (p.canEdit ? '<button class="btn sm ghost" data-act="bdedit">고치기</button>' : '') + (p.canDel ? '<button class="btn sm ' + (armed ? 'danger' : 'ghost') + '" data-act="bddel" data-a="' + p.id + '">' + (armed ? '정말 지우기' : '지우기') + '</button>' : '') + '</div>';
     h += '<article class="card bdpost"><div class="row" style="gap:6px">' + bdTag(p.tag) + (p.priv ? '<span class="btag lock">관리자만 보기</span>' : '') + '</div><h2 class="bdh">' + esc(p.title) + '</h2>' +
-      '<div class="tiny faint"><button class="cn" data-act="prof" data-a="' + esc(p.aid) + '">' + esc(p.author) + '</button>' + (p.aop ? ' <span class="tag br">운영진</span>' : '') + ' · ' + new Date(p.created * 1000).toLocaleString('ko-KR') + (p.updated > p.created + 60 ? ' · 고침' : '') + '</div>' +
+      '<div class="tiny faint"><button class="cn" data-act="prof" data-a="' + esc(p.aid) + '">' + esc(p.author) + '</button>' + (p.aop ? ' ' + opBadge() : '') + ' · ' + new Date(p.created * 1000).toLocaleString('ko-KR') + (p.updated > p.created + 60 ? ' · 고침' : '') + '</div>' +
       (p.priv ? '<p class="tiny gold" style="margin-top:8px">쓴 사람과 운영진만 볼 수 있는 글입니다. 운영진이 답하면 우편으로 알려 드립니다.</p>' : '') +
       '<div class="bdbody">' + (p.tag === 'rp' ? rpText(p.body) : esc(p.body)) + '</div></article>';
     // 댓글 · 답글: 답글은 원래 댓글 밑에. 답글이 3개 이상이면 2개만 보이고 「답글 더 보기」로 펼친다
     var tops = p.comments.filter(function (c) { return !c.parent || !p.comments.some(function (x) { return x.id === c.parent; }); });
     function comHtml(c, isReply, root) {
       var ca = S.confirm['bdc' + c.id] > Date.now();
-      return '<div class="bdcom' + (c.op ? ' op' : '') + (isReply ? ' reply' : '') + '"><div class="row" style="gap:6px">' + (isReply ? '<span class="tiny faint">↳</span>' : '') + '<b class="small">' + (c.aid === 'staff' ? '운영진' : '<button class="cn" data-act="prof" data-a="' + esc(c.aid) + '">' + esc(c.author) + '</button>') + '</b>' + (c.op ? '<span class="tag br">운영진 답변</span>' : '') + '<span class="tiny faint">' + bdWhen(c.created) + '</span><span class="spacer"></span>' +
+      return '<div class="bdcom' + (c.op ? ' op' : '') + (isReply ? ' reply' : '') + '"><div class="row" style="gap:6px">' + (isReply ? '<span class="tiny faint">↳</span>' : '') + '<b class="small">' + (c.aid === 'staff' ? '운영진' : '<button class="cn" data-act="prof" data-a="' + esc(c.aid) + '">' + esc(c.author) + '</button>') + '</b>' + (c.op ? opBadge() : '') + '<span class="tiny faint">' + bdWhen(c.created) + '</span><span class="spacer"></span>' +
         (p.priv ? '' : '<button class="linkbtn tiny" data-act="bdreplyto" data-a="' + c.id + '" data-b="' + (root || c.id) + '">답글</button>') +
         (c.mine || (S.bd.data && S.bd.data.op) ? '<button class="linkbad tiny" data-act="bdcdel" data-a="' + c.id + '">' + (ca ? '정말 지우기' : '지우기') + '</button>' : '') + '</div><div class="small bdct">' + (p.tag === 'rp' ? rpText(c.body) : esc(c.body)) + '</div>' +
         (!isReply && S.bd.replyTo === c.id ? '<div class="bdcform reply"><textarea id="bd-rep" maxlength="500" rows="2" placeholder="' + esc((p.comments.filter(function (x) { return x.id === S.bd.replyFrom; })[0] || c).author) + ' 님에게 답글 (500자)">' + esc(S.bd.rep || '') + '</textarea><div class="stack" style="gap:4px"><button class="btn sm primary" data-act="bdrep" data-a="' + (S.bd.replyFrom || c.id) + '" data-b="' + c.id + '">답글 등록</button><button class="btn sm ghost" data-act="bdreplyto" data-a="">취소</button></div></div>' : '') + '</div>';
@@ -3383,7 +3385,7 @@
     if (tab === 'guest') h += nameField();
     h += '</form>';
     var HW = M.houses ? { hpts: M.houses.pts, hfull: M.houses.full } : M.world || null;
-    if (tab !== 'login') h += '<div><div class="section-t">기숙사 선택</div><p class="small muted" style="margin-bottom:10px">기숙사는 바꿀 수 없습니다. 매주 기숙사 대항전에서 함께 겨룹니다. 기숙사 혜택은 처음에 10%만 받고, 기숙사 학생들이 활동할수록 커집니다. 혜택은 지금 받는 값 / 최대 값입니다.</p>' + glossCard() + '<div class="housepick">' + D.HOUSES.map(function (hh) {
+    if (tab !== 'login') h += '<div><div class="section-t">기숙사 선택</div><p class="small muted" style="margin-bottom:10px">기숙사는 바꿀 수 없습니다. 매주 기숙사 대항전에서 함께 겨룹니다. 기숙사 혜택은 처음에 1/10만 받고, 기숙사 학생들이 활동할수록 최대 값까지 커집니다. 혜택은 지금 받는 값 / 최대 값입니다.</p>' + glossCard() + '<div class="housepick">' + D.HOUSES.map(function (hh) {
       return '<button data-act="ihouse" data-a="' + hh.id + '" class="' + (S.ihouse === hh.id ? 'on' : '') + '"><span class="hhead">' + dotImg(hh.id + '_big', 72, hh.name + ' 문장', 'hdot hbig') + '<span class="hn" style="color:' + hh.color + '">' + hh.name + ' <span class="faint small">' + hh.latin + '</span></span></span><span class="hm">“' + hh.motto + '”</span><span class="small muted">' + hh.desc + '</span>' + houseGrow(hh.id, HW) + '</button>';
     }).join('') + '</div></div>';
     if (tab !== 'login') h += '<div><div class="section-t">학과 선택</div><p class="small muted" style="margin-bottom:10px">싸우는 방식입니다. 입학한 뒤에는 전과시험을 봐서 바꿀 수 있습니다.</p><div class="housepick clspick">' + D.CLASSES.map(function (x) {
@@ -3491,7 +3493,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026101949;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026101950;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

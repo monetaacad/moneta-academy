@@ -24,7 +24,7 @@
   function invites() {
     api('GET', '/api/admin/invites').then(function (j) {
       $('#invites').innerHTML = (j.invites || []).map(function (i) {
-        return '<tr class="' + (i.disabled ? 'dis' : '') + '"><td class="num">' + esc(i.code) + '</td><td class="num">' + i.uses + ' / ' + i.max_uses + '</td><td>' + (i.expires ? when(i.expires) : '무기한') + '</td><td>' + esc(i.note) + '</td><td>' + esc(i.used_by || '') + '</td><td><button class="btn sm ghost" data-a="' + (i.disabled ? 'enable' : 'disable') + '" data-c="' + esc(i.code) + '">' + (i.disabled ? '다시 쓰기' : '중지') + '</button></td></tr>';
+        return '<tr class="' + (i.disabled ? 'dis' : '') + '"><td class="num">' + esc(i.code) + (i.op ? ' <b style="color:#e07c72">운영자</b>' : '') + '</td><td class="num">' + i.uses + ' / ' + i.max_uses + '</td><td>' + (i.expires ? when(i.expires) : '무기한') + '</td><td>' + esc(i.note) + '</td><td>' + esc(i.used_by || '') + '</td><td><button class="btn sm ghost" data-a="' + (i.disabled ? 'enable' : 'disable') + '" data-c="' + esc(i.code) + '">' + (i.disabled ? '다시 쓰기' : '중지') + '</button></td></tr>';
       }).join('') || '<tr><td colspan="6" class="faint">아직 발급한 코드가 없습니다</td></tr>';
     });
   }
@@ -90,7 +90,8 @@
     mdel: function (el) { if (!confirm('이 우편을 회수할까요? 아직 받지 않은 학생에게서 사라집니다 (이미 받은 보상은 그대로).')) return; api('POST', '/api/admin/mail/delete', { id: +el.dataset.c }).then(mails); },
     refresh: function () { enter(); },
     issue: function () {
-      api('POST', '/api/admin/invites', { count: +$('#ic').value, uses: +$('#iu').value, days: +$('#id').value, note: $('#in').value }).then(function (j) {
+      var op = $('#iop').checked; if (op && !confirm('운영자 초대코드를 발급할까요? 이 코드로 가입한 사람은 운영자가 됩니다. 믿을 수 있는 사람에게만 직접 전해 주세요.')) return;
+      api('POST', '/api/admin/invites', { count: +$('#ic').value, uses: +$('#iu').value, days: +$('#id').value, note: $('#in').value, op: op }).then(function (j) {
         if (j.error) return toast(j.error); $('#newcodes').hidden = false; $('#codesbox').textContent = j.codes.join('\n'); invites();
       });
     },

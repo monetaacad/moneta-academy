@@ -91,7 +91,6 @@ install -m 600 -o root -g root /dev/null /etc/moneta.env
 echo "ADMIN_TOKEN=$(openssl rand -base64 33)" >> /etc/moneta.env
 echo "DATA_KEY=$(openssl rand -base64 33)"    >> /etc/moneta.env
 echo "BACKUP_KEY=$(openssl rand -base64 33)"  >> /etc/moneta.env
-echo "ADMIN_NAMES=운영자"                      >> /etc/moneta.env
 cat /etc/moneta.env
 ```
 **나온 값을 비밀번호 관리자 등 서버 밖에 꼭 따로 보관합니다.** `DATA_KEY`를 잃으면 모든 비밀번호 · 개인정보를 되살릴 수 없고, `BACKUP_KEY`를 잃으면 백업을 풀 수 없습니다. `ADMIN_TOKEN`은 운영실 로그인용이며 남에게 보이지 않습니다. 이 파일은 깃에 올라가지 않습니다.
@@ -127,8 +126,10 @@ certbot --nginx -d 내이름.duckdns.org     # 이메일 입력 → 약관 Y →
 
 ## ⑩ 운영 시작
 1. `https://내이름.duckdns.org/admin.html` → `ADMIN_TOKEN` 값으로 로그인.
-2. **초대코드 발급** (개수 · 코드당 사용 횟수 · 기간).
-3. 그 코드로 가입 → 아이디는 따로 정하고, **학생 이름**을 `운영자`(ADMIN_NAMES에 적은 이름)로 → 채팅 운영자.
+2. **운영자 초대코드** 체크 → 발급 (한 장 · 1회 · 최대 7일).
+3. 그 코드로 가입 (아이디 · 학생 이름은 자유) → 바로 운영자. 채팅 · 프로필 · 게시판에 서버가 확인한 「운영진」 표시가 붙습니다.
+   운영자를 더 둘 때도 같은 방법. 이미 가입한 학생은 운영실 「학생 관리」에서 운영자 지정/해제.
+   일반 학생용 초대코드는 체크 없이 발급 (개수 · 코드당 사용 횟수 · 기간).
 4. 운영실 「지금 백업」 한 번 → 이후 12시간마다 자동 백업.
 5. 모바일 · PC에서 가입 → 수업 → 채팅 → 거래소 → 우편함 한 번씩 확인.
 

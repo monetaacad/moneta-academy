@@ -227,9 +227,9 @@
 
   /* ───────── 보너스 집계 ───────── */
   function addEff(b, eff, k) { k = k == null ? 1 : k; for (var key in eff) b[key] = (b[key] || 0) + eff[key] * k; }
-  // 기숙사 성장: 처음에는 적힌 효과의 10%만. 기숙사 학생들의 활동(대항전 점수, 주마다 상위 30명 합계)이 쌓일수록 100%까지
+  // 기숙사 성장: 처음에는 적힌 효과의 1/10만. 기숙사 학생들의 활동(대항전 점수, 주마다 상위 30명 합계)이 쌓일수록 적힌 효과까지 (그 이상은 없다)
   // W.hpts = 기숙사별 누적 점수, W.hfull = 100%가 되는 점수 (서버 HOUSE_FULL로 조절)
-  R.HOUSE_BASE = 0.1; R.HOUSE_FULL = 300000;
+  R.HOUSE_BASE = 0.1; R.HOUSE_FULL = 100000;
   R.housePct = function (W, hid) { var p = W && W.hpts ? +W.hpts[hid] || 0 : 0, f = W && W.hfull || R.HOUSE_FULL; return R.HOUSE_BASE + (1 - R.HOUSE_BASE) * Math.min(1, p / f); };
   // '지식 획득 +15%, 수업 속도 +5%' → '지식 획득 +1.5% / +15%, 수업 속도 +0.5% / +5%' (현재 / 최대)
   R.houseEffText = function (hid, pct) {
