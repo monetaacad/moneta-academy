@@ -65,7 +65,7 @@
     { id: 'world', name: '토벌·랭킹' }, { id: 'party', name: '파티' }, { id: 'guild', name: '동아리' }, { id: 'friends', name: '친구' }, { id: 'board', name: '게시판' }, { id: 'auction', name: '떠돌이 상인' }, { id: 'market', name: '거래소' }, { id: 'gear', name: '장비·능력' }, { id: 'work', name: '공방', grade: 2 }, { id: 'lib', name: '서고' },
     { id: 'shop', name: '매점' }, { id: 'lore', name: '세계관' }, { id: 'rec', name: '기록실' }
   ];
-  function viewOpen(v) { return !v.grade || S.P.grade >= v.grade; }
+  function viewOpen(v) { return !v.grade || S.P.grade >= v.grade || (v.id === 'work' && R.famOpen(S.P)); }   // 공방은 사역마가 열리면(레벨) 2학년 전에도
   // 안내도: 비슷한 곳끼리 묶고, 안에서 탭으로 옮겨 다닌다
   var GROUPS = [
     { id: 'home', name: '아카데미 광장', icon: 'home', tabs: ['home'] },
@@ -487,7 +487,7 @@
       var x = ''; if (!drew && div != null && div > 0 && isNum(m.id) && m.id > div && m.pid !== S.P.id) { drew = true; x = '<div class="newline"><span>여기부터 새 글</span></div>'; }
       return x + msgHtml(m);
     }).join('');
-    if (ch === 'notice' && S.pin && S.pin.text) h += '<div class="cpin"><span class="stag">고정 공지</span><mark class="hl">' + chatText(S.pin.text) + '</mark></div>';   // 공지 탭 상단 고정 (경매 · 의식 소식이 쌓여도 묻히지 않게)
+    if (ch === 'notice' && S.pin && S.pin.text) { var pf = pinFolded(); h += '<div class="cpin' + (pf ? ' fold' : '') + '"' + (pf ? ' data-act="pinfold" title="펼쳐 보기"' : '') + '><span class="stag">고정 공지</span><mark class="hl">' + chatText(S.pin.text) + '</mark><button class="cpin-t" data-act="pinfold">' + (pf ? '펼치기' : '접기') + '</button></div>'; }   // 공지 탭 상단 고정 (경매 · 의식 소식이 쌓여도 묻히지 않게)
     h += '<div id="chatlog" class="chatlog ch-' + ch + '" aria-live="polite">' +
       (c.more[ch] && API.mode === 'server' && c.msgs[ch].length >= 80 ? '<button class="btn sm ghost chatmore" data-act="chatmore">이전 대화 더 보기</button>' : '') +
       '<div class="chatdesc"><div class="chatmeta tiny"><span class="ondot" aria-hidden="true"></span><span class="gold" data-l="chatonline"></span>' + (c.loading === ch ? '<span class="faint">새 글 불러오는 중…</span>' : '') + (ch === 'world' && c.slow.world ? '<span class="tag br">슬로우 모드 ' + c.slow.world + '초</span>' : '') + (ch === 'world' && isOp() ? '<button class="btn sm ghost" data-act="slowset" style="padding:0 7px">슬로우 모드 설정</button>' : '') + '</div>' +
@@ -813,6 +813,10 @@
   };
   ACT.cprof = function (id) { var m = findMsg(id); if (m) openProfile(m.pid, m); };
   ACT.prof = function (pid) { openProfile(pid, null); };
+  // 고정 공지 접기: 접은 공지(고정 시각)를 이 기기에 기억한다. 새 공지가 고정되면 다시 펼쳐 보인다
+  function pinKey() { return S.pin ? String(S.pin.id || S.pin.t) : ''; }
+  function pinFolded() { try { return !!pinKey() && localStorage.getItem('arc_pinfold') === pinKey(); } catch (e) { return !!S.pinFold; } }
+  ACT.pinfold = function () { var f = !pinFolded(); S.pinFold = f; try { if (f) localStorage.setItem('arc_pinfold', pinKey()); else localStorage.removeItem('arc_pinfold'); } catch (e) { } renderDock(); };
   ACT.fop = function (op, id) {
     API.friendOp(op, id).then(function (j) {
       if (j.error) { toast('할 수 없습니다', j.error); return; }
@@ -1081,7 +1085,7 @@
       var btns = Object.keys(cnt).map(function (x) { var blocked = dz && x !== 'lib'; return '<button class="btn sm' + (blocked ? ' ghost' : ' primary') + '" data-act="nav" data-a="' + x + '"' + (blocked ? ' disabled title="꿈길 중에는 시작할 수 없습니다"' : '') + '>' + nm[x] + (cnt[x] > 1 ? ' ' + cnt[x] : '') + '</button>'; }).join('');
       rows.push('<div class="tl idle idlesum"><span class="tli">대기</span><div class="tlb"><div class="small">빈 슬롯 · ' + Object.keys(cnt).map(function (x) { return nm[x]; }).join(' · ') + '</div>' + (ot ? '<div class="tiny good">' + gterm('제때 입실') + ' · 지금 수업을 들으면 +' + Math.round(R.ONTIME_BONUS * 100) + '%</div>' : dz ? '<div class="tiny">꿈길 중 · 연구만 시작할 수 있습니다</div>' : '') + '</div><span class="row" style="gap:4px;flex-wrap:wrap;justify-content:flex-end">' + btns + '</span></div>');
     }
-    if (P.grade >= 3) {
+    if (R.famOpen(P)) {
       var idle = Object.keys(P.fam.own).filter(function (id) { return id !== P.fam.act && !P.fam.disp[id]; }).length;
       Object.keys(P.fam.disp).forEach(function (id) { rows.push(tline('파견', R.FAM[id].name + ' 파견', P.fam.disp[id], 'work')); });
       if (idle) rows.push(tline('파견', '쉬고 있는 사역마 ' + idle + '마리', null, 'work', '파견 보낼 수 있습니다'));
@@ -1091,7 +1095,7 @@
   function goals() {
     var P = S.P, out = [], c = C(), ex = R.examFor(P);
     if (P.daily.login) out.push({ t: '출석 보상 받기', s: '연속 출석할수록 보상이 커집니다.', act: 'do-login', btn: '받기' });
-    if (P.fam.eggs > 0 && P.grade >= 3) out.push({ t: '환수의 알 ' + P.fam.eggs + '개', s: '공방에서 바로 부화시킬 수 있습니다.', go: 'work' });
+    if (P.fam.eggs > 0 && R.famOpen(P) && !P.fam.egg) out.push({ t: '환수의 알 ' + P.fam.eggs + '개', s: '공방 「사역마」에서 부화시킬 수 있습니다.', go: 'work' });
     var idleL = 0, idleE = 0, dz = R.dreaming(P, now());
     if (!dz) { for (var i = 0; i < c.lecSlots; i++) if (!P.lec[i]) idleL++; for (var k = 0; k < c.expSlots; k++) if (!P.exp[k]) idleE++; }
     if (idleL) out.push({ t: '비어 있는 수업 슬롯 ' + idleL + '개', s: '다시 접속할 시간에 맞춰 수업 길이 선택.', go: 'lecture' });
@@ -1679,8 +1683,9 @@
 
   /* ── 공방 ── */
   V.work = function () {
-    var h = pageHead('연금화학 실습실 · 환수 사육장', '공방', '');
-    h += '<div class="tabs" role="tablist"><button role="tab" class="' + (S.workTab === 'alch' ? 'on' : '') + '" data-act="worktab" data-a="alch">연금술</button><button role="tab" class="' + (S.workTab === 'fam' ? 'on' : '') + '" data-act="worktab" data-a="fam">사역마' + (S.P.grade < 3 ? ' (3학년)' : '') + '</button></div>';
+    var h = pageHead('연금화학 실습실 · 환수 사육장', '공방', ''), g2 = S.P.grade >= 2;
+    if (!g2) S.workTab = 'fam';
+    h += '<div class="tabs" role="tablist"><button role="tab" class="' + (S.workTab === 'alch' ? 'on' : '') + '" data-act="worktab" data-a="alch"' + (g2 ? '' : ' disabled') + '>연금술' + (g2 ? '' : ' (2학년)') + '</button><button role="tab" class="' + (S.workTab === 'fam' ? 'on' : '') + '" data-act="worktab" data-a="fam">사역마' + (R.famOpen(S.P) ? '' : ' (Lv ' + R.FAM_LV + ')') + '</button></div>';
     return h + (S.workTab === 'alch' ? alchView() : famView());
   };
   function matTag(m, need) { var have = S.P.mats[m] || 0; return '<span class="tag ' + (have >= need ? 'ok' : 'no') + '">' + D.MATS[m].name + ' ' + fmt(have) + '/' + need + '</span>'; }
@@ -1704,9 +1709,10 @@
     return h;
   }
   function famView() {
-    var P = S.P; if (P.grade < 3) return '<div class="card"><p>환수생태학은 3학년부터 배웁니다. 진급하면 고드릭 펜 교수가 첫 환수의 알을 줍니다.</p></div>';
+    var P = S.P, eh = R.eggHold(P), hold = '<p class="small" style="margin-top:8px">알 품기: 지니고 있는 알 <b class="num">' + P.fam.eggs + '</b>개' + (eh ? ' · <span class="good">경험치 +' + Math.round(eh * R.EGG_HOLD_EACH * 100) + '%</span>' : '') + ' <span class="tiny faint">(부화시키지 않은 알 하나마다 경험치 +' + Math.round(R.EGG_HOLD_EACH * 100) + '%, ' + R.EGG_HOLD_MAX + '개까지)</span></p>';
+    if (!R.famOpen(P)) return '<div class="card"><h3>사역마는 레벨 ' + R.FAM_LV + '부터</h3><p class="small muted" style="margin-top:4px">레벨 ' + R.FAM_LV + '이 되면 고드릭 펜 교수가 첫 환수의 알을 주고, 알을 부화시켜 동행하거나 파견할 수 있습니다. 그전에도 환수생태학 수업은 들을 수 있습니다(부화 속도 +1%/레벨). 지금 레벨 ' + P.lvl + '.</p>' + hold + '</div>';
     var price = R.eggPrice(P, wctx(), now());
-    var h = '<div class="grid g2" style="margin-bottom:14px"><div class="card hl"><h3>부화기</h3><p class="small muted">보관 중인 알 <b class="num gold">' + P.fam.eggs + '</b>개. 보스 첫 처치, 월드 보스 토벌, 12시간 파견, 매점에서 얻습니다. 마나를 불어넣으면 그 자리에서 깨어납니다.</p>';
+    var h = '<div class="grid g2" style="margin-bottom:14px"><div class="card hl"><h3>부화기</h3><p class="small muted">보관 중인 알 <b class="num gold">' + P.fam.eggs + '</b>개. 보스 첫 처치, 월드 보스 토벌, 12시간 파견, 매점에서 얻습니다. 마나를 불어넣으면 그 자리에서 깨어납니다.</p>' + hold;
     h += '<div class="row" style="margin-top:10px"><button class="btn primary" data-act="do" data-a="egg"' + (P.fam.eggs > 0 && predMana() >= price ? '' : ' disabled') + '>부화시키기 <span class="cost">마나 ' + fmt(price) + '</span></button></div>';
     h += '</div><div class="card inset"><h4>파견</h4><p class="small muted" style="margin-top:4px">동행하지 않는 사역마를 정해진 시간 동안 내보내면 재료, 마석, ' + CUR + ', 가끔 알과 별조각을 물어 옵니다. 8·12시간 파견은 잠들기 전에 시작해 두는 장시간 방치용입니다.</p>' + durPicker('dd', D.DISPATCH_DUR, '8h') + '</div></div><div class="grid gauto">';
     var dk = S.pick.dd || '8h';
@@ -2917,9 +2923,9 @@
   /* ── 소지품: 장비가 아닌 것(알 · 도전권 · 물약 · 망각의 차 등)을 한곳에. 칸 제한 없음, 바로 쓰기 · 바로가기 ── */
   function bagTabs(c) { var nn = invNew().length; return '<div class="tabs bagtabs" role="tablist" style="margin-bottom:8px"><button role="tab" class="' + (S.bagTab !== 'inv' ? 'on' : '') + '" data-act="bagtab" data-a="eq">장비 가방 <span class="num tiny">' + S.P.inv.length + ' / ' + c.bag + '</span></button><button role="tab" class="' + (S.bagTab === 'inv' ? 'on' : '') + '" data-act="bagtab" data-a="inv">소지품' + (nn ? ' <span class="tag br">새 ' + nn + '</span>' : '') + '</button></div>'; }
   function invItems() {
-    var P = S.P, tk = P.tok || {}, out = [], g3 = P.grade >= 3;
+    var P = S.P, tk = P.tok || {}, out = [], g3 = R.famOpen(P);
     function B(act, a, b, label, primary) { return '<button class="btn sm' + (primary ? ' primary' : ' ghost') + '" data-act="' + act + '"' + (a != null ? ' data-a="' + a + '"' : '') + (b != null ? ' data-b="' + b + '"' : '') + '>' + label + '</button>'; }
-    if (P.fam.eggs > 0) out.push({ k: 'egg', name: '환수의 알', n: P.fam.eggs, desc: g3 ? '공방 부화기에서 마나로 부화시켜 사역마로 키웁니다.' : '3학년부터 공방에서 부화할 수 있습니다. 그때까지 여기에 보관됩니다.', acts: (g3 && !P.fam.egg ? B('do', 'egg', null, '바로 부화', true) : '') + B('goto', 'work', 'fam', '부화기로') });
+    if (P.fam.eggs > 0) out.push({ k: 'egg', name: '환수의 알', n: P.fam.eggs, desc: (g3 ? '공방 부화기에서 마나로 부화시켜 사역마로 키웁니다.' : '레벨 ' + R.FAM_LV + '부터 공방에서 부화할 수 있습니다. 그때까지 여기에 보관됩니다.') + ' 지니고 있는 동안 알 품기로 경험치 +' + Math.round(R.EGG_HOLD_EACH * 100) + '%(' + R.EGG_HOLD_MAX + '개까지).', acts: (g3 && !P.fam.egg ? B('do', 'egg', null, '바로 부화', true) : '') + B('goto', 'work', 'fam', '부화기로') });
     if (P.wb.tickets + (P.wb.extra || 0) > 0) out.push({ k: 'ticket', name: '토벌 도전권', n: P.wb.tickets + (P.wb.extra || 0), desc: '충전 도전권 ' + P.wb.tickets + ' / ' + R.K.WB_TICKET_MAX + (P.wb.extra > 0 ? ' · 추가 도전권 ' + P.wb.extra + '장 (이번 주 ' + R.wbExtraLeft(P, now()) + '번 더 사용 가능)' : '') + '. 월드 보스에 한 번 도전할 때 1장씩 씁니다. 충전 도전권은 8시간마다 3장까지 차고, 매점 · 우편으로 받은 추가 도전권은 충전 도전권을 다 쓴 뒤 한 주에 ' + R.K.WB_EXTRA_USE + '번까지 쓸 수 있으며 남은 것은 다음 주로 넘어갑니다.', acts: B('goto', 'world', null, '월드 보스로', true) });
     if (tk.respec > 0) out.push({ k: 'respec', name: '망각의 차', n: tk.respec, desc: '마시면 분배한 능력치 포인트를 모두 돌려받고 자동 분배가 꺼집니다.', acts: B('respecuse', null, null, S.confirm.rsp > Date.now() ? '한 번 더 누르면 마십니다' : '바로 마시기', true) + B('goto', 'gear', 'alloc', '능력치 칸으로') });
     D.POTIONS.forEach(function (p) { if (P.shelf[p.id] > 0) out.push({ k: 'pot:' + p.id, name: p.name, n: P.shelf[p.id], desc: p.desc, dot: p.color, acts: B('do', 'drink', p.id, '바로 마시기', true) + B('goto', 'work', 'alch', '연금술로') }); });
@@ -3104,7 +3110,7 @@
     var P = S.P, out = [];
     D.SUBJECTS.forEach(function (x) { if (x.unlock === g && R.subjVisible(P, x)) out.push(['새 과목 「' + x.name + '」', x.prof + ' · ' + x.desc, 'lecture', '']); });
     if (g === 2) { out.push(['공방 · 연금술', '재료와 마나로 물약을 만들고, 거래소에 내다 팔 수도 있습니다.', 'work', 'alch']); out.push(['거래소 사고팔기', '장비 · 재료 · 물약 · 휘장을 다른 학생과 ' + CUR + '로 거래합니다.', 'market', '']); }
-    if (g === 3) { out.push(['사역마 · 알 부화 · 파견', '고드릭 펜 교수가 첫 환수의 알을 줍니다. 부화시켜 동행하거나 파견할 수 있습니다.', 'work', 'fam']); out.push(['아카데미 휘장', '2학년을 마친 기념으로 브로치를 수여합니다. 달고 있으면 별빛을 모아 성장합니다.', 'gear', 'badge']); }
+    if (g === 3) { out.push(['아카데미 휘장', '2학년을 마친 기념으로 브로치를 수여합니다. 달고 있으면 별빛을 모아 성장합니다.', 'gear', 'badge']); }
     var s0 = R.spellSlots({ grade: g - 1 }), s1 = R.spellSlots({ grade: g });
     if (s1 > s0) out.push(['주문 슬롯 ' + s1 + '칸', '보스 · 결투 · 월드 보스에서 자동으로 쓰는 주문을 하나 더 장착합니다.', 'explore', '']);
     if (g >= 8) out.push(['심연', '81단계부터 끝없이 이어지는 원정 지역과 심연 연구가 열립니다.', 'explore', '']);
@@ -3965,7 +3971,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026101997;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026101998;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
