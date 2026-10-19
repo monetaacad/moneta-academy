@@ -308,7 +308,7 @@
     return g;
   }
   LocalApi.prototype._gLog = function (text) { var g = this._soc().guild; g.log.unshift({ t: Date.now() / 1000, text: text }); if (g.log.length > 60) g.log.length = 60; };
-  LocalApi.prototype._gXp = function (x) { var g = this._soc().guild, ups = Rules.guildAddXp(g, x); if (ups) { this._sys('grp', '✦ 동아리가 ' + g.lv + '레벨이 되었습니다! 정원 ' + Rules.guildCap(g.lv) + '명 · 창고 ' + Rules.guildSlots(g.lv) + '칸'); this._gLog('동아리 ' + g.lv + '레벨 달성'); } this.d.P.guildLv = g.lv; };
+  LocalApi.prototype._gXp = function (x) { var g = this._soc().guild, ups = Rules.guildAddXp(g, x); if (ups) { this._sys('grp', '✦ 동아리가 ' + g.lv + '레벨이 되었습니다! 정원 ' + Rules.guildCap(g.lv) + '명 · 창고 ' + Rules.guildSlots(g.lv) + '칸'); this._gLog('동아리 ' + g.lv + '레벨 달성' + Rules.guildUnlockText(g.lv - ups, g.lv)); } this.d.P.guildLv = g.lv; };
   LocalApi.prototype._guildView = function () {
     var so = this._soc(), P = this.d.P, g = so.guild; if (!g) { P.guildLv = 0; return null; } gFix(g); var N = npcs(), day = Rules.dayKST(this._now()), ranks = g.ranks;
     P.guildLv = g.lv;
@@ -322,8 +322,12 @@
       lv: g.lv, xp: Math.floor(g.xp), need: Rules.guildXpNeed(g.lv), maxLv: Rules.GUILD_MAX_LV, bonus: Rules.guildBonus(g.lv), ranks: ranks, myRank: g.myRank, myRankName: Rules.guildRankName(ranks, g.role, g.myRank), perms: perms,
       my: { contrib: g.contrib, checkin: g.cday === day, dpts: g.dday === day ? g.dpts : 0, cap: Rules.GUILD_DONATE_CAP, unit: Rules.guildGoldUnit(P), bonusIn: Rules.GUILD_CHECKIN },
       gold: g.gold, slots: Rules.guildSlots(g.lv), items: g.items.map(function (x) { return { id: x.id, name: x.item.name + (x.item.enh ? ' +' + x.item.enh : ''), r: x.item.r, ilvl: x.item.ilvl, slot: x.item.slot, by: x.by, t: x.t, item: x.item }; }), log: g.log.slice(0, 30),
-      members: mem };
+      members: mem, ranksMax: Rules.guildRanksMax(g.lv), rit: g.lv >= Rules.GRIT_LV ? this._gRit(mem.length) : undefined, wq: g.lv >= Rules.GWQ_LV ? this._gWq() : undefined };
   };
+  // 데모 동아리 의식: 내가 봉헌하면 NPC 부원들도 따라 봉헌한다
+  LocalApi.prototype._gRitSt = function (n) { var g = this._soc().guild, day = Rules.dayKST(this._now()); if (!g.rit || g.rit.day !== day) g.rit = { day: day, pids: [], done: 0, goal: Rules.gritGoal(n) }; return g.rit; };
+  LocalApi.prototype._gRit = function (n) { var P = this.d.P, st = this._gRitSt(n), now = this._now(); return { n: st.pids.length, goal: st.goal, done: st.done, mine: st.pids.indexOf(P.id) >= 0, cost: Rules.ritualCost(P, this._world(now), now) }; };
+  LocalApi.prototype._gWq = function () { var P = this.d.P, now = this._now(), w = Rules.weekId(now); return { wk: w, end: Rules.weekStart(w + 1), list: Rules.GWQ.map(function (q) { var m = Rules.gwqMine(P, q, w); return { id: q.id, name: q.name, unit: q.unit, goal: q.goal, need: Rules.gwqNeed(q), prog: m, mine: m, got: !!(P.gwq && P.gwq.wk === w && P.gwq.got[q.id]) }; }), reward: Rules.gwqReward(P) }; };
   LocalApi.prototype.guilds = function () { var so = this._soc(), mine = so.guild ? so.guild.id : null; var list = DEMO_GUILDS.map(function (g) { return { id: g.id, name: g.name, intro: g.intro, color: g.color, mode: g.mode, n: g.npcs.length, max: Rules.guildCap(g.lv), lv: g.lv, owner: npcs()[g.npcs[0]].name, mine: g.id === mine }; }); if (so.guild && so.guild.own) list.unshift({ id: so.guild.id, name: so.guild.name, intro: so.guild.intro, color: so.guild.color, mode: so.guild.mode, n: 1 + so.guild.npcs.length, max: Rules.guildCap(so.guild.lv || 1), lv: so.guild.lv || 1, owner: this.d.P.name, mine: true }); return Promise.resolve({ list: list, mine: mine, demo: true, invites: [] }); };
   LocalApi.prototype.guildRank = function (sort) {
     var so = this._soc(), self = this, rows = DEMO_GUILDS.map(function (g) { return { id: g.id, name: g.name, intro: g.intro, color: g.color, mode: g.mode, lv: g.lv, xp: g.xp, n: g.npcs.length, max: Rules.guildCap(g.lv), power: g.npcs.reduce(function (a, k) { return a + Math.round(Math.pow(npcs()[k].lvl, 2.2) * 40); }, 0), owner: npcs()[g.npcs[0]].name }; });
@@ -351,10 +355,10 @@
     else {
       var g = gFix(so.guild), role = g.role, staff = role === 'owner' || role === 'officer', can = function (p) { return Rules.guildCan(g.ranks, role, g.myRank, p); };
       var k = o.pid ? +String(o.pid).slice(4) : -1, tr = k >= 0 ? (g.nr[k] || (g.nr[k] = {})) : null, tRole = tr ? (tr.role || 'member') : null;
-      if (o.op === 'leave') { if (role === 'owner' && g.npcs.length) return fail('부원이 있으면 회장은 나갈 수 없습니다. 먼저 회장 위임 필요'); if (role === 'owner') return fail('혼자 남은 회장은 「동아리 닫기」로 정리 필요'); so.guild = null; so.chat.grp = []; so.chat.gooc = []; P.guildLv = 0; this._emitGroup('guild'); this._save(); return Promise.resolve({ ok: true, guild: null }); }
+      if (o.op === 'leave') { if (role === 'owner' && g.npcs.length) return fail('부원이 있으면 회장은 나갈 수 없습니다. 먼저 회장 위임 필요'); if (role === 'owner') return fail('혼자 남은 회장은 「동아리 해체」로 정리 필요'); so.guild = null; so.chat.grp = []; so.chat.gooc = []; P.guildLv = 0; this._emitGroup('guild'); this._save(); return Promise.resolve({ ok: true, guild: null }); }
       if (o.op === 'disband') {
-        if (role !== 'owner') return fail('회장만 동아리를 닫을 수 있습니다'); if (g.npcs.length) return fail('부원이 남아 있으면 닫을 수 없습니다. 회장을 넘기거나 모두 나간 뒤에 닫기 가능');
-        var its = g.items.map(function (x) { return x.item; }); for (var i = 0; i < Math.max(its.length, g.gold > 0 ? 1 : 0); i += 10) this._sendMail('동아리', '「' + g.name + '」 창고 정리', '동아리를 닫아 창고에 남아 있던 것을 돌려드립니다.', { gold: i === 0 ? Math.floor(g.gold) : 0, items: its.slice(i, i + 10) }, 30);
+        if (role !== 'owner') return fail('회장만 동아리를 해체할 수 있습니다'); if (g.npcs.length) return fail('다른 부원이 있으면 동아리를 해체할 수 없습니다. 모두 내보낸 뒤에 해체 가능');
+        var its = g.items.map(function (x) { return x.item; }); for (var i = 0; i < Math.max(its.length, g.gold > 0 ? 1 : 0); i += 10) this._sendMail('동아리', '「' + g.name + '」 창고 정리', '동아리를 해체해 창고에 남아 있던 것을 돌려드립니다.', { gold: i === 0 ? Math.floor(g.gold) : 0, items: its.slice(i, i + 10) }, 30);
         so.guild = null; so.chat.grp = []; so.chat.gooc = []; P.guildLv = 0; this._emitGroup('guild'); this._save(); return Promise.resolve({ ok: true, guild: null });
       }
       if (o.op === 'edit') { if (!can('notice')) return fail('공지·소개를 고칠 권한이 없습니다'); if (o.intro !== undefined) g.intro = String(o.intro).slice(0, 300); if (o.notice !== undefined) { var nn = String(o.notice).slice(0, 300); if (nn && nn !== g.notice) this._sys('grp', '동아리 공지: ' + nn); g.notice = nn; } if (staff && o.color) g.color = o.color; if (staff && o.mode) g.mode = o.mode; }
@@ -362,13 +366,31 @@
       else if (o.op === 'kick') { var okk = role === 'owner' ? tRole !== 'owner' : (staff || can('kick')) && tRole === 'member'; if (!okk) return fail('내보낼 권한이 없습니다'); g.npcs = g.npcs.filter(function (x) { return x !== k; }); delete g.nr[k]; this._sys('grp', N[k].name + ' 님이 동아리에서 나갔습니다.'); this._gLog(P.name + ' 님이 ' + N[k].name + ' 님을 내보냈습니다'); }
       else if (o.op === 'role') { if (role !== 'owner') return fail('회장만 부회장을 정할 수 있습니다'); var nr = o.role === 'officer' ? 'officer' : 'member'; if (nr === 'officer' && tRole !== 'officer' && g.npcs.filter(function (x) { return (g.nr[x] || {}).role === 'officer'; }).length >= 2) return fail('부회장은 2명까지입니다'); tr.role = nr; tr.rank = ''; this._gLog(N[k].name + ' 님 → ' + (nr === 'officer' ? '부회장' : g.ranks.base.name)); if (nr === 'officer') this._sys('grp', N[k].name + ' 님이 부회장이 되었습니다.'); }
       else if (o.op === 'setrank') { if (!staff) return fail('회장·부회장만 계급을 정할 수 있습니다'); if (tRole !== 'member') return fail('회장·부회장에게는 계급을 줄 수 없습니다'); tr.rank = String(o.rank || ''); this._gLog(N[k].name + ' 님 → ' + Rules.guildRankName(g.ranks, 'member', tr.rank)); }
-      else if (o.op === 'ranks') { if (role !== 'owner') return fail('회장만 계급을 고칠 수 있습니다'); var nrk = Rules.guildCleanRanks(o.ranks); Object.keys(g.nr).forEach(function (x) { if (g.nr[x].rank && !nrk.list.some(function (y) { return y.id === g.nr[x].rank; })) g.nr[x].rank = ''; }); g.ranks = nrk; this._gLog(P.name + ' 님이 계급을 고쳤습니다'); }
+      else if (o.op === 'ranks') { if (role !== 'owner') return fail('회장만 계급을 고칠 수 있습니다'); var nrk = Rules.guildCleanRanks(o.ranks, Rules.guildRanksMax(g.lv)); Object.keys(g.nr).forEach(function (x) { if (g.nr[x].rank && !nrk.list.some(function (y) { return y.id === g.nr[x].rank; })) g.nr[x].rank = ''; }); g.ranks = nrk; this._gLog(P.name + ' 님이 계급을 고쳤습니다'); }
       else if (o.op === 'transfer') { if (role !== 'owner') return fail('회장만 넘길 수 있습니다'); tr.role = 'owner'; tr.rank = ''; g.role = 'officer'; g.myRank = ''; this._sys('grp', N[k].name + ' 님이 새 회장이 되었습니다.'); this._gLog(P.name + ' 님이 ' + N[k].name + ' 님에게 회장을 넘겼습니다'); }
       else if (o.op === 'invite') return fail('데모에는 초대할 다른 학생이 없습니다. 부원 탭에서 NPC를 불러 보세요');
       else if (o.op === 'accept' || o.op === 'reject') return fail('데모에는 가입 신청이 없습니다');
       else if (o.op === 'checkin') { if (g.cday === day) return fail('오늘은 이미 동아리 출석을 했습니다'); g.cday = day; g.contrib += Rules.GUILD_CHECKIN; this._gXp(Rules.GUILD_CHECKIN); this._gLog(P.name + ' 님 출석 (+' + Rules.GUILD_CHECKIN + ')'); this._save(); return Promise.resolve({ ok: true, got: Rules.GUILD_CHECKIN, guild: this._guildView() }); }
       else {
         Rules.advance(P, this._world(now), now);
+        if (o.op === 'ritual') {
+          if (g.lv < Rules.GRIT_LV) return fail('동아리 ' + Rules.GRIT_LV + '레벨부터 의식을 올릴 수 있습니다');
+          var rs = this._gRitSt(1 + g.npcs.length); if (rs.pids.indexOf(P.id) >= 0) return fail('오늘은 이미 봉헌했습니다');
+          var rc = Rules.ritualCost(P, this._world(now), now); if (P.res.mana < rc) return fail('마나가 모자랍니다 (마나 ' + Rules.fmt(rc) + ' 필요)');
+          P.res.mana -= rc; rs.pids.push(P.id); g.npcs.forEach(function (k) { if (rs.pids.length < rs.goal) rs.pids.push('npc:' + k); });
+          this._gLog(P.name + ' 님이 동아리 의식에 봉헌 (' + rs.pids.length + '/' + rs.goal + ')');
+          if (!rs.done && rs.pids.length >= rs.goal) { rs.done = now; this._sys('grp', '✦ 오늘의 동아리 의식이 이루어졌습니다! 봉헌한 ' + rs.pids.length + '명에게 「' + Rules.GRIT_BUFF.name + '」 — ' + Rules.GRIT_BUFF.text + '.'); }
+          if (rs.done) Rules.gritBless(P, now);
+          this._save(); return this._ok(now, { ok: true, guild: this._guildView() });
+        }
+        if (o.op === 'wqClaim') {
+          if (g.lv < Rules.GWQ_LV) return fail('동아리 ' + Rules.GWQ_LV + '레벨부터 주간 과제가 열립니다');
+          var wq = Rules.GWQ.filter(function (x) { return x.id === o.id; })[0]; if (!wq) return fail('없는 과제입니다');
+          Rules.gwqSync(P, now); var wv = this._gWq().list.filter(function (x) { return x.id === wq.id; })[0];
+          if (wv.got) return fail('이번 주 보상을 이미 받았습니다'); if (wv.prog < wv.goal) return fail('아직 목표를 채우지 못했습니다 (' + wv.prog + '/' + wv.goal + ')');
+          var rw = Rules.gwqReward(P); P.gwq.got[wq.id] = 1; P.res.shard += rw.shard; this._gXp(rw.gxp); this._gLog(P.name + ' 님이 주간 과제 「' + wq.name + '」 보상을 받았습니다 (+' + rw.gxp + ')');
+          this._save(); return this._ok(now, { ok: true, got: rw, guild: this._guildView() });
+        }
         if (o.op === 'donate') {
           var unit = Rules.guildGoldUnit(P), used = g.dday === day ? g.dpts : 0, room = Rules.GUILD_DONATE_CAP - used;
           if (room <= 0) return fail('오늘 기부 한도(' + Rules.GUILD_DONATE_CAP + '점)를 다 채웠습니다');

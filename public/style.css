@@ -875,6 +875,8 @@ button.mkn:hover { text-decoration: underline; }
 
 /* ── 동아리 ── */
 .gfoot { margin-top: 22px; padding-top: 12px; border-top: 1px solid var(--line2); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.gcond { list-style: none; margin: 10px 0 0; padding: 0; font-size: 13px; line-height: 1.7; }
+.gcond .ok { color: var(--goodt); } .gcond .no { color: var(--badt); }
 .linkbad { background: none; border: 0; padding: 4px 0; color: var(--rose); font: inherit; font-size: 13px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .linkbad:hover { color: var(--badt); }
 .gsel { width: auto; padding: 3px 6px; font-size: 12px; }
@@ -1494,3 +1496,12 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 .ttl.op::before { content: ''; width: 10px; height: 10px; flex: none; background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M6 1l4 1.6v3C10 8.3 8.2 10.2 6 11 3.8 10.2 2 8.3 2 5.6v-3z'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M6 1l4 1.6v3C10 8.3 8.2 10.2 6 11 3.8 10.2 2 8.3 2 5.6v-3z'/%3E%3C/svg%3E") center / contain no-repeat; }
 .ttl.op.chief { color: #7a3448; background: linear-gradient(135deg, #ffc6d9, #ffd9c2 50%, #fff0b3); border-color: rgba(214, 120, 150, .45); }
 .ttl.op.council { color: #4b2a7a; background: linear-gradient(135deg, #e6d9ff, #d4c2ff 50%, #f1e8ff); border-color: rgba(140, 110, 210, .45); }
+
+/* 채팅 탭 순서 바꾸기 */
+.chords { list-style: none; margin: 10px 0 0; padding: 0; touch-action: none; }
+.chord { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border: 1px solid var(--line2); border-radius: 8px; margin-bottom: 6px; background: var(--panel); user-select: none; }
+.chord.drag { opacity: .7; border-color: var(--brass); box-shadow: 0 4px 14px var(--shadow); }
+.chgrip { color: var(--faint); cursor: grab; font-size: 16px; line-height: 1; padding: 2px 2px; }
+.chname { flex: 1; cursor: grab; font-size: 14px; }
+.chud { display: flex; flex-direction: column; gap: 2px; }
+.chud .btn { padding: 0 8px; font-size: 10px; line-height: 16px; min-height: 0; }

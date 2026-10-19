@@ -1335,9 +1335,19 @@ function gView(me, id, full) {
     o.gold = g.gold || 0; o.slots = R.guildSlots(lv);
     o.items = dbx.q.giList.all(id).map((r) => { const it = JSON.parse(r.data); return { id: r.id, name: r.name, r: r.rarity, ilvl: r.ilvl, slot: r.slot, by: r.by_name, t: r.t, item: it }; });
     o.log = dbx.q.glList.all(id, 30);
+    o.ranksMax = R.guildRanksMax(lv);
+    if (lv >= R.GRIT_LV) { const st = gritState(id, members.length, nowSec()); o.rit = { n: st.pids.length, goal: st.goal, done: st.done, mine: st.pids.indexOf(me) >= 0, cost: P ? R.ritualCost(P, world.ctx(nowSec()), nowSec()) : 0 }; }
+    if (lv >= R.GWQ_LV) o.wq = gwqView(members, P, nowSec());
     if (o.perms.invite) o.apps = dbx.q.gApps.all(id).map((a) => ({ id: a.id, t: a.t, msg: sec.dec(a.msg), name: a.name, house: a.house, grade: a.grade, lvl: a.lvl, av: a.avatar_v }));
   }
   return o;
+}
+/* 동아리 의식: 동아리마다 하루 한 번. 목표는 그날 처음 봉헌할 때의 부원 수로 정한다 */
+function gritState(gid, n, now) { const d = R.dayKST(now); let st = dbx.kvGet('grit:' + gid, null); if (!st || st.day !== d) { st = { day: d, pids: [], done: 0, goal: R.gritGoal(n) }; } return st; }
+// 주간 동아리 과제: 부원들의 이번 주 기록을 합친다 (주가 바뀐 뒤 아직 들어오지 않은 부원은 0)
+function gwqView(members, P, now) {
+  const w = R.weekId(now), Qs = members.map((m) => store.get(m.id)).filter(Boolean);
+  return { wk: w, end: R.weekStart(w + 1), list: R.GWQ.map((q) => ({ id: q.id, name: q.name, unit: q.unit, goal: q.goal, need: R.gwqNeed(q), prog: Qs.reduce((a, Q) => a + R.gwqMine(Q, q, w), 0), mine: R.gwqMine(P, q, w), got: !!(P && P.gwq && P.gwq.wk === w && P.gwq.got[q.id]) })), reward: P ? R.gwqReward(P) : null };
 }
 function gJoin(pid, gid, role) { dbx.q.gJoin.run(pid, gid, role, Math.floor(Date.now() / 1000)); dbx.q.gAppDelAll.run(pid); dbx.q.ginvDelPid.run(pid); guildOf.set(pid, gid); guildRole.set(pid, role); if (!guildLv.has(gid)) guildLv.set(gid, (dbx.q.gGet.get(gid) || {}).lv || 1); chat.guildChanged(pid); const P = store.peek(pid); if (P && setGuildLv(P)) store.markDirty(pid); }
 function gLeave(pid) { const g = guildOf.get(pid); dbx.q.gLeave.run(pid); guildOf.delete(pid); guildRole.delete(pid); chat.guildChanged(pid); const P = store.peek(pid); if (P && setGuildLv(P)) store.markDirty(pid); return g; }
@@ -1345,14 +1355,14 @@ function gSys(gid, text) { const now = Date.now() / 1000; chat.system('grp', tex
 function gXp(gid, x) {
   const g = dbx.q.gGet.get(gid); if (!g) return 0; const o = { lv: g.lv || 1, xp: g.xp || 0 }, ups = R.guildAddXp(o, x);
   dbx.q.gSetLvXp.run(o.lv, Math.floor(o.xp), gid);
-  if (ups) { guildLv.set(gid, o.lv); gSys(gid, '✦ 동아리가 ' + o.lv + '레벨이 되었습니다! 정원 ' + R.guildCap(o.lv) + '명 · 창고 ' + R.guildSlots(o.lv) + '칸 · 부원 모두 ' + CUR + '·경험치 +' + (R.guildBonus(o.lv) * 100).toFixed(1).replace(/\.0$/, '') + '%'); gLog(gid, '동아리 ' + o.lv + '레벨 달성');
+  if (ups) { guildLv.set(gid, o.lv); gSys(gid, '✦ 동아리가 ' + o.lv + '레벨이 되었습니다! 정원 ' + R.guildCap(o.lv) + '명 · 창고 ' + R.guildSlots(o.lv) + '칸 · 부원 모두 ' + CUR + '·경험치 +' + (R.guildBonus(o.lv) * 100).toFixed(1).replace(/\.0$/, '') + '%' + R.guildUnlockText(o.lv - ups, o.lv)); gLog(gid, '동아리 ' + o.lv + '레벨 달성');
     guildOf.forEach((g2, pid) => { if (g2 === gid) { const P = store.peek(pid); if (P && setGuildLv(P)) store.markDirty(pid); } }); }
   return ups;
 }
-// 동아리를 닫을 때 창고에 남은 것은 회장에게 우편으로 돌려준다
+// 동아리를 해체할 때 창고에 남은 것은 회장에게 우편으로 돌려준다
 function gReturnStorage(gid, owner, gname) {
   const g = dbx.q.gGet.get(gid), items = dbx.q.giList.all(gid).map((r) => JSON.parse(r.data)), gold = Math.floor((g && g.gold) || 0);
-  for (let i = 0; i < Math.max(items.length, gold > 0 ? 1 : 0); i += 10) sendMail(owner, '동아리', '「' + gname + '」 창고 정리', '동아리를 닫아 창고에 남아 있던 것을 돌려드립니다.', { gold: i === 0 ? gold : 0, items: items.slice(i, i + 10) }, Date.now() / 1000 + 30 * 86400);
+  for (let i = 0; i < Math.max(items.length, gold > 0 ? 1 : 0); i += 10) sendMail(owner, '동아리', '「' + gname + '」 창고 정리', '동아리를 해체해 창고에 남아 있던 것을 돌려드립니다.', { gold: i === 0 ? gold : 0, items: items.slice(i, i + 10) }, Date.now() / 1000 + 30 * 86400);
 }
 routes['GET /api/guilds'] = (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
@@ -1462,7 +1472,7 @@ routes['POST /api/guild'] = async (req, res) => {
   }
   if (op === 'leave') {
     if (role === 'owner' && gCount(mine) > 1) return fail(req, res, 400, '부원이 있으면 회장은 나갈 수 없습니다. 먼저 회장 위임 필요');
-    if (role === 'owner') return fail(req, res, 400, '혼자 남은 회장은 「동아리 닫기」로 정리 필요');
+    if (role === 'owner') return fail(req, res, 400, '혼자 남은 회장은 「동아리 해체」로 정리 필요');
     gLeave(me); gSys(mine, P.name + ' 님이 동아리에서 나갔습니다.'); gLog(mine, P.name + ' 님 탈퇴');
     return send(req, res, 200, { ok: true, guild: null });
   }
@@ -1490,7 +1500,7 @@ routes['POST /api/guild'] = async (req, res) => {
   }
   if (op === 'ranks') {
     if (role !== 'owner') return fail(req, res, 403, '회장만 계급을 고칠 수 있습니다');
-    const nr = R.guildCleanRanks(b.ranks); dbx.q.gRanks.run(JSON.stringify(nr), mine);
+    const nr = R.guildCleanRanks(b.ranks, R.guildRanksMax(g.lv || 1)); dbx.q.gRanks.run(JSON.stringify(nr), mine);
     ranks.list.forEach((x) => { if (!nr.list.some((y) => y.id === x.id)) dbx.q.gClearRank.run(mine, x.id); });
     gLog(mine, P.name + ' 님이 계급을 고쳤습니다 (' + [nr.base.name].concat(nr.list.map((x) => x.name)).join(' · ') + ')');
     return ok();
@@ -1513,8 +1523,8 @@ routes['POST /api/guild'] = async (req, res) => {
     return ok();
   }
   if (op === 'disband') {
-    if (role !== 'owner') return fail(req, res, 403, '회장만 동아리를 닫을 수 있습니다');
-    if (gCount(mine) > 1) return fail(req, res, 400, '부원이 남아 있으면 닫을 수 없습니다. 회장을 넘기거나 모두 나간 뒤에 닫기 가능');
+    if (role !== 'owner') return fail(req, res, 403, '회장만 동아리를 해체할 수 있습니다');
+    if (gCount(mine) > 1) return fail(req, res, 400, '다른 부원이 있으면 동아리를 해체할 수 없습니다. 모두 내보낸 뒤에 해체 가능');
     gReturnStorage(mine, me, g.name);
     gRankCache.at = 0; dbx.tx(() => { dbx.q.gDelMembers.run(mine); dbx.q.gDelete.run(mine); dbx.q.gAppDelGuild.run(mine); dbx.q.giDelGuild.run(mine); dbx.q.glDelGuild.run(mine); dbx.q.ginvDelGuild.run(mine); });
     guildOf.delete(me); guildRole.delete(me); guildLv.delete(mine); chat.guildChanged(me); chat.dropGuild(mine); if (setGuildLv(P)) store.markDirty(me);
@@ -1527,6 +1537,32 @@ routes['POST /api/guild'] = async (req, res) => {
     return ok({ got: R.GUILD_CHECKIN });
   }
   R.advance(P, world.ctx(gnow), gnow);
+  if (op === 'ritual') {
+    if ((g.lv || 1) < R.GRIT_LV) return fail(req, res, 400, '동아리 ' + R.GRIT_LV + '레벨부터 의식을 올릴 수 있습니다');
+    const st = gritState(mine, gCount(mine), gnow); if (st.pids.indexOf(me) >= 0) return fail(req, res, 400, '오늘은 이미 봉헌했습니다');
+    const cost = R.ritualCost(P, world.ctx(gnow), gnow); if (P.res.mana < cost) return fail(req, res, 400, '마나가 모자랍니다 (마나 ' + R.fmt(cost) + ' 필요)');
+    P.res.mana -= cost; st.pids.push(me); store.markDirty(me);
+    R.log(P, gnow, '동아리 의식에 마나 ' + R.josa(R.fmt(cost), '을', '를') + ' 봉헌했습니다', 'news'); gLog(mine, P.name + ' 님이 동아리 의식에 봉헌 (' + st.pids.length + '/' + st.goal + ')');
+    if (st.done) R.gritBless(P, gnow);
+    else if (st.pids.length >= st.goal) {
+      st.done = gnow;
+      st.pids.forEach((pid) => { const Q = pid === me ? P : store.get(pid); if (Q) { R.gritBless(Q, gnow); R.log(Q, gnow, '동아리 의식이 이루어졌습니다. ' + R.GRIT_BUFF.text, 'story'); store.markDirty(pid); } });
+      gSys(mine, '✦ 오늘의 동아리 의식이 이루어졌습니다! 봉헌한 ' + st.pids.length + '명에게 「' + R.GRIT_BUFF.name + '」 — ' + R.GRIT_BUFF.text + '. 아직 봉헌하지 않았다면 지금 봉헌해도 축복을 받습니다.');
+    }
+    dbx.kvSet('grit:' + mine, st);
+    return ok({ P: R.publicState(P), now: gnow });
+  }
+  if (op === 'wqClaim') {
+    if ((g.lv || 1) < R.GWQ_LV) return fail(req, res, 400, '동아리 ' + R.GWQ_LV + '레벨부터 주간 과제가 열립니다');
+    const q = R.GWQ.find((x) => x.id === String(b.id || '')); if (!q) return fail(req, res, 400, '없는 과제입니다');
+    R.gwqSync(P, gnow); const v = gwqView(dbx.q.gMembers.all(mine), P, gnow).list.find((x) => x.id === q.id);
+    if (v.got) return fail(req, res, 400, '이번 주 보상을 이미 받았습니다');
+    if (v.prog < v.goal) return fail(req, res, 400, '아직 목표를 채우지 못했습니다 (' + v.prog + '/' + v.goal + ')');
+    if (v.mine < v.need) return fail(req, res, 400, '이 과제에 ' + v.need + q.unit + ' 이상 보태야 받을 수 있습니다 (지금 ' + v.mine + q.unit + ')');
+    const rw = R.gwqReward(P); P.gwq.got[q.id] = 1; P.res.shard += rw.shard; store.markDirty(me);
+    R.log(P, gnow, '주간 동아리 과제 「' + q.name + '」 보상: 별조각 +' + rw.shard, 'good'); gXp(mine, rw.gxp); gLog(mine, P.name + ' 님이 주간 과제 「' + q.name + '」 보상을 받았습니다 (+' + rw.gxp + ')');
+    return ok({ got: rw, P: R.publicState(P), now: gnow });
+  }
   if (op === 'donate') {
     const unit = R.guildGoldUnit(P), used = meRow.dday === day ? meRow.dpts : 0, room = R.GUILD_DONATE_CAP - used;
     if (room <= 0) return fail(req, res, 400, '오늘 기부 한도(' + R.GUILD_DONATE_CAP + '점)를 다 채웠습니다');

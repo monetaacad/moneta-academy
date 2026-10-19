@@ -822,6 +822,7 @@
      P.at부터 now까지 시간을 흘려보낸다. 끝난 작업은 보상을 적용하고 inbox에 보고한다. */
   R.advance = function (P, W, now) {
     if (now <= P.at) return P;
+    R.gwqSync(P, P.at);   // 주간 동아리 과제: 지난 주 기록을 기준으로 남겨 두고, 주가 바뀌면 새로 센다
     var t0 = P.at;
     // 끝나는 일을 시간순으로 모은다
     var ev = [];
@@ -1116,21 +1117,39 @@
 
   /* ───────── 동아리: 레벨 · 기여도 · 계급 · 창고 ─────────
      기여도: 하루 한 번 출석(+10), 아르크 기부(내 진도 기준 환산, 하루 최대 200점). 기여도가 곧 동아리 경험치.
-     계급: 회장 · 부회장(고정) + 부원 계급 최대 3개(이름과 권한을 회장이 정한다) + 기본 「부원」. */
+     계급: 회장 · 부회장(고정) + 부원 계급 최대 3개(5레벨에 4개, 10레벨에 5개 · 이름과 권한을 회장이 정한다) + 기본 「부원」.
+     4레벨: 동아리 의식(하루 한 번, 부원 절반이 봉헌하면 봉헌한 부원에게 4시간 축복). 5레벨: 주간 동아리 과제. */
   R.GUILD_MAX_LV = 10;
   R.guildXpNeed = function (lv) { return Math.floor(400 * Math.pow(1.65, lv - 1)); };
-  R.guildCap = function (lv) { return 28 + 2 * (lv || 1); };          // 정원: 1레벨 30명 … 10레벨 48명
+  R.guildCap = function (lv) { return Math.min(40, 28 + 2 * (lv || 1)); };   // 정원: 1레벨 30명 … 6레벨부터 40명
   R.guildSlots = function (lv) { return 20 + 5 * (lv || 1); };        // 창고 장비 칸
   R.guildBonus = function (lv) { return 0.005 * (lv || 0); };          // 부원 모두 아르크·경험치 +0.5%/레벨
   R.GUILD_PERMS = [['invite', '초대·가입 승인'], ['kick', '부원 내보내기'], ['notice', '공지·소개 고치기'], ['take', '창고에서 꺼내기']];
-  R.GUILD_RANKS_MAX = 3; R.GUILD_CHECKIN = 10; R.GUILD_DONATE_CAP = 200;
+  R.GUILD_RANKS_MAX = 5; R.GUILD_CHECKIN = 10; R.GUILD_DONATE_CAP = 200;
+  R.guildRanksMax = function (lv) { return 3 + (lv >= 5 ? 1 : 0) + (lv >= 10 ? 1 : 0); };   // 만들 수 있는 부원 계급 수
+  /* 동아리 의식 (4레벨~): 부원마다 마나 30분 분을 봉헌, 그날 목표(부원 수의 절반, 1인 동아리는 1명)를 채우면 봉헌한 부원에게 축복.
+     효과는 동아리 레벨 보너스(아르크·경험치)와 겹치지 않는 지식 · 전리품으로, 5% 안쪽. */
+  R.GRIT_LV = 4;
+  R.GRIT_BUFF = { name: '동아리의 결속', eff: { knowPct: 0.05, dropPct: 0.05 }, dur: 4 * 3600, color: '#e8b86a', text: '4시간 동안 지식 · 전리품 +5%' };
+  R.gritGoal = function (n) { return Math.max(1, Math.ceil((n || 1) / 2)); };
+  R.gritBless = function (P, start) { P.buffs.gritual = { name: R.GRIT_BUFF.name, eff: R.GRIT_BUFF.eff, start: start, end: start + R.GRIT_BUFF.dur, color: R.GRIT_BUFF.color }; };
+  /* 주간 동아리 과제 (5레벨~): 부원들이 이번 주에 한 일을 합쳐 목표를 채운다. 목표는 혼자서도 한 주에 채울 수 있는 크기.
+     목표를 채우면 그 과제에 목표의 1/5 이상 보탠 부원이 각자 보상을 받는다. 학생마다 주가 바뀔 때의 기록(P.gwq.b)을 기준으로 센다. */
+  R.GWQ_LV = 5;
+  R.GWQ = [{ id: 'exp', st: 'expJobs', name: '원정 완료', unit: '회', goal: 15 }, { id: 'lec', st: 'lecJobs', name: '수업 듣기', unit: '교시', goal: 15 }, { id: 'res', st: 'researchDone', name: '연구 완료', unit: '회', goal: 3 }];
+  // from 레벨 다음부터 to 레벨까지 새로 열린 것 (레벨업 알림에 덧붙인다)
+  R.guildUnlockText = function (from, to) { var out = []; for (var l = from + 1; l <= to; l++) { if (l === R.GRIT_LV) out.push('동아리 의식'); if (l === R.GWQ_LV) out.push('주간 동아리 과제'); if (R.guildRanksMax(l) > R.guildRanksMax(l - 1)) out.push('부원 계급 ' + R.guildRanksMax(l) + '개까지'); } return out.length ? ' · 새로 열림: ' + out.join(', ') : ''; };
+  R.gwqNeed = function (q) { return Math.max(1, Math.ceil(q.goal / 5)); };
+  R.gwqReward = function (P) { return { shard: 4 + Math.min(P.grade, 8), gxp: 30 }; };
+  R.gwqSync = function (P, now) { var w = R.weekId(now); if (!P.gwq || P.gwq.wk !== w) { var b = {}; R.GWQ.forEach(function (q) { b[q.st] = P.st[q.st] || 0; }); P.gwq = { wk: w, b: b, got: {} }; return true; } return false; };
+  R.gwqMine = function (P, q, w) { return P && P.gwq && P.gwq.wk === w ? Math.max(0, (P.st[q.st] || 0) - (P.gwq.b[q.st] || 0)) : 0; };
   R.guildDefRanks = function () { return { base: { name: '부원', perms: {} }, list: [] }; };
-  R.guildCleanRanks = function (o) {
+  R.guildCleanRanks = function (o, max) {
     var out = R.guildDefRanks(); o = o || {};
     function nm(v, d) { v = String(v == null ? '' : v).replace(/[<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 8); return v || d; }
     function pm(x) { var r = {}; R.GUILD_PERMS.forEach(function (k) { if (x && x[k[0]]) r[k[0]] = true; }); return r; }
     if (o.base) out.base = { name: nm(o.base.name, '부원'), perms: pm(o.base.perms) };
-    (Array.isArray(o.list) ? o.list : []).slice(0, R.GUILD_RANKS_MAX).forEach(function (x, i) { if (x && String(x.name || '').trim()) out.list.push({ id: /^r[1-9]$/.test(x.id) ? x.id : 'r' + (i + 1), name: nm(x.name, '계급' + (i + 1)), perms: pm(x.perms) }); });
+    (Array.isArray(o.list) ? o.list : []).slice(0, max || R.GUILD_RANKS_MAX).forEach(function (x, i) { if (x && String(x.name || '').trim()) out.list.push({ id: /^r[1-9]$/.test(x.id) ? x.id : 'r' + (i + 1), name: nm(x.name, '계급' + (i + 1)), perms: pm(x.perms) }); });
     var seen = {}; out.list = out.list.filter(function (x) { if (seen[x.id]) return false; seen[x.id] = 1; return true; });
     return out;
   };
