@@ -1644,13 +1644,24 @@
     if (it.eng) { var en = D.ENGRAVES.find(function (x) { return x.id === it.eng.id; }); out.push('<hr class="sep"><div class="small" style="color:var(--r4)">' + en.name + '</div><div class="statline"><span class="small muted">' + en.desc + '</span><span class="d" style="color:var(--r4)">' + (en.pct ? (en.id === 'cdr' ? '-' : '+') + pct(it.eng.v) : (it.eng.id === 'killMana' ? it.eng.v * R.K.KILL_PACK : it.eng.v).toFixed(1) + '초') + '</span></div>'); }
     return out.join('');
   }
+  // 강화하면 오르는 능력치: 「생명력 19 → 24 (+5)」 · 장착 중이면 전투력 변화도
+  function enhPreview(it, eqd) {
+    if (it.enh >= R.ENH_MAX) return '';
+    var nx = Object.assign({}, it, { enh: it.enh + 1 }), a = R.itemStats(it), b = R.itemStats(nx), Sx = R.SLOT[it.slot];
+    var rows = [Sx.main].concat(Sx.sub ? [Sx.sub] : []).map(function (k) {
+      var rd = function (v) { return v >= 10 ? Math.round(v) : Math.round(v * 10) / 10; }, x = rd(a[k]), y = rd(b[k]), d = Math.round((y - x) * 10) / 10, nm = D.STAT_NAMES[k] || D.BONUS_NAMES[k] || k; if (!(b[k] > a[k])) return '';   // 보이는 숫자끼리 빼서 「16 → 18 (+2)」가 맞게
+      return '<div class="statline"><span>' + nm + '</span><span class="d num">' + fmt(x) + ' → <b class="good">' + fmt(y) + '</b>' + (d > 0 ? ' <span class="tiny good">(+' + fmt(d) + ')</span>' : '') + '</span></div>';
+    }).join('');
+    var pw = eqd ? R.powerWith(S.P, nx) - C().power : 0;
+    return rows ? '<div class="enhpv" style="margin-top:6px">' + rows + (pw > 0 ? '<div class="statline"><span class="tiny muted">성공하면 전투력</span><span class="d num good">+' + fmt(pw) + '</span></div>' : '') + '</div>' : '';
+  }
   function detailCard() {
     var P = S.P, it = S.sel && R.findItem(P, S.sel);
     if (!it) return '<div class="card detail"><h3>장비 살펴보기</h3><p class="small muted">장착 칸이나 가방의 장비를 누르면 능력치와 강화 정보를 볼 수 있습니다. 초록 ▲는 지금보다 전투력이 오르는 장비입니다.</p></div>';
     var eqd = P.eq[it.slot] && P.eq[it.slot].u === it.u, c = C(), cost = R.enhCost(P, it), ch = R.enhChance(P, it), delta = eqd ? 0 : R.powerWith(P, it) - c.power;
     var h = '<div class="card detail hl"><div class="tiny" style="color:' + rcol(it.r) + '">' + D.RARITY[it.r].name + ' ' + R.slotName(it) + ' · Lv ' + it.ilvl + (eqd ? ' · 장착 중' : '') + '</div><div class="nm" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</div><div style="margin-top:8px">' + statLines(it) + '</div>';
     if (!eqd) h += '<div class="small" style="margin-top:8px">장착 시 전투력 <b class="num ' + (delta >= 0 ? 'good' : 'bad') + '">' + (delta >= 0 ? '+' : '') + fmt(delta) + '</b></div>';
-    h += '<hr class="sep"><div class="row small"><span class="muted">강화 +' + it.enh + ' → +' + (it.enh + 1) + '</span><span class="spacer"></span>' + (it.enh >= R.ENH_MAX ? '<span class="tag br">최대 강화</span>' : '<span>성공 확률 <b class="num">' + Math.round(ch * 100) + '%</b></span>') + '</div><div class="row" style="margin-top:10px">';
+    h += '<hr class="sep"><div class="row small"><span class="muted">강화 +' + it.enh + ' → +' + (it.enh + 1) + '</span><span class="spacer"></span>' + (it.enh >= R.ENH_MAX ? '<span class="tag br">최대 강화</span>' : '<span>성공 확률 <b class="num">' + Math.round(ch * 100) + '%</b></span>') + '</div>' + enhPreview(it, eqd) + '<div class="row" style="margin-top:10px">';
     h += eqd ? '<button class="btn sm" data-act="do" data-a="unequip" data-b="' + it.slot + '">해제</button>' : '<button class="btn sm primary" data-act="do" data-a="equip" data-b="' + it.u + '">장착</button>';
     if (it.enh < R.ENH_MAX && !it.lock) {
       var okc = P.res.gold >= cost.gold && P.res.stone >= cost.stone;
@@ -4030,7 +4041,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102006;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102007;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
