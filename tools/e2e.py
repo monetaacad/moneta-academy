@@ -48,6 +48,7 @@ with sync_playwright() as p:
         pg.screenshot(path=f'{OUT}/{tag}-08-world.png', full_page=True)
         # 보스 (질 것)
         pg.evaluate("() => __ACT.nav('explore')"); pg.wait_for_timeout(300)
+        if pg.query_selector('#modal:not([hidden]) [data-act=inbox-ok]'): pg.click('[data-act=inbox-ok]'); pg.wait_for_timeout(500)   # 그새 끝난 작업 보고가 떠 있으면 먼저 닫는다
         pg.click('[data-act=boss]'); pg.wait_for_timeout(400); pg.click('#rp-skip'); pg.wait_for_timeout(1200)
         pg.screenshot(path=f'{OUT}/{tag}-09-boss.png'); pg.click('[data-act=modal-close]')
         # 모든 탭 + 가로 넘침
