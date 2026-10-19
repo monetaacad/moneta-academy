@@ -1,4 +1,4 @@
-<title>아르카눔 아카데미</title>
+<title>모네타 아카데미</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1398,15 +1398,15 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 <div id="toasts" aria-live="polite"></div>
 <div id="modal" hidden></div>
 <script>
-/* 아르카눔 아카데미 — 세계관 및 게임 데이터 */
+/* 모네타 아카데미 — 세계관 및 게임 데이터 */
 var DATA = (function () {
   var D = {};
   // 아카데미 화폐 이름: 여기 한 곳만 바꾸면 화면·기록·서버 메시지가 모두 바뀐다 (조사는 받침 없는 이름 기준: 가·를·는)
   var CUR = D.CUR = '아르크';
 
   D.WORLD = {
-    title: '아르카눔 아카데미',
-    calendarMonths: ['등불달', '물시계달', '가시달', '거울달', '은빛달', '잿불달', '별무리달', '침묵달'],
+    title: '모네타 아카데미',
+    calendarMonths: ['서사달', '기록달', '피리달', '웃음달', '가면달', '춤달', '연가달', '별무리달', '침묵달'],   // 아홉 무사이 (칼리오페 → 폴리힘니아)
     baseYear: 1024
   };
 
@@ -1517,15 +1517,16 @@ var DATA = (function () {
     { k: '2h', s: 7200, label: '2시간' }, { k: '4h', s: 14400, label: '4시간' },
     { k: '8h', s: 28800, label: '8시간', night: true }, { k: '12h', s: 43200, label: '12시간', night: true }
   ];
-  // 아카데미력: 실제 1일 = 아카데미 1일, 한 달 28일(4주), 한 해 8달. 달마다 별샘의 축복.
+  // 아카데미력: 실제 1일 = 아카데미 1일, 한 달 28일(4주), 한 해 9달(아홉 무사이). 달마다 그 무사이의 축복.
   D.MONTH_BONUS = [
-    { eff: { knowPct: 0.10 }, text: '등불달 — 지식 획득 +10%' },
-    { eff: { manaPct: 0.15 }, text: '물시계달 — 마나 재생 +15%' },
-    { eff: { atkPct: 0.10 }, text: '가시달 — 공격력 +10%' },
-    { eff: { goldPct: 0.15 }, text: '거울달 — ' + CUR + ' +15%' },
-    { eff: { dropPct: 0.10 }, text: '은빛달 — 전리품 확률 +10%' },
-    { eff: { brewSpd: 0.20 }, text: '잿불달 — 양조 비용 -17%' },
-    { eff: { hatchSpd: 0.20, xpPct: 0.10 }, text: '별무리달 — 부화 비용 -17%, 경험치 +10%' },
+    { eff: { xpPct: 0.15 }, text: '서사달 — 경험치 +15%' },
+    { eff: { knowPct: 0.10 }, text: '기록달 — 지식 획득 +10%' },
+    { eff: { manaPct: 0.15 }, text: '피리달 — 마나 재생 +15%' },
+    { eff: { goldPct: 0.15 }, text: '웃음달 — ' + CUR + ' +15%' },
+    { eff: { atkPct: 0.10 }, text: '가면달 — 공격력 +10%' },
+    { eff: { brewSpd: 0.20 }, text: '춤달 — 양조 비용 -17%' },
+    { eff: { hatchSpd: 0.20 }, text: '연가달 — 부화 비용 -17%' },
+    { eff: { dropPct: 0.10 }, text: '별무리달 — 전리품 확률 +10%' },
     { eff: { examBonus: 5 }, text: '침묵달 — 기말시험 총점 +5점' }
   ];
   D.WEEKEND = { eff: { manaPct: 0.25, lectureSpd: 0.10 }, text: '유성우 주말 — 마나 재생 +25%, 수업 속도 +10% (토·일)' };
@@ -1995,7 +1996,7 @@ var DATA = (function () {
   /* ───────── 이야기 ───────── */
   D.STORY = [
     { grade: 1, title: '1장. 구름 위의 입학식',
-      text: '일곱 별샘이 내리는 마나의 비를 맞으며, 당신은 구름섬 라디아에 도착했다. 천 년 전 대마법사 오렐리아 베스퍼가 "별의 종"을 주조해 띄운 섬, 그 위에 아르카눔 아카데미가 있다.\n\n입학식 날, 학장은 짧게 말했다. "올해는 종이 울리지 않았습니다. 하지만 수업은 평소대로 진행합니다." 강당이 술렁였지만, 신입생인 당신에겐 그 말의 무게가 아직 와닿지 않았다.' },
+      text: '그해 봄, 창틀에 아홉 무사이의 인장이 찍힌 봉투가 놓여 있었다. 몇 해 전부터 당신에게만 들리던 낮고 먼 울림, 아무도 믿어 주지 않던 그 소리가 별의 종의 여운이라는 것을 봉투 속 초대장이 알려 주었다. "이 울림을 듣는 이에게, 모네타의 문은 열려 있습니다."\n\n입학식 날 새벽, 에테라 대륙 끝의 카메나 샘역에 하얀 증기를 두른 입학 열차 칼리오페호가 들어왔다. 초대장을 내밀자 차장은 말없이 고개를 끄덕였다. 기적이 아홉 음으로 울리고, 열차는 구름 위에 걸린 금빛 현을 따라 밤새 달렸다. 창밖으로 일곱 별샘이 마나의 비를 뿌렸다.\n\n동이 틀 무렵 구름 사이로 섬 하나가 떠올랐다. 구름섬 라디아. 천 년 전 대마법사 오렐리아 베스퍼가 "별의 종"을 주조해 띄운 섬, 그 위에 모네타 아카데미가 있다. 라디아 종탑역에 내리자 시간의 탑이 머리 위로 솟아 있었다.\n\n입학식 날, 학장은 짧게 말했다. "올해는 종이 울리지 않았습니다. 하지만 수업은 평소대로 진행합니다." 강당이 술렁였지만, 신입생인 당신에겐 그 말의 무게가 아직 와닿지 않았다.' },
     { grade: 2, title: '2장. 속삭이는 숲의 소문',
       text: '2학년이 되자 동쪽 숲으로 나가는 허가가 났다. 수다쟁이 버섯들이 같은 이야기를 반복했다. "섬이 한 뼘 내려갔대. 작년보다 한 뼘."\n\n늙은 속삭임나무는 당신을 내려다보며 창립자의 마지막 말을 들려주었다. "종이 멈추면, 시간을 거슬러 오르라." 무슨 뜻인지 아는 사람은 없었다.' },
     { grade: 3, title: '3장. 가라앉은 천문대',
@@ -2007,7 +2008,7 @@ var DATA = (function () {
     { grade: 6, title: '6장. 하늘의 균열과 금서',
       text: '하늘의 균열 너머에서 거대한 눈이 아카데미를 보고 있었다. 균열을 막기 위해 이름 없는 사서가 처음으로 금서고의 문을 열어 주었다.\n\n공허의 도서관 가장 깊은 곳, 찢겨 나간 마지막 장이 살아 움직이고 있었다. 사서는 낮게 말했다. "그 장을 찢은 것은 나다. 천 년 전, 스승의 부탁으로."' },
     { grade: 7, title: '7장. 별의 종',
-      text: '이름 없는 사서는 오렐리아 베스퍼의 첫 번째 제자였다. 스승은 종이 언젠가 멈출 것을 알고, 그것을 다시 울릴 주문을 시간 속에 나누어 숨겼다. 일곱 과목, 일곱 해, 일곱 번의 시험. 아르카눔의 교육 과정 자체가 하나의 거대한 주문이었다.\n\n시간의 탑 꼭대기에서 당신은 마지막 음절을 외웠다. 천 년 만에, 종이 울렸다. 섬이 떠오른다. 그리고 종소리가 닿지 않는 섬 아래, 끝없는 심연이 모습을 드러냈다.' },
+      text: '이름 없는 사서는 오렐리아 베스퍼의 첫 번째 제자였다. 스승은 종이 언젠가 멈출 것을 알고, 그것을 다시 울릴 주문을 시간 속에 나누어 숨겼다. 일곱 과목, 일곱 해, 일곱 번의 시험. 모네타의 교육 과정 자체가 하나의 거대한 주문이었다.\n\n시간의 탑 꼭대기에서 당신은 마지막 음절을 외웠다. 천 년 만에, 종이 울렸다. 섬이 떠오른다. 그리고 종소리가 닿지 않는 섬 아래, 끝없는 심연이 모습을 드러냈다.' },
     { grade: 8, title: '8장. 끝나지 않는 수업',
       text: '종이 다시 울린 날, 학장은 당신에게 별의 인장을 건네며 말했다. "졸업은 미뤄 두세요. 종소리가 닿지 않는 저 아래가 아직 남았습니다."\n\n당신은 마스터 과정 연구생이 되었다. 같은 하늘 아래의 모든 학생과 함께, 끝없는 심연으로 내려가며 다음에 종이 멈출 날을 대비한다.' }
   ];
@@ -2015,16 +2016,24 @@ var DATA = (function () {
   /* ───────── 세계관 도감 ───────── */
   D.LORE = [
     { id: 'aethera', title: '에테라 대륙', text: '하늘에 떠 있는 일곱 개의 별샘에서 마나가 비처럼 내리는 대륙. 마나 비가 많이 내리는 곳일수록 마법이 번성했고, 그 중심에 구름섬 라디아가 있다.' },
-    { id: 'wells', title: '일곱 별샘', text: '등불, 물시계, 가시, 거울, 은빛, 잿불, 별무리. 아카데미력의 여덟 달 중 일곱 달이 별샘의 이름을 따르며, 마지막 여덟째 달은 "침묵달"이라 불린다. 별샘이 하나도 보이지 않는 달이다.' },
-    { id: 'radia', title: '구름섬 라디아', text: '아르카눔 아카데미가 세워진 떠 있는 섬. 섬을 띄우는 것은 아카데미 중앙 시간의 탑에 걸린 별의 종이며, 종은 매년 입학식 날 저절로 울려 섬을 다시 들어 올린다.' },
-    { id: 'orelia', title: '오렐리아 베스퍼', text: '아르카눔의 창립자이자 별의 종을 주조한 대마법사. 아카데미의 일곱 과목 체계를 직접 설계했다. 그녀의 초상화는 교수 회의실에 걸려 있지만, 얼굴 부분만 늘 그림자에 가려져 있다.' },
+    { id: 'wells', title: '일곱 별샘', text: '등불, 물시계, 가시, 거울, 은빛, 잿불, 별무리. 에테라 하늘에 뜬 일곱 샘으로, 저마다 빛깔이 다른 마나를 비처럼 내린다. 별의 종은 이 일곱 빛을 녹여 만들었다. 아홉째 달인 침묵달에는 별샘이 하나도 보이지 않는다.' },
+    { id: 'radia', title: '구름섬 라디아', text: '모네타 아카데미가 세워진 떠 있는 섬. 섬을 띄우는 것은 아카데미 중앙 시간의 탑에 걸린 별의 종이며, 종은 매년 입학식 날 저절로 울려 섬을 다시 들어 올린다.' },
+    { id: 'orelia', title: '오렐리아 베스퍼', text: '모네타의 창립자이자 별의 종을 주조한 대마법사. 아카데미의 일곱 과목 체계를 직접 설계했다. 그녀의 초상화는 교수 회의실에 걸려 있지만, 얼굴 부분만 늘 그림자에 가려져 있다.' },
     { id: 'bell', title: '별의 종', text: '일곱 별샘의 빛을 녹여 만든 종. 종이 울릴 때마다 섬 전체의 결계가 새로 짜인다. 종이 울리지 않은 해는 아카데미 역사상 단 한 번도 없었다. 올해까지는.' },
     { id: 'houses', title: '네 기숙사', text: '등불관, 물시계관, 가시왕관관, 거울관. 입학생은 기숙사 문 앞의 거울에 손을 대고, 거울이 비추는 빛의 색에 따라 배정된다. 기숙사 간 경쟁은 아카데미 축제의 가장 큰 볼거리다.' },
     { id: 'librarian', title: '이름 없는 사서', text: '아카데미 도서관을 홀로 지키는 사서. 고대 룬어를 가르치는 유일한 사람이다. 누구도 그의 이름을 모르고, 아카데미의 가장 오래된 졸업 앨범에도 그가 지금 모습 그대로 찍혀 있다.' },
     { id: 'mana', title: '마나의 세 형태', text: '아카데미에서는 마나를 세 가지로 나눠 가르친다. 흐르는 마나(재생), 고인 마나(마석), 새긴 마나(룬). 마석은 고인 마나가 굳은 것으로 장비 강화에 쓰인다.' },
     { id: 'seals', title: '별의 인장', text: '졸업생에게만 주어지는 인장. 인장에는 졸업생이 배운 것의 일부가 봉인되어 있어, 다음 세대의 학생에게 유산으로 전해질 수 있다.' },
     { id: 'spirits', title: '반딧불 정령', text: '별샘에서 떨어진 작은 빛 조각이 의지를 가진 것. 아카데미 곳곳을 떠돌다 학생들의 유리병에 스스로 들어와 쉬고, 풀어 준 학생에게 작은 선물을 남기고 사라진다.' },
-    { id: 'calendar', title: '아카데미력', text: '아르카눔은 창립년을 원년으로 하는 아카데미력을 쓴다. 올해는 아카데미력 1024년이다. 한 해는 여덟 달, 한 달은 서른 날이며, 학생들 사이에서는 "침묵달에 치른 시험은 반드시 붙는다"는 미신이 있다.' }
+    { id: 'calendar', title: '아카데미력', text: '모네타는 창립년을 원년으로 하는 아카데미력을 쓴다. 올해는 아카데미력 1024년이다. 한 해는 아홉 달, 한 달은 스물여덟 날이며, 달마다 무사이 한 명의 이름을 따른다. 서사달(칼리오페), 기록달(클리오), 피리달(에우테르페), 웃음달(탈리아), 가면달(멜포메네), 춤달(테르프시코레), 연가달(에라토), 별무리달(우라니아), 그리고 아홉째 침묵달(폴리힘니아). 학생들 사이에서는 "침묵달에 치른 시험은 반드시 붙는다"는 미신이 있다.' },
+    { id: 'musai', title: '아홉 무사이', text: '기억의 여신 므네모시네의 아홉 딸. 모네타라는 이름도 므네모시네를 부르는 로마식 이름에서 왔다. 오렐리아 베스퍼는 여덟 학년마다 무사이 한 명을 수호자로 두었고, 학생은 해마다 그 무사이의 음을 하나씩 얻어 화음을 쌓아 간다고 전해진다. 아홉째 폴리힘니아만은 어느 학년에도 속하지 않는다. 그녀는 늘 손가락을 입술에 댄 모습으로 그려진다.' },
+    { id: 'invite', title: '초대장', text: '별의 종은 울리고 나면 한 해 내내 사람의 귀에는 들리지 않는 낮은 여운을 남긴다. 에테라 대륙에서 그 여운을 듣는 아이는 한 해에 손에 꼽을 만큼뿐이고, 모네타는 오직 그들에게만 아홉 무사이의 인장이 찍힌 초대장을 보낸다. 가문도 재산도 묻지 않는다. 초대장은 그대로 입학 열차의 승차권이 된다. 올해의 신입생은 지난해 종의 여운을 마지막으로 들은 아이들이다.' },
+    { id: 'calliope', title: '칼리오페호', text: '한 해에 단 한 번, 입학식 날 새벽에만 달리는 입학 열차. 기적이 아홉 음으로 울린다. 칼리오페는 서사의 무사이 이름이자, 증기로 노래하는 오르간의 이름이기도 하다. 졸업생들은 마지막 날 이 열차를 다시 타고 대륙으로 돌아간다.' },
+    { id: 'camena', title: '카메나 샘역', text: '에테라 대륙에서 오선 철도가 시작되는 단 하나의 역. 로마 사람들이 무사이를 부르던 이름 "카메나이"에서 따왔다. 역 한가운데 맑은 샘이 솟고, 입학생들은 열차를 타기 전 그 물로 손을 씻는 것이 관례다.' },
+    { id: 'staff', title: '오선 철도', text: '라디아 둘레의 하늘에는 금빛 현 다섯 줄이 걸려 있다. 위에서 내려다보면 오선지, 줄 위에 뜬 하늘섬들은 음표처럼 보인다. 열차가 현 위를 지나가면 줄이 울려, 섬마다 다른 화음으로 기차 소리가 들린다. 올해는 현이 조금 느슨해져 열차가 반음 낮게 운다는 소문이 돈다.' },
+    { id: 'station', title: '라디아 종탑역', text: '시간의 탑 바로 아래에 있는 아카데미의 역. 현마다 하나씩 다섯 승강장이 있고, 사감의 허가가 있어야 들어가는 "쉼표 승강장"이 따로 있다. 막차인 자장가 열차는 밤 열 시에 떠나며, 이 열차를 놓치면 벌점이다. 주말 외출에는 기숙사 사감의 도장이 찍힌 외출증이 필요하다.' },
+    { id: 'isles', title: '주말의 하늘섬', text: '포르타 마을: 종탑역에서 가장 가까운 섬. 반음 찻집과 꿀사과주를 파는 쉼표 여관이 있다. 칸토 섬: 현악 골목을 따라 지팡이 공방, 중고 마도서 가게, 사역마 먹이 상점, 교복 수선집, 종이학 우체국이 늘어서 있다. 테아트론 섬: 연극과 서커스, 기숙사 대항 결투 대회가 열린다. 테르프시코레 섬: 학기 말 무도회장. 우라니아 섬: 밤에만 열차가 서는 천문대 섬. 클리오 섬: 역대 졸업 앨범과 옛 신문을 모아 둔 기록 보관소. 1학년은 포르타와 칸토까지만 다녀올 수 있고, 학년이 오를수록 갈 수 있는 섬이 늘어난다.' },
+    { id: 'silentisle', title: '침묵의 섬', text: '몇 해 전 현 한 줄이 끊어지며 열차가 끊긴 섬. 녹슨 폐역과 멈춘 시계만 남아 있다. 출입 금지 구역이지만, 담력 시험을 한다며 몰래 건너가는 학생이 해마다 나온다. 그곳에 다녀온 학생들은 하나같이 "아무 소리도 들리지 않았다"고 말한다.' }
   ];
 
   /* ───────── 교수님의 과제 (평생 1회) ───────── */
@@ -2117,7 +2126,7 @@ var DATA = (function () {
   D.GUIDE = [
     { c: '처음', t: '이 게임은 어떻게 하나요?', b: '수업과 원정을 30분~3시간 단위로 진행하고, 끝나면 다음 교시를 이어 가는 방치형 게임입니다. 뽀모도로 타이머처럼 활용할 수 있습니다. 창을 닫아도 서버에서 그대로 진행되며, 다시 접속하면 끝난 작업의 결과가 표시됩니다. 잠들기 전에는 연구 · 사역마 파견처럼 오래 걸리는 작업을 시작해 두면 좋습니다.', go: ['home'] },
     { c: '처음', t: '첫날 할 일', b: '1) 「수업·연구」에서 수업을 듣고 2) 「원정·전투」에서 추천 단계로 출정하고 3) 「수업·연구 → 서고」에서 연구를 하나 시작합니다. 아카데미 광장의 「다음 할 일」이 지금 할 일을 알려 주며, 「이동」 버튼으로 해당 화면에 바로 갈 수 있습니다. 화면 좌측(모바일에서는 하단)의 안내도는 비슷한 활동끼리 묶여 있습니다.', go: ['home'] },
-    { c: '처음', t: '서버와 시간', b: '모든 학생이 같은 시간을 공유합니다. 아카데미력은 현실의 하루가 아카데미의 하루이며, 4주가 한 달, 여덟 달이 한 해입니다. 달마다 별샘의 축복이 바뀌고, 토 · 일요일에는 유성우가 내려 마나 재생과 수업 속도가 오릅니다. 학년은 달력과 관계없이 기말시험에 합격할 때마다 오릅니다.' },
+    { c: '처음', t: '서버와 시간', b: '모든 학생이 같은 시간을 공유합니다. 아카데미력은 현실의 하루가 아카데미의 하루이며, 4주가 한 달, 아홉 달이 한 해입니다. 달마다 별샘의 축복이 바뀌고, 토 · 일요일에는 유성우가 내려 마나 재생과 수업 속도가 오릅니다. 학년은 달력과 관계없이 기말시험에 합격할 때마다 오릅니다.' },
     { c: '처음', t: '아카데미 광장 화면', b: '상단의 풍경에는 현재 하늘(하늘 이벤트 · 다음 일정)과 오늘의 축복이 표시되며, 좌측의 반딧불 병을 눌러 반딧불 정령을 풀어 줄 수 있습니다. 그 아래에서 공지 · 시간표 · 다음 할 일 · 일일 목표를 확인합니다. 잠자리 · 꿈길은 광장 하단에 있습니다.', go: ['home'] },
     { c: '처음', t: '밑줄 친 용어와 화면별 안내', b: '점선 밑줄이 있는 용어는 이 게임에서만 쓰는 고유명사입니다. 마우스를 올리면(모바일에서는 누르면) 가이드 요약이 표시되며, 누르면(모바일에서는 요약을 한 번 더 누르면) 가이드에서 해당 용어를 검색합니다. 각 화면에 처음 들어가면 화면별 안내가 한 번 표시되며, 가이드 › 처음의 「화면별 둘러보기 다시 보기」로 다시 볼 수 있습니다.' },
     { c: '처음', t: '툴팁과 이동 버튼', b: '화면 우측 상단의 마나 · ' + CUR + ' · 지식 · 마석 · 별조각에 마우스를 올리면(모바일에서는 누르면) 얻는 방법과 현재 획득량이 표시됩니다. 일일 목표 · 업적 옆의 「이동」 버튼을 누르면 해당 화면으로 바로 이동합니다.' },
@@ -2182,7 +2191,7 @@ var DATA = (function () {
     { c: '계정·서버', t: '이름 바꾸기', b: '내 정보 → 편집의 「이름 바꾸기」에서 바꿉니다. 처음 정한 이름은 언제든 한 번 바꿀 수 있으며, 이후에는 30일이 지나야 다시 바꿀 수 있습니다. 친구 · 파티 · 동아리는 그대로 유지되며, 이미 올라간 채팅에는 예전 이름이 남습니다.' },
     { c: '계정·서버', t: '새 버전과 점검', b: '새 버전이 나오면 화면 상단에 안내 띠가 표시됩니다. 새로고침하면 적용되며, 새로고침하지 않아도 현재 화면으로 계속 플레이할 수 있습니다. 꼭 필요한 업데이트일 때만 10초 뒤 자동으로 새로고침합니다(작성 중인 채팅 글은 유지). 점검이 예정되면 미리 안내 띠로 알려 드리며, 점검 중에는 안내 화면이 표시되다가 끝나면 자동으로 다시 접속합니다. 진행 중인 작업은 시간 기준으로 계산되어 점검 뒤에도 그대로 반영됩니다.' },
     { c: '계정·서버', t: '비밀번호와 개인정보', b: '비밀번호는 8자 이상이어야 하며, 너무 쉬운 비밀번호나 이름이 들어간 비밀번호는 쓸 수 없습니다. 비밀번호는 복원할 수 없는 방식으로 저장되고, 프로필 · 두상 · 채팅은 서버에 암호화되어 저장됩니다. 로그인하지 않은 방문자는 학생 정보와 랭킹을 볼 수 없습니다.' },
-    { c: '계정·서버', t: '앱처럼 설치하기', b: '설정의 「앱으로 쓰기」에서 홈 화면이나 바탕화면에 아르카눔 아카데미를 앱처럼 추가할 수 있습니다. 안드로이드 · PC 크롬/엣지는 버튼 한 번, 아이폰은 사파리 공유 버튼 › 「홈 화면에 추가」입니다. 주소창 없이 열릴 뿐 계정과 진행 상황은 웹과 같습니다.' },
+    { c: '계정·서버', t: '앱처럼 설치하기', b: '설정의 「앱으로 쓰기」에서 홈 화면이나 바탕화면에 모네타 아카데미를 앱처럼 추가할 수 있습니다. 안드로이드 · PC 크롬/엣지는 버튼 한 번, 아이폰은 사파리 공유 버튼 › 「홈 화면에 추가」입니다. 주소창 없이 열릴 뿐 계정과 진행 상황은 웹과 같습니다.' },
     { c: '계정·서버', t: '마스터 과정', b: '졸업 시험을 통과해도 학적은 초기화되지 않습니다. 마스터 과정 연구생이 되어 끝없는 심연 · 월드 보스 · 랭킹에 도전합니다.' },
     { c: '계정·서버', t: '숫자 읽는 법', b: '큰 수는 만(10⁴) · 억(10⁸) · 조(10¹²) · 경(10¹⁶) 단위로 표기합니다.' }
   ];
@@ -2314,7 +2323,7 @@ if (typeof module !== 'undefined') module.exports = DATA;
 
 </script>
 <script>
-/* 아르카눔 아카데미 — 서버형 규칙 엔진 (서버·클라이언트 공용)
+/* 모네타 아카데미 — 서버형 규칙 엔진 (서버·클라이언트 공용)
    모든 시간은 초 단위 유닉스 시각. 상태 P는 JSON으로 직렬화 가능해야 한다.
    서버가 권위를 가진다: 클라이언트는 같은 코드로 미리보기만 계산한다. */
 (function (root, factory) {
@@ -2395,9 +2404,9 @@ if (typeof module !== 'undefined') module.exports = DATA;
   R.nextMidnight = function (t) { return (R.dayKST(t) + 1) * 86400 - K.TZ; };
   R.calendar = function (W, t) {
     var dn = Math.max(0, R.dayKST(t) - R.dayKST(W.epoch));
-    var mo = Math.floor(dn / 28) % 8;
+    var NM = D.WORLD.calendarMonths.length, mo = Math.floor(dn / 28) % NM;
     var secOfDay = (t + K.TZ) % 86400;
-    return { day: dn, year: D.WORLD.baseYear + Math.floor(dn / 224), mi: mo, month: D.WORLD.calendarMonths[mo], d: dn % 28 + 1,
+    return { day: dn, year: D.WORLD.baseYear + Math.floor(dn / (28 * NM)), mi: mo, month: D.WORLD.calendarMonths[mo], d: dn % 28 + 1,
       period: clamp(Math.floor((secOfDay - 9 * 3600) / 3600) + 1, 0, 9), weekend: R.isWeekend(t), bonus: D.MONTH_BONUS[mo] };
   };
   function weekendFrac(t0, t1) {
@@ -2527,7 +2536,7 @@ if (typeof module !== 'undefined') module.exports = DATA;
     P.eq.robe = makeItem(P, 'robe', 1, 0);
     P.mq = { g: 1, i: 0, b: { lecJobs: 0, expJobs: 0, researchDone: 0 } };
     P.buffs.orient = { name: '신입생 오리엔테이션', eff: { lectureSpd: 1.0, xpPct: 0.5 }, start: now, end: now + 3 * 86400, color: '#a6e3cf' };
-    log(P, now, P.name + ' 학생, 아르카눔 아카데미 ' + HOUSE[P.house].name + '에 배정되었습니다.', 'story');
+    log(P, now, P.name + ' 학생, 모네타 아카데미 ' + HOUSE[P.house].name + '에 배정되었습니다.', 'story');
     return P;
   };
 
@@ -4807,7 +4816,7 @@ var Net = (function () {
   LocalApi.prototype.setAvatar = function (dataUrl) { this.d.av = dataUrl || null; this._save(); return Promise.resolve({ ok: true, av: dataUrl ? 1 : 0 }); };
   LocalApi.prototype.avatarUrl = function (id, v) { return v && this.d && this.d.av && (id === 'local' || (this.d.P && id === this.d.P.id)) ? this.d.av : ''; };
   // 데모 우편함: 입학 환영 우편, 별의 탑 보상 (이 브라우저에만)
-  LocalApi.prototype._welcomeMail = function (name) { this.d.mail = { seq: 2, list: [{ id: 1, sender: '운영진', title: '아르카눔 아카데미에 오신 것을 환영합니다', body: name + ' 학생, 입학을 축하합니다.\n아카데미 생활에 보탬이 되도록 작은 선물을 보냅니다. 우편은 열어 봐도 보상은 나중에 받을 수 있습니다.\n\n— 아카데미 운영진', rewards: { shard: 30, stone: 10, gear: 1 }, created: Date.now() / 1000, expires: 32503647599, read: false, claimed: false, all: true }] }; };
+  LocalApi.prototype._welcomeMail = function (name) { this.d.mail = { seq: 2, list: [{ id: 1, sender: '운영진', title: '모네타 아카데미에 오신 것을 환영합니다', body: name + ' 학생, 입학을 축하합니다.\n아카데미 생활에 보탬이 되도록 작은 선물을 보냅니다. 우편은 열어 봐도 보상은 나중에 받을 수 있습니다.\n\n— 아카데미 운영진', rewards: { shard: 30, stone: 10, gear: 1 }, created: Date.now() / 1000, expires: 32503647599, read: false, claimed: false, all: true }] }; };
   LocalApi.prototype._mailList = function () { if (this.d && this.d.P && !this.d.mail) this._welcomeMail(this.d.P.name); var m = this.d && this.d.mail; if (!m) return []; var real = Date.now() / 1000; return m.list.filter(function (x) { return x.expires > real; }); };
   LocalApi.prototype._sendMail = function (sender, title, body, rewards, days, pingAfter) { var self2 = this, m = this.d.mail || (this.d.mail = { seq: 1, list: [] }); var x = { id: m.seq++, sender: sender, title: title, body: body, rewards: Rules.cleanRewards(rewards), created: Date.now() / 1000, expires: Date.now() / 1000 + days * 86400, read: false, claimed: false }; m.list.unshift(x); this._save(); var h = this._chat && this._chat.h; if (h && h.mail) setTimeout(function () { var h2 = self2._chat && self2._chat.h; if (h2 && h2.mail) h2.mail({ id: x.id }); }, pingAfter || 50); return x; };
   LocalApi.prototype.mail = function () { var l = this._mailList(); return Promise.resolve({ mails: l.map(function (x) { return Object.assign({}, x); }), n: l.filter(function (x) { return !x.read; }).length }); };
@@ -5310,7 +5319,7 @@ var Net = (function () {
   NET.LocalApi = LocalApi;
 })(Net);
 
-/* 아르카눔 아카데미 — 서버형 클라이언트 */
+/* 모네타 아카데미 — 서버형 클라이언트 */
 (function () {
   'use strict';
   var D = window.DATA, R = window.Rules, A = window.Art, fmt = R.fmt, CUR = D.CUR;
@@ -5504,7 +5513,7 @@ var Net = (function () {
   function shell() {
     $('#app').innerHTML =
       '<header class="top"><div class="top-row">' +
-      '<img class="logo" src="' + LOGO_URL + '" width="38" height="38" alt="아르카눔 아카데미">' +
+      '<img class="logo" src="' + LOGO_URL + '" width="38" height="38" alt="모네타 아카데미">' +
       '<div class="crest memenu-wrap"><button class="mebtn" data-act="memenu" aria-haspopup="menu" aria-expanded="false" title="내 정보 · 친구 · 파티"><span id="head-av"></span><span class="who"><h1><span data-l="who"></span> <span class="caret">▾</span></h1><span class="sub" data-l="whosub"></span></span><span class="ibadge" id="mebadge" hidden></span></button>' +
       '<div class="memenu" id="memenu" role="menu" hidden><button role="menuitem" data-act="me" data-a="view">' + icon('user') + '내 정보</button><button role="menuitem" data-act="me" data-a="friends">' + icon('chat') + '친구<span class="tag br num" id="mm-fr" hidden></span></button><button role="menuitem" data-act="nav" data-a="party">' + icon('party') + '파티<span class="tag br num" id="mm-pt" hidden></span></button><button role="menuitem" data-act="nav" data-a="guild">' + icon('guild') + '동아리</button><button role="menuitem" data-act="goto" data-a="rec" data-b="titles">' + icon('rec') + '칭호 도감</button></div></div>' +
       '<div class="topmeta"><span class="seg cal" data-l="cal"></span><span class="seg" data-l="buffs" data-html="1"></span><span class="seg conn" id="conn" hidden>서버 연결이 끊겼습니다 · 다시 연결 중</span></div>' +
@@ -6103,8 +6112,8 @@ var Net = (function () {
     day: ['#4f93d6', '#86bce9', '#d4ecf7'],
     dusk: ['#2c2458', '#a4527a', '#f3a86a']
   };
-  // 달마다 잎 빛깔 (등불달 → 침묵달)
-  var LEAF = ['#6fae6a', '#7cc27a', '#4f8f55', '#c9a24a', '#d1773f', '#a85a3a', '#9fb3c4', '#c7d6e2'];
+  // 달마다 잎 빛깔 (서사달 → 침묵달)
+  var LEAF = ['#6fae6a', '#7cc27a', '#5aa860', '#4f8f55', '#c9a24a', '#d1773f', '#a85a3a', '#9fb3c4', '#c7d6e2'];
   function sceneJar(n, max) {
     var o = '', spots = [[38, 156], [48, 148], [42, 138], [53, 160]];
     for (var i = 0; i < Math.min(n, max); i++) { var p = spots[i % spots.length]; o += '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="5.5" fill="url(#scGlow)" class="ffl f' + i + '"/><circle cx="' + p[0] + '" cy="' + p[1] + '" r="2" fill="#fff6c0" class="ffl f' + i + '"/>'; }
@@ -6652,7 +6661,7 @@ var Net = (function () {
         examCast(P, elig) +
         '<div class="row" style="margin-top:14px"><span class="spacer"></span><button class="btn primary" data-act="exam" data-can="exam"><span data-l="exambtn"></span></button></div></div>';
       h += '<div class="stack"><div class="card"><h3>성적표</h3>' + D.EXAMS.map(function (e) { var sc = P.scores[e.grade]; return '<div class="row small" style="padding:4px 0;border-bottom:1px dashed var(--line2)"><span>' + e.grade + '학년</span><span class="muted" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + e.title.split(': ')[1] + '</span>' + (sc ? '<b class="num gold">' + sc.letter + '</b><span class="num muted">' + sc.total + '</span><button class="btn sm ghost" data-act="promo" data-a="' + (e.grade + 1) + '" title="' + (e.grade >= 7 ? '졸업' : (e.grade + 1) + '학년 진급') + ' 때 열린 것" style="padding:1px 7px">안내</button>' : '<span class="faint">—</span>') + '</div>'; }).join('') + '</div>' +
-        '<div class="card inset"><h4>침묵달의 미신</h4><p class="small muted" style="margin-top:4px">아카데미력 여덟째 달(침묵달)에 치르는 시험은 총점 +5점. 학생들의 미신이 사실이었습니다.</p></div></div></div>';
+        '<div class="card inset"><h4>침묵달의 미신</h4><p class="small muted" style="margin-top:4px">아카데미력 아홉째 달(침묵달)에 치르는 시험은 총점 +5점. 학생들의 미신이 사실이었습니다.</p></div></div></div>';
     }
     // 결투제
     var r = R.rival(P), n = D.RIVALS.length;
@@ -7906,10 +7915,10 @@ var Net = (function () {
   ACT['do-login'] = function () { ACT['do']('login'); };
   ACT.blesshelp = function () {
     var cal = R.calendar(wctx(), now()), left0 = 28 - cal.d + 1, wd = R.weekday(now()), DAYN = ['일', '월', '화', '수', '목', '금', '토'];
-    var rows = []; for (var k = 0; k < 8; k++) { var mi = (cal.mi + k) % 8; rows.push('<div class="mrow' + (k === 0 ? ' now' : '') + '"><span class="mn">' + D.WORLD.calendarMonths[mi] + '</span><span class="small">' + D.MONTH_BONUS[mi].text.replace(/^[^—]+— /, '') + '</span>' + (k === 0 ? '<span class="tag ok">지금 · ' + left0 + '일 남음</span>' : '<span class="tiny faint">' + (left0 + (k - 1) * 28) + '일 뒤</span>') + '</div>'); }
+    var rows = []; for (var NM = D.WORLD.calendarMonths.length, k = 0; k < NM; k++) { var mi = (cal.mi + k) % NM; rows.push('<div class="mrow' + (k === 0 ? ' now' : '') + '"><span class="mn">' + D.WORLD.calendarMonths[mi] + '</span><span class="small">' + D.MONTH_BONUS[mi].text.replace(/^[^—]+— /, '') + '</span>' + (k === 0 ? '<span class="tag ok">지금 · ' + left0 + '일 남음</span>' : '<span class="tiny faint">' + (left0 + (k - 1) * 28) + '일 뒤</span>') + '</div>'); }
     var days = [1, 2, 3, 4, 5, 6, 0].map(function (d) { var we = d === 0 || d === 6; return '<div class="mrow' + (d === wd ? ' now' : '') + '"><span class="mn">' + DAYN[d] + '요일</span><span class="small' + (we ? '' : ' faint') + '">' + (we ? D.WEEKEND.text.replace(/^[^—]+— /, '').replace(/ \(토·일\)$/, '') : '요일 축복 없음') + '</span>' + (d === wd ? '<span class="tag ok">오늘</span>' : '<span></span>') + '</div>'; });
     modal(mhead('축복 달력', '달 축복과 요일 축복은 따로 겹쳐서 적용됩니다') +
-      '<div class="section-t">달 축복 <span class="tiny faint">아카데미력 한 달 = 실제 28일, 여덟 달이 한 해</span></div><div class="mcal">' + rows.join('') + '</div>' +
+      '<div class="section-t">달 축복 <span class="tiny faint">아카데미력 한 달 = 실제 28일, 아홉 달이 한 해</span></div><div class="mcal">' + rows.join('') + '</div>' +
       '<div class="section-t" style="margin-top:14px">요일 축복 <span class="tiny faint">한국 시간 기준</span></div><div class="mcal">' + days.join('') + '</div>' +
       '<p class="tiny faint" style="margin-top:10px">수업·원정의 축복은 시작할 때 겹친 시간만큼 반영됩니다. 예를 들어 금요일 밤에 3시간 원정에 출정하면 토요일에 걸친 부분만 유성우 효과를 받습니다.</p>');
   };
@@ -8254,7 +8263,7 @@ var Net = (function () {
   /* ── 웹앱으로 설치 (PWA): 서버판에서만. 브라우저 주소창 없이 앱처럼 열린다 ── */
   var PWA = { evt: null, standalone: (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true };
   window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); PWA.evt = e; if (S.modal && $('#pwa-row')) ACT.settings(); });
-  window.addEventListener('appinstalled', function () { PWA.evt = null; PWA.standalone = true; toast('설치 완료', '홈 화면 · 앱 목록에서 아르카눔 아카데미를 열 수 있습니다'); });
+  window.addEventListener('appinstalled', function () { PWA.evt = null; PWA.standalone = true; toast('설치 완료', '홈 화면 · 앱 목록에서 모네타 아카데미를 열 수 있습니다'); });
   function pwaRegister() { if (API.mode !== 'server' || !('serviceWorker' in navigator)) return; if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') return; navigator.serviceWorker.register('sw.js').catch(function () { }); }
   function installRow() {
     if (API.mode !== 'server') return '';
@@ -8322,7 +8331,7 @@ var Net = (function () {
   ACT.notify = function (a, b, el) {
     if (!el.checked) { PREF.notify = false; savePref(); scheduleNotify(); ACT.settings(); return; }
     if (typeof Notification === 'undefined') return;
-    Notification.requestPermission().then(function (p) { PREF.notify = p === 'granted'; savePref(); scheduleNotify(); if (p === 'granted') try { new Notification('아르카눔 아카데미', { body: '작업이 끝나면 이렇게 알려 드립니다.', icon: LOGO_URL, tag: 'arc-test' }); } catch (e) { } ACT.settings(); }, function () { ACT.settings(); });
+    Notification.requestPermission().then(function (p) { PREF.notify = p === 'granted'; savePref(); scheduleNotify(); if (p === 'granted') try { new Notification('모네타 아카데미', { body: '작업이 끝나면 이렇게 알려 드립니다.', icon: LOGO_URL, tag: 'arc-test' }); } catch (e) { } ACT.settings(); }, function () { ACT.settings(); });
   };
   // 작업이 끝날 때 알림: 창을 내렸거나 다른 탭을 보고 있을 때만
   var nTimers = {};
@@ -8671,8 +8680,8 @@ var Net = (function () {
     var server = API.mode === 'server', M = S.meta || {};
     var tabs = server ? [['login', '로그인'], ['signup', '가입']] : [['guest', '바로 입학']];   // 서버판에는 게스트가 없다. '바로 입학'은 아티팩트 미리보기에서만
     var tab = S.authTab && tabs.some(function (t) { return t[0] === S.authTab; }) ? S.authTab : tabs[0][0];
-    var h = '<div class="body" style="grid-template-columns:minmax(0,1fr)"><main><div class="intro"><img class="crestbig" src="' + LOGO_URL + '" width="96" height="96" alt=""><h1>아르카눔 아카데미</h1>' +
-      '<p class="lede">일곱 별샘이 마나를 비처럼 내리는 대륙 에테라. 구름섬 라디아의 아카데미에서, 모든 학생이 같은 시간을 살아갑니다.</p>';
+    var h = '<div class="body" style="grid-template-columns:minmax(0,1fr)"><main><div class="intro"><img class="crestbig" src="' + LOGO_URL + '" width="96" height="96" alt=""><h1>모네타 아카데미</h1>' +
+      '<p class="lede">별의 종의 울림을 듣는 아이에게만 초대장이 날아드는 곳. 입학 열차 칼리오페호를 타고 구름섬 라디아로, 모든 학생이 같은 시간을 살아가는 아카데미에 오신 것을 환영합니다.</p>';
     if (!server) h += '<div class="card inset"><p class="small">이 페이지는 <b>미리보기</b>입니다. 진행 상황은 이 브라우저에만 저장되고, 다른 학생과 월드 보스·대항전은 가상입니다. 실제 게임은 아카데미 서버에서 열립니다.</p></div>';
     if (tabs.length > 1) h += '<div class="tabs" role="tablist">' + tabs.map(function (t) { return '<button role="tab" class="' + (tab === t[0] ? 'on' : '') + '" data-act="authtab" data-a="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
     h += '<form id="authform" class="card stack" style="gap:12px" autocomplete="on">';
@@ -8789,7 +8798,7 @@ var Net = (function () {
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026101942;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026101945;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
@@ -8932,7 +8941,7 @@ var Net = (function () {
   Net.onMaint = function (m) { maintCheck(m); };
   // 서버에 닿지 않으면 (서버판에는 데모로 빠지는 길이 없다) 다시 시도 화면
   function downScreen() {
-    $('#app').innerHTML = '<div class="body" style="grid-template-columns:minmax(0,1fr)"><main><div class="intro"><img class="crestbig" src="' + LOGO_URL + '" width="96" height="96" alt=""><h1>아르카눔 아카데미</h1><div class="card inset" style="text-align:center"><p>아카데미 서버에 연결할 수 없습니다.</p><p class="small muted">잠시 뒤 다시 시도. 30초마다 자동으로 다시 확인합니다.</p><div class="row" style="justify-content:center;margin-top:10px"><button class="btn primary" onclick="location.reload()">다시 시도</button></div></div></div></main></div>';
+    $('#app').innerHTML = '<div class="body" style="grid-template-columns:minmax(0,1fr)"><main><div class="intro"><img class="crestbig" src="' + LOGO_URL + '" width="96" height="96" alt=""><h1>모네타 아카데미</h1><div class="card inset" style="text-align:center"><p>아카데미 서버에 연결할 수 없습니다.</p><p class="small muted">잠시 뒤 다시 시도. 30초마다 자동으로 다시 확인합니다.</p><div class="row" style="justify-content:center;margin-top:10px"><button class="btn primary" onclick="location.reload()">다시 시도</button></div></div></div></main></div>';
     setTimeout(function () { fetch('/api/health').then(function (r) { if (r.ok || r.status === 503) location.reload(); else downScreen(); }, downScreen); }, 30000);
   }
   Net.detect().then(function (api) {

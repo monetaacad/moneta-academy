@@ -1,5 +1,5 @@
 'use strict';
-// 아르카눔 아카데미 게임 서버 (Node.js 22.13+, 외부 패키지 없음)
+// 모네타 아카데미 게임 서버 (Node.js 22.13+, 외부 패키지 없음)
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -1695,7 +1695,7 @@ process.on('SIGINT', () => shutdown('SIGINT'));
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 
 server.listen(cfg.port, cfg.host, () => {
-  log(`아르카눔 서버 시작: http://${cfg.host}:${cfg.port}  (데이터: ${cfg.dataDir}${cfg.timeScale !== 1 ? ', 시간 배속 ×' + cfg.timeScale : ''})`);
+  log(`모네타 서버 시작: http://${cfg.host}:${cfg.port}  (데이터: ${cfg.dataDir}${cfg.timeScale !== 1 ? ', 시간 배속 ×' + cfg.timeScale : ''})`);
   if (!cfg.adminToken) log('알림: ADMIN_TOKEN이 없어 관리자 API가 꺼져 있습니다');
   log(`가입: 초대코드 ${cfg.inviteRequired ? '필요' : '불필요'}`);
 });

@@ -1,4 +1,4 @@
-/* 아르카눔 아카데미 — 서버형 클라이언트 */
+/* 모네타 아카데미 — 서버형 클라이언트 */
 (function () {
   'use strict';
   var D = window.DATA, R = window.Rules, A = window.Art, fmt = R.fmt, CUR = D.CUR;
@@ -192,7 +192,7 @@
   function shell() {
     $('#app').innerHTML =
       '<header class="top"><div class="top-row">' +
-      '<img class="logo" src="' + LOGO_URL + '" width="38" height="38" alt="아르카눔 아카데미">' +
+      '<img class="logo" src="' + LOGO_URL + '" width="38" height="38" alt="모네타 아카데미">' +
       '<div class="crest memenu-wrap"><button class="mebtn" data-act="memenu" aria-haspopup="menu" aria-expanded="false" title="내 정보 · 친구 · 파티"><span id="head-av"></span><span class="who"><h1><span data-l="who"></span> <span class="caret">▾</span></h1><span class="sub" data-l="whosub"></span></span><span class="ibadge" id="mebadge" hidden></span></button>' +
       '<div class="memenu" id="memenu" role="menu" hidden><button role="menuitem" data-act="me" data-a="view">' + icon('user') + '내 정보</button><button role="menuitem" data-act="me" data-a="friends">' + icon('chat') + '친구<span class="tag br num" id="mm-fr" hidden></span></button><button role="menuitem" data-act="nav" data-a="party">' + icon('party') + '파티<span class="tag br num" id="mm-pt" hidden></span></button><button role="menuitem" data-act="nav" data-a="guild">' + icon('guild') + '동아리</button><button role="menuitem" data-act="goto" data-a="rec" data-b="titles">' + icon('rec') + '칭호 도감</button></div></div>' +
       '<div class="topmeta"><span class="seg cal" data-l="cal"></span><span class="seg" data-l="buffs" data-html="1"></span><span class="seg conn" id="conn" hidden>서버 연결이 끊겼습니다 · 다시 연결 중</span></div>' +
@@ -791,8 +791,8 @@
     day: ['#4f93d6', '#86bce9', '#d4ecf7'],
     dusk: ['#2c2458', '#a4527a', '#f3a86a']
   };
-  // 달마다 잎 빛깔 (등불달 → 침묵달)
-  var LEAF = ['#6fae6a', '#7cc27a', '#4f8f55', '#c9a24a', '#d1773f', '#a85a3a', '#9fb3c4', '#c7d6e2'];
+  // 달마다 잎 빛깔 (서사달 → 침묵달)
+  var LEAF = ['#6fae6a', '#7cc27a', '#5aa860', '#4f8f55', '#c9a24a', '#d1773f', '#a85a3a', '#9fb3c4', '#c7d6e2'];
   function sceneJar(n, max) {
     var o = '', spots = [[38, 156], [48, 148], [42, 138], [53, 160]];
     for (var i = 0; i < Math.min(n, max); i++) { var p = spots[i % spots.length]; o += '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="5.5" fill="url(#scGlow)" class="ffl f' + i + '"/><circle cx="' + p[0] + '" cy="' + p[1] + '" r="2" fill="#fff6c0" class="ffl f' + i + '"/>'; }
@@ -1340,7 +1340,7 @@
         examCast(P, elig) +
         '<div class="row" style="margin-top:14px"><span class="spacer"></span><button class="btn primary" data-act="exam" data-can="exam"><span data-l="exambtn"></span></button></div></div>';
       h += '<div class="stack"><div class="card"><h3>성적표</h3>' + D.EXAMS.map(function (e) { var sc = P.scores[e.grade]; return '<div class="row small" style="padding:4px 0;border-bottom:1px dashed var(--line2)"><span>' + e.grade + '학년</span><span class="muted" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + e.title.split(': ')[1] + '</span>' + (sc ? '<b class="num gold">' + sc.letter + '</b><span class="num muted">' + sc.total + '</span><button class="btn sm ghost" data-act="promo" data-a="' + (e.grade + 1) + '" title="' + (e.grade >= 7 ? '졸업' : (e.grade + 1) + '학년 진급') + ' 때 열린 것" style="padding:1px 7px">안내</button>' : '<span class="faint">—</span>') + '</div>'; }).join('') + '</div>' +
-        '<div class="card inset"><h4>침묵달의 미신</h4><p class="small muted" style="margin-top:4px">아카데미력 여덟째 달(침묵달)에 치르는 시험은 총점 +5점. 학생들의 미신이 사실이었습니다.</p></div></div></div>';
+        '<div class="card inset"><h4>침묵달의 미신</h4><p class="small muted" style="margin-top:4px">아카데미력 아홉째 달(침묵달)에 치르는 시험은 총점 +5점. 학생들의 미신이 사실이었습니다.</p></div></div></div>';
     }
     // 결투제
     var r = R.rival(P), n = D.RIVALS.length;
@@ -2594,10 +2594,10 @@
   ACT['do-login'] = function () { ACT['do']('login'); };
   ACT.blesshelp = function () {
     var cal = R.calendar(wctx(), now()), left0 = 28 - cal.d + 1, wd = R.weekday(now()), DAYN = ['일', '월', '화', '수', '목', '금', '토'];
-    var rows = []; for (var k = 0; k < 8; k++) { var mi = (cal.mi + k) % 8; rows.push('<div class="mrow' + (k === 0 ? ' now' : '') + '"><span class="mn">' + D.WORLD.calendarMonths[mi] + '</span><span class="small">' + D.MONTH_BONUS[mi].text.replace(/^[^—]+— /, '') + '</span>' + (k === 0 ? '<span class="tag ok">지금 · ' + left0 + '일 남음</span>' : '<span class="tiny faint">' + (left0 + (k - 1) * 28) + '일 뒤</span>') + '</div>'); }
+    var rows = []; for (var NM = D.WORLD.calendarMonths.length, k = 0; k < NM; k++) { var mi = (cal.mi + k) % NM; rows.push('<div class="mrow' + (k === 0 ? ' now' : '') + '"><span class="mn">' + D.WORLD.calendarMonths[mi] + '</span><span class="small">' + D.MONTH_BONUS[mi].text.replace(/^[^—]+— /, '') + '</span>' + (k === 0 ? '<span class="tag ok">지금 · ' + left0 + '일 남음</span>' : '<span class="tiny faint">' + (left0 + (k - 1) * 28) + '일 뒤</span>') + '</div>'); }
     var days = [1, 2, 3, 4, 5, 6, 0].map(function (d) { var we = d === 0 || d === 6; return '<div class="mrow' + (d === wd ? ' now' : '') + '"><span class="mn">' + DAYN[d] + '요일</span><span class="small' + (we ? '' : ' faint') + '">' + (we ? D.WEEKEND.text.replace(/^[^—]+— /, '').replace(/ \(토·일\)$/, '') : '요일 축복 없음') + '</span>' + (d === wd ? '<span class="tag ok">오늘</span>' : '<span></span>') + '</div>'; });
     modal(mhead('축복 달력', '달 축복과 요일 축복은 따로 겹쳐서 적용됩니다') +
-      '<div class="section-t">달 축복 <span class="tiny faint">아카데미력 한 달 = 실제 28일, 여덟 달이 한 해</span></div><div class="mcal">' + rows.join('') + '</div>' +
+      '<div class="section-t">달 축복 <span class="tiny faint">아카데미력 한 달 = 실제 28일, 아홉 달이 한 해</span></div><div class="mcal">' + rows.join('') + '</div>' +
       '<div class="section-t" style="margin-top:14px">요일 축복 <span class="tiny faint">한국 시간 기준</span></div><div class="mcal">' + days.join('') + '</div>' +
       '<p class="tiny faint" style="margin-top:10px">수업·원정의 축복은 시작할 때 겹친 시간만큼 반영됩니다. 예를 들어 금요일 밤에 3시간 원정에 출정하면 토요일에 걸친 부분만 유성우 효과를 받습니다.</p>');
   };
@@ -2942,7 +2942,7 @@
   /* ── 웹앱으로 설치 (PWA): 서버판에서만. 브라우저 주소창 없이 앱처럼 열린다 ── */
   var PWA = { evt: null, standalone: (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true };
   window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); PWA.evt = e; if (S.modal && $('#pwa-row')) ACT.settings(); });
-  window.addEventListener('appinstalled', function () { PWA.evt = null; PWA.standalone = true; toast('설치 완료', '홈 화면 · 앱 목록에서 아르카눔 아카데미를 열 수 있습니다'); });
+  window.addEventListener('appinstalled', function () { PWA.evt = null; PWA.standalone = true; toast('설치 완료', '홈 화면 · 앱 목록에서 모네타 아카데미를 열 수 있습니다'); });
   function pwaRegister() { if (API.mode !== 'server' || !('serviceWorker' in navigator)) return; if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') return; navigator.serviceWorker.register('sw.js').catch(function () { }); }
   function installRow() {
     if (API.mode !== 'server') return '';
@@ -3010,7 +3010,7 @@
   ACT.notify = function (a, b, el) {
     if (!el.checked) { PREF.notify = false; savePref(); scheduleNotify(); ACT.settings(); return; }
     if (typeof Notification === 'undefined') return;
-    Notification.requestPermission().then(function (p) { PREF.notify = p === 'granted'; savePref(); scheduleNotify(); if (p === 'granted') try { new Notification('아르카눔 아카데미', { body: '작업이 끝나면 이렇게 알려 드립니다.', icon: LOGO_URL, tag: 'arc-test' }); } catch (e) { } ACT.settings(); }, function () { ACT.settings(); });
+    Notification.requestPermission().then(function (p) { PREF.notify = p === 'granted'; savePref(); scheduleNotify(); if (p === 'granted') try { new Notification('모네타 아카데미', { body: '작업이 끝나면 이렇게 알려 드립니다.', icon: LOGO_URL, tag: 'arc-test' }); } catch (e) { } ACT.settings(); }, function () { ACT.settings(); });
   };
   // 작업이 끝날 때 알림: 창을 내렸거나 다른 탭을 보고 있을 때만
   var nTimers = {};
@@ -3359,8 +3359,8 @@
     var server = API.mode === 'server', M = S.meta || {};
     var tabs = server ? [['login', '로그인'], ['signup', '가입']] : [['guest', '바로 입학']];   // 서버판에는 게스트가 없다. '바로 입학'은 아티팩트 미리보기에서만
     var tab = S.authTab && tabs.some(function (t) { return t[0] === S.authTab; }) ? S.authTab : tabs[0][0];
-    var h = '<div class="body" style="grid-template-columns:minmax(0,1fr)"><main><div class="intro"><img class="crestbig" src="' + LOGO_URL + '" width="96" height="96" alt=""><h1>아르카눔 아카데미</h1>' +
-      '<p class="lede">일곱 별샘이 마나를 비처럼 내리는 대륙 에테라. 구름섬 라디아의 아카데미에서, 모든 학생이 같은 시간을 살아갑니다.</p>';
+    var h = '<div class="body" style="grid-template-columns:minmax(0,1fr)"><main><div class="intro"><img class="crestbig" src="' + LOGO_URL + '" width="96" height="96" alt=""><h1>모네타 아카데미</h1>' +
+      '<p class="lede">별의 종의 울림을 듣는 아이에게만 초대장이 날아드는 곳. 입학 열차 칼리오페호를 타고 구름섬 라디아로, 모든 학생이 같은 시간을 살아가는 아카데미에 오신 것을 환영합니다.</p>';
     if (!server) h += '<div class="card inset"><p class="small">이 페이지는 <b>미리보기</b>입니다. 진행 상황은 이 브라우저에만 저장되고, 다른 학생과 월드 보스·대항전은 가상입니다. 실제 게임은 아카데미 서버에서 열립니다.</p></div>';
     if (tabs.length > 1) h += '<div class="tabs" role="tablist">' + tabs.map(function (t) { return '<button role="tab" class="' + (tab === t[0] ? 'on' : '') + '" data-act="authtab" data-a="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
     h += '<form id="authform" class="card stack" style="gap:12px" autocomplete="on">';
@@ -3477,7 +3477,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026101942;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026101945;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
@@ -3620,7 +3620,7 @@
   Net.onMaint = function (m) { maintCheck(m); };
   // 서버에 닿지 않으면 (서버판에는 데모로 빠지는 길이 없다) 다시 시도 화면
   function downScreen() {
-    $('#app').innerHTML = '<div class="body" style="grid-template-columns:minmax(0,1fr)"><main><div class="intro"><img class="crestbig" src="' + LOGO_URL + '" width="96" height="96" alt=""><h1>아르카눔 아카데미</h1><div class="card inset" style="text-align:center"><p>아카데미 서버에 연결할 수 없습니다.</p><p class="small muted">잠시 뒤 다시 시도. 30초마다 자동으로 다시 확인합니다.</p><div class="row" style="justify-content:center;margin-top:10px"><button class="btn primary" onclick="location.reload()">다시 시도</button></div></div></div></main></div>';
+    $('#app').innerHTML = '<div class="body" style="grid-template-columns:minmax(0,1fr)"><main><div class="intro"><img class="crestbig" src="' + LOGO_URL + '" width="96" height="96" alt=""><h1>모네타 아카데미</h1><div class="card inset" style="text-align:center"><p>아카데미 서버에 연결할 수 없습니다.</p><p class="small muted">잠시 뒤 다시 시도. 30초마다 자동으로 다시 확인합니다.</p><div class="row" style="justify-content:center;margin-top:10px"><button class="btn primary" onclick="location.reload()">다시 시도</button></div></div></div></main></div>';
     setTimeout(function () { fetch('/api/health').then(function (r) { if (r.ok || r.status === 503) location.reload(); else downScreen(); }, downScreen); }, 30000);
   }
   Net.detect().then(function (api) {

@@ -1,4 +1,4 @@
-/* 아르카눔 아카데미 — 서버형 규칙 엔진 (서버·클라이언트 공용)
+/* 모네타 아카데미 — 서버형 규칙 엔진 (서버·클라이언트 공용)
    모든 시간은 초 단위 유닉스 시각. 상태 P는 JSON으로 직렬화 가능해야 한다.
    서버가 권위를 가진다: 클라이언트는 같은 코드로 미리보기만 계산한다. */
 (function (root, factory) {
@@ -79,9 +79,9 @@
   R.nextMidnight = function (t) { return (R.dayKST(t) + 1) * 86400 - K.TZ; };
   R.calendar = function (W, t) {
     var dn = Math.max(0, R.dayKST(t) - R.dayKST(W.epoch));
-    var mo = Math.floor(dn / 28) % 8;
+    var NM = D.WORLD.calendarMonths.length, mo = Math.floor(dn / 28) % NM;
     var secOfDay = (t + K.TZ) % 86400;
-    return { day: dn, year: D.WORLD.baseYear + Math.floor(dn / 224), mi: mo, month: D.WORLD.calendarMonths[mo], d: dn % 28 + 1,
+    return { day: dn, year: D.WORLD.baseYear + Math.floor(dn / (28 * NM)), mi: mo, month: D.WORLD.calendarMonths[mo], d: dn % 28 + 1,
       period: clamp(Math.floor((secOfDay - 9 * 3600) / 3600) + 1, 0, 9), weekend: R.isWeekend(t), bonus: D.MONTH_BONUS[mo] };
   };
   function weekendFrac(t0, t1) {
@@ -211,7 +211,7 @@
     P.eq.robe = makeItem(P, 'robe', 1, 0);
     P.mq = { g: 1, i: 0, b: { lecJobs: 0, expJobs: 0, researchDone: 0 } };
     P.buffs.orient = { name: '신입생 오리엔테이션', eff: { lectureSpd: 1.0, xpPct: 0.5 }, start: now, end: now + 3 * 86400, color: '#a6e3cf' };
-    log(P, now, P.name + ' 학생, 아르카눔 아카데미 ' + HOUSE[P.house].name + '에 배정되었습니다.', 'story');
+    log(P, now, P.name + ' 학생, 모네타 아카데미 ' + HOUSE[P.house].name + '에 배정되었습니다.', 'story');
     return P;
   };
 

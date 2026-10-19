@@ -1,7 +1,7 @@
 // 서버 없이 도는 단일 HTML 데모 (같은 규칙 엔진 + 브라우저 저장)
 const fs = require('fs'), p = require('path'), R = (f) => fs.readFileSync(p.join(__dirname, '..', f), 'utf8');
 const strip = (s) => s.replace(/<\/script>/gi, '<\\/script>');
-const html = `<title>아르카눔 아카데미</title>
+const html = `<title>모네타 아카데미</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
