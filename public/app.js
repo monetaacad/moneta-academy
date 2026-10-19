@@ -477,7 +477,7 @@
     document.body.classList.remove('dock-lock');   // 채팅창을 열어 두어도 페이지는 스크롤된다 (채팅 글 목록 끝에서 페이지로 번지지는 않게 overscroll-behavior: contain)
     var h = '<div class="dock-head"><div class="dtabs" role="tablist">' + dockTabs().map(function (k) {
       var n = tabUnread(k), cur = tabOn(k);
-      return '<button role="tab" aria-selected="' + cur + '" class="' + (cur ? 'on' : '') + (n && !(open && cur) ? ' unread' : '') + '" data-act="chattab" data-a="' + k + '">' + CH_INFO[k].name + '<span class="ub num" data-unread="' + k + '"' + (n && !(open && cur) ? '' : ' hidden') + '>' + (n > 99 ? '99+' : n) + '</span></button>';
+      return '<button role="tab" aria-selected="' + cur + '" class="' + (cur ? 'on' : '') + (n && !(open && cur) ? ' unread' : '') + '" data-act="chattab" data-a="' + k + '">' + CH_INFO[k].name + '<span class="ub num' + (k === 'dm' ? ' dmub' : '') + '" data-unread="' + k + '"' + (n && !(open && cur) ? '' : ' hidden') + '>' + (n > 99 ? '99+' : n) + '</span></button>';
     }).join('') + '</div><button class="icon-btn sm" data-act="dock-toggle" aria-expanded="' + open + '" aria-label="채팅 ' + (open ? '접기' : '펼치기') + '">' + (open ? '▾' : '▴') + '</button></div>';
     if (!open) { h += '<button class="dock-peek" data-act="dock-toggle" id="dockpeek">' + peekText() + '</button>'; d.innerHTML = h; d.classList.add('closed'); scrollHints(); updateLive(); return; }
     h = '<div class="dgrip gl" data-grip="l" title="끌어서 폭 조절" aria-hidden="true"></div><div class="dgrip gt" data-grip="t" title="끌어서 높이 조절" aria-hidden="true"></div><div class="dgrip gc" data-grip="c" aria-hidden="true"></div>' + h;
@@ -3535,14 +3535,14 @@
       var box = $('#flist'); if (!box) return;
       if (j.error) { box.innerHTML = '<p class="small bad">' + esc(j.error) + '</p>'; return; }
       function row(f, btns) { return '<div class="frow"><button class="avbtn" data-act="prof" data-a="' + esc(f.id) + '">' + avatarHtml(f, 36) + '</button><div style="flex:1;min-width:0"><button class="cn" style="color:' + (R.HOUSE[f.house] ? R.HOUSE[f.house].color : 'inherit') + '" data-act="prof" data-a="' + esc(f.id) + '">' + esc(f.name) + '</button>' + (f.online ? ' <span class="odot" title="접속 중"></span>' : '') + ' <span class="tiny faint">' + (f.grade >= 8 ? '마스터' : f.grade + '학년') + ' · Lv ' + f.lvl + '</span>' + (f.status ? '<div class="tiny muted ell">' + esc(f.status) + '</div>' : f.seen && !f.online ? '<div class="tiny faint">마지막 접속 ' + clock(f.seen) + '</div>' : '') + '</div>' + btns + '</div>'; }
-      var h = '<div class="row" style="margin-bottom:12px"><input id="f-name" maxlength="12" placeholder="학생 이름으로 친구 신청" style="flex:1;min-width:0"><button class="btn sm primary" data-act="fadd">신청</button></div>';
-      if (j.demo) h += '<p class="small muted">데모에서는 친구를 맺을 수 없습니다. 서버를 열면 채팅에서 이름을 눌러 친구 신청을 할 수 있습니다.</p>';
+      var h = '';
+      if (j.demo) h += '<p class="small muted">데모에서는 친구를 맺을 수 없습니다. 서버를 열면 검색하거나 채팅에서 이름을 눌러 친구 신청을 할 수 있습니다.</p>';
       if (j.inc.length) h += '<div class="section-t">받은 신청 ' + j.inc.length + '</div>' + j.inc.map(function (f) { return row(f, '<button class="btn sm primary" data-act="fop" data-a="accept" data-b="' + esc(f.id) + '">수락</button><button class="btn sm ghost" data-act="fop" data-a="decline" data-b="' + esc(f.id) + '">거절</button>'); }).join('');
       h += '<div class="section-t">친구 ' + j.friends.length + (j.friends.length ? ' · 접속 ' + j.friends.filter(function (f) { return f.online; }).length : '') + '</div>';
-      h += j.friends.length ? j.friends.slice().sort(function (a, b) { return (b.online ? 1 : 0) - (a.online ? 1 : 0); }).map(function (f) { return row(f, '<button class="btn sm" data-act="dmopen" data-a="' + esc(f.id) + '" data-b="' + esc(f.name) + '">1:1</button><button class="btn sm ghost" data-act="pinvite" data-a="' + esc(f.id) + '" title="파티 초대">파티</button><button class="btn sm ghost" data-act="fop" data-a="remove" data-b="' + esc(f.id) + '">끊기</button>'); }).join('') : '<div class="empty">아직 친구가 없습니다. 채팅에서 이름을 누르면 친구 신청을 할 수 있습니다.</div>';
+      h += j.friends.length ? j.friends.slice().sort(function (a, b) { return (b.online ? 1 : 0) - (a.online ? 1 : 0); }).map(function (f) { return row(f, '<button class="btn sm" data-act="dmopen" data-a="' + esc(f.id) + '" data-b="' + esc(f.name) + '">1:1</button><button class="btn sm ghost" data-act="pinvite" data-a="' + esc(f.id) + '" title="파티 초대">파티</button><button class="btn sm ghost" data-act="fop" data-a="remove" data-b="' + esc(f.id) + '">끊기</button>'); }).join('') : '<div class="empty">아직 친구가 없습니다. 위에서 이름을 검색하거나 채팅에서 이름을 눌러 친구 신청을 할 수 있습니다.</div>';
       if (j.out.length) h += '<div class="section-t" style="margin-top:12px">보낸 신청</div>' + j.out.map(function (f) { return row(f, '<button class="btn sm ghost" data-act="fop" data-a="cancel" data-b="' + esc(f.id) + '">취소</button>'); }).join('');
       box.innerHTML = h; S.frHtml = h; S.frAt = Date.now();
-      var inp = $('#f-name'); if (inp) inp.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); ACT.fadd(); } });
+      fSearchKeys();
     });
   }
   /* ───────── 교류 › 게시판 ─────────
@@ -3662,10 +3662,29 @@
   // 교류 › 친구 탭
   V.friends = function () {
     if (Date.now() - (S.frAt || 0) > 15000 && Date.now() - (S.frReq || 0) > 3000) { S.frReq = Date.now(); setTimeout(loadFriends, 0); }
-    else setTimeout(function () { var inp = $('#f-name'); if (inp && !inp.__k) { inp.__k = 1; inp.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); ACT.fadd(); } }); } }, 0);
-    return pageHead('함께 다니는 학생들', '친구', '접속한 친구가 위에 · 1:1 대화와 파티 초대') + '<div class="card" id="flist">' + (S.frHtml || '<p class="small muted">불러오는 중…</p>') + '</div>';
+    setTimeout(fSearchKeys, 0);
+    return pageHead('함께 다니는 학생들', '친구', '접속한 친구가 위에 · 1:1 대화와 파티 초대') +
+      '<div class="card" style="margin-bottom:12px"><div class="row"><input id="f-q" maxlength="12" placeholder="학생 이름 검색" value="' + esc((S.frs && S.frs.q) || '') + '" style="flex:1;min-width:0"><button class="btn sm primary" data-act="fsearch">검색</button></div><div id="fsres">' + fSearchHtml() + '</div></div>' +
+      '<div class="card" id="flist">' + (S.frHtml || '<p class="small muted">불러오는 중…</p>') + '</div>';
   };
-  ACT.fadd = function () { var n = $('#f-name').value.trim(); if (!n) return; API.friendOp('add', '', n).then(function (j) { if (j.error) { toast('친구 신청', j.error); return; } toast(j.state === 'ok' ? '친구가 되었습니다' : '친구 신청을 보냈습니다', n, 1800); loadFriends(); }); };
+  // 학생 검색: 이름 일부로 찾고, 누르면 정보창이 열려 그곳에서 친구 신청한다
+  function fSearchKeys() { var inp = $('#f-q'); if (inp && !inp.__k) { inp.__k = 1; inp.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); ACT.fsearch(); } }); } }
+  function fSearchHtml() {
+    var r = S.frs; if (!r) return '<p class="tiny faint" style="margin-top:6px">이름 일부로 찾을 수 있습니다. 학생을 누르면 정보창이 열리고, 정보창에서 친구 신청 · 1:1 · 파티 초대를 할 수 있습니다.</p>';
+    if (r.busy) return '<p class="small muted" style="margin-top:8px">찾는 중…</p>';
+    if (r.err) return '<p class="small bad" style="margin-top:8px">' + esc(r.err) + '</p>';
+    if (!r.list.length) return '<p class="small muted" style="margin-top:8px">「' + esc(r.q) + '」 학생을 찾지 못했습니다.</p>';
+    var FS = { ok: '친구', out: '신청함', in: '받은 신청' };
+    return '<div style="margin-top:8px">' + r.list.map(function (f) {
+      return '<div class="frow"><button class="avbtn" data-act="prof" data-a="' + esc(f.id) + '">' + (f.npc ? '<span class="av av0" style="width:36px;height:36px;font-size:15px;--hc:' + (R.HOUSE[f.house] ? R.HOUSE[f.house].color : '#d6ad5f') + '">' + esc(f.name.slice(0, 1)) + '</span>' : avatarHtml(f, 36)) + '</button><div style="flex:1;min-width:0"><button class="cn" style="color:' + (R.HOUSE[f.house] ? R.HOUSE[f.house].color : 'inherit') + '" data-act="prof" data-a="' + esc(f.id) + '">' + esc(f.name) + '</button>' + (f.online ? ' <span class="tiny good">접속 중</span>' : '') + '<div class="tiny faint">' + (R.HOUSE[f.house] ? R.HOUSE[f.house].name : '') + '</div></div>' +
+        (f.friend && FS[f.friend] ? '<span class="tag' + (f.friend === 'ok' ? ' ok' : '') + '">' + FS[f.friend] + '</span>' : '') + '<button class="btn sm ghost" data-act="prof" data-a="' + esc(f.id) + '">정보 보기</button></div>';
+    }).join('') + '</div>';
+  }
+  ACT.fsearch = function () {
+    var q = (($('#f-q') || {}).value || '').trim(); if (!q) { toast('학생 검색', '이름 입력 필요'); return; }
+    S.frs = { q: q, list: [], busy: true }; var box = $('#fsres'); if (box) box.innerHTML = fSearchHtml();
+    API.playerSearch(q).then(function (j) { S.frs = { q: q, list: j.list || [], err: j.error || '' }; var b2 = $('#fsres'); if (b2) b2.innerHTML = fSearchHtml(); });
+  };
   function peSave(o, done) {
     var title = o.title; o = Object.assign({}, o); delete o.title;
     var av = S.peAv !== undefined ? API.setAvatar(S.peAv).then(function (j) { if (j.error) throw new Error(j.error); S.peAv = undefined; }) : Promise.resolve();
@@ -3901,7 +3920,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026101988;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026101989;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
