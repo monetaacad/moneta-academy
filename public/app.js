@@ -3055,7 +3055,7 @@
     return '<div class="pedit"><div id="pe-av">' + avatarHtml(avShow, 100) + '</div><div class="stack" style="gap:6px;flex:1;min-width:0">' +
       '<div class="row"><label class="btn sm filebtn">이미지 고르기<input type="file" id="pe-file" accept="image/png,image/jpeg,image/webp,image/gif" aria-label="두상 이미지 고르기"></label>' + (hasAv ? '<button class="btn sm ghost" data-act="av-clear">이미지 제거</button>' : '') + '</div>' +
       (S.peAv !== undefined ? '<p class="tiny gold">' + (S.peAv ? '새 두상' : '두상 제거') + ' · 아래 「저장」을 눌러야 적용됩니다</p>' : '') +
-      '<p class="tiny faint">고른 그림의 가운데를 정사각형으로 잘라 100×100으로 줄입니다. 저장을 누를 때 올라갑니다.</p><p class="tiny" id="pe-avmsg"></p>' +
+      '<p class="tiny faint">그림을 고르면 확대 · 이동해 두상으로 쓸 영역을 정할 수 있습니다. 100×100으로 줄여 저장을 누를 때 올라갑니다.</p><p class="tiny" id="pe-avmsg"></p>' +
       '<div class="field" style="margin-top:4px"><label class="tiny muted" for="pe-avc">두상 출처 <span class="faint">(선택 · 60자)</span></label><input id="pe-avc" maxlength="60" value="' + esc(me.avcredit || '') + '" placeholder="예: 그림 @작가이름 · 직접 그림"></div></div></div>' +
       nameRow() + clsRow() +
       '<div class="row" style="margin-top:12px"><span class="small muted">칭호</span>' + (S.P.title ? '<span class="ttl">' + esc(R.titleName(S.P, S.P.title)) + '</span>' : '<span class="small faint">없음</span>') + '<span class="spacer"></span><button class="btn sm" data-act="goto" data-a="rec" data-b="titles">칭호 도감에서 고르기 (' + titles.length + '/' + D.TITLES.length + ')</button></div>' +
@@ -3330,34 +3330,65 @@
     modal(mhead('칭호', '조건을 채우면 열립니다') + '<div class="stack" style="gap:6px">' + D.TITLES.map(function (t) { var ok = R.titleOk(S.P, t.id); return '<div class="row small" style="padding:4px 0;border-bottom:1px dashed var(--line2)"><span class="ttl' + (ok ? '' : ' off') + '">' + esc(R.titleName(S.P, t.id) || t.how) + '</span><span class="spacer"></span><span class="tiny ' + (ok ? 'good' : 'faint') + '">' + (ok ? '얻음' : t.how) + '</span></div>'; }).join('') + '</div><div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn primary" data-act="me" data-a="profile">돌아가기</button></div>');
   };
   ACT['av-clear'] = function () { S.peAv = null; ACT.me('profile'); };   // 저장을 눌러야 실제로 지워진다
-  // 두상: 가운데를 정사각형으로 잘라 반씩 줄여 가며(계단식 축소로 선명하게) 100×100 JPEG로 만든다
-  function makeAvatar(file) {
+  // 두상: 고른 사진을 자르기 창에서 확대 · 축소 · 이동해 영역을 정하고, 반씩 줄여 가며(계단식 축소로 선명하게) 100×100 JPEG로 만든다
+  function loadAvatarImg(file) {
     return new Promise(function (ok, no) {
       if (!file || !/^image\//.test(file.type)) return no(new Error('그림 파일 선택 필요'));
       if (file.size > 15 * 1024 * 1024) return no(new Error('15MB 이하의 그림만 가능'));
       var url = URL.createObjectURL(file), img = new Image();
-      img.onload = function () {
-        URL.revokeObjectURL(url);
-        var side = Math.min(img.naturalWidth, img.naturalHeight); if (!side) return no(new Error('그림을 읽지 못했습니다'));
-        var cv = document.createElement('canvas'), cur = Math.min(side, 1600);
-        cv.width = cv.height = cur; var cx = cv.getContext('2d'); cx.imageSmoothingQuality = 'high';
-        cx.drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, cur, cur);
-        while (cur / 2 >= 100) { var n2 = document.createElement('canvas'), half = Math.max(100, Math.floor(cur / 2)); n2.width = n2.height = half; var c2 = n2.getContext('2d'); c2.imageSmoothingQuality = 'high'; c2.drawImage(cv, 0, 0, cur, cur, 0, 0, half, half); cv = n2; cur = half; }
-        var out = document.createElement('canvas'); out.width = out.height = 100; var co = out.getContext('2d');
-        co.fillStyle = '#1a2040'; co.fillRect(0, 0, 100, 100); co.imageSmoothingQuality = 'high'; co.drawImage(cv, 0, 0, cur, cur, 0, 0, 100, 100);
-        var q = 0.9, data = out.toDataURL('image/jpeg', q);
-        while (data.length > 30000 && q > 0.5) { q -= 0.1; data = out.toDataURL('image/jpeg', q); }
-        ok(data);
-      };
+      img.onload = function () { URL.revokeObjectURL(url); if (!img.naturalWidth || !img.naturalHeight) return no(new Error('그림을 읽지 못했습니다')); ok(img); };
       img.onerror = function () { URL.revokeObjectURL(url); no(new Error('그림을 읽지 못했습니다')); };
       img.src = url;
     });
   }
+  // img의 (sx, sy)에서 한 변 sw인 정사각형 → 100×100 JPEG
+  function cropAvatar(img, sx, sy, sw) {
+    var cv = document.createElement('canvas'), cur = Math.max(100, Math.min(Math.round(sw), 1600));
+    cv.width = cv.height = cur; var cx = cv.getContext('2d'); cx.imageSmoothingQuality = 'high';
+    cx.fillStyle = '#1a2040'; cx.fillRect(0, 0, cur, cur); cx.drawImage(img, sx, sy, sw, sw, 0, 0, cur, cur);
+    while (cur / 2 >= 100) { var n2 = document.createElement('canvas'), half = Math.max(100, Math.floor(cur / 2)); n2.width = n2.height = half; var c2 = n2.getContext('2d'); c2.imageSmoothingQuality = 'high'; c2.drawImage(cv, 0, 0, cur, cur, 0, 0, half, half); cv = n2; cur = half; }
+    var out = document.createElement('canvas'); out.width = out.height = 100; var co = out.getContext('2d');
+    co.fillStyle = '#1a2040'; co.fillRect(0, 0, 100, 100); co.imageSmoothingQuality = 'high'; co.drawImage(cv, 0, 0, cur, cur, 0, 0, 100, 100);
+    var q = 0.9, data = out.toDataURL('image/jpeg', q);
+    while (data.length > 30000 && q > 0.5) { q -= 0.1; data = out.toDataURL('image/jpeg', q); }
+    return data;
+  }
   function onAvatarFile(file) {
-    var m = $('#pe-avmsg'); if (m) m.textContent = '줄이는 중…';
-    makeAvatar(file).then(function (data) {
-      S.peAv = data; ACT.me('profile');   // 저장 전까지는 화면에만
-    }).catch(function (e) { if (m) m.textContent = e.message; });
+    var m = $('#pe-avmsg'); if (m) m.textContent = '불러오는 중…';
+    var d = peRead(); if (d) S.peDraft = d;   // 쓰던 프로필 글은 남겨 둔다
+    loadAvatarImg(file).then(avCropper).catch(function (e) { if (m) m.textContent = e.message; });
+  }
+  // 자르기 창: 끌어서 이동 · 막대/휠/두 손가락으로 확대. 원 안이 두상으로 보이는 부분
+  function avCropper(img) {
+    var V = 260, W = img.naturalWidth, H = img.naturalHeight, s0 = V / Math.min(W, H), Z = 6, z = 1, ox = 0, oy = 0;
+    modal(mhead('두상 영역 정하기', '끌어서 옮기고, 막대 · 마우스 휠 · 두 손가락으로 확대합니다. 원 안이 두상으로 보입니다.') +
+      '<div class="avcrop"><canvas id="avc-cv" width="' + V + '" height="' + V + '"></canvas><div class="avc-ring" aria-hidden="true"></div></div>' +
+      '<div class="row" style="gap:8px;margin-top:12px;justify-content:center"><span class="tiny faint">축소</span><input id="avc-z" type="range" min="1" max="' + Z + '" step="0.01" value="1" style="flex:1;max-width:220px" aria-label="확대"><span class="tiny faint">확대</span></div>' +
+      '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn ghost" data-act="avc-cancel">취소</button><button class="btn primary" data-act="avc-ok">적용</button></div>');
+    var cv = $('#avc-cv'), dpr = Math.min(3, window.devicePixelRatio || 1), cx = cv.getContext('2d'), zr = $('#avc-z');
+    cv.width = cv.height = Math.round(V * dpr); cv.style.width = cv.style.height = V + 'px';
+    function sc() { return s0 * z; }
+    function clamp() { var k = sc(); ox = Math.min(0, Math.max(V - W * k, ox)); oy = Math.min(0, Math.max(V - H * k, oy)); }
+    function draw() { cx.setTransform(dpr, 0, 0, dpr, 0, 0); cx.fillStyle = '#1a2040'; cx.fillRect(0, 0, V, V); cx.imageSmoothingQuality = 'high'; cx.drawImage(img, ox, oy, W * sc(), H * sc()); }
+    // 화면의 (px, py)를 고정점으로 확대
+    function zoomTo(nz, px, py) { nz = Math.max(1, Math.min(Z, nz)); var k = sc(), ix = (px - ox) / k, iy = (py - oy) / k; z = nz; ox = px - ix * sc(); oy = py - iy * sc(); clamp(); zr.value = z; draw(); }
+    ox = (V - W * s0) / 2; oy = (V - H * s0) / 2; draw();
+    zr.addEventListener('input', function () { zoomTo(+zr.value, V / 2, V / 2); });
+    cv.addEventListener('wheel', function (e) { e.preventDefault(); var r = cv.getBoundingClientRect(); zoomTo(z * Math.exp(-e.deltaY * 0.0015), e.clientX - r.left, e.clientY - r.top); }, { passive: false });
+    var pts = {}, last = null;
+    function pos(e) { var r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+    function pair() { var k = Object.keys(pts); if (k.length < 2) return null; var a = pts[k[0]], b = pts[k[1]]; return { d: Math.hypot(a.x - b.x, a.y - b.y), x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; }
+    cv.addEventListener('pointerdown', function (e) { cv.setPointerCapture(e.pointerId); pts[e.pointerId] = pos(e); last = pair() || pos(e); });
+    cv.addEventListener('pointermove', function (e) {
+      if (!pts[e.pointerId]) return; pts[e.pointerId] = pos(e);
+      var p = pair();
+      if (p && last && last.d) { zoomTo(z * p.d / last.d, p.x, p.y); ox += p.x - last.x; oy += p.y - last.y; clamp(); draw(); last = p; return; }
+      var q = pos(e); if (last && last.d == null) { ox += q.x - last.x; oy += q.y - last.y; clamp(); draw(); } last = q;
+    });
+    function up(e) { delete pts[e.pointerId]; var p = pair(), k = Object.keys(pts); last = p || (k.length ? pts[k[0]] : null); }
+    cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+    ACT['avc-ok'] = function () { var k = sc(); S.peAv = cropAvatar(img, -ox / k, -oy / k, V / k); ACT.me('profile'); };   // 저장 전까지는 화면에만
+    ACT['avc-cancel'] = function () { ACT.me('profile'); };
   }
   ACT.pw = function () { API.password($('#pw-old').value, $('#pw-new').value).then(function (j) { $('#pw-msg').textContent = j.error || '비밀번호가 변경되었습니다'; }); };
   ACT.logout = function () { API.logout().then(function () { S.P = null; chatDisconnect(); closeModal(); authScreen(); }); };
@@ -3495,7 +3526,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026101951;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026101952;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
