@@ -3,7 +3,7 @@ data/
 *.db
 *.db-*
 backup/
-# 비밀값 (서버에서는 /etc/arcanum.env 에 둔다)
+# 비밀값 (서버에서는 /etc/moneta.env 에 둔다)
 .env
 .env.*
 *.env

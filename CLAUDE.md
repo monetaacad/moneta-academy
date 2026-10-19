@@ -7,11 +7,11 @@
 - `server/` — Node 22.13+ (`node:sqlite`, 외부 의존성 없음). `server.js`(API), `chat.js`, `exproom.js`, `board.js`
 - `shared/rules.js`, `shared/data.js` — 서버 · 화면 공용 UMD (게임 규칙 · 데이터). `R.fixState`에서 저장 데이터 이주(플래그 `physV`, `slotV`, `econC` 등)
 - `public/` — 화면. `app.js`(UI 전체), `net.js`(ServerApi), `demo.js`(미리보기용 LocalApi), `style.css`, `draw.js`
-- `deploy/` — 배포 (`START-LIGHTSAIL.md`, `FIRST-DEPLOY.md`, `arcanum.service`, `nginx.conf`, `update.sh`)
+- `deploy/` — 배포 (`START-LIGHTSAIL.md`, `FIRST-DEPLOY.md`, `moneta.service`, `nginx.conf`, `update.sh`)
 - `tools/` — 빌드 · 시험
 
 ## 자주 쓰는 명령
-- 미리보기 빌드: `node tools/build-demo.js` → `dist/arcanum-demo.html`(아티팩트로 게시), `dist/demo-test.html`(시험용)
+- 미리보기 빌드: `node tools/build-demo.js` → `dist/moneta-demo.html`(아티팩트로 게시), `dist/demo-test.html`(시험용)
 - 미리보기 아티팩트: https://claude.ai/artifact/ByaNgweEw9RLrByJF49r2k — 게시할 때마다 `public/app.js`의 `var BUILD` 숫자를 올린다
 - 시험 서버: `sh tools/srv.sh start e 8098 TIME_SCALE=60 TEST_MODE=1 ADMIN_TOKEN=test-admin-token-0123456789abcdef ADMIN_NAMES=운영자` (끄기 `sh tools/srv.sh stop e`, 초기화 `rm -rf /tmp/arc-e`)
 - 시험: `tools/e2e.py`, `e2e_guild.py`, `e2e_chat.py`, `api_exproom.py`, `api_npc.py`, `api_hchat.py` (시험 서버 필요), `e2e_mail.py`(ADMIN_NAMES 없이 새 서버), `e2e_party_demo.py` · `e2e_onb_demo.py`(미리보기를 `http://127.0.0.1:8765/demo.html`로 띄워서)
@@ -23,7 +23,7 @@
 
 ## 보안 규칙 (항상)
 - 개인정보는 암호화해서 저장. API 키 · 서버 취약점이 드러나지 않게.
-- 비밀값은 서버의 `/etc/arcanum.env`에만 (`ADMIN_TOKEN`, `DATA_KEY`, `BACKUP_KEY`). 깃에 올리지 않는다. `DATA_KEY`를 잃으면 복구 불가.
+- 비밀값은 서버의 `/etc/moneta.env`에만 (`ADMIN_TOKEN`, `DATA_KEY`, `BACKUP_KEY`). 깃에 올리지 않는다. `DATA_KEY`를 잃으면 복구 불가.
 - `data/`, DB, 백업은 깃에 올리지 않는다 (`.gitignore`).
 
 ## 문구 규칙 (화면 · 가이드)

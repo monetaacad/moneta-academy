@@ -4,8 +4,8 @@
 
   /* ───────── 데모 (서버 없이) ─────────
      같은 규칙 엔진을 브라우저에서 돌린다. 다른 학생·월드 보스·대항전은 가상으로 흉내 낸다. */
-  var KEY = 'arcanum_demo_v3';
-  function LocalApi() { this.mode = 'local'; this.d = null; try { var s = localStorage.getItem(KEY); if (s) this.d = JSON.parse(s); if (this.d && this.d.P && window.Rules && Rules.fixState) Rules.fixState(this.d.P); } catch (e) { } }
+  var KEY = 'moneta_demo_v3';
+  function LocalApi() { this.mode = 'local'; this.d = null; try { var s = localStorage.getItem(KEY) || localStorage.getItem('arcanum_demo_v3'); if (s) this.d = JSON.parse(s); if (this.d && this.d.P && window.Rules && Rules.fixState) Rules.fixState(this.d.P); } catch (e) { } }
   LocalApi.prototype._save = function () { try { localStorage.setItem(KEY, JSON.stringify(this.d)); } catch (e) { } };
   LocalApi.prototype._now = function () { return Date.now() / 1000; };
   LocalApi.prototype._world = function (now) {
@@ -84,11 +84,11 @@
     return this._ok(now, { ok: true });
   };
   // 데모 채팅: 아티팩트의 실시간 방(room)이 있으면 같은 페이지를 연 사람끼리, 없으면 이 브라우저 안에서만
-  var CKEY = 'arcanum_demo_chat';
+  var CKEY = 'moneta_demo_chat';
   function c0slow(self) { return (self._chat && self._chat.slow) || 0; }
   LocalApi.prototype.chatConnect = function (h) {
     var self = this, saved = { rp: [], world: [] };
-    try { var s = JSON.parse(localStorage.getItem(CKEY) || 'null'); if (s && s.rp) saved = s; } catch (e) { }
+    try { var s = JSON.parse(localStorage.getItem(CKEY) || localStorage.getItem('arcanum_demo_chat') || 'null'); if (s && s.rp) saved = s; } catch (e) { }
     self._chat = { h: h, saved: saved, room: null, seq: Date.now() };
     function keep(m) { var arr = saved[m.ch]; if (!arr) return; arr.push(m); if (arr.length > 60) arr.shift(); try { localStorage.setItem(CKEY, JSON.stringify(saved)); } catch (e) { } }
     self._chat.keep = keep;

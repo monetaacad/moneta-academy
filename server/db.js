@@ -8,7 +8,7 @@ const path = require('path');
 
 function open(dir) {
   fs.mkdirSync(dir, { recursive: true });
-  const db = new DatabaseSync(path.join(dir, 'arcanum.db'));
+  const db = new DatabaseSync(path.join(dir, 'moneta.db'));
   db.exec(`
     PRAGMA journal_mode = WAL;
     PRAGMA synchronous = NORMAL;
@@ -324,7 +324,7 @@ function open(dir) {
     db.prepare(`INSERT INTO kv (k, v) VALUES ('sessions_hashed', '1')`).run(); db.exec('COMMIT');
   }
   // 데이터 파일은 서버 계정만 읽을 수 있게
-  ['arcanum.db', 'arcanum.db-wal', 'arcanum.db-shm'].forEach((f) => { try { fs.chmodSync(path.join(dir, f), 0o600); } catch (e) { } });
+  ['moneta.db', 'moneta.db-wal', 'moneta.db-shm'].forEach((f) => { try { fs.chmodSync(path.join(dir, f), 0o600); } catch (e) { } });
   try { fs.chmodSync(dir, 0o700); } catch (e) { }
   const q = {
     insertPlayer: db.prepare(`INSERT INTO players (id, name, name_key, house, pass, created, last_seen, state) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`),

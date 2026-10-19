@@ -27,24 +27,24 @@ node -v    # v22.13 이상이어야 합니다 (DB에 node:sqlite를 씀)
 ## 3. 코드 올리기
 내 컴퓨터에서 (압축 파일이 있는 폴더에서):
 ```bash
-scp arcanum-server.zip root@1.2.3.4:/root/
+scp moneta-academy.zip root@1.2.3.4:/root/
 ```
 서버에서:
 ```bash
-cd /root && unzip -q arcanum-server.zip
-mkdir -p /opt/arcanum && cp -r /root/arcanum-server/. /opt/arcanum/
-useradd -r -s /usr/sbin/nologin arcanum
-mkdir -p /opt/arcanum/data && chown -R arcanum:arcanum /opt/arcanum && chmod 700 /opt/arcanum/data
+cd /root && unzip -q moneta-academy.zip
+mkdir -p /opt/moneta && cp -r /root/moneta-academy/. /opt/moneta/
+useradd -r -s /usr/sbin/nologin moneta
+mkdir -p /opt/moneta/data && chown -R moneta:moneta /opt/moneta && chmod 700 /opt/moneta/data
 ```
 
-## 4. 비밀값 만들기 (/etc/arcanum.env)
+## 4. 비밀값 만들기 (/etc/moneta.env)
 ```bash
-install -m 600 -o root -g root /dev/null /etc/arcanum.env
-echo "ADMIN_TOKEN=$(openssl rand -base64 33)" >> /etc/arcanum.env
-echo "DATA_KEY=$(openssl rand -base64 33)"    >> /etc/arcanum.env
-echo "BACKUP_KEY=$(openssl rand -base64 33)"  >> /etc/arcanum.env
-echo "ADMIN_NAMES=운영자"                      >> /etc/arcanum.env   # 채팅 운영자로 쓸 학생 이름 (쉼표로 여러 명)
-cat /etc/arcanum.env
+install -m 600 -o root -g root /dev/null /etc/moneta.env
+echo "ADMIN_TOKEN=$(openssl rand -base64 33)" >> /etc/moneta.env
+echo "DATA_KEY=$(openssl rand -base64 33)"    >> /etc/moneta.env
+echo "BACKUP_KEY=$(openssl rand -base64 33)"  >> /etc/moneta.env
+echo "ADMIN_NAMES=운영자"                      >> /etc/moneta.env   # 채팅 운영자로 쓸 학생 이름 (쉼표로 여러 명)
+cat /etc/moneta.env
 ```
 **`cat`으로 나온 세 값을 비밀번호 관리자 등 서버 밖에 꼭 따로 보관하세요.**
 - `DATA_KEY`를 잃으면 모든 비밀번호·개인정보를 되살릴 수 없습니다.
@@ -53,26 +53,26 @@ cat /etc/arcanum.env
 
 ## 5. 서비스 설정 고치고 켜기
 ```bash
-nano /opt/arcanum/deploy/arcanum.service
+nano /opt/moneta/deploy/moneta.service
 ```
 다음 두 줄을 내 값으로 고칩니다:
 - `Environment=SERVER_EPOCH=2026-11-02T00:00:00+09:00` → **개교일**(아카데미력 1일째). 처음 켤 때 DB에 기록되고 이후 바뀌지 않으니 신중히.
 - `Environment=PUBLIC_ORIGIN=https://game.example.com` → 내 주소.
 
 ```bash
-cp /opt/arcanum/deploy/arcanum.service /etc/systemd/system/
+cp /opt/moneta/deploy/moneta.service /etc/systemd/system/
 systemctl daemon-reload
-systemctl enable --now arcanum
-systemctl status arcanum          # active (running) 이면 성공
+systemctl enable --now moneta
+systemctl status moneta          # active (running) 이면 성공
 curl -s http://127.0.0.1:8080/api/health    # {"ok":true,...}
-journalctl -u arcanum -f          # 로그 보기 (Ctrl+C로 나가기)
+journalctl -u moneta -f          # 로그 보기 (Ctrl+C로 나가기)
 ```
 
 ## 6. nginx와 HTTPS
 ```bash
-sed -i 's/game.example.com/내도메인/' /opt/arcanum/deploy/nginx.conf
-cp /opt/arcanum/deploy/nginx.conf /etc/nginx/sites-available/arcanum
-ln -s /etc/nginx/sites-available/arcanum /etc/nginx/sites-enabled/
+sed -i 's/game.example.com/내도메인/' /opt/moneta/deploy/nginx.conf
+cp /opt/moneta/deploy/nginx.conf /etc/nginx/sites-available/moneta
+ln -s /etc/nginx/sites-available/moneta /etc/nginx/sites-enabled/
 rm -f /etc/nginx/sites-enabled/default
 nginx -t && systemctl reload nginx
 apt-get install -y certbot python3-certbot-nginx
@@ -91,34 +91,34 @@ certbot --nginx -d 내도메인          # 이메일 입력, 약관 동의 → H
 1. 운영실에서 백업 · (필요하면) 점검 예약.
 2. 새 압축 파일을 올리고, `data/`는 건드리지 않고 덮어쓰기:
    ```bash
-   cd /root && rm -rf arcanum-server && unzip -q arcanum-server.zip
-   rsync -a --exclude data/ /root/arcanum-server/ /opt/arcanum/
-   chown -R arcanum:arcanum /opt/arcanum
-   cp /opt/arcanum/deploy/arcanum.service /etc/systemd/system/ && systemctl daemon-reload   # 서비스 파일이 바뀌었을 때 (SERVER_EPOCH·PUBLIC_ORIGIN 다시 확인)
-   systemctl restart arcanum && journalctl -u arcanum -n 30
+   cd /root && rm -rf moneta-academy && unzip -q moneta-academy.zip
+   rsync -a --exclude data/ /root/moneta-academy/ /opt/moneta/
+   chown -R moneta:moneta /opt/moneta
+   cp /opt/moneta/deploy/moneta.service /etc/systemd/system/ && systemctl daemon-reload   # 서비스 파일이 바뀌었을 때 (SERVER_EPOCH·PUBLIC_ORIGIN 다시 확인)
+   systemctl restart moneta && journalctl -u moneta -n 30
    ```
 3. 운영실 「새 버전 알림」에 화면 빌드 번호(`public/app.js`의 `BUILD`)를 넣어 접속자에게 새로고침 안내.
-4. 문제가 생기면 이전 압축 파일로 같은 방법으로 덮고 다시 켭니다. DB를 되돌릴 때만 백업을 `data/arcanum.db`로 복사(README 6장).
+4. 문제가 생기면 이전 압축 파일로 같은 방법으로 덮고 다시 켭니다. DB를 되돌릴 때만 백업을 `data/moneta.db`로 복사(README 6장).
 
 ## 9. 깃(GitHub)으로 코드 관리 · 배포 (압축 파일 대신)
 압축 파일을 매번 올리는 대신, 코드를 GitHub 비공개 저장소에 두고 서버에서 `git pull`로 받는 방식입니다.
-`.gitignore`가 `data/`(DB · 백업), `.env`, 작업 폴더를 빼 주므로 **개인정보와 비밀값은 깃에 올라가지 않습니다.** `/etc/arcanum.env`는 원래 서버에만 있습니다.
+`.gitignore`가 `data/`(DB · 백업), `.env`, 작업 폴더를 빼 주므로 **개인정보와 비밀값은 깃에 올라가지 않습니다.** `/etc/moneta.env`는 원래 서버에만 있습니다.
 
 ### 9-1. 내 컴퓨터: 저장소 만들기 (처음 한 번)
-1. github.com 가입 → 우측 상단 `+` › **New repository** → 이름 `arcanum-server`, **Private** 선택 → Create (README 추가는 체크하지 않음).
+1. github.com 가입 → 우측 상단 `+` › **New repository** → 이름 `moneta-academy`, **Private** 선택 → Create (README 추가는 체크하지 않음).
 2. 내 컴퓨터에 깃 설치 (맥: `xcode-select --install`, 윈도: git-scm.com). 처음이면 이름 · 이메일 등록:
    ```bash
    git config --global user.name "내 이름"
    git config --global user.email "내 이메일"
    ```
-3. 압축을 푼 `arcanum-server` 폴더에서:
+3. 압축을 푼 `moneta-academy` 폴더에서:
    ```bash
-   cd arcanum-server
+   cd moneta-academy
    git init -b main
    git add -A
    git status            # data/ · backup/ · .env 가 목록에 없는지 꼭 확인
    git commit -m "첫 버전"
-   git remote add origin https://github.com/내아이디/arcanum-server.git
+   git remote add origin https://github.com/monetaacad/moneta-academy.git
    git push -u origin main
    ```
    push 때 비밀번호를 물으면 GitHub 비밀번호가 아니라 **토큰**을 넣습니다: GitHub › Settings › Developer settings › Personal access tokens › Fine-grained › 이 저장소만 · Contents: Read and write.
@@ -128,31 +128,31 @@ certbot --nginx -d 내도메인          # 이메일 입력, 약관 동의 → H
 서버가 저장소를 **읽기만** 할 수 있는 배포 키를 만듭니다.
 ```bash
 apt-get install -y git
-ssh-keygen -t ed25519 -N "" -f /root/.ssh/arcanum_deploy -C "arcanum-server"
-cat /root/.ssh/arcanum_deploy.pub
+ssh-keygen -t ed25519 -N "" -f /root/.ssh/moneta_deploy -C "moneta-academy"
+cat /root/.ssh/moneta_deploy.pub
 ```
 나온 한 줄을 GitHub 저장소 › Settings › **Deploy keys** › Add deploy key 에 붙여 넣습니다 (**Allow write access는 끔**).
 
 ```bash
 cat >> /root/.ssh/config <<'CFG'
-Host github-arcanum
+Host github-moneta
   HostName github.com
   User git
-  IdentityFile /root/.ssh/arcanum_deploy
+  IdentityFile /root/.ssh/moneta_deploy
   IdentitiesOnly yes
 CFG
-ssh -T github-arcanum        # "successfully authenticated" 가 나오면 성공 (yes 입력)
+ssh -T github-moneta        # "successfully authenticated" 가 나오면 성공 (yes 입력)
 
-# 이미 압축 파일로 올린 /opt/arcanum 을 깃 저장소로 바꾼다 (data/ 는 그대로 둔다)
-cd /opt/arcanum
+# 이미 압축 파일로 올린 /opt/moneta 을 깃 저장소로 바꾼다 (data/ 는 그대로 둔다)
+cd /opt/moneta
 git init -b main
-git remote add origin github-arcanum:내아이디/arcanum-server.git
+git remote add origin github-moneta:monetaacad/moneta-academy.git
 git fetch origin
 git reset --hard origin/main     # 코드만 깃 버전으로 맞춤. data/ 는 .gitignore 라 지워지지 않음
-git config --global --add safe.directory /opt/arcanum
-chown -R arcanum:arcanum /opt/arcanum
+git config --global --add safe.directory /opt/moneta
+chown -R moneta:moneta /opt/moneta
 ```
-처음부터 깃으로 시작한다면 3번 대신 `git clone github-arcanum:내아이디/arcanum-server.git /opt/arcanum` 후 3번의 `useradd` · `mkdir data` · `chown` 줄만 실행합니다.
+처음부터 깃으로 시작한다면 3번 대신 `git clone github-moneta:monetaacad/moneta-academy.git /opt/moneta` 후 3번의 `useradd` · `mkdir data` · `chown` 줄만 실행합니다.
 
 ### 9-3. 이후 업데이트
 내 컴퓨터에서 코드를 고친 뒤:
@@ -161,17 +161,17 @@ git add -A && git commit -m "무엇을 바꿨는지" && git push
 ```
 서버에서 (운영실에서 백업을 먼저 한 번):
 ```bash
-cd /opt/arcanum && git pull --ff-only && chown -R arcanum:arcanum /opt/arcanum && systemctl restart arcanum
-# 또는 같은 일을 하는 스크립트:  sh /opt/arcanum/deploy/update.sh
+cd /opt/moneta && git pull --ff-only && chown -R moneta:moneta /opt/moneta && systemctl restart moneta
+# 또는 같은 일을 하는 스크립트:  sh /opt/moneta/deploy/update.sh
 ```
-되돌리기: `git log --oneline`으로 이전 버전 번호를 보고 `git reset --hard 번호 && systemctl restart arcanum`.
+되돌리기: `git log --oneline`으로 이전 버전 번호를 보고 `git reset --hard 번호 && systemctl restart moneta`.
 주의: 서버에서 직접 파일을 고치지 마세요(다음 pull이 막힘). 고칠 것은 늘 내 컴퓨터 → push → 서버 pull 순서로.
 
 ## 자주 막히는 곳
 - `node -v`가 22.13보다 낮다 → 2번을 다시 (setup_24.x).
 - 사이트가 안 열린다 → DNS 반영 대기, `ufw status`에 80/443이 있는지, `nginx -t`.
-- 502 Bad Gateway → 게임 서버가 꺼져 있음: `systemctl status arcanum`, `journalctl -u arcanum -n 50`.
-- 서버가 켜지자마자 꺼진다 → 대부분 `DATA_KEY`가 32자보다 짧거나, 이미 쓰던 DB와 다른 `DATA_KEY`. 로그(`journalctl -u arcanum -n 50`)에 이유가 나옵니다.
+- 502 Bad Gateway → 게임 서버가 꺼져 있음: `systemctl status moneta`, `journalctl -u moneta -n 50`.
+- 서버가 켜지자마자 꺼진다 → 대부분 `DATA_KEY`가 32자보다 짧거나, 이미 쓰던 DB와 다른 `DATA_KEY`. 로그(`journalctl -u moneta -n 50`)에 이유가 나옵니다.
 - 운영실에 못 들어간다 → `ADMIN_TOKEN`이 24자보다 짧으면 관리자 기능이 꺼집니다.
 
 ## 웹앱으로 설치하기 (PWA) · .app 주소

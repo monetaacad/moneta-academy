@@ -14,7 +14,7 @@ node server/server.js
 # → http://localhost:8080 접속
 ```
 
-`data/arcanum.db` 파일 하나에 모든 학생 정보가 저장됩니다.
+`data/moneta.db` 파일 하나에 모든 학생 정보가 저장됩니다.
 
 ## 2. 환경 변수
 
@@ -25,7 +25,7 @@ node server/server.js
 | `DATA_DIR` | ./data | DB와 백업 폴더 |
 | `SERVER_EPOCH` | 첫 실행 시각 | **개교일**. 아카데미력 1일째의 기준. 예: `2026-11-02T00:00:00+09:00`. 첫 실행 때 DB에 기록되며 이후에는 바뀌지 않습니다 |
 | `ADMIN_TOKEN` | (없음) | 관리자 API 비밀값. 비워 두면 관리자 API가 꺼집니다. **24자 이상**이어야 켜집니다 (`openssl rand -base64 33`) |
-| `DATA_KEY` | (자동 생성) | **개인정보 암호화 키**(32자 이상). 프로필·두상·채팅·신고 사유를 AES-256-GCM으로 암호화하고 비밀번호 후추도 여기서 만듭니다. 없으면 `data/.data.key`를 만들어 쓰니, 운영에서는 이 값을 `/etc/arcanum.env`로 옮기세요. **잃어버리면 모든 비밀번호와 개인정보를 되살릴 수 없고, 다른 키로는 서버가 켜지지 않습니다** |
+| `DATA_KEY` | (자동 생성) | **개인정보 암호화 키**(32자 이상). 프로필·두상·채팅·신고 사유를 AES-256-GCM으로 암호화하고 비밀번호 후추도 여기서 만듭니다. 없으면 `data/.data.key`를 만들어 쓰니, 운영에서는 이 값을 `/etc/moneta.env`로 옮기세요. **잃어버리면 모든 비밀번호와 개인정보를 되살릴 수 없고, 다른 키로는 서버가 켜지지 않습니다** |
 | `MARKET_GRADE` | 2 | 거래소를 쓸 수 있는 최소 학년 |
 | `ADMIN_IPS` | (없음) | 쉼표로 구분한 IP. 지정하면 관리자 API를 그 IP에서만 받습니다 |
 | `BACKUP_KEY` | (없음) | 지정하면 백업 파일을 AES-256-GCM으로 암호화합니다 (16자 이상). 키를 잃으면 백업을 풀 수 없습니다 |
@@ -51,19 +51,19 @@ curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
 sudo apt-get install -y nodejs nginx
 
 # 2) 코드 올리기
-sudo mkdir -p /opt/arcanum && sudo cp -r . /opt/arcanum
-sudo useradd -r -s /usr/sbin/nologin arcanum
-sudo chown -R arcanum:arcanum /opt/arcanum
+sudo mkdir -p /opt/moneta && sudo cp -r . /opt/moneta
+sudo useradd -r -s /usr/sbin/nologin moneta
+sudo chown -R moneta:moneta /opt/moneta
 
-# 3) 서비스 등록 (비밀값은 /etc/arcanum.env 에 — 방법은 deploy/arcanum.service 맨 위 주석. SERVER_EPOCH, PUBLIC_ORIGIN도 고치세요)
-sudo cp deploy/arcanum.service /etc/systemd/system/
+# 3) 서비스 등록 (비밀값은 /etc/moneta.env 에 — 방법은 deploy/moneta.service 맨 위 주석. SERVER_EPOCH, PUBLIC_ORIGIN도 고치세요)
+sudo cp deploy/moneta.service /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable --now arcanum
-sudo journalctl -u arcanum -f      # 로그 보기
+sudo systemctl enable --now moneta
+sudo journalctl -u moneta -f      # 로그 보기
 
 # 4) nginx + HTTPS (도메인을 deploy/nginx.conf에 넣고)
-sudo cp deploy/nginx.conf /etc/nginx/sites-available/arcanum
-sudo ln -s /etc/nginx/sites-available/arcanum /etc/nginx/sites-enabled/
+sudo cp deploy/nginx.conf /etc/nginx/sites-available/moneta
+sudo ln -s /etc/nginx/sites-available/moneta /etc/nginx/sites-enabled/
 sudo apt-get install -y certbot python3-certbot-nginx
 sudo certbot --nginx -d 게임.도메인.com
 sudo systemctl reload nginx
@@ -72,9 +72,9 @@ sudo systemctl reload nginx
 Docker를 쓴다면 `deploy/Dockerfile`이 있습니다.
 
 ```bash
-docker build -t arcanum -f deploy/Dockerfile .
-docker run -d --name arcanum -p 8080:8080 -v arcanum-data:/app/data \
-  -e ADMIN_TOKEN=바꾸세요 -e SERVER_EPOCH=2026-11-02T00:00:00+09:00 arcanum
+docker build -t moneta -f deploy/Dockerfile .
+docker run -d --name moneta -p 8080:8080 -v moneta-data:/app/data \
+  -e ADMIN_TOKEN=바꾸세요 -e SERVER_EPOCH=2026-11-02T00:00:00+09:00 moneta
 ```
 
 ## 4. 가입 · 초대코드
@@ -188,7 +188,7 @@ docker run -d --name arcanum -p 8080:8080 -v arcanum-data:/app/data \
 ### 저장과 백업
 - 학생 상태는 메모리에 두고 **5초마다** DB에 기록합니다. 종료 신호(`systemctl stop`, Ctrl+C)를 받으면 모두 저장하고 끝납니다.
 - **12시간마다** `data/backups/`에 백업을 만들고 최근 14개를 남깁니다. `BACKUP_KEY`가 있으면 `.db.enc`(AES-256-GCM)로 저장합니다.
-- 복구: 서버를 멈추고 백업 파일을 `data/arcanum.db`로 복사한 뒤 다시 켭니다. 암호화된 백업은 먼저 `BACKUP_KEY=키 node tools/decrypt-backup.js 백업.db.enc arcanum.db`로 풉니다.
+- 복구: 서버를 멈추고 백업 파일을 `data/moneta.db`로 복사한 뒤 다시 켭니다. 암호화된 백업은 먼저 `BACKUP_KEY=키 node tools/decrypt-backup.js 백업.db.enc moneta.db`로 풉니다.
 - 서버를 옮길 때는 `data/` 폴더만 옮기면 됩니다.
 
 ### 아카데미 운영실 (`/admin.html`)
@@ -230,7 +230,7 @@ curl -H "X-Admin-Token: $T" -H 'Content-Type: application/json' \
 
 - 로그인 세션: 30일. DB에는 토큰의 SHA-256 해시만, 브라우저는 HttpOnly 쿠키로만 보관(스크립트가 읽을 수 없음).
 - 채팅 스트림: 주소에 로그인 토큰을 싣지 않고 30초짜리 1회용 입장권으로 연결.
-- 관리자: 토큰 24자 이상, 해시 비교, `ADMIN_IPS`로 IP 제한. 비밀값은 root만 읽는 `/etc/arcanum.env`.
+- 관리자: 토큰 24자 이상, 해시 비교, `ADMIN_IPS`로 IP 제한. 비밀값은 root만 읽는 `/etc/moneta.env`.
 - 백업: `BACKUP_KEY`로 한 번 더 암호화. DB·백업·키 파일은 서버 계정만 읽기(0600).
 - 속도 제한: 입학, 로그인(IP당 + 이름당), 행동, 프로필, 친구, 두상, 파티, 거래소 각각.
 - 거래소: 서버에서만 계산하고, 같은 물건을 두 번 팔거나 사는 일이 없도록 상태를 한 번에 바꿉니다.(부계정으로 몰아주기 방지).
