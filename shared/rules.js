@@ -97,7 +97,7 @@
   R.SKY = [
     { id: 'meteor', name: '유성 소나기', min: 40, eff: { dropPct: 0.2, goldPct: 0.1 }, text: '전리품 확률 +20%, ' + CUR + ' +10%' },
     { id: 'aurora', name: '별샘 오로라', min: 60, eff: { manaPct: 0.3, knowPct: 0.1 }, text: '마나 재생 +30%, 지식 +10%' },
-    { id: 'comet', name: '꼬리별', min: 45, eff: { xpPct: 0.15, lectureSpd: 0.05 }, text: '경험치 +15%, 수업 속도 +5%' },
+    { id: 'comet', name: '꼬리별', min: 45, eff: { xpPct: 0.15, lectureSpd: 0.05 }, text: '경험치 +15%, 수업 효율 +5%' },
     { id: 'whale', name: '구름 위의 별고래', min: 30, eff: { goldPct: 0.15 }, text: CUR + ' +15%, 올려다보면 조금 더 큰 선물' }
   ];
   function hash32(n) { n = (n ^ 61) ^ (n >>> 16); n = n + (n << 3); n = n ^ (n >>> 4); n = Math.imul(n, 0x27d4eb2d); return (n ^ (n >>> 15)) >>> 0; }
@@ -129,8 +129,8 @@
   R.RITUAL_BUFF = { name: '별샘의 축복', eff: { xpPct: 0.15, knowPct: 0.15, goldPct: 0.1 }, dur: 4 * 3600, color: '#9fd8ff', text: '4시간 동안 경험치·지식 +15%, ' + CUR + ' +10%' };
   R.ritualGoal = function (active) { return Math.max(5, Math.ceil((active || 0) * 0.35)); };
   R.ritualCost = function (P, W, now) { return Math.floor(calc(P, W, now).mana * 1800); };   // 마나 30분 분
-  // 효과 묶음 → 「경험치 +50%, 수업 속도 +100%」 (버프 · 날씨 설명용)
-  var EFF_NAME = { xpPct: '경험치', goldPct: CUR, knowPct: '지식', lectureSpd: '수업 속도', manaPct: '마나 재생', manaCap: '마나 저장', hpPct: '체력', atkPct: '공격력', defPct: '방어력', physPct: '물리 피해', spellPct: '주문 위력', dropPct: '전리품', dispPct: '파견 보상', hatchSpd: '부화 속도', brewSpd: '조제 속도', enhBonus: '강화 성공률', bossDmg: '보스 피해', cdr: '재사용 대기', leech: '흡혈' };
+  // 효과 묶음 → 「경험치 +50%, 수업 효율 +100%」 (버프 · 날씨 설명용)
+  var EFF_NAME = { xpPct: '경험치', goldPct: CUR, knowPct: '지식', lectureSpd: '수업 효율', manaPct: '마나 재생', manaCap: '마나 저장', hpPct: '체력', atkPct: '공격력', defPct: '방어력', physPct: '물리 피해', spellPct: '주문 위력', dropPct: '전리품', dispPct: '파견 보상', hatchSpd: '부화 속도', brewSpd: '조제 속도', enhBonus: '강화 성공률', bossDmg: '보스 피해', cdr: '재사용 대기', leech: '흡혈' };
   R.effText = function (eff) {
     var out = []; for (var k in eff || {}) { var v = eff[k]; if (!v || !EFF_NAME[k]) { if (k === 'examBonus' && v) out.push('시험 +' + v + '점'); continue; } out.push(EFF_NAME[k] + ' ' + (v > 0 ? '+' : '−') + (k === 'manaCap' ? Math.round(Math.abs(v) / 3600 * 10) / 10 + '시간' : Math.round(Math.abs(v) * 1000) / 10 + '%')); }
     return out.join(', ');
@@ -269,7 +269,7 @@
   // W.hpts = 기숙사별 누적 점수, W.hfull = 100%가 되는 점수 (서버 HOUSE_FULL로 조절)
   R.HOUSE_BASE = 0.1; R.HOUSE_FULL = 100000;
   R.housePct = function (W, hid) { var p = W && W.hpts ? +W.hpts[hid] || 0 : 0, f = W && W.hfull || R.HOUSE_FULL; return R.HOUSE_BASE + (1 - R.HOUSE_BASE) * Math.min(1, p / f); };
-  // '지식 획득 +15%, 수업 속도 +5%' → '지식 획득 +1.5% / +15%, 수업 속도 +0.5% / +5%' (현재 / 최대)
+  // '지식 획득 +15%, 수업 효율 +5%' → '지식 획득 +1.5% / +15%, 수업 효율 +0.5% / +5%' (현재 / 최대)
   R.houseEffText = function (hid, pct) {
     var h = HOUSE[hid]; if (!h) return '';
     return h.bonusText.split(', ').map(function (s) { return s.replace(/\+(\d+(?:\.\d+)?)%/, function (m, n) { var c = Math.round(n * pct * 10) / 10; return '+' + c + '% / +' + n + '%'; }); }).join(', ');

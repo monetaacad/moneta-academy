@@ -1096,7 +1096,7 @@
   /* ── 강의실 ── */
   V.lecture = function () {
     var P = S.P, c = C(), ex = R.examFor(P);
-    var h = pageHead('일곱 과목, 일곱 해', '강의실', '수업 속도 <b class="num gold">×' + c.lecSpd.toFixed(2) + '</b>');
+    var h = pageHead('일곱 과목, 일곱 해', '강의실', '수업 효율 <b class="num gold">×' + c.lecSpd.toFixed(2) + '</b> <span class="muted">경험치 · 지식 획득량</span>');
     R.lecQ(P); h += ttCard(c);
     var nL = 0; for (var i0 = 0; i0 < 3; i0++) { if (i0 >= c.lecSlots && !P.lec[i0]) break; nL++; }
     h += '<div class="grid gauto' + (nL === 1 ? ' one' : '') + '" style="margin-bottom:16px">';   // 한 자리면 가로로 넓게
@@ -1604,10 +1604,10 @@
   var PNAMES = { balance: '균형', attack: '공격', guard: '생존', scholar: '학구' };
   // 프리셋을 고른 이유 (학과마다 공격 능력치가 다르다: 기사 = 체력, 마법사 = 지력)
   var PWHY = {
-    mage: { balance: '주문 공격력을 올리는 지력을 중심으로, 의지 · 체력으로 버티는 힘을 보탭니다.', attack: '지력과 민첩을 높여 주문 · 평타 화력을 최대로 끌어올립니다. 생존력은 낮은 편입니다.', guard: '체력을 높여 쉽게 쓰러지지 않게 하면서 지력도 챙깁니다. 높은 단계나 보스에 적합합니다.', scholar: '의지로 마나 재생을, 지력으로 수업 속도를 올려 성장 속도에 집중합니다.' },
-    knight: { balance: '물리 공격력과 생존을 함께 올리는 체력을 중심으로, 민첩 · 의지를 보탭니다.', attack: '체력 · 민첩 · 행운으로 평타 화력과 치명타를 끌어올립니다.', guard: '체력과 의지를 높여 선봉에서 오래 버팁니다. 함께 원정의 선봉에 적합합니다.', scholar: '의지로 마나 재생을, 지력으로 수업 속도를 올려 성장 속도에 집중합니다.' }
+    mage: { balance: '주문 공격력을 올리는 지력을 중심으로, 의지 · 체력으로 버티는 힘을 보탭니다.', attack: '지력과 민첩을 높여 주문 · 평타 화력을 최대로 끌어올립니다. 생존력은 낮은 편입니다.', guard: '체력을 높여 쉽게 쓰러지지 않게 하면서 지력도 챙깁니다. 높은 단계나 보스에 적합합니다.', scholar: '의지로 마나 재생을, 지력으로 수업 효율을 올려 성장 속도에 집중합니다.' },
+    knight: { balance: '물리 공격력과 생존을 함께 올리는 체력을 중심으로, 민첩 · 의지를 보탭니다.', attack: '체력 · 민첩 · 행운으로 평타 화력과 치명타를 끌어올립니다.', guard: '체력과 의지를 높여 선봉에서 오래 버팁니다. 함께 원정의 선봉에 적합합니다.', scholar: '의지로 마나 재생을, 지력으로 수업 효율을 올려 성장 속도에 집중합니다.' }
   };
-  var SDESC = { int: '주문 공격력 +1%, 수업 속도', wil: '마나 재생, 생명력', agi: '공격 속도 +1%', vit: '물리 공격력 +1%, 생명력 +1.2%, 방어력', luk: '치명타, 전리품' };
+  var SDESC = { int: '주문 공격력 +1%, 수업 효율', wil: '마나 재생, 생명력', agi: '공격 속도 +1%', vit: '물리 공격력 +1%, 생명력 +1.2%, 방어력', luk: '치명타, 전리품' };
   function allocCard() {
     var P = S.P, c = C(), PRESETS = PRESETS_(), cur = Object.keys(PRESETS).find(function (k) { return JSON.stringify(PRESETS[k]) === JSON.stringify(P.opt.allocW); });
     var h = '<div class="card"><div class="row between"><h3>능력치</h3><span class="small">남은 포인트 <b class="num gold">' + P.pts + '</b></span></div><div class="alloc" style="margin-top:8px">';
@@ -3055,7 +3055,7 @@
   // 가입 화면: 기숙사 보너스에 나오는 말(마나 · 지식 · 아르크 …)을 처음 보는 학생을 위한 짧은 풀이
   function glossCard() {
     var G = [['마나', '시간이 지나면 자동으로 차오르는 자원. 연구 · 물약 · 알 부화에 씁니다.'], ['지식', '수업을 들으면 쌓입니다. 서고의 연구에 씁니다.'], [CUR, '게임 내 화폐. 원정에서 몬스터를 처치해 얻고, 장비 강화 · 매점 · 거래소에서 씁니다.'],
-      ['수업 속도', '수업 한 교시가 끝나는 데 걸리는 시간이 그만큼 짧아집니다.'], ['사역마 파견', '키운 사역마를 몇 시간 파견해 재료와 ' + CUR + '를 받아 옵니다.'], ['공격력 · 생명력', '원정 · 보스 전투에 쓰이는 능력치. 높을수록 더 높은 단계에 출정할 수 있습니다.'], ['전리품', '원정에서 떨어지는 장비와 재료. 확률이 오르면 더 자주 나옵니다.']];
+      ['수업 효율', '수업 시간은 그대로이고, 한 번에 얻는 경험치 · 지식이 그만큼 늘어납니다.'], ['사역마 파견', '키운 사역마를 몇 시간 파견해 재료와 ' + CUR + '를 받아 옵니다.'], ['공격력 · 생명력', '원정 · 보스 전투에 쓰이는 능력치. 높을수록 더 높은 단계에 출정할 수 있습니다.'], ['전리품', '원정에서 떨어지는 장비와 재료. 확률이 오르면 더 자주 나옵니다.']];
     return '<details class="card inset gloss" style="margin-bottom:12px"><summary><b>처음 보는 고유명사가 있나요?</b> <span class="small muted">마나 · 지식 · ' + CUR + ' 등</span></summary>' +
       '<dl>' + G.map(function (g) { return '<dt>' + g[0] + '</dt><dd>' + g[1] + '</dd>'; }).join('') + '</dl>' +
       '<p class="tiny faint" style="margin-top:6px">어느 기숙사든 모든 콘텐츠를 이용할 수 있습니다. 기숙사 혜택은 조금 더 유리한 정도이며, 처음에는 1/10만 받다가 기숙사 학생들이 활동할수록 최대 값까지 커집니다.</p>' +
@@ -3714,7 +3714,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026101975;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026101976;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
