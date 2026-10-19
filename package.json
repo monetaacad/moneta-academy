@@ -1,0 +1,14 @@
+{
+  "name": "arcanum-academy",
+  "version": "1.0.0",
+  "description": "아르카눔 아카데미 — 서버형 방치 웹게임",
+  "private": true,
+  "main": "server/server.js",
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "start": "node server/server.js",
+    "sim": "node tools/sim.js 120 steady",
+    "loadtest": "node tools/loadtest.js 2000 120 http://127.0.0.1:8097",
+    "demo": "node tools/build-demo.js"
+  }
+}

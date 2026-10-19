@@ -1,0 +1,138 @@
+'use strict';
+// 서버 공용 세계: 아카데미력, 주간 월드 보스, 기숙사 대항전, 지난주 결과, 랭킹
+const R = require('../shared/rules.js');
+const D = require('../shared/data.js');
+
+const CUP_TOP = 30;            // 기숙사 점수 = 상위 30명 합계
+const WB_PARTICIPATION = 0.45; // 활동 학생 중 도전권을 쓰는 비율 추정
+const WB_DAYS_TO_KILL = 4.5;   // 이 정도 날짜에 쓰러지도록 체력 설정
+
+function create(store, cfg, log) {
+  const { kvGet, kvSet, q } = store;
+  const W = {
+    epoch: kvGet('epoch', null),
+    boss: kvGet('boss', null),          // {week, id, maxHp, hp, killedAt, attackers}
+    results: kvGet('results', {}),      // weekId → {cup:[houses], cupScores, killed, tiers:[t1,t10,t50], bossName}
+    notices: kvGet('notices', []),
+    news: kvGet('news', []),            // 아카데미 소식: 새 학생 입학 · 진급 (자동)
+    now: Date.now() / 1000,
+    wbAlive: true
+  };
+  if (!W.epoch) {
+    W.epoch = cfg.epoch || Math.floor(Date.now() / 1000);
+    kvSet('epoch', W.epoch);
+    log('서버 개교일 설정:', new Date(W.epoch * 1000).toISOString());
+  }
+  let cache = { at: 0 };
+  let bossDirty = false;
+
+  function newBoss(week, now) {
+    const since = now - 7 * 86400;
+    const s = q.sumActiveDps.get(since);
+    // 첫 주(지난주 기록 없음)는 예상 인원과 신입생 피해로 잡는다
+    const first = !Object.keys(W.results).length;
+    const actives = Math.max(first ? cfg.expectedPlayers : 10, Number(s.n) || 0);
+    const avgDps30 = Math.max(first ? 150 : 100, (Number(s.s) || 0) / Math.max(1, Number(s.n) || 1));
+    // 활동 학생 수 × 30초 피해 평균 × 하루 3장 × 참여율 × 목표 일수
+    const maxHp = Math.floor(actives * avgDps30 * 3 * WB_PARTICIPATION * WB_DAYS_TO_KILL);
+    const def = D.WORLD_BOSSES[week % D.WORLD_BOSSES.length];
+    W.boss = { week, id: def.id, name: def.name, maxHp, hp: maxHp, killedAt: 0, actives };
+    kvSet('boss', W.boss);
+    log(`월드 보스 등장: ${def.name} (체력 ${R.fmt(maxHp)}, 활동 학생 ${actives}명 기준)`);
+  }
+
+  function cupStandings(week) {
+    return D.HOUSES.map((h) => {
+      const r = q.houseCup.get(week, h.id, CUP_TOP);
+      const m = q.houseMembers.get(week, h.id);
+      return { id: h.id, score: Math.floor(Number(r.s) || 0), members: Number(m.n) || 0 };
+    }).sort((a, b) => b.score - a.score);
+  }
+
+  function finalizeWeek(week) {
+    if (W.results[week]) return;
+    const cup = cupStandings(week);
+    const dmgs = q.dmgList.all(week).map((r) => Number(r.dmg));
+    const at = (p) => dmgs.length ? dmgs[Math.min(dmgs.length - 1, Math.max(0, Math.ceil(dmgs.length * p) - 1))] : Infinity;
+    const killed = !!(W.boss && W.boss.week === week && W.boss.killedAt);
+    W.results[week] = { cup: cup.map((c) => c.id), cupScores: cup, killed, tiers: [at(0.01), at(0.10), at(0.50)], bossName: W.boss && W.boss.week === week ? W.boss.name : '', participants: dmgs.length };
+    const keys = Object.keys(W.results).map(Number).sort((a, b) => b - a);
+    keys.slice(10).forEach((k) => delete W.results[k]);
+    kvSet('results', W.results);
+    q.purgeWeekly.run(week - 10);
+    log(`${week}주차 정산: 대항전 1위 ${cup[0] && cup[0].id}, 월드 보스 ${killed ? '토벌 성공' : '토벌 실패'}, 참여 ${dmgs.length}명`);
+  }
+
+  function tick(now) {
+    W.now = now;
+    const week = R.weekId(now);
+    if (!W.boss || W.boss.week < week) {
+      if (W.boss) { store.flushAll(); finalizeWeek(W.boss.week); }
+      newBoss(week, now);
+    }
+    W.wbAlive = !W.boss.killedAt;
+    if (bossDirty) { kvSet('boss', W.boss); bossDirty = false; }
+  }
+
+  function applyDamage(pid, dmg, now) {
+    if (!W.boss || W.boss.killedAt) return false;
+    W.boss.hp = Math.max(0, W.boss.hp - dmg);
+    if (W.boss.hp <= 0) {
+      W.boss.killedAt = now; W.wbAlive = false;
+      kvSet('boss', W.boss);
+      log(`월드 보스 토벌: ${W.boss.name}`);
+      addNotice(`${W.boss.name} 토벌 성공! 다음 주에 토벌 보상을 받을 수 있습니다.`, now, true);
+      if (api.onKill) try { api.onKill(W.boss.name, now); } catch (e) { }
+      return true;
+    }
+    bossDirty = true;
+    return false;
+  }
+
+  // 아카데미 소식은 자주 생기므로 모아서 몇 초 뒤에 한 번 저장한다
+  let newsT = null;
+  function addNews(text, now) {
+    W.news.unshift({ t: now, text: String(text).slice(0, 120) }); if (W.news.length > 50) W.news.length = 50;
+    if (!newsT) newsT = setTimeout(() => { newsT = null; kvSet('news', W.news); }, 5000);
+  }
+  function addNotice(text, now, auto) {
+    W.notices.unshift({ t: now, text: String(text).slice(0, 300), auto: !!auto });
+    if (W.notices.length > 20) W.notices.length = 20;
+    kvSet('notices', W.notices);
+  }
+
+  // 클라이언트에 보내는 세계 (30초 캐시)
+  function publicView(now, online) {
+    if (now - cache.at > 30) {
+      const week = R.weekId(now);
+      cache = {
+        at: now,
+        cup: cupStandings(week),
+        topPower: q.topPower.all(20).map(pub),
+        topStage: q.topStage.all(20).map(pub),
+        topDmg: q.topDmg.all(week, 20).map((r) => ({ name: r.name, house: r.house, dmg: Math.floor(r.dmg) })),
+        wbStats: q.sumDmg.get(week),
+        players: Number(q.countPlayers.get().n)
+      };
+    }
+    const b = W.boss;
+    return {
+      epoch: W.epoch, now, week: R.weekId(now), weekEnd: R.weekStart(R.weekId(now) + 1),
+      boss: b ? { id: b.id, name: b.name, maxHp: b.maxHp, hp: b.hp, killedAt: b.killedAt, participants: Number(cache.wbStats.n) || 0 } : null,
+      cup: cache.cup, topPower: cache.topPower, topStage: cache.topStage, topDmg: cache.topDmg,
+      notices: W.notices.slice(0, 8), news: W.news.slice(0, 20), players: cache.players, online: online || 0,
+      lastWeek: W.results[R.weekId(now) - 1] || null
+    };
+  }
+  function pub(r) { return { name: r.name, house: r.house, power: Math.floor(r.power), lvl: r.lvl, grade: r.grade, stage: r.max_stage }; }
+  function rankOf(power) { return Number(q.rankPower.get(power).r); }
+
+  // 규칙 엔진에 넘기는 세계 (W.results로 주간 보상 판정)
+  function ctx(now) { W.now = now; return W; }
+
+  // 종료 직전: 미뤄 둔 저장까지 모두 (월드 보스 체력 · 소식 · 공지 · 결과)
+  function saveAll() { if (newsT) { clearTimeout(newsT); newsT = null; } kvSet('boss', W.boss); kvSet('news', W.news); kvSet('notices', W.notices); kvSet('results', W.results); bossDirty = false; }
+  const api = { W, tick, saveAll, applyDamage, addNotice, addNews, publicView, ctx, rankOf, finalizeWeek, cupStandings, invalidate() { cache.at = 0; } };
+  return api;
+}
+module.exports = { create };

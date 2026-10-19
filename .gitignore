@@ -1,0 +1,17 @@
+# 게임 데이터 · DB · 백업 (개인정보가 들어 있으니 절대 올리지 않는다)
+data/
+*.db
+*.db-*
+backup/
+# 비밀값 (서버에서는 /etc/arcanum.env 에 둔다)
+.env
+.env.*
+*.env
+# 작업용 · 빌드 산출물
+node_modules/
+dist/demo-test.html
+tools/shots/
+mask/
+scratch_t.js
+.DS_Store
+Thumbs.db

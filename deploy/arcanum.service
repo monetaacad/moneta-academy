@@ -1,0 +1,45 @@
+[Unit]
+Description=Arcanum Academy game server
+After=network.target
+
+[Service]
+Type=simple
+User=arcanum
+WorkingDirectory=/opt/arcanum
+ExecStart=/usr/bin/node server/server.js
+Restart=always
+RestartSec=3
+# 끌 때 SIGTERM → 학생 상태·월드 보스·채팅 번호를 저장하고 끝난다. 그동안 기다려 준다
+KillSignal=SIGTERM
+TimeoutStopSec=30
+# 비밀값(ADMIN_TOKEN, BACKUP_KEY)은 이 파일에 쓰지 마세요. 유닛 파일과 Environment= 값은
+# 서버의 다른 계정도 `systemctl show`로 읽을 수 있습니다. 대신 root만 읽는 파일에 둡니다:
+#   sudo install -m 600 -o root -g root /dev/null /etc/arcanum.env
+#   echo "ADMIN_TOKEN=$(openssl rand -base64 33)" | sudo tee -a /etc/arcanum.env
+#   echo "DATA_KEY=$(openssl rand -base64 33)"    | sudo tee -a /etc/arcanum.env   # 개인정보 암호화·비밀번호 후추 (잃으면 복구 불가! 따로 보관)
+#   echo "BACKUP_KEY=$(openssl rand -base64 33)"  | sudo tee -a /etc/arcanum.env   # 백업 암호화 (키를 잃으면 백업을 못 풉니다)
+#   echo "ADMIN_IPS=내.사무실.IP"                  | sudo tee -a /etc/arcanum.env   # 선택: 관리자 API를 이 IP에서만
+EnvironmentFile=/etc/arcanum.env
+# 나머지 설정
+Environment=PORT=8080
+Environment=HOST=127.0.0.1
+Environment=DATA_DIR=/opt/arcanum/data
+Environment=SERVER_EPOCH=2026-11-02T00:00:00+09:00
+Environment=TRUST_PROXY=1
+Environment=COOKIE_SECURE=1
+Environment=EXPECTED_PLAYERS=500
+Environment=INVITE_REQUIRED=1
+Environment=PUBLIC_ORIGIN=https://game.example.com
+# 시스템 보호: 서버 계정이 털려도 다른 곳을 건드리지 못하게
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/arcanum/data
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

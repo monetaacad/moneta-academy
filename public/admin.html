@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>아르카눔 아카데미 운영실</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Hahmlet:wght@600&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="style.css">
+<style>
+.adm { max-width: 1100px; margin: 0 auto; padding-block: 24px 60px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 16px; position: relative; z-index: 1; }
+.adm h1 { font-family: var(--f-display); font-size: 24px; }
+.adm table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.adm th, .adm td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line2); vertical-align: top; }
+.adm th { color: var(--muted); font-weight: 400; font-size: 12px; }
+.adm .scroll { overflow-x: auto; }
+.adm .codes { font-family: var(--f-num); background: var(--sunk); border-radius: 8px; padding: 10px; white-space: pre-wrap; user-select: all; }
+.adm input, .adm select, .adm textarea { background: var(--sunk); border: 1px solid var(--line2); border-radius: 8px; padding: 7px 10px; color: var(--ink); font: inherit; }
+.adm .form { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; }
+.adm .form label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+.adm .form label.tog { flex-direction: row; align-items: center; font-size: 13px; }
+.adm .msgtext { max-width: 360px; overflow-wrap: anywhere; }
+.adm .dis td { opacity: .45; }
+</style>
+</head>
+<body>
+<div class="adm" id="adm">
+  <h1>아카데미 운영실</h1>
+  <div class="card" id="login"><div class="form"><label>관리자 토큰<input id="tok" type="password" autocomplete="off" style="min-width:280px"></label><button class="btn primary" id="go">들어가기</button><span class="small bad" id="lmsg"></span></div>
+    <p class="tiny faint" style="margin-top:8px">서버의 ADMIN_TOKEN 값입니다. 이 브라우저 탭을 닫으면 잊습니다.</p></div>
+  <div id="main" hidden class="stack">
+    <div class="card"><div class="row between"><h3>현황</h3><button class="btn sm ghost" data-a="refresh">새로고침</button></div><dl class="kv" id="stats" style="margin-top:8px"></dl></div>
+    <div class="card"><h3>초대코드 발급</h3>
+      <div class="form" style="margin-top:8px"><label>개수<input id="ic" type="number" value="10" min="1" max="500" style="width:80px"></label><label>코드당 사용 횟수<input id="iu" type="number" value="1" min="1" style="width:90px"></label><label>유효 기간(일, 0=무기한)<input id="id" type="number" value="0" min="0" style="width:110px"></label><label>메모<input id="in" placeholder="예: 1차 모집 디스코드" style="width:220px"></label><button class="btn primary" data-a="issue">발급</button></div>
+      <div id="newcodes" hidden style="margin-top:10px"><div class="row between"><span class="small gold">새 코드 (복사해서 나눠 주세요)</span><button class="btn sm" data-a="copy">모두 복사</button></div><div class="codes" id="codesbox" style="margin-top:6px"></div></div>
+      <div class="scroll" style="margin-top:14px"><table><thead><tr><th>코드</th><th>사용</th><th>기한</th><th>메모</th><th>사용한 학생</th><th></th></tr></thead><tbody id="invites"></tbody></table></div></div>
+    <div class="card"><div class="row between"><h3>게시판 문의함 <span class="small faint">관리자만 보기 글</span></h3><button class="btn sm ghost" data-a="bdload">새로고침</button></div>
+      <p class="small faint" style="margin-top:4px">학생이 「관리자만 보기」로 남긴 문의·건의입니다. 여기서 「운영진」 이름으로 답하면 학생에게 우편 알림이 갑니다. 게임 안에서는 ADMIN_NAMES 운영자 계정이 게시판 › 관리자만 보기에서 같은 글을 봅니다.</p>
+      <div id="bdbox" style="margin-top:8px"></div></div>
+    <div class="card"><div class="row between"><h3>채팅 신고</h3><label class="tog"><input type="checkbox" id="showres"> 처리한 것도 보기</label></div>
+      <div class="scroll" style="margin-top:8px"><table><thead><tr><th>시각</th><th>채널</th><th>작성자</th><th>내용</th><th>신고자</th><th>조치</th></tr></thead><tbody id="reports"></tbody></table></div></div>
+    <div class="card"><h3>우편 보내기 <span class="tiny faint">보상 지급 · 학생은 열어 봐도 기한 안에 언제든 받을 수 있습니다</span></h3>
+      <div class="form" style="margin-top:8px">
+        <label class="tog"><input type="radio" name="mto" value="all" checked> 모든 학생</label><label class="tog"><input type="radio" name="mto" value="names"> 이름으로 고르기</label>
+        <label class="tog" id="mnewl"><input type="checkbox" id="mnew" checked> 나중에 가입한 학생도 받기 (오픈 보상 등)</label>
+      </div>
+      <div class="form" style="margin-top:8px" id="mnamesw" hidden><label style="flex:1">받는 학생 이름 (쉼표나 줄바꿈으로 여러 명)<textarea id="mnames" rows="2" style="width:100%"></textarea></label></div>
+      <div class="form" style="margin-top:8px"><label style="flex:1;min-width:220px">제목<input id="mtitle" maxlength="60" placeholder="예: 아카데미 개교 기념 선물"></label></div>
+      <div class="form" style="margin-top:8px"><label style="flex:1">내용<textarea id="mbody" rows="3" maxlength="1000" style="width:100%" placeholder="학생에게 보일 편지 내용"></textarea></label></div>
+      <div class="form" style="margin-top:8px" id="mrw"></div>
+      <div class="form" style="margin-top:8px"><label>만료<select id="mexp"><option value="7">7일</option><option value="30" selected>30일 (기본)</option><option value="90">90일</option><option value="365">1년</option><option value="date">날짜 지정</option><option value="forever">거의 영구 (2999.12.31)</option></select></label>
+        <label id="mdatew" hidden>만료 날짜<input id="mdate" type="date"></label>
+        <button class="btn sm ghost" data-a="mforever">거의 영구</button>
+        <span class="spacer"></span><button class="btn primary" data-a="mail">보내기</button></div>
+      <p class="small" id="mmsg" style="margin-top:8px"></p>
+      <div class="scroll" style="margin-top:12px"><table><thead><tr><th>보낸 때</th><th>받는 사람</th><th>제목</th><th>보상</th><th>만료</th><th>받은 학생</th><th></th></tr></thead><tbody id="mails"></tbody></table></div>
+    </div>
+    <div class="grid g2">
+      <div class="card"><h3>아카데미 공지</h3><div class="form" style="margin-top:8px"><textarea id="nt" rows="3" style="width:100%" placeholder="예: 오늘 밤 11시부터 10분간 점검합니다"></textarea><label class="tog"><input type="checkbox" id="ntchat" checked> 월드 채팅에도 알리기</label><button class="btn primary" data-a="notice">공지 올리기</button></div></div>
+      <div class="card"><h3>학생 관리</h3><div class="form" style="margin-top:8px"><label>학생 이름<input id="un" style="width:160px"></label>
+        <label>채팅 금지<select id="um"><option value="10">10분</option><option value="60">1시간</option><option value="1440">1일</option><option value="10080">7일</option><option value="0">해제</option></select></label><button class="btn" data-a="mute">적용</button></div>
+        <div class="form" style="margin-top:10px"><label>별조각<input id="ug" type="number" value="10" style="width:90px"></label><label>사유<input id="ur" placeholder="점검 보상" style="width:160px"></label><button class="btn" data-a="grant">지급</button></div>
+        <div class="form" style="margin-top:10px"><button class="btn" data-a="opon">운영자로 지정</button><button class="btn ghost" data-a="opoff">운영자 해제</button><span class="tiny faint">운영자는 월드 채팅 슬로우 모드를 걸 수 있습니다</span></div>
+        <div class="form" style="margin-top:10px"><button class="btn danger" data-a="ban">이용 정지</button><button class="btn ghost" data-a="unban">정지 해제</button><button class="btn ghost" data-a="backup">지금 백업</button></div>
+        <p class="small" id="umsg" style="margin-top:8px"></p></div>
+      <div class="card"><div class="row between"><h3>월드 채팅 슬로우 모드 · 운영 로그</h3><button class="btn sm ghost" data-a="oplog">새로고침</button></div>
+        <div class="form" style="margin-top:8px"><label>초<input id="slowsec" type="number" min="0" max="600" value="0" style="width:90px"></label><button class="btn" data-a="slow">적용 (0 = 끄기)</button></div>
+        <div class="scroll" style="margin-top:10px;max-height:260px"><table><thead><tr><th>때</th><th>누가</th><th>무엇</th><th>내용</th></tr></thead><tbody id="oplog"></tbody></table></div></div>
+      <div class="card"><h3>점검 · 새 버전 알림</h3>
+        <p class="tiny faint" id="sysnow" style="margin-top:4px"></p>
+        <div class="form" style="margin-top:8px"><label>시작<input id="mtstart" type="datetime-local"></label><label>끝(예정)<input id="mtuntil" type="datetime-local"></label></div>
+        <div class="form" style="margin-top:8px"><label>안내 글<input id="mtmsg" maxlength="300" placeholder="서버를 옮기는 중입니다" style="width:260px"></label></div>
+        <div class="form" style="margin-top:8px"><button class="btn" data-a="mtplan">예고하기 (시작 시각에 자동 시작)</button><button class="btn danger" data-a="mton">지금 점검 시작</button><button class="btn ghost" data-a="mtoff">점검 끝 · 예고 취소</button></div>
+        <p class="tiny faint" style="margin-top:6px">점검 중에는 운영자 계정만 들어올 수 있습니다. 학생들의 수업·원정은 시간 기준이라 그대로 흘러갑니다.</p>
+        <div class="form" style="margin-top:12px"><label>화면 빌드<input id="bdbuild" type="number" style="width:140px" placeholder="2026101901"></label><label>최소 빌드<input id="bdmin" type="number" style="width:140px" placeholder="0"></label><button class="btn" data-a="build">알리기</button></div>
+        <p class="tiny faint" style="margin-top:6px">화면 빌드는 app.js의 BUILD 값입니다. 이보다 낮은 화면에 「새 버전」 띠가 뜨고, 최소 빌드보다 낮은 화면은 10초 뒤 저절로 새로고침합니다.</p></div>
+    </div>
+  </div>
+</div>
+<div id="toasts" aria-live="polite"></div>
+<script src="admin.js"></script>
+</body>
+</html>
