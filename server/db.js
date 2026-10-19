@@ -200,6 +200,7 @@ function open(dir) {
     );
     CREATE INDEX IF NOT EXISTS board_com ON board_comments(post, id);
   `);
+  { const bp = db.prepare(`PRAGMA table_info(board_posts)`).all().map((c) => c.name); if (bp.indexOf('st') < 0) db.exec(`ALTER TABLE board_posts ADD COLUMN st TEXT NOT NULL DEFAULT ''`); }   // 건의 처리 상태: '' · wip(적용 중) · done(해결 완료)
   db.exec(`
     CREATE TABLE IF NOT EXISTS oplog (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -516,6 +517,7 @@ function open(dir) {
     bdEdit: db.prepare(`UPDATE board_posts SET tag = ?, priv = ?, title = ?, body = ?, updated = ? WHERE id = ?`),
     bdDel: db.prepare(`UPDATE board_posts SET deleted = 1 WHERE id = ?`),
     bdCount: db.prepare(`UPDATE board_posts SET ncom = ?, last = ? WHERE id = ?`),
+    bdStatus: db.prepare(`UPDATE board_posts SET st = ? WHERE id = ?`),
     noteInsert: db.prepare(`INSERT INTO notes (pid, t, kind, text, link) VALUES (?, ?, ?, ?, ?)`),
     notesFor: db.prepare(`SELECT * FROM notes WHERE pid = ? ORDER BY id DESC LIMIT 100`),
     noteUnread: db.prepare(`SELECT COUNT(*) AS n FROM notes WHERE pid = ? AND read = 0`),

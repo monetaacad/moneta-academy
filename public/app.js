@@ -3604,8 +3604,14 @@
   function bdWhen(t) { var d = Date.now() / 1000 - t; return d < 86400 ? ago(t) : new Date(t * 1000).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' }); }
   function loadBoard() {
     var b = S.bd; b.at = Date.now(); if (!API.board) return;
-    API.board({ tag: b.tag, q: b.q, qt: b.q ? b.qt : '', page: b.page }).then(function (j) { if (j.error) { b.err = j.error; } else { b.err = ''; b.data = j; } if (S.view === 'board' && !S.modal && b.mode === 'list') render(); });
+    API.board({ tag: b.tag, q: b.q, qt: b.q ? b.qt : '', page: b.page, hd: bdHideDone() ? 1 : '' }).then(function (j) { if (j.error) { b.err = j.error; } else { b.err = ''; b.data = j; } if (S.view === 'board' && !S.modal && b.mode === 'list') render(); });
   }
+  // 건의 처리 상태 (학생회장이 붙인다) · 해결 완료 숨기기(이 기기에 기억)
+  var BD_ST = { wip: '적용 중', done: '해결 완료' };
+  function bdSt(st) { return BD_ST[st] ? '<span class="btag st-' + st + '">' + BD_ST[st] + '</span>' : ''; }
+  function bdHideDone() { try { return localStorage.getItem('arc_bdhd') === '1'; } catch (e) { return !!S.bdHd; } }
+  ACT.bdhd = function () { var v = !bdHideDone(); S.bdHd = v; try { localStorage.setItem('arc_bdhd', v ? '1' : '0'); } catch (e) { } S.bd.page = 1; loadBoard(); };
+  ACT.bdst = function (id, st) { API.boardOp({ op: 'status', id: +id, st: st || '' }).then(function (j) { if (j.error) { toast('게시판', j.error); return; } if (j.post) S.bd.post = j.post; S.bd.data = null; render(); toast(st ? '「' + BD_ST[st] + '」 표시를 붙였습니다' : '상태 표시를 뗐습니다', '', 1600); }); };
   function openPost(id) { var b = S.bd; API.board({ id: id }).then(function (j) { if (j.error) { toast('게시판', j.error); return; } b.post = j.post; b.mode = 'post'; b.com = ''; if (S.view === 'board') { render(); window.scrollTo(0, 0); } }); }
   V.board = function () {
     var b = S.bd, d = b.data;
@@ -3615,7 +3621,7 @@
     if (!d || Date.now() - b.at > 30000) { if (Date.now() - b.at > 1500) loadBoard(); }
     var op = d && d.op, filters = [['', '전체']].concat(D.BOARD_TAGS.map(function (t) { return [t.id, t.name]; })).concat([['mine', '내 글']]);
     if (op) filters.push(['priv', '관리자만 보기' + (d.privN ? ' ' + d.privN : '')]);
-    h += '<div class="card bdtop"><div class="row"><div class="filters">' + filters.map(function (f) { return '<button class="btn sm ghost' + (b.tag === f[0] ? ' on' : '') + (f[0] === 'priv' ? ' bdpriv' : '') + '" data-act="bdtag" data-a="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '</div><span class="spacer"></span><button class="btn sm primary" data-act="bdwrite">글쓰기</button></div>' +
+    h += '<div class="card bdtop"><div class="row"><div class="filters">' + filters.map(function (f) { return '<button class="btn sm ghost' + (b.tag === f[0] ? ' on' : '') + (f[0] === 'priv' ? ' bdpriv' : '') + '" data-act="bdtag" data-a="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '</div><span class="spacer"></span><label class="tog tiny" style="margin-right:6px"><input type="checkbox" data-act="bdhd"' + (bdHideDone() ? ' checked' : '') + '> 해결 완료 숨기기</label><button class="btn sm primary" data-act="bdwrite">글쓰기</button></div>' +
       '<div class="row bdsearch"><select id="bd-qt" aria-label="검색 범위" style="width:auto">' + [['all', '제목+내용'], ['title', '제목'], ['author', '작성자']].map(function (o) { return '<option value="' + o[0] + '"' + (b.qt === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select><input id="bd-q" maxlength="30" placeholder="검색어" value="' + esc(b.q) + '"><button class="btn sm" data-act="bdsearch">검색</button>' + (b.q ? '<button class="btn sm ghost" data-act="bdclear">검색 지우기</button>' : '') + '</div>' +
       (b.tag === 'mine' ? '<p class="tiny faint" style="margin-top:6px">내가 쓴 글입니다. 「관리자만 보기」로 남긴 문의와 운영진 답변도 여기서 봅니다.</p>' : b.tag === 'priv' ? '<p class="tiny gold" style="margin-top:6px">운영진에게만 보이는 문의·건의입니다. 일반 목록에는 나오지 않습니다.</p>' : '') + '</div>';
     if (b.err) h += '<p class="small bad">' + esc(b.err) + '</p>';
@@ -3623,7 +3629,7 @@
     if (!d.list.length) return h + '<div class="empty">' + (b.q ? '찾는 글이 없습니다.' : '아직 글이 없습니다. 첫 글을 남길 차례.') + '</div>';
     h += '<div class="card bdlist">' + d.list.map(function (p) {
       return '<button class="bdrow" data-act="bdopen" data-a="' + p.id + '">' + bdTag(p.tag) + (p.priv ? '<span class="btag lock" title="쓴 사람과 운영진만 볼 수 있습니다">관리자만</span>' : '') +
-        '<span class="bdt ell">' + esc(p.title) + (p.ncom ? ' <b class="bdc num">[' + p.ncom + ']</b>' : '') + '</span><span class="bda ell">' + esc(p.author) + (p.aop && R.OP_TITLES[p.aop] ? ' <span class="ttl' + R.opTitleCls(p.aop) + '">' + esc(p.aop) + '</span>' : '') + '</span><span class="bdw tiny faint num">' + bdWhen(p.created) + '</span></button>';
+        bdSt(p.st) + '<span class="bdt ell">' + esc(p.title) + (p.ncom ? ' <b class="bdc num">[' + p.ncom + ']</b>' : '') + '</span><span class="bda ell">' + esc(p.author) + (p.aop && R.OP_TITLES[p.aop] ? ' <span class="ttl' + R.opTitleCls(p.aop) + '">' + esc(p.aop) + '</span>' : '') + '</span><span class="bdw tiny faint num">' + bdWhen(p.created) + '</span></button>';
     }).join('') + '</div>';
     if (d.pages > 1) {
       var pg = [], from = Math.max(1, d.page - 3), to = Math.min(d.pages, from + 6);
@@ -3637,7 +3643,7 @@
     var b = S.bd, armed = S.confirm['bd' + p.id] > Date.now();
     var h = '<div class="row" style="margin-bottom:10px"><button class="btn sm ghost" data-act="bdback">← 목록</button><span class="spacer"></span>' +
       (p.canEdit ? '<button class="btn sm ghost" data-act="bdedit">고치기</button>' : '') + (p.canDel ? '<button class="btn sm ' + (armed ? 'danger' : 'ghost') + '" data-act="bddel" data-a="' + p.id + '">' + (armed ? '한 번 더 누르면 지웁니다' : '지우기') + '</button>' : '') + '</div>';
-    h += '<article class="card bdpost"><div class="row" style="gap:6px">' + bdTag(p.tag) + (p.priv ? '<span class="btag lock">관리자만 보기</span>' : '') + '</div><h2 class="bdh">' + esc(p.title) + '</h2>' +
+    h += '<article class="card bdpost"><div class="row" style="gap:6px;flex-wrap:wrap">' + bdTag(p.tag) + (p.priv ? '<span class="btag lock">관리자만 보기</span>' : '') + bdSt(p.st) + (p.canStatus ? '<span class="spacer"></span>' + [['wip', '적용 중'], ['done', '해결 완료'], ['', '표시 없음']].map(function (o) { return '<button class="btn sm' + ((p.st || '') === o[0] ? ' primary' : ' ghost') + '" data-act="bdst" data-a="' + p.id + '" data-b="' + o[0] + '">' + o[1] + '</button>'; }).join('') : '') + '</div><h2 class="bdh">' + esc(p.title) + '</h2>' +
       '<div class="tiny faint"><button class="cn" data-act="prof" data-a="' + esc(p.aid) + '">' + esc(p.author) + '</button>' + (p.aop && R.OP_TITLES[p.aop] ? ' <span class="ttl' + R.opTitleCls(p.aop) + '">' + esc(p.aop) + '</span>' : '') + ' · ' + new Date(p.created * 1000).toLocaleString('ko-KR') + (p.updated > p.created + 60 ? ' · 고침' : '') + '</div>' +
       (p.priv ? '<p class="tiny gold" style="margin-top:8px">쓴 사람과 운영진만 볼 수 있는 글입니다. 운영진이 답하면 우편으로 알려 드립니다.</p>' : '') +
       '<div class="bdbody">' + (p.tag === 'rp' ? rpText(p.body) : esc(p.body)) + '</div></article>';
@@ -3973,7 +3979,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102000;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102001;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

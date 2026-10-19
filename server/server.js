@@ -106,7 +106,7 @@ function addNote(pid, kind, text, link) {
   try { dbx.q.noteInsert.run(pid, Math.floor(Date.now() / 1000), kind, sec.enc(String(text).slice(0, 300)), link ? JSON.stringify(link) : ''); chat.ping(pid, 'note', { n: Number(dbx.q.noteUnread.get(pid).n) }); } catch (e) { log('알림 저장 실패', e); }
 }
 setInterval(() => { try { dbx.q.notePrune.run(Math.floor(Date.now() / 1000) - 30 * 86400); } catch (e) { } }, 3600000).unref();
-const board = Board.create(dbx, sec, { isOp: (pid) => pid !== 'staff' && isChatOp(pid), badgeOf: (pid) => { if (pid === 'staff' || !isChatOp(pid)) return ''; const P = store.peek(pid), t = P ? R.titleName(P, P.title) : ((dbx.q.getProfile.get(pid) || {}).title || ''); return R.OP_TITLES[t] ? t : ''; }, sendMail: (...a) => sendMail(...a), note: (...a) => addNote(...a), log });
+const board = Board.create(dbx, sec, { isOp: (pid) => pid !== 'staff' && isChatOp(pid), isChief: (pid) => chiefIds.has(pid), badgeOf: (pid) => { if (pid === 'staff' || !isChatOp(pid)) return ''; const P = store.peek(pid), t = P ? R.titleName(P, P.title) : ((dbx.q.getProfile.get(pid) || {}).title || ''); return R.OP_TITLES[t] ? t : ''; }, sendMail: (...a) => sendMail(...a), note: (...a) => addNote(...a), log });
 const ExpRoom = require('./exproom.js');
 const exprooms = ExpRoom.create({ loadPlayer: (pid, now) => loadPlayer(pid, now), ctx: () => world.ctx(nowSec()), gameNow: () => nowSec(), markDirty: (pid) => store.markDirty(pid), partyOf, log,
   onRoom: (pid) => chat.exrChanged(pid),   // 방 출입 → 원정 채팅 탭
@@ -1274,7 +1274,7 @@ routes['GET /api/board'] = (req, res) => {
   const u = new URL(req.url, 'http://x').searchParams;
   const id = u.get('id');
   if (id) { const p = board.get(me, id); return p ? send(req, res, 200, { post: p }) : fail(req, res, 404, '없는 글이거나 볼 수 없는 글입니다'); }
-  send(req, res, 200, board.list(me, { tag: u.get('tag') || '', q: u.get('q') || '', qt: u.get('qt') || '', page: u.get('page') || 1 }));
+  send(req, res, 200, board.list(me, { tag: u.get('tag') || '', q: u.get('q') || '', qt: u.get('qt') || '', page: u.get('page') || 1, hideDone: u.get('hd') === '1' }));
 };
 routes['POST /api/board'] = async (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
@@ -1292,6 +1292,7 @@ routes['POST /api/board'] = async (req, res) => {
     else if (op === 'del') board.del(me, b.id);
     else if (op === 'comment') id = board.comment(me, b.id, b.text, now, b.parent);
     else if (op === 'cdel') { board.cdel(me, b.cid); id = Number(b.id) | 0; }
+    else if (op === 'status') id = board.setStatus(me, b.id, b.st);
     else return fail(req, res, 400, '알 수 없는 요청입니다');
     send(req, res, 200, { ok: true, id, post: id ? board.get(me, id) : null });
   } catch (e) { if (e.status) return fail(req, res, e.status, e.message); throw e; }
