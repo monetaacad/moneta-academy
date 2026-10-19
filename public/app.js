@@ -1264,7 +1264,8 @@
     if (j.gone) { if (j.gone.ok) { toast('함께 원정', j.gone.s + '단계로 ' + j.gone.n + '명이 함께 출정했습니다'); Snd.play && Snd.play('start'); } else toast('함께 원정', '출발하지 못했습니다 · ' + j.gone.why); sync(true); }
     if (S.view === 'explore') softRender(); else if (was !== S.er.mine) updateBadges();
   }
-  function erPos() { var ok = R.expPositions(S.P); if (ok.indexOf(S.erPos) < 0) S.erPos = S.P.cls === 'knight' ? 'van' : ok.indexOf('rear') >= 0 ? 'rear' : ok[0]; return S.erPos; }
+  function erPos() { var ok = R.expPositions(S.P); if (!S.erPos && S.P.opt && S.P.opt.erPos) S.erPos = S.P.opt.erPos;   // 서버가 기억한 마지막 포지션
+    if (ok.indexOf(S.erPos) < 0) S.erPos = S.P.cls === 'knight' ? 'van' : ok.indexOf('rear') >= 0 ? 'rear' : ok[0]; return S.erPos; }
   function erLeft(r) { return r.departIn == null ? null : Math.max(0, r.departIn - Math.floor((Date.now() - S.er.got) / 1000)); }
   function erLeftTxt(r) { var l = erLeft(r); return l == null ? '모이는 중' : mmss(l) + ' 뒤 출발'; }
   function mmss(n) { return Math.floor(n / 60) + ':' + ('0' + n % 60).slice(-2); }
@@ -4029,7 +4030,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102005;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102006;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
