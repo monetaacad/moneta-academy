@@ -1,0 +1,59 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Hahmlet:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:1080px;padding:28px;background:#efe6d2;color:#2b241c;font-family:'Gowun Batang',serif}
+.page{margin:0;border:1.5px solid #6b5432;outline:1px solid #6b5432;outline-offset:-10px;padding:70px 84px 56px;background:#f6efe0}
+.top{display:flex;justify-content:space-between;font-family:'Hahmlet',serif;font-size:17px;letter-spacing:.32em;color:#6b5432}
+.seal{text-align:center;margin-top:34px}
+.seal img{width:96px;height:96px;image-rendering:pixelated}
+h1{font-family:'Hahmlet',serif;font-weight:700;font-size:80px;text-align:center;letter-spacing:.08em;margin-top:12px;color:#231c14}
+.sub{text-align:center;font-family:'Hahmlet',serif;font-size:25px;color:#6b5432;margin-top:10px;letter-spacing:.06em}
+hr{border:0;border-top:1px solid #6b5432;margin:38px 0}
+hr.d{border-top:1px solid #6b5432;position:relative;overflow:visible}
+.letter{font-size:23px;line-height:1.9;text-align:left;word-break:keep-all}
+.letter b{font-weight:700}
+.letter .to{display:block;font-family:'Hahmlet',serif;font-weight:600;margin-bottom:10px;color:#231c14}
+.cols{display:flex;flex-direction:column;gap:26px}
+.item h2{font-family:'Hahmlet',serif;font-weight:600;font-size:27px;color:#231c14;display:flex;gap:14px;align-items:baseline}
+.item h2 i{font-style:normal;font-size:19px;color:#8a6a3a;letter-spacing:.1em;min-width:28px}
+.item p{font-size:21px;line-height:1.75;margin-top:6px;padding-left:42px;word-break:keep-all;color:#3d342a}
+.cap{font-family:'Hahmlet',serif;font-size:18px;letter-spacing:.32em;color:#6b5432;text-align:center;margin-bottom:26px}
+.houses{display:grid;grid-template-columns:repeat(4,1fr);text-align:center}
+.houses div{padding:0 10px;border-left:1px solid #c9b48c}
+.houses div:first-child{border-left:0}
+.houses img{width:40px;height:40px;image-rendering:pixelated}
+.houses b{display:block;font-family:'Hahmlet',serif;font-weight:600;font-size:24px;margin-top:6px}
+.houses em{display:block;font-style:normal;font-size:16px;color:#6b5432;margin-top:6px;line-height:1.5;word-break:keep-all}
+.note{text-align:center;font-size:18px;color:#5a4b38;margin-top:24px}
+.foot{display:flex;justify-content:space-between;align-items:flex-end}
+.foot .url{font-family:'Hahmlet',serif;font-size:30px;font-weight:600;color:#231c14}
+.foot .how{font-size:18px;color:#5a4b38;margin-top:8px}
+.foot .sign{text-align:right;font-family:'Hahmlet',serif;font-size:19px;color:#6b5432;line-height:1.7}
+</style></head><body><div class="page">
+<div class="top"><span>입학 안내</span><span>구름섬 라디아</span></div>
+<div class="seal"><img src="{{logo}}" alt=""></div>
+<h1>모네타 아카데미</h1>
+<hr>
+<p class="letter"><span class="to">마지막 종소리를 들은 그대에게</span>구름섬 라디아를 떠받치는 <b>별의 종</b>은 해마다 입학식 날 스스로 울려 왔습니다. 그러나 올해, 종은 울리지 않았습니다.<br>그럼에도 그대에게는 아무도 듣지 못한 낮고 먼 울림이 닿았습니다. 그&nbsp;마지막 여운을 들은 이만이 이 초대장을 받습니다. 입학&nbsp;열차 <b>칼리오페호</b>에 그대의 자리가 마련되어 있습니다.</p>
+<hr>
+<div class="cols">
+ <div class="item"><h2><i>I</i>수업과 연구</h2><p>과목을 골라 수업을 듣고 지식을 쌓습니다. 서고에서 연구를 마칠 때마다 조금씩 강해집니다.</p></div>
+ <div class="item"><h2><i>II</i>원정</h2><p>마법사 또는 기사로 출정해 몬스터를 처치하고 장비와 아르크를 모읍니다. 단계마다 보스가 기다립니다.</p></div>
+ <div class="item"><h2><i>III</i>동료</h2><p>모든 학생이 함께 맞서는 월드 보스, 파티로 오르는 별의 탑, 동아리와 RP 채팅이 있습니다.</p></div>
+ <div class="item"><h2><i>IV</i>아카데미의 나날</h2><p>꿈길을 걷고 시험과 결투제를 치릅니다. 학년이 오를수록 새 과목과 이야기가 열립니다.</p></div>
+</div>
+<hr>
+<div class="cap">네 개의 기숙사</div>
+<div class="houses">
+ <div><img src="{{lanterna}}" alt=""><b>등불관</b><em>꺼지지 않는 질문이<br>길을 밝힌다</em></div>
+ <div><img src="{{clepsydra}}" alt=""><b>물시계관</b><em>한 방울씩,<br>그러나 멈추지 않고</em></div>
+ <div><img src="{{corona}}" alt=""><b>가시왕관관</b><em>상처 없는 왕관은<br>없다</em></div>
+ <div><img src="{{speculum}}" alt=""><b>거울관</b><em>보이는 것의<br>뒤편을 보라</em></div>
+</div>
+<hr>
+<div class="foot">
+ <div><div class="url">moneta-academy.duckdns.org</div><div class="how">PC · 모바일 브라우저에서 · 초대코드로 입학</div></div>
+ <div class="sign">모네타 아카데미<br>입학처</div>
+</div>
+</div></body></html>

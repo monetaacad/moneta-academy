@@ -687,6 +687,10 @@ body.dock-open .top-row { max-width: 1640px; }
 .topmeta .seg { display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
 .topmeta .cal { color: var(--brass2); }
 .topmeta .conn { color: var(--rose); }
+/* 효과 띠(하늘 이벤트 · 버프): 자리가 모자라면 다음 줄로. 중간 폭에서는 이름을 숨기고 아이콘 · 남은 시간만 (이름은 마우스를 올리면) */
+.topmeta .seg[data-l="buffs"] { flex-wrap: wrap; justify-content: flex-end; white-space: normal; row-gap: 2px; min-width: 0; }
+.topmeta .buffpill { white-space: nowrap; }
+@media (min-width: 901px) and (max-width: 1240px) { .topmeta .buffpill .bn { display: none; } .topmeta .buffpill { gap: 4px; } }
 .top-row .resbar { margin-left: 0; flex-wrap: nowrap; }
 .crest .mebtn .who { display: flex; flex-direction: column; min-width: 0; }
 .crest .mebtn h1 { white-space: nowrap; }
@@ -8877,7 +8881,7 @@ var Net = (function () {
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026101955;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026101956;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

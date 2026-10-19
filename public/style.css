@@ -681,6 +681,10 @@ body.dock-open .top-row { max-width: 1640px; }
 .topmeta .seg { display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
 .topmeta .cal { color: var(--brass2); }
 .topmeta .conn { color: var(--rose); }
+/* 효과 띠(하늘 이벤트 · 버프): 자리가 모자라면 다음 줄로. 중간 폭에서는 이름을 숨기고 아이콘 · 남은 시간만 (이름은 마우스를 올리면) */
+.topmeta .seg[data-l="buffs"] { flex-wrap: wrap; justify-content: flex-end; white-space: normal; row-gap: 2px; min-width: 0; }
+.topmeta .buffpill { white-space: nowrap; }
+@media (min-width: 901px) and (max-width: 1240px) { .topmeta .buffpill .bn { display: none; } .topmeta .buffpill { gap: 4px; } }
 .top-row .resbar { margin-left: 0; flex-wrap: nowrap; }
 .crest .mebtn .who { display: flex; flex-direction: column; min-width: 0; }
 .crest .mebtn h1 { white-space: nowrap; }
