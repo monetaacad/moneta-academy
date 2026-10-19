@@ -476,12 +476,14 @@ i.act { color: var(--act); font-style: italic; font-family: var(--f-body); }
 button[disabled][data-why] { pointer-events: none; }
 /* 가로로 넘치는 탭 줄의 ‹ › 표시 */
 .shw { position: relative; min-width: 0; flex: 1 1 auto; }
-.sharr { position: absolute; top: 50%; transform: translateY(-50%); z-index: 2; width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel); color: var(--brass2); font-size: 18px; line-height: 1; display: none; place-items: center; padding: 0 0 2px; cursor: pointer; box-shadow: 0 2px 8px var(--shadow); }
-.sharr.l { left: 2px; } .sharr.r { right: 2px; }
-.shw.more-l > :first-child { -webkit-mask-image: linear-gradient(to right, transparent 0, #000 28px); mask-image: linear-gradient(to right, transparent 0, #000 28px); }
-.shw.more-r > :first-child { -webkit-mask-image: linear-gradient(to left, transparent 0, #000 28px); mask-image: linear-gradient(to left, transparent 0, #000 28px); }
-.shw.more-l.more-r > :first-child { -webkit-mask-image: linear-gradient(to right, transparent 0, #000 28px, #000 calc(100% - 28px), transparent 100%); mask-image: linear-gradient(to right, transparent 0, #000 28px, #000 calc(100% - 28px), transparent 100%); }
-@media (hover: hover) and (pointer: fine) { .shw:hover.more-l .sharr.l, .shw:hover.more-r .sharr.r { display: grid; } }
+.shw.more-l > :first-child { -webkit-mask-image: linear-gradient(to right, transparent 0, #000 36px); mask-image: linear-gradient(to right, transparent 0, #000 36px); }
+.shw.more-r > :first-child { -webkit-mask-image: linear-gradient(to left, transparent 0, #000 36px); mask-image: linear-gradient(to left, transparent 0, #000 36px); }
+.shw.more-l.more-r > :first-child { -webkit-mask-image: linear-gradient(to right, transparent 0, #000 36px, #000 calc(100% - 36px), transparent 100%); mask-image: linear-gradient(to right, transparent 0, #000 36px, #000 calc(100% - 36px), transparent 100%); }
+/* 넘치는 탭 줄: 화살표 없이 끝 흐림 + 밀기 · 끌기 · 휠 */
+.shw > :first-child { touch-action: pan-x; overscroll-behavior-x: contain; }
+.shw.more-l > :first-child, .shw.more-r > :first-child { cursor: grab; }
+.shw > .tdrag { cursor: grabbing; user-select: none; }
+.shw > .tdrag * { pointer-events: none; }
 /* 모바일에서 채팅을 펼쳐 둔 동안 뒤 페이지가 같이 스크롤되지 않게 */
 @media (max-width: 900px) { body.dock-lock { overflow: hidden; overscroll-behavior: none; } }
 .dock, .dock .dtabs, .memenu { overscroll-behavior: contain; }
@@ -1219,7 +1221,7 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 .gtabs button { border-radius: 0; padding: 6px 16px; }
 .dock-head { padding: 0 8px 0 0; align-items: stretch; gap: 0; }
 .dock-head > :not(.dtabs):not(.shw) { align-self: center; }
-.dock-head > .shw { align-self: stretch; display: flex; }   /* 탭 줄을 감싼 ‹ › 틀도 머리 높이만큼 */
+.dock-head > .shw { align-self: stretch; display: flex; }   /* 탭 줄을 감싼 틀도 머리 높이만큼 */
 .dock-head > .shw > .dtabs { flex: 1 1 auto; min-width: 0; }
 .dtabs { gap: 0; }
 .dtabs button { border-radius: 0; padding: 5px 12px; }
@@ -1480,3 +1482,10 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 .dock-peek:has(.pkmsg) { text-align: left; }   /* 최근 글은 좌측, 「채팅 열기」만 우측 */
 .gsuggest { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line2); }
 .ptm .ptn { align-items: flex-start; text-align: left; }
+/* 시간표 프리셋: 세 칸 카드 */
+.ttlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; margin-top: 8px; }
+.ttlist .ttp { display: flex; flex-direction: column; align-items: stretch; gap: 2px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel2); min-width: 0; }
+.ttlist .ttp.empty { align-items: center; justify-content: center; border-style: dashed; background: transparent; min-height: 74px; }
+.ttlist .ttph { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+.ttlist .ttps { line-height: 1.45; }
+.ttedit .ttrow select { min-width: 0; }

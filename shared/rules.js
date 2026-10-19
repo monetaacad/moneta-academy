@@ -190,6 +190,7 @@
     delete P.quizCd; delete P.pq; delete P.qRecent; if (P.st) delete P.st.quizCorrect;
     // 수업 예약 · 시간표 · 분해 (2026-10-19)
     if (!P.lecQ) P.lecQ = [null, null, null]; if (!P.lecEnd) P.lecEnd = [0, 0, 0]; if (!P.tt) P.tt = [];
+    P.tt = P.tt.map(function (t) { return R.ttNorm(t); });   // 시간표: 슬롯마다 과목 → 교시 목록(최대 4시간)으로
     if (P.res && P.res.dust == null) P.res.dust = 0; if (P.autoDis == null) P.autoDis = false;
     // 경제 조정(C안) 공지: 이 조정 전에 입학한 학생에게 한 번 보여 준다 (1 = 보여 줄 것, 2 = 봤음)
     if (P.res && P.res.know % 1) P.res.know = Math.floor(P.res.know);   // 예전에 남은 지식 소수점 정리
@@ -830,8 +831,17 @@
       var q = P.lecQ[i]; if (!q) return; var at = t; if (P.dream && P.dream.start <= t && P.dream.end > t) at = P.dream.end; q.at = at;
       if (at <= now) ev.push({ t: at, f: function () { var nj = lecQRun(P, W, i, at); if (nj) lecEv(nj, i); } });
     }
-    function lecEv(j, i) { if (j.end <= now) ev.push({ t: j.end, f: function () { var o = lecFinish(P, j, j.end, 1, false); P.lec[i] = null; P.lecEnd[i] = j.end; inbox(P, o); qAfter(i, j.end); } }); }
-    P.lec.forEach(function (j, i) { if (j) lecEv(j, i); else if (P.lecQ[i] && P.lecQ[i].at && P.lecQ[i].at <= now) { var at = P.lecQ[i].at; ev.push({ t: at, f: function () { var nj = lecQRun(P, W, i, at); if (nj) lecEv(nj, i); } }); } });
+    // 시간표 수업이 끝나면 다음 교시가 이어진다 (꿈길 중이면 깨어난 뒤에)
+    function ttAfter(i, t) {
+      var run = P.ttRun; if (!run) return; var at = t; if (P.dream && P.dream.start <= t && P.dream.end > t) at = P.dream.end; run.at = at;
+      if (at <= now) ev.push({ t: at, f: function () { var nj = ttRunNext(P, W, i, at); if (nj) lecEv(nj, i); } });
+    }
+    function lecEv(j, i) { if (j.end <= now) ev.push({ t: j.end, f: function () { var o = lecFinish(P, j, j.end, 1, false); P.lec[i] = null; P.lecEnd[i] = j.end; inbox(P, o); if (j.tt && P.ttRun) ttAfter(i, j.end); else qAfter(i, j.end); } }); }
+    P.lec.forEach(function (j, i) {
+      if (j) lecEv(j, i);
+      else if (i === 0 && P.ttRun && P.ttRun.at && P.ttRun.at <= now) { var at0 = P.ttRun.at; ev.push({ t: at0, f: function () { var nj = ttRunNext(P, W, i, at0); if (nj) lecEv(nj, i); } }); }
+      else if (P.lecQ[i] && P.lecQ[i].at && P.lecQ[i].at <= now) { var at = P.lecQ[i].at; ev.push({ t: at, f: function () { var nj = lecQRun(P, W, i, at); if (nj) lecEv(nj, i); } }); }
+    });
     // 원정은 끝나도 저절로 받지 않는다: 끝났다는 표시(done)만 남기고, 학생이 「원정 완료」(A.expClaim)를 눌러 결과를 받는다
     P.exp.forEach(function (j) { var te = R.expEnd(j || {}); if (j && !j.done && te <= now) ev.push({ t: te, f: function () { j.done = te; if (te < j.end) log(P, te, j.s + '단계 원정에서 쓰러졌습니다 · 「원정 완료」를 누르면 모은 것의 80%를 받습니다', 'bad'); } }); });
     P.rsq.forEach(function (q, i) {
@@ -1199,6 +1209,18 @@
      예약: 수업 중인 슬롯마다 다음 교시 하나. 종이 울리면 저절로 시작한다(꿈길 중이면 깨어난 뒤에).
      제때 입실: 수업이 끝나고 15분 안에 바로 들으면 과목 경험치 +10% (저절로 시작한 예약 교시는 없음). */
   R.ONTIME_WIN = 900; R.ONTIME_BONUS = 0.1; R.TT_MAX = 3;
+  /* 시간표(프리셋 3개): 교시 목록 [{s, d}], 모두 합쳐 최대 4시간. 「시간표 듣기」를 누르면 1교시부터 차례로 이어서 듣는다.
+     교시가 바뀔 때 종이 울리고 다음 교시가 저절로 시작되며, 시작하고 15분 안에 「제때 입실」을 누르면 그 교시 과목 경험치 +10%.
+     시간표 수업 중에는 다음 교시 예약을 걸 수 없고, 이미 수업을 듣고 있으면 시간표를 시작할 수 없다. */
+  R.TT_MAX_S = 4 * 3600; R.TT_MAX_N = 8;
+  R.ttLen = function (t) { return ((t && t.p) || []).reduce(function (a, x) { return a + (DUR[x.d] ? DUR[x.d].s : 0); }, 0); };
+  R.ttNorm = function (t) {
+    if (!t) return null; if (Array.isArray(t.p)) return t;
+    var out = [], sum = 0;
+    (t.s || []).forEach(function (x) { var d = DUR[t.d] ? t.d : '1h'; if (x && SUBJ[x] && sum + DUR[d].s <= R.TT_MAX_S) { out.push({ s: x, d: d }); sum += DUR[d].s; } });
+    return out.length ? { name: t.name || '시간표', p: out } : null;
+  };
+  function ttOk(P, x) { return x && SUBJ[x.s] && DUR[x.d] && SUBJ[x.s].unlock <= Math.min(P.grade, 7) && R.subjVisible(P, SUBJ[x.s]); }
   function lecQ(P) { if (!P.lecQ) P.lecQ = [null, null, null]; if (!P.lecEnd) P.lecEnd = [0, 0, 0]; return P.lecQ; }
   R.lecQ = lecQ;
   R.onTime = function (P, i, now) { lecQ(P); var e = P.lecEnd[i] || 0; return !P.lec[i] && e > 0 && now >= e && now - e <= R.ONTIME_WIN; };
@@ -1217,6 +1239,7 @@
     var i = int(a.slot, 0, 2), sid = str(a.s), dk = str(a.d); lecCheck(P, W, now, i, sid, dk);
     if (P.lec[i]) err('이미 수업 중인 슬롯입니다');
     if (P.lec.some(function (l) { return l && l.s === sid; })) err('같은 과목을 동시에 들을 수 없습니다');
+    if (P.ttRun) P.ttRun = null;   // 직접 수업을 시작하면 기다리던 시간표는 멈춘다
     var on = R.onTime(P, i, now), j = lecMake(P, W, i, sid, dk, now, W && W.lecPeers ? (W.lecPeers[sid] || 0) : 0, on);
     P.lecEnd[i] = 0;
     return { ok: true, ontime: on };
@@ -1227,6 +1250,7 @@
     if (!a.s) { P.lecQ[i] = null; return { ok: true }; }
     var sid = str(a.s), dk = str(a.d); lecCheck(P, W, now, i, sid, dk);
     if (!P.lec[i]) err('빈 슬롯은 바로 수업 시작 가능');
+    if (P.ttRun || P.lec[i].tt) err('시간표 수업 중에는 다음 교시를 예약할 수 없습니다');
     P.lecQ[i] = { s: sid, d: dk }; return { ok: true };
   };
   // 예약 교시 시작 (advance 안에서)
@@ -1240,27 +1264,48 @@
   }
   // 시간표 프리셋: 슬롯마다 과목 + 수업 길이. 적용하면 빈 슬롯은 바로 시작, 수업 중인 슬롯은 다음 교시로 예약
   A.ttSave = function (P, W, now, a) {
-    var k = int(a.k, 0, R.TT_MAX - 1), name = String(a.name || '').replace(/\s+/g, ' ').trim().slice(0, 12) || ('시간표 ' + (k + 1)), dk = str(a.d);
-    if (!DUR[dk]) err('잘못된 시간입니다');
-    var ss = (Array.isArray(a.s) ? a.s : []).slice(0, 3).map(function (x) { return SUBJ[x] ? x : null; });
-    if (!ss.some(Boolean)) err('과목 1개 이상 선택 필요');
-    if (!P.tt) P.tt = []; P.tt[k] = { name: name, s: ss, d: dk }; return { ok: true };
+    var k = int(a.k, 0, R.TT_MAX - 1), name = String(a.name || '').replace(/\s+/g, ' ').trim().slice(0, 12) || ('시간표 ' + (k + 1));
+    var p = (Array.isArray(a.p) ? a.p : []).filter(function (x) { return x && x.s; }).map(function (x) { return { s: String(x.s), d: String(x.d) }; });
+    if (!p.length) err('교시를 1개 이상 넣어야 합니다');
+    if (p.length > R.TT_MAX_N) err('교시는 ' + R.TT_MAX_N + '개까지 넣을 수 있습니다');
+    p.forEach(function (x) { if (!SUBJ[x.s]) err('없는 과목입니다'); if (!DUR[x.d]) err('잘못된 시간입니다'); });
+    var t = { name: name, p: p }; if (R.ttLen(t) > R.TT_MAX_S) err('시간표는 모두 합쳐 4시간까지 짤 수 있습니다');
+    if (!P.tt) P.tt = []; P.tt[k] = t; return { ok: true };
   };
   A.ttDel = function (P, W, now, a) { var k = int(a.k, 0, R.TT_MAX - 1); if (P.tt) P.tt[k] = null; return { ok: true }; };
+  // 시간표 듣기: 1교시를 바로 시작하고 나머지 교시는 종이 울릴 때마다 이어진다
   A.ttApply = function (P, W, now, a) {
-    var k = int(a.k, 0, R.TT_MAX - 1), t = P.tt && P.tt[k]; if (!t) err('비어 있는 시간표입니다');
-    var c = calc(P, W, now), out = { started: 0, queued: 0, skip: 0, ontime: 0 }, dream = R.dreaming(P, now); lecQ(P);
-    for (var i = 0; i < Math.min(3, c.lecSlots); i++) {
-      var sid = t.s[i]; if (!sid || !SUBJ[sid] || SUBJ[sid].unlock > Math.min(P.grade, 7) || !R.subjVisible(P, SUBJ[sid])) { if (sid) out.skip++; continue; }
-      if (P.lec[i]) { P.lecQ[i] = { s: sid, d: t.d }; out.queued++; continue; }
-      if (dream || P.lec.some(function (l) { return l && l.s === sid; })) { out.skip++; continue; }
-      var on = R.onTime(P, i, now); lecMake(P, W, i, sid, t.d, now, W && W.lecPeers ? (W.lecPeers[sid] || 0) : 0, on); P.lecEnd[i] = 0; out.started++; if (on) out.ontime++;
+    var k = int(a.k, 0, R.TT_MAX - 1), t = R.ttNorm(P.tt && P.tt[k]); if (!t) err('비어 있는 시간표입니다');
+    if (R.dreaming(P, now)) err('꿈길 중에는 수업을 들을 수 없습니다');
+    if (P.lec[0]) err('이미 듣고 있는 수업이 있어 시간표를 시작할 수 없습니다');
+    var p = t.p.filter(function (x) { return ttOk(P, x); }); if (!p.length) err('지금 들을 수 있는 교시가 없습니다');
+    lecQ(P); P.lecQ[0] = null;
+    var on = R.onTime(P, 0, now), j = lecMake(P, W, 0, p[0].s, p[0].d, now, W && W.lecPeers ? (W.lecPeers[p[0].s] || 0) : 0, on);
+    j.tt = { i: 0, n: p.length }; P.lecEnd[0] = 0;
+    P.ttRun = { k: k, name: t.name, p: p, i: 0, at: 0 };
+    return { ok: true, name: t.name, n: p.length, skip: t.p.length - p.length, ontime: on };
+  };
+  // 시간표 다음 교시 (advance 안에서). 들을 수 없게 된 교시는 건너뛴다
+  function ttRunNext(P, W, i, at) {
+    var run = P.ttRun; if (!run || P.lec[i]) return null; run.at = 0;
+    for (var n = run.i + 1; n < run.p.length; n++) {
+      var x = run.p[n]; if (!ttOk(P, x)) continue;
+      var j = lecMake(P, W, i, x.s, x.d, at, 0, false); j.tt = { i: n, n: run.p.length }; j.otUntil = at + R.ONTIME_WIN; run.i = n; P.lecEnd[i] = 0;
+      log(P, at, '시간표 「' + run.name + '」 ' + (n + 1) + '교시 ' + SUBJ[x.s].name + ' 수업이 시작되었습니다 · 15분 안에 「제때 입실」 가능', 'news');
+      return j;
     }
-    return out;
+    P.ttRun = null; return null;
+  }
+  // 시간표 교시가 저절로 시작된 뒤 15분 안에 누르면 그 교시 과목 경험치 +10%
+  A.lecOnTime = function (P, W, now, a) {
+    var i = int(a.slot || 0, 0, 2), j = P.lec[i]; if (!j || !j.otUntil || j.ontime) err('제때 입실할 수업이 없습니다');
+    if (now > j.otUntil) err('제때 입실 시간(15분)이 지났습니다');
+    j.xp = j.xp * (1 + (j.pb || 0) + R.ONTIME_BONUS) / (1 + (j.pb || 0)); j.ontime = true;
+    return { ok: true };
   };
   A.lecCancel = function (P, W, now, a) {
     var i = int(a.slot, 0, 2), j = P.lec[i]; if (!j) err('진행 중인 수업이 없습니다');
-    var o = lecFinish(P, j, now, clamp((now - j.start) / j.dur, 0, 1), true); P.lec[i] = null; return o;
+    var o = lecFinish(P, j, now, clamp((now - j.start) / j.dur, 0, 1), true); P.lec[i] = null; if (j.tt) P.ttRun = null; return o;
   };
   // 운영진 보상 물약 (우편으로만 받는다)
   // 연구 즉시 완료: 진행 중인 연구 하나를 바로 끝낸다

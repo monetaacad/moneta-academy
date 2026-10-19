@@ -436,9 +436,9 @@ routes['POST /api/act'] = async (req, res) => {
   try {
     const before = P.wk.dmg;
     setPartyN(P); setGuildLv(P);
-    const W0 = world.ctx(now); W0.lecPeers = type === 'lecStart' ? lecCounts(now) : null;
+    const W0 = world.ctx(now); W0.lecPeers = type === 'lecStart' || type === 'ttApply' ? lecCounts(now) : null;
     r = R.act(P, W0, now, type, a); W0.lecPeers = null;
-    if (type === 'lecStart' || type === 'lecCancel') { lecSync(P); if (type === 'lecStart') { const j = P.lec[Number(a.slot)]; if (j) lecStarted(P, j.s, now); } }
+    if (type === 'lecStart' || type === 'lecCancel' || type === 'ttApply') { lecSync(P); if (type === 'lecStart' || type === 'ttApply') { const j = P.lec[type === 'ttApply' ? 0 : Number(a.slot)]; if (j) lecStarted(P, j.s, now); } }
     if (type === 'exam' && r && r.pass) world.addNews(P.name + ' 학생이 ' + (P.grade >= 8 ? '졸업 시험을 통과해 마스터 과정이 되었습니다' : P.grade + '학년으로 진급했습니다'), now);
     if ((type === 'clsExam' || type === 'setCls') && r) setImmediate(() => { try { chat.clsChanged(pid); } catch (e) { } });
     if (type === 'inboxAck' || type === 'expCancel' || type === 'expClaim') setImmediate(() => { try { chat.exrChanged(pid); } catch (e) { } });   // 결과를 받으면 원정 채팅 탭을 닫는다
