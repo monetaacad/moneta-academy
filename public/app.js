@@ -168,6 +168,7 @@
     P.lec.forEach(function (j) { if (j) t = Math.min(t, j.end); });
     P.exp.forEach(function (j) { if (j && !j.done) t = Math.min(t, R.expEnd(j)); });   // 끝나서 「원정 완료」를 기다리는 원정은 빼고
     (P.lecQ || []).forEach(function (q, i) { if (q && q.at && !P.lec[i]) t = Math.min(t, q.at); });
+    if (P.ttRun && P.ttRun.at && !P.lec[0]) t = Math.min(t, P.ttRun.at);   // 꿈길 뒤로 미뤄진 시간표 다음 교시
     P.rsq.forEach(function (q) { if (q) t = Math.min(t, q.end); });
     for (var k in P.fam.disp) t = Math.min(t, P.fam.disp[k].end);
     if (P.dream) t = Math.min(t, P.dream.end);                       // 꿈길도 깨는 시각에 바로 보고
@@ -197,6 +198,7 @@
     var GO = [['res', 'lib', '서고로'], ['lec', 'lecture', '강의실로'], ['exp', 'explore', '원정으로'], ['disp', 'work', '공방으로'], ['hatch', 'work', '공방으로']], seen = {};
     var gos = GO.filter(function (g) { if (seen[g[1]] || !items.some(function (o) { return o.k === g[0]; })) return false; seen[g[1]] = 1; return true; });
     modal(mhead('끝난 작업 보고', items.length + '건') + '<ul class="report">' + lines.join('') + '</ul>' +
+      (onTimeBtn(0) ? '<div class="row ontrow" style="margin-top:12px;gap:8px;align-items:center"><span class="small gold">시간표 다음 교시 ' + R.SUBJ[S.P.lec[0].s].name + ' 시작</span>' + onTimeBtn(0) + '</div>' : '') +
       '<div class="row" style="justify-content:flex-end;margin-top:14px;gap:8px"><button class="btn ghost" data-act="inbox-ok"' + (gos.length ? '' : ' autofocus') + '>확인</button>' +
       gos.map(function (g, k) { return '<button class="btn ' + (k ? '' : 'primary') + '" data-act="inbox-go" data-a="' + g[1] + '"' + (k ? '' : ' autofocus') + '>확인하고 ' + g[2] + '</button>'; }).join('') + '</div>');
   }
@@ -280,12 +282,17 @@
       if (el.dataset.sh) return; el.dataset.sh = '1';
       var w = document.createElement('div'), cs = getComputedStyle(el); w.className = 'shw'; w.style.margin = cs.margin; el.style.margin = '0';
       el.parentNode.insertBefore(w, el); w.appendChild(el);
-      ['l', 'r'].forEach(function (k) { var b = document.createElement('button'); b.type = 'button'; b.className = 'sharr ' + k; b.setAttribute('aria-label', k === 'l' ? '앞쪽 탭 더 보기' : '뒤쪽 탭 더 보기'); b.textContent = k === 'l' ? '‹' : '›'; b.addEventListener('click', function (e) { e.stopPropagation(); el.scrollBy({ left: (k === 'l' ? -1 : 1) * el.clientWidth * 0.7, behavior: 'smooth' }); }); w.appendChild(b); });
+      // 화살표 없이: 넘친 쪽 끝을 흐리게 · 모바일은 손가락으로 밀기 · PC는 마우스로 끌기 또는 올려 두고 휠
+      el.addEventListener('wheel', function (e) { if (el.scrollWidth <= el.clientWidth + 1) return; var d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY; if (!d) return; el.scrollLeft += d; e.preventDefault(); }, { passive: false });
+      el.addEventListener('pointerdown', function (e) { if (e.pointerType !== 'mouse' || e.button !== 0 || el.scrollWidth <= el.clientWidth + 1) return; tabDrag = { el: el, x: e.clientX, l: el.scrollLeft, moved: false }; });
       function upd() { var max = el.scrollWidth - el.clientWidth; w.classList.toggle('more-l', el.scrollLeft > 4); w.classList.toggle('more-r', max - el.scrollLeft > 4); }
       var on = el.querySelector('button.on'); if (on && el.scrollWidth > el.clientWidth) { var ol = on.offsetLeft - el.offsetLeft; if (ol + on.offsetWidth > el.clientWidth) el.scrollLeft = ol - (el.clientWidth - on.offsetWidth) / 2; }   // 고른 탭이 보이게
       el.addEventListener('scroll', upd, { passive: true }); upd(); setTimeout(upd, 300);
     });
   }
+  var tabDrag = null;
+  window.addEventListener('pointermove', function (e) { var d = tabDrag; if (!d) return; var dx = e.clientX - d.x; if (!d.moved && Math.abs(dx) > 5) { d.moved = true; d.el.classList.add('tdrag'); } if (d.moved) d.el.scrollLeft = d.l - dx; });
+  window.addEventListener('pointerup', function () { var d = tabDrag; tabDrag = null; if (!d || !d.moved) return; d.el.classList.remove('tdrag'); d.el.addEventListener('click', function (e) { e.stopPropagation(); e.preventDefault(); }, { capture: true, once: true }); });   // 끌고 놓을 때 탭이 눌리지 않게
   window.addEventListener('resize', function () { $$('.shw').forEach(function (w) { var el = w.firstChild; if (el) el.dispatchEvent(new Event('scroll')); }); });
   function afterRender() {
     scrollHints();
@@ -1108,6 +1115,7 @@
       if (l) {
         h += '<div class="card hl slotcard"><div class="row between"><span class="tiny gold">수업 슬롯 ' + (i + 1) + '</span>' + cancelBtn('lec' + i, 'lecCancel', { slot: i }) + '</div>' +
           '<div class="row" style="gap:6px"><h3>' + R.SUBJ[l.s].name + ' <span class="num muted small">Lv ' + P.subj[l.s].lv + '</span></h3><span class="spacer"></span><button class="btn sm ghost" data-act="subjgo" data-a="' + l.s + '">과목 보기 ›</button></div><div class="bar thick"><b data-b="prog:' + l.start + ':' + l.end + '"></b></div>' +
+          (l.tt && P.ttRun ? '<div class="tiny gold">시간표 「' + esc(P.ttRun.name) + '」 ' + (l.tt.i + 1) + ' / ' + l.tt.n + '교시' + (P.ttRun.p[l.tt.i + 1] ? ' · 다음: ' + R.SUBJ[P.ttRun.p[l.tt.i + 1].s].name + ' ' + R.DUR[P.ttRun.p[l.tt.i + 1].d].label : ' · 마지막 교시') + '</div>' : '') + (onTimeBtn(i) ? '<div class="row" style="gap:6px;align-items:center">' + onTimeBtn(i) + '<span class="tiny faint">종이 울리고 15분 안에 누르면 이번 교시 과목 경험치 +' + Math.round(R.ONTIME_BONUS * 100) + '%</span></div>' : '') +
           '<div class="row small muted"><span data-l="left:' + l.end + '"></span> 남음 · ' + clock(l.end) + '</div><div class="small">끝나면 과목 경험치 +' + fmt(l.xp) + ', 지식 +' + fmt(l.know) + (l.ontime ? ' <span class="tag ok">' + gterm('제때 입실') + ' +' + Math.round(R.ONTIME_BONUS * 100) + '%</span>' : '') + '</div>' + '<div class="tiny classmates">지금 이 강의실 <b>' + clsN(l.s, true) + '명</b>' + (l.peers ? ' · 함께 시작한 학생 ' + l.peers + '명, 경험치 +' + Math.round(l.pb * 100) + '%' : '') + '</div>' + queueBox(i, l) + '</div>';
       } else {
         var subs = R.availableSubjects(P).filter(function (s) { return !P.lec.some(function (x) { return x && x.s === s.id; }); });
@@ -1137,6 +1145,7 @@
   // 다음 교시 예약 칸 (수업 중인 슬롯 아래)
   function queueBox(i, l) {
     var P = S.P, q = P.lecQ && P.lecQ[i];
+    if (l.tt || P.ttRun) return '<div class="qbox"><span class="tiny faint">시간표 수업 중에는 다음 교시를 예약할 수 없습니다 · 시간표의 다음 교시가 이어집니다</span></div>';
     if (q) return '<div class="qbox"><span class="tiny gold">다음 교시 예약</span><div class="row small" style="gap:6px"><b>' + R.SUBJ[q.s].name + '</b><span class="faint">' + R.DUR[q.d].label + ' · ' + clock(l.end) + ' 시작</span><span class="spacer"></span><button class="btn sm ghost" data-act="lecq-del" data-a="' + i + '">예약 취소</button></div></div>';
     if (!S.qOpen || S.qOpen[i] !== true) return '<div class="qbox"><button class="btn sm ghost" data-act="lecq-open" data-a="' + i + '">＋ 다음 교시 예약</button> <span class="tiny faint">수업이 끝나면 자동으로 시작 · 한 칸</span></div>';
     var subs = R.availableSubjects(P), sel = S.pick['qs' + i] || l.s, dk = S.pick['qd' + i] || l.dur && Object.keys(R.DUR).find(function (k) { return R.DUR[k].s === l.dur; }) || '1h';
@@ -1145,36 +1154,54 @@
       '<button class="btn sm primary" data-act="lecq-set" data-a="' + i + '">예약</button><button class="btn sm ghost" data-act="lecq-close" data-a="' + i + '">닫기</button></div><p class="tiny faint" style="margin-top:4px">예약 교시에는 ' + gterm('제때 입실') + ' 보너스가 붙지 않습니다. 끝나고 15분 안에 바로 들으면 +' + Math.round(R.ONTIME_BONUS * 100) + '%.</p></div>';
   }
   // 시간표 프리셋
+  // 시간표 프리셋 3개: 교시마다 과목 · 시간, 모두 합쳐 최대 4시간. 「시간표 듣기」로 1교시부터 차례로 이어서 듣는다
+  function ttSum(t) { return (t.p || []).map(function (x, n) { return (n + 1) + '교시 ' + (R.SUBJ[x.s] ? R.SUBJ[x.s].name : '?') + ' ' + R.DUR[x.d].label; }).join(' · '); }
+  function ttTime(sec) { var h = Math.floor(sec / 3600), m = Math.round(sec % 3600 / 60); return (h ? h + '시간' : '') + (m ? (h ? ' ' : '') + m + '분' : '') || '0분'; }
   function ttCard(c) {
-    var P = S.P, tt = P.tt || [], has = tt.some(Boolean), open = S.ttEdit != null;
-    var h = '<div class="card ttcard" style="margin-bottom:14px"><div class="row between"><h3>시간표</h3><span class="tiny faint">한 번 누르면 빈 슬롯은 바로 시작 · 수업 중인 슬롯은 다음 교시로 예약</span></div><div class="row" style="gap:8px;margin-top:8px">';
+    var P = S.P, tt = (P.tt || []).map(R.ttNorm), run = P.ttRun, busy = !!P.lec[0], open = S.ttEdit != null;
+    var h = '<div class="card ttcard" style="margin-bottom:14px"><div class="row between"><h3>시간표</h3><span class="tiny faint">교시를 최대 4시간까지 짜 두고 「시간표 듣기」로 차례로 이어 듣기 · 교시가 바뀔 때 종이 울립니다</span></div>';
+    if (run) h += '<p class="small gold" style="margin-top:6px">「' + esc(run.name) + '」 듣는 중 · ' + (run.i + 1) + ' / ' + run.p.length + '교시' + (run.p[run.i + 1] ? ' · 다음: ' + R.SUBJ[run.p[run.i + 1].s].name + ' ' + R.DUR[run.p[run.i + 1].d].label : ' · 마지막 교시') + '</p>';
+    h += '<div class="ttlist">';
     for (var k = 0; k < R.TT_MAX; k++) {
       var t = tt[k];
-      h += t ? '<div class="ttp"><button class="btn sm primary" data-act="tt-apply" data-a="' + k + '" title="' + t.s.map(function (x) { return x ? R.SUBJ[x].name : '—'; }).join(' · ') + ' · ' + R.DUR[t.d].label + '">' + esc(t.name) + '</button><span class="tiny faint">' + t.s.slice(0, c.lecSlots).map(function (x) { return x ? R.SUBJ[x].name : '—'; }).join(' · ') + ' · ' + R.DUR[t.d].label + '</span><button class="btn sm ghost" data-act="tt-edit" data-a="' + k + '">고치기</button></div>'
-        : '<button class="btn sm ghost" data-act="tt-edit" data-a="' + k + '">＋ 시간표 ' + (k + 1) + ' 만들기</button>';
+      if (!t) { h += '<div class="ttp empty"><button class="btn sm ghost" data-act="tt-edit" data-a="' + k + '">＋ 시간표 ' + (k + 1) + ' 만들기</button></div>'; continue; }
+      var why0 = run ? '시간표 수업을 듣는 중입니다' : busy ? '이미 듣고 있는 수업이 있어 시간표를 시작할 수 없습니다' : R.dreaming(P, now()) ? '꿈길 중에는 수업을 들을 수 없습니다' : '';
+      h += '<div class="ttp"><div class="ttph"><b>' + esc(t.name) + '</b><span class="tiny faint">총 ' + ttTime(R.ttLen(t)) + '</span></div><div class="tiny muted ttps">' + ttSum(t) + '</div>' +
+        '<div class="row" style="gap:6px;margin-top:6px"><button class="btn sm primary"' + (why0 ? why(why0) : ' data-act="tt-apply" data-a="' + k + '"') + '>시간표 듣기</button><button class="btn sm ghost" data-act="tt-edit" data-a="' + k + '">고치기</button></div></div>';
     }
     h += '</div>';
     if (open) {
-      var e = S.ttEdit, subs = R.availableSubjects(P);
-      h += '<div class="card inset" style="margin-top:10px"><div class="row" style="gap:6px"><input id="tt-name" maxlength="12" placeholder="이름 (예: 기말 대비)" value="' + esc(e.name || '') + '" style="flex:1;min-width:120px"><select id="tt-d" style="width:auto">' + D.DURATIONS.map(function (d) { return '<option value="' + d.k + '"' + (d.k === e.d ? ' selected' : '') + '>' + d.label + '</option>'; }).join('') + '</select></div><div class="row" style="gap:6px;margin-top:6px">';
-      for (var i = 0; i < c.lecSlots; i++) h += '<select class="tt-s" data-i="' + i + '" style="flex:1;min-width:110px"' + (i >= c.lecSlots ? ' title="아직 잠긴 슬롯 (열리면 쓰입니다)"' : '') + '><option value="">' + (i + 1) + '교시 비움</option>' + subs.map(function (s) { return '<option value="' + s.id + '"' + (e.s[i] === s.id ? ' selected' : '') + '>' + (i + 1) + '교시 · ' + s.name + '</option>'; }).join('') + '</select>';
-      h += '</div><div class="row" style="margin-top:8px"><button class="btn sm primary" data-act="tt-save">저장</button><button class="btn sm ghost" data-act="tt-now">지금 수업으로 채우기</button>' + (tt[e.k] ? '<button class="btn sm danger" data-act="tt-del">지우기</button>' : '') + '<span class="spacer"></span><button class="btn sm ghost" data-act="tt-close">닫기</button></div></div>';
+      var e = S.ttEdit, subs = R.availableSubjects(P), len = R.ttLen(e), left = R.TT_MAX_S - len;
+      h += '<div class="card inset ttedit" style="margin-top:10px"><div class="row" style="gap:6px"><input id="tt-name" maxlength="12" placeholder="이름 (예: 기말 대비)" value="' + esc(e.name || '') + '" style="flex:1;min-width:120px"><span class="small ' + (len > R.TT_MAX_S ? 'bad' : 'muted') + '">총 ' + ttTime(len) + ' / 4시간</span></div>';
+      h += e.p.map(function (x, n) {
+        return '<div class="row ttrow" style="gap:6px;margin-top:6px"><span class="tiny gold" style="width:38px">' + (n + 1) + '교시</span><select class="tt-s" data-i="' + n + '" style="flex:1;min-width:120px">' + subs.map(function (s2) { return '<option value="' + s2.id + '"' + (x.s === s2.id ? ' selected' : '') + '>' + s2.name + ' (Lv ' + P.subj[s2.id].lv + ')</option>'; }).join('') + '</select>' +
+          '<select class="tt-d" data-i="' + n + '" style="width:auto">' + D.DURATIONS.map(function (d) { return '<option value="' + d.k + '"' + (d.k === x.d ? ' selected' : '') + '>' + d.label + '</option>'; }).join('') + '</select><button class="btn sm ghost" data-act="tt-rm" data-a="' + n + '" aria-label="' + (n + 1) + '교시 빼기">×</button></div>';
+      }).join('');
+      var canAdd = left >= 1800 && e.p.length < R.TT_MAX_N;
+      h += '<div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap"><button class="btn sm"' + (canAdd ? ' data-act="tt-add"' : why(e.p.length >= R.TT_MAX_N ? '교시는 ' + R.TT_MAX_N + '개까지 넣을 수 있습니다' : '모두 합쳐 4시간까지 짤 수 있습니다')) + '>＋ 교시 추가</button><span class="spacer"></span><button class="btn sm primary" data-act="tt-save">저장</button>' + (tt[e.k] ? '<button class="btn sm danger" data-act="tt-del">지우기</button>' : '') + '<button class="btn sm ghost" data-act="tt-close">닫기</button></div></div>';
     }
     return h + '</div>';
   }
+  // 고치는 중인 시간표: 화면을 다시 그리기 전에 입력값을 읽어 둔다
+  function ttSync() { var e = S.ttEdit; if (!e) return; var n = $('#tt-name'); if (n) e.name = n.value; $$('.tt-s').forEach(function (x) { var p = e.p[+x.dataset.i]; if (p) p.s = x.value; }); $$('.tt-d').forEach(function (x) { var p = e.p[+x.dataset.i]; if (p) p.d = x.value; }); }
+  ACT['tt-edit'] = function (k) { k = +k; var t = R.ttNorm((S.P.tt || [])[k]); var subs = R.availableSubjects(S.P); S.ttEdit = t ? { k: k, name: t.name, p: t.p.map(function (x) { return { s: x.s, d: x.d }; }) } : { k: k, name: '', p: [{ s: (S.P.lec[0] && S.P.lec[0].s) || defaultSubject(subs) || (subs[0] && subs[0].id), d: '1h' }] }; render(); };
+  ACT['tt-add'] = function () { ttSync(); var e = S.ttEdit, last = e.p[e.p.length - 1], left = R.TT_MAX_S - R.ttLen(e), subs = R.availableSubjects(S.P); var d = D.DURATIONS.filter(function (x) { return x.s <= left; }).map(function (x) { return x.k; }); if (!d.length) return; e.p.push({ s: last ? last.s : defaultSubject(subs), d: d.indexOf('1h') >= 0 ? '1h' : d[0] }); render(); };
+  ACT['tt-rm'] = function (n) { ttSync(); S.ttEdit.p.splice(+n, 1); render(); };
+  ACT['tt-close'] = function () { S.ttEdit = null; render(); };
+  document.addEventListener('change', function (e) { var t = e.target; if (S.ttEdit && t && t.classList && (t.classList.contains('tt-d') || t.classList.contains('tt-s'))) { ttSync(); render(); } });   // 합계 · 교시 추가 단추를 바로 맞춘다
+  ACT['tt-save'] = function () {
+    ttSync(); var e = S.ttEdit; if (!e) return;
+    act('ttSave', { k: e.k, name: e.name || '', p: e.p }).then(function (r) { if (r) { S.ttEdit = null; toast('시간표를 저장했습니다', '', 1600); } render(); });
+  };
+  ACT['tt-del'] = function () { var e = S.ttEdit; if (!e) return; act('ttDel', { k: e.k }).then(function () { S.ttEdit = null; render(); }); };
+  ACT['tt-apply'] = function (k) { act('ttApply', { k: +k }).then(function (r) { if (!r) return; Snd.play('click'); toast('시간표 「' + r.name + '」', r.n + '교시를 차례로 듣습니다' + (r.skip ? ' · 아직 못 듣는 교시 ' + r.skip + '개는 건너뜀' : '') + (r.ontime ? ' · 제때 입실' : ''), 2600); render(); }); };
+  ACT['lec-ontime'] = function (i) { act('lecOnTime', { slot: +i || 0 }).then(function (r) { if (!r) return; Snd.play('ach'); toast('제때 입실', '이번 교시 과목 경험치 +' + Math.round(R.ONTIME_BONUS * 100) + '%', 2000); if ($('#modal:not([hidden]) .ontbtn')) $$('.ontbtn').forEach(function (b) { b.remove(); }); render(); }); };
+  // 시간표 교시가 저절로 시작된 뒤 15분 동안 보이는 「제때 입실」 단추
+  function onTimeBtn(i) { var l = S.P.lec[i]; if (!l || !l.otUntil || l.ontime || now() > l.otUntil) return ''; return '<button class="btn sm primary ontbtn" data-act="lec-ontime" data-a="' + i + '">제때 입실 +' + Math.round(R.ONTIME_BONUS * 100) + '% <span class="tiny" data-l="left:' + l.otUntil + '"></span></button>'; }
   ACT['lecq-open'] = function (i) { S.qOpen = S.qOpen || {}; S.qOpen[+i] = true; render(); };
   ACT['lecq-close'] = function (i) { if (S.qOpen) S.qOpen[+i] = false; render(); };
   ACT['lecq-set'] = function (i) { i = +i; var s = ($('#qs' + i) || {}).value, d = ($('#qd' + i) || {}).value || '1h'; act('lecQueue', { slot: i, s: s, d: d }).then(function (r) { if (r) { if (S.qOpen) S.qOpen[i] = false; Snd.play('click'); toast('다음 교시를 예약했습니다', R.SUBJ[s].name + ' · ' + R.DUR[d].label, 2000); } render(); }); };
   ACT['lecq-del'] = function (i) { act('lecQueue', { slot: +i, s: '' }).then(function () { render(); }); };
-  ACT['tt-edit'] = function (k) { k = +k; var t = (S.P.tt || [])[k]; S.ttEdit = t ? { k: k, name: t.name, s: t.s.slice(), d: t.d } : { k: k, name: '', s: [null, null, null], d: '1h' }; render(); };
-  ACT['tt-close'] = function () { S.ttEdit = null; render(); };
-  ACT['tt-now'] = function () { var e = S.ttEdit; if (!e) return; e.name = ($('#tt-name') || {}).value || e.name; e.d = ($('#tt-d') || {}).value || e.d; e.s = [0, 1, 2].map(function (i) { var l = S.P.lec[i], q = S.P.lecQ && S.P.lecQ[i]; return l ? l.s : q ? q.s : S.pick['ls' + i] || null; }); render(); };
-  ACT['tt-save'] = function () {
-    var e = S.ttEdit; if (!e) return; var ss = $$('.tt-s').map(function (x) { return x.value || null; });
-    act('ttSave', { k: e.k, name: ($('#tt-name') || {}).value || '', s: ss, d: ($('#tt-d') || {}).value || '1h' }).then(function (r) { if (r) { S.ttEdit = null; toast('시간표를 저장했습니다', '', 1600); } render(); });
-  };
-  ACT['tt-del'] = function () { var e = S.ttEdit; if (!e) return; act('ttDel', { k: e.k }).then(function () { S.ttEdit = null; render(); }); };
-  ACT['tt-apply'] = function (k) { act('ttApply', { k: +k }).then(function (r) { if (!r) return; Snd.play('click'); toast('시간표를 적용했습니다', [r.started ? '바로 시작 ' + r.started : '', r.ontime ? '제때 입실 ' + r.ontime : '', r.queued ? '다음 교시 예약 ' + r.queued : '', r.skip ? '건너뜀 ' + r.skip : ''].filter(Boolean).join(' · ') || '바뀐 것이 없습니다', 2600); render(); }); };
   // 같은 강의실: 지금 이 과목을 듣는 다른 학생 수 (나 빼고 / 나 포함)
   function clsN(sid, withMe) { var n = (S.cls && S.cls.n && S.cls.n[sid]) || 0, mine = S.P.lec.some(function (j) { return j && j.s === sid && j.end > now(); }); return withMe ? Math.max(n, mine ? 1 : 0) : Math.max(0, n - (mine ? 1 : 0)); }
   function classInfo(sid) { var n = clsN(sid), pl = S.cls && S.cls.prof && S.cls.prof[sid]; return (n ? '지금 이 강의실에 <b>' + n + '명</b> · 함께 들으면 과목 경험치 <b class="good">+' + Math.round(R.peerBonus(n) * 100) + '%</b>' : '지금 이 과목을 듣는 학생은 없습니다 · 함께 들으면 1명당 경험치 +1% (최대 +' + R.PEER_MAX + '%)') + (pl ? '<div class="profline">' + esc(R.SUBJ[sid].prof) + ': “' + esc(pl) + '”</div>' : ''); }
@@ -3760,7 +3787,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026101979;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026101980;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
