@@ -150,7 +150,7 @@
   R.notifyEvents = function (P, now) {
     var out = [], add = function (key, kind, t, title, body) { if (t > 0) out.push({ key: key, kind: kind, t: t, title: title, body: body }); };
     (P.lec || []).forEach(function (j, i) { if (j) add('lec' + i + ':' + j.end, 'lec', j.end, '수업이 끝났습니다', (R.SUBJ[j.s] ? R.SUBJ[j.s].name : '수업') + ' · 다음 수업 시작 가능'); });
-    (P.exp || []).forEach(function (j, i) { if (j) add('exp' + i + ':' + j.end, 'exp', j.end, '원정대가 돌아왔습니다', j.s + '단계 ' + R.zoneOf(j.s).name); });
+    (P.exp || []).forEach(function (j, i) { if (j) add('exp' + i + ':' + j.end, 'exp', R.expEnd(j), '원정대가 돌아왔습니다', j.s + '단계 ' + R.zoneOf(j.s).name + ' · 원정 완료 가능'); });
     (P.rsq || []).forEach(function (q, i) { if (q && RES[q.id]) add('res' + i + ':' + q.end, 'res', q.end, '연구가 끝났습니다', RES[q.id].name + ' ' + (((P.rs || {})[q.id] || 0) + 1) + '단계'); });
     var disp = (P.fam && P.fam.disp) || {}; for (var f in disp) if (FAM[f]) add('disp' + f + ':' + disp[f].end, 'disp', disp[f].end, FAM[f].name + '이(가) 돌아왔습니다', '사역마 파견 완료');
     var sp = P.spirit || { n: 0, at: now }, n = sp.n || 0, at = sp.at || now, k = Math.floor((now - at) / K.SPIRIT_EVERY);
@@ -832,7 +832,8 @@
     }
     function lecEv(j, i) { if (j.end <= now) ev.push({ t: j.end, f: function () { var o = lecFinish(P, j, j.end, 1, false); P.lec[i] = null; P.lecEnd[i] = j.end; inbox(P, o); qAfter(i, j.end); } }); }
     P.lec.forEach(function (j, i) { if (j) lecEv(j, i); else if (P.lecQ[i] && P.lecQ[i].at && P.lecQ[i].at <= now) { var at = P.lecQ[i].at; ev.push({ t: at, f: function () { var nj = lecQRun(P, W, i, at); if (nj) lecEv(nj, i); } }); } });
-    P.exp.forEach(function (j, i) { var te = R.expEnd(j || {}); if (j && te <= now) ev.push({ t: te, f: function () { var fell = te < j.end, o = expFinish(P, j, te, fell ? clamp((te - j.start) / j.dur, 0, 1) : 1, fell ? 'fall' : false); P.exp[i] = null; if (fell) log(P, te, j.s + '단계 원정에서 쓰러져 돌아왔습니다 (모은 것의 80%)', 'bad'); inbox(P, o); } }); });
+    // 원정은 끝나도 저절로 받지 않는다: 끝났다는 표시(done)만 남기고, 학생이 「원정 완료」(A.expClaim)를 눌러 결과를 받는다
+    P.exp.forEach(function (j) { var te = R.expEnd(j || {}); if (j && !j.done && te <= now) ev.push({ t: te, f: function () { j.done = te; if (te < j.end) log(P, te, j.s + '단계 원정에서 쓰러졌습니다 · 「원정 완료」를 누르면 모은 것의 80%를 받습니다', 'bad'); } }); });
     P.rsq.forEach(function (q, i) {
       if (q && q.end <= now) ev.push({ t: q.end, f: function () {
         P.rs[q.id] = (P.rs[q.id] || 0) + 1; P.rsq[i] = null; P.st.researchDone++; cupAdd(P, 25); if (q.end - q.start >= 28800) P.st.nightJobs++;
@@ -1303,7 +1304,7 @@
     if (R.dreaming(P, now)) err('꿈길 중에는 출정할 수 없습니다 (연구를 시작할 수 있습니다)');
     var c = calc(P, W, now), i = int(a.slot, 0, 1), s = int(a.s, 1, 100000), d = DUR[str(a.d)];
     needSlot(P.exp, i, c.expSlots); if (!d) err('잘못된 시간입니다');
-    if (P.exp[i]) err('이미 원정 중인 슬롯입니다');
+    if (P.exp[i]) err(R.expEnd(P.exp[i]) <= now ? '「원정 완료」를 눌러 결과를 먼저 받아야 합니다' : '이미 원정 중인 슬롯입니다');
     if (s > P.maxStage || s > R.stageCap(P)) err('아직 갈 수 없는 단계입니다');
     if (R.isBoss(s)) err('보스 단계는 보스 도전으로만 갈 수 있습니다');
     var pv = R.expPreview(P, W, s, d.k, now);
@@ -1315,8 +1316,16 @@
     for (var q = 0; q < made; q++) j.loot.push({ at: Math.floor(now + d.s * (q + 0.3 + rnd(P) * 0.6) / made), it: makeItem(P, pick(P, D.SLOTS).id, s, rollRarity(P, j.rarity)) });
     return { ok: true };
   };
+  A.expClaim = function (P, W, now, a) {
+    var i = int(a.slot, 0, 1), j = P.exp[i]; if (!j) err('진행 중인 원정이 없습니다');
+    var te = R.expEnd(j); if (te > now) err('아직 원정 중입니다');
+    var fell = te < j.end, o = expFinish(P, j, te, fell ? clamp((te - j.start) / j.dur, 0, 1) : 1, fell ? 'fall' : false); P.exp[i] = null;
+    log(P, now, j.s + '단계 원정 ' + (fell ? '결과를 받았습니다 (쓰러져 모은 것의 80%)' : '완료'), fell ? 'bad' : 'good');
+    return o;
+  };
   A.expCancel = function (P, W, now, a) {
     var i = int(a.slot, 0, 1), j = P.exp[i]; if (!j) err('진행 중인 원정이 없습니다');
+    if (R.expEnd(j) <= now) return A.expClaim(P, W, now, a);   // 이미 끝난 원정은 귀환이 아니라 완료로
     var o = expFinish(P, j, now, clamp((now - j.start) / j.dur, 0, 1), 'recall'); P.exp[i] = null; log(P, now, j.s + '단계 원정에서 직접 귀환했습니다', 'news'); return o;
   };
   A.boss = function (P, W, now) {

@@ -166,7 +166,7 @@
   function nextEventTime() {
     var P = S.P, t = Infinity;
     P.lec.forEach(function (j) { if (j) t = Math.min(t, j.end); });
-    P.exp.forEach(function (j) { if (j) t = Math.min(t, R.expEnd(j)); });
+    P.exp.forEach(function (j) { if (j && !j.done) t = Math.min(t, R.expEnd(j)); });   // 끝나서 「원정 완료」를 기다리는 원정은 빼고
     (P.lecQ || []).forEach(function (q, i) { if (q && q.at && !P.lec[i]) t = Math.min(t, q.at); });
     P.rsq.forEach(function (q) { if (q) t = Math.min(t, q.end); });
     for (var k in P.fam.disp) t = Math.min(t, P.fam.disp[k].end);
@@ -177,13 +177,14 @@
   }
 
   /* ───────── 자리 비운 동안 보고 ───────── */
+  function expReportLine(o) { return '<li><b>' + o.s + '단계 원정</b> ' + (o.fell ? '<span class="bad">쓰러져 귀환 (80%)</span>' : '귀환') + ' — ' + fmt(o.kills) + '마리, ' + MONEY(o.gold, '+') + (o.items.length ? ', 장비 ' + o.items.map(function (it) { return '<span style="color:' + rcol(it.r) + '">' + esc(it.name) + '</span>'; }).slice(0, 3).join(', ') + (o.items.length > 3 ? ' 외 ' + (o.items.length - 3) + '개' : '') : '') + '</li>'; }
   function inboxReport() {
     var items = S.P.inbox.slice(), lines = [];
     S.inboxUpto = items.reduce(function (m, o) { return Math.max(m, o.t || 0); }, 0);
     var sumExp = { kills: 0, gold: 0, xp: 0, items: 0 };
     items.forEach(function (o) {
       if (o.k === 'lec') { var pl = S.cls && S.cls.prof && S.cls.prof[o.s]; lines.push('<li><b>' + R.SUBJ[o.s].name + '</b> 수업 끝 — 과목 경험치 +' + fmt(o.xp) + ', 지식 +' + fmt(o.know) + (o.to > o.from ? ' <span class="gold">(Lv ' + o.from + '→' + o.to + ')</span>' : '') + (o.peers ? '<div class="tiny muted">함께 들은 학생 ' + o.peers + '명 · 경험치 +' + Math.round(o.pb * 100) + '%</div>' : '') + (o.ontime ? '<div class="tiny good">제때 입실 · 경험치 +' + Math.round(R.ONTIME_BONUS * 100) + '%</div>' : o.auto ? '<div class="tiny faint">예약해 둔 교시</div>' : '') + (pl ? '<div class="tiny profline">' + esc(R.SUBJ[o.s].prof) + ': “' + esc(pl) + '”</div>' : '') + '</li>'); }
-      else if (o.k === 'exp') { sumExp.kills += o.kills; sumExp.gold += o.gold; sumExp.xp += o.xp; sumExp.items += o.items.length; lines.push('<li><b>' + o.s + '단계 원정</b> ' + (o.fell ? '<span class="bad">쓰러져 귀환 (80%)</span>' : '귀환') + ' — ' + fmt(o.kills) + '마리, ' + MONEY(o.gold, '+') + (o.items.length ? ', 장비 ' + o.items.map(function (it) { return '<span style="color:' + rcol(it.r) + '">' + esc(it.name) + '</span>'; }).slice(0, 3).join(', ') + (o.items.length > 3 ? ' 외 ' + (o.items.length - 3) + '개' : '') : '') + '</li>'); }
+      else if (o.k === 'exp') { sumExp.kills += o.kills; sumExp.gold += o.gold; sumExp.xp += o.xp; sumExp.items += o.items.length; lines.push(expReportLine(o)); }
       else if (o.k === 'res') lines.push('<li><b>연구 완료</b> — ' + R.RES[o.id].name + ' ' + o.lv + '단계</li>');
       else if (o.k === 'hatch') lines.push('<li><b>부화</b> — ' + R.FAM[o.f].name + (o.isNew ? ' <span class="gold">(새 사역마)</span>' : '') + '</li>');
       else if (o.k === 'disp') lines.push('<li><b>' + R.FAM[o.f].name + '</b> 귀환 — ' + D.MATS[o.mat].name + ' ' + o.mats + ', 마석 ' + o.stones + ', ' + MONEY(o.gold, '+') + (o.egg ? ', <span class="gold">환수의 알</span>' : '') + (o.shard ? ', 별조각 +' + o.shard : '') + '</li>');
@@ -1049,7 +1050,7 @@
     var P = S.P, c = C(), rows = [], idleS = [], t = now(), dz = R.dreaming(P, t), ot = false;
     // 진행 중인 것만 한 줄씩. 비어 있는 자리는 맨 아래 한 줄로 모은다
     for (var i = 0; i < c.lecSlots; i++) { var l = P.lec[i], q = P.lecQ && P.lecQ[i]; if (l) rows.push(tline('수업', R.SUBJ[l.s].name + ' 수업' + (q ? ' <span class="tiny faint">→ 다음 ' + R.SUBJ[q.s].name + '</span>' : ''), l, 'lecture')); else { idleS.push('lecture'); if (R.onTime(P, i, t)) ot = true; } }
-    for (var k = 0; k < c.expSlots; k++) { var e = P.exp[k]; if (e) rows.push(tline('원정', e.s + '단계 ' + R.zoneOf(e.s).name, e, 'explore')); else idleS.push('explore'); }
+    for (var k = 0; k < c.expSlots; k++) { var e = P.exp[k]; if (e && expDone(e)) rows.push('<div class="tl"><span class="tli">원정</span><div class="tlb"><div class="small">' + e.s + '단계 ' + R.zoneOf(e.s).name + '</div><div class="tiny gold">' + (e.done < e.end ? '쓰러져 돌아옴' : '원정 끝') + ' · 완료 대기</div></div><button class="btn sm primary" data-act="exp-claim" data-a="' + k + '">원정 완료</button></div>'); else if (e) rows.push(tline('원정', e.s + '단계 ' + R.zoneOf(e.s).name, e, 'explore')); else idleS.push('explore'); }
     for (var r = 0; r < c.resSlots; r++) { var rq = P.rsq[r]; if (rq) rows.push(tline('연구', R.RES[rq.id].name + ' ' + ((P.rs[rq.id] || 0) + 1) + '단계', rq, 'lib')); else idleS.push('lib'); }
     if (idleS.length) {
       var nm = { lecture: '수업', explore: '원정', lib: '연구' }, cnt = {}; idleS.forEach(function (x) { cnt[x] = (cnt[x] || 0) + 1; });
@@ -1343,7 +1344,14 @@
     for (var i = 0; i < 2; i++) {
       if (i >= c.expSlots && !P.exp[i]) break;   // 원정은 한 자리
       var j = P.exp[i];
-      if (j) {
+      if (j && expDone(j)) {
+        var fe = R.expEnd(j), fell = fe < j.end, fk = Math.floor(j.kps * j.dur * j.eff * (fell ? Math.min(1, (fe - j.start) / j.dur) * R.K.FALL_KEEP : 1));
+        h += '<div class="card hl slotcard expdone"><span class="tiny gold">원정 ' + (i + 1) + ' · ' + (fell ? '쓰러져 돌아옴' : '원정 끝') + '</span>' +
+          '<h3>' + j.s + '단계 <span class="small muted">' + R.zoneOf(j.s).name + '</span></h3>' +
+          '<p class="small ' + (fell ? 'bad' : 'muted') + '">' + clock(fe) + (fell ? ' 쓰러져 돌아왔습니다. 그때까지 모은 것의 80%를 받습니다.' : ' 원정대가 돌아왔습니다.') + '</p>' +
+          '<div class="small">처치 약 ' + fmt(fk) + '마리 · ' + MONEY(fk * j.gEach, '+') + ' · 경험치 +' + fmt(fk * j.xEach) + '</div>' +
+          '<div class="row" style="margin-top:10px"><button class="btn primary" data-act="exp-claim" data-a="' + i + '">원정 완료</button><span class="tiny faint">눌러야 결과를 받고 다음 원정을 보낼 수 있습니다</span></div></div>';
+      } else if (j) {
         var el = Math.min(1, (now() - j.start) / j.dur), sofar = Math.floor(j.kps * j.dur * j.eff * el);
         h += '<div class="card hl slotcard"><div class="row between"><span class="tiny gold">원정 ' + (i + 1) + '</span>' + cancelBtn('exp' + i, 'expCancel', { slot: i }) + '</div>' +
           '<h3>' + j.s + '단계 <span class="small muted">' + R.zoneOf(j.s).name + '</span></h3>' + (j.pt ? '<div class="tiny" style="margin:2px 0 4px"><span class="tag br">함께 원정 ' + j.pt.n + '명</span> <span class="postag p-' + j.pt.pos + '">' + R.EXP_POS[j.pt.pos].name + '</span>' + (j.pt.team ? '' : '<span class="tiny muted">나</span>') + (j.pt.team ? '' : j.pt.with && j.pt.with.length ? '<div class="ptwith">' + j.pt.with.map(function (w) { return '<span class="erm sm' + (w.npc ? ' npc' : '') + '"><span class="postag p-' + w.pos + '">' + R.EXP_POS[w.pos].name + '</span>' + erName(w) + '</span>'; }).join('') + '</div>' : '') + '</div>' : '') + (j.pt && j.pt.team ? '<span hidden data-l="ptteam:' + i + '"></span>' + ptTeam(j, i) : '') + '<div class="bar thick"><b data-b="prog:' + j.start + ':' + j.end + '"></b></div>' +
@@ -2511,8 +2519,8 @@
     if (!S.P) return;
     var P = S.P, c = C(), b = {};
     var il = 0; for (var i = 0; i < c.lecSlots; i++) if (!P.lec[i]) il++;
-    var ie = 0; for (var k = 0; k < c.expSlots; k++) if (!P.exp[k]) ie++;
-    b.lecture = il ? '빈 슬롯' : ''; b.explore = S.erInv ? '초대 ' + S.erInv : ie ? '빈 슬롯' : '';
+    var ie = 0, ed = 0; for (var k = 0; k < c.expSlots; k++) { if (!P.exp[k]) ie++; else if (expDone(P.exp[k])) ed++; }
+    b.lecture = il ? '빈 슬롯' : ''; b.explore = ed ? '완료' : S.erInv ? '초대 ' + S.erInv : ie ? '빈 슬롯' : '';
     b.home = P.mq && R.mqReady(P) ? '이야기' : jar().n >= R.K.SPIRIT_JAR ? '정령' : (P.daily.login || P.daily.q.some(function (q) { return !q.done && R.dailyProg(P, q) >= q.goal; })) ? '보상' : '';
     b.lore = storyUnread() ? '새 글' : '';
     var ex = R.examFor(P); if (ex && P.grade < 8 && P.examCd <= now() && R.examEligible(P, ex)) b.exam = '응시';
@@ -2709,6 +2717,16 @@
   ACT['lec-start'] = function (i) { i = +i; var s = S.pick['ls' + i], d = curDur('ld' + i, '1h'); act('lecStart', { slot: i, s: s, d: d.k }).then(function (r) { if (r) { Snd.play('click'); toast(R.SUBJ[s].name + ' 수업 시작' + (r.ontime ? ' · 제때 입실!' : ''), clock(now() + d.s) + '에 끝납니다' + (r.ontime ? ' · 과목 경험치 +' + Math.round(R.ONTIME_BONUS * 100) + '%' : ''), 2200); } render(); }); };
   ACT.es = function (i, d) { var cap = Math.min(S.P.maxStage, R.stageCap(S.P)), s = (S.pick['es' + i] || 1) + +d; if (R.isBoss(s)) s += +d; S.pick['es' + i] = Math.max(1, Math.min(cap, s)); if (R.isBoss(S.pick['es' + i])) S.pick['es' + i]--; render(); };
   ACT['es-best'] = function (i) { S.pick['es' + i] = R.bestStage(S.P, wctx()); render(); };
+  // 끝난 원정: 끝나는 순간 다시 그리고(완료 단추), 학생이 눌러야 결과를 받는다
+  function expDone(j) { return !!j && (j.done || R.expEnd(j) <= now()); }
+  ACT['exp-claim'] = function (i) {
+    act('expClaim', { slot: +i }).then(function (o) {
+      if (!o) return; Snd.play('level');
+      modal(mhead('원정 결과', o.s + '단계') + '<ul class="report">' + expReportLine(o) + '</ul><p class="small muted" style="margin-top:6px">경험치 +' + fmt(o.xp) + (o.mats ? ' · ' + D.MATS[o.mat].name + ' ' + o.mats : '') + (o.stones ? ' · 마석 ' + o.stones : '') + '</p>' +
+        '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>');
+      render();
+    });
+  };
   ACT['exp-start'] = function (i) { i = +i; var s = S.pick['es' + i], d = curDur('ed' + i, '1h'); act('expStart', { slot: i, s: s, d: d.k }).then(function (r) { if (r) { Snd.play('click'); toast(s + '단계 원정 출발', clock(now() + d.s) + '에 돌아옵니다', 2000); } render(); }); };
   ACT.boss = function () {
     var b = R.nextBoss(S.P), def = R.zoneOf(b).boss;
@@ -3234,7 +3252,7 @@
     if (P && PREF.notify && !PREF.push && typeof Notification !== 'undefined' && Notification.permission === 'granted') {   // 푸시를 켜 두면 서버가 알린다
       var add = function (key, kind, end, title, body) { if (PREF.nt[kind] && end > now()) want[key] = { end: end, title: title, body: body }; };
       P.lec.forEach(function (j, i) { if (j) add('lec' + i + ':' + j.end, 'lec', j.end, '수업이 끝났습니다', R.SUBJ[j.s].name + ' · 다음 수업 시작 가능'); });
-      P.exp.forEach(function (j, i) { if (j) add('exp' + i + ':' + j.end, 'exp', j.end, '원정대가 돌아왔습니다', j.s + '단계 ' + R.zoneOf(j.s).name); });
+      P.exp.forEach(function (j, i) { if (j) add('exp' + i + ':' + j.end, 'exp', R.expEnd(j), '원정대가 돌아왔습니다', j.s + '단계 ' + R.zoneOf(j.s).name + ' · 원정 완료 가능'); });
       P.rsq.forEach(function (q, i) { if (q) add('res' + i + ':' + q.end, 'res', q.end, '연구가 끝났습니다', R.RES[q.id].name + ' ' + ((P.rs[q.id] || 0) + 1) + '단계'); });
       for (var f in P.fam.disp) add('disp' + f + ':' + P.fam.disp[f].end, 'disp', P.fam.disp[f].end, R.FAM[f].name + '이(가) 돌아왔습니다', '사역마 파견 완료');
       var jr = jar(); if (jr.full) add('jar:' + Math.round(jr.full), 'jar', jr.full, '반딧불 정령 병이 가득 찼습니다', '접속해 풀어 줄 수 있습니다');
@@ -3734,7 +3752,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026101977;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026101978;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
