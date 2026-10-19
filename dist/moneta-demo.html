@@ -2511,6 +2511,36 @@ if (typeof module !== 'undefined') module.exports = DATA;
     for (var dd = d; dd <= d + 1 && !out; dd++) R.AUCTION_HOURS.forEach(function (h, i) { var s = dd * 86400 - K.TZ + h * 3600; if (!out && s + R.AUCTION_LEN > t) out = { id: dd * 2 + i, start: s, end: s + R.AUCTION_LEN, active: t >= s }; });
     return out;
   };
+  // 알림을 보낼 일: 화면(창을 내렸을 때 알림)과 서버(푸시 알림)가 같은 목록을 쓴다
+  // kind = 설정에서 고르는 종류, key = 같은 일을 두 번 알리지 않기 위한 이름, t = 일어나는 시각
+  R.NOTIFY_KINDS = [['lec', '수업'], ['exp', '원정'], ['res', '연구'], ['disp', '사역마 파견'], ['jar', '정령 병이 가득 참'], ['sky', '하늘 이벤트 시작'], ['auc', '떠돌이 상인 도착']];
+  R.notifyEvents = function (P, now) {
+    var out = [], add = function (key, kind, t, title, body) { if (t > 0) out.push({ key: key, kind: kind, t: t, title: title, body: body }); };
+    (P.lec || []).forEach(function (j, i) { if (j) add('lec' + i + ':' + j.end, 'lec', j.end, '수업이 끝났습니다', (R.SUBJ[j.s] ? R.SUBJ[j.s].name : '수업') + ' · 다음 수업 시작 가능'); });
+    (P.exp || []).forEach(function (j, i) { if (j) add('exp' + i + ':' + j.end, 'exp', j.end, '원정대가 돌아왔습니다', j.s + '단계 ' + R.zoneOf(j.s).name); });
+    (P.rsq || []).forEach(function (q, i) { if (q && RES[q.id]) add('res' + i + ':' + q.end, 'res', q.end, '연구가 끝났습니다', RES[q.id].name + ' ' + (((P.rs || {})[q.id] || 0) + 1) + '단계'); });
+    var disp = (P.fam && P.fam.disp) || {}; for (var f in disp) if (FAM[f]) add('disp' + f + ':' + disp[f].end, 'disp', disp[f].end, FAM[f].name + '이(가) 돌아왔습니다', '사역마 파견 완료');
+    var sp = P.spirit || { n: 0, at: now }, n = sp.n || 0, at = sp.at || now, k = Math.floor((now - at) / K.SPIRIT_EVERY);
+    if (k > 0) { n = Math.min(K.SPIRIT_JAR, n + k); at += k * K.SPIRIT_EVERY; }
+    if (n < K.SPIRIT_JAR) { var full = at + (K.SPIRIT_JAR - n) * K.SPIRIT_EVERY; add('jar:' + Math.round(full), 'jar', full, '반딧불 정령 병이 가득 찼습니다', '접속해 풀어 줄 수 있습니다'); }
+    var sk = R.skyNext(now); if (sk) add('sky:' + sk.key, 'sky', sk.start, '하늘에 ' + sk.name + '!', sk.text + ' · 올려다보면 작은 선물');
+    var av = R.auctionVisit(now); if (av && !av.active) add('auc:' + av.start, 'auc', av.start, '떠돌이 상인이 왔습니다', '귀한 장비 세 점이 2시간 동안 경매에 오릅니다');
+    return out;
+  };
+  // 이미 서버가 처리해 보고함(inbox)에 들어간 일 (접속 중이라 상태가 먼저 갱신된 경우도 알림이 빠지지 않게)
+  R.notifyInbox = function (P) {
+    var T = { lec: '수업이 끝났습니다', exp: '원정대가 돌아왔습니다', res: '연구가 끝났습니다', disp: '사역마가 돌아왔습니다' };
+    return (P.inbox || []).filter(function (o) { return T[o.k] && o.t && !o.canceled; }).map(function (o) {
+      var body = o.k === 'lec' && R.SUBJ[o.s] ? R.SUBJ[o.s].name : o.k === 'exp' ? o.s + '단계' : o.k === 'res' && RES[o.id] ? RES[o.id].name + ' ' + o.lv + '단계' : o.k === 'disp' && FAM[o.f] ? FAM[o.f].name : '';
+      return { key: 'ib:' + o.k + ':' + o.t, kind: o.k, t: o.t, title: T[o.k], body: body };
+    });
+  };
+  // 몇 개가 한꺼번에 끝나면 알림 한 건으로 묶는다
+  R.notifyBundle = function (evs, prefix) {
+    if (!evs.length) return null; if (evs.length === 1 && !prefix) return { title: evs[0].title, body: evs[0].body };
+    var seen = {}, heads = evs.filter(function (e) { if (seen[e.title]) return false; seen[e.title] = 1; return true; }).map(function (e) { return e.title.replace(/[.!]$/, ''); });
+    return { title: (prefix || '') + (evs.length > 1 ? '아카데미 소식 ' + evs.length + '건' : evs[0].title), body: heads.join(' · ') };
+  };
   R.auctionStep = function (price, min) { return price ? Math.ceil(price * 1.05) : min; };
 
   /* ───────── 새 학생 ───────── */
@@ -4683,6 +4713,10 @@ var Net = (function () {
   ServerApi.prototype.chatReport = function (id, reason) { return this.req('POST', '/api/chat/report', { id: id, reason: reason }); };
   ServerApi.prototype.profile = function (id) { return this.req('GET', '/api/profile' + (id ? '?id=' + encodeURIComponent(id) : '')); };
   ServerApi.prototype.saveProfile = function (o) { return this.req('POST', '/api/profile', o); };
+  // 푸시 알림: 서버 공개 열쇠 받기 · 이 기기 등록/해제
+  ServerApi.prototype.pushKey = function () { return this.req('GET', '/api/push/key'); };
+  ServerApi.prototype.pushSub = function (sub, opts) { return this.req('POST', '/api/push/sub', { sub: sub, opts: opts }); };
+  ServerApi.prototype.pushUnsub = function (endpoint) { return this.req('POST', '/api/push/unsub', { endpoint: endpoint }); };
   ServerApi.prototype.setAvatar = function (dataUrl) { return this.req('POST', '/api/avatar', { img: dataUrl }); };
   ServerApi.prototype.avatarUrl = function (id, v) { return v ? '/api/avatar?id=' + encodeURIComponent(id) + '&v=' + v : ''; };
   ServerApi.prototype.friends = function () { return this.req('GET', '/api/friends'); };
@@ -8338,7 +8372,7 @@ var Net = (function () {
       '<div class="row" style="margin-top:8px"><button class="btn sm" data-act="guide">플레이 가이드 열기</button></div></details>';
   }
   /* ── 사이트 설정 (이 브라우저에 기억: 글씨 크기·소리·알림) ── */
-  var PREF = { theme: 'auto', themeV: 0, paper: true, tutDone: 0, tutV: {}, hideCh: {}, font: 1, sfxVol: 0.7, sfxOff: {}, notify: false, nt: { lec: true, exp: true, res: true, disp: true, jar: false } };
+  var PREF = { theme: 'auto', themeV: 0, paper: true, tutDone: 0, tutV: {}, hideCh: {}, font: 1, sfxVol: 0.7, sfxOff: {}, notify: false, push: false, quiet: true, pushKey: '', nt: { lec: true, exp: true, res: true, disp: true, jar: false } };
   try { var pf = JSON.parse(localStorage.getItem('arc_pref') || 'null'); if (pf) { for (var pk in PREF) if (pf[pk] != null) PREF[pk] = pf[pk]; } } catch (e) { }
   // 예전 기본값(밤하늘)이 그냥 저장돼 있던 기기는 「기기 설정 따라」로 옮긴다 (직접 고른 다른 테마는 그대로)
   if (!PREF.themeV) { if (PREF.theme === 'night') PREF.theme = 'auto'; PREF.themeV = 2; }
@@ -8423,7 +8457,7 @@ var Net = (function () {
     h += '<div class="setsec"><div class="section-t">알림</div>' +
       '<label class="tog"><input type="checkbox" id="opt-notify" data-act="notify"' + (PREF.notify && perm === 'granted' ? ' checked' : '') + (perm === 'none' ? ' disabled' : '') + '> 창을 내려 두었거나 다른 탭을 보고 있을 때 작업이 끝나면 알림</label>' +
       (perm === 'none' ? '<p class="tiny faint">이 브라우저(또는 이 화면)에서는 알림을 쓸 수 없습니다.</p>' : perm === 'denied' ? '<p class="tiny bad">브라우저에서 알림이 막혀 있습니다. 주소창 좌측의 사이트 설정에서 알림을 허용해야 합니다.</p>' : '') +
-      '<div class="sfxlist' + (PREF.notify ? '' : ' off') + '">' + [['lec', '수업'], ['exp', '원정'], ['res', '연구'], ['disp', '사역마 파견'], ['jar', '정령 병이 가득 참'], ['sky', '하늘 이벤트 시작'], ['auc', '떠돌이 상인 도착']].map(function (t) { return '<label class="tog"><input type="checkbox" data-act="ntone" data-a="' + t[0] + '"' + (PREF.nt[t[0]] ? ' checked' : '') + '> ' + t[1] + '</label>'; }).join('') + '</div></div>';
+      pushRow() + '<div class="sfxlist' + (PREF.notify || PREF.push ? '' : ' off') + '">' + [['lec', '수업'], ['exp', '원정'], ['res', '연구'], ['disp', '사역마 파견'], ['jar', '정령 병이 가득 참'], ['sky', '하늘 이벤트 시작'], ['auc', '떠돌이 상인 도착']].map(function (t) { return '<label class="tog"><input type="checkbox" data-act="ntone" data-a="' + t[0] + '"' + (PREF.nt[t[0]] ? ' checked' : '') + '> ' + t[1] + '</label>'; }).join('') + '</div></div>';
     h += '<div class="setsec"><div class="section-t">채팅</div><label class="tog"><input type="checkbox" id="opt-hmt" data-act="opt" data-a="hideMyTitle"' + (P.opt.hideMyTitle ? ' checked' : '') + '> 채팅에서 내 칭호 숨기기</label>' +
       '<label class="tog"><input type="checkbox" id="opt-hot" data-act="opt" data-a="hideOtherTitle"' + (P.opt.hideOtherTitle ? ' checked' : '') + '> 채팅에서 다른 학생 칭호 숨기기</label><p class="tiny faint">정보창에는 칭호가 그대로 보입니다.</p></div>';
     h += '<div class="setsec"><div class="section-t">게임</div><label class="tog"><input type="checkbox" id="opt-ae2" data-act="opt" data-a="autoEquip"' + (P.opt.autoEquip ? ' checked' : '') + '> 더 좋은 장비 자동 장착</label>' +
@@ -8442,7 +8476,42 @@ var Net = (function () {
   ACT.sfxone = function (k, b, el) { if (el.checked) delete PREF.sfxOff[k]; else PREF.sfxOff[k] = true; savePref(); applyPref(); if (el.checked && S.P.opt.sound) Snd.play(k); };
   ACT.bgm = function (a, b, el) { Bgm.set(el.checked); bgmScene(); };
   ACT.bgmbg = function (a, b, el) { Bgm.setBg(el.checked); };
-  ACT.ntone = function (k, b, el) { PREF.nt[k] = el.checked; savePref(); scheduleNotify(); };
+  ACT.ntone = function (k, b, el) { PREF.nt[k] = el.checked; savePref(); scheduleNotify(); pushSync(); };
+  /* ── 푸시 알림: 게임을 닫아 두어도 서버가 기기로 보낸다 (서버판 · 지원하는 브라우저만) ── */
+  function pushOk() { return API.mode === 'server' && 'serviceWorker' in navigator && 'PushManager' in window && typeof Notification !== 'undefined'; }
+  function pushOpts() { var k = {}; R.NOTIFY_KINDS.forEach(function (x) { if (PREF.nt[x[0]]) k[x[0]] = 1; }); return { kinds: k, quiet: PREF.quiet !== false }; }
+  function b64key(s) { var p = '='.repeat((4 - s.length % 4) % 4), raw = atob((s + p).replace(/-/g, '+').replace(/_/g, '/')), a = new Uint8Array(raw.length); for (var i = 0; i < raw.length; i++) a[i] = raw.charCodeAt(i); return a; }
+  function pushReg() { return navigator.serviceWorker.ready; }
+  // 켜 두었으면 이 기기 등록을 서버와 맞춘다 (접속할 때 · 알림 종류를 바꿀 때). 등록이 사라졌으면 다시 만든다
+  function pushSync() {
+    if (!PREF.push || !pushOk() || Notification.permission !== 'granted') return Promise.resolve(false);
+    // 서버 열쇠가 바뀌었으면(서버를 새로 만든 경우 등) 예전 등록을 지우고 새 열쇠로 다시 등록한다
+    return Promise.all([pushReg(), API.pushKey()]).then(function (r) {
+      var reg = r[0], key = r[1].key; if (!key) throw new Error('no key');
+      return reg.pushManager.getSubscription().then(function (s) { return s && PREF.pushKey !== key ? s.unsubscribe().then(function () { return null; }) : s; })
+        .then(function (s) { return s || reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64key(key) }); })
+        .then(function (s) { PREF.pushKey = key; savePref(); return s; });
+    })
+      .then(function (s) { return API.pushSub(s.toJSON(), pushOpts()); }).then(function (j) { return !j.error; }, function () { return false; });
+  }
+  function pushRow() {
+    if (API.mode !== 'server') return '';
+    if (!pushOk()) return '<p class="tiny faint">이 브라우저에서는 푸시 알림(게임을 닫아 두어도 받는 알림)을 쓸 수 없습니다.</p>';
+    var ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    return '<label class="tog"><input type="checkbox" data-act="pushtog"' + (PREF.push ? ' checked' : '') + '> 푸시 알림 · 게임을 닫아 두어도 받기</label>' +
+      (ios && !PWA.standalone ? '<p class="tiny faint">아이폰 · 아이패드는 홈 화면에 추가한 앱에서만 푸시 알림을 받을 수 있습니다.</p>' : '') +
+      '<label class="tog"><input type="checkbox" data-act="quiettog"' + (PREF.quiet !== false ? ' checked' : '') + (PREF.push ? '' : ' disabled') + '> 방해 금지 시간 (밤 11시~오전 8시) · 그동안 끝난 일은 아침에 한 번에</label>' +
+      '<p class="tiny faint">몇 분 안에 함께 끝난 일은 알림 한 건으로 묶어 보냅니다. 받을 종류는 아래에서 고릅니다.</p>';
+  }
+  ACT.pushtog = function (a, b, el) {
+    if (!el.checked) { PREF.push = false; savePref(); pushReg().then(function (reg) { return reg.pushManager.getSubscription(); }).then(function (s) { if (s) { API.pushUnsub(s.endpoint); return s.unsubscribe(); } }).catch(function () { }); scheduleNotify(); ACT.settings(); return; }
+    Notification.requestPermission().then(function (p) {
+      if (p !== 'granted') { toast('푸시 알림', '브라우저에서 알림을 허용해야 합니다'); ACT.settings(); return; }
+      PREF.push = true; savePref();
+      pushSync().then(function (ok) { if (!ok) { PREF.push = false; savePref(); toast('푸시 알림', '이 기기를 등록하지 못했습니다. 잠시 뒤 다시 시도'); } else toast('푸시 알림', '켰습니다. 게임을 닫아 두어도 작업이 끝나면 알려 드립니다'); scheduleNotify(); ACT.settings(); });
+    }, function () { ACT.settings(); });
+  };
+  ACT.quiettog = function (a, b, el) { PREF.quiet = el.checked; savePref(); pushSync(); };
   ACT.notify = function (a, b, el) {
     if (!el.checked) { PREF.notify = false; savePref(); scheduleNotify(); ACT.settings(); return; }
     if (typeof Notification === 'undefined') return;
@@ -8452,7 +8521,7 @@ var Net = (function () {
   var nTimers = {};
   function scheduleNotify() {
     var want = {}, P = S.P;
-    if (P && PREF.notify && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+    if (P && PREF.notify && !PREF.push && typeof Notification !== 'undefined' && Notification.permission === 'granted') {   // 푸시를 켜 두면 서버가 알린다
       var add = function (key, kind, end, title, body) { if (PREF.nt[kind] && end > now()) want[key] = { end: end, title: title, body: body }; };
       P.lec.forEach(function (j, i) { if (j) add('lec' + i + ':' + j.end, 'lec', j.end, '수업이 끝났습니다', R.SUBJ[j.s].name + ' · 다음 수업 시작 가능'); });
       P.exp.forEach(function (j, i) { if (j) add('exp' + i + ':' + j.end, 'exp', j.end, '원정대가 돌아왔습니다', j.s + '단계 ' + R.zoneOf(j.s).name); });
@@ -8955,7 +9024,7 @@ var Net = (function () {
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026101963;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026101964;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
@@ -9045,7 +9114,7 @@ var Net = (function () {
 
   /* ───────── 시작 · 반복 ───────── */
   var loopT = 0, liveT = 0;
-  function start() { shell(); renderNav(); watchNav(); render(); renderDock(); document.body.classList.toggle('dock-open', dockOpen()); updateMeBadge(); Snd.on = !!(S.P.opt && S.P.opt.sound); if (!loopT) loopT = setInterval(loop, 250); chatConnect(); loadMe(); }
+  function start() { shell(); renderNav(); watchNav(); render(); renderDock(); document.body.classList.toggle('dock-open', dockOpen()); updateMeBadge(); setTimeout(pushSync, 3000); Snd.on = !!(S.P.opt && S.P.opt.sound); if (!loopT) loopT = setInterval(loop, 250); chatConnect(); loadMe(); }
   function stopLoop() { if (loopT) { clearInterval(loopT); loopT = 0; } Bgm.want(null, now()); }
   // 원정·시험·토벌 화면은 전투곡, 나머지는 광장곡
   var BATTLE_VIEWS = { explore: 1, exam: 1, world: 1 };

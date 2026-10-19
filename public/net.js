@@ -78,6 +78,10 @@ var Net = (function () {
   ServerApi.prototype.chatReport = function (id, reason) { return this.req('POST', '/api/chat/report', { id: id, reason: reason }); };
   ServerApi.prototype.profile = function (id) { return this.req('GET', '/api/profile' + (id ? '?id=' + encodeURIComponent(id) : '')); };
   ServerApi.prototype.saveProfile = function (o) { return this.req('POST', '/api/profile', o); };
+  // 푸시 알림: 서버 공개 열쇠 받기 · 이 기기 등록/해제
+  ServerApi.prototype.pushKey = function () { return this.req('GET', '/api/push/key'); };
+  ServerApi.prototype.pushSub = function (sub, opts) { return this.req('POST', '/api/push/sub', { sub: sub, opts: opts }); };
+  ServerApi.prototype.pushUnsub = function (endpoint) { return this.req('POST', '/api/push/unsub', { endpoint: endpoint }); };
   ServerApi.prototype.setAvatar = function (dataUrl) { return this.req('POST', '/api/avatar', { img: dataUrl }); };
   ServerApi.prototype.avatarUrl = function (id, v) { return v ? '/api/avatar?id=' + encodeURIComponent(id) + '&v=' + v : ''; };
   ServerApi.prototype.friends = function () { return this.req('GET', '/api/friends'); };
