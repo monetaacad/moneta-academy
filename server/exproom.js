@@ -1,15 +1,16 @@
 'use strict';
-// 함께 원정 방: 서버 메모리에만 둔다 (서버를 다시 켜면 열려 있던 방은 사라지고, 이미 떠난 원정은 각자 상태에 남아 있다).
+// 함께 원정 방: 서버 메모리에 두고 10초마다(바뀌었을 때만) · 끌 때 DB에 적어 둔다. 서버를 다시 켜도(새 버전 배포) 방이 그대로 이어진다.
 // 방장이 「지금 출발」을 누르면 떠난다(혼자여도 됨). 4명이 차면 15초 뒤 저절로 떠난다.
-// 사람이 안 모이면 방장이 아카데미 친구(NPC)를 동행시킬 수 있다. 30분 동안 아무도 출발시키지 않은 방은 닫힌다.
+// 사람이 안 모이면 방장이 아카데미 친구(NPC)를 동행시킬 수 있다. 방 사람이 모두 접속을 끊은 채 2시간이 지나면 방이 닫힌다.
 const R = require('../shared/rules.js');
 
-const FULL_WAIT = 15, IDLE = 1800, MAX_ROOMS = 80, NPC_F = R.NPC_FRAC.exp;
+const FULL_WAIT = 15, IDLE = 7200, MAX_ROOMS = 80, NPC_F = R.NPC_FRAC.exp;
 
 function create(o) {
   const { loadPlayer, ctx, gameNow, markDirty, partyOf, log } = o;
   const recruitPost = o.recruit || (() => {}), canInvite = o.canInvite || (() => false), nameOf = o.nameOf || (() => '');
-  const partyInfo = o.partyInfo || (() => null);
+  const partyInfo = o.partyInfo || (() => null), isOnline = o.isOnline || (() => false);
+  const save = o.save || null, load = o.load || null;
   const invites = new Map();      // pid → [{room, from, at}] (10분 동안, 최대 20개)
   const rooms = new Map();        // id → room
   const roomOf = new Map();       // pid → room id
@@ -186,17 +187,33 @@ function create(o) {
     log(`함께 원정 출발: ${r.s}단계 ${people(r).length}명 + 동행 ${r.members.length - people(r).length}`);
     return { n: r.members.length };
   }
-  let lastTick = 0;
+  let lastTick = 0, lastSave = 0, savedJson = '';
   function tick() {
     const t = real(); if (t - lastTick < 1) return; lastTick = t;
     [...rooms.values()].forEach((r) => {
+      if (people(r).some((m) => isOnline(m.id))) r.touched = t;   // 누구든 접속해 있으면 방을 열어 둔다
       if (r.fullAt && t >= r.fullAt + FULL_WAIT) { try { depart(r); } catch (e) { log('함께 원정 출발 실패: ' + e.message); } return; }
-      if (t - r.touched > IDLE) { rooms.delete(r.id); people(r).forEach((m) => { roomDel(m.id); gone.set(m.id, { at: t, ok: false, why: '30분 동안 출발하지 않아 방이 닫혔습니다', s: r.s }); }); }
+      if (t - r.touched > IDLE) { rooms.delete(r.id); people(r).forEach((m) => { roomDel(m.id); gone.set(m.id, { at: t, ok: false, why: '방 사람이 모두 2시간 넘게 접속하지 않아 방이 닫혔습니다', s: r.s }); }); }
     });
     gone.forEach((g, pid) => { if (t - g.at > 600) gone.delete(pid); });
+    if (t - lastSave >= 10) { lastSave = t; persist(); }
   }
+  // 저장 · 되살리기 (방 · 받은 초대 · 방 번호)
+  function persist() {
+    if (!save) return; const json = JSON.stringify({ seq, rooms: [...rooms.values()], invites: [...invites] });
+    if (json === savedJson) return; savedJson = json; try { save(json); } catch (e) { log('함께 원정 방 저장 실패', e); }
+  }
+  if (load) try {
+    const x = JSON.parse(load() || 'null'), t = real();
+    if (x) {
+      seq = Math.max(seq, x.seq || 1);
+      (x.rooms || []).forEach((r) => { if (!r || !r.id || !Array.isArray(r.members) || !people(r).length) return; r.touched = t; if (r.fullAt) r.fullAt = t; rooms.set(r.id, r); people(r).forEach((m) => roomOf.set(m.id, r.id)); });   // 꺼져 있던 동안은 세지 않는다
+      (x.invites || []).forEach((e) => { if (Array.isArray(e) && Array.isArray(e[1])) invites.set(e[0], e[1].filter((v) => rooms.has(v.room))); });
+      if (rooms.size) log('함께 원정 방 ' + rooms.size + '개를 되살렸습니다');
+    }
+  } catch (e) { log('함께 원정 방 되살리기 실패', e); }
   // 원정 채팅 열쇠: 방 번호는 서버를 켤 때마다 1부터라 예전 방 대화와 겹치지 않게 만든 시각을 붙인다
   function chatKey(pid) { const r = rooms.get(roomOf.get(pid)); if (!r) return null; if (!r.ck) r.ck = Date.now().toString(36) + '-' + r.id; return r.ck; }
-  return { inRoom: (pid) => roomOf.has(pid), chatKey, list, op, tick, peek, forget: (pid) => { leaveAny(pid); invites.delete(pid); }, invN: (pid) => myInvites(pid).length, size: () => rooms.size };
+  return { inRoom: (pid) => roomOf.has(pid), chatKey, persist: () => { savedJson = ''; persist(); }, list, op, tick, peek, forget: (pid) => { leaveAny(pid); invites.delete(pid); }, invN: (pid) => myInvites(pid).length, size: () => rooms.size };
 }
 module.exports = { create };

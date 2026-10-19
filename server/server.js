@@ -102,6 +102,7 @@ const board = Board.create(dbx, sec, { isOp: (pid) => pid !== 'staff' && isChatO
 const ExpRoom = require('./exproom.js');
 const exprooms = ExpRoom.create({ loadPlayer: (pid, now) => loadPlayer(pid, now), ctx: () => world.ctx(nowSec()), gameNow: () => nowSec(), markDirty: (pid) => store.markDirty(pid), partyOf, log,
   onRoom: (pid) => chat.exrChanged(pid),   // 방 출입 → 원정 채팅 탭
+  isOnline: (pid) => isOnline(pid), save: (json) => dbx.kvSet('exprooms', json), load: () => dbx.kvGet('exprooms', null),   // 다시 켜도 방이 이어진다
   recruit: (P, data) => chat.recruit(P, data, Date.now() / 1000),
   note: (...a) => addNote(...a),
   partyInfo: (pid) => { const id = partyOf.get(pid); if (!id) return null; const pa = dbx.q.partyGet.get(id); if (!pa) return null; return { id, leader: pa.leader, allgo: !!pa.allgo, members: dbx.q.partyMembers.all(id).map((m) => m.id) }; },
@@ -1761,7 +1762,7 @@ function shutdown(sig) {
   try { chat.closeAll(); } catch (e) { }
   server.close();
   // 학생 상태 · 월드 보스 체력 · 소식/공지 · 채팅 글 번호를 모두 DB에 쓴 뒤 닫는다 (경매·거래소·채팅 글은 이미 DB에 바로 기록됨)
-  try { store.flushAll(); world.tick(nowSec()); world.saveAll(); chat.saveSeq(); } catch (e) { log('종료 중 저장 오류', e); }
+  try { store.flushAll(); world.tick(nowSec()); world.saveAll(); chat.saveSeq(); exprooms.persist(); } catch (e) { log('종료 중 저장 오류', e); }
   try { dbx.close(); } catch (e) { log('종료 중 오류', e); }
   process.exit(0);
 }
