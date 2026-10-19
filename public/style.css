@@ -781,8 +781,8 @@ body.dock-open .top-row { max-width: 1640px; }
 .buffpill.sky { border-color: rgba(159, 216, 255, .5); }
 .auclot.mine { border-color: var(--verd); }
 #skyfx { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
-#skyfx.fx-meteor i { position: absolute; width: 120px; height: 2px; background: linear-gradient(90deg, rgba(255, 240, 190, 0), #fff4c8); border-radius: 2px; transform: rotate(-30deg); opacity: 0; animation: meteor 4.5s linear infinite; }
-@keyframes meteor { 0% { opacity: 0; translate: 0 0; } 8% { opacity: 1; } 30% { opacity: 0; translate: -260px 150px; } 100% { opacity: 0; translate: -260px 150px; } }
+#skyfx.fx-meteor i { position: absolute; width: 120px; height: 2px; background: linear-gradient(90deg, rgba(255, 240, 190, 0), #fff4c8); border-radius: 2px; transform: rotate(30deg); opacity: 0; animation: meteor 4.5s linear infinite; }   /* 「\」 모양, 밝은 머리가 우측 아래 */
+@keyframes meteor { 0% { opacity: 0; translate: 0 0; } 8% { opacity: 1; } 30% { opacity: 0; translate: 260px 150px; } 100% { opacity: 0; translate: 260px 150px; } }   /* 우측 아래로 떨어진다 */
 #skyfx.fx-aurora b { position: absolute; left: -10%; right: -10%; top: 4%; height: 26vh; background: linear-gradient(90deg, rgba(110, 240, 190, 0), rgba(110, 240, 190, .16), rgba(150, 170, 255, .14), rgba(110, 240, 190, 0)); filter: blur(18px); animation: aurora 14s ease-in-out infinite alternate; }
 #skyfx.fx-aurora b + b { top: 12%; animation-duration: 19s; opacity: .7; }
 @keyframes aurora { from { transform: translateX(-6%) skewY(-3deg); } to { transform: translateX(6%) skewY(3deg); } }
@@ -1350,7 +1350,7 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 @keyframes scfly { to { transform: translate(8px, -10px); } }
 .scene .cloud { animation: sccl 60s linear infinite alternate; }
 @keyframes sccl { to { transform: translateX(40px); } }
-@keyframes scmet { 0% { transform: translate(0, 0); opacity: 0; } 10% { opacity: 1; } 60% { transform: translate(-60px, 40px); opacity: 0; } 100% { opacity: 0; } }
+@keyframes scmet { 0% { transform: translate(0, 0); opacity: 0; } 10% { opacity: 1; } 60% { transform: translate(75px, 40px); opacity: 0; } 100% { opacity: 0; } }   /* 광장 풍경: 줄의 기울기대로 우측 아래로 */
 @keyframes scaur { from { opacity: .55; transform: translateX(-4px); } to { opacity: 1; transform: translateX(4px); } }
 @keyframes scwh { from { transform: translate(-110px, 58px); } to { transform: translate(620px, 44px); } }
 @keyframes scfam { from { transform: translate(78px, 142px); } to { transform: translate(126px, 150px); } }
