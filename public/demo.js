@@ -355,10 +355,10 @@
     else {
       var g = gFix(so.guild), role = g.role, staff = role === 'owner' || role === 'officer', can = function (p) { return Rules.guildCan(g.ranks, role, g.myRank, p); };
       var k = o.pid ? +String(o.pid).slice(4) : -1, tr = k >= 0 ? (g.nr[k] || (g.nr[k] = {})) : null, tRole = tr ? (tr.role || 'member') : null;
-      if (o.op === 'leave') { if (role === 'owner' && g.npcs.length) return fail('부원이 있으면 회장은 나갈 수 없습니다. 먼저 회장 위임 필요'); if (role === 'owner') return fail('혼자 남은 회장은 「동아리 닫기」로 정리 필요'); so.guild = null; so.chat.grp = []; so.chat.gooc = []; P.guildLv = 0; this._emitGroup('guild'); this._save(); return Promise.resolve({ ok: true, guild: null }); }
+      if (o.op === 'leave') { if (role === 'owner' && g.npcs.length) return fail('부원이 있으면 회장은 나갈 수 없습니다. 먼저 회장 위임 필요'); if (role === 'owner') return fail('혼자 남은 회장은 「동아리 해체」로 정리 필요'); so.guild = null; so.chat.grp = []; so.chat.gooc = []; P.guildLv = 0; this._emitGroup('guild'); this._save(); return Promise.resolve({ ok: true, guild: null }); }
       if (o.op === 'disband') {
-        if (role !== 'owner') return fail('회장만 동아리를 닫을 수 있습니다'); if (g.npcs.length) return fail('부원이 남아 있으면 닫을 수 없습니다. 회장을 넘기거나 모두 나간 뒤에 닫기 가능');
-        var its = g.items.map(function (x) { return x.item; }); for (var i = 0; i < Math.max(its.length, g.gold > 0 ? 1 : 0); i += 10) this._sendMail('동아리', '「' + g.name + '」 창고 정리', '동아리를 닫아 창고에 남아 있던 것을 돌려드립니다.', { gold: i === 0 ? Math.floor(g.gold) : 0, items: its.slice(i, i + 10) }, 30);
+        if (role !== 'owner') return fail('회장만 동아리를 해체할 수 있습니다'); if (g.npcs.length) return fail('다른 부원이 있으면 동아리를 해체할 수 없습니다. 모두 내보낸 뒤에 해체 가능');
+        var its = g.items.map(function (x) { return x.item; }); for (var i = 0; i < Math.max(its.length, g.gold > 0 ? 1 : 0); i += 10) this._sendMail('동아리', '「' + g.name + '」 창고 정리', '동아리를 해체해 창고에 남아 있던 것을 돌려드립니다.', { gold: i === 0 ? Math.floor(g.gold) : 0, items: its.slice(i, i + 10) }, 30);
         so.guild = null; so.chat.grp = []; so.chat.gooc = []; P.guildLv = 0; this._emitGroup('guild'); this._save(); return Promise.resolve({ ok: true, guild: null });
       }
       if (o.op === 'edit') { if (!can('notice')) return fail('공지·소개를 고칠 권한이 없습니다'); if (o.intro !== undefined) g.intro = String(o.intro).slice(0, 300); if (o.notice !== undefined) { var nn = String(o.notice).slice(0, 300); if (nn && nn !== g.notice) this._sys('grp', '동아리 공지: ' + nn); g.notice = nn; } if (staff && o.color) g.color = o.color; if (staff && o.mode) g.mode = o.mode; }

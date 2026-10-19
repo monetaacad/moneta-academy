@@ -1359,10 +1359,10 @@ function gXp(gid, x) {
     guildOf.forEach((g2, pid) => { if (g2 === gid) { const P = store.peek(pid); if (P && setGuildLv(P)) store.markDirty(pid); } }); }
   return ups;
 }
-// 동아리를 닫을 때 창고에 남은 것은 회장에게 우편으로 돌려준다
+// 동아리를 해체할 때 창고에 남은 것은 회장에게 우편으로 돌려준다
 function gReturnStorage(gid, owner, gname) {
   const g = dbx.q.gGet.get(gid), items = dbx.q.giList.all(gid).map((r) => JSON.parse(r.data)), gold = Math.floor((g && g.gold) || 0);
-  for (let i = 0; i < Math.max(items.length, gold > 0 ? 1 : 0); i += 10) sendMail(owner, '동아리', '「' + gname + '」 창고 정리', '동아리를 닫아 창고에 남아 있던 것을 돌려드립니다.', { gold: i === 0 ? gold : 0, items: items.slice(i, i + 10) }, Date.now() / 1000 + 30 * 86400);
+  for (let i = 0; i < Math.max(items.length, gold > 0 ? 1 : 0); i += 10) sendMail(owner, '동아리', '「' + gname + '」 창고 정리', '동아리를 해체해 창고에 남아 있던 것을 돌려드립니다.', { gold: i === 0 ? gold : 0, items: items.slice(i, i + 10) }, Date.now() / 1000 + 30 * 86400);
 }
 routes['GET /api/guilds'] = (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
@@ -1472,7 +1472,7 @@ routes['POST /api/guild'] = async (req, res) => {
   }
   if (op === 'leave') {
     if (role === 'owner' && gCount(mine) > 1) return fail(req, res, 400, '부원이 있으면 회장은 나갈 수 없습니다. 먼저 회장 위임 필요');
-    if (role === 'owner') return fail(req, res, 400, '혼자 남은 회장은 「동아리 닫기」로 정리 필요');
+    if (role === 'owner') return fail(req, res, 400, '혼자 남은 회장은 「동아리 해체」로 정리 필요');
     gLeave(me); gSys(mine, P.name + ' 님이 동아리에서 나갔습니다.'); gLog(mine, P.name + ' 님 탈퇴');
     return send(req, res, 200, { ok: true, guild: null });
   }
@@ -1523,8 +1523,8 @@ routes['POST /api/guild'] = async (req, res) => {
     return ok();
   }
   if (op === 'disband') {
-    if (role !== 'owner') return fail(req, res, 403, '회장만 동아리를 닫을 수 있습니다');
-    if (gCount(mine) > 1) return fail(req, res, 400, '부원이 남아 있으면 닫을 수 없습니다. 회장을 넘기거나 모두 나간 뒤에 닫기 가능');
+    if (role !== 'owner') return fail(req, res, 403, '회장만 동아리를 해체할 수 있습니다');
+    if (gCount(mine) > 1) return fail(req, res, 400, '다른 부원이 있으면 동아리를 해체할 수 없습니다. 모두 내보낸 뒤에 해체 가능');
     gReturnStorage(mine, me, g.name);
     gRankCache.at = 0; dbx.tx(() => { dbx.q.gDelMembers.run(mine); dbx.q.gDelete.run(mine); dbx.q.gAppDelGuild.run(mine); dbx.q.giDelGuild.run(mine); dbx.q.glDelGuild.run(mine); dbx.q.ginvDelGuild.run(mine); });
     guildOf.delete(me); guildRole.delete(me); guildLv.delete(mine); chat.guildChanged(me); chat.dropGuild(mine); if (setGuildLv(P)) store.markDirty(me);
