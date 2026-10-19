@@ -152,7 +152,7 @@
     (P.lec || []).forEach(function (j, i) { if (j) add('lec' + i + ':' + j.end, 'lec', j.end, '수업이 끝났습니다', (R.SUBJ[j.s] ? R.SUBJ[j.s].name : '수업') + ' · 다음 수업 시작 가능'); });
     (P.exp || []).forEach(function (j, i) { if (j) add('exp' + i + ':' + j.end, 'exp', R.expEnd(j), '원정대가 돌아왔습니다', j.s + '단계 ' + R.zoneOf(j.s).name + ' · 원정 완료 가능'); });
     (P.rsq || []).forEach(function (q, i) { if (q && RES[q.id]) add('res' + i + ':' + q.end, 'res', q.end, '연구가 끝났습니다', RES[q.id].name + ' ' + (((P.rs || {})[q.id] || 0) + 1) + '단계'); });
-    var disp = (P.fam && P.fam.disp) || {}; for (var f in disp) if (FAM[f]) add('disp' + f + ':' + disp[f].end, 'disp', disp[f].end, FAM[f].name + '이(가) 돌아왔습니다', '사역마 파견 완료');
+    var disp = (P.fam && P.fam.disp) || {}; for (var f in disp) if (FAM[f]) add('disp' + f + ':' + disp[f].end, 'disp', disp[f].end, R.josa(FAM[f].name, '이', '가') + ' 돌아왔습니다', '사역마 파견 완료');
     var sp = P.spirit || { n: 0, at: now }, n = sp.n || 0, at = sp.at || now, k = Math.floor((now - at) / K.SPIRIT_EVERY);
     if (k > 0) { n = Math.min(K.SPIRIT_JAR, n + k); at += k * K.SPIRIT_EVERY; }
     if (n < K.SPIRIT_JAR) { var full = at + (K.SPIRIT_JAR - n) * K.SPIRIT_EVERY; add('jar:' + Math.round(full), 'jar', full, '반딧불 정령 병이 가득 찼습니다', '접속해 풀어 줄 수 있습니다'); }
@@ -184,7 +184,7 @@
     if (P.cls === 'spellblade') P.cls = 'knight';   // 마검사 학과는 없어졌다 (기사 + 일반 주문 = 마검사)
     // 물리/주문 공격력 분리 (BUILD 17): 기사는 공격 능력치가 지력 → 체력으로 바뀌어 포인트를 한 번 돌려준다
     // 슬롯 늘리기 연구 폐지 (BUILD 30): 이미 쌓은 단계의 마나 · 지식을 돌려준다
-    if (!P.slotV && P.rs && P.res) { P.slotV = 1; var back = { mana: 0, know: 0 }; D.RESEARCH.forEach(function (r) { if (!r.gone) return; var L = P.rs[r.id] || 0; for (var lv = 0; lv < L; lv++) { var c0 = R.resCost(P, r.id, lv); back.mana += c0.mana; back.know += c0.know; } if (L) delete P.rs[r.id]; }); if (back.mana || back.know) { P.res.mana += back.mana; P.res.know += back.know; if (P.log) log(P, P.at || 0, '수업 · 원정 · 연구가 한 자리씩으로 바뀌어, 슬롯을 늘리던 연구의 마나 ' + R.fmt(back.mana) + ' · 지식 ' + R.fmt(back.know) + '을(를) 돌려드렸습니다.', 'news'); } }
+    if (!P.slotV && P.rs && P.res) { P.slotV = 1; var back = { mana: 0, know: 0 }; D.RESEARCH.forEach(function (r) { if (!r.gone) return; var L = P.rs[r.id] || 0; for (var lv = 0; lv < L; lv++) { var c0 = R.resCost(P, r.id, lv); back.mana += c0.mana; back.know += c0.know; } if (L) delete P.rs[r.id]; }); if (back.mana || back.know) { P.res.mana += back.mana; P.res.know += back.know; if (P.log) log(P, P.at || 0, '수업 · 원정 · 연구가 한 자리씩으로 바뀌어, 슬롯을 늘리던 연구의 마나 ' + R.fmt(back.mana) + ' · 지식 ' + R.josa(R.fmt(back.know), '을', '를') + ' 돌려드렸습니다.', 'news'); } }
     if (!P.physV) { P.physV = 1; if (P.cls === 'knight' && P.alloc && P.log && (P.alloc.int || 0) > 0 && allocReset(P, 'knight')) log(P, P.at || 0, '기사의 공격력이 지력 대신 체력을 따르게 바뀌어 능력치 포인트를 모두 돌려드렸습니다.', 'news'); }
     D.SUBJECTS.forEach(function (s) { if (!P.subj[s.id]) P.subj[s.id] = { lv: 0, xp: 0 }; });
     delete P.quizCd; delete P.pq; delete P.qRecent; if (P.st) delete P.st.quizCorrect;
@@ -764,9 +764,9 @@
   // 휘장 받기: 처음 받으면 바로 단다. 보관함이 가득하면 마석가루로 바꿔 준다
   function gainBadge(P, b, t, why) {
     if (!P.badges) P.badges = [];
-    if (P.badges.length >= R.BADGE_HOLD) { var d = R.badgeBreakDust(b); P.res.dust = (P.res.dust || 0) + d; log(P, t, '휘장 보관함이 가득해 ' + b.name + '을(를) 마석가루 ' + d + '개로 바꿨습니다', 'news'); return 'dust'; }
+    if (P.badges.length >= R.BADGE_HOLD) { var d = R.badgeBreakDust(b); P.res.dust = (P.res.dust || 0) + d; log(P, t, '휘장 보관함이 가득해 ' + R.josa(b.name, '을', '를') + ' 마석가루 ' + d + '개로 바꿨습니다', 'news'); return 'dust'; }
     P.badges.push(b); if (!R.badgeWorn(P)) P.badgeOn = b.u;
-    log(P, t, (why ? why + ': ' : '') + b.name + '을(를) 받았습니다', 'legend'); return 'got';
+    log(P, t, (why ? why + ': ' : '') + R.josa(b.name, '을', '를') + ' 받았습니다', 'legend'); return 'got';
   }
   R.gainBadge = gainBadge;
   // 별빛: 달고 있는 휘장만 모은다
@@ -939,6 +939,15 @@
   // 칭호
   // 운영 등급: P.op (서버가 정한다. 1 학생회 · 2 학생회장). 운영진 칭호는 등급이 맞는 학생에게만 보이고 낄 수 있다
   function opLv(P) { return P && P.op ? (P.op >= 2 ? 2 : 1) : 0; }
+  // 조사: 앞말 끝소리(받침)에 맞춰 붙인다. a = 받침 있을 때(을 · 이 · 은 · 과 · 으로), b = 없을 때. 숫자 · 영문 · 닫는 괄호도 읽는 소리대로
+  R.josa = function (w, a, b) {
+    w = String(w == null ? '' : w); var s = w.replace(/[\s」』)\]"'.,!?·]+$/, '').replace(/,/g, ''), c = s.charCodeAt(s.length - 1), jong = 0;
+    if (c >= 0xAC00 && c <= 0xD7A3) jong = (c - 0xAC00) % 28;
+    else if (/[0-9]$/.test(s)) { var z = (/0+$/.exec(s) || [''])[0].length; jong = s === '0' ? 21 : z === 0 ? [21, 8, 0, 16, 0, 0, 1, 8, 8, 0][+s.slice(-1)] : z === 1 ? 17 : z === 2 ? 1 : z === 3 ? 4 : 4; }   // 영 일 이 삼 사 오 육 칠 팔 구 · 십 백 천 만
+    else if (/[lr]$/i.test(s)) jong = 8; else if (/[mn]$/i.test(s)) jong = 4;
+    if (a === '으로') return w + (jong && jong !== 8 ? '으로' : '로');   // ㄹ 받침은 「로」
+    return w + (jong ? a : b);
+  };
   R.titleName = function (P, id) { var t = D.TITLES.find(function (x) { return x.id === id; }); if (!t || t.op && opLv(P) < t.op) return ''; return t.house ? D.HOUSE_TITLE[P.house] || '' : t.name; };
   R.titleList = function (P) { return D.TITLES.filter(function (t) { return !t.op || opLv(P) >= t.op; }); };
   R.OP_TITLES = {}; D.TITLES.forEach(function (t) { if (t.op) R.OP_TITLES[t.name] = t.op; });
@@ -1506,6 +1515,13 @@
   };
   A.autoSell = function (P, W, now, a) { if (!P.rs.sorter) err('분류 마법이 필요합니다'); P.autoSell = int(a.r, -1, 3); return { ok: true }; };
   A.alloc = function (P, W, now, a) { var k = str(a.k), n = int(a.n, 1, 100000); if (STATS.indexOf(k) < 0) err('잘못된 능력치'); n = Math.min(n, P.pts); if (n <= 0) err('남은 포인트가 없습니다'); P.alloc[k] += n; P.pts -= n; return { ok: true }; };
+  // 여러 능력치를 한 번에 (화면에서 나눠 보고 「저장」 → 확인 뒤에 보낸다)
+  A.allocMany = function (P, W, now, a) {
+    var add = a.add || {}, tot = 0, o = {};
+    STATS.forEach(function (k) { var v = add[k] == null ? 0 : int(add[k], 0, 100000); o[k] = v; tot += v; });
+    if (tot <= 0) err('나눌 포인트를 고르세요'); if (tot > P.pts) err('남은 포인트보다 많이 나눌 수 없습니다');
+    STATS.forEach(function (k) { P.alloc[k] += o[k]; }); P.pts -= tot; return { ok: true, n: tot };
+  };
   A.allocW = function (P, W, now, a) {
     var w = a.w || {}, o = {}; STATS.forEach(function (k) { var v = Number(w[k]); o[k] = isFinite(v) ? clamp(v, 0, 10) : 0; });
     P.opt.allocW = o; if (P.opt.autoAlloc) R.autoAlloc(P); return { ok: true };
@@ -1538,7 +1554,7 @@
   A.decoBuy = function (P, W, now, a) {
     var id = str(a.id), x = DECO[id]; if (!x) err('없는 꾸미기입니다'); var d = decoOf(P); if (d.own[id]) err('이미 가지고 있습니다');
     if (P.res.gold < x.price) err(CUR + '가 부족합니다');
-    P.res.gold -= x.price; d.own[id] = 1; d.on[x.slot] = id; log(P, now, '꾸미기 「' + x.name + '」을(를) 샀습니다 (' + R.fmt(x.price) + ' ' + CUR + ')', 'news');
+    P.res.gold -= x.price; d.own[id] = 1; d.on[x.slot] = id; log(P, now, R.josa('꾸미기 「' + x.name + '」', '을', '를') + ' 샀습니다 (' + R.fmt(x.price) + ' ' + CUR + ')', 'news');
     return { ok: true, id: id };
   };
   A.decoSet = function (P, W, now, a) {
@@ -1736,10 +1752,10 @@
   A.title = function (P, W, now, a) { var id = a.id ? str(a.id, 20) : ''; if (id && !R.titleOk(P, id)) err('아직 얻지 못한 칭호입니다'); P.title = id; return { title: R.titleName(P, id) }; };
   A.skyLook = function (P, W, now) {
     var ev = R.skyAt(now); if (!ev) err('지금은 하늘이 조용합니다');
-    if (P.skyLook === ev.key) err('이번 ' + ev.name + '은(는) 이미 올려다봤습니다');
+    if (P.skyLook === ev.key) err('이번 ' + R.josa(ev.name, '은', '는') + ' 이미 올려다봤습니다');
     P.skyLook = ev.key; var c = calc(P, W, now), big = ev.id === 'whale', out = { name: ev.name, shard: ri(P, big ? 3 : 1, big ? 5 : 3), mana: Math.floor(c.mana * (big ? 1800 : 600)) };
     P.res.shard += out.shard; addMana(P, out.mana); cupAdd(P, 10);
-    log(P, now, ev.name + '을(를) 올려다봤습니다 (별조각 +' + out.shard + ')', 'news');
+    log(P, now, R.josa(ev.name, '을', '를') + ' 올려다봤습니다 (별조각 +' + out.shard + ')', 'news');
     return out;
   };
   // 아카데미 휘장: 달기 · 떼기(u 없이) · 닦기(별빛 +) · 깨뜨리기(마석가루로)
@@ -1755,7 +1771,7 @@
   A.badgeBreak = function (P, W, now, a) {
     var b = R.badgeFind(P, str(a.u)); if (!b) err('없는 휘장입니다'); if (b.lock) err('잠긴 휘장입니다'); if (P.badgeOn === b.u) err('달고 있는 휘장은 깨뜨릴 수 없습니다. 먼저 장착 해제 필요');
     var d = R.badgeBreakDust(b); P.badges = P.badges.filter(function (x) { return x !== b; }); P.res.dust = (P.res.dust || 0) + d;
-    log(P, now, b.name + '을(를) 깨뜨려 마석가루 ' + d + '개를 얻었습니다', 'news'); return { dust: d, name: b.name };
+    log(P, now, R.josa(b.name, '을', '를') + ' 깨뜨려 마석가루 ' + d + '개를 얻었습니다', 'news'); return { dust: d, name: b.name };
   };
   A.badgeShine = function (P, W, now, a) {
     var b = R.badgeFind(P, str(a.u)); if (!b) err('없는 휘장입니다'); if (b.lock) err('잠긴 휘장입니다. 잠금을 풀면 광을 낼 수 있습니다');

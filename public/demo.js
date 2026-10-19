@@ -84,7 +84,7 @@
     name = Rules.cleanName(name); if (!Rules.NAME_RE.test(name)) return Promise.resolve({ error: Rules.NAME_RULE });
     if (name === P.name) return Promise.resolve({ error: '지금 이름과 같습니다' });
     var lf = Rules.renameLeft(P, now); if (lf > 0) return Promise.resolve({ error: Rules.fmtTime(lf) + ' 뒤에 바꿀 수 있습니다' });
-    var old = P.name; P.name = name; P.nameAt = now; Rules.log(P, now, '이름을 「' + name + '」(으)로 바꿨습니다', 'news');
+    var old = P.name; P.name = name; P.nameAt = now; Rules.log(P, now, '이름을 ' + Rules.josa('「' + name + '」', '으로', '로') + ' 바꿨습니다', 'news');
     return this._ok(now, { ok: true });
   };
   // 데모 채팅: 아티팩트의 실시간 방(room)이 있으면 같은 페이지를 연 사람끼리, 없으면 이 브라우저 안에서만
@@ -186,7 +186,7 @@
     var W = this._world(now); Rules.advance(P, W, now); var v = this._rit(now), r = this.d.rit;
     if (r.mine) return Promise.resolve({ error: '오늘은 이미 봉헌했습니다' });
     var cost = Rules.ritualCost(P, W, now); if (P.res.mana < cost) return Promise.resolve({ error: '마나가 모자랍니다 (마나 ' + Rules.fmt(cost) + ' 필요)' });
-    P.res.mana -= cost; P.res.shard += 1; r.mine = true; Rules.log(P, now, '별샘 의식에 마나 ' + Rules.fmt(cost) + '을(를) 봉헌했습니다 (별조각 +1)', 'news');
+    P.res.mana -= cost; P.res.shard += 1; r.mine = true; Rules.log(P, now, '별샘 의식에 마나 ' + Rules.josa(Rules.fmt(cost), '을', '를') + ' 봉헌했습니다 (별조각 +1)', 'news');
     if (r.done) Rules.ritualBless(P, now);
     v = this._rit(now);
     if (r.done === now && this._chat && this._chat.h) this._chat.h.msg({ id: 'r' + now, ch: 'notice', t: Date.now() / 1000, pid: 'system', name: '아카데미', house: 'system', grade: 0, kind: 'sys', text: '✦ 오늘의 별샘 의식이 이루어졌습니다! 봉헌한 모두에게 별샘의 축복 — ' + Rules.RITUAL_BUFF.text + '.' });
@@ -296,7 +296,7 @@
     tw.log.forEach(function (l, i) { if (i < tw.log.length - 4) { delete l.sc; delete l.d; } });
     tw.log.push({ t: t0, name: P.name, f: x.f, win: !!r.win, pct: Math.round((1 - r.mHp) * 100), sc: sc.lines, d: sc.d }); if (tw.log.length > 30) tw.log.shift();
     var reward = null, later = function (fn) { setTimeout(fn, after); };
-    if (r.win) { tw.floor = x.f; reward = Rules.towerReward(x.f, x.base); var pn = this._soc().party.name, ff = x.f, fname = x.foe.name; if (Rules.towerClaim(P, now, x.f)) (function () { self._sendMail('별의 탑', '별의 탑 ' + ff + '층 돌파', P.name + ' 님이 파티 「' + pn + '」의 힘을 모아 별의 탑 ' + ff + '층의 ' + fname + '을(를) 쓰러뜨렸습니다.\n그때 파티에 있던 모두에게 보내는 보상입니다.', reward, 7, after); })(); later(function () { self._sys('party', '✦ ' + P.name + ' 님이 별의 탑 ' + ff + '층을 넘었습니다! 파티원 모두에게 보상 우편이 갔습니다.'); }); Rules.log(P, now, '별의 탑 ' + x.f + '층 돌파', 'good'); }
+    if (r.win) { tw.floor = x.f; reward = Rules.towerReward(x.f, x.base); var pn = this._soc().party.name, ff = x.f, fname = x.foe.name; if (Rules.towerClaim(P, now, x.f)) (function () { self._sendMail('별의 탑', '별의 탑 ' + ff + '층 돌파', P.name + ' 님이 파티 「' + pn + '」의 힘을 모아 별의 탑 ' + ff + '층의 ' + Rules.josa(fname, '을', '를') + ' 쓰러뜨렸습니다.\n그때 파티에 있던 모두에게 보내는 보상입니다.', reward, 7, after); })(); later(function () { self._sys('party', '✦ ' + P.name + ' 님이 별의 탑 ' + ff + '층을 넘었습니다! 파티원 모두에게 보상 우편이 갔습니다.'); }); Rules.log(P, now, '별의 탑 ' + x.f + '층 돌파', 'good'); }
     else { var lf = x.f, lp = Math.round((1 - r.mHp) * 100); later(function () { self._sys('party', P.name + ' 님이 별의 탑 ' + lf + '층에 도전했지만 물러났습니다 (' + lp + '%)'); }); }
     this._save();
     return this._ok(now, { r: { sc: sc.lines, d: sc.d, t0: t0, win: !!r.win, ev: r.ev, mHp: r.mHp, dead: !!r.dead, floor: x.f, foe: { name: x.foe.name, arch: x.foe.arch, c1: x.foe.c1, c2: x.foe.c2, id: x.foe.id }, maxHp: x.foe.hp, reward: reward ? Rules.rewardText(reward) : '' } });
@@ -377,13 +377,13 @@
           this._save(); return this._ok(now, { ok: true, got: pts, cost: pts * unit, guild: this._guildView() });
         }
         if (o.op === 'deposit') {
-          if (o.u) { var ii = P.inv.findIndex(function (x) { return x.u === o.u; }); if (ii < 0) return fail('가방에 없는 장비입니다'); if (P.inv[ii].lock) return fail('잠긴 장비는 넣을 수 없습니다'); if (g.items.length >= Rules.guildSlots(g.lv)) return fail('창고가 가득 찼습니다'); var it = P.inv.splice(ii, 1)[0]; g.items.push({ id: (g.iseq = (g.iseq || 0) + 1), item: it, by: P.name, t: now }); this._gLog(P.name + ' 님이 ' + it.name + '을(를) 넣었습니다'); }
+          if (o.u) { var ii = P.inv.findIndex(function (x) { return x.u === o.u; }); if (ii < 0) return fail('가방에 없는 장비입니다'); if (P.inv[ii].lock) return fail('잠긴 장비는 넣을 수 없습니다'); if (g.items.length >= Rules.guildSlots(g.lv)) return fail('창고가 가득 찼습니다'); var it = P.inv.splice(ii, 1)[0]; g.items.push({ id: (g.iseq = (g.iseq || 0) + 1), item: it, by: P.name, t: now }); this._gLog(P.name + ' 님이 ' + Rules.josa(it.name, '을', '를') + ' 넣었습니다'); }
           else { var amt = Math.floor(+o.gold || 0); if (!(amt >= 1) || amt > P.res.gold) return fail(CUR + '를 확인 필요'); P.res.gold -= amt; g.gold += amt; this._gLog(P.name + ' 님이 ' + Rules.fmt(amt) + ' ' + CUR + '를 넣었습니다'); }
           this._save(); return this._ok(now, { ok: true, guild: this._guildView() });
         }
         if (o.op === 'withdraw') {
           if (!can('take')) return fail('창고에서 꺼낼 권한이 없습니다');
-          if (o.id) { var xi = g.items.findIndex(function (x) { return x.id === +o.id; }); if (xi < 0) return fail('이미 누가 꺼냈습니다'); if (P.inv.length >= Rules.calc(P, null).bag) return fail('가방이 가득 찼습니다'); var x2 = g.items.splice(xi, 1)[0]; P.inv.push(x2.item); this._gLog(P.name + ' 님이 ' + x2.item.name + '을(를) 꺼냈습니다'); }
+          if (o.id) { var xi = g.items.findIndex(function (x) { return x.id === +o.id; }); if (xi < 0) return fail('이미 누가 꺼냈습니다'); if (P.inv.length >= Rules.calc(P, null).bag) return fail('가방이 가득 찼습니다'); var x2 = g.items.splice(xi, 1)[0]; P.inv.push(x2.item); this._gLog(P.name + ' 님이 ' + Rules.josa(x2.item.name, '을', '를') + ' 꺼냈습니다'); }
           else { var a2 = Math.floor(+o.gold || 0); if (!(a2 >= 1)) return fail(CUR + '를 확인 필요'); if (a2 > g.gold) return fail('창고 ' + CUR + '가 모자랍니다'); g.gold -= a2; P.res.gold += a2; this._gLog(P.name + ' 님이 ' + Rules.fmt(a2) + ' ' + CUR + '를 꺼냈습니다'); }
           this._save(); return this._ok(now, { ok: true, guild: this._guildView() });
         }
@@ -485,7 +485,7 @@
       if (x.kind === 'badge' && (P.badges || []).length >= Rules.BADGE_HOLD) return Promise.resolve({ error: '휘장 보관함이 가득 찼습니다 (' + Rules.BADGE_HOLD + '개)' });
       if (x.kind === 'item' && P.inv.length >= Rules.calc(P, null).bag) return Promise.resolve({ error: '가방이 가득 찼습니다' });
       P.res.gold -= x.price; mkGive(P, x);
-      x.status = 'sold'; x.done = now; Rules.log(P, now, '거래소에서 ' + x.name + (x.kind !== 'item' ? ' ' + x.qty + '개' : '') + '를 ' + Rules.fmt(x.price) + ' ' + CUR + '에 샀습니다', 'good');
+      x.status = 'sold'; x.done = now; Rules.log(P, now, '거래소에서 ' + Rules.josa(x.name + (x.kind !== 'item' ? ' ' + x.qty + '개' : ''), '을', '를') + ' ' + Rules.fmt(x.price) + ' ' + CUR + '에 샀습니다', 'good');
       return ok();
     }
     if (o.op === 'list') {
