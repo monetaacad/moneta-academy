@@ -353,7 +353,7 @@
   var watchT = 0;
   function wantWatch() {
     if (!S.chat.lazy || !API || !API.chatWatch || !S.chat.on) return;
-    var w = dockOpen() && !document.hidden && LAZY[S.chat.ch] ? S.chat.ch : '';
+    var w = !document.hidden && LAZY[S.chat.ch] ? S.chat.ch : '';   // 채팅창을 접어 두어도 고른 탭은 받아서 아래 한 줄 미리보기를 갱신한다
     if (w === S.chat.watch) return; S.chat.watch = w;
     clearTimeout(watchT);
     watchT = setTimeout(function () {   // 탭을 빠르게 넘길 때 요청이 몰리지 않게 잠깐 기다린다
@@ -376,7 +376,7 @@
         if (arr.length > 300) arr.splice(0, arr.length - 300);
       }
       S.chat.msgs[ch].forEach(function (m) { if (m.seq > (S.chat.seq[ch] || 0)) S.chat.seq[ch] = m.seq; });
-      if (S.chat.ch === ch && dockOpen()) renderDock(); else { S.chat.unread[ch] = countUnread(ch); updateUnread(); }
+      if (S.chat.ch === ch && dockOpen()) renderDock(); else if (S.chat.ch === ch) { markRead(ch); updateUnread(); } else { S.chat.unread[ch] = countUnread(ch); updateUnread(); }
     });
   }
   // 글이 한꺼번에 쏟아져도 화면은 한 프레임에 한 번만 고친다
@@ -619,7 +619,7 @@
       },
       seq: function (d) {
         var chg = false; for (var k in LAZY) if (d && +d[k] > (S.chat.seq[k] || 0)) { S.chat.seq[k] = +d[k]; chg = true; } if (!chg) return;
-        for (var k2 in LAZY) { if (dockOpen() && S.chat.ch === k2 && S.chat.watch === k2) markRead(k2); else S.chat.unread[k2] = countUnread(k2); }
+        for (var k2 in LAZY) { if (S.chat.ch === k2 && S.chat.watch === k2) markRead(k2); else S.chat.unread[k2] = countUnread(k2); }
         updateUnread();
       },
       note: function (d) { S.noteN = d.n || 0; updateNoteBadge(); if (S.notesOpen) ACT.notes(); },
@@ -2402,8 +2402,14 @@
     modal(mhead('플레이 가이드', '궁금한 것을 검색하거나 분류 선택') +
       '<input id="g-q" type="search" placeholder="예: 마나, 거래소, 파티, 시험" autocomplete="off" style="margin-bottom:10px">' +
       '<div class="filters" style="margin-bottom:12px">' + [''].concat(D.GUIDE_CATS).map(function (c) { return '<button class="btn sm ghost' + (S.gcat === c ? ' on' : '') + '" data-act="gcat" data-a="' + c + '">' + (c || '전체') + '</button>'; }).join('') + '</div>' +
-      '<div id="g-list" class="glist">' + guideList(pre) + '</div>', true);
+      '<div id="g-list" class="glist">' + guideList(pre) + '</div>' +
+      '<div class="gsuggest"><span class="small muted">찾는 내용이 없거나 바라는 점이 있나요?</span><button class="btn primary sm" data-act="suggest">건의하기</button></div>', true);
     var q = $('#g-q'); if (pre) q.value = pre; q.addEventListener('input', function () { $('#g-list').innerHTML = guideList(q.value); }); setTimeout(function () { q.focus(); }, 40);
+  };
+  // 가이드 › 건의하기: 게시판 글쓰기를 「건의」 말머리로 바로 연다 (쓰던 건의 글이 있으면 이어서)
+  ACT.suggest = function () {
+    closeModal(); var b = S.bd; if (!b.draft || b.draft.id || b.draft.tag !== 'idea') b.draft = { tag: 'idea', title: '', body: '', priv: false };
+    b.mode = 'write'; ACT.nav('board'); window.scrollTo(0, 0); setTimeout(function () { var t = $('#bd-title'); if (t && !t.value) t.focus(); }, 80);
   };
   ACT.gcat = function (c) { S.gcat = c; var q = $('#g-q') ? $('#g-q').value : ''; $$('.mbox .filters .btn').forEach(function (b) { b.classList.toggle('on', b.dataset.a === c); }); $('#g-list').innerHTML = guideList(q); };
 
@@ -3686,7 +3692,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026101971;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026101973;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

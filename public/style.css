@@ -1470,3 +1470,4 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 .dtabs button.unread::after, .gsub button.unread::after { content: ''; position: absolute; left: 8px; right: 8px; bottom: 1px; height: 3px; border-radius: 3px; background: color-mix(in srgb, var(--brass) 60%, transparent); }
 .dtabs button.unread { color: var(--ink); font-weight: 700; }
 .dock-peek:has(.pkmsg) { text-align: left; }   /* 최근 글은 좌측, 「채팅 열기」만 우측 */
+.gsuggest { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line2); }
