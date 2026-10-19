@@ -3268,8 +3268,8 @@
       '<div class="row" style="margin-top:8px"><button class="btn sm" data-act="guide">플레이 가이드 열기</button></div></details>';
   }
   /* ── 사이트 설정 (이 브라우저에 기억: 글씨 크기·소리·알림) ── */
-  var PREF = { theme: 'auto', themeV: 0, paper: true, tutDone: 0, tutV: {}, hideCh: {}, font: 1, sfxVol: 0.7, sfxOff: {}, notify: false, push: false, quiet: true, pushKey: '', nt: { lec: true, exp: true, res: true, disp: true, jar: false } };
-  try { var pf = JSON.parse(localStorage.getItem('arc_pref') || 'null'); if (pf) { for (var pk in PREF) if (pf[pk] != null) PREF[pk] = pf[pk]; } } catch (e) { }
+  var PREF = { theme: 'auto', themeV: 0, paper: true, tutDone: 0, tutV: {}, hideCh: {}, font: 1, sfxVol: 0.7, sfxOff: {}, notify: false, push: false, quiet: true, pushKey: '', nt: { lec: true, exp: true, res: true, disp: true, jar: false }, chOrder: null };
+  try { var pf = JSON.parse(localStorage.getItem('arc_pref') || 'null'); if (pf) { for (var pk in pf) if (pf[pk] != null) PREF[pk] = pf[pk]; } } catch (e) { }   // 기본값에 없는 키(새로 생긴 설정)도 버리지 않는다
   // 예전 기본값(밤하늘)이 그냥 저장돼 있던 기기는 「기기 설정 따라」로 옮긴다 (직접 고른 다른 테마는 그대로)
   if (!PREF.themeV) { if (PREF.theme === 'night') PREF.theme = 'auto'; PREF.themeV = 2; }
   function savePref() { try { localStorage.setItem('arc_pref', JSON.stringify(PREF)); } catch (e) { } }
@@ -3979,7 +3979,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102001;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102002;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
