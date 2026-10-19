@@ -5,6 +5,8 @@
 #   systemctl daemon-reload && systemctl enable --now moneta-update.timer
 # 기록 보기: journalctl -u moneta-update -n 30
 set -e
+# systemd로 실행되면 HOME이 없어 git이 /root/.gitconfig(safe.directory)를 못 읽는다
+export HOME=/root
 cd /opt/moneta
 git fetch -q origin main
 [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] && exit 0

@@ -2,6 +2,7 @@
 # 서버에서 깃으로 최신 코드를 받아 다시 켠다:  sudo sh /opt/moneta/deploy/update.sh
 # data/ 와 /etc/moneta.env, /etc/systemd/system/moneta.service.d/site.conf 는 깃에 없으므로 건드리지 않는다.
 set -e
+export HOME="${HOME:-/root}"   # 타이머(systemd)에서 실행될 때도 git 설정을 읽게
 cd /opt/moneta
 echo "▶ 현재 버전: $(git log -1 --format='%h %s')"
 git pull --ff-only                       # 배포 키가 root에 있으므로 root로 받고
