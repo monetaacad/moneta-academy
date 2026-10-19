@@ -575,7 +575,9 @@
   };
   // 서버(또는 미리보기)가 출발시킬 때만 부른다 — 학생이 직접 부르는 행동(A)이 아니다
   // 함께 원정 일행 현황 (출발할 때 적어 두고 화면이 HP · 피해 몫을 그린다)
-  R.expTeam = function (pv, members) { return members.map(function (m, i) { var e = pv.each[i] || {}; return { name: m.name, pos: m.pos, npc: !!m.npc, dmg: Math.round((e.dmg || 0) * 1000) / 1000, risk: Math.round((e.risk || 0) * 1000) / 1000 }; }); };
+  R.expTeam = function (pv, members, st) { return members.map(function (m, i) { var e = pv.each[i] || {}, c = st && st[i] && st[i].c; return { id: m.npc ? undefined : m.id, k: m.npc ? m.k : undefined, name: m.name, pos: m.pos, npc: !!m.npc, cls: m.cls, grade: m.grade, lvl: m.lvl, power: m.power, hp: c ? Math.round(c.hp) : 0, dmg: Math.round((e.dmg || 0) * 1000) / 1000, risk: Math.round((e.risk || 0) * 1000) / 1000 }; }); };
+  // 함께 원정 채팅 열쇠: 진행 중인 함께 원정 또는 아직 받지 않은 결과 보고에 남아 있는 동안
+  R.expChatKey = function (P) { if (!P) return null; for (var i = 0; i < (P.exp || []).length; i++) { var j = P.exp[i]; if (j && j.pt && j.pt.ck) return j.pt.ck; } for (var k = (P.inbox || []).length - 1; k >= 0; k--) { var o = P.inbox[k]; if (o && o.k === 'exp' && o.ck) return o.ck; } return null; };
   R.expPartyApply = function (P, now, slot, s, durK, pv, info) {
     var d = DUR[durK] || DUR['1h'];
     var j = P.exp[slot] = { s: s, start: now, end: now + d.s, dur: d.s, eff: d.eff, kps: pv.kps, gEach: pv.gEach, xEach: pv.xEach, drop: pv.drop, rarity: pv.rarity, killMana: pv.killMana, risk: pv.risk, pt: info };
@@ -589,7 +591,7 @@
   function expFinish(P, j, t, frac, mode) {
     var keep = mode === 'recall' ? 1 : mode === 'fall' ? K.FALL_KEEP : mode ? K.CANCEL_KEEP : 1, canceled = !!mode;
     var kills = Math.floor(j.kps * j.dur * j.eff * frac * keep + rnd(P));   // 처치 수가 작아 소수점은 확률로
-    var z = R.zoneOf(j.s), out = { k: 'exp', s: j.s, kills: kills, gold: 0, xp: 0, mats: 0, stones: 0, items: [], sold: 0, t: t, canceled: mode === true, recall: mode === 'recall', fell: mode === 'fall' };
+    var z = R.zoneOf(j.s), out = { k: 'exp', s: j.s, ck: j.pt && j.pt.ck || undefined, kills: kills, gold: 0, xp: 0, mats: 0, stones: 0, items: [], sold: 0, t: t, canceled: mode === true, recall: mode === 'recall', fell: mode === 'fall' };
     if (kills <= 0) return out;
     badgeGain(P, j.dur / 3600 * frac * keep * R.BADGE_XP.expH, t);
     var g = kills * j.gEach, x = kills * j.xEach;
