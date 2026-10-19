@@ -156,6 +156,7 @@
     if (!P.lecQ) P.lecQ = [null, null, null]; if (!P.lecEnd) P.lecEnd = [0, 0, 0]; if (!P.tt) P.tt = [];
     if (P.res && P.res.dust == null) P.res.dust = 0; if (P.autoDis == null) P.autoDis = false;
     // 경제 조정(C안) 공지: 이 조정 전에 입학한 학생에게 한 번 보여 준다 (1 = 보여 줄 것, 2 = 봤음)
+    if (!P.sndV && P.opt) { P.sndV = 1; P.opt.sound = true; }   // 효과음 기본값을 켬으로 (BUILD 2026101953): 예전 기본값(꺼짐) 그대로인 학생도 한 번 켠다
     if (P.econC == null) P.econC = P.created && P.created < R.ECON_C_AT ? 1 : 2;
     if (!P.badges) P.badges = [];
     if (P.grade >= 3 && !P.badgeGot && P.res && P.log) { P.badgeGot = 1; gainBadge(P, makeBadge(P), P.at || 0, '아카데미 휘장 수여'); }
@@ -203,7 +204,7 @@
       daily: { day: -1, q: [], streak: 0, login: false },
       wk: { id: 0, cup: 0, dmg: 0, att: 0 }, wkPrev: null, wb: { tickets: K.WB_TICKET_MAX, at: now, bought: 0, buyDay: -1 },
       spirit: { n: 1, at: now },
-      opt: { autoEquip: true, autoAlloc: false, allocW: { int: 3, wil: 1.5, agi: 1, vit: 1.5, luk: 1 }, sound: false, reduceFx: false },
+      opt: { autoEquip: true, autoAlloc: false, allocW: { int: 3, wil: 1.5, agi: 1, vit: 1.5, luk: 1 }, sound: true, reduceFx: false },
       log: [], inbox: [], story: 0
     };
     D.SUBJECTS.forEach(function (s) { P.subj[s.id] = { lv: 0, xp: 0 }; });
