@@ -1548,7 +1548,8 @@
   /* ── 장비 ── */
   V.gear = function () {
     var P = S.P, c = C();
-    var h = pageHead('지팡이 · 로브 · 모자 · 장신구 · 마도서', '장비·능력', '전투력 <b class="num gold">' + fmt(c.power) + '</b>');
+    var wk = P.eq.staff && P.eq.staff.wk === 'sword' ? '검' : P.cls === 'knight' ? '검' : '지팡이';
+    var h = pageHead(D.SLOTS.map(function (s) { return '<button class="eblink" data-act="invjump" data-a="' + s.id + '" title="가방에서 ' + (s.id === 'staff' ? '무기' : s.name) + '만 보기">' + (s.id === 'staff' ? wk : s.name) + '</button>'; }).join(' · '), '장비·능력', '전투력 <b class="num gold">' + fmt(c.power) + '</b>');
     h += '<div class="doll">' + D.SLOTS.map(function (s) {
       var it = P.eq[s.id];
       return '<button class="eqslot' + (it ? '' : ' empty') + (it && S.sel === it.u ? ' sel' : '') + '" data-act="sel" data-a="' + (it ? it.u : '') + '"><span class="sl">' + s.name + '</span>' +
@@ -2955,6 +2956,7 @@
     }).join('') + '</div><p class="tiny faint" style="margin-top:8px">장비 상자 · 휘장 원석 · 재료 상자는 받는 순간 열립니다. 재료는 공방의 재료 보관함, 아카데미 휘장은 휘장 보관함에서 봅니다.</p>';
   }
   ACT.bagtab = function (t) { S.bagTab = t === 'inv' ? 'inv' : 'eq'; render(); };
+  ACT.invjump = function (slot) { S.bagTab = 'bag'; S.invF = slot; ACT.goto('gear', 'bag'); };   // 장비 화면 상단 칸 이름 → 가방에서 그 칸만
   ACT.invgo = function () { S.bagTab = 'inv'; ACT.goto('gear', 'bag'); };
   // 능력치 나누기: + / − 로 나눠 보고 「저장」 → 확인 창에서 한 번 더 확인하면 적용
   ACT.alloc = function (k, n) { var d = S.allocDraft || (S.allocDraft = {}), sum = R.STATS.reduce(function (a, x) { return a + (d[x] || 0); }, 0), left = S.P.pts - sum; n = +n; if (n > 0) n = Math.min(n, left); d[k] = Math.max(0, (d[k] || 0) + n); if (!d[k]) delete d[k]; render(); };
@@ -3987,7 +3989,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102003;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102004;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
