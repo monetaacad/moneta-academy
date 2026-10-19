@@ -149,6 +149,7 @@ function open(dir) {
   if (cols.indexOf('role') < 0) db.exec(`ALTER TABLE players ADD COLUMN role TEXT NOT NULL DEFAULT 'user'`);   // 'admin' 운영자 | 'user'
   if (cols.indexOf('avatar_v') < 0) db.exec(`ALTER TABLE players ADD COLUMN avatar_v INTEGER NOT NULL DEFAULT 0`);
   // 로그인 아이디: 평문 대신 HMAC 색인(sec.index)만 둔다. 게임 안에는 나오지 않는다. 빈 값은 server.js가 시작할 때 채운다
+  { const ic = db.prepare(`PRAGMA table_info(invites)`).all().map((c) => c.name); if (ic.indexOf('op') < 0) db.exec(`ALTER TABLE invites ADD COLUMN op INTEGER NOT NULL DEFAULT 0`); }   // 운영자 초대코드
   if (cols.indexOf('login_key') < 0) db.exec(`ALTER TABLE players ADD COLUMN login_key TEXT NOT NULL DEFAULT ''`);
   db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS players_login ON players(login_key) WHERE login_key <> ''`);
   const ccols = db.prepare(`PRAGMA table_info(chat)`).all().map((c) => c.name);
@@ -369,10 +370,10 @@ function open(dir) {
     upgradeGuest: db.prepare(`UPDATE players SET name = ?, name_key = ?, pass = ?, guest = 0, invite = ? WHERE id = ? AND guest = 1`),
     renamePlayer: db.prepare(`UPDATE players SET name = ?, name_key = ? WHERE id = ?`),
     setMute: db.prepare(`UPDATE players SET muted_until = ? WHERE id = ?`),
-    getInvite: db.prepare(`SELECT code, max_uses, uses, expires, disabled, note FROM invites WHERE code = ?`),
+    getInvite: db.prepare(`SELECT code, max_uses, uses, expires, disabled, note, op FROM invites WHERE code = ?`),
     useInvite: db.prepare(`UPDATE invites SET uses = uses + 1 WHERE code = ? AND uses < max_uses AND disabled = 0`),
-    insertInvite: db.prepare(`INSERT INTO invites (code, max_uses, uses, created, expires, note) VALUES (?, ?, 0, ?, ?, ?)`),
-    listInvites: db.prepare(`SELECT i.code, i.max_uses, i.uses, i.created, i.expires, i.note, i.disabled, (SELECT group_concat(name, ', ') FROM players p WHERE p.invite = i.code) AS used_by FROM invites i ORDER BY i.created DESC LIMIT ?`),
+    insertInvite: db.prepare(`INSERT INTO invites (code, max_uses, uses, created, expires, note, op) VALUES (?, ?, 0, ?, ?, ?, ?)`),
+    listInvites: db.prepare(`SELECT i.code, i.max_uses, i.uses, i.created, i.expires, i.note, i.disabled, i.op, (SELECT group_concat(name, ', ') FROM players p WHERE p.invite = i.code) AS used_by FROM invites i ORDER BY i.created DESC LIMIT ?`),
     disableInvite: db.prepare(`UPDATE invites SET disabled = ? WHERE code = ?`),
     insertChat: db.prepare(`INSERT INTO chat (ch, t, pid, name, house, grade, guest, kind, text, title, ink) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
     recentChat: db.prepare(`SELECT id, ch, t, pid, name, house, grade, guest, kind, text, title, ink FROM chat WHERE ch = ? AND deleted = 0 ORDER BY id DESC LIMIT ?`),

@@ -61,7 +61,7 @@ function create(dbx, log, opts) {
   const PFX = { grp: ['g', 'rp'], gooc: ['g', 'oc'], hrp: ['h', 'rp'], hooc: ['h', 'oc'], crp: ['c', 'rp'], cooc: ['c', 'oc'] };
   const dbCh = (ch, g) => ch === 'party' ? 'p:' + g : PFX[ch] ? PFX[ch][0] + ':' + g + ':' + PFX[ch][1] : ch;
   const chOf = (c) => { c = String(c); if (c.startsWith('p:')) return 'party'; const o = c.endsWith(':oc'); return c.startsWith('g:') ? (o ? 'gooc' : 'grp') : c.startsWith('h:') ? (o ? 'hooc' : 'hrp') : c.startsWith('c:') ? (o ? 'cooc' : 'crp') : c; };
-  function row(r) { return { id: r.id, ch: chOf(r.ch), t: r.t, pid: r.pid, name: r.name, house: r.house, grade: r.grade, guest: !!r.guest, kind: r.kind, text: sec.dec(r.text), title: r.title || '', ink: r.ink || '' }; }
+  function row(r) { return { id: r.id, ch: chOf(r.ch), t: r.t, pid: r.pid, name: r.name, house: r.house, grade: r.grade, guest: !!r.guest, kind: r.kind, text: sec.dec(r.text), title: r.title || '', ink: r.ink || '', op: isOp(r.pid) ? 1 : undefined }; }   // 운영자 표시는 지금 권한으로 (사칭 불가)
   const titleOf = opts.titleOf || (() => '');
   const inkOf = opts.inkOf || (() => '');
   const canDm = opts.canDm || (() => false);
@@ -191,7 +191,7 @@ function create(dbx, log, opts) {
     const t = clean(text, C.max); if (!t) throw new Error('내용 입력 필요');
     // 속도 제한: 1.5초에 1개, 연속 4개까지. 같은 말 10초 안에 반복 금지
     rate(P, t, now);
-    const m = store(ch, party, { ch, t: now, pid: P.id, name: P.name, house: P.house, grade: P.grade, guest: !!meta.guest, kind, text: t, title: titleOf(P), ink: inkOf(P) || undefined, nonce: nonce || undefined });
+    const m = store(ch, party, { ch, t: now, pid: P.id, name: P.name, house: P.house, grade: P.grade, guest: !!meta.guest, kind, text: t, title: titleOf(P), ink: inkOf(P) || undefined, op: isOp(P.id) ? 1 : undefined, nonce: nonce || undefined });
     if (ch === 'world') { lastWorld.set(P.id, now); if (lastWorld.size > 20000) lastWorld.delete(lastWorld.keys().next().value); }   // 보내기에 성공했을 때만
     keepNonce(P.id, nonce, m.id, now); return m;
   }

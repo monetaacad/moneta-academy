@@ -326,6 +326,7 @@ routes['POST /api/register'] = async (req, res) => {
   const lkey = loginKey(login); if (dbx.q.playerByLogin.get(lkey)) return fail(req, res, 409, '이미 쓰는 아이디입니다');
   const code = cfg.inviteRequired ? normCode(b.invite) : '';
   if (cfg.inviteRequired) { const why = checkInvite(code); if (why) return fail(req, res, 403, why); }
+  const opInv = !!(code && (dbx.q.getInvite.get(code) || {}).op);
   const hashed = await hashPass(pw);
   if (dbx.q.playerByKey.get(nameKey(name))) return fail(req, res, 409, '이미 쓰는 이름입니다');
   if (dbx.q.playerByLogin.get(lkey)) return fail(req, res, 409, '이미 쓰는 아이디입니다');
@@ -339,8 +340,9 @@ routes['POST /api/register'] = async (req, res) => {
     });
   } catch (e) { return fail(req, res, e.status || 409, e.status ? e.message : '이미 쓰는 이름이나 아이디입니다'); }
   store.put(P);
+  if (opInv) { dbx.q.setRole.run('admin', id); adminIds.add(id); oplog('admin', '관리자', 'role', `${name} → admin (운영자 초대코드)`); }
   const token = newSession(id);
-  log(`입학: ${name} (${house})${code ? ' 초대코드 ' + code : ''}`);
+  log(`입학: ${name} (${house})${code ? ' 초대코드 ' + code : ''}${opInv ? ' · 운영자' : ''}`);
   world.addNews(P.name + ' 학생이 ' + (R.HOUSE[P.house] ? R.HOUSE[P.house].name : '아카데미') + '에 입학했습니다', now);
   send(req, res, 200, Object.assign({ token }, statePayload(P, now)), { 'Set-Cookie': cookie(token, cfg.sessionDays * 86400) });
 };
@@ -534,7 +536,7 @@ routes['GET /api/profile'] = (req, res) => {
   let lvl = row.lvl, grade = row.grade, power = row.power;
   const LP = self ? store.get(me) : store.peek(id);   // 접속 중인 학생은 메모리의 최신 값으로 (다른 학생은 DB에서 새로 읽어 오지 않음)
   if (LP) { const s = R.summary(LP, world.W, Math.min(nowSec(), LP.at)); lvl = s.lvl; grade = s.grade; power = s.power; }
-  const out = { id, name: row.name, house: row.house, grade, guest: !!row.guest, created: row.created, av: row.avatar_v && dbx.q.getAvatar.get(id).avatar ? row.avatar_v : 0,
+  const out = { id, op: isChatOp(id) || undefined, name: row.name, house: row.house, grade, guest: !!row.guest, created: row.created, av: row.avatar_v && dbx.q.getAvatar.get(id).avatar ? row.avatar_v : 0,
     status: pr.status, bio: pr.bio, fav: pr.fav, avcredit: pr.avcredit || '', online: self || isOnline(id), self, title: LP ? R.titleName(LP, LP.title) : row.title };
   { const DP = LP || store.get(id); out.deco = R.decoView(DP); const bw = DP && R.badgeWorn(DP); if (bw) out.badge = { gem: bw.gem, lv: bw.lv, name: bw.name }; }   // 정보 카드 꾸미기
   if (pr.showStats || self) Object.assign(out, { lvl, power, rank: world.rankOf(power) });
@@ -1554,10 +1556,12 @@ routes['POST /api/admin/invites'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
   const b = await readJson(req, 4096);
   const count = Math.max(1, Math.min(500, Number(b.count) || 1)), uses = Math.max(1, Math.min(10000, Number(b.uses) || 1));
-  const days = Math.max(0, Math.min(3650, Number(b.days) || 0)), note = String(b.note || '').slice(0, 80), now = Math.floor(Date.now() / 1000);
+  let days = Math.max(0, Math.min(3650, Number(b.days) || 0)), note = String(b.note || '').slice(0, 80), now = Math.floor(Date.now() / 1000);
+  // 운영자 초대코드: 이 코드로 가입한 학생은 운영자가 된다. 새어 나가도 피해가 작게 한 장 · 1회 · 최대 7일
+  const op = b.op ? 1 : 0, n = op ? 1 : count, u = op ? 1 : uses; if (op) days = Math.min(days || 7, 7);
   const codes = [];
-  dbx.tx(() => { for (let i = 0; i < count; i++) { let c; do { c = newCode(); } while (dbx.q.getInvite.get(c)); dbx.q.insertInvite.run(c, uses, now, days ? now + days * 86400 : 0, note); codes.push(c); } });
-  log(`초대코드 ${count}개 발급 (각 ${uses}회${days ? ', ' + days + '일' : ''}) ${note}`);
+  dbx.tx(() => { for (let i = 0; i < n; i++) { let c; do { c = newCode(); } while (dbx.q.getInvite.get(c)); dbx.q.insertInvite.run(c, u, now, days ? now + days * 86400 : 0, note, op); codes.push(c); } });
+  log(`${op ? '운영자 ' : ''}초대코드 ${n}개 발급 (각 ${u}회${days ? ', ' + days + '일' : ''}) ${note}`); if (op) oplog('admin', '관리자', 'opinvite', note || '');
   send(req, res, 200, { codes });
 };
 routes['GET /api/admin/invites'] = (req, res) => {
