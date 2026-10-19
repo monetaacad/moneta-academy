@@ -1333,7 +1333,7 @@
     var shown = P.exp.find(Boolean), z = R.zoneOf(shown ? shown.s : (S.pick.es0 || R.bestStage(P, wctx())));
     var gcap = R.gradeCap(P), h = pageHead(z.name, '원정', '열린 단계 <b class="num gold">1–' + cap + '</b>' + (cap > gcap ? ' <span class="tag br" title="학년 상한 ' + gcap + '단계 너머를 레벨로 열었습니다">레벨로 +' + (cap - gcap) + '</span>' : ''));
     var running = P.exp.map(function (j, i) { return j ? i : -1; }).filter(function (i) { return i >= 0; });
-    h += '<div class="grid ' + (running.length > 1 ? 'g2' : '') + '">' + (running.length ? running.map(function (i) { var j = P.exp[i]; return '<div class="card explogcard"><div class="row between"><h3>원정 일지 <span class="small muted">' + j.s + '단계 · ' + R.zoneOf(j.s).name + '</span></h3><span class="tiny faint num" data-l="left:' + j.end + '"></span></div><div class="row tiny muted" style="margin-top:2px;gap:12px"><span>처치 약 <b class="num" data-l="expk:' + i + '"></b></span><span>' + CUR + ' 약 <b class="num gold" data-l="expg:' + i + '"></b></span></div><div class="explog" data-explog="' + i + '" aria-live="off"></div></div>'; }).join('')
+    h += '<div class="grid ' + (running.length > 1 ? 'g2' : '') + '">' + (running.length ? running.map(function (i) { var j = P.exp[i]; return '<div class="card explogcard"><div class="row between"><h3>원정 일지 <span class="small muted">' + j.s + '단계 · ' + R.zoneOf(j.s).name + '</span></h3><span class="tiny faint num" data-l="left:' + j.end + '"></span></div><div class="row tiny muted" style="margin-top:2px;gap:12px"><span>처치 약 <b class="num" data-l="expk:' + i + '"></b></span><span>' + CUR + ' 약 <b class="num gold" data-l="expg:' + i + '"></b></span></div><div class="logw"><div class="explog" data-explog="' + i + '" aria-live="off"></div><button class="lognew" hidden></button></div></div>'; }).join('')
       : '<div class="card inset"><p class="small muted">출정하면 이곳에 원정 일지가 몇십 초마다 한 줄씩 적힙니다. 창을 닫아 두어도 원정은 그대로 진행됩니다.</p></div>') + '</div>';
     // 함께 원정 방에 들어가 있으면: 방을 위로 올리고, 방이 떠날 때 쓸 슬롯은 「출발 대기」로 막아 둔다 (혼자 원정을 실수로 보내지 않게)
     var inRoom = !!(S.er && S.er.mine), resv = -1;
@@ -1878,7 +1878,7 @@
     return '<div class="card twjournal' + (live ? ' live' : '') + '" data-anchor="twlog"><div class="row between"><h3>별의 탑 일지 <span class="small muted">' + esc(l.name) + ' · ' + l.f + '층</span></h3>' +
       (live ? '<span class="tag br"><span class="livedot"></span> 지금 도전 중</span>' : '<span class="tag ' + (l.win ? 'ok' : '') + '">' + (l.win ? '돌파' : '물러남 · ' + l.pct + '%') + '</span>') + '</div>' +
       (runs.length > 1 ? '<div class="filters" style="margin-top:6px">' + runs.map(function (x) { return '<button class="btn sm ghost' + (x === l ? ' on' : '') + '" data-act="twsel" data-a="' + x.t + '">' + esc(x.name) + ' ' + x.f + '층</button>'; }).join('') + '</div>' : '') +
-      '<div class="explog twlines" id="twlines" data-tw="' + l.t + '" aria-live="polite">' + twLinesHtml(l) + '</div>' +
+      '<div class="logw"><div class="explog twlines" id="twlines" data-tw="' + l.t + '" aria-live="polite">' + twLinesHtml(l) + '</div><button class="lognew" hidden></button></div>' +
       '<div class="row tiny faint" style="margin-top:6px"><span>파티원 모두가 같은 시각에 같은 장면을 봅니다' + (live ? ' · 결과는 일지가 끝나면 알려 드립니다' : '') + '</span><span class="spacer"></span>' + (live ? '<button class="btn sm ghost" data-act="twskip" data-a="' + l.t + '">끝까지 보기</button>' : '') + '</div></div>';
   }
   ACT.twsel = function (t) { S.twSel = +t; render(); };
@@ -1891,7 +1891,7 @@
     var box = $('#twlines'); if (!box || S.view !== 'party') return;
     var l = twRuns().find(function (x) { return String(x.t) === box.dataset.tw; }); if (!l) return;
     var n = twShown(l); if (box.__n === n && !force) return; box.__n = n;
-    var stick = box.scrollHeight - box.scrollTop - box.clientHeight < 30; box.innerHTML = twLinesHtml(l); if (stick || !box.__init) { box.scrollTop = box.scrollHeight; box.__init = 1; }
+    logFill(box, 'tw' + l.t, twLinesHtml(l));
     if (!twLive(l) && box.closest('.twjournal.live')) render();
   }
   function twResult(r) {
@@ -2584,8 +2584,8 @@
       var L = expLine(j, k, i), at = j.start + k * EXP_TICK;
       // 이 줄 사이에 실제로 주운 전리품이 있으면 그것을 적는다
       var got = (j.loot || []).filter(function (x) { return x.at > at - EXP_TICK && x.at <= at; });
-      if (got.length) { out.push('<div class="el kloot"><span class="et num">' + clock(at).replace(/^(오전|오후) /, '') + '</span><span>' + got.map(function (x) { return '<b style="color:' + rcol(x.it.r) + '">' + esc(x.it.name) + '</b>'; }).join(', ') + josa(got[got.length - 1].it.name, '을', '를').slice(-1) + ' 주웠다 <span class="eg">' + got.map(function (x) { return (D.RARITY[x.it.r] ? D.RARITY[x.it.r].name : '') + ' ' + R.slotName(x.it); }).join(', ') + '</span></span></div>'); continue; }
-      out.push('<div class="el"><span class="et num">' + clock(at).replace(/^(오전|오후) /, '') + '</span><span>' + L[0] + (L[1] ? ' <span class="eg">' + L[1] + '</span>' : '') + '</span></div>'); }
+      if (got.length) { out.push('<div class="el kloot" data-k="' + k + 'l"><span class="et num">' + clock(at).replace(/^(오전|오후) /, '') + '</span><span>' + got.map(function (x) { return '<b style="color:' + rcol(x.it.r) + '">' + esc(x.it.name) + '</b>'; }).join(', ') + josa(got[got.length - 1].it.name, '을', '를').slice(-1) + ' 주웠다 <span class="eg">' + got.map(function (x) { return (D.RARITY[x.it.r] ? D.RARITY[x.it.r].name : '') + ' ' + R.slotName(x.it); }).join(', ') + '</span></span></div>'); continue; }
+      out.push('<div class="el" data-k="' + k + '"><span class="et num">' + clock(at).replace(/^(오전|오후) /, '') + '</span><span>' + L[0] + (L[1] ? ' <span class="eg">' + L[1] + '</span>' : '') + '</span></div>'); }
     if (now() >= j.end) out.push('<div class="el start"><span class="et num">' + clock(j.end).replace(/^(오전|오후) /, '') + '</span><span>원정을 마치고 아카데미로 돌아간다.</span></div>');
     return out.join('');
   }
@@ -2594,9 +2594,29 @@
       var i = +el.dataset.explog, j = S.P.exp[i]; if (!j) return;
       var n = Math.floor((Math.min(now(), j.end) - j.start) / EXP_TICK) + (now() >= j.end ? 1 : 0);
       if (el.__n === n) return; el.__n = n;
-      var stick = el.scrollHeight - el.scrollTop - el.clientHeight < 30; el.innerHTML = expLogHtml(i); if (stick || el.__first !== 1) { el.scrollTop = el.scrollHeight; el.__first = 1; }
+      logFill(el, 'exp' + i + ':' + j.start, expLogHtml(i));
     });
   }
+  /* 일지 칸 (원정 · 별의 탑): 맨 아래를 보고 있으면 새 줄을 따라 내려가고, 위로 올려 읽는 중이면 읽던 줄을 그 자리에 붙잡아 둔다
+     (원정 일지는 최근 30줄만 보여서 위쪽 줄이 빠져도 화면이 밀리지 않게). 화면을 다시 그려도 LOGSCR에 남고, 새 줄은 아래쪽 단추로 알린다. */
+  var LOGSCR = {};
+  function logLines(box) { var out = []; Array.prototype.forEach.call(box.children, function (c, i) { if (!c.classList.contains('twdots')) out.push([c.dataset.k || 'i' + i, c]); }); return out; }
+  function logAnchor(box, st) { var y = box.scrollTop; st.anc = null; logLines(box).some(function (x) { if (x[1].offsetTop + x[1].offsetHeight > y) { st.anc = [x[0], x[1].offsetTop - y]; return true; } }); }
+  function logFill(box, key, html) {
+    var st = LOGSCR[key] || (LOGSCR[key] = { stick: true, keys: null, nw: 0, anc: null });
+    if (box.__lk !== key) {
+      box.__lk = key;
+      box.addEventListener('scroll', function () { st.stick = box.scrollHeight - box.scrollTop - box.clientHeight < 30; if (st.stick) st.nw = 0; else logAnchor(box, st); logBtn(box, st); }, { passive: true });
+      var b = box.parentNode.querySelector('.lognew'); if (b) b.addEventListener('click', function () { box.scrollTop = box.scrollHeight; });
+    } else if (!st.stick) logAnchor(box, st);
+    box.innerHTML = html;
+    var ls = logLines(box), keys = {};
+    ls.forEach(function (x) { keys[x[0]] = 1; if (st.keys && !st.stick && !st.keys[x[0]]) st.nw++; }); st.keys = keys;
+    if (st.stick) box.scrollTop = box.scrollHeight;
+    else if (st.anc) { var a = ls.find(function (x) { return x[0] === st.anc[0]; }); box.scrollTop = a ? a[1].offsetTop - st.anc[1] : 0; }
+    logBtn(box, st);
+  }
+  function logBtn(box, st) { var b = box.parentNode.querySelector('.lognew'); if (!b) return; b.hidden = st.stick; b.textContent = st.nw ? '새 줄 ' + st.nw + '개 ↓' : '맨 아래로 ↓'; }
 
   /* ───────── 전투 일지 (보스 · 결투 · 월드 보스 · 시험 대련) ─────────
      그림 대신 별의 탑처럼 글로 흘러간다. 서버가 준 전투 기록(ev)을 몇 줄로 묶어 7초쯤에 걸쳐 보여 주고, 건너뛰면 바로 끝까지. */
@@ -3714,7 +3734,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026101976;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026101977;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
