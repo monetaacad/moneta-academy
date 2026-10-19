@@ -885,9 +885,12 @@
   };
   R.rerollCost = function (P) { var n = P.daily.rr || 0; return n === 0 ? 0 : Math.min(40, 5 * Math.pow(2, n - 1)); };
   // 칭호
-  R.titleName = function (P, id) { var t = D.TITLES.find(function (x) { return x.id === id; }); if (!t) return ''; return t.house ? D.HOUSE_TITLE[P.house] || '' : t.name; };
+  R.titleName = function (P, id) { var t = D.TITLES.find(function (x) { return x.id === id; }); if (!t || t.op && !P.op) return ''; return t.house ? D.HOUSE_TITLE[P.house] || '' : t.name; };
+  R.titleList = function (P) { return D.TITLES.filter(function (t) { return !t.op || P.op; }); };   // 운영진 전용 칭호는 운영자에게만 보인다
+  R.OP_TITLES = {}; D.TITLES.forEach(function (t) { if (t.op) R.OP_TITLES[t.name] = 1; });
   R.titleOk = function (P, id) {
     var t = D.TITLES.find(function (x) { return x.id === id; }); if (!t) return false;
+    if (t.op) return !!P.op;
     if (t.grade) return P.grade >= t.grade || (P.st.maxGrade || 1) >= t.grade;
     if (t.stat) return (P.st[t.stat] || 0) >= t.n;
     return true;
