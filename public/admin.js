@@ -112,10 +112,11 @@
     mute: function () { api('POST', '/api/admin/mute', { name: $('#un').value.trim(), minutes: +$('#um').value }).then(function (j) { $('#umsg').textContent = j.error || '적용했습니다'; }); },
     grant: function () { api('POST', '/api/admin/grant', { name: $('#un').value.trim(), shard: +$('#ug').value, reason: $('#ur').value }).then(function (j) { $('#umsg').textContent = j.error || '지급했습니다 (보유 ' + j.shard + ')'; }); },
     reset: function () {
-      var n = $('#un').value.trim(); if (!n) { $('#umsg').textContent = '학생 이름 입력 필요'; return; }
+      var n = $('#un').value.trim(), lg = $('#ulogin').value.trim(); if (!n) { $('#umsg').textContent = '학생 이름 입력 필요'; return; }
+      if (!lg) { $('#umsg').textContent = '초기화할 학생의 아이디 입력 필요 (이름과 아이디가 모두 맞아야 합니다)'; return; }
       if (!confirm('「' + n + '」의 캐릭터를 초기화합니다.\n진행 상황 · 친구 · 파티 · 동아리가 모두 사라지고 되돌릴 수 없습니다.\n아이디 · 비밀번호는 그대로이며, 다음 로그인 때 새 학생을 만듭니다.')) return;
       if (prompt('확인을 위해 학생 이름을 한 번 더 입력하세요') !== n) { $('#umsg').textContent = '이름이 맞지 않아 취소했습니다'; return; }
-      api('POST', '/api/admin/reset', { name: n }).then(function (j) { $('#umsg').textContent = j.error || '「' + n + '」 캐릭터를 초기화했습니다. 다음 로그인 때 새 학생을 만듭니다.'; });
+      api('POST', '/api/admin/reset', { name: n, login: lg }).then(function (j) { $('#umsg').textContent = j.error || '「' + n + '」 캐릭터를 초기화했습니다. 다음 로그인 때 새 학생을 만듭니다.'; });
     },
     ban: function () { api('POST', '/api/admin/ban', { name: $('#un').value.trim() }).then(function (j) { $('#umsg').textContent = j.error || '정지했습니다'; }); },
     unban: function () { api('POST', '/api/admin/ban', { name: $('#un').value.trim(), ban: false }).then(function (j) { $('#umsg').textContent = j.error || '해제했습니다'; }); },
