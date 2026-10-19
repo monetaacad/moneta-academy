@@ -735,6 +735,16 @@
   function mailGot(j) {
     if (j.error) { toast('우편함', j.error); return; } absorb(j);
     var g = j.got || []; if (g.length) { Snd.play('ach'); toast('우편 보상을 받았습니다', g.map(function (x) { return x.text; }).filter(Boolean).join(' · ').slice(0, 120), 3200); }
+    // 장비 · 환수의 알은 받은 뒤 어디에 있는지 알려 준다 (장비 상자는 받는 순간 열린다)
+    var its = [].concat.apply([], g.map(function (x) { return x.items || []; })), egg = g.some(function (x) { return /환수의 알/.test(x.text || ''); });
+    if (its.length || egg) {
+      var WHERE = { equip: '바로 장착했습니다', bag: '장비 가방에 넣었습니다', sold: '가방이 가득 차 판매했습니다', dis: '자동 분해했습니다' };
+      setTimeout(function () {
+        modal(mhead('받은 보상', '우편') + (its.length ? '<div class="section-t">장비 <span class="tiny faint">(장비 상자는 받는 순간 열립니다)</span></div><ul class="report" style="margin-top:4px">' + its.map(function (x) { return '<li><b style="color:' + rcol(x.r || 0) + '">' + esc(x.name) + '</b> — ' + (WHERE[x.res] || '받았습니다') + '</li>'; }).join('') + '</ul>' : '') +
+          (egg ? '<p class="small" style="margin-top:10px">환수의 알은 「장비·공방 → 공방 → 사역마」의 부화기에 보관됩니다' + (S.P.grade < 3 ? ' (3학년부터 부화할 수 있습니다)' : '') + '.</p>' : '') +
+          '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px">' + (egg ? '<button class="btn" data-act="goto" data-a="work" data-b="fam">부화기로</button>' : '') + (its.length ? '<button class="btn" data-act="goto" data-a="gear">장비 화면으로</button>' : '') + '<button class="btn primary" data-act="modal-close">확인</button></div>');
+      }, 200);
+    }
     loadMailbox(); render();
   }
   ACT.mailclaim = function (id) { API.mailOp({ op: 'claim', id: +id }).then(mailGot); };
@@ -3927,7 +3937,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026101992;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026101993;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
