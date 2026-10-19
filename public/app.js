@@ -462,7 +462,7 @@
     wantWatch();
     // 처음 여는 채널: 안 읽은 첫 글 앞에 줄을 긋는다
     if (open && ch !== 'dm' && S.divider[ch] == null) S.divider[ch] = S.read[ch] == null ? 0 : S.read[ch];
-    recount(); if (open) { markRead(ch); }
+    recount(); markRead(ch);   // 고른 탭은 채팅창을 접어 두어도 읽은 것으로 (숫자가 쌓이지 않게)
     document.body.classList.toggle('dock-lock', !!open && innerWidth <= 900);
     var h = '<div class="dock-head"><div class="dtabs" role="tablist">' + dockTabs().map(function (k) {
       var n = tabUnread(k), cur = tabOn(k);
@@ -574,7 +574,8 @@
           var log = $('#chatlog');
           if (log) { var pend = mine && m.nonce && /^[\w-]+$/.test(m.nonce) ? log.querySelector('[data-nonce="' + m.nonce + '"]') : null; if (pend) pend.outerHTML = msgHtml(m); else queueLog(msgHtml(m), mine); }
           markRead(m.ch);
-        } else { S.chat.unread[m.ch] = countUnread(m.ch); if (!mine && m.ch === 'notice') toast('아카데미 공지', m.text.slice(0, 80), 5000); }
+        } else if (S.chat.ch === m.ch) { markRead(m.ch); }   // 접어 둔 채팅창의 고른 탭: 숫자를 쌓지 않는다 (아래 한 줄 미리보기는 갱신된다)
+        else { S.chat.unread[m.ch] = countUnread(m.ch); if (!mine && m.ch === 'notice') toast('아카데미 공지', m.text.slice(0, 80), 5000); }
         updateUnread();
       },
       dm: function (m) {
@@ -2396,7 +2397,9 @@
   function updateLive() {
     if (!S.P) return;
     $$('[data-l]').forEach(function (el) { var v = callKey(LIVE, el.dataset.l); if (v === undefined) return; v = String(v); if (el.__v === v) return; el.__v = v; if (el.dataset.html) el.innerHTML = v; else el.textContent = v; });
-    $$('b[data-b]').forEach(function (el) { var v = callKey(BARS, el.dataset.b); if (v === undefined) return; var w = (Math.max(0, Math.min(1, v || 0)) * 100).toFixed(1) + '%'; if (el.style.width !== w) el.style.width = w; });
+    $$('b[data-b]').forEach(function (el) { var v = callKey(BARS, el.dataset.b); if (v === undefined) return; var w = (Math.max(0, Math.min(1, v || 0)) * 100).toFixed(1) + '%';
+      if (!el.__bi) { el.__bi = 1; el.style.transition = 'none'; el.style.width = w; void el.offsetWidth; el.style.transition = ''; return; }   // 화면을 다시 그릴 때 막대가 0부터 다시 차오르지 않게: 처음 값은 바로
+      if (el.style.width !== w) el.style.width = w; });
     $$('[data-can]').forEach(function (el) { var ok = !!callKey(CAN, el.dataset.can); if (el.disabled === ok) el.disabled = !ok; });
   }
   function updateBadges() {
@@ -3603,7 +3606,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026101964;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026101965;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
