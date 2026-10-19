@@ -6990,12 +6990,12 @@ var Net = (function () {
     h += '<div class="grid gauto">' + D.RESEARCH.filter(function (r) { return !r.gone; }).map(function (r) {
       var lv = P.rs[r.id] || 0, av = R.resAvailable(P, r.id), max = lv >= r.max, cost = R.resCost(P, r.id), q = R.resQueued(P, r.id);
       var can = av && !max && !q && used < c.resSlots && predMana() >= cost.mana && P.res.know >= cost.know;
-      var hh = '<div class="card"' + (av ? '' : ' style="opacity:.55"') + '><div class="row between"><h4>' + r.name + '</h4><span class="num small ' + (max ? 'gold' : 'muted') + '">' + lv + ' / ' + (r.max >= 999 ? '∞' : r.max) + '</span></div><p class="small muted" style="margin:4px 0 8px">' + r.desc + '</p>';
+      var hh = '<div class="card"' + (av ? '' : ' style="opacity:.55"') + '><div class="row between"><h4>' + r.name + '</h4><span class="num small ' + (max ? 'gold' : 'muted') + '">' + lv + ' / ' + (r.max >= 999 ? '∞' : r.max) + '</span></div><p class="small muted" style="margin:4px 0 8px"><span class="faint">단계마다</span> ' + r.desc + (lv && resTotal(r, lv) ? '<br><span class="tiny">지금 받는 효과 · ' + resTotal(r, lv) + '</span>' : '') + '</p>';
       if (!av) return hh + '<span class="tag">' + r.grade + '학년부터</span></div>';
       if (max) return hh + '<span class="tag br">연구 완료</span></div>';
       if (q) { var rq = P.rsq.filter(function (x) { return x && x.id === r.id; })[0];   // 진행 막대 · 남은 시간 (화면이 저절로 갱신)
         return hh + '<span class="tag ok">연구 중</span>' + (rq ? '<div class="bar" style="margin-top:8px"><b data-b="prog:' + rq.start + ':' + rq.end + '"></b></div><div class="row small muted" style="margin-top:4px"><span data-l="left:' + rq.end + '"></span> 남음 · ' + clock(rq.end) + '</div>' : '') + '</div>'; }
-      return hh + '<div class="row"><button class="btn sm" data-act="do" data-a="resStart" data-b="' + r.id + '"' + (can ? '' : ' disabled') + '>연구 <span class="cost">' + R.fmtTime(cost.time) + '</span></button></div><div class="tiny faint" style="margin-top:4px">마나 ' + fmt(cost.mana) + (cost.know ? ' · 지식 ' + fmt(cost.know) : '') + '</div></div>';
+      return hh + '<div class="row"><button class="btn sm" data-act="do" data-a="resStart" data-b="' + r.id + '"' + (can ? '' : ' disabled') + '>' + (lv + 1) + '단계 연구 <span class="cost">' + R.fmtTime(cost.time) + '</span></button></div><div class="tiny faint" style="margin-top:4px">비용 · 마나 ' + fmt(cost.mana) + (cost.know ? ' · 지식 ' + fmt(cost.know) : '') + ' <span class="faint">(시작할 때 냄)</span></div></div>';
     }).join('') + '</div>';
     return h;
   };
@@ -8705,6 +8705,8 @@ var Net = (function () {
   };
   ACT['av-clear'] = function () { S.peAv = null; ACT.me('profile'); };   // 저장을 눌러야 실제로 지워진다
   // 두상: 고른 사진을 자르기 창에서 확대 · 축소 · 이동해 영역을 정하고, 반씩 줄여 가며(계단식 축소로 선명하게) 100×100 JPEG로 만든다
+  // 연구 효과 합계: 설명의 숫자에 단계를 곱한다 ('생명력 +8%' × 3 → '생명력 +24%')
+  function resTotal(r, lv) { if (/[-−]\d/.test(r.desc) || !/\d/.test(r.desc)) return ''; return r.desc.replace(/([+−-])(\d+(?:\.\d+)?)(%|시간분|칸)?/g, function (m, s, n, u) { return s + (Math.round(n * lv * 10) / 10) + (u || ''); }); }
   function loadAvatarImg(file) {
     return new Promise(function (ok, no) {
       if (!file || !/^image\//.test(file.type)) return no(new Error('그림 파일 선택 필요'));
@@ -8902,7 +8904,7 @@ var Net = (function () {
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026101959;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026101960;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
