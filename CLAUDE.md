@@ -14,6 +14,8 @@
 ## 자주 쓰는 명령
 - 미리보기 빌드: `node tools/build-demo.js` → `dist/moneta-demo.html`(아티팩트로 게시), `dist/demo-test.html`(시험용)
 - 미리보기 아티팩트: https://claude.ai/artifact/ByaNgweEw9RLrByJF49r2k — 게시할 때마다 `public/app.js`의 `var BUILD` 숫자를 올린다
+- **미리보기(데모) 빌드 · 게시는 이제 하지 않는다** (사용자 요청, 2026-10-20). 토큰 · 시간이 거의 들지 않을 때만 예외. `var BUILD`는 화면이 바뀌면 계속 올린다(서버판 새로고침 안내용)
+- 건의 · 문의 처리: 운영실 「건의 · 문의 전체 복사」로 사용자가 붙여 주면, 건마다 따로 PR을 만들고 **머지하지 않고 둔다** (사용자가 골라서 머지 = 배포)
 - 시험 서버: `sh tools/srv.sh start e 8098 TIME_SCALE=60 TEST_MODE=1 ADMIN_TOKEN=test-admin-token-0123456789abcdef ADMIN_NAMES=운영자` (끄기 `sh tools/srv.sh stop e`, 초기화 `rm -rf /tmp/arc-e`)
 - 시험: `tools/e2e.py`, `e2e_guild.py`, `e2e_chat.py`, `api_exproom.py`, `api_npc.py`, `api_hchat.py` (시험 서버 필요), `e2e_mail.py`(ADMIN_NAMES 없이 새 서버), `e2e_party_demo.py` · `e2e_onb_demo.py`(미리보기를 `http://127.0.0.1:8765/demo.html`로 띄워서)
 - 프로세스 종료는 `pkill -f` 금지 — 특정 pid만 `kill <pid>`
