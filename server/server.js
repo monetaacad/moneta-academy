@@ -1658,6 +1658,10 @@ routes['POST /api/admin/reset'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
   const b = await readJson(req, 1024), row = dbx.q.playerByKey.get(nameKey(String(b.name || '')));
   if (!row) return fail(req, res, 404, '없는 학생입니다');
+  // 이름만으로는 다른 학생을 잘못 지울 수 있어 아이디도 맞아야 한다
+  const lk = String(b.login || '').trim(); if (!lk) return fail(req, res, 400, '아이디 입력 필요');
+  const full = dbx.db.prepare('SELECT login_key FROM players WHERE id = ?').get(row.id);
+  if (!full || !full.login_key || full.login_key !== loginKey(lk)) return fail(req, res, 400, '학생 이름과 아이디가 맞지 않습니다');
   const r = resetCharacter(row.id); if (!r) return fail(req, res, 400, '초기화할 수 없습니다');
   send(req, res, 200, { ok: true, name: r.name });
 };
