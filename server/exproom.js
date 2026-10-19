@@ -25,6 +25,8 @@ function create(o) {
   const NPCS = R.D.RIVALS.map((r, k) => ({ k, name: r.name }));
 
   function durOk(d) { return R.D.DURATIONS.some((x) => x.k === d); }
+  // 마지막으로 고른 포지션을 기억한다 (다음 방 · 파티장이 데려갈 때 그 자리로)
+  function keepPos(P, pos) { if (!P.opt || P.opt.erPos === pos) return; P.opt.erPos = pos; markDirty(P.id); }
   function posOk(P, pos) { if (!R.EXP_POS[pos]) fail('포지션 선택 필요'); if (R.expPositions(P).indexOf(pos) < 0) fail(R.EXP_POS[pos].name + ' 포지션은 ' + R.EXP_POS[pos].desc.split(' · ')[0]); }
   function check(P, s) { try { R.expCanGo(P, ctx(), gameNow(), s); } catch (e) { if (e.game) fail(e.message); throw e; } }
   function canSee(r, me) { return !r.party || partyOf.get(me) === r.party || r.members.some((m) => m.id === me); }
@@ -89,7 +91,7 @@ function create(o) {
       if (r.members.length >= R.EXP_PARTY_MAX) { skipped.push(Q.name + '(자리 없음)'); return; }
       if (roomOf.get(pid)) { skipped.push(Q.name + '(다른 방에 있음)'); return; }
       try { R.expCanGo(Q, ctx(), gameNow(), r.s); } catch (e) { if (!e.game) throw e; skipped.push(Q.name + '(' + e.message + ')'); return; }
-      const ok = R.expPositions(Q), pos = Q.cls === 'knight' && ok.indexOf('van') >= 0 ? 'van' : ok.indexOf('rear') >= 0 ? 'rear' : ok[0];
+      const ok = R.expPositions(Q), pos = Q.opt && ok.indexOf(Q.opt.erPos) >= 0 ? Q.opt.erPos : Q.cls === 'knight' && ok.indexOf('van') >= 0 ? 'van' : ok.indexOf('rear') >= 0 ? 'rear' : ok[0];
       r.members.push(member(Q, pos)); roomSet(pid, r.id); added.push(Q.name);
       if (o.note) o.note(pid, 'exp', P.name + ' 님이 파티로 함께 원정(' + r.s + '단계 · ' + R.zoneOf(r.s).name + ')에 참가시켰습니다. 원정 화면에서 포지션을 바꾸거나 나올 수 있습니다', { view: 'explore', anchor: 'exproom' });
     });
@@ -102,7 +104,7 @@ function create(o) {
     const k = String(b.op || '');
     if (k === 'create') {
       const s = Math.floor(Number(b.s)) || 0, d = String(b.d || ''), pos = String(b.pos || '');
-      if (!durOk(d)) fail('잘못된 시간입니다'); check(P, s); posOk(P, pos);
+      if (!durOk(d)) fail('잘못된 시간입니다'); check(P, s); posOk(P, pos); keepPos(P, pos);
       if (rooms.size >= MAX_ROOMS) fail('열린 방이 너무 많습니다. 다른 방 참가 필요');
       const party = b.partyOnly ? partyOf.get(me) || null : null; if (b.partyOnly && !party) fail('파티에 들어가 있어야 「파티원만」으로 열 수 있습니다');
       leaveAny(me);
@@ -116,7 +118,7 @@ function create(o) {
       const r = rooms.get(String(b.id || '')); if (!r || !(canSee(r, me) || (invites.get(me) || []).some((x) => x.room === r.id))) fail('없어진 방입니다');
       if (r.members.some((m) => m.id === me)) return { ok: true, id: r.id };
       if (r.members.length >= R.EXP_PARTY_MAX) fail('방이 가득 찼습니다');
-      const pos = String(b.pos || ''); check(P, r.s); posOk(P, pos);
+      const pos = String(b.pos || ''); check(P, r.s); posOk(P, pos); keepPos(P, pos);
       leaveAny(me);
       r.members.push(member(P, pos)); roomSet(me, r.id); full(r); r.touched = real();
       const iv = (invites.get(me) || []).filter((x) => x.room !== r.id); if (iv.length) invites.set(me, iv); else invites.delete(me);
@@ -125,7 +127,7 @@ function create(o) {
     }
     const r = rooms.get(roomOf.get(me) || ''); if (!r) fail('들어가 있는 방이 없습니다');
     if (k === 'bring') { const res = bringParty(r, me, P); if (!res.added.length) fail(res.skipped.length ? '함께 갈 수 있는 파티원이 없습니다: ' + res.skipped.join(', ') : '함께 갈 파티원이 없습니다'); return Object.assign({ ok: true }, res); }
-    if (k === 'pos') { const pos = String(b.pos || ''); posOk(P, pos); r.members.find((m) => m.id === me).pos = pos; r.touched = real(); return { ok: true }; }
+    if (k === 'pos') { const pos = String(b.pos || ''); posOk(P, pos); keepPos(P, pos); r.members.find((m) => m.id === me).pos = pos; r.touched = real(); return { ok: true }; }
     if (k === 'leave') { leaveAny(me); return { ok: true }; }
     if (k === 'recruit') {   // 채팅 「모집」 탭에 알림 한 줄 (방마다 1분에 한 번)
       if (r.party) fail('파티원만 방은 모집 알림을 보낼 수 없습니다');
