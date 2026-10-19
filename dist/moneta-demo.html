@@ -2278,6 +2278,7 @@ var DATA = (function () {
     { c: '자원', t: '마석', b: '원정 중 가끔 떨어지며, 반딧불 정령 · 사역마 파견 · 보스 · 출석 · 매점 「마석 꾸러미」 · 거래소에서도 얻습니다. 장비 강화에 씁니다.', go: ['gear'] },
     { c: '자원', t: '별조각', b: '업적 · 일일 목표 · 출석 · 보스 첫 처치 · 기말시험 · 결투제 · 교수 과제 · 월드 보스 · 기숙사 대항전에서 얻는 귀한 재화입니다. 매점에서 환수의 알, 가방 확장 등을 구입합니다.', go: ['shop'] },
     { c: '자원', t: '재료', b: '원정 지역마다 다른 재료가 나옵니다(지하 저장고: 먼지 가루, 속삭이는 숲: 월광초 등). 물약 제조에 쓰며, 남는 재료는 거래소에서 판매할 수 있습니다.', go: ['work',  'alch'] },
+    { c: '자원', t: '매점', b: '「교류·상점 → 매점」에서 ' + CUR + ' · 별조각으로 마석 꾸러미 · 보급 상자 · 환수의 알 · 마나병 · 토벌 도전권 · 가방 확장 · 휘장 원석 · 연금 재료 상자 · 망각의 차를 삽니다. 토벌 도전권은 하루 2번까지 살 수 있으며, 하루 구매 횟수는 매일 한국 시간(KST) 자정에 초기화됩니다. 출석 · 일일 목표 등 다른 하루 단위 항목도 같은 시각에 초기화됩니다.', go: ['shop'] },
     { c: '자원', t: '분해 · 마석가루 · 재련', b: '쓰지 않는 장비는 판매(' + CUR + ') 대신 분해해 마석과 마석가루를 얻을 수 있습니다. 등급 · 레벨이 높을수록 많이 나옵니다. 마석가루로 장비를 재련하면 등급 · 레벨 · 강화는 유지한 채 옵션만 새로 정해집니다. 재련하면 지금 옵션은 사라지고 새 옵션으로 바뀌며 되돌릴 수 없습니다(누르면 사라질 옵션을 먼저 보여 주고, 재련 뒤에는 이전 · 새 옵션을 나란히 보여 줍니다). 분류 마법을 연구하면 자동 처리를 판매 대신 분해로 바꿀 수 있습니다.', go: ['gear'] },
     { c: '아카데미 생활', t: '수업과 과목', b: '수업은 한 번에 하나만 들을 수 있으며, 수업을 들으면 과목 경험치와 지식을 얻습니다. 과목 레벨이 오르면 능력치가 오르고, 특정 레벨에서 새 주문을 배웁니다. 시간별 효율은 30분 · 1시간 100%, 2시간 97%, 3시간 94%입니다.', go: ['lecture'] },
     { c: '아카데미 생활', t: '함께 듣는 수업', b: '강의실에서 같은 과목을 수강 중인 학생 수를 볼 수 있습니다. 같은 과목을 듣는 다른 학생 1명당 과목 경험치 +1%(최대 +5%)이며, 수업을 시작할 때 정해집니다. 그날 같은 과목을 들은 학생이 많으면 교수가 공지에 한마디를 남깁니다.', go: ['lecture'] },
@@ -2456,7 +2457,7 @@ var DATA = (function () {
     { id: 'gearbox', name: '부엉이 보급 상자', desc: '현재 최고 단계 기준 장비 1개 (고급 이상)', cur: 'gold', price: 'gearbox' },
     { id: 'egg', name: '환수의 알', desc: '사역마 알 1개', cur: 'shard', price: 25, grade: 3 },
     { id: 'manavial', name: '압축 마나병', desc: '마나 4시간 생산분을 즉시 획득 (저장 한도 무시)', cur: 'shard', price: 12 },
-    { id: 'ticket', name: '토벌 도전권', desc: '월드 보스 도전권 +1 (하루 2번까지)', cur: 'shard', price: 10 },
+    { id: 'ticket', name: '토벌 도전권', desc: '월드 보스 도전권 +1 (하루 2번까지 · KST 자정 초기화)', cur: 'shard', price: 10 },
     { id: 'bagslot', name: '마법 가방 확장', desc: '가방 칸 +5 (영구, 졸업 후에도 유지)', cur: 'shard', price: 'bag' },
     { id: 'badgebox', name: '휘장 원석', desc: '무작위 보석이 박힌 아카데미 휘장 1개 (Lv 1)', cur: 'shard', price: 40, grade: 3 },
     { id: 'matbox', name: '연금 재료 상자', desc: '해금된 지역 재료 무작위 12개', cur: 'shard', price: 8, grade: 2 },
@@ -7396,6 +7397,7 @@ var Net = (function () {
   /* ── 매점 ── */
   V.shop = function () {
     var P = S.P, h = pageHead('부엉이 매점', '매점', '주인 부엉이는 “부엉”이라고만 말합니다');
+    h += '<p class="small muted" style="margin:-4px 0 12px">하루 구매 횟수(토벌 도전권)는 매일 <b>한국 시간(KST) 자정</b>에 초기화됩니다.</p>';
     h += '<div class="grid gauto">' + D.SHOP.map(function (s) {
       var locked = s.grade && P.grade < s.grade, price = R.shopPrice(P, s.id), cur = s.cur === 'gold' ? 'gold' : 'shard';
       return '<div class="card"' + (locked ? ' style="opacity:.55"' : '') + '><h4>' + s.name + '</h4><p class="small muted" style="margin:4px 0 10px">' + s.desc + '</p>' +
@@ -9586,7 +9588,7 @@ var Net = (function () {
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026101989;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026101987;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
