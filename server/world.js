@@ -16,7 +16,9 @@ function create(store, cfg, log) {
     notices: kvGet('notices', []),
     news: kvGet('news', []),            // 아카데미 소식: 새 학생 입학 · 진급 (자동)
     now: Date.now() / 1000,
-    wbAlive: true
+    wbAlive: true,
+    hbase: kvGet('hbase', {}),          // 기숙사 성장: 끝난 주의 대항전 점수 누적
+    hpts: {}, hfull: cfg.houseFull || R.HOUSE_FULL, hAt: 0   // hpts = hbase + 이번 주 점수 (R.housePct)
   };
   if (!W.epoch) {
     W.epoch = cfg.epoch || Math.floor(Date.now() / 1000);
@@ -49,12 +51,19 @@ function create(store, cfg, log) {
     }).sort((a, b) => b.score - a.score);
   }
 
+  function refreshHouses(now, cup) {
+    D.HOUSES.forEach((h) => { const c = cup.find((x) => x.id === h.id); W.hpts[h.id] = Math.floor((W.hbase[h.id] || 0) + (c ? c.score : 0)); });
+    W.hAt = now;
+  }
+  const houseView = () => ({ pts: W.hpts, full: W.hfull });
+
   function finalizeWeek(week) {
     if (W.results[week]) return;
     const cup = cupStandings(week);
     const dmgs = q.dmgList.all(week).map((r) => Number(r.dmg));
     const at = (p) => dmgs.length ? dmgs[Math.min(dmgs.length - 1, Math.max(0, Math.ceil(dmgs.length * p) - 1))] : Infinity;
     const killed = !!(W.boss && W.boss.week === week && W.boss.killedAt);
+    cup.forEach((c) => { W.hbase[c.id] = (W.hbase[c.id] || 0) + c.score; }); kvSet('hbase', W.hbase); W.hAt = 0;
     W.results[week] = { cup: cup.map((c) => c.id), cupScores: cup, killed, tiers: [at(0.01), at(0.10), at(0.50)], bossName: W.boss && W.boss.week === week ? W.boss.name : '', participants: dmgs.length };
     const keys = Object.keys(W.results).map(Number).sort((a, b) => b - a);
     keys.slice(10).forEach((k) => delete W.results[k]);
@@ -71,6 +80,7 @@ function create(store, cfg, log) {
       newBoss(week, now);
     }
     W.wbAlive = !W.boss.killedAt;
+    if (now - W.hAt > 30) refreshHouses(now, cupStandings(week));
     if (bossDirty) { kvSet('boss', W.boss); bossDirty = false; }
   }
 
@@ -119,7 +129,7 @@ function create(store, cfg, log) {
     return {
       epoch: W.epoch, now, week: R.weekId(now), weekEnd: R.weekStart(R.weekId(now) + 1),
       boss: b ? { id: b.id, name: b.name, maxHp: b.maxHp, hp: b.hp, killedAt: b.killedAt, participants: Number(cache.wbStats.n) || 0 } : null,
-      cup: cache.cup, topPower: cache.topPower, topStage: cache.topStage, topDmg: cache.topDmg,
+      cup: cache.cup, hpts: W.hpts, hfull: W.hfull, topPower: cache.topPower, topStage: cache.topStage, topDmg: cache.topDmg,
       notices: W.notices.slice(0, 8), news: W.news.slice(0, 20), players: cache.players, online: online || 0,
       lastWeek: W.results[R.weekId(now) - 1] || null
     };
@@ -132,7 +142,7 @@ function create(store, cfg, log) {
 
   // 종료 직전: 미뤄 둔 저장까지 모두 (월드 보스 체력 · 소식 · 공지 · 결과)
   function saveAll() { if (newsT) { clearTimeout(newsT); newsT = null; } kvSet('boss', W.boss); kvSet('news', W.news); kvSet('notices', W.notices); kvSet('results', W.results); bossDirty = false; }
-  const api = { W, tick, saveAll, applyDamage, addNotice, addNews, publicView, ctx, rankOf, finalizeWeek, cupStandings, invalidate() { cache.at = 0; } };
+  const api = { W, houseView, tick, saveAll, applyDamage, addNotice, addNews, publicView, ctx, rankOf, finalizeWeek, cupStandings, invalidate() { cache.at = 0; } };
   return api;
 }
 module.exports = { create };

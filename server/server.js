@@ -30,6 +30,7 @@ const cfg = {
   inviteRequired: process.env.INVITE_REQUIRED !== '0',   // 가입에 초대코드 필요
   maxPlayers: +(process.env.MAX_PLAYERS || 5000),
   expectedPlayers: +(process.env.EXPECTED_PLAYERS || 500), // 첫 주 월드 보스 체력 기준
+  houseFull: +(process.env.HOUSE_FULL || 0),             // 기숙사 효과가 100%가 되는 누적 점수 (0이면 R.HOUSE_FULL)
   sessionDays: 30,
   timeScale: +(process.env.TIME_SCALE || 1), // 테스트 전용: 시간을 빠르게
   testMode: process.env.TEST_MODE === '1'   // 테스트 전용: IP별 입학·로그인 제한 끄기
@@ -306,7 +307,7 @@ function statePayload(P, now) {
 const routes = {};
 routes['GET /api/health'] = (req, res) => { const mv = MAINT.on ? maintView(authed(req)) : null; if (mv && !mv.bypass) return send(req, res, 503, { ok: false, maint: mv }); send(req, res, 200, { ok: true, now: nowSec() }); };
 // 로그인하지 않은 방문자에게는 학생 이름·랭킹 같은 정보를 보내지 않는다
-routes['GET /api/meta'] = (req, res) => { const me = authed(req), mv = maintView(me); if (mv && mv.on && !mv.bypass) return send(req, res, 503, { error: '점검 중입니다', maint: mv }); send(req, res, 200, Object.assign({ build: BUILD.build, minBuild: BUILD.minBuild, maint: mv, now: nowSec(), scale: cfg.timeScale, registerOpen: cfg.registerOpen, inviteRequired: cfg.inviteRequired }, me ? { world: world.publicView(nowSec(), store.online(120000)) } : {})); };
+routes['GET /api/meta'] = (req, res) => { const me = authed(req), mv = maintView(me); if (mv && mv.on && !mv.bypass) return send(req, res, 503, { error: '점검 중입니다', maint: mv }); send(req, res, 200, Object.assign({ build: BUILD.build, minBuild: BUILD.minBuild, maint: mv, now: nowSec(), scale: cfg.timeScale, registerOpen: cfg.registerOpen, inviteRequired: cfg.inviteRequired, houses: world.houseView() }, me ? { world: world.publicView(nowSec(), store.online(120000)) } : {})); };
 
 routes['POST /api/register'] = async (req, res) => {
   if (!cfg.registerOpen) return fail(req, res, 403, '지금은 입학 신청을 받지 않습니다');

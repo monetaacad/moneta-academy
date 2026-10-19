@@ -12,6 +12,7 @@
     var d = this.d, W = d.W, wk = Rules.weekId(now);
     if (!W.boss || W.boss.week !== wk) {
       if (W.boss) {
+        D2().HOUSES.forEach(function (h) { W.hbase[h.id] = (W.hbase[h.id] || 0) + (W.cup[h.id] || 0); });   // 기숙사 성장 누적
         var cup = D2().HOUSES.map(function (h) { return h.id; }).sort(function (a, b) { return (W.cup[b] || 0) - (W.cup[a] || 0); });
         W.results[W.boss.week] = { cup: cup, killed: !!W.boss.killedAt, tiers: [Infinity, Infinity, 0] };
       }
@@ -26,6 +27,9 @@
     var mine = d.P ? d.P.wk.cup : 0, rate = Math.max(0.05, mine / Math.max(3600, now - Rules.weekStart(wk)));
     D2().HOUSES.forEach(function (h, i) { if (!d.P || h.id !== d.P.house) W.cup[h.id] = rate * (now - Rules.weekStart(wk)) * [1.15, 0.85, 1.0, 0.7][i]; });
     if (d.P) W.cup[d.P.house] = mine;
+    // 기숙사 성장 (미리보기): 가상의 기숙사마다 다른 출발점, 100% 기준도 혼자 채울 만큼 낮춘다
+    W.hfull = 40000; if (!W.hbase) W.hbase = { lanterna: 9000, clepsydra: 4000, corona: 14000, speculum: 2000 };
+    W.hpts = {}; D2().HOUSES.forEach(function (h) { W.hpts[h.id] = Math.floor(W.hbase[h.id] + (W.cup[h.id] || 0)); });
     W.now = now; W.wbAlive = !W.boss.killedAt;
     return W;
   };
@@ -36,7 +40,7 @@
     var me = P ? [{ name: P.name, house: P.house, power: Rules.summary(P, W, now).power, lvl: P.lvl, grade: P.grade, stage: P.maxStage }] : [];
     return { demo: true, epoch: W.epoch, now: now, week: Rules.weekId(now), weekEnd: Rules.weekStart(Rules.weekId(now) + 1),
       boss: { id: b.id, name: b.name, maxHp: b.maxHp, hp: b.hp, killedAt: b.killedAt, participants: P && P.wk.att ? 1 : 0 },
-      cup: cup, topPower: me, topStage: me, topDmg: P && P.wk.dmg ? [{ name: P.name, house: P.house, dmg: P.wk.dmg }] : [],
+      cup: cup, hpts: W.hpts, hfull: W.hfull, topPower: me, topStage: me, topDmg: P && P.wk.dmg ? [{ name: P.name, house: P.house, dmg: P.wk.dmg }] : [],
       notices: [{ t: W.epoch, text: '데모 모드입니다. 진행 상황은 이 브라우저에만 저장되며, 월드 보스와 대항전의 다른 학생은 가상입니다.' }], news: (this.d.news || []).slice(0, 20),
       players: 1, online: 1, lastWeek: W.results[Rules.weekId(now) - 1] || null };
   };
@@ -58,7 +62,7 @@
     for (var k in extra) o[k] = extra[k];
     return Promise.resolve(o);
   };
-  LocalApi.prototype.meta = function () { var now = this._now(); if (!this.d) this.d = { W: { epoch: now, results: {}, cup: {} }, P: null }; this._world(now); return this._ok(now, { registerOpen: true, inviteRequired: false, demo: true, world: this._view(now) }); };
+  LocalApi.prototype.meta = function () { var now = this._now(); if (!this.d) this.d = { W: { epoch: now, results: {}, cup: {} }, P: null }; this._world(now); return this._ok(now, { registerOpen: true, inviteRequired: false, demo: true, houses: { pts: this.d.W.hpts, full: this.d.W.hfull }, world: this._view(now) }); };
   LocalApi.prototype.state = function () {
     var now = this._now(); if (!this.d || !this.d.P) return Promise.resolve({ error: '로그인이 필요합니다', _status: 401 });
     var W = this._world(now); Rules.advance(this.d.P, W, now); return this._ok(now);

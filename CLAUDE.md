@@ -7,7 +7,8 @@
 - `server/` — Node 22.13+ (`node:sqlite`, 외부 의존성 없음). `server.js`(API), `chat.js`, `exproom.js`, `board.js`
 - `shared/rules.js`, `shared/data.js` — 서버 · 화면 공용 UMD (게임 규칙 · 데이터). `R.fixState`에서 저장 데이터 이주(플래그 `physV`, `slotV`, `econC` 등)
 - `public/` — 화면. `app.js`(UI 전체), `net.js`(ServerApi), `demo.js`(미리보기용 LocalApi), `style.css`, `draw.js`
-- `deploy/` — 배포 (`START-LIGHTSAIL.md`, `FIRST-DEPLOY.md`, `moneta.service`, `nginx.conf`, `update.sh`)
+- `deploy/` — 배포 (`START-LIGHTSAIL.md`, `FIRST-DEPLOY.md`, `moneta.service`, `nginx.conf`, `update.sh`, 자동 반영 `autoupdate.sh` + `moneta-update.timer`)
+- 운영 서버: https://moneta-academy.duckdns.org (Lightsail 시드니, 고정 IP 32.236.154.86). main에 합치면 3분 안에 자동 반영(서버에 moneta-update.timer 설치 후)
 - `tools/` — 빌드 · 시험
 
 ## 자주 쓰는 명령
