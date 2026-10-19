@@ -294,6 +294,8 @@ main { min-width: 0; container-type: inline-size; container-name: page; }
 .statline { display: flex; justify-content: space-between; font-size: 13px; gap: 10px; }
 .statline .d { font-family: var(--f-num); }
 .alloc { display: grid; grid-template-columns: auto 1fr auto auto; gap: 6px 10px; align-items: center; font-size: 13.5px; }
+.allocv { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }   /* −1 · 수치 · 저장 전 +n: 자리를 늘 잡아 두어 +1 버튼이 밀리지 않게 */
+.allocv .allocd { min-width: 2.6em; }
 .filters { display: flex; gap: 6px; flex-wrap: wrap; }
 .filters .btn.on { border-color: var(--brass2); color: var(--brass2); }
 .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line2); margin-bottom: 14px; overflow-x: auto; }
@@ -4227,6 +4229,8 @@ if (typeof module !== 'undefined') module.exports = DATA;
   // 이번 주(월요일 KST 0시~)에 더 살 수 있는 · 더 쓸 수 있는 추가 도전권 수. 주가 바뀌었으면 센 값을 0으로
   R.wbBuyLeft = function (P, now) { var w = R.weekId(now), wb = P.wb; if (wb.buyWk !== w) { wb.buyWk = w; wb.bought = 0; } return Math.max(0, K.WB_BUY_MAX - wb.bought); };
   R.wbExtraLeft = function (P, now) { var w = R.weekId(now), wb = P.wb; if (wb.exWk !== w) { wb.exWk = w; wb.exUsed = 0; } return Math.max(0, K.WB_EXTRA_USE - wb.exUsed); };
+  // 지금부터 이번 주 끝까지 한 학생이 칠 수 있는 최대 횟수: 가득 찬 도전권 3 + 8시간마다 충전 + 추가 도전권 2 (추가 보스 체력 기준)
+  R.wbAttacksLeft = function (now) { return K.WB_TICKET_MAX + Math.floor(Math.max(0, R.weekStart(R.weekId(now) + 1) - now) / K.WB_TICKET_REGEN) + K.WB_EXTRA_USE; };
   R.wbCanAttack = function (P, now) { return P.wb.tickets > 0 || (P.wb.extra > 0 && R.wbExtraLeft(P, now) > 0); };
   R.WB_KILL_RW = { shard: 20, egg: 1 };   // 월드 보스 토벌 보상 (잡은 순간 이번 주 도전한 학생 모두에게 우편)
   A.wbAttack = function (P, W, now) {
@@ -7369,7 +7373,7 @@ var Net = (function () {
     var dr = S.allocDraft || {}, dsum = R.STATS.reduce(function (a, k) { return a + (dr[k] || 0); }, 0), left = P.pts - dsum;   // 나눠 보는 중 (저장 전)
     if (left < 0) { S.allocDraft = null; dr = {}; dsum = 0; left = P.pts; }   // 그사이 포인트가 줄었으면 나눠 보던 것은 버린다
     var h = '<div class="card" data-anchor="alloc"><div class="row between"><h3>능력치</h3><span class="small">남은 포인트 <b class="num gold">' + left + '</b>' + (dsum ? ' <span class="tiny faint">(저장 전 ' + dsum + ')</span>' : '') + '</span></div>' + (rsn ? '<div class="row" style="margin-top:6px;gap:8px;flex-wrap:wrap"><span class="small">망각의 차 <b class="num">' + rsn + '</b>개</span><span class="tiny faint">마시면 분배한 포인트를 모두 돌려받고 자동 분배가 꺼집니다</span><span class="spacer"></span><button class="btn sm' + (rsArm ? ' primary' : '') + '" data-act="respecuse">' + (rsArm ? '한 번 더 누르면 마십니다' : '망각의 차 마시기') + '</button></div>' : '') + '<div class="alloc" style="margin-top:8px">';
-    R.STATS.forEach(function (k) { var d = dr[k] || 0; h += '<span>' + D.STAT_NAMES[k] + '</span><span class="tiny faint">' + SDESC[k] + '</span><b class="num">' + fmt(c.stat[k]) + (d ? ' <span class="good">+' + d + '</span>' : '') + '</b><span class="row" style="gap:4px;flex-wrap:nowrap">' + (d ? '<button class="btn sm ghost" data-act="alloc" data-a="' + k + '" data-b="-1" aria-label="' + D.STAT_NAMES[k] + ' 하나 빼기">−1</button>' : '') + '<button class="btn sm" data-act="alloc" data-a="' + k + '" data-b="1"' + (left ? '' : ' disabled') + '>+1</button><button class="btn sm ghost" data-act="alloc" data-a="' + k + '" data-b="10"' + (left >= 2 ? '' : ' disabled') + '>+10</button></span>'; });
+    R.STATS.forEach(function (k) { var d = dr[k] || 0; h += '<span>' + D.STAT_NAMES[k] + '</span><span class="tiny faint">' + SDESC[k] + '</span><span class="allocv"><button class="btn sm ghost" data-act="alloc" data-a="' + k + '" data-b="-1" aria-label="' + D.STAT_NAMES[k] + ' 하나 빼기"' + (d ? '' : ' style="visibility:hidden" tabindex="-1"') + '>−1</button><b class="num">' + fmt(c.stat[k]) + '</b><span class="good num allocd">' + (d ? '+' + d : '') + '</span></span><span class="row" style="gap:4px;flex-wrap:nowrap"><button class="btn sm" data-act="alloc" data-a="' + k + '" data-b="1"' + (left ? '' : ' disabled') + '>+1</button><button class="btn sm ghost" data-act="alloc" data-a="' + k + '" data-b="10"' + (left >= 2 ? '' : ' disabled') + '>+10</button></span>'; });
     if (dsum) h += '</div><div class="row allocsave" style="margin-top:8px;gap:6px"><span class="small gold">' + R.STATS.filter(function (k) { return dr[k]; }).map(function (k) { return D.STAT_NAMES[k] + ' +' + dr[k]; }).join(' · ') + '</span><span class="spacer"></span><button class="btn sm ghost" data-act="alloc-reset">되돌리기</button><button class="btn sm primary" data-act="alloc-save">저장</button><div class="alloc" style="display:none">';
     var why = PWHY[P.cls === 'knight' ? 'knight' : 'mage'], tot = 0, W0 = cur ? PRESETS[cur] : null; if (W0) R.STATS.forEach(function (k) { tot += W0[k] || 0; });
     var info = W0 ? '<p class="tiny muted" style="margin-top:6px"><b>' + PNAMES[cur] + '</b> · ' + R.STATS.filter(function (k) { return W0[k]; }).sort(function (a, b) { return W0[b] - W0[a]; }).map(function (k) { return D.STAT_NAMES[k] + ' ' + Math.round(W0[k] / tot * 100) + '%'; }).join(' · ') + '<br>' + why[cur] + '</p>' : '<p class="tiny faint" style="margin-top:6px">직접 정한 비율입니다. 프리셋을 누르면 해당 비율로 바뀝니다.</p>';
@@ -9666,7 +9670,7 @@ var Net = (function () {
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026101996;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026101997;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

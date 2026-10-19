@@ -275,6 +275,8 @@ main { min-width: 0; container-type: inline-size; container-name: page; }
 .statline { display: flex; justify-content: space-between; font-size: 13px; gap: 10px; }
 .statline .d { font-family: var(--f-num); }
 .alloc { display: grid; grid-template-columns: auto 1fr auto auto; gap: 6px 10px; align-items: center; font-size: 13.5px; }
+.allocv { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }   /* −1 · 수치 · 저장 전 +n: 자리를 늘 잡아 두어 +1 버튼이 밀리지 않게 */
+.allocv .allocd { min-width: 2.6em; }
 .filters { display: flex; gap: 6px; flex-wrap: wrap; }
 .filters .btn.on { border-color: var(--brass2); color: var(--brass2); }
 .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line2); margin-bottom: 14px; overflow-x: auto; }
