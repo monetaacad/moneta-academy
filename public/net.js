@@ -78,6 +78,7 @@ var Net = (function () {
   ServerApi.prototype.chatWatch = function (cid, ch) { return this.req('POST', '/api/chat/watch', { cid: cid, ch: ch || '' }); };
   ServerApi.prototype.chatReport = function (id, reason) { return this.req('POST', '/api/chat/report', { id: id, reason: reason }); };
   ServerApi.prototype.profile = function (id) { return this.req('GET', '/api/profile' + (id ? '?id=' + encodeURIComponent(id) : '')); };
+  ServerApi.prototype.recreate = function (name, house, cls) { return this.req('POST', '/api/recreate', { name: name, house: house, cls: cls }); };
   ServerApi.prototype.saveProfile = function (o) { return this.req('POST', '/api/profile', o); };
   // 푸시 알림: 서버 공개 열쇠 받기 · 이 기기 등록/해제
   ServerApi.prototype.pushKey = function () { return this.req('GET', '/api/push/key'); };

@@ -2,6 +2,9 @@
 const fs = require('fs'), p = require('path'), R = (f) => fs.readFileSync(p.join(__dirname, '..', f), 'utf8');
 const strip = (s) => s.replace(/<\/script>/gi, '<\\/script>');
 const html = `<title>모네타 아카데미</title>
+<script>
+${strip(R('public/theme.js'))}
+</script>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -10,7 +13,7 @@ const html = `<title>모네타 아카데미</title>
 ${R('public/style.css')}
 </style>
 <canvas id="sky" aria-hidden="true"></canvas>
-<div id="app"><p style="padding:40px;text-align:center;color:#a3a8c6">학원 문을 여는 중…</p></div>
+<div id="app"><p style="padding:40px;text-align:center;color:var(--muted, #a3a8c6)">아카데미 문을 여는 중…</p></div>
 <div id="toasts" aria-live="polite"></div>
 <div id="modal" hidden></div>
 <script>

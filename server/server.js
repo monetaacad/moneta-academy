@@ -428,6 +428,7 @@ routes['POST /api/act'] = async (req, res) => {
   const type = String(b.type || ''), a = b.a && typeof b.a === 'object' ? b.a : {};
   const now = nowSec(), P = store.get(pid); if (!P) return fail(req, res, 401, '학생 정보를 찾을 수 없습니다');
   syncOp(P);
+  if (P.needCreate) return fail(req, res, 400, '새 학생 만들기 필요');
   world.tick(now);
   // 함께 원정 방에서 출발을 기다리는 중이면, 방이 쓸 마지막 빈 원정 슬롯으로 혼자 원정은 못 보낸다
   if (type === 'expStart' && exprooms.inRoom(pid)) { const c0 = R.calc(P, world.ctx(now), now); let free = 0; for (let i = 0; i < c0.expSlots; i++) if (!P.exp[i]) free++; if (free <= 1) return send(req, res, 400, { error: '함께 원정 방에서 출발을 기다리는 중입니다. 혼자 출정하려면 먼저 방 나가기 필요', P: R.publicState(P), now }); }
@@ -460,7 +461,7 @@ routes['GET /api/chat/stream'] = (req, res) => {
 routes['POST /api/chat/send'] = async (req, res) => {
   const pid = authed(req); if (!pid) return fail(req, res, 401, '로그인이 필요합니다');
   const b = await readJson(req, 4096), P = store.get(pid), meta = dbx.q.playerMeta.get(pid);
-  if (!P || !meta || meta.banned) return fail(req, res, 403, '보낼 수 없습니다');
+  if (!P || !meta || meta.banned || P.needCreate) return fail(req, res, 403, '보낼 수 없습니다');
   try {
     const ch = String(b.ch || ''), now = Date.now() / 1000;
     if (ch === 'dm') { const m = chat.sendDm(P, meta, String(b.to || ''), b.text, now, b.nonce); return send(req, res, 200, { ok: true, id: m.id, dup: !!m.dup }); }
@@ -479,7 +480,7 @@ routes['GET /api/dm'] = (req, res) => {
 routes['GET /api/dm/threads'] = (req, res) => {
   const pid = authed(req); if (!pid) return fail(req, res, 401, '로그인이 필요합니다');
   if (limited('dmt:' + pid, 1, 6)) return fail(req, res, 429, '요청이 너무 잦습니다');
-  const th = chat.dmThreads(pid).map((t) => { const p = dbx.q.getProfile.get(t.peer); return p ? Object.assign(t, { name: p.name, house: p.house, av: p.avatar_v, online: isOnline(t.peer), friend: friendState(pid, t.peer) === 'ok' }) : null; }).filter(Boolean);
+  const th = chat.dmThreads(pid).map((t) => { const p = dbx.q.getProfile.get(t.peer); return p ? Object.assign(t, { name: p.name, house: p.house, av: p.deleted ? 0 : p.avatar_v, online: !p.deleted && isOnline(t.peer), friend: friendState(pid, t.peer) === 'ok', deleted: p.deleted ? true : undefined }) : null; }).filter(Boolean);
   send(req, res, 200, { threads: th });
 };
 routes['GET /api/chat/history'] = (req, res) => {
@@ -543,6 +544,7 @@ routes['GET /api/profile'] = (req, res) => {
   if (limited('pf:' + me, 3, 20)) return fail(req, res, 429, '요청이 너무 잦습니다');
   const id = new URL(req.url, 'http://x').searchParams.get('id') || me;
   const row = /^[A-Za-z0-9_-]{4,40}$/.test(id) && dbx.q.getProfile.get(id);
+  if (row && row.deleted) return send(req, res, 200, { id, deleted: true, name: '삭제된 사용자' });   // 캐릭터 초기화로 남은 예전 캐릭터
   if (!row || row.banned) return fail(req, res, 404, '학생을 찾을 수 없습니다');
   const pr = profileOf(row.profile), self = id === me;
   let lvl = row.lvl, grade = row.grade, power = row.power;
@@ -1605,6 +1607,78 @@ routes['POST /api/admin/slow'] = async (req, res) => {
 routes['GET /api/admin/oplog'] = (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
   send(req, res, 200, { log: dbx.q.oplogList.all(200) });
+};
+/* ───────── 캐릭터 초기화 (운영실) ─────────
+   아이디 · 비밀번호 · 운영진 여부는 그대로 두고 새 학생 번호로 처음부터. 예전 캐릭터는 「삭제된 사용자」로 남아
+   예전 1:1 대화는 볼 수 있지만 정보 카드는 열리지 않는다. 친구 · 파티 · 동아리 · 함께 원정 방에서는 빠진다. 받지 않은 우편은 새 캐릭터로 옮긴다. */
+function resetCharacter(oldId) {
+  const row = dbx.db.prepare('SELECT * FROM players WHERE id = ?').get(oldId); if (!row || row.deleted) return null;
+  const now = nowSec(), real = Math.floor(Date.now() / 1000), newId = crypto.randomUUID();
+  store.flushAll();
+  try { exprooms.forget(oldId); } catch (e) { }
+  if (partyOf.get(oldId)) { const r = leaveParty(oldId); if (r && !r.gone) chat.system('party', row.name + ' 님이 파티에서 나갔습니다.', now / 1, r.party); }
+  const gid = guildOf.get(oldId);
+  if (gid) {
+    const g = dbx.q.gGet.get(gid), role = guildRole.get(oldId);
+    if (role === 'owner' && gCount(gid) > 1) {   // 회장이면 다음 사람(부회장 먼저, 오래된 순)에게 넘긴다
+      const next = dbx.q.gMembers.all(gid).filter((m) => m.id !== oldId).sort((a, b) => (a.role === 'officer' ? 0 : 1) - (b.role === 'officer' ? 0 : 1))[0];
+      dbx.tx(() => { dbx.q.gRole.run('owner', next.id); dbx.q.gSetRank.run('', next.id); dbx.q.gOwner.run(next.id, gid); }); guildRole.set(next.id, 'owner');
+      gLeave(oldId); gSys(gid, row.name + ' 님이 동아리에서 나가 ' + next.name + ' 님이 새 회장이 되었습니다.'); gLog(gid, row.name + ' 님 탈퇴(캐릭터 초기화) · ' + next.name + ' 님이 회장');
+    } else if (role === 'owner') {
+      gRankCache.at = 0; dbx.tx(() => { dbx.q.gDelMembers.run(gid); dbx.q.gDelete.run(gid); dbx.q.gAppDelGuild.run(gid); dbx.q.giDelGuild.run(gid); dbx.q.glDelGuild.run(gid); dbx.q.ginvDelGuild.run(gid); });
+      guildOf.delete(oldId); guildRole.delete(oldId); guildLv.delete(gid); chat.dropGuild(gid);
+    } else { gLeave(oldId); gSys(gid, row.name + ' 님이 동아리에서 나갔습니다.'); gLog(gid, row.name + ' 님 탈퇴(캐릭터 초기화)'); }
+    if (g) gRankCache.at = 0;
+  }
+  const P0 = R.newPlayer(newId, '새 학생', row.house, now, crypto.randomInt(1, 2147483647)); P0.needCreate = 1;
+  dbx.tx(() => {
+    const D = (sql, ...a) => dbx.db.prepare(sql).run(...a);
+    D('DELETE FROM friends WHERE pid = ? OR fid = ?', oldId, oldId);
+    D('DELETE FROM party_invites WHERE pid = ?', oldId);
+    D('DELETE FROM guild_apps WHERE pid = ?', oldId);
+    D('DELETE FROM guild_invites WHERE pid = ?', oldId);
+    D("DELETE FROM market WHERE seller = ? AND status = 'open'", oldId);
+    D("UPDATE auction SET price = 0, bidder = '', bidder_name = '', bids = 0 WHERE done = 0 AND bidder = ?", oldId);
+    D('DELETE FROM notes WHERE pid = ?', oldId);
+    D('DELETE FROM sessions WHERE pid = ?', oldId);
+    D('INSERT OR IGNORE INTO mail_state (mail, pid, read, claimed) SELECT mail, ?, read, claimed FROM mail_state WHERE pid = ?', newId, oldId);   // 모두에게 보낸 우편을 다시 받지 않게
+    D('UPDATE mail SET target = ? WHERE target = ?', newId, oldId);   // 받지 않은 우편은 새 캐릭터로
+    try { D('UPDATE push_subs SET pid = ? WHERE pid = ?', newId, oldId); } catch (e) { }
+    D("UPDATE players SET deleted = 1, banned = 1, name_key = ?, login_key = '', pass = '' WHERE id = ?", '~del:' + oldId, oldId);
+    dbx.q.insertPlayerFull.run(newId, '새 학생', '~new:' + newId, row.house, row.pass, real, real, JSON.stringify(P0), 0, row.invite || '', row.login_key);
+    if (row.role === 'admin') dbx.q.setRole.run('admin', newId);
+  });
+  if (adminIds.has(oldId)) { adminIds.delete(oldId); adminIds.add(newId); }
+  for (const [k, v] of sessionCache) if (v.pid === oldId) sessionCache.delete(k);
+  store.drop(oldId); chat.kick(oldId);
+  oplog('admin', '관리자', 'reset', row.name + ' 캐릭터 초기화');
+  return { name: row.name, id: newId };
+}
+routes['POST /api/admin/reset'] = async (req, res) => {
+  if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
+  const b = await readJson(req, 1024), row = dbx.q.playerByKey.get(nameKey(String(b.name || '')));
+  if (!row) return fail(req, res, 404, '없는 학생입니다');
+  const r = resetCharacter(row.id); if (!r) return fail(req, res, 400, '초기화할 수 없습니다');
+  send(req, res, 200, { ok: true, name: r.name });
+};
+// 초기화된 계정: 학생 이름 · 기숙사 · 학과를 새로 정해 입학한다
+routes['POST /api/recreate'] = async (req, res) => {
+  const pid = authed(req); if (!pid) return fail(req, res, 401, '로그인이 필요합니다');
+  const P0 = store.get(pid); if (!P0 || !P0.needCreate) return fail(req, res, 400, '이미 입학한 학생입니다');
+  const b = await readJson(req, 1024), name = R.cleanName(b.name), house = String(b.house || ''), cls = String(b.cls || '');
+  if (!NAME_RE.test(name)) return fail(req, res, 400, R.NAME_RULE);
+  if (R.badName(name)) return fail(req, res, 400, '쓸 수 없는 말이 들어 있는 이름입니다');
+  if (!R.HOUSE[house]) return fail(req, res, 400, '기숙사 선택 필요');
+  if (!R.CLS[cls]) return fail(req, res, 400, '학과 선택 필요');
+  if (dbx.q.playerByKey.get(nameKey(name))) return fail(req, res, 409, '이미 쓰는 이름입니다');
+  const now = nowSec(), P = R.newPlayer(pid, name, house, now, crypto.randomInt(1, 2147483647)); R.clsStart(P, cls);
+  R.advance(P, world.ctx(now), now); syncOp(P);
+  try { dbx.db.prepare('UPDATE players SET name = ?, name_key = ?, house = ?, created = ?, state = ? WHERE id = ?').run(name, nameKey(name), house, Math.floor(now), JSON.stringify(P), pid); }
+  catch (e) { return fail(req, res, 409, '이미 쓰는 이름입니다'); }
+  store.drop(pid); store.put(P); store.markDirty(pid);
+  log(`다시 입학: ${name} (${house})`);
+  world.addNews(P.name + ' 학생이 ' + (R.HOUSE[P.house] ? R.HOUSE[P.house].name : '아카데미') + '에 입학했습니다', now);
+  send(req, res, 200, statePayload(P, now));
 };
 routes['POST /api/admin/ban'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');

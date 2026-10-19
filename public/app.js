@@ -646,7 +646,7 @@
     }
     var th = S.dm.threads, fr = S.dm.friends;
     var h = '<div class="chatlog"><p class="tiny faint chatdesc">' + CH_INFO.dm.desc + (API.mode === 'local' ? ' <span class="gold">데모에는 친구가 없어 쓸 수 없습니다.</span>' : '') + '</p>';
-    h += th.length ? th.map(function (t) { var un = t.from !== S.P.id && t.last > (S.read.dm[t.peer] || 0); return '<button class="dmthread' + (un ? ' unread' : '') + '" data-act="dmopen" data-a="' + esc(t.peer) + '" data-b="' + esc(t.name) + '">' + avatarHtml({ id: t.peer, av: t.av, name: t.name, house: t.house }, 32) + '<span class="dmt"><b>' + esc(t.name) + '</b>' + (t.online ? ' <span class="odot"></span>' : '') + '<span class="tiny muted ell">' + (t.from === S.P.id ? '나: ' : '') + esc(t.text) + '</span></span>' + (un ? '<span class="ub">새</span>' : '') + '</button>'; }).join('') : '<div class="empty">아직 나눈 대화가 없습니다.</div>';
+    h += th.length ? th.map(function (t) { var un = t.from !== S.P.id && t.last > (S.read.dm[t.peer] || 0); return '<button class="dmthread' + (un ? ' unread' : '') + '" data-act="dmopen" data-a="' + esc(t.peer) + '" data-b="' + esc(t.name) + '">' + avatarHtml({ id: t.peer, av: t.av, name: t.name, house: t.house }, 32) + '<span class="dmt"><b>' + esc(t.name) + '</b>' + (t.deleted ? ' <span class="tag">삭제된 사용자</span>' : '') + (t.online ? ' <span class="odot"></span>' : '') + '<span class="tiny muted ell">' + (t.from === S.P.id ? '나: ' : '') + esc(t.text) + '</span></span>' + (un ? '<span class="ub">새</span>' : '') + '</button>'; }).join('') : '<div class="empty">아직 나눈 대화가 없습니다.</div>';
     if (fr && fr.length) { var rest = fr.filter(function (f) { return !th.some(function (t) { return t.peer === f.id; }); }); if (rest.length) h += '<div class="section-t" style="margin-top:10px;font-size:13px">친구에게 말 걸기</div>' + rest.map(function (f) { return '<button class="dmthread" data-act="dmopen" data-a="' + esc(f.id) + '" data-b="' + esc(f.name) + '">' + avatarHtml(f, 28) + '<span class="dmt"><b>' + esc(f.name) + '</b>' + (f.online ? ' <span class="odot"></span>' : '') + '</span></button>'; }).join(''); }
     else if (!fr && API.friends) API.friends().then(function (j) { S.dm.friends = j.friends || []; if (S.chat.ch === 'dm' && !S.dm.peer && dockOpen()) renderDock(); });
     return h + '</div>';
@@ -735,6 +735,7 @@
   document.addEventListener('click', function (e) { var m = $('#memenu'); if (m && !m.hidden && !e.target.closest('.memenu-wrap')) closeMenu(); else if (m && !m.hidden && e.target.closest('.memenu [data-act]')) setTimeout(closeMenu, 0); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeMenu(); });
   function profileCard(p, m) {
+    if (p.deleted) return '<div class="pcard"><p class="small muted" style="padding:18px 4px;text-align:center">삭제된 사용자입니다.</p></div>';
     var hh = R.HOUSE[p.house], dc = p.deco || {}, fr = decoFrame(dc.frame), bgs = decoBg(dc.bg), dk = dc.frame || dc.bg;
     var h = (p.preview ? '<p class="tiny gold" style="margin-bottom:10px">미리보기 · 저장하지 않은 내용이 들어 있습니다</p>' : '') + '<div class="pcard' + (dk ? ' deco ' + fr.cls : '') + '"' + (dk ? ' style="' + fr.style + bgs + '"' : '') + '>' + (dc.stamp && R.DECO[dc.stamp] ? '<span class="pstamp" title="' + R.DECO[dc.stamp].name + '" aria-hidden="true">' + R.DECO[dc.stamp].glyph + '</span>' : '') + '<div class="pav">' + avatarHtml(p, 100) + (p.avcredit && (p.av || p.avData) ? '<span class="avcredit" title="두상 출처">' + esc(p.avcredit) + '</span>' : '') + '</div>' + '<div style="min-width:0">' + (p.op ? '<div style="margin-bottom:3px">' + opBadge() + '</div>' : '') + (p.title ? '<div class="pttl">' + (R.OP_TITLES[p.title] ? '<span class="ttl op">' + esc(p.title) + '</span>' : esc(p.title)) + '</div>' : '') + '<h2 class="pname">' + inkName(p.name, dc.ink) + (p.badge && R.GEM[p.badge.gem] ? ' <span class="pbdg" title="' + esc((p.badge.name || '') + ' · Lv ' + p.badge.lv) + '">' + badgeSvg(p.badge, 26) + '</span>' : '') + (p.online ? ' <span class="odot" title="접속 중"></span>' : '') + '</h2>' +
       '<div class="small">' + (hh ? houseDot(p.house, 16) + ' ' : '') + '<span style="color:' + (hh ? hh.color : 'inherit') + '">' + (hh ? hh.name : '') + '</span> · ' + (p.grade >= 8 ? '마스터 과정' : p.grade + '학년') + (p.lvl ? ' · Lv ' + p.lvl : '') + (R.CLS[p.cls] ? ' · <span class="pcls">' + clsDot(p.cls, 14) + ' ' + R.CLS[p.cls].name + '</span>' : '') + '</div>' +
@@ -3587,7 +3588,8 @@
   function authScreen() {
     stopLoop(); chatDisconnect();
     var server = API.mode === 'server', M = S.meta || {};
-    var tabs = server ? [['login', '로그인'], ['signup', '가입']] : [['guest', '바로 입학']];   // 서버판에는 게스트가 없다. '바로 입학'은 아티팩트 미리보기에서만
+    var redo = !!(S.P && S.P.needCreate);   // 운영진이 캐릭터를 초기화한 계정: 이름 · 기숙사 · 학과만 새로 정한다
+    var tabs = redo ? [['recreate', '새 학생 만들기']] : server ? [['login', '로그인'], ['signup', '가입']] : [['guest', '바로 입학']];   // 서버판에는 게스트가 없다. '바로 입학'은 아티팩트 미리보기에서만
     var tab = S.authTab && tabs.some(function (t) { return t[0] === S.authTab; }) ? S.authTab : tabs[0][0];
     var h = '<div class="body" style="grid-template-columns:minmax(0,1fr)"><main><div class="intro"><img class="crestbig" src="' + LOGO_URL + '" width="96" height="96" alt=""><h1>모네타 아카데미</h1>' +
       '<p class="lede">별의 종의 울림을 듣는 아이에게만 초대장이 날아드는 곳. 입학 열차 칼리오페호를 타고 구름섬 라디아로, 모든 학생이 같은 시간을 살아가는 아카데미에 오신 것을 환영합니다.</p>';
@@ -3595,6 +3597,7 @@
     if (tabs.length > 1) h += '<div class="tabs" role="tablist">' + tabs.map(function (t) { return '<button role="tab" class="' + (tab === t[0] ? 'on' : '') + '" data-act="authtab" data-a="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
     h += '<form id="authform" class="card stack" style="gap:12px" autocomplete="on">';
     if (tab === 'guest') h += '<p class="small muted">이름과 기숙사만 정하면 바로 시작합니다.</p>';
+    if (tab === 'recreate') h += '<p class="small">운영진이 캐릭터를 초기화했습니다. 아이디와 비밀번호는 그대로이며, 학생 이름 · 기숙사 · 학과를 새로 정해 처음부터 입학합니다.</p>' + nameField();
     // 아이디는 가입 · 로그인에만 쓰고 게임 안에는 나오지 않는다. 학생 이름은 따로
     if (tab === 'login' || tab === 'signup') h += '<div class="field"><label for="a-id">아이디</label><input id="a-id" maxlength="20" placeholder="' + (tab === 'login' ? '' : '영문·숫자·밑줄(_) 4~20자') + '" autocomplete="username" autocapitalize="none" spellcheck="false" value="' + esc(S.authId || '') + '">' + (tab === 'signup' ? '<span class="tiny faint">아이디는 로그인에만 쓰이며, 게임 안에서 다른 학생에게 보이지 않습니다. 학생 이름과 다르게 정해 주세요.</span>' : '') + '</div>';
     if (tab === 'login' || tab === 'signup') h += '<div class="field"><label for="a-pw">비밀번호</label><input id="a-pw" type="password" maxlength="72" placeholder="' + (tab === 'login' ? '' : '8자 이상, 글자와 숫자 섞어서') + '" autocomplete="' + (tab === 'login' ? 'current-password' : 'new-password') + '"></div>';
@@ -3612,7 +3615,7 @@
     if (tab !== 'login') h += '<div><div class="section-t">학과 선택</div><p class="small muted" style="margin-bottom:10px">싸우는 방식입니다. 입학한 뒤에는 전과시험을 봐서 바꿀 수 있습니다.</p><div class="housepick clspick">' + D.CLASSES.map(function (x) {
       return '<button data-act="icls" data-a="' + x.id + '" class="' + (S.icls === x.id ? 'on' : '') + '"><span class="hhead">' + clsDot(x.id, 40) + '<span class="hn">' + x.name + '</span></span><span class="small muted">' + x.desc + '</span><span class="hb gold">' + x.bonusText + '</span><span class="tiny faint">잘 맞는 자리: ' + x.pos + ' · 전용 수업: ' + x.subj + ' · 전용 주문: ' + x.spells + '</span></button>';
     }).join('') + '</div></div>';
-    var btn = { login: '로그인', signup: '가입하고 입학하기', guest: '입학하기' }[tab];
+    var btn = { login: '로그인', signup: '가입하고 입학하기', guest: '입학하기', recreate: '새 학생으로 입학하기' }[tab];
     h += '<div class="row" style="justify-content:center"><button class="btn primary" data-act="auth-go" data-a="' + tab + '">' + btn + '</button></div><p class="small" id="a-msg" style="text-align:center;min-height:1.4em;color:var(--rose)"></p>';
     h += '</div></main></div>';
     $('#app').innerHTML = h; afterRender();
@@ -3627,7 +3630,7 @@
   ACT['auth-go'] = function (tab) {
     var name = $('#a-name') ? $('#a-name').value.trim() : '', id = $('#a-id') ? $('#a-id').value.trim() : '', pw = $('#a-pw') ? $('#a-pw').value : '', msg = $('#a-msg');
     if ($('#a-name')) S.authName = name; if ($('#a-id')) S.authId = id;
-    function done(j) { if (j.error) { msg.textContent = j.error; return; } absorb(j); start(); if (tab === 'login') afterSync(); else if (!PREF.tutDone) { S.onbChain = true; onbGuide(0, true); } else { S.afterClose = function () { if (S.view !== 'home') ACT.nav('home'); ACT.mqscene('intro'); }; ACT.story(0); } }
+    function done(j) { if (j.error) { msg.textContent = j.error; return; } absorb(j); if (S.P && S.P.needCreate) { S.authName = ''; authScreen(); return; } start(); if (tab === 'login') afterSync(); else if (!PREF.tutDone) { S.onbChain = true; onbGuide(0, true); } else { S.afterClose = function () { if (S.view !== 'home') ACT.nav('home'); ACT.mqscene('intro'); }; ACT.story(0); } }
     if (tab === 'login') { if (!id) { msg.textContent = '아이디 입력 필요'; return; } msg.textContent = '확인 중…'; return API.login(id, pw).then(done); }
     if (!S.ihouse) { msg.textContent = '기숙사 선택 필요'; return; }
     if (!S.icls) { msg.textContent = '학과 선택 필요'; return; }
@@ -3639,6 +3642,11 @@
       var code = $('#a-code') ? $('#a-code').value.trim() : '';
       if ($('#a-code') && !code) { msg.textContent = '초대코드 입력 필요'; return; }
       msg.textContent = '입학 처리 중…'; return API.register(name, pw, S.ihouse, code, S.icls, id).then(done);
+    }
+    if (tab === 'recreate') {
+      if (!name) { msg.textContent = '학생 이름 입력 필요'; return; }
+      PREF.tutDone = 0; PREF.tutV = {}; try { savePref(); } catch (e) { }   // 첫 가입처럼 둘러보기부터
+      msg.textContent = '입학 처리 중…'; return API.recreate(name, S.ihouse, S.icls).then(done);
     }
     if (API.mode !== 'local') return;
     msg.textContent = '입학 처리 중…'; API.guest(name, S.ihouse, S.icls).then(done);
@@ -3714,7 +3722,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026101975;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026101976;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
@@ -3804,7 +3812,7 @@
 
   /* ───────── 시작 · 반복 ───────── */
   var loopT = 0, liveT = 0;
-  function start() { shell(); renderNav(); watchNav(); render(); renderDock(); document.body.classList.toggle('dock-open', dockOpen()); updateMeBadge(); setTimeout(pushSync, 3000); Snd.on = !!(S.P.opt && S.P.opt.sound); if (!loopT) loopT = setInterval(loop, 250); chatConnect(); loadMe(); }
+  function start() { if (S.P && S.P.needCreate) { authScreen(); return; } shell(); renderNav(); watchNav(); render(); renderDock(); document.body.classList.toggle('dock-open', dockOpen()); updateMeBadge(); setTimeout(pushSync, 3000); Snd.on = !!(S.P.opt && S.P.opt.sound); if (!loopT) loopT = setInterval(loop, 250); chatConnect(); loadMe(); }
   function stopLoop() { if (loopT) { clearInterval(loopT); loopT = 0; } Bgm.want(null, now()); }
   // 원정·시험·토벌 화면은 전투곡, 나머지는 광장곡
   var BATTLE_VIEWS = { explore: 1, exam: 1, world: 1 };
