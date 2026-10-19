@@ -478,7 +478,10 @@ button[disabled][data-why] { pointer-events: none; }
 .shw { position: relative; min-width: 0; flex: 1 1 auto; }
 .sharr { position: absolute; top: 50%; transform: translateY(-50%); z-index: 2; width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel); color: var(--brass2); font-size: 18px; line-height: 1; display: none; place-items: center; padding: 0 0 2px; cursor: pointer; box-shadow: 0 2px 8px var(--shadow); }
 .sharr.l { left: 2px; } .sharr.r { right: 2px; }
-.shw.more-l .sharr.l, .shw.more-r .sharr.r { display: grid; }
+.shw.more-l > :first-child { -webkit-mask-image: linear-gradient(to right, transparent 0, #000 28px); mask-image: linear-gradient(to right, transparent 0, #000 28px); }
+.shw.more-r > :first-child { -webkit-mask-image: linear-gradient(to left, transparent 0, #000 28px); mask-image: linear-gradient(to left, transparent 0, #000 28px); }
+.shw.more-l.more-r > :first-child { -webkit-mask-image: linear-gradient(to right, transparent 0, #000 28px, #000 calc(100% - 28px), transparent 100%); mask-image: linear-gradient(to right, transparent 0, #000 28px, #000 calc(100% - 28px), transparent 100%); }
+@media (hover: hover) and (pointer: fine) { .shw:hover.more-l .sharr.l, .shw:hover.more-r .sharr.r { display: grid; } }
 /* 모바일에서 채팅을 펼쳐 둔 동안 뒤 페이지가 같이 스크롤되지 않게 */
 @media (max-width: 900px) { body.dock-lock { overflow: hidden; overscroll-behavior: none; } }
 .dock, .dock .dtabs, .memenu { overscroll-behavior: contain; }
@@ -1287,8 +1290,9 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 .ernew { margin-top: 10px; }
 .ernew summary { cursor: pointer; list-style: none; }
 .ernew summary::-webkit-details-marker { display: none; }
-.ernew summary::before { content: '▸ '; color: var(--brass); }
-.ernew[open] summary::before { content: '▾ '; }
+/* 원정 방 만들기: 눈에 띄는 버튼 (펼치면 「닫기」) */
+.ernew summary.ernew-btn { display: inline-flex; padding: 8px 16px; font-size: 14px; }
+.ernew[open] summary.ernew-btn { background: var(--panel2); color: var(--ink); }
 .clspick { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 @media (max-width: 640px) { .clspick { grid-template-columns: minmax(0, 1fr); } }
 :root[data-paper="on"] .erroom { border-color: transparent; background-image: var(--tex); -webkit-mask-box-image: var(--torn-s) 6 fill / 6px round; }
