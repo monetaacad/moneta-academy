@@ -1950,7 +1950,7 @@
   function alchView() {
     var P = S.P, c = C(), cnt = +(S.pick.bn || 1);
     var h = '<div class="grid g2"><div class="card"><div class="row between"><h3>조제법</h3><div class="filters">' + [1, 3, 5, 10].map(function (k) { return '<button class="btn sm ghost' + (cnt === k ? ' on' : '') + '" data-act="pick" data-a="bn" data-b="' + k + '">' + k + '병</button>'; }).join('') + '</div></div>' +
-      '<p class="tiny faint">재료와 마나만 있으면 바로 완성됩니다. 양조 효율 ×' + c.brewSpd.toFixed(2) + '만큼 마나가 덜 듭니다. 물약 효과는 마신 뒤 실제 시간으로 흐르고, 진행 중인 작업과 겹친 만큼 반영됩니다.</p><div class="stack" style="gap:12px;margin-top:10px">';
+      '<p class="tiny faint">재료와 마나만 있으면 바로 완성됩니다. 양조 효율 ×' + c.brewSpd.toFixed(2) + '만큼 마나가 덜 듭니다. 물약 효과는 마신 뒤 실제 시간으로 흐릅니다. <b>마신 뒤 시작하는 수업 · 원정부터 적용됩니다</b>(이미 진행 중인 수업 · 원정에는 적용되지 않으며, 효과가 남은 시간과 겹치는 만큼 반영됩니다).</p><div class="stack" style="gap:12px;margin-top:10px">';
     D.POTIONS.forEach(function (p) {
       var mana = R.brewMana(P, wctx(), now(), p.id), un = R.potionUnlocked(P, p.id), can = un && predMana() >= mana * cnt && Object.keys(p.mats).every(function (m) { return (P.mats[m] || 0) >= p.mats[m] * cnt; });
       h += '<div class="recipe"' + (un ? '' : ' style="opacity:.5"') + '><div class="row"><span class="pot-ic" style="background:' + p.color + '"></span><b>' + p.name + '</b><span class="tiny faint">효과 ' + R.fmtTime(p.dur) + '</span><span class="spacer"></span>' +
@@ -3627,7 +3627,7 @@
     auction: [['.page-head', '떠돌이 상인', '매일 낮 12시와 밤 8시에 2시간 동안 귀한 장비 세 점을 경매합니다. 더 높은 입찰이 나오면 입찰한 ' + CUR + '를 즉시 돌려받습니다.']],
     market: [['#view .tabs', '거래소', '「사기」에서 다른 학생의 물건을 사고, 「팔기」에서 내 물건을 올립니다. 「팔기」에는 최근 시세가 표시됩니다.']],
     gear: [['h:장비 살펴보기', '장비', '장착 칸이나 가방의 장비를 누르면 능력치와 강화 · 재련 · 분해 · 잠금 메뉴가 표시됩니다.'], ['[data-anchor="bag"]', '가방 · 소지품', '초록 ▲ 표시는 현재보다 전투력이 오르는 장비입니다. 「소지품」 탭에는 환수의 알 · 토벌 도전권 · 물약 · 망각의 차가 모이며, 바로 사용하거나 해당 화면으로 이동할 수 있습니다.'], ['h:능력치', '능력치', '레벨업 포인트를 직접 분배하거나, 자동 분배를 활성화하고 프리셋을 선택할 수 있습니다.'], ['[data-anchor="badge"]', '아카데미 휘장', '달고 있는 휘장 하나만 효과가 있으며, 원정 · 수업 · 전투에서 별빛을 모아 성장합니다.']],
-    work: [['h:연금술', '연금술', '재료와 마나로 물약을 즉시 만듭니다. 물약 효과는 마신 뒤 현실 시간으로 흐릅니다.'], ['h:사역마', '사역마', '환수의 알을 부화시켜 동행하거나 파견을 보냅니다. 동행 중인 사역마는 능력치를 올려 줍니다.']],
+    work: [['h:연금술', '연금술', '재료와 마나로 물약을 즉시 만듭니다. 물약 효과는 마신 뒤 현실 시간으로 흐르며, 마신 뒤 시작하는 수업 · 원정부터 적용됩니다.'], ['h:사역마', '사역마', '환수의 알을 부화시켜 동행하거나 파견을 보냅니다. 동행 중인 사역마는 능력치를 올려 줍니다.']],
     shop: [['.page-head', '매점', '별조각과 ' + CUR + '로 환수의 알 · 가방 확장 · 휘장 원석 등을 구입합니다.']],
     rec: [['h:업적', '기록실', '업적 · 칭호 도감 · 몬스터 도감 · 통계를 확인합니다. 업적을 달성하면 별조각을 받습니다.']]
   };
@@ -4501,7 +4501,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102057;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102058;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
