@@ -1731,13 +1731,13 @@
     D.POTIONS.forEach(function (p) {
       var mana = R.brewMana(P, wctx(), now(), p.id), un = R.potionUnlocked(P, p.id), can = un && predMana() >= mana * cnt && Object.keys(p.mats).every(function (m) { return (P.mats[m] || 0) >= p.mats[m] * cnt; });
       h += '<div class="recipe"' + (un ? '' : ' style="opacity:.5"') + '><div class="row"><span class="pot-ic" style="background:' + p.color + '"></span><b>' + p.name + '</b><span class="tiny faint">효과 ' + R.fmtTime(p.dur) + '</span><span class="spacer"></span>' +
-        (un ? '<button class="btn sm" data-act="brew" data-a="' + p.id + '"' + (can ? '' : why(predMana() < mana * cnt ? '마나가 부족합니다' : '재료가 부족합니다')) + '>' + cnt + '병 만들기</button>' : '<span class="tag">연금화학 Lv ' + p.unlock + '</span>') + '</div>' +
+        (un ? '<button class="btn sm primary" data-act="brew" data-a="' + p.id + '"' + (can ? '' : why(predMana() < mana * cnt ? '마나가 부족합니다' : '재료가 부족합니다')) + '>' + cnt + '병 만들기</button>' : '<span class="tag">연금화학 Lv ' + p.unlock + '</span>') + '</div>' +
         '<div class="small muted">' + p.desc + '</div><div class="recipe mats" style="flex-direction:row"><span class="tag ' + (predMana() >= mana * cnt ? 'ok' : 'no') + '">마나 ' + fmt(mana * cnt) + '</span>' + Object.keys(p.mats).map(function (m) { return matTag(m, p.mats[m] * cnt); }).join('') + '</div></div>';
     });
     h += '</div></div><div class="stack"><div class="card"><h3>물약 선반</h3>';
     var shelf = D.POTIONS.filter(function (p) { return P.shelf[p.id] > 0; });
     if (!shelf.length) h += '<div class="empty" style="margin-top:8px">완성된 물약이 없습니다.</div>';
-    else h += '<div class="stack" style="gap:8px;margin-top:8px">' + shelf.map(function (p) { var bf = P.buffs['p_' + p.id]; return '<div class="row"><span class="pot-ic" style="background:' + p.color + '"></span><span>' + p.name + ' <span class="num muted">×' + P.shelf[p.id] + '</span></span>' + (bf ? '<span class="tag ok num" data-l="left:' + bf.end + '"></span>' : '') + '<span class="spacer"></span><button class="btn sm" data-act="do" data-a="drink" data-b="' + p.id + '">마시기</button><button class="btn sm ghost" data-act="mksellpot" data-a="' + p.id + '">거래소에서 팔기</button></div>'; }).join('') + '</div>';
+    else h += '<div class="stack" style="gap:8px;margin-top:8px">' + shelf.map(function (p) { var bf = P.buffs['p_' + p.id]; return '<div class="row"><span class="pot-ic" style="background:' + p.color + '"></span><span>' + p.name + ' <span class="num muted">×' + P.shelf[p.id] + '</span></span>' + (bf ? '<span class="tag ok num" data-l="left:' + bf.end + '"></span>' : '') + '<span class="spacer"></span><button class="btn sm primary" data-act="do" data-a="drink" data-b="' + p.id + '">마시기</button><button class="btn sm ghost" data-act="mksellpot" data-a="' + p.id + '">거래소에서 팔기</button></div>'; }).join('') + '</div>';
     h += '<p class="tiny faint" style="margin-top:8px">자기 전에는 「숙면의 차」를 마시고 사역마를 8·12시간 파견해 두세요.</p></div><div class="card"><h3>재료 보관함</h3><div class="stack" style="gap:6px;margin-top:8px">' + Object.keys(D.MATS).map(function (m) {
       var z = D.ZONES.find(function (zz) { return zz.mat === m; }); return '<div class="row small"><span>' + D.MATS[m].name + '</span><span class="tiny faint">' + z.name + '</span><span class="spacer"></span><b class="num">' + fmt(P.mats[m] || 0) + '</b></div>';
     }).join('') + '</div></div></div></div>';
@@ -1757,8 +1757,8 @@
       var act2 = P.fam.act === f.id, disp = P.fam.disp[f.id], cost = o.lv < 20 ? R.feedCost(P, f.id) : 0;
       h += '<div class="card famcard' + (act2 ? ' act' : '') + '"><div style="flex:1;min-width:0"><div class="row" style="gap:6px"><b>' + f.name + '</b><span class="num tiny gold">Lv ' + o.lv + '</span></div><div class="tiny" style="color:' + fr.color + '">' + fr.name + '</div>' +
         '<div class="small">' + D.BONUS_NAMES[f.bonus] + ' +' + pct(R.famBonus(f, o.lv, P)) + '</div>' + (disp ? '<div class="tiny gold">파견 중 · ' + clock(disp.end) + ' 귀환</div>' : '<div class="tiny faint">' + f.desc + '</div>') +
-        '<div class="row" style="margin-top:6px;gap:6px">' + (o.lv < 20 ? '<button class="btn sm" data-act="do" data-a="feed" data-b="' + f.id + '"' + (P.res.gold >= cost ? '' : ' disabled') + '>먹이 <span class="cost">' + fmt(cost) + ' ' + CUR + '</span></button>' : '<span class="tag br">최대 레벨</span>') +
-        (act2 ? '<span class="tag ok">동행 중</span>' : disp ? '' : '<button class="btn sm ghost" data-act="do" data-a="famAct" data-b="' + f.id + '">동행</button><button class="btn sm ghost" data-act="dispatch" data-a="' + f.id + '">' + R.DDUR[dk].label + ' 파견</button>') + '</div></div></div>';
+        '<div class="row" style="margin-top:6px;gap:6px">' + (o.lv < 20 ? '<button class="btn sm primary" data-act="do" data-a="feed" data-b="' + f.id + '"' + (P.res.gold >= cost ? '' : ' disabled') + '>먹이 <span class="cost">' + fmt(cost) + ' ' + CUR + '</span></button>' : '<span class="tag br">최대 레벨</span>') +
+        (act2 ? '<span class="tag ok">동행 중</span>' : disp ? '' : '<button class="btn sm primary" data-act="do" data-a="famAct" data-b="' + f.id + '">동행</button><button class="btn sm primary" data-act="dispatch" data-a="' + f.id + '">' + R.DDUR[dk].label + ' 파견</button>') + '</div></div></div>';
     });
     return h + '</div>';
   }
@@ -4084,7 +4084,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102017;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102018;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
