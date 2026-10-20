@@ -1989,6 +1989,24 @@ routes['POST /api/admin/chat/system'] = async (req, res) => {
   const b = await readJson(req, 2048); if (!chat.CHANNELS[b.ch] || !b.text) return fail(req, res, 400, 'ch, text가 필요합니다');
   chat.system(b.ch, String(b.text).slice(0, 300), Date.now() / 1000); send(req, res, 200, { ok: true });
 };
+// 운영실: 분포 통계 (이름 · 아이디 없이 숫자 분위만). 밸런스 조정용으로 Claude에게 붙여 넣는다
+routes['GET /api/admin/dist'] = (req, res) => {
+  if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
+  const db = dbx.db, now = Math.floor(Date.now() / 1000), wk = R.weekId(nowSec());
+  const pct = (a) => { a = a.filter((v) => v != null && isFinite(v)).sort((x, y) => x - y); if (!a.length) return { n: 0 }; const q = (p) => Math.round(a[Math.min(a.length - 1, Math.floor(a.length * p))] * 100) / 100; return { n: a.length, p10: q(0.1), p25: q(0.25), p50: q(0.5), p75: q(0.75), p90: q(0.9), p99: q(0.99), max: q(1) }; };
+  const by = (rows, key, val) => { const m = { all: [] }; rows.forEach((r) => { const v = Number(r[val]); m.all.push(v); (m[r[key]] = m[r[key]] || []).push(v); }); const o = {}; for (const k in m) o[k] = pct(m[k]); return o; };
+  const players = db.prepare('SELECT house, power, lvl, grade, max_stage, wb_dps, last_seen FROM players WHERE banned = 0 AND guest = 0').all();
+  const act = players.filter((p) => p.last_seen >= now - 7 * 86400);
+  const grades = {}; act.forEach((p) => { grades[p.grade] = (grades[p.grade] || 0) + 1; });
+  const fight = (rows) => ({ power: by(rows, 'house', 'power'), lvl: by(rows, 'house', 'lvl'), maxStage: by(rows, 'house', 'max_stage'), wbDps: by(rows, 'house', 'wb_dps') });
+  const cup = {}; db.prepare('SELECT DISTINCT week FROM weekly WHERE week <= ? ORDER BY week DESC LIMIT 4').all(wk).forEach(({ week }) => {
+    const rows = db.prepare('SELECT house, cup, dmg, att FROM weekly WHERE week = ?').all(week);
+    const c = rows.filter((r) => r.cup > 0), o = by(c, 'house', 'cup'); for (const h in o) if (h !== 'all') o[h].a100 = c.filter((r) => r.house === h && r.cup >= R.CUP_ACTIVE).length;
+    cup[week] = { now: week === wk, cup: o, wbDmg: pct(rows.filter((r) => r.dmg > 0).map((r) => r.dmg)), wbAttacks: pct(rows.filter((r) => r.att > 0).map((r) => r.att)) };
+  });
+  oplog('admin', '관리자', 'dist', '분포 통계 복사');
+  send(req, res, 200, { at: now, week: wk, students: { all: players.length, active7d: act.length, gradeActive7d: grades }, fightActive7d: fight(act), fightAll: fight(players), weekly: cup });
+};
 routes['GET /api/admin/ideas'] = (req, res) => { if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다'); send(req, res, 200, { text: board.exportIdeas() }); };
 routes['GET /api/admin/sys'] = (req, res) => { if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다'); send(req, res, 200, { build: BUILD, maint: MAINT, pin: dbx.kvGet('pinNotice', null) }); };
 // 새 버전 알리기: {build, minBuild} — 접속한 모두에게 'ver'을 보낸다

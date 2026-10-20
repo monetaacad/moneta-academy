@@ -184,6 +184,16 @@
     iless: function () { ISHOW = 10; invites(); },
     ubmore: function (el) { var c = el.dataset.c; UBOPEN[c] = !UBOPEN[c]; invites(); },
     bdst: function (el) { api('POST', '/api/admin/board', { op: 'status', id: +el.dataset.c, st: el.dataset.s || '' }).then(function (j) { if (j.error) { toast(j.error); return; } bdshow(j); toast(el.dataset.s ? '「' + ST[el.dataset.s] + '」 표시를 붙였습니다' : '상태 표시를 뗐습니다'); }); },
+    // 분포 통계: 이름 · 아이디 없이 숫자 분위만 (밸런스 조정용으로 Claude에게 붙여 넣는다)
+    distcopy: function () {
+      api('GET', '/api/admin/dist').then(function (j) {
+        if (j.error) { toast(j.error); return; }
+        var t = '[모네타 분포 통계 ' + when(j.at) + ']\n' + JSON.stringify(j);
+        var done = function () { toast('복사했습니다 (학생 ' + j.students.all + '명 · 최근 7일 ' + j.students.active7d + '명) · Claude에게 붙여 넣으세요'); };
+        if (navigator.clipboard) navigator.clipboard.writeText(t).then(done, function () { window.prompt('아래 내용을 복사하세요', t); });
+        else window.prompt('아래 내용을 복사하세요', t);
+      });
+    },
     ideacopy: function () {
       api('GET', '/api/admin/ideas').then(function (j) {
         if (j.error) { toast(j.error); return; } if (!j.text) { toast('복사할 글이 없습니다'); return; }
