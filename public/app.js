@@ -2264,7 +2264,7 @@
     act('ctower').then(function (r) {
       if (!r) return; var nm = R.CT_NAME[r.cls], fo = r.foe;
       var fn = fo.name.replace(/^탑의 문지기 · /, '');   // 모바일에서 이름이 어색하게 줄바꿈되지 않게 「탑의 문지기」는 부제로
-      replay({ title: nm + ' ' + r.f + '층', sub: fn !== fo.name ? '탑의 문지기' : '', enemy: { id: 'ct', arch: fo.arch, c1: fo.c1, c2: fo.c2, boss: true, name: fn }, ev: r.ev, maxHp: fo.hp }, function () {
+      replay({ title: nm + ' ' + r.f + '층', sub: fn !== fo.name ? '탑의 문지기' : '', enemy: { id: 'ct', arch: fo.arch, c1: fo.c1, c2: fo.c2, boss: true, name: fn }, ev: r.ev, maxHp: fo.hp, cc: r.cc }, function () {
         Snd.play(r.win ? 'pass' : 'fail'); var rwT = R.rewardText(r.rw);
         modal(mhead(nm + ' ' + r.f + '층', r.win ? '돌파했습니다' : '이번에는 오르지 못했습니다') +
           '<p>' + (r.win ? '<span class="good">' + esc(R.josa(fo.name, '을', '를')) + '</span> ' + (Math.round(r.t * 10) / 10) + '초 만에 쓰러뜨렸습니다.' : esc(fo.name) + '의 체력을 ' + r.pct + '% 깎았습니다. ' + (r.dead ? '생명력이 바닥났습니다.' : R.CT_TIME + '초 안에 쓰러뜨리지 못했습니다.')) + '</p>' +
@@ -3186,9 +3186,9 @@
       if (txt) lines.push([t, txt, kind]);
       if (!opts.infinite && mhp) { while (mk < marks.length && dealt / mhp >= marks[mk]) { var left = Math.round((1 - marks[mk]) * 100); lines.push([t, en + '의 남은 체력 ' + left + '%' + (left === 25 ? ' — 조금만 더!' : ''), 'm']); mk++; } }
       if (!lowSaid && php < 0.3 && php > 0) { lowSaid = true; lines.push([t, '숨이 가쁘다. 생명력이 ' + Math.round(php * 100) + '% 남았다.', 'x']); }
-      if (!dead && php <= 0) { dead = true; lines.push([t, me + ' 학생이 쓰러졌다…', 'x']); }
+      if (!dead && php <= 0) { dead = true; lines.push([t, opts.cc ? '마지막 순간, 서로의 일격이 교차한다!' : me + ' 학생이 쓰러졌다…', opts.cc ? 's' : 'x']); }
     }
-    var tail = opts.infinite ? '시간이 다 됐다. 모두 ' + fmt(dealt) + ' 피해를 입혔다.' : (mhp && dealt >= mhp ? josa(en, '이', '가') + ' 쓰러졌다!' : dead ? '더 버티지 못하고 물러났다.' : '시간이 다 됐다. ' + josa(en, '은', '는') + ' 아직 서 있다.');
+    var tail = opts.infinite ? '시간이 다 됐다. 모두 ' + fmt(dealt) + ' 피해를 입혔다.' : (opts.cc ? '크로스카운터! ' + josa(en, '이', '가') + ' 먼저 무너졌다.' : mhp && dealt >= mhp ? josa(en, '이', '가') + ' 쓰러졌다!' : dead ? '더 버티지 못하고 물러났다.' : '시간이 다 됐다. ' + josa(en, '은', '는') + ' 아직 서 있다.');
     lines.push([total, tail, 't']);
     return { lines: lines, total: total, dealt: dealt };
   }
@@ -3209,7 +3209,7 @@
         if (box) { box.innerHTML = L.slice(0, n).map(function (x) { return '<div class="el k' + x[2] + '"><span class="et num">' + x[0].toFixed(1) + '초</span><span>' + esc(x[1]) + '</span></div>'; }).join('') + (n < L.length ? '<div class="el faint twdots"><span class="et"></span><span>…</span></div>' : ''); box.scrollTop = box.scrollHeight; }
         var hp = hpAt(gt), pb = $('#rp-p'), mb = $('#rp-m'), dd = $('#rp-d');
         if (pb) pb.style.width = (hp[1] * 100).toFixed(1) + '%';
-        if (mb) mb.style.width = (Math.max(0, 1 - hp[0] / mhp) * 100).toFixed(1) + '%';
+        if (mb) mb.style.width = (opts.cc && gt >= total ? 0 : Math.max(0, 1 - hp[0] / mhp) * 100).toFixed(1) + '%';
         if (dd) dd.textContent = '피해 ' + fmt(hp[0]);
       }
       var tt = $('#rp-t'); if (tt) tt.textContent = gt.toFixed(1) + '초';
@@ -3267,7 +3267,7 @@
     var b = R.nextBoss(S.P), def = R.zoneOf(b).boss;
     act('boss').then(function (r) {
       if (!r) return;
-      replay({ title: def.name, sub: b + '단계 보스 · 30초', enemy: { id: def.id, arch: def.arch, c1: def.c1, c2: def.c2, boss: true, name: def.name }, ev: r.ev, maxHp: r.maxHp }, function () {
+      replay({ title: def.name, sub: b + '단계 보스 · 30초', enemy: { id: def.id, arch: def.arch, c1: def.c1, c2: def.c2, boss: true, name: def.name }, ev: r.ev, maxHp: r.maxHp, cc: r.cc }, function () {
         Snd.play(r.win ? 'pass' : 'fail');
         modal(mhead(r.win ? '보스 처치!' : '패배', def.name) + (r.win ? '<p>' + (b + 1) + '~' + (b + 9) + '단계가 열렸습니다.</p><p class="small" style="margin-top:6px">별조각 +' + r.shard + ', 마석 +' + r.stone + ', <span style="color:' + rcol(r.item.r) + '">' + esc(r.item.name) + '</span>' + (r.egg ? ', <span class="gold">환수의 알</span>' : '') + (r.badge ? ', <span class="gold">' + esc(r.badge) + '</span>' : '') + '</p>' : '<p class="small muted">보스 체력이 ' + Math.round(r.mHp * 100) + '% 남았습니다. ' + (r.dead ? '쓰러졌습니다.' : '30초 안에 쓰러뜨리지 못했습니다.') + ' 10분 뒤 다시 도전할 수 있습니다.</p>') +
           '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>');
@@ -3278,7 +3278,7 @@
     var rv = R.rival(S.P);
     act('duel').then(function (r) {
       if (!r) return;
-      replay({ title: '결투제 ' + r.k + '회전', sub: rv.name, enemy: { id: 'rv' + r.k, arch: ['wisp', 'beast', 'golem', 'eye', 'construct', 'book', 'blob'][r.k % 7], c1: '#c0a0e0', c2: '#3a2a5a', name: rv.name }, ev: r.ev, maxHp: r.maxHp }, function () {
+      replay({ title: '결투제 ' + r.k + '회전', sub: rv.name, enemy: { id: 'rv' + r.k, arch: ['wisp', 'beast', 'golem', 'eye', 'construct', 'book', 'blob'][r.k % 7], c1: '#c0a0e0', c2: '#3a2a5a', name: rv.name }, ev: r.ev, maxHp: r.maxHp, cc: r.cc }, function () {
         Snd.play(r.win ? 'pass' : 'fail');
         modal(mhead(r.win ? '승리!' : '패배', '결투제 ' + r.k + '회전 · ' + esc(r.rival)) + '<p style="font-style:italic;color:var(--ink2);margin-bottom:10px">“' + esc(r.win ? r.lose : r.hello) + '”</p>' +
           (r.win ? '<p class="small">별조각 +' + r.reward.shard + (r.reward.first ? ' (첫 승리 보너스)' : '') + ', ' + MONEY(r.reward.gold, '+') + '</p>' : '<p class="small muted">상대 체력이 ' + Math.round(r.mHp * 100) + '% 남았습니다. 1시간 뒤 다시 도전할 수 있습니다.</p>') +
@@ -3524,7 +3524,7 @@
     act('exam').then(function (r) {
       if (!r) { closeModal(); return; }
       var ex = D.EXAMS[r.grade - 1];
-      replay({ title: '실기 대련', sub: ex.examiner, enemy: { id: 'ex' + r.grade, arch: 'golem', c1: '#d6ad5f', c2: '#4a3a10', boss: true, name: ex.examiner }, ev: r.ev, maxHp: r.maxHp }, function () {
+      replay({ title: '실기 대련', sub: ex.examiner, enemy: { id: 'ex' + r.grade, arch: 'golem', c1: '#d6ad5f', c2: '#4a3a10', boss: true, name: ex.examiner }, ev: r.ev, maxHp: r.maxHp, cc: r.cc }, function () {
         Snd.play(r.pass ? 'pass' : 'fail');
         var h = mhead(r.pass ? '합격!' : '불합격', ex.title);
         h += '<div class="row" style="gap:20px;align-items:center"><div class="letter ' + (r.pass ? 'gold' : 'bad') + '">' + r.letter + '</div><div class="score-row" style="flex:1"><span>이론</span><b class="num">' + r.written.toFixed(1) + ' / 30</b><span>실기</span><b class="num">' + r.practical.toFixed(1) + ' / 40</b><span>대련 ' + (r.duelWin ? '(승리)' : '(패배)') + '</span><b class="num">' + r.duel.toFixed(1) + ' / 30</b>' + (r.bonus ? '<span>침묵달 가산점</span><b class="num">+' + r.bonus + '</b>' : '') + '<span><b>총점</b></span><b class="num gold">' + r.total + '</b></div></div>';
@@ -4538,7 +4538,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102060;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102061;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
