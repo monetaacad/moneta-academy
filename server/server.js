@@ -356,19 +356,19 @@ routes['POST /api/register'] = async (req, res) => {
   if (!LOGIN_RE.test(login)) return fail(req, res, 400, LOGIN_RULE);
   if (!NAME_RE.test(name)) return fail(req, res, 400, R.NAME_RULE);
   if (login === nameKey(name)) return fail(req, res, 400, '아이디는 학생 이름과 다르게 정해 주세요');   // 이름은 모두에게 보이므로
-  if (R.badName(name) && !ADMIN_NAMES.has(nameKey(name))) return fail(req, res, 400, '쓸 수 없는 말이 들어 있는 이름입니다');   // 운영자로 지정한 이름만 예외
+  if (R.badName(name) && !ADMIN_NAMES.has(nameKey(name))) return fail(req, res, 400, '사용할 수 없는 단어가 포함된 이름입니다');   // 운영자로 지정한 이름만 예외
   { const why = pwProblem(pw, name, login); if (why) return fail(req, res, 400, why); }
   if (!R.HOUSE[house]) return fail(req, res, 400, '기숙사 선택 필요');
   const cls = String(b.cls || ''); if (!R.CLS[cls]) return fail(req, res, 400, '학과 선택 필요');
   if (Number(dbx.q.countPlayers.get().n) >= cfg.maxPlayers) return fail(req, res, 403, '정원이 가득 찼습니다');
-  if (dbx.q.playerByKey.get(nameKey(name))) return fail(req, res, 409, '이미 쓰는 이름입니다');
-  const lkey = loginKey(login); if (dbx.q.playerByLogin.get(lkey)) return fail(req, res, 409, '이미 쓰는 아이디입니다');
+  if (dbx.q.playerByKey.get(nameKey(name))) return fail(req, res, 409, '이미 사용 중인 이름입니다');
+  const lkey = loginKey(login); if (dbx.q.playerByLogin.get(lkey)) return fail(req, res, 409, '이미 사용 중인 아이디입니다');
   const code = cfg.inviteRequired ? normCode(b.invite) : '';
   if (cfg.inviteRequired) { const why = checkInvite(code); if (why) return fail(req, res, 403, why); }
   const opInv = !!(code && (dbx.q.getInvite.get(code) || {}).op);
   const hashed = await hashPass(pw);
-  if (dbx.q.playerByKey.get(nameKey(name))) return fail(req, res, 409, '이미 쓰는 이름입니다');
-  if (dbx.q.playerByLogin.get(lkey)) return fail(req, res, 409, '이미 쓰는 아이디입니다');
+  if (dbx.q.playerByKey.get(nameKey(name))) return fail(req, res, 409, '이미 사용 중인 이름입니다');
+  if (dbx.q.playerByLogin.get(lkey)) return fail(req, res, 409, '이미 사용 중인 아이디입니다');
   const id = crypto.randomUUID(), now = nowSec();
   const P = R.newPlayer(id, name, house, now, crypto.randomInt(1, 2147483647)); R.clsStart(P, cls);
   R.advance(P, world.ctx(now), now);
@@ -377,7 +377,7 @@ routes['POST /api/register'] = async (req, res) => {
       if (code && !dbx.q.useInvite.run(code).changes) throw Object.assign(new Error('이미 다 쓴 초대코드입니다'), { status: 403 });
       dbx.q.insertPlayerFull.run(id, name, nameKey(name), house, hashed, Math.floor(now), Math.floor(now), JSON.stringify(P), 0, code, lkey);
     });
-  } catch (e) { return fail(req, res, e.status || 409, e.status ? e.message : '이미 쓰는 이름이나 아이디입니다'); }
+  } catch (e) { return fail(req, res, e.status || 409, e.status ? e.message : '이미 사용 중인 이름이나 아이디입니다'); }
   try { dbx.db.prepare('UPDATE players SET login_enc = ? WHERE id = ?').run(sec.enc(login), id); } catch (e) { }   // 운영실 확인용 (암호화)
   store.put(P);
   if (opInv) { dbx.q.setRole.run('admin', id); adminIds.add(id); P.op = 1; oplog('admin', '관리자', 'role', `${name} → admin (운영자 초대코드)`); }
@@ -394,11 +394,11 @@ routes['POST /api/rename'] = async (req, res) => {
   const b = await readJson(req, 1024), now = nowSec(), P = loadPlayer(pid, now); if (!P) return fail(req, res, 401, '학생 정보를 찾을 수 없습니다');
   const name = R.cleanName(b.name);
   if (!NAME_RE.test(name)) return fail(req, res, 400, R.NAME_RULE);
-  if (R.badName(name)) return fail(req, res, 400, '쓸 수 없는 말이 들어 있는 이름입니다');
+  if (R.badName(name)) return fail(req, res, 400, '사용할 수 없는 단어가 포함된 이름입니다');
   if (name === P.name) return fail(req, res, 400, '지금 이름과 같습니다');
   const real = Date.now() / 1000, lf = R.renameLeft(P, real); if (lf > 0) return fail(req, res, 400, R.fmtTime(lf) + ' 뒤에 바꿀 수 있습니다');
-  const other = dbx.q.playerByKey.get(nameKey(name)); if (other && other.id !== pid) return fail(req, res, 409, '이미 쓰는 이름입니다');
-  try { dbx.q.renamePlayer.run(name, nameKey(name), pid); } catch (e) { return fail(req, res, 409, '이미 쓰는 이름입니다'); }
+  const other = dbx.q.playerByKey.get(nameKey(name)); if (other && other.id !== pid) return fail(req, res, 409, '이미 사용 중인 이름입니다');
+  try { dbx.q.renamePlayer.run(name, nameKey(name), pid); } catch (e) { return fail(req, res, 409, '이미 사용 중인 이름입니다'); }
   const old = P.name; P.name = name; P.nameAt = Math.floor(real); R.log(P, now, '이름을 ' + R.josa('「' + name + '」', '으로', '로') + ' 바꿨습니다', 'news');
   store.markDirty(pid); board.forgetName(pid); log(`이름 변경: ${old} → ${name}`);
   send(req, res, 200, Object.assign({ ok: true }, statePayload(P, now)));
@@ -422,7 +422,7 @@ routes['POST /api/findid'] = async (req, res) => {
   if (!LOGIN_RE.test(nl)) return fail(req, res, 400, LOGIN_RULE);
   if (nl === nk) return fail(req, res, 400, '아이디는 학생 이름과 다르게 정해 주세요');
   const lkey = loginKey(nl), other = dbx.q.playerByLogin.get(lkey);
-  if (other && other.id !== row.id) return fail(req, res, 409, '이미 쓰는 아이디입니다');
+  if (other && other.id !== row.id) return fail(req, res, 409, '이미 사용 중인 아이디입니다');
   dbx.q.setLoginKey.run(lkey, row.id);
   try { dbx.db.prepare('UPDATE players SET login_enc = ? WHERE id = ?').run(sec.enc(nl), row.id); } catch (e) { }
   oplog('admin', row.name, 'setlogin', row.name + ' 아이디 찾기로 새 아이디 정함');
@@ -801,7 +801,7 @@ routes['POST /api/party'] = async (req, res) => {
     if (mine) return fail(req, res, 400, '이미 파티에 들어가 있습니다');
     const name = String(b.name || '').replace(/\s+/g, ' ').trim();
     if (!PARTY_NAME_RE.test(name)) return fail(req, res, 400, '파티 이름은 한글·영문·숫자 2~12자만 가능');
-    if (R.badName(name)) return fail(req, res, 400, '쓸 수 없는 말이 들어 있는 이름입니다');
+    if (R.badName(name)) return fail(req, res, 400, '사용할 수 없는 단어가 포함된 이름입니다');
     const id = crypto.randomBytes(9).toString('base64url');
     dbx.tx(() => { dbx.q.partyInsert.run(id, name, me, Math.floor(now)); });
     joinParty(me, id); setPartyN(P); store.markDirty(me);
@@ -903,8 +903,8 @@ function mkGive(P, r) {
   else if (r.data === 'stone') P.res.stone += r.qty; else P.mats[r.data] = (P.mats[r.data] || 0) + r.qty;
 }
 function mkAllowed(P, meta) {
-  if (!meta || meta.guest) return '게스트는 거래소를 쓸 수 없습니다. 설정에서 정식 학생 등록 필요';
-  if (P.grade < MK.GRADE) return MK.GRADE + '학년부터 거래소를 쓸 수 있습니다';
+  if (!meta || meta.guest) return '게스트는 거래소를 이용할 수 없습니다. 설정에서 정식 학생 등록 필요';
+  if (P.grade < MK.GRADE) return MK.GRADE + '학년부터 거래소를 이용할 수 있습니다';
   return null;
 }
 const mkQueries = new Map();
@@ -1307,9 +1307,9 @@ routes['POST /api/board'] = async (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
   if (store.isBanned(me)) return fail(req, res, 403, '이용이 정지된 계정입니다');
   const b = await readJson(req, 16384), op = String(b.op || ''), now = Math.floor(Date.now() / 1000), meta = dbx.q.playerMeta.get(me);
-  if (!meta || meta.banned) return fail(req, res, 403, '쓸 수 없습니다');
+  if (!meta || meta.banned) return fail(req, res, 403, '사용할 수 없습니다');
   if ((op === 'write' || op === 'edit' || op === 'comment') && meta.muted_until && meta.muted_until > now) return fail(req, res, 403, '채팅·글쓰기가 금지된 상태입니다 (' + Math.ceil((meta.muted_until - now) / 60) + '분 남음)');
-  if (op === 'write' && limited('bdw:' + me, 1 / 30, 1)) return fail(req, res, 429, '글은 30초에 하나씩 쓸 수 있습니다');
+  if (op === 'write' && limited('bdw:' + me, 1 / 30, 1)) return fail(req, res, 429, '글은 30초에 하나씩 작성할 수 있습니다');
   if (op === 'comment' && limited('bdc:' + me, 1 / 4, 3)) return fail(req, res, 429, '댓글을 너무 빨리 달고 있습니다');
   if (limited('bdp:' + me, 1, 10)) return fail(req, res, 429, '잠시 후 다시 시도');
   try {
@@ -1474,7 +1474,7 @@ routes['POST /api/guild'] = async (req, res) => {
     if (mine) return fail(req, res, 400, '이미 동아리에 들어가 있습니다');
     const name = String(b.name || '').replace(/\s+/g, ' ').trim();
     if (!GUILD_NAME_RE.test(name)) return fail(req, res, 400, '동아리 이름은 한글·영문·숫자 2~12자만 가능');
-    if (R.badName(name)) return fail(req, res, 400, '쓸 수 없는 말이 들어 있는 이름입니다');
+    if (R.badName(name)) return fail(req, res, 400, '사용할 수 없는 단어가 포함된 이름입니다');
     if (dbx.q.gByKey.get(name.toLowerCase().replace(/\s/g, ''))) return fail(req, res, 409, '이미 있는 동아리 이름입니다');
     const id = crypto.randomBytes(9).toString('base64url'), color = GUILD_COLORS.indexOf(b.color) >= 0 ? b.color : GUILD_COLORS[0];
     gRankCache.at = 0; dbx.q.gInsert.run(id, name, name.toLowerCase().replace(/\s/g, ''), sec.enc(cleanText(b.intro, 300)), color, me, b.mode === 'apply' ? 'apply' : 'open', now);
@@ -1816,7 +1816,7 @@ routes['POST /api/admin/setlogin'] = async (req, res) => {
   if (!LOGIN_RE.test(login)) return fail(req, res, 400, LOGIN_RULE);
   if (login === nameKey(row.name)) return fail(req, res, 400, '아이디는 학생 이름과 다르게 정해 주세요');
   const lkey = loginKey(login), other = dbx.q.playerByLogin.get(lkey);
-  if (other && other.id !== row.id) return fail(req, res, 409, '이미 쓰는 아이디입니다');
+  if (other && other.id !== row.id) return fail(req, res, 409, '이미 사용 중인 아이디입니다');
   dbx.q.setLoginKey.run(lkey, row.id);
   try { dbx.db.prepare('UPDATE players SET login_enc = ? WHERE id = ?').run(sec.enc(login), row.id); } catch (e) { }
   oplog('admin', '관리자', 'setlogin', row.name + ' 아이디 새로 정함');
@@ -1839,14 +1839,14 @@ routes['POST /api/recreate'] = async (req, res) => {
   const P0 = store.get(pid); if (!P0 || !P0.needCreate) return fail(req, res, 400, '이미 입학한 학생입니다');
   const b = await readJson(req, 1024), name = R.cleanName(b.name), house = String(b.house || ''), cls = String(b.cls || '');
   if (!NAME_RE.test(name)) return fail(req, res, 400, R.NAME_RULE);
-  if (R.badName(name)) return fail(req, res, 400, '쓸 수 없는 말이 들어 있는 이름입니다');
+  if (R.badName(name)) return fail(req, res, 400, '사용할 수 없는 단어가 포함된 이름입니다');
   if (!R.HOUSE[house]) return fail(req, res, 400, '기숙사 선택 필요');
   if (!R.CLS[cls]) return fail(req, res, 400, '학과 선택 필요');
-  if (dbx.q.playerByKey.get(nameKey(name))) return fail(req, res, 409, '이미 쓰는 이름입니다');
+  if (dbx.q.playerByKey.get(nameKey(name))) return fail(req, res, 409, '이미 사용 중인 이름입니다');
   const now = nowSec(), P = R.newPlayer(pid, name, house, now, crypto.randomInt(1, 2147483647)); R.clsStart(P, cls);
   R.advance(P, world.ctx(now), now); syncOp(P);
   try { dbx.db.prepare('UPDATE players SET name = ?, name_key = ?, house = ?, created = ?, state = ? WHERE id = ?').run(name, nameKey(name), house, Math.floor(now), JSON.stringify(P), pid); }
-  catch (e) { return fail(req, res, 409, '이미 쓰는 이름입니다'); }
+  catch (e) { return fail(req, res, 409, '이미 사용 중인 이름입니다'); }
   store.drop(pid); store.put(P); store.markDirty(pid);
   log(`다시 입학: ${name} (${house})`);
   world.addNews(P.name + ' 학생이 ' + (R.HOUSE[P.house] ? R.HOUSE[P.house].name : '아카데미') + '에 입학했습니다', now);

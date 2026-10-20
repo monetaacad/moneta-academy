@@ -499,6 +499,15 @@
   R.stageLvReq = function (s) { return s; };
   R.stageCap = function (P) { var g = R.gradeCap(P); return P.grade >= 8 ? g : Math.max(g, Math.min(g + R.STAGE_OVER, P.lvl)); };
   R.nextBoss = function (P) { return Math.floor(P.maxStage / 10) * 10 + 10; };
+  /* 다음 보스에 도전할 수 없는 이유. 보스 b단계는 「학년 상한(학년×10+9) ≥ b」이거나 「학년 상한 +10 ≥ b 이고 레벨 ≥ b」일 때 열린다.
+     → 학년만으로는 gG학년, 레벨로 열려면 lG학년 이상 + Lv b */
+  R.bossLockText = function (P) {
+    var b = R.nextBoss(P); if (R.canChallenge(P)) return '';
+    var gG = Math.ceil((b - 9) / 10), lG = Math.max(1, Math.ceil((b - 19) / 10));
+    if (P.grade >= lG) return gG + '학년으로 진급하거나 Lv ' + b + '에 도달하면 도전할 수 있습니다 (현재 Lv ' + P.lvl + ')';
+    if (P.lvl >= b) return '레벨은 충분합니다. ' + lG + '학년으로 진급하면 도전할 수 있습니다';
+    return gG + '학년으로 진급하거나, ' + lG + '학년 진급 후 Lv ' + b + '에 도달하면 도전할 수 있습니다';
+  };
   R.canChallenge = function (P) { var b = R.nextBoss(P); return P.grade >= 8 || b <= R.stageCap(P); };
   function dmgTaken(atk, def) { return atk * atk / (atk + def); }
   R.dmgTaken = dmgTaken;
@@ -1141,7 +1150,7 @@
   R.guildCap = function (lv) { return Math.min(40, 28 + 2 * (lv || 1)); };   // 정원: 1레벨 30명 … 6레벨부터 40명
   R.guildSlots = function (lv) { return 20 + 5 * (lv || 1); };        // 창고 장비 칸
   R.guildBonus = function (lv) { return 0.005 * (lv || 0); };          // 부원 모두 아르크·경험치 +0.5%/레벨
-  R.GUILD_PERMS = [['invite', '초대·가입 승인'], ['kick', '부원 내보내기'], ['notice', '공지·소개 고치기'], ['take', '창고에서 꺼내기']];
+  R.GUILD_PERMS = [['invite', '초대·가입 승인'], ['kick', '부원 내보내기'], ['notice', '공지·소개 수정'], ['take', '창고에서 꺼내기']];
   R.GUILD_RANKS_MAX = 5; R.GUILD_CHECKIN = 10; R.GUILD_DONATE_CAP = 200;
   R.guildRanksMax = function (lv) { return 3 + (lv >= 5 ? 1 : 0) + (lv >= 10 ? 1 : 0); };   // 만들 수 있는 부원 계급 수
   /* 동아리 의식 (4레벨~): 부원마다 마나 30분 분을 봉헌, 그날 목표(부원 수의 절반, 1인 동아리는 1명)를 채우면 봉헌한 부원에게 축복.
@@ -1385,7 +1394,7 @@
   A.clsExam = function (P, W, now, a) {
     var id = str(a.cls); if (!R.CLS[id]) err('학과 선택 필요');
     if ((P.cls || 'mage') === id) err('지금 학과와 같습니다');
-    if (!P.cls) err('아직 학과를 고르지 않았습니다. 시험 없이 한 번 고를 수 있습니다');
+    if (!P.cls) err('아직 학과를 선택하지 않았습니다. 시험 없이 한 번 선택할 수 있습니다');
     if ((P.clsCd || 0) > now) err('전과시험은 ' + R.fmtTime(P.clsCd - now) + ' 뒤에 다시 볼 수 있습니다');
     var fee = R.clsExamFee(P); if (P.res.gold < fee) err('응시료가 모자랍니다 (' + fee + ' ' + R.CUR + ')');
     P.res.gold -= fee;
@@ -1423,7 +1432,7 @@
   };
   A.boss = function (P, W, now) {
     if (P.bossCd > now) err('아직 재도전할 수 없습니다');
-    if (!R.canChallenge(P)) err('학년이나 레벨을 올려야 다음 보스에 도전할 수 있습니다');
+    if (!R.canChallenge(P)) err(R.bossLockText(P));
     var b = R.nextBoss(P), z = R.zoneOf(b), def = z.boss, c = calc(P, W, now);
     var e = { hp: R.monHp(b) * K.BOSS_HP, atk: R.monAtk(b) * K.BOSS_ATK, boss: true };
     var f = fight(P, c, e, K.BOSS_TIME, true);
@@ -1555,7 +1564,7 @@
   A.allocMany = function (P, W, now, a) {
     var add = a.add || {}, tot = 0, o = {};
     STATS.forEach(function (k) { var v = add[k] == null ? 0 : int(add[k], 0, 100000); o[k] = v; tot += v; });
-    if (tot <= 0) err('나눌 포인트를 고르세요'); if (tot > P.pts) err('남은 포인트보다 많이 나눌 수 없습니다');
+    if (tot <= 0) err('분배할 포인트를 선택하세요'); if (tot > P.pts) err('남은 포인트보다 많이 나눌 수 없습니다');
     STATS.forEach(function (k) { P.alloc[k] += o[k]; }); P.pts -= tot; return { ok: true, n: tot };
   };
   A.allocW = function (P, W, now, a) {

@@ -69,7 +69,7 @@ function create(dbx, sec, opts) {
     return { tag, title, body, priv: !!b.priv };
   }
   function write(me, b, now) {
-    if (Number(dbx.q.bdTodayBy.get(me, now - 86400).n) >= LIM.DAY) fail('하루에 ' + LIM.DAY + '개까지 쓸 수 있습니다');
+    if (Number(dbx.q.bdTodayBy.get(me, now - 86400).n) >= LIM.DAY) fail('하루에 ' + LIM.DAY + '개까지 작성할 수 있습니다');
     const x = check(b), info = dbx.q.bdInsert.run(me, x.tag, x.priv ? 1 : 0, sec.enc(x.title), sec.enc(x.body), now, now, now);
     const id = Number(info.lastInsertRowid);
     posts.set(id, { id, pid: me, tag: x.tag, priv: x.priv, title: x.title, body: x.body, created: now, updated: now, last: now, ncom: 0 });
