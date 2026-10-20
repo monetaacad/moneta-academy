@@ -283,7 +283,8 @@ main { min-width: 0; container-type: inline-size; container-name: page; }
 .allocv .allocd { min-width: 2.6em; }
 .filters { display: flex; gap: 6px; flex-wrap: wrap; }
 .filters .btn.on { border-color: var(--brass2); color: var(--brass2); }
-.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line2); margin-bottom: 14px; overflow-x: auto; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line2); margin-bottom: 14px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }   /* 탭이 넘치면 밀어서 보되, 스크롤 막대는 숨긴다 */
+.tabs::-webkit-scrollbar { display: none; }
 .tabs button { background: none; border: 0; border-bottom: 2px solid transparent; padding: 8px 12px; cursor: pointer; color: var(--muted); white-space: nowrap; font-size: 14px; }
 .tabs button.on { color: var(--ink); border-bottom-color: var(--brass); }
 
@@ -1029,7 +1030,12 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 .ink { -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
 .ink.anim { background-size: 220% 100%; animation: inkFlow 5s linear infinite; }
 @keyframes inkFlow { from { background-position: 0% 50%; } to { background-position: 220% 50%; } }
-@media (prefers-reduced-motion: reduce) { .fr-aurora, .fr-spring, .ink.anim { animation: none; } }
+.fr-pulse { animation: decoPulse 3.2s ease-in-out infinite; }   /* 숨 쉬는 별빛: 빛이 천천히 커졌다 작아진다 */
+@keyframes decoPulse { 0%, 100% { box-shadow: 0 0 4px var(--fc); } 50% { box-shadow: 0 0 18px var(--fc), 0 0 2px var(--fc) inset; } }
+.fr-gild { border-radius: 16px; }
+.fr-neon { box-shadow: 0 0 6px var(--fc), 0 0 18px var(--fc2), inset 0 0 6px var(--fc2); animation: decoNeon 5s ease-in-out infinite; }   /* 꽃잎 등롱: 은은하게 숨 쉬듯 */
+@keyframes decoNeon { 0%, 100% { box-shadow: 0 0 6px var(--fc), 0 0 18px var(--fc2), inset 0 0 6px var(--fc2); } 50% { box-shadow: 0 0 4px var(--fc), 0 0 11px var(--fc2), inset 0 0 3px var(--fc2); } }
+@media (prefers-reduced-motion: reduce) { .fr-aurora, .fr-spring, .fr-pulse, .fr-neon, .ink.anim { animation: none; } }
 /* 꾸미기 탭: 위에 미리보기와 할 일, 아래에 칸마다 작은 칩 */
 .decoprev { position: sticky; top: -18px; z-index: 2; background: var(--panel); padding: 6px 0 8px; }
 .decobar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; min-height: 30px; }
@@ -1763,3 +1769,28 @@ mark.hl { color: inherit; background: linear-gradient(transparent 38%, color-mix
   .mksr input.mkprice { flex: 1; width: auto; min-width: 0; }
 }
 .auchx { cursor: default; border-color: var(--brass); }
+.pst { display: inline-block; margin-left: 4px; padding: 0 5px; border-radius: 8px; font-size: 10px; line-height: 15px; color: var(--brass); border: 1px solid color-mix(in srgb, var(--brass) 55%, transparent); white-space: nowrap; vertical-align: 1px; }   /* 장비 프리셋 번호 */
+
+/* 전체 능력치 창 */
+.fullst { display: flex; flex-direction: column; gap: 10px; }
+.fsg > summary h4 { margin: 0; }
+.fsrows { margin-top: 6px; border-top: 1px dashed var(--line); }
+.fsr { border-bottom: 1px dashed var(--line); }
+.fsr > summary, div.fsr { display: flex; align-items: center; gap: 8px; padding: 6px 2px; font-size: 13px; }
+.fsr .fsn { flex: 1; min-width: 0; }
+.fsr .fsv { text-align: right; }
+.fsr.z { opacity: .5; }
+.fsnow { font-size: 10px; padding: 0 5px; }
+.fssrc { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 2px 6px 8px 14px; font-size: 12px; color: var(--muted); }
+.fssrc b { color: var(--ink2); }
+[data-st][hidden] { display: none !important; }   /* 설정 탭: 고른 탭만 */
+.settabs { flex-wrap: wrap; }
+
+/* 꾸미기 배경: 어두운 배경이면 카드 글씨를 밝게, 밝은 배경이면 어둡게 (테마와 상관없이 읽히도록) */
+.pcard.bgdark { color: #f4ecd8; --ink: #f4ecd8; --ink2: #e6dcc4; --muted: #ddd3bc; --faint: #c2b8a2; --brass: #e6be66; --brass2: #f2d283; --verd: #93e0c6; --rose: #f2a19a; --line: rgba(255, 255, 255, .3); --line2: rgba(255, 255, 255, .2); --sunk: rgba(0, 0, 0, .28); }
+.pcard.bglight { color: #2a2418; --ink: #2a2418; --ink2: #3a3222; --muted: #54493a; --faint: #6e6250; --brass: #8a6420; --brass2: #7a5518; --verd: #2c7560; --rose: #a8443c; --line: rgba(60, 40, 10, .32); --line2: rgba(60, 40, 10, .2); --sunk: rgba(255, 255, 255, .45); }   /* 글씨 · 태그 · 동아리 문장까지 배경에 맞춰 (테마와 상관없이) */
+.pcard.bgdark h2, .pcard.bglight h2 { color: var(--ink); }
+.pcard.bgdark .av0 { color: color-mix(in srgb, var(--hc) 55%, #fff); border-color: color-mix(in srgb, var(--hc) 55%, #fff); background: rgba(0, 0, 0, .3); }
+.pcard.bglight .av0 { color: color-mix(in srgb, var(--hc) 55%, #000); border-color: color-mix(in srgb, var(--hc) 55%, #000); background: rgba(255, 255, 255, .5); }
+.pcard.bgdark .small span[style*="color"] { color: color-mix(in srgb, currentColor 60%, #fff) !important; }   /* 기숙사 이름: 배경에 맞춰 밝게 · 어둡게 */
+.pcard.bglight .small span[style*="color"] { color: color-mix(in srgb, currentColor 55%, #000) !important; }

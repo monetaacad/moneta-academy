@@ -195,6 +195,9 @@
   /* ───────── 자리 비운 동안 보고 ───────── */
   // 얻은 장비 이름: 높은 등급부터 3개, 나머지는 「외 N개 +」를 눌러 펼친다
   var RES_TAG = { sold: '판매', dis: '분해', mail: '우편' };
+  // 장비 프리셋에 들어 있는 장비: 몇 번 프리셋인지 (가방 · 거래소 · 동아리 창고에서 표시)
+  function presetNo(u) { var o = []; (S.P.gearSets || []).forEach(function (st, i) { if (st && st.eq) for (var k in st.eq) if (st.eq[k] === u) { o.push(i + 1); break; } }); return o; }
+  function presetTag(u) { var n = presetNo(u); return n.length ? ' <span class="pst" title="장비 프리셋 ' + n.join(' · ') + '번에 들어 있는 장비">프리셋 ' + n.join('·') + '</span>' : ''; }
   function itemNames(items) {
     var arr = items.map(function (it, i) { return [it, i]; }).sort(function (a, b) { return b[0].r - a[0].r || (b[0].ilvl || 0) - (a[0].ilvl || 0) || a[1] - b[1]; }).map(function (x) { return x[0]; });
     var nm = function (it) { return '<span style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</span>' + (RES_TAG[it.res] ? '<span class="tiny faint">(' + RES_TAG[it.res] + ')</span>' : ''); };
@@ -440,7 +443,7 @@
     if (ch === 'dm') return S.dm.threads.filter(function (t) { return t.from !== S.P.id && t.last > (S.read.dm[t.peer] || 0); }).length;
     if (lazyCh(ch)) return Math.max(0, (S.chat.seq[ch] || 0) - (S.read['s_' + ch] || 0));
     var r = S.read[ch] || 0, me = S.P && S.P.id;
-    return S.chat.msgs[ch].filter(function (m) { return (isNum(m.id) ? m.id > r : !S.read['l_' + ch] || m.t > S.read['l_' + ch]) && m.pid !== me && S.chat.blocked.indexOf(m.pid) < 0; }).length;
+    return S.chat.msgs[ch].filter(function (m) { return (isNum(m.id) ? m.id > r : !S.read['l_' + ch] || m.t > S.read['l_' + ch]) && m.pid !== me && S.chat.blocked.indexOf(m.pid) < 0 && !headHidden(m); }).length;
   }
   function recount() { chans().forEach(function (k) { S.chat.unread[k] = countUnread(k); }); }
   function markRead(ch) {
@@ -528,7 +531,7 @@
   }
   // 접힌 채팅창: 지금 고른 탭의 최근 글 한 줄 (글이 없으면 우측에 「채팅 열기」)
   function peekText() {
-    var arr = (S.chat.msgs[S.chat.ch === 'dm' ? 'world' : S.chat.ch] || []).filter(function (m) { return S.chat.blocked.indexOf(m.pid) < 0; }), m = arr[arr.length - 1];
+    var arr = (S.chat.msgs[S.chat.ch === 'dm' ? 'world' : S.chat.ch] || []).filter(function (m) { return S.chat.blocked.indexOf(m.pid) < 0 && !headHidden(m); }), m = arr[arr.length - 1];
     if (!m) return '<span class="faint">채팅 열기</span>';
     var tx = m.text; if (m.kind === 'recruit') { try { var rc = JSON.parse(m.text); tx = (rc.type === 'guild' ? '동아리 모집 · ' + rc.name : rc.type === 'party' ? '파티원 모집 · ' + rc.name : '함께 원정 모집 · ' + rc.s + '단계') + ' ' + rc.n + '/' + rc.max + (rc.note ? ' · ' + rc.note : ''); } catch (e) { tx = '모집 알림'; } }
     return '<span class="pkmsg"><b style="color:' + (R.HOUSE[m.house] ? R.HOUSE[m.house].color : 'var(--brass2)') + '">' + esc(m.name) + '</b> <span class="muted">' + chatText(String(tx).replace(/\s+/g, ' ').slice(0, 90)) + '</span></span>';
@@ -547,7 +550,11 @@
   function chatText(t) { return esc(t).replace(/\*([^*\n]{1,300})\*/g, '<i class="act">$1</i>').replace(/\n/g, '<br>'); }
   // 모집 카드 아랫줄: 한마디(있으면) + 버튼을 한 줄로
   function rcFoot(note, btn) { return note || btn ? '<span class="rcfoot">' + (note ? '<span class="rcnote">“' + esc(note) + '”</span>' : '') + btn + '</span>' : ''; }
+  // 사감 한마디 숨기기 (설정 › 채팅, 이 브라우저에만): 신입생 환영 인사만 · 모두
+  function headWelcome(m) { if (m.w) return true; var L = D.HOUSE_LORE[m.house], t = L && L.say && L.say.welcome; if (!t) return false; var p = t.split('{n}'); return p.length === 2 && m.text.indexOf(p[0]) === 0 && m.text.slice(-p[1].length) === p[1]; }
+  function headHidden(m) { return m.kind === 'head' && (PREF.headOff === 'all' || (PREF.headOff === 'welcome' && headWelcome(m))); }
   function msgHtml(m) {
+    if (headHidden(m)) return '';
     if (S.chat.blocked.indexOf(m.pid) >= 0) return '';
     var t = new Date(m.t * 1000), hh = t.getHours(), mm = t.getMinutes(), time = (hh < 10 ? '0' : '') + hh + ':' + (mm < 10 ? '0' : '') + mm;
     var hc = R.HOUSE[m.house] ? R.HOUSE[m.house].color : 'var(--brass2)', me = S.P && m.pid === S.P.id;
@@ -620,6 +627,7 @@
         if (arr.some(function (x) { return x.id === m.id || (m.nonce && x.nonce === m.nonce && x.pid === m.pid); })) return;
         arr.push(m); if (arr.length > 300) arr.splice(0, arr.length - 300);
         var mine = S.P && m.pid === S.P.id, open = dockOpen();
+        if (!mine && (m.ch === 'party' || m.ch === 'exr')) chatAlert(m.ch, m.name);
         if (open && S.chat.ch === m.ch) {
           var log = $('#chatlog');
           if (log) { var pend = mine && m.nonce && /^[\w-]+$/.test(m.nonce) ? log.querySelector('[data-nonce="' + m.nonce + '"]') : null; if (pend) pend.outerHTML = msgHtml(m); else queueLog(msgHtml(m), mine); }
@@ -634,6 +642,7 @@
         if (th) { th.last = m.id; th.t = m.t; th.from = m.from; th.text = m.text.slice(0, 60); S.dm.threads.splice(S.dm.threads.indexOf(th), 1); S.dm.threads.unshift(th); }
         else { S.dm.threads.unshift({ peer: m.peer, last: m.id, t: m.t, from: m.from, text: m.text.slice(0, 60), name: m.from === S.P.id ? S.dm.peerName : m.name, online: true, friend: true }); }
         var viewing = dockOpen() && S.chat.ch === 'dm' && S.dm.peer === m.peer;
+        if (m.from !== S.P.id && !(viewing && !document.hidden && document.hasFocus())) chatAlert('dm', m.name);
         if (viewing) { var log = $('#dmlog'); if (log) { log.insertAdjacentHTML('beforeend', dmMsgHtml(m)); log.scrollTop = log.scrollHeight; } markRead('dm'); }
         else { S.chat.unread.dm = countUnread('dm'); if (m.from !== S.P.id && !(dockOpen() && S.chat.ch === 'dm')) toast((m.name || '친구') + '의 1:1', m.text.slice(0, 60), 3500); if (dockOpen() && S.chat.ch === 'dm' && !S.dm.peer) renderDock(); }
         updateUnread();
@@ -712,7 +721,7 @@
   }
   function loadMe() { if (!API.profile) return Promise.resolve(); return API.profile().then(function (p) { if (p && !p.error) { S.me = p; updateMeBadge(); var el = $('#mecard-av'); if (el && S.view === 'home') render(); } }); }
   // 알림 기록: 게시판 댓글·답글, 거래소 판매, 파티·동아리·함께 원정 초대, 친구 신청 (우편과 따로, 기록용)
-  var NOTE_ICON = { grade: '진급', board: '게시판', market: '거래소', party: '파티', friend: '친구', exp: '함께 원정', guild: '동아리' };
+  var NOTE_ICON = { quest: '달성', grade: '진급', board: '게시판', market: '거래소', party: '파티', friend: '친구', exp: '함께 원정', guild: '동아리' };
   function updateNoteBadge() { var b = $('#notebadge'); if (!b) return; var n = S.noteN || 0; b.hidden = !n; b.textContent = n > 9 ? '9+' : n; }
   ACT.notes = function () {
     S.notesOpen = true;
@@ -720,7 +729,7 @@
     API.notes().then(function (j) {
       if (j.error) { toast('알림', j.error); return; }
       var list = j.notes || [];
-      modal(mhead('알림', '게시판 · 거래소 · 파티 · 친구 · 동아리 · 함께 원정 소식 (최근 100개, 30일)') + (list.length ? '<div class="notelist">' + list.map(function (x) {
+      modal(mhead('알림', '할 일 달성 · 게시판 · 거래소 · 파티 · 친구 · 동아리 · 함께 원정 소식 (최근 100개, 30일)') + (list.length ? '<div class="notelist">' + list.map(function (x) {
         return '<div class="noterow' + (x.read ? '' : ' new') + '"><span class="tag">' + (NOTE_ICON[x.kind] || '알림') + '</span><div style="flex:1;min-width:0"><div class="small">' + esc(x.text) + '</div><div class="tiny faint">' + new Date(x.t * 1000).toLocaleString('ko-KR') + '</div></div>' + (x.link ? '<button class="btn sm ghost" data-act="notego" data-a="' + x.id + '">보기</button>' : '') + '</div>';
       }).join('') + '</div>' : '<div class="empty">아직 알림이 없습니다.</div>'));
       S.noteList = list;
@@ -787,9 +796,24 @@
   function closeMenu() { var m = $('#memenu'), b = $('.mebtn'); if (m) m.hidden = true; if (b) b.setAttribute('aria-expanded', 'false'); }
   document.addEventListener('click', function (e) { var m = $('#memenu'); if (m && !m.hidden && !e.target.closest('.memenu-wrap')) closeMenu(); else if (m && !m.hidden && e.target.closest('.memenu [data-act]')) setTimeout(closeMenu, 0); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeMenu(); });
+  // 전체 능력치 창: 분류(접기) → 줄(합계, 누르면 출처). 「지금만」은 물약 · 날씨 · 하늘 이벤트 · 주말 · 달력처럼 잠깐만 붙는 효과
+  function fullStatsHtml(groups) {
+    return '<div class="fullst">' + groups.map(function (g) {
+      return '<details class="fold fsg" open><summary><h4>' + esc(g.g) + '</h4><span class="tiny faint">' + g.rows.filter(function (r) { return !r.z; }).length + '개 적용</span><span class="chev"></span></summary><div class="fsrows">' + g.rows.map(function (r) {
+        var head = '<span class="fsn">' + esc(r.n) + (r.s.some(function (x) { return x[2]; }) ? ' <span class="tag br fsnow">지금만 포함</span>' : '') + '</span><b class="num fsv">' + esc(r.v) + '</b>';
+        if (!r.s.length) return '<div class="fsr' + (r.z ? ' z' : '') + '">' + head + '</div>';
+        return '<details class="fsr fold' + (r.z ? ' z' : '') + '"><summary>' + head + '<span class="chev"></span></summary><div class="fssrc">' + r.s.map(function (x) { return '<span>' + esc(x[0]) + (x[2] ? ' <span class="tiny gold">지금만</span>' : '') + '</span><b class="num">' + esc(x[1]) + '</b>'; }).join('') + '</div></details>';
+      }).join('') + '</div></details>';
+    }).join('') + '</div><p class="tiny faint" style="margin-top:8px">줄을 누르면 어디에서 온 수치인지 펼쳐집니다. 「지금만」은 물약 · 날씨 · 하늘 이벤트 · 주말 · 달력처럼 지금 잠깐 붙어 있는 효과입니다.</p>';
+  }
+  ACT.fullstat = function (who) {
+    if (who === 'other' && S.pcFull) { modal(mhead('전체 능력치', esc(S.pcFull.name)) + fullStatsHtml(S.pcFull.full)); return; }
+    modal(mhead('전체 능력치', '장비 · 연구 · 기숙사 · 능력치 등 지금 적용된 모든 효과') + fullStatsHtml(R.fullStats(S.P, wctx(), now())));
+  };
   // 학생 카드 「능력치 · 장비」: 능력치는 가로로, 장비는 칸 타일 → 누르면 상세 · 내 장비와 비교
   function pcGear(p) {
     var h = '';
+    if (p.full) { S.pcFull = { name: p.name, full: p.full }; h += '<div class="row" style="margin-top:10px"><button class="btn sm ghost" data-act="fullstat" data-a="other">전체 능력치 보기</button></div>'; }
     if (p.stats) {
       h += '<div class="section-t" style="margin-top:12px">능력치</div><div class="pstats">' + R.STATS.map(function (k) { return '<span><i>' + D.STAT_NAMES[k] + '</i><b class="num">' + fmt(p.stats.st[k] || 0) + '</b></span>'; }).join('') + '</div>' +
         '<p class="tiny faint" style="margin-top:4px">초당 피해 ' + fmt(p.stats.dps) + ' · 생명력 ' + fmt(p.stats.hp) + ' · 방어력 ' + fmt(p.stats.def) + '</p>';
@@ -826,7 +850,7 @@
   function profileCard(p, m) {
     if (p.deleted) return '<div class="pcard"><p class="small muted" style="padding:18px 4px;text-align:center">삭제된 사용자입니다.</p></div>';
     var hh = R.HOUSE[p.house], dc = p.deco || {}, fr = decoFrame(dc.frame), bgs = decoBg(dc.bg), dk = dc.frame || dc.bg;
-    var h = (p.preview ? '<p class="tiny gold" style="margin-bottom:10px">미리보기 · 저장하지 않은 내용이 들어 있습니다</p>' : '') + '<div class="pcard' + (dk ? ' deco ' + fr.cls : '') + '"' + (dk ? ' style="' + fr.style + bgs + '"' : '') + '>' + (dc.stamp && R.DECO[dc.stamp] ? '<span class="pstamp" title="' + R.DECO[dc.stamp].name + '" aria-hidden="true">' + R.DECO[dc.stamp].glyph + '</span>' : '') + '<div class="pav">' + avatarHtml(p, 100) + (p.avcredit && (p.av || p.avData) ? '<span class="avcredit" title="두상 출처">' + esc(p.avcredit) + '</span>' : '') + '</div>' + '<div style="min-width:0">' + (p.title ? '<div class="pttl">' + (R.OP_TITLES[p.title] ? '<span class="ttl' + R.opTitleCls(p.title) + '">' + esc(p.title) + '</span>' : esc(p.title)) + '</div>' : '') + '<h2 class="pname">' + inkName(p.name, dc.ink) + (p.badge && R.GEM[p.badge.gem] ? ' <span class="pbdg" title="' + esc((p.badge.name || '') + ' · Lv ' + p.badge.lv) + '">' + badgeSvg(p.badge, 26) + '</span>' : '') + (p.online ? ' <span class="odot" title="접속 중"></span>' : '') + '</h2>' +
+    var h = (p.preview ? '<p class="tiny gold" style="margin-bottom:10px">미리보기 · 저장하지 않은 내용이 들어 있습니다</p>' : '') + '<div class="pcard' + (dk ? ' deco ' + fr.cls : '') + (dc.bg ? (decoDark(dc.bg) ? ' bgdark' : ' bglight') : '') + '"' + (dk ? ' style="' + fr.style + bgs + '"' : '') + '>' + (dc.stamp && R.DECO[dc.stamp] ? '<span class="pstamp" title="' + R.DECO[dc.stamp].name + '" aria-hidden="true">' + R.DECO[dc.stamp].glyph + '</span>' : '') + '<div class="pav">' + avatarHtml(p, 100) + (p.avcredit && (p.av || p.avData) ? '<span class="avcredit" title="두상 출처">' + esc(p.avcredit) + '</span>' : '') + '</div>' + '<div style="min-width:0">' + (p.title ? '<div class="pttl">' + (R.OP_TITLES[p.title] ? '<span class="ttl' + R.opTitleCls(p.title) + '">' + esc(p.title) + '</span>' : esc(p.title)) + '</div>' : '') + '<h2 class="pname">' + inkName(p.name, dc.ink) + (p.badge && R.GEM[p.badge.gem] ? ' <span class="pbdg" title="' + esc((p.badge.name || '') + ' · Lv ' + p.badge.lv) + '">' + badgeSvg(p.badge, 26) + '</span>' : '') + (p.online ? ' <span class="odot" title="접속 중"></span>' : '') + '</h2>' +
       '<div class="small">' + (hh ? houseDot(p.house, 16) + ' ' : '') + '<span style="color:' + (hh ? hh.color : 'inherit') + '">' + (hh ? hh.name : '') + '</span> · ' + (p.grade >= 8 ? '마스터 과정' : p.grade + '학년') + (p.lvl ? ' · Lv ' + p.lvl : '') + (R.CLS[p.cls] ? ' · <span class="pcls">' + clsDot(p.cls, 14) + ' ' + R.CLS[p.cls].name + '</span>' : '') + '</div>' +
       (p.guild ? '<div class="pguild">' + gEmblem(p.guild.color, p.guild.name, 20, p.guild.icon) + '<span class="pgt"><b class="pgn">' + esc(p.guild.name) + '</b><span class="pgm"><span class="tiny faint">Lv ' + (p.guild.lv || 1) + '</span>' + (p.guild.rank ? '<span class="tag' + (p.guild.role === 'owner' ? ' br' : p.guild.role === 'officer' ? ' ok' : '') + '">' + esc(p.guild.rank) + '</span>' : '') + '</span></span></div>' : '') +
       (p.fam && R.FAM[p.fam.id] ? '<div class="tiny pfam">동행 사역마 <b>' + esc(p.fam.nm || R.FAM[p.fam.id].name) + '</b>' + (p.fam.nm ? ' <span class="faint">' + R.FAM[p.fam.id].name + '</span>' : '') + ' <span class="num gold">Lv ' + p.fam.lv + '</span></div>' : '') +
@@ -928,6 +952,7 @@
   };
   function goBtn(k) { var g = GO[k]; if (!g) return ''; var v = VIEWS.find(function (x) { return x.id === g[0]; }); if (v && !viewOpen(v)) return ''; return '<button class="btn sm ghost" data-act="goto" data-a="' + g[0] + '" data-b="' + (g[1] || '') + '">이동</button>'; }
   ACT.goto = function (view, anchor) {
+    if (S.examRes) { S.examRes = null; S.afterClose = null; }   // 합격 창에서 「바로 가기」로 떠나면 합격 창으로 돌아오지 않는다
     var d = typeof peRead === 'function' && peRead(); if (d && peDirty(d)) S.peDraft = d;
     if (S.modal) closeModal();
     if (view === 'work' && (anchor === 'alch' || anchor === 'fam')) { S.workTab = anchor; anchor = ''; }
@@ -1182,21 +1207,26 @@
     D.SPELLS.forEach(function (sp) { if (sp.req && sp.req[0] === sid && lv < sp.req[1] && (!sp.cls || sp.cls.indexOf(cls) >= 0)) a.push([sp.req[1], '주문 「' + sp.name + '」']); });
     if (sid === 'alch') D.POTIONS.forEach(function (p) { if (lv < p.unlock) a.push([p.unlock, '물약 「' + p.name + '」']); });
     if (sid === 'beast' && !R.famOpen(P)) a.push([R.FAM_SUBJ, '사역마 · 첫 환수의 알']);
-    if (ex && P.grade < 8 && ex.subj.indexOf(sid) >= 0 && lv < ex.req) a.push([ex.req, '기말 기준']);
+    if (ex && P.grade < 8 && lv < ex.req) { if (ex.subj.indexOf(sid) >= 0) a.push([ex.req, '기말 기준']); else if (R.examOpt(P, ex) === sid) a.push([ex.req, '기말 선택 과목']); }
     var s = R.mqStep(P); if (s) s.st.g.forEach(function (q) { if (q.k === 'subj' && q.s === sid && lv < q.n) a.push([q.n, '학기 이야기']); });
     a.sort(function (x, y) { return x[0] - y[0]; });
     return a.length ? '<div class="tiny gold submile">다음 · ' + a.slice(0, 2).map(function (x) { return 'Lv ' + x[0] + ' ' + x[1]; }).join(' · ') + '</div>' : '';
   }
   // 기말시험 준비도: 필기 · 실기 · 대련 세 칸 (점수 공식은 숨기고, 무엇을 하면 차는지만)
+  // 선택 과목 고르기: 「자동(가장 높은 과목)」 또는 직접 고른 과목. 학년마다 저장
+  function examPickHtml(P, ex, cur) {
+    var o = (ex.opt || []).filter(function (k) { return R.subjVisible(P, R.SUBJ[k]); }), mine = P.examPick && P.examPick[ex.grade];
+    return '<div class="row small" style="gap:6px;margin-top:6px">' + gterm('선택 과목') + '<select data-act="exampick" style="width:auto"><option value=""' + (mine ? '' : ' selected') + '>자동 (가장 높은 과목)</option>' + o.map(function (k) { return '<option value="' + k + '"' + (mine === k ? ' selected' : '') + '>' + R.SUBJ[k].name + ' Lv ' + P.subj[k].lv + '</option>'; }).join('') + '</select></div>';
+  }
   function examReady(P, ex) {
     var th = R.examTheory(P, ex), pr = R.examPractical(P, ex), du = R.duelPreview(P, wctx(), ex.duel), avg = 0;
-    ex.subj.forEach(function (s) { avg += P.subj[s].lv / ex.subj.length; });
+    var xs = R.examSubjs(P, ex), xo = R.examOpt(P, ex); xs.forEach(function (s) { avg += P.subj[s].lv / xs.length; });
     function dots(v, max) { var n = Math.max(0, Math.min(4, Math.round(v / max * 4))); return '<span class="rdots" aria-label="4칸 중 ' + n + '칸">' + [0, 1, 2, 3].map(function (k) { return '<i class="' + (k < n ? 'on' : '') + '"></i>'; }).join('') + '</span>'; }
     function row(name, d, body, btn) { return '<div class="rrow"><b class="small rname">' + name + '</b>' + d + '<div class="small rbody">' + body + '</div>' + (btn || '') + '</div>'; }
-    var chips = ex.subj.map(function (s) { var lv = P.subj[s].lv; return '<span class="tag ' + (lv >= ex.req ? 'ok' : 'br') + '">' + R.SUBJ[s].name + ' ' + lv + '/' + ex.req + '</span>'; }).join(' ');
+    var chips = xs.map(function (s) { var lv = P.subj[s].lv; return '<span class="tag ' + (lv >= ex.req ? 'ok' : 'br') + '"' + (s === xo ? ' title="선택 과목: ' + esc(R.examSubjText(P, ex).split(' + ')[1] || '') + ' (가장 레벨이 높은 과목이 반영됩니다)"' : '') + '>' + R.SUBJ[s].name + (s === xo ? '(선택)' : '') + ' ' + lv + '/' + ex.req + '</span>'; }).join(' ');
     return '<div class="rready">' +
       row('필기', dots(th, 30), '시험 과목 평균 Lv <b class="num">' + avg.toFixed(1) + '</b> <span class="faint">· 기준보다 3 높으면 만점</span>', th < 29.5 ? '<button class="btn sm ghost" data-act="nav" data-a="lecture">수업 가기</button>' : '') +
-      row('실기', dots(pr, 40), chips + ' <span class="faint tiny">· 기준을 채우면 절반 이상, 평균이 기준 +4면 만점</span>', pr < 39.5 ? '<button class="btn sm ghost" data-act="nav" data-a="lecture">수업 가기</button>' : '') +
+      row('실기', dots(pr, 40), chips + (xo ? examPickHtml(P, ex, xo) : '') + ' <span class="faint tiny">· 기준을 채우면 절반 이상, 평균이 기준 +4면 만점</span>', pr < 39.5 ? '<button class="btn sm ghost" data-act="nav" data-a="lecture">수업 가기</button>' : '') +
       row('대련', dots(du.win ? 30 : 30 * du.frac * 0.85, 30), (du.win ? '<span class="good">승산 있음</span> · 약 ' + du.ttk.toFixed(1) + '초' : '<span class="bad">버거움</span> · 시험관 체력의 약 ' + Math.round(du.frac * 100) + '%까지') + ' <span class="faint">· ' + esc(ex.examiner) + '</span>', du.win ? '' : '<button class="btn sm ghost" data-act="nav" data-a="gear">장비 가기</button>') +
       '</div>';
   }
@@ -1223,7 +1253,7 @@
           (q.done ? '<span class="tag ok">완료</span>' : p >= q.goal ? '<button class="btn sm primary" data-act="do" data-a="daily" data-b="' + i + '">보상</button>' : '<span class="row" style="gap:4px;flex-wrap:nowrap">' + goBtn(q.type) + '<button class="btn sm ghost" data-act="reroll" data-a="' + i + '" title="다른 목표로 바꾸기">바꾸기' + (R.rerollCost(P) ? ' <span class="cost">✦' + R.rerollCost(P) + '</span>' : '') + '</button></span>') + '</div>';
       }).join('') + '</div><p class="tiny faint" style="margin-top:10px">출석 · 일일 목표는 매일 한국 시간(KST) 자정에 바뀝니다. 목표 바꾸기는 하루 1번 무료, 그다음부터 별조각 ' + (R.rerollCost(P) || 5) + '개' + (R.rerollCost(P) ? '' : '부터') + '.</p>';
     var qDone = P.daily.q.filter(function (q) { return q.done; }).length;
-    var dailyH = fold('daily', '일일 목표', dq, true, '<span class="tag br daily-st">출석 ' + P.daily.streak + '일째</span>' + (P.daily.login || claim ? '<span class="tag ok">받을 보상</span>' : ''), '', '<b class="num">' + qDone + '/' + P.daily.q.length + '</b>' + (qDone >= P.daily.q.length ? ' 완료' : ''));
+    var dailyH = fold('daily', '일일 목표', dq, true, '<span class="tag br daily-st">출석 ' + P.daily.streak + '일째</span>' + (P.daily.login || claim ? '<span class="tag ok">받을 보상</span>' : ''), '', '<b class="num">' + qDone + '/' + P.daily.q.length + '</b>' + (qDone >= P.daily.q.length ? ' 완료' : ''), 'daily');
     // 내 정보 · 능력치 · 기숙사는 왼쪽 「내 정보」에, 하늘 · 오늘의 축복은 풍경 위에. 잠자리 · 꿈길은 평소엔 볼 일이 없어 맨 아래
     h += '<div class="grid g2 hm"><div class="stack">' + storyH + ttH + goalsH + logH + '</div><div class="stack">' + eventsCard() + dailyH + '</div></div>';
     h += '<div class="hm-bottom">' + dreamCard(false) + '</div>';
@@ -1264,7 +1294,7 @@
     if (P.wkPrev && !P.wkPrev.claimed) out.push({ t: '지난주 월드 보스·대항전 보상', s: '', go: 'hcup' });
     if (P.pts > 0) out.push({ t: '능력치 포인트 ' + P.pts + '점 분배', s: '', go: 'gear' });
     if (ex && P.grade < 8) {
-      var miss = ex.subj.filter(function (s) { return P.subj[s].lv < ex.req; });
+      var miss = R.examSubjs(P, ex).filter(function (s) { return P.subj[s].lv < ex.req; });
       if (P.examCd > now()) out.push({ t: ex.title + ' 재응시 대기', s: left(P.examCd) + ' 후', go: 'exam' });
       else if (!miss.length) out.push({ t: ex.title + ' 응시 가능', s: '', go: 'exam' });
       else out.push({ t: ex.title + ' 준비', s: miss.map(function (s) { return R.SUBJ[s].name + ' ' + P.subj[s].lv + '/' + ex.req; }).join(', '), go: 'lecture' });
@@ -1315,7 +1345,7 @@
     var lecFull = true; for (var li = 0; li < c.lecSlots; li++) if (!P.lec[li]) lecFull = false;   // 빈 수업 슬롯이 없으면 과목 카드의 「수업 듣기」는 흐리게
     h += '<div class="grid gauto">' + D.SUBJECTS.filter(function (x) { return R.subjVisible(P, x); }).map(function (S2) {
       var sj = P.subj[S2.id], open = S2.unlock <= Math.min(P.grade, 7);
-      var on = P.lec.some(function (x) { return x && x.s === S2.id; }), inEx = ex && P.grade < 8 && ex.subj.indexOf(S2.id) >= 0;
+      var on = P.lec.some(function (x) { return x && x.s === S2.id; }), inEx = ex && P.grade < 8 && (ex.subj.indexOf(S2.id) >= 0 || (ex.opt || []).indexOf(S2.id) >= 0);
       var nextSp = D.SPELLS.filter(function (sp) { return sp.req && sp.req[0] === S2.id && sj.lv < sp.req[1]; })[0];
       var h2 = '<div class="card subj' + (on ? ' active' : '') + (open ? '' : ' lockd') + '" data-anchor="subj-' + S2.id + '"><div class="hd"><h3>' + S2.name + '</h3>' + (inEx ? '<span class="tag ' + (sj.lv >= ex.req ? 'ok' : 'br') + '">시험 ' + ex.req + '</span>' : '') + '<span class="lv">' + sj.lv + '</span></div><div class="prof">' + S2.prof + (open && clsN(S2.id, true) ? ' · <span class="classmates">지금 ' + clsN(S2.id, true) + '명 수강 중</span>' : '') + '</div>';
       if (!open) return h2 + '<p class="small muted">' + S2.unlock + '학년부터 수강할 수 있습니다.</p></div>';
@@ -1390,7 +1420,7 @@
   function classInfo(sid) { var n = clsN(sid), pl = S.cls && S.cls.prof && S.cls.prof[sid]; return (n ? '지금 이 강의실에 <b>' + n + '명</b> · 함께 들으면 과목 경험치 <b class="good">+' + Math.round(R.peerBonus(n) * 100) + '%</b>' : '지금 이 과목을 듣는 학생은 없습니다 · 함께 들으면 1명당 경험치 +1% (최대 +' + R.PEER_MAX + '%)') + (pl ? '<div class="profline">' + esc(R.SUBJ[sid].prof) + ': “' + esc(pl) + '”</div>' : ''); }
   function defaultSubject(subs) {
     var P = S.P, ex = R.examFor(P);
-    var pri = subs.filter(function (s) { return ex && P.grade < 8 && ex.subj.indexOf(s.id) >= 0 && P.subj[s.id].lv < ex.req; });
+    var xs = ex ? R.examSubjs(P, ex) : [], pri = subs.filter(function (s) { return ex && P.grade < 8 && xs.indexOf(s.id) >= 0 && P.subj[s.id].lv < ex.req; });
     var list = pri.length ? pri : subs;
     return list.length ? list.slice().sort(function (a, b) { return P.subj[a.id].lv - P.subj[b.id].lv; })[0].id : null;
   }
@@ -1607,7 +1637,7 @@
     h += '</div><div class="grid g2" style="margin-top:16px"><div class="card"><h3>지역</h3><div class="zonelist" style="margin-top:8px">' + D.ZONES.map(function (zz, zi) {
       var to = zz.abyss ? '∞' : D.ZONES[zi + 1].from - 1, un = P.maxStage >= zz.from;
       return '<div class="zone' + (un ? '' : ' lockz') + '"><div style="min-width:0"><div class="small">' + zz.name + '</div><div class="tiny faint">재료: ' + D.MATS[zz.mat].name + '</div></div><span class="zr">' + zz.from + '–' + to + '</span></div>';
-    }).join('') + '</div></div><div class="card"><h3>전투 능력</h3><dl class="kv" style="margin-top:6px"><dt>초당 피해</dt><dd>' + fmt(c.totalDps) + '</dd><dt>물리 공격력</dt><dd>' + fmt(c.patk) + (S.P.cls === 'knight' ? ' <span class="tiny faint">평타</span>' : '') + '</dd><dt>주문 공격력</dt><dd>' + fmt(c.matk) + (S.P.cls !== 'knight' ? ' <span class="tiny faint">평타</span>' : '') + '</dd><dt>주문 · 기술 위력</dt><dd title="주문 위력은 마법 주문, 기술 위력은 물리 주문(검술 · 전투체술 등)의 피해에 곱해집니다">×' + c.spell.toFixed(2) + ' · ×' + c.skill.toFixed(2) + '</dd><dt>공격 속도</dt><dd>' + c.aps.toFixed(2) + '/초</dd><dt>치명타</dt><dd>' + pct(c.critC) + ' · ×' + c.critD.toFixed(2) + '</dd><dt>생명력 · 방어력</dt><dd>' + fmt(c.hp) + ' · ' + fmt(c.def) + '</dd><dt>사역마</dt><dd>' + (P.fam.act ? R.FAM[P.fam.act].name : '없음') + '</dd></dl><p class="tiny faint" style="margin-top:8px">원정은 출정 시점의 능력치로 결과가 정해집니다. 장비를 바꾸면 다음 원정부터 반영됩니다.</p></div></div>';
+    }).join('') + '</div></div><div class="card"><div class="row between"><h3>전투 능력</h3><button class="btn sm ghost" data-act="fullstat">전체 능력치</button></div><dl class="kv" style="margin-top:6px"><dt>초당 피해</dt><dd>' + fmt(c.totalDps) + '</dd><dt>물리 공격력</dt><dd>' + fmt(c.patk) + (S.P.cls === 'knight' ? ' <span class="tiny faint">평타</span>' : '') + '</dd><dt>주문 공격력</dt><dd>' + fmt(c.matk) + (S.P.cls !== 'knight' ? ' <span class="tiny faint">평타</span>' : '') + '</dd><dt>주문 · 기술 위력</dt><dd title="주문 위력은 마법 주문, 기술 위력은 물리 주문(검술 · 전투체술 등)의 피해에 곱해집니다">×' + c.spell.toFixed(2) + ' · ×' + c.skill.toFixed(2) + '</dd><dt>공격 속도</dt><dd>' + c.aps.toFixed(2) + '/초</dd><dt>치명타</dt><dd>' + pct(c.critC) + ' · ×' + c.critD.toFixed(2) + '</dd><dt>생명력 · 방어력</dt><dd>' + fmt(c.hp) + ' · ' + fmt(c.def) + '</dd><dt>사역마</dt><dd>' + (P.fam.act ? R.FAM[P.fam.act].name : '없음') + '</dd></dl><p class="tiny faint" style="margin-top:8px">원정은 출정 시점의 능력치로 결과가 정해집니다. 장비를 바꾸면 다음 원정부터 반영됩니다.</p></div></div>';
     return h;
   };
 
@@ -1766,7 +1796,7 @@
     if (!list.length) h += '<div class="empty">가방이 비어 있습니다. 원정에서 장비를 가져옵니다.</div>';
     else h += '<div class="inv">' + list.map(function (it) {
       var up = R.powerWith(P, it) - c.power;
-      return '<button class="itm rb' + it.r + (S.sel === it.u ? ' sel' : '') + '" data-act="sel" data-a="' + it.u + '"><span class="in" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</span><span class="il">' + R.slotName(it) + ' · Lv ' + it.ilvl + '</span>' + (up > 0 ? '<span class="up">▲</span>' : '') + (it.lock ? '<span class="lk">잠금</span>' : '') + '</button>' + (S.sel === it.u ? '<div class="invdetail">' + detailCard() + '</div>' : '');
+      return '<button class="itm rb' + it.r + (S.sel === it.u ? ' sel' : '') + '" data-act="sel" data-a="' + it.u + '"><span class="in" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</span><span class="il">' + R.slotName(it) + ' · Lv ' + it.ilvl + presetTag(it.u) + '</span>' + (up > 0 ? '<span class="up">▲</span>' : '') + (it.lock ? '<span class="lk">잠금</span>' : '') + '</button>' + (S.sel === it.u ? '<div class="invdetail">' + detailCard() + '</div>' : '');
     }).join('') + '</div>';
     h += '<hr class="sep"><div class="row small"><span class="muted">일괄 판매(잠금 제외)</span>' + D.RARITY.slice(0, 4).map(function (r) { return '<button class="btn sm ghost rk rk' + r.id + '" data-act="bulkask" data-a="sellBelow" data-b="' + r.id + '">' + r.name + ' 이하</button>'; }).join('') + '</div>' +
       '<div class="row small" style="margin-top:6px"><span class="muted">일괄 분해(잠금 제외)</span>' + D.RARITY.slice(0, 4).map(function (r) { return '<button class="btn sm ghost rk rk' + r.id + '" data-act="bulkask" data-a="dismantleBelow" data-b="' + r.id + '">' + r.name + ' 이하</button>'; }).join('') + '</div><p class="tiny faint" style="margin-top:4px">마석 <b class="num">' + fmt(P.res.stone) + '</b> · ' + dotImg('dust', 14) + ' 마석가루 <b class="num">' + fmt(P.res.dust || 0) + '</b> — 분해하면 ' + CUR + ' 대신 마석과 마석가루를 얻고, 가루는 재련에 사용합니다.</p>';
@@ -1962,7 +1992,7 @@
     var rsn = (P.tok && P.tok.respec) || 0, rsArm = S.confirm.rsp > Date.now();
     var dr = S.allocDraft || {}, dsum = R.STATS.reduce(function (a, k) { return a + (dr[k] || 0); }, 0), left = P.pts - dsum;   // 나눠 보는 중 (저장 전)
     if (left < 0) { S.allocDraft = null; dr = {}; dsum = 0; left = P.pts; }   // 그사이 포인트가 줄었으면 나눠 보던 것은 버린다
-    var h = '<div class="card" data-anchor="alloc"><div class="row between"><h3>능력치</h3><span class="small">남은 포인트 <b class="num gold">' + left + '</b>' + (dsum ? ' <span class="tiny faint">(저장 전 ' + dsum + ')</span>' : '') + '</span></div>' + (rsn ? '<div class="row" style="margin-top:6px;gap:8px;flex-wrap:wrap"><span class="small">망각의 차 <b class="num">' + rsn + '</b>개</span><span class="tiny faint">마시면 분배한 포인트를 모두 돌려받고 자동 분배가 꺼집니다</span><span class="spacer"></span><button class="btn sm' + (rsArm ? ' primary' : '') + '" data-act="respecuse">' + (rsArm ? '한 번 더 누르면 마십니다' : '망각의 차 마시기') + '</button></div>' : '') + '<div class="alloc" style="margin-top:8px">';
+    var h = '<div class="card" data-anchor="alloc"><div class="row between"><h3>능력치 <button class="btn sm ghost" data-act="fullstat" style="margin-left:6px;vertical-align:2px">전체 능력치</button></h3><span class="small">남은 포인트 <b class="num gold">' + left + '</b>' + (dsum ? ' <span class="tiny faint">(저장 전 ' + dsum + ')</span>' : '') + '</span></div>' + (rsn ? '<div class="row" style="margin-top:6px;gap:8px;flex-wrap:wrap"><span class="small">망각의 차 <b class="num">' + rsn + '</b>개</span><span class="tiny faint">마시면 분배한 포인트를 모두 돌려받고 자동 분배가 꺼집니다</span><span class="spacer"></span><button class="btn sm' + (rsArm ? ' primary' : '') + '" data-act="respecuse">' + (rsArm ? '한 번 더 누르면 마십니다' : '망각의 차 마시기') + '</button></div>' : '') + '<div class="alloc" style="margin-top:8px">';
     R.STATS.forEach(function (k) { var d = dr[k] || 0; h += '<span>' + D.STAT_NAMES[k] + '</span><span class="tiny faint">' + sdesc(k, c.stat[k] + d) + '<br><span class="num">' + statSplit(c, k) + '</span></span><span class="allocv"><button class="btn sm ghost" data-act="alloc" data-a="' + k + '" data-b="-1" aria-label="' + D.STAT_NAMES[k] + ' 하나 빼기"' + (d ? '' : ' style="visibility:hidden" tabindex="-1"') + '>−1</button><b class="num">' + fmt(c.stat[k]) + '</b><span class="good num allocd">' + (d ? '+' + d : '') + '</span></span><span class="row" style="gap:4px;flex-wrap:nowrap"><button class="btn sm" data-act="alloc" data-a="' + k + '" data-b="1"' + (left ? '' : ' disabled') + '>+1</button><button class="btn sm ghost" data-act="alloc" data-a="' + k + '" data-b="10"' + (left >= 2 ? '' : ' disabled') + '>+10</button></span>'; });
     if (dsum) h += '</div><div class="row allocsave" style="margin-top:8px;gap:6px"><span class="small gold">' + R.STATS.filter(function (k) { return dr[k]; }).map(function (k) { return D.STAT_NAMES[k] + ' +' + dr[k]; }).join(' · ') + '</span><span class="spacer"></span><button class="btn sm ghost" data-act="alloc-reset">되돌리기</button><button class="btn sm primary" data-act="alloc-save">저장</button><div class="alloc" style="display:none">';
     var why = PWHY[P.cls === 'knight' ? 'knight' : 'mage'], tot = 0, W0 = cur ? PRESETS[cur] : null; if (W0) R.STATS.forEach(function (k) { tot += W0[k] || 0; });
@@ -2011,8 +2041,8 @@
     var price = R.eggManaCost(P, wctx(), now()), inc = P.fam.inc;
     var h = '<div class="grid g2" style="margin-bottom:14px"><div class="card hl"><h3>부화기</h3><p class="small muted">보관 중인 알 <b class="num gold">' + P.fam.eggs + '</b>개. 보스 첫 처치, 월드 보스 토벌, 12시간 파견, 매점에서 얻습니다. 알을 품으면 활동할수록(수업 · 원정 · 연구 · 파견 · 조제 등) 진행도가 오르고, 다 차면 마나 없이 깨어납니다. 마나를 불어넣으면 남은 진행도만큼의 마나로 바로 깨어납니다.</p>' + hold;
     if (inc) { var ip = Math.min(1, inc.prog / inc.need); h += '<div class="incbox"><div class="row small"><b>품고 있는 알</b><span class="spacer"></span><span class="num">필요 기여도 ' + fmt(Math.floor(inc.prog)) + ' / ' + fmt(inc.need) + ' (' + Math.floor(ip * 100) + '%)</span></div><div class="bar brass" style="height:8px;margin-top:4px"><b style="width:' + (ip * 100).toFixed(1) + '%"></b></div><div class="tiny faint" style="margin-top:2px">부화 효율 ×' + C().hatchSpd.toFixed(2) + ' · 활동으로 얻는 기여도 × 부화 효율만큼 오릅니다</div></div>'; }
-    h += '<div class="row" style="margin-top:10px;gap:6px">' + (inc ? (inc.prog >= inc.need ? '<button class="btn primary" data-act="do" data-a="eggHatch">부화시키기</button>' : '<button class="btn" data-act="do" data-a="egg"' + (predMana() >= price ? '' : ' disabled') + '>마나로 바로 깨우기 <span class="cost">마나 ' + fmt(price) + '</span></button>') :
-      '<button class="btn primary" data-act="do" data-a="eggInc"' + (P.fam.eggs > 0 ? '' : ' disabled') + '>알 품기</button><button class="btn" data-act="do" data-a="egg"' + (P.fam.eggs > 0 && predMana() >= price ? '' : ' disabled') + '>마나로 바로 깨우기 <span class="cost">마나 ' + fmt(price) + '</span></button>') + '</div>';
+    h += '<div class="row" style="margin-top:10px;gap:6px">' + (inc ? (inc.prog >= inc.need ? '<button class="btn primary" data-act="do" data-a="eggHatch">부화시키기</button>' : '<button class="btn" data-act="do" data-a="egg" data-can="eggmana"' + (predMana() >= price ? '' : ' disabled') + '>마나로 바로 깨우기 <span class="cost">마나 ' + fmt(price) + '</span></button>') :
+      '<button class="btn primary" data-act="do" data-a="eggInc"' + (P.fam.eggs > 0 ? '' : ' disabled') + '>알 품기</button><button class="btn" data-act="do" data-a="egg" data-can="eggmana"' + (P.fam.eggs > 0 && predMana() >= price ? '' : ' disabled') + '>마나로 바로 깨우기 <span class="cost">마나 ' + fmt(price) + '</span></button>') + '</div>';
     h += '</div><div class="card inset"><h4>파견</h4><p class="small muted" style="margin-top:4px">동행하지 않는 사역마를 정해진 시간 동안 내보내면 재료, 마석, ' + CUR + ', 가끔 알과 별조각을 물어 옵니다. 8·12시간 파견은 잠들기 전에 시작해 두는 장시간 방치용입니다.</p>' + durPicker('dd', D.DISPATCH_DUR, '8h') + (function () { var idle = Object.keys(P.fam.own).filter(function (id) { return R.FAM[id] && !P.fam.disp[id] && P.fam.act !== id; }).length; return idle ? '<div class="row" style="margin-top:8px"><button class="btn sm primary" data-act="dispall">쉬고 있는 사역마 모두 파견 <span class="cost">' + idle + '마리 · ' + R.DDUR[S.pick.dd || '8h'].label + '</span></button></div>' : ''; })() + '<p class="tiny faint" style="margin-top:6px">파견에서 돌아온 사역마는 따로 받지 않아도 됩니다. 돌아오면 저절로 받아지고, 「끝난 작업 보고」에 한꺼번에 표시됩니다.</p></div></div><label class="tog small" style="margin:0 0 10px"><input type="checkbox" data-act="opt" data-a="showFam"' + (P.opt.showFam ? ' checked' : '') + '> 동행 중인 사역마를 내 정보에 공개 (다른 학생이 정보창에서 볼 수 있습니다)</label><div class="grid gauto">';
     var dk = S.pick.dd || '8h';
     D.FAMILIARS.forEach(function (f) {
@@ -2042,7 +2072,7 @@
       if (max) return hh + '<span class="tag br">연구 완료</span></div>';
       if (q) { var rq = P.rsq.filter(function (x) { return x && x.id === r.id; })[0];   // 진행 막대 · 남은 시간 (화면이 저절로 갱신)
         return hh + '<span class="tag ok">연구 중</span>' + (rq ? '<div class="bar" style="margin-top:8px"><b data-b="prog:' + rq.start + ':' + rq.end + '"></b></div><div class="row small muted" style="margin-top:4px"><span data-l="left:' + rq.end + '"></span> 남음 · ' + clock(rq.end) + '</div>' : '') + '</div>'; }
-      return hh + '<div class="row"><button class="btn sm primary" data-act="do" data-a="resStart" data-b="' + r.id + '"' + (can ? '' : why(rwhy)) + '>' + (lv + 1) + '단계 연구 <span class="cost">' + R.fmtTime(cost.time) + '</span></button></div><div class="tiny faint" style="margin-top:4px">비용 · 마나 ' + fmt(cost.mana) + (cost.know ? ' · 지식 ' + fmt(cost.know) : '') + ' <span class="faint">(시작할 때 냄)</span></div></div>';
+      return hh + '<div class="row"><button class="btn sm primary" data-act="do" data-a="resStart" data-b="' + r.id + '" data-can="res:' + r.id + '"' + (can ? '' : why(rwhy)) + '>' + (lv + 1) + '단계 연구 <span class="cost">' + R.fmtTime(cost.time) + '</span></button></div><div class="tiny faint" style="margin-top:4px">비용 · 마나 ' + fmt(cost.mana) + (cost.know ? ' · 지식 ' + fmt(cost.know) : '') + ' <span class="faint">(시작할 때 냄)</span></div></div>';
     }).join('') + '</div>';
     return h;
   };
@@ -2462,7 +2492,7 @@
     var take = g.perms && g.perms.take, P = S.P, bag = P.inv.filter(function (it) { return !it.lock; }).sort(function (a, b) { return b.r - a.r || b.ilvl - a.ilvl; });
     var h = '<div class="grid g2"><div class="card"><div class="row between"><h3>부실 금고</h3><b class="num gold" style="font-size:18px">' + fmt(g.gold) + ' ' + CUR + '</b></div><p class="tiny faint">누구나 넣을 수 있고, 꺼내기는 「창고에서 꺼내기」 권한이 있는 부원만 할 수 있습니다. 모든 출입은 기록에 남습니다.</p>' +
       '<div class="row" style="margin-top:8px"><input id="g-gold" type="number" min="1" step="1" inputmode="numeric" placeholder="' + CUR + '" data-fmt="1" style="width:150px"><span class="tiny faint mkfmt"></span><button class="btn sm" data-act="ggold" data-a="deposit">넣기</button>' + (take ? '<button class="btn sm ghost" data-act="ggold" data-a="withdraw">꺼내기</button>' : '') + '</div></div>' +
-      '<div class="card"><h3>장비 넣기</h3>' + (bag.length ? '<div class="row" style="margin-top:6px"><select id="g-item" style="flex:1;min-width:0">' + bag.slice(0, 60).map(function (it) { return '<option value="' + it.u + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + ' · ' + D.RARITY[it.r].name + ' Lv ' + it.ilvl + '</option>'; }).join('') + '</select><button class="btn sm" data-act="gitem">넣기</button></div>' : '<p class="small muted">가방에 넣을 장비가 없습니다 (잠근 장비 제외).</p>') + '</div></div>';
+      '<div class="card"><h3>장비 넣기</h3>' + (bag.length ? '<div class="row" style="margin-top:6px"><select id="g-item" style="flex:1;min-width:0">' + bag.slice(0, 60).map(function (it) { var pn = presetNo(it.u); return '<option value="' + it.u + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + ' · ' + D.RARITY[it.r].name + ' Lv ' + it.ilvl + (pn.length ? ' · 프리셋 ' + pn.join('·') : '') + '</option>'; }).join('') + '</select><button class="btn sm" data-act="gitem">넣기</button></div>' : '<p class="small muted">가방에 넣을 장비가 없습니다 (잠근 장비 제외).</p>') + '</div></div>';
     h += '<div class="card" style="margin-top:12px"><div class="row between"><h3>창고</h3><span class="num small muted">' + g.items.length + ' / ' + g.slots + '칸</span></div>';
     h += g.items.length ? '<div class="inv" style="margin-top:8px">' + g.items.map(function (x) {
       return '<div class="itm rb' + x.r + '" title="' + esc(x.by) + ' 님이 넣음"><span class="in" style="color:' + rcol(x.r) + '">' + esc(x.name) + '</span><span class="il">' + R.slotName(x.item || x) + ' · Lv ' + x.ilvl + ' · ' + esc(x.by) + '</span>' + '<span class="row" style="gap:4px;margin-top:4px"><button class="btn sm ghost" data-act="gitemview" data-a="' + x.id + '">자세히</button>' + (take ? '<button class="btn sm ghost" data-act="gop" data-a="withdraw" data-b="' + x.id + '">꺼내기</button>' : '') + '</span></div>';
@@ -2786,7 +2816,7 @@
         (items.length ? items.slice(0, 40).map(function (it) {
           var k = pKey({ slot: it.slot, r: it.r, ilvl: it.ilvl });
           var so = (m.sopen || {})[it.u];   // 누르면 능력치 펼침
-          return '<div class="mksell' + (m.focus === it.u ? ' focus' : '') + '" data-anchor="mks-' + it.u + '"><div class="mksl"><button class="mksbtn" data-act="mksopen" data-a="' + it.u + '" aria-expanded="' + !!so + '" title="능력치 보기"><span class="small ell" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</span><span class="mkchev tiny faint">' + (so ? '접기 ▴' : '능력치 ▾') + '</span></button><div class="tiny faint ell">' + R.slotName(it) + ' Lv ' + it.ilvl + ' · ' + itemBrief(it) + ' · 상점 ' + fmt(R.sellPrice(it)) + ' ' + CUR + '</div>' + (so ? '<div class="mkst">' + statLines(it) + '</div>' : '') + priceLine(k) + '</div>' +
+          return '<div class="mksell' + (m.focus === it.u ? ' focus' : '') + '" data-anchor="mks-' + it.u + '"><div class="mksl"><button class="mksbtn" data-act="mksopen" data-a="' + it.u + '" aria-expanded="' + !!so + '" title="능력치 보기"><span class="small ell" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</span><span class="mkchev tiny faint">' + (so ? '접기 ▴' : '능력치 ▾') + '</span></button><div class="tiny faint ell">' + R.slotName(it) + ' Lv ' + it.ilvl + ' · ' + itemBrief(it) + ' · 상점 ' + fmt(R.sellPrice(it)) + ' ' + CUR + '' + presetTag(it.u) + '</div>' + (so ? '<div class="mkst">' + statLines(it) + '</div>' : '') + priceLine(k) + '</div>' +
             '<div class="mksr"><input type="number" min="1" step="1" inputmode="numeric" class="mkprice" id="mkp-' + it.u + '" data-key="' + k + '" placeholder="가격" data-fmt="1"><span class="tiny faint mkfmt"></span><button class="btn sm" data-act="mklist" data-a="item" data-b="' + it.u + '">올리기</button></div></div>';
         }).join('') : '<div class="empty">올릴 수 있는 장비가 없습니다.</div>') + '</div></div>';
       var mats = [['stone', P.res.stone]].concat(Object.keys(D.MATS).map(function (k) { return [k, P.mats[k] || 0]; })).filter(function (x) { return x[1] > 0; });
@@ -3076,7 +3106,10 @@
     exam: function () { var ex = R.examFor(S.P); return S.P.examCd <= now() && ex && R.examEligible(S.P, ex); },
     duel: function () { return S.P.duel.cd <= now() && !!R.rival(S.P); },
     boss: function () { return S.P.bossCd <= now() && R.canChallenge(S.P); },
-    spirit: function () { return jar().n > 0; }
+    spirit: function () { return jar().n > 0; },
+    // 연구: 마나가 차오르면 그 자리에서 버튼이 켜진다 (화면을 다시 그리지 않아도)
+    res: function (id) { var P = S.P, c = C(), cost = R.resCost(P, id), r = R.RES[id]; return !!r && R.resAvailable(P, id) && (P.rs[id] || 0) < r.max && !R.resQueued(P, id) && P.rsq.filter(Boolean).length < c.resSlots && predMana() >= cost.mana && P.res.know >= cost.know; },
+    eggmana: function () { return (S.P.fam.inc || S.P.fam.eggs > 0) && predMana() >= R.eggManaCost(S.P, wctx(), now()); }
   };
   // 함께 원정 일행: 순위(피해 몫이 시간에 따라 엎치락뒤치락) · 포지션 · 이름(누르면 정보 카드) · HP 막대와 수치.
   // HP는 위험도만큼 싸울 때 깎이고 쉬는 동안 차오르는 모습을 시각으로 그린다. 줄은 한 번만 그리고 순위 · HP만 매초 바꾼다(자리 이동 애니메이션)
@@ -3468,6 +3501,7 @@
     setTimeout(function () { var i = $('#fam-nm'); if (i) { i.focus(); i.select(); } }, 30);
   };
   ACT.famnamesave = function (id) { var i = $('#fam-nm'); act('famName', { id: id, name: i ? i.value : '' }).then(function (r) { if (!r) return; closeModal(); toast('사역마 이름', r.nm ? R.josa('「' + r.nm + '」', '으로', '로') + ' 지었습니다' : '원래 이름으로 돌아갔습니다'); render(); }); };
+  ACT.headoff = function (k, b, el) { PREF.headOff = el.checked ? k : (k === 'all' ? 'welcome' : ''); savePref(); recount(); updateUnread(); renderDock(); ACT.settings(); };
   ACT.opt = function (k, v, el) { act('opt', { k: k, v: el.checked }).then(function () { if (k === 'sound') { Snd.set(S.P.opt.sound); if ($('#setbox')) ACT.settings(); } if (/Title$/.test(k)) renderDock(); render(); }); };
   ACT.autosell = function () { act('autoSell', { r: +$('#autosell').value }).then(render); };
   ACT.automode = function () { act('autoMode', { dis: $('#automode').value === 'dis' }).then(render); };
@@ -3615,9 +3649,9 @@
         Snd.play(r.pass ? 'pass' : 'fail');
         var h = mhead(r.pass ? '합격!' : '불합격', ex.title);
         h += '<div class="row" style="gap:20px;align-items:center"><div class="letter ' + (r.pass ? 'gold' : 'bad') + '">' + r.letter + '</div><div class="score-row" style="flex:1"><span>이론</span><b class="num">' + r.written.toFixed(1) + ' / 30</b><span>실기</span><b class="num">' + r.practical.toFixed(1) + ' / 40</b><span>대련 ' + (r.duelWin ? '(승리)' : '(패배)') + '</span><b class="num">' + r.duel.toFixed(1) + ' / 30</b>' + (r.bonus ? '<span>침묵달 가산점</span><b class="num">+' + r.bonus + '</b>' : '') + '<span><b>총점</b></span><b class="num gold">' + r.total + '</b></div></div>';
-        if (r.pass) h += '<hr class="sep"><p class="small">보상: 별조각 +' + r.reward.shard + ', ' + MONEY(r.reward.gold, '+') + ', <span style="color:' + rcol(r.reward.item.r) + '">' + esc(r.reward.item.name) + '</span>' + (r.reward.egg ? ', <span class="gold">환수의 알</span>' : '') + '</p>' + (r.badge ? '<p class="small gold" style="margin-top:6px">2학년을 마친 기념으로 아카데미가 ' + R.josa('「' + esc(r.badge) + '」', '을', '를') + ' 수여했습니다. 장비 · 능력 화면에서 볼 수 있습니다.</p>' : '') + (r.letter === 'S' ? '<p class="tiny gold" style="margin-top:4px">수석 성적! S 보상을 받았습니다.</p>' : '') + '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn" data-act="promo" data-a="' + S.P.grade + '">새로 열린 것</button><button class="btn primary" data-act="story" data-a="' + (Math.min(S.P.grade, 8) - 1) + '" autofocus>다음 이야기</button></div>';
+        if (r.pass) h += '<hr class="sep"><p class="small">보상: 별조각 +' + r.reward.shard + ', ' + MONEY(r.reward.gold, '+') + ', <span style="color:' + rcol(r.reward.item.r) + '">' + esc(r.reward.item.name) + '</span>' + (r.reward.egg ? ', <span class="gold">환수의 알</span>' : '') + '</p>' + (r.badge ? '<p class="small gold" style="margin-top:6px">2학년을 마친 기념으로 아카데미가 ' + R.josa('「' + esc(r.badge) + '」', '을', '를') + ' 수여했습니다. 장비 · 능력 화면에서 볼 수 있습니다.</p>' : '') + (r.letter === 'S' ? '<p class="tiny gold" style="margin-top:4px">수석 성적! S 보상을 받았습니다.</p>' : '') + '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn" data-act="exampromo">새로 열린 것</button><button class="btn primary" data-act="examstory" data-a="' + (Math.min(S.P.grade, 8) - 1) + '" autofocus>다음 이야기</button></div>';
         else h += '<p class="small muted" style="margin-top:8px">60점 이상이면 합격입니다. 1시간 뒤 다시 응시할 수 있습니다.</p><div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>';
-        if (r.pass) S.afterClose = function () { promoModal(S.P.grade); };
+        if (r.pass) { S.examRes = { h: h, g: S.P.grade, seenP: false }; S.afterClose = examResClose; }
         modal(h); renderNav();
       });
     });
@@ -3637,7 +3671,7 @@
     else if (R.stageCap({ grade: g - 1, lvl: P.lvl }) < R.gradeCap({ grade: g })) out.push(['원정 ' + R.gradeCap({ grade: g }) + '단계까지', '보스를 이기면 다음 10단계가 열립니다. 레벨이 높으면 조금 더 깊이 갈 수 있습니다.', 'explore', 'boss']);
     D.RESEARCH.forEach(function (r) { if (r.grade === g && !r.gone) out.push(['연구 「' + r.name + '」', r.desc, 'lib', '']); });
     D.SHOP.forEach(function (x) { if (x.grade === g) out.push(['매점 「' + x.name + '」', x.desc, 'shop', '']); });
-    var ex = D.EXAMS[g - 1]; if (ex && g < 8) out.push(['다음 목표: ' + ex.title, '시험 과목 ' + ex.subj.map(function (s) { return R.SUBJ[s].name; }).join(' · ') + ' 모두 Lv ' + ex.req, 'exam', '']);
+    var ex = D.EXAMS[g - 1]; if (ex && g < 8) out.push(['다음 목표: ' + ex.title, '시험 과목 ' + R.examSubjText(S.P, ex) + ' 모두 Lv ' + ex.req, 'exam', '']);
     return out;
   }
   function promoModal(g) {
@@ -3648,6 +3682,12 @@
       '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>', true);
   }
   ACT.promo = function (g) { promoModal(+g); };
+  // 시험 합격 창: 「새로 열린 것」 · 「다음 이야기」를 보고 닫으면 합격 창으로 돌아온다 (다른 쪽도 볼 수 있게).
+  // 합격 창을 닫을 때 새로 열린 것을 아직 안 봤으면 한 번 보여 준다
+  function examResBack() { if (!S.examRes) return; modal(S.examRes.h); S.afterClose = examResClose; }
+  function examResClose() { var x = S.examRes; S.examRes = null; if (x && !x.seenP) promoModal(x.g); }
+  ACT.exampromo = function () { var x = S.examRes; if (!x) return; x.seenP = true; promoModal(x.g); S.afterClose = examResBack; };
+  ACT.examstory = function (i) { if (!S.examRes) { ACT.story(i); return; } ACT.story(i); S.afterClose = examResBack; };
   ACT.story = function (i) { var s = D.STORY[+i]; modal(mhead(s.title, '') + '<p style="white-space:pre-line;color:var(--ink2)">' + esc(s.text) + '</p><div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn primary" data-act="modal-close" autofocus>계속</button></div>'); act('storySeen', { n: +i + 1 }); };
   /* ── 기숙사: 배정 거울 연출(가입 직후) · 기숙사 정보 카드(기숙사 RP 채팅 상단 · 사감 이름) ── */
   // 기숙사 설정 항목: 촘촘한 2열(이름 | 내용). short = 배정 거울용 (위치 · 휴게실 · 사감 · 인사만)
@@ -3846,7 +3886,7 @@
     // 예전에는 body 전체를 zoom 해서 100vh 기준 높이까지 커져 채팅창 아래·안내도 아래가 화면 밖으로 잘렸다.
     document.body.style.zoom = ''; document.documentElement.style.setProperty('--fz', String(PREF.font || 1));
     document.documentElement.classList.toggle('fzoom', PREF.font !== 1);
-    Snd.vol(PREF.sfxVol); Snd.off = {}; for (var k in PREF.sfxOff) if (PREF.sfxOff[k]) Snd.setOff(k, true);
+    Snd.vol(PREF.sfxVol); Snd.fgOnly = PREF.sfxBg === false; Snd.off = {}; for (var k in PREF.sfxOff) if (PREF.sfxOff[k]) Snd.setOff(k, true);
   }
   applyPref();
   /* ── 테마: 색 토큰은 style.css의 :root[data-skin]에, 하늘·기숙사·등급 색은 여기서 ──
@@ -3925,18 +3965,22 @@
   };
   ACT.pwainstall = function () { var e = PWA.evt; if (!e) return; e.prompt(); (e.userChoice || Promise.resolve()).then(function () { PWA.evt = null; ACT.settings(); }); };
   var FONTS = [[0.9, '작게'], [1, '보통'], [1.12, '크게'], [1.25, '더 크게'], [1.4, '아주 크게']];
+  // 설정 탭: 화면 · 소리 · 알림 · 채팅 · 게임 · 계정 (고른 탭만 보인다)
+  var SET_TABS = ['화면', '소리', '알림', '채팅', '게임', '계정'];
   function settingsBody() {
-    var P = S.P, h = '';
-    h += installRow();
-    h += chatTabRow();
-    h += '<div class="setsec"><div class="section-t">화면</div>' +
-      '<div class="row small"><span class="muted" style="width:72px">테마</span><div class="filters">' + [{ id: 'auto', name: '기기 설정 따라', desc: '어두우면 밤하늘 · 밝으면 한낮의 서고' }].concat(THEMES).map(function (t) { return '<button class="btn sm ghost' + (PREF.theme === t.id ? ' on' : '') + '" data-act="settheme" data-a="' + t.id + '" title="' + t.desc + '">' + t.name + '</button>'; }).join('') + '</div></div><div class="row small"><span class="muted" style="width:72px">종이 질감</span><label class="tog"><input type="checkbox" data-act="paper"' + (PREF.paper !== false ? ' checked' : '') + '> 카드·버튼을 양피지처럼 (가장자리가 살짝 찢긴 종이)</label></div><div class="row small"><span class="muted" style="width:72px"></span><span class="tiny faint">선택한 테마는 이 기기에 저장됩니다. 「기기 설정 따라」를 선택하면 기기의 밝기 설정에 맞춰 바뀝니다.</span>' + '</div></div>' +
+    var P = S.P, h = '', T = SET_TABS.indexOf(S.setTab) >= 0 ? S.setTab : '화면', st = function (n) { return ' data-st="' + n + '"' + (T === n ? '' : ' hidden'); };
+    h += '<div class="tabs settabs" role="tablist" style="margin-bottom:4px">' + SET_TABS.map(function (n) { return '<button role="tab" aria-selected="' + (T === n) + '" class="' + (T === n ? 'on' : '') + '" data-act="settab" data-a="' + n + '">' + n + '</button>'; }).join('') + '</div>';
+    h += '<div' + st('화면') + '>' + installRow() + '</div>';
+    h += '<div' + st('채팅') + '>' + chatTabRow() + '</div>';
+    h += '<div class="setsec"' + st('화면') + '><div class="section-t">화면</div>' +
+      '<div class="row small"><span class="muted" style="width:72px">테마</span><div class="filters">' + [{ id: 'auto', name: '기기 설정 따라', desc: '어두우면 밤하늘 · 밝으면 한낮의 서고' }].concat(THEMES).map(function (t) { return '<button class="btn sm ghost' + (PREF.theme === t.id ? ' on' : '') + '" data-act="settheme" data-a="' + t.id + '" title="' + t.desc + '">' + t.name + '</button>'; }).join('') + '</div></div><div class="row small"><span class="muted" style="width:72px">종이 질감</span><label class="tog"><input type="checkbox" data-act="paper"' + (PREF.paper !== false ? ' checked' : '') + '> 카드·버튼을 양피지처럼 (가장자리가 살짝 찢긴 종이)</label></div><div class="row small"><span class="muted" style="width:72px"></span><span class="tiny faint">선택한 테마는 이 기기에 저장됩니다. 「기기 설정 따라」를 선택하면 기기의 밝기 설정에 맞춰 바뀝니다.</span>' + '</div>' +
       '<div class="row small"><span class="muted" style="width:72px">글씨 크기</span><div class="filters">' + FONTS.map(function (f) { return '<button class="btn sm ghost' + (PREF.font === f[0] ? ' on' : '') + '" data-act="setfont" data-a="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '</div></div>' +
       '<div class="row small"><span class="muted">채팅창 크기는 가장자리를 끌어서 바꿉니다</span><span class="spacer"></span><button class="btn sm ghost" data-act="dock-reset">처음 크기로</button></div>' +
       '<label class="tog"><input type="checkbox" id="opt-rf" data-act="opt" data-a="reduceFx"' + (P.opt.reduceFx ? ' checked' : '') + '> 전투 효과 줄이기 (배터리 절약)</label>' +
       '<label class="tog"><input type="checkbox" data-act="opt" data-a="bulkAsk"' + (P.opt.bulkAsk !== false ? ' checked' : '') + '> 장비 일괄 판매 · 분해 전에 확인 창 띄우기</label></div>';
-    h += '<div class="setsec"><div class="section-t">소리</div>' +
+    h += '<div class="setsec"' + st('소리') + '><div class="section-t">소리</div>' +
       '<label class="tog"><input type="checkbox" id="opt-snd" data-act="opt" data-a="sound"' + (P.opt.sound ? ' checked' : '') + '> 효과음</label>' +
+      '<label class="tog"><input type="checkbox" data-act="sfxbg"' + (PREF.sfxBg !== false ? ' checked' : '') + '> 창을 내리거나 다른 탭을 볼 때도 효과음 재생 (채팅 알림 소리 등)</label>' +
       '<div class="row small slider"><span class="muted">효과음 크기</span><input type="range" id="opt-sfxvol" min="0" max="100" step="1" value="' + Math.round(PREF.sfxVol * 100) + '" aria-label="효과음 크기"><span class="num tiny faint" id="opt-sfxvol-v">' + Math.round(PREF.sfxVol * 100) + '%</span><button class="btn sm ghost" data-act="sfxtest">들어 보기</button></div>' +
       '<div class="sfxlist' + (P.opt.sound ? '' : ' off') + '">' + Snd.KEYS.map(function (k) { return '<label class="tog"><input type="checkbox" data-act="sfxone" data-a="' + k[0] + '"' + (PREF.sfxOff[k[0]] ? '' : ' checked') + '> ' + k[1] + '</label>'; }).join('') + '</div>' +
       '<hr class="sep">' +
@@ -3944,18 +3988,18 @@
       '<div class="row small slider"><span class="muted">배경음악 크기</span><input type="range" id="opt-bgmvol" min="0" max="100" step="1" value="' + Math.round(Bgm.vol * 100) + '" aria-label="배경음악 크기"><span class="num tiny faint" id="opt-bgmvol-v">' + Math.round(Bgm.vol * 100) + '%</span></div>' +
       '<label class="tog"><input type="checkbox" id="opt-bgmbg" data-act="bgmbg"' + (Bgm.bg ? ' checked' : '') + '> 창을 내리거나 다른 탭을 볼 때도 배경음악 틀기</label></div>';
     var perm = typeof Notification === 'undefined' ? 'none' : Notification.permission;
-    h += '<div class="setsec"><div class="section-t">알림</div>' +
+    h += '<div class="setsec"' + st('알림') + '><div class="section-t">알림</div>' +
       '<label class="tog"><input type="checkbox" id="opt-notify" data-act="notify"' + (PREF.notify && perm === 'granted' ? ' checked' : '') + (perm === 'none' ? ' disabled' : '') + '> 창을 내려 두었거나 다른 탭을 보고 있을 때 작업이 끝나면 알림</label>' +
       (perm === 'none' ? '<p class="tiny faint">이 브라우저(또는 이 화면)에서는 알림을 사용할 수 없습니다.</p>' : perm === 'denied' ? '<p class="tiny bad">브라우저에서 알림이 막혀 있습니다. 주소창 좌측의 사이트 설정에서 알림을 허용해야 합니다.</p>' : '') +
       pushRow() + '<div class="sfxlist' + (PREF.notify || PREF.push ? '' : ' off') + '">' + [['lec', '수업'], ['exp', '원정'], ['res', '연구'], ['disp', '사역마 파견'], ['jar', '정령 병이 가득 참'], ['sky', '하늘 이벤트 시작'], ['auc', '떠돌이 상인 도착'], ['aucbid', '경매 입찰 (밀림 · 마감 5분 전)']].map(function (t) { return '<label class="tog"><input type="checkbox" data-act="ntone" data-a="' + t[0] + '"' + (ntOn(t[0]) ? ' checked' : '') + '> ' + t[1] + '</label>'; }).join('') + '</div></div>';
-    h += '<div class="setsec"><div class="section-t">채팅</div><label class="tog"><input type="checkbox" id="opt-hmt" data-act="opt" data-a="hideMyTitle"' + (P.opt.hideMyTitle ? ' checked' : '') + '> 채팅에서 내 칭호 숨기기</label>' +
-      '<label class="tog"><input type="checkbox" id="opt-hot" data-act="opt" data-a="hideOtherTitle"' + (P.opt.hideOtherTitle ? ' checked' : '') + '> 채팅에서 다른 학생 칭호 숨기기</label><p class="tiny faint">정보창에는 칭호가 그대로 보입니다.</p></div>';
-    h += '<div class="setsec"><div class="section-t">게임</div><label class="tog"><input type="checkbox" id="opt-ae2" data-act="opt" data-a="autoEquip"' + (P.opt.autoEquip ? ' checked' : '') + '> 더 좋은 장비 자동 장착</label>' +
+    h += '<div class="setsec"' + st('채팅') + '><div class="section-t">채팅</div><p class="tiny faint">새 메시지 알림: 효과음, 다른 탭을 보고 있을 때 브라우저 알림(위 알림을 켠 경우), 게임을 닫아 두었을 때 푸시(푸시를 켠 기기). 알림에는 메시지 내용이 표시되지 않습니다.</p>' + [['chexr', '원정 채팅'], ['chparty', '파티 채팅'], ['chdm', '1:1 채팅']].map(function (t) { return '<label class="tog"><input type="checkbox" data-act="ntone" data-a="' + t[0] + '"' + (ntOn(t[0]) ? ' checked' : '') + '> ' + t[1] + ' 새 메시지 알림</label>'; }).join('') + '<label class="tog"><input type="checkbox" id="opt-hmt" data-act="opt" data-a="hideMyTitle"' + (P.opt.hideMyTitle ? ' checked' : '') + '> 채팅에서 내 칭호 숨기기</label>' +
+      '<label class="tog"><input type="checkbox" id="opt-hot" data-act="opt" data-a="hideOtherTitle"' + (P.opt.hideOtherTitle ? ' checked' : '') + '> 채팅에서 다른 학생 칭호 숨기기</label>' + '<div class="small muted" style="margin-top:6px">기숙사 사감 한마디</div><label class="tog"><input type="checkbox" data-act="headoff" data-a="welcome"' + (PREF.headOff ? ' checked' : '') + (PREF.headOff === 'all' ? ' disabled' : '') + '> 환영 인사 숨기기</label><label class="tog"><input type="checkbox" data-act="headoff" data-a="all"' + (PREF.headOff === 'all' ? ' checked' : '') + '> 모두 숨기기</label><p class="tiny faint">정보창에는 칭호가 그대로 보입니다.</p></div>';
+    h += '<div class="setsec"' + st('게임') + '><div class="section-t">게임</div><label class="tog"><input type="checkbox" id="opt-ae2" data-act="opt" data-a="autoEquip"' + (P.opt.autoEquip ? ' checked' : '') + '> 더 좋은 장비 자동 장착</label>' +
       '<label class="tog"><input type="checkbox" id="opt-aa2" data-act="opt" data-a="autoAlloc"' + (P.opt.autoAlloc ? ' checked' : '') + '> 능력치 자동 분배</label>' +
       '<label class="tog"><input type="checkbox" id="opt-sf2" data-act="opt" data-a="showFam"' + (P.opt.showFam ? ' checked' : '') + '> 동행 중인 사역마를 내 정보에 공개</label></div>';
-    if (API.mode === 'local' && API.cheat) h += '<div class="setsec cheat"><div class="section-t">테스트 도구 <span class="tag br">데모에서만</span></div><p class="tiny faint">기능을 둘러보기 위한 버튼입니다. 서버판에는 없습니다.</p><div class="filters">' +
+    if (API.mode === 'local' && API.cheat) h += '<div class="setsec cheat"' + st('계정') + '><div class="section-t">테스트 도구 <span class="tag br">데모에서만</span></div><p class="tiny faint">기능을 둘러보기 위한 버튼입니다. 서버판에는 없습니다.</p><div class="filters">' +
       [['grade', '한 학년 올리기'], ['subj', '과목 +5레벨'], ['lvl', '레벨 +10'], ['res', '자원 듬뿍'], ['stage', '원정 단계 모두 열기'], ['finish', '작업 즉시 끝내기'], ['spirit', '정령·도전권 채우기']].map(function (c) { return '<button class="btn sm" data-act="cheat" data-a="' + c[0] + '">' + c[1] + '</button>'; }).join('') + '</div></div>';
-    h += '<div class="setsec"><div class="section-t">계정</div><p class="small muted">' + (API.mode === 'local' ? '미리보기: 진행 상황은 이 브라우저에만 저장됩니다.' : '진행 상황은 아카데미 서버에 저장됩니다. 글씨 크기·소리·알림 설정은 이 브라우저에만 기억합니다.') + '</p><p class="tiny faint">화면 버전 ' + BUILD + '</p>';
+    h += '<div class="setsec"' + st('계정') + '><div class="section-t">계정</div><p class="small muted">' + (API.mode === 'local' ? '미리보기: 진행 상황은 이 브라우저에만 저장됩니다.' : '진행 상황은 아카데미 서버에 저장됩니다. 글씨 크기·소리·알림 설정은 이 브라우저에만 기억합니다.') + '</p><p class="tiny faint">화면 버전 ' + BUILD + '</p>';
     if (API.mode === 'server') { h += '<hr class="sep"><div class="row small" style="gap:8px"><span class="muted">로그인 아이디</span><b class="num" id="my-login">' + esc(S.myLogin || '…') + '</b></div>'; if (!S.myLogin && API.myLogin) setTimeout(function () { API.myLogin().then(function (j) { if (j.login) S.myLogin = j.login; var el = $('#my-login'); if (el) el.textContent = j.login || (j.error ? '불러오지 못했습니다' : '확인 불가'); }); }, 0); }
     if (API.mode === 'server') h += '<div class="field" style="margin-top:10px"><label class="small muted" for="pw-old">비밀번호 바꾸기</label><input id="pw-old" type="password" placeholder="현재 비밀번호" autocomplete="current-password"><input id="pw-new" type="password" placeholder="새 비밀번호 (8자 이상)" autocomplete="new-password"><div class="row"><button class="btn sm" data-act="pw">변경</button><span class="tiny faint" id="pw-msg"></span></div></div>' +
       '<div class="row"><button class="btn danger sm" data-act="logout">로그아웃</button></div>';
@@ -3963,15 +4007,28 @@
     return h + '</div>';
   }
   ACT.settings = function () { S.meModal = false; var y = $('.mbox') ? $('.mbox').scrollTop : 0, keep = S.modal && $('#setbox'); modal(mhead('설정', '') + '<div id="setbox" class="stack" style="gap:14px">' + settingsBody() + '</div>'); if (keep) $('.mbox').scrollTop = y; };
+  ACT.settab = function (t) { S.setTab = t; ACT.settings(); var b = $('.mbox'); if (b) b.scrollTop = 0; };
   ACT.setfont = function (v) { PREF.font = +v; savePref(); applyPref(); ACT.settings(); };
   ACT.sfxtest = function () { Snd.preview(); };
+  ACT.sfxbg = function (a, b, el) { PREF.sfxBg = el.checked; savePref(); applyPref(); };
   ACT.sfxone = function (k, b, el) { if (el.checked) delete PREF.sfxOff[k]; else PREF.sfxOff[k] = true; savePref(); applyPref(); if (el.checked && S.P.opt.sound) Snd.play(k); };
   ACT.bgm = function (a, b, el) { Bgm.set(el.checked); bgmScene(); };
   ACT.bgmbg = function (a, b, el) { Bgm.setBg(el.checked); };
   ACT.ntone = function (k, b, el) { PREF.nt[k] = el.checked; savePref(); scheduleNotify(); pushSync(); };
   /* ── 푸시 알림: 게임을 닫아 두어도 서버가 기기로 보낸다 (서버판 · 지원하는 브라우저만) ── */
   function pushOk() { return API.mode === 'server' && 'serviceWorker' in navigator && 'PushManager' in window && typeof Notification !== 'undefined'; }
-  function ntOn(k) { return k === 'aucbid' && PREF.nt[k] == null ? true : !!PREF.nt[k]; }   // 경매 입찰 알림은 처음부터 켜 둔다
+  function ntOn(k) { return (k === 'aucbid' || /^ch/.test(k)) && PREF.nt[k] == null ? true : !!PREF.nt[k]; }   // 경매 입찰 · 채팅 알림은 처음부터 켜 둔다
+  // 원정 · 파티 · 1:1 새 글 알림: 효과음 + 다른 탭 · 창을 내려 두었으면 브라우저 알림 (보고 있는 탭이면 울리지 않는다). 종류마다 4초에 한 번
+  var chatAlertAt = {};
+  function chatAlert(ch, from) {
+    var k = R.CHAT_NOTIFY[ch]; if (!k || !ntOn(k)) return;
+    var away = document.hidden || !document.hasFocus(); if (!away && dockOpen() && S.chat.ch === ch) return;
+    var t = Date.now(); if (t - (chatAlertAt[k] || 0) < 4000) return; chatAlertAt[k] = t;
+    Snd.play('msg');
+    if (away && (PREF.notify || PREF.push) && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      try { var n = new Notification('모네타 아카데미 · ' + (ch === 'dm' ? '1:1 채팅' : ch === 'party' ? '파티 채팅' : '원정 채팅'), { body: (from || '학생') + ' 님의 새 메시지가 있습니다', icon: FAV_URL, tag: 'chat-' + k }); n.onclick = function () { window.focus(); n.close(); }; } catch (e) { }
+    }
+  }
   function pushOpts() { var k = {}; R.NOTIFY_KINDS.forEach(function (x) { if (ntOn(x[0])) k[x[0]] = 1; }); return { kinds: k, quiet: PREF.quiet !== false }; }
   function b64key(s) { var p = '='.repeat((4 - s.length % 4) % 4), raw = atob((s + p).replace(/-/g, '+').replace(/_/g, '/')), a = new Uint8Array(raw.length); for (var i = 0; i < raw.length; i++) a[i] = raw.charCodeAt(i); return a; }
   function pushReg() { return navigator.serviceWorker.ready; }
@@ -4035,8 +4092,8 @@
   // 공개 범위: 전체 · 친구만 · 비공개 (레벨·전투력은 예전 「보여 주기」 체크를 따른다)
   var VIS_OPT = [['all', '전체'], ['friend', '친구만'], ['none', '비공개']];
   function peVis(me, k) { var v = me[k]; if (v === 'all' || v === 'friend' || v === 'none') return v; return k === 'visLv' ? (me.showStats === false ? 'none' : 'all') : 'none'; }
-  function peRead() { if (!$('#pe-status')) return null; var rv = function (k) { var x = $('input[name="pe-' + k + '"]:checked'); return x ? x.value : 'none'; }; return { visLv: rv('visLv'), visStat: rv('visStat'), visEq: rv('visEq'), status: $('#pe-status').value, bio: $('#pe-bio').value, avcredit: ($('#pe-avc') || {}).value || '', fav: $('#pe-fav').value, title: S.P.title || '', allowFriend: $('#pe-friend').checked, bioFriends: $('#pe-biof').checked }; }
-  function peDirty(d) { var me = S.me || {}; return !!d && (d.status !== (me.status || '') || (d.avcredit || '') !== (me.avcredit || '') || d.bio !== (me.bio || '') || d.fav !== (me.fav || '') || d.title !== (S.P.title || '') || d.visLv !== peVis(me, 'visLv') || d.visStat !== peVis(me, 'visStat') || d.visEq !== peVis(me, 'visEq') || d.allowFriend !== (me.allowFriend !== false) || d.bioFriends !== !!me.bioFriends); }
+  function peRead() { if (!$('#pe-status')) return null; var rv = function (k) { var x = $('input[name="pe-' + k + '"]:checked'); return x ? x.value : 'none'; }; return { visLv: rv('visLv'), visStat: rv('visStat'), visEq: rv('visEq'), visFull: rv('visFull'), status: $('#pe-status').value, bio: $('#pe-bio').value, avcredit: ($('#pe-avc') || {}).value || '', fav: $('#pe-fav').value, title: S.P.title || '', allowFriend: $('#pe-friend').checked, bioFriends: $('#pe-biof').checked }; }
+  function peDirty(d) { var me = S.me || {}; return !!d && (d.status !== (me.status || '') || (d.avcredit || '') !== (me.avcredit || '') || d.bio !== (me.bio || '') || d.fav !== (me.fav || '') || d.title !== (S.P.title || '') || d.visLv !== peVis(me, 'visLv') || d.visStat !== peVis(me, 'visStat') || d.visEq !== peVis(me, 'visEq') || d.visFull !== peVis(me, 'visFull') || d.allowFriend !== (me.allowFriend !== false) || d.bioFriends !== !!me.bioFriends); }
   function profileBody() {
     var me0 = S.me || { id: S.P.id, name: S.P.name, house: S.P.house, av: 0, status: '', bio: '', fav: '', showStats: true, allowFriend: true };
     var me = Object.assign({}, me0, S.peDraft || {}), curT = S.peDraft ? S.peDraft.title : (S.P.title || '');
@@ -4052,7 +4109,7 @@
       '<div class="field" style="margin-top:10px"><label class="small muted" for="pe-status">한 줄 소개 <span class="faint">(40자)</span></label><input id="pe-status" maxlength="40" value="' + esc(me.status || '') + '" placeholder="예: 별샘 관측 동아리 부원"></div>' +
       '<div class="field" style="margin-top:10px"><label class="small muted" for="pe-bio">자기소개 <span class="faint">(300자)</span></label><textarea id="pe-bio" maxlength="300" rows="' + (S.peWide ? 12 : 4) + '" style="font-family:var(--f-body);font-size:14px" placeholder="캐릭터 설정, 좋아하는 것, RP 가능한 시간 등">' + esc(me.bio || '') + '</textarea></div>' +
       '<div class="field" style="margin-top:10px"><label class="small muted" for="pe-fav">좋아하는 과목</label><select id="pe-fav"><option value="">선택 안 함</option>' + D.SUBJECTS.filter(function (x) { return R.subjVisible(S.P, x); }).map(function (x) { return '<option value="' + x.id + '"' + (me.fav === x.id ? ' selected' : '') + '>' + x.name + '</option>'; }).join('') + '</select></div>' +
-      '<div class="section-t" style="margin-top:12px">다른 학생에게 보여 줄 정보</div><div class="visrows">' + [['visLv', '레벨·전투력'], ['visStat', '능력치'], ['visEq', '장비']].map(function (v) { var cur = peVis(me, v[0]); return '<div class="visrow"><span class="small">' + v[1] + '</span><span class="visseg" role="radiogroup" aria-label="' + v[1] + ' 공개 범위">' + VIS_OPT.map(function (o) { return '<label><input type="radio" name="pe-' + v[0] + '" value="' + o[0] + '"' + (cur === o[0] ? ' checked' : '') + '><span>' + o[1] + '</span></label>'; }).join('') + '</span></div>'; }).join('') + '</div>' +
+      '<div class="section-t" style="margin-top:12px">다른 학생에게 보여 줄 정보</div><div class="visrows">' + [['visLv', '레벨·전투력'], ['visStat', '능력치'], ['visEq', '장비'], ['visFull', '전체 능력치']].map(function (v) { var cur = peVis(me, v[0]); return '<div class="visrow"><span class="small">' + v[1] + '</span><span class="visseg" role="radiogroup" aria-label="' + v[1] + ' 공개 범위">' + VIS_OPT.map(function (o) { return '<label><input type="radio" name="pe-' + v[0] + '" value="' + o[0] + '"' + (cur === o[0] ? ' checked' : '') + '><span>' + o[1] + '</span></label>'; }).join('') + '</span></div>'; }).join('') + '</div>' +
       '<div class="stack" style="gap:8px;margin-top:10px"><label class="tog"><input type="checkbox" id="pe-friend"' + (me.allowFriend !== false ? ' checked' : '') + '> 친구 신청 받기</label><label class="tog"><input type="checkbox" id="pe-biof"' + (me.bioFriends ? ' checked' : '') + '> 자기소개는 친구에게만 보이기</label></div>' +
       '<div class="row" style="margin-top:14px"><button class="btn primary" data-act="pe-save">저장</button><button class="btn ghost" data-act="pe-preview">다른 학생에게 보이는 모습</button><span class="tiny" id="pe-msg"></span></div>';
   }
@@ -4061,7 +4118,7 @@
   function publicSelf() {
     var me = Object.assign({ id: S.P.id, name: S.P.name, house: S.P.house, av: 0 }, S.me || {}, { grade: S.P.grade, lvl: S.P.lvl, self: false, mine: true, friend: null, online: true, title: S.P.title ? R.titleName(S.P, S.P.title) : '', deco: R.decoView(S.P), badge: R.badgeWorn(S.P) });
     var src = S.me || {};
-    if (peVis(src, 'visLv') !== 'all') { me.power = null; me.lvl = null; } if (peVis(src, 'visStat') !== 'all') delete me.stats; if (peVis(src, 'visEq') !== 'all') delete me.eq;
+    if (peVis(src, 'visLv') !== 'all') { me.power = null; me.lvl = null; } if (peVis(src, 'visStat') !== 'all') delete me.stats; if (peVis(src, 'visEq') !== 'all') delete me.eq; if (peVis(src, 'visFull') !== 'all') delete me.full;
     if (src.bioFriends) me.bio = '';
     delete me.created; return me;
   }
@@ -4100,12 +4157,20 @@
     if (x.st === 'aurora' || x.st === 'spring') return { cls: 'fr-' + x.st, style: '' };
     var c = forTone(x.c), w = small ? 2 : 2;
     if (x.st === 'double') return { cls: '', style: 'border:' + (small ? 4 : 5) + 'px double ' + c + ';' };
+    if (x.st === 'dotted') return { cls: '', style: 'border:' + (small ? 2 : 3) + 'px dotted ' + c + ';' };
+    if (x.st === 'framed') return { cls: '', style: 'border:' + (small ? 3 : 5) + 'px solid ' + c + ';box-shadow:inset 0 0 0 1px ' + hexA(x.c, 0.9) + ',inset 0 0 0 ' + (small ? 3 : 4) + 'px ' + hexA('#f6e7c4', 0.35) + ',0 2px 6px rgba(0,0,0,.25);' };   // 나무 액자: 두꺼운 테 + 안쪽 밝은 띠
+    if (x.st === 'twin') return { cls: '', style: 'border:2px solid ' + c + ';box-shadow:0 0 0 ' + (small ? 2 : 3) + 'px ' + forTone(x.c2) + ',0 0 0 ' + (small ? 3 : 4) + 'px ' + hexA(x.c, 0.6) + ';' };   // 기숙사 문장: 두 빛깔 겹테
+    if (x.st === 'neon') return { cls: 'fr-neon', style: 'border:1.5px solid ' + (lightUi() ? '#eda4b0' : x.c) + ';--fc:' + hexA(x.c, 0.75) + ';--fc2:' + hexA(x.c, 0.3) + ';' };   // 꽃잎 등롱: 살짝 따뜻한 연분홍 빛이 은은하게 번진다
+    if (x.st === 'pulse') return { cls: 'fr-pulse', style: 'border:2px solid ' + c + ';--fc:' + hexA(x.c, 0.55) + ';' };
+    if (x.st === 'gild') return { cls: 'fr-gild', style: 'border:' + (small ? 4 : 5) + 'px double ' + c + ';box-shadow:0 0 ' + (small ? 5 : 12) + 'px ' + hexA(x.c, 0.45) + ',inset 0 0 ' + (small ? 4 : 10) + 'px ' + hexA(x.c, 0.3) + ';' };
     return { cls: '', style: 'border:' + w + 'px ' + (x.st === 'dashed' ? 'dashed' : 'solid') + ' ' + c + ';' + (x.st === 'glow' ? 'box-shadow:0 0 ' + (small ? 6 : 14) + 'px ' + hexA(x.c, 0.5) + ';' : 'box-shadow:inset 0 0 0 1px ' + hexA(x.c, 0.3) + ';') };
   }
+  function decoDark(id) { var x = id && R.DECO[id]; if (!x || x.slot !== 'bg') return false; var L = x.g.reduce(function (t, c) { var n = parseInt(c.slice(1), 16); return t + (0.299 * (n >> 16) + 0.587 * (n >> 8 & 255) + 0.114 * (n & 255)) / 255; }, 0) / x.g.length; return L < 0.5; }
   function decoBg(id, small) {
     var x = id && R.DECO[id]; if (!x || x.slot !== 'bg') return '';
-    var a = small ? 1 : lightUi() ? 0.24 : 0.5, g = 'linear-gradient(160deg,' + x.g.map(function (c) { return hexA(c, a); }).join(',') + ')', p = '';
-    var dot = lightUi() && !small ? 'rgba(40,40,80,.18)' : 'rgba(255,255,255,.35)';
+    // 카드에도 고른 색 그대로 (예전에는 옅게 깔아 미리보기와 달라 보였다). 어두운 배경이면 카드 글씨를 밝게(decoDark)
+    var a = small ? 1 : 0.95, g = 'linear-gradient(160deg,' + x.g.map(function (c) { return hexA(c, a); }).join(',') + ')', p = '';
+    var dot = !decoDark(id) && !small ? 'rgba(40,40,80,.18)' : 'rgba(255,255,255,.35)';
     if (x.pat === 'stars') p = 'radial-gradient(1.5px 1.5px at 20% 30%,' + dot + ',transparent),radial-gradient(1px 1px at 70% 20%,' + dot + ',transparent),radial-gradient(1.2px 1.2px at 85% 70%,' + dot + ',transparent),radial-gradient(1px 1px at 40% 80%,' + dot + ',transparent),';
     else if (x.pat === 'dots') p = 'radial-gradient(' + dot + ' 1px,transparent 1.6px) 0 0/' + (small ? 8 : 14) + 'px ' + (small ? 8 : 14) + 'px,';
     else if (x.pat === 'snow') p = 'radial-gradient(' + dot + ' 1.4px,transparent 2px) 0 0/' + (small ? 9 : 18) + 'px ' + (small ? 9 : 18) + 'px,radial-gradient(' + dot + ' 1px,transparent 1.5px) 7px 9px/' + (small ? 9 : 18) + 'px ' + (small ? 9 : 18) + 'px,';
@@ -4139,7 +4204,7 @@
     h += '<span class="spacer"></span><span class="tiny muted">가진 ' + CUR + ' <b class="num gold">' + fmt(P.res.gold) + '</b></span></div></div>';
     h += '<div class="decotabs filters">' + D.DECO_SLOTS.map(function (sl) { var all = D.DECO.filter(function (x) { return x.slot === sl.id; }), own = all.filter(function (x) { return d.own[x.id]; }).length; return '<button class="btn sm ghost' + (slot === sl.id ? ' on' : '') + '" data-act="decoslot" data-a="' + sl.id + '">' + sl.name + ' <span class="tiny faint num">' + own + '/' + all.length + '</span></button>'; }).join('') + '</div>';
     h += '<div class="dchips"><button class="dchip' + (!tr[slot] ? ' on' : '') + '" data-act="decotry" data-a="' + slot + '" data-b=""><span class="dsw none">없음</span><span class="dn">없음</span><span class="dp">&nbsp;</span></button>' +
-      D.DECO.filter(function (x) { return x.slot === slot; }).map(function (x) {
+      D.DECO.filter(function (x) { return x.slot === slot && (!x.house || x.house === P.house || d.own[x.id]); }).map(function (x) {   // 기숙사 문장은 자기 기숙사 것만
         var own = !!d.own[x.id], on = worn[slot] === x.id;
         return '<button class="dchip' + (tr[slot] === x.id ? ' on' : '') + '" data-act="decotry" data-a="' + slot + '" data-b="' + x.id + '" title="' + esc(x.name) + (own ? '' : ' · ' + MONEY(x.price)) + '">' + decoSwatch(x) + '<span class="dn">' + esc(x.name) + '</span><span class="dp' + (on ? ' worn' : own ? ' own' : '') + '">' + (on ? '다는 중' : own ? '가짐' : fmt(x.price)) + '</span></button>';
       }).join('') + '</div>';
@@ -4172,6 +4237,7 @@
     if (vl === 'none') { me.power = null; me.lvl = null; hid.push('레벨·전투력'); } else if (vl === 'friend') fo.push('레벨·전투력');
     if (vs === 'none') { delete me.stats; hid.push('능력치'); } else if (vs === 'friend') fo.push('능력치');
     if (ve === 'none') { delete me.eq; hid.push('장비'); } else if (ve === 'friend') fo.push('장비');
+    var vf = peVis(src, 'visFull'); if (vf === 'none') { delete me.full; hid.push('전체 능력치'); } else if (vf === 'friend') fo.push('전체 능력치');
     return '<p class="tiny faint" style="margin-bottom:10px">다른 학생이 채팅이나 친구 목록에서 내 이름을 누르면 이렇게 보입니다.' + (hid.length ? ' ' + hid.join(' · ') + '은(는) 숨겨 두었습니다.' : '') + (fo.length ? ' ' + fo.join(' · ') + '은(는) 친구에게만 보입니다.' : '') + (S.peDraft || S.peAv !== undefined ? ' <span class="gold">편집 탭에 저장하지 않은 변경이 있습니다.</span>' : '') + '</p>' + profileCard(me, null);
   }
   function loadFriends() {
@@ -4631,7 +4697,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102092;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102104;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
@@ -4770,6 +4836,7 @@
   document.addEventListener('change', function (e) {
     var el = e.target;
     if (el.dataset.act === 'pick-sel') { S.pick[el.dataset.a] = el.value; render(); }
+    else if (el.dataset.act === 'exampick') act('examPick', { s: el.value }).then(function (r) { if (r) { toast('선택 과목', el.value ? R.SUBJ[el.value].name + ' 과목으로 응시합니다' : '가장 레벨이 높은 과목이 자동으로 반영됩니다'); render(); } });
     else if (el.dataset.act === 'autosell') ACT.autosell();
     else if (el.dataset.act === 'automode') ACT.automode();
     else if (el.id === 'pe-file' && el.files && el.files[0]) onAvatarFile(el.files[0]);

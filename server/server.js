@@ -101,6 +101,8 @@ const chat = Chat.create(dbx, log, { initExtra: (pid) => ({ build: BUILD.build, 
 const Board = require('./board.js');
 // 알림 기록: 우편과 따로, 일어난 일을 모아 보여 준다 (최근 100개, 30일)
 function pname(pid) { const w = dbx.q.getProfile.get(pid); return w ? w.name : '학생'; }
+// 할 일 달성(학기 이야기 · 일일 목표 · 교수님 과제): 규칙이 P.noteQ에 넣은 것을 알림으로 옮긴다
+function questNotes(P) { if (!P || !P.noteQ || !P.noteQ.length) return; const q = P.noteQ; P.noteQ = []; q.forEach((x) => addNote(P.id, 'quest', x[0], x[1])); store.markDirty(P.id); }
 function addNote(pid, kind, text, link) {
   if (!pid || String(pid).startsWith('npc:') || pid === 'staff') return;
   try { dbx.q.noteInsert.run(pid, Math.floor(Date.now() / 1000), kind, sec.enc(String(text).slice(0, 300)), link ? JSON.stringify(link) : ''); chat.ping(pid, 'note', { n: Number(dbx.q.noteUnread.get(pid).n) }); } catch (e) { log('알림 저장 실패', e); }
@@ -119,8 +121,8 @@ const exprooms = ExpRoom.create({ loadPlayer: (pid, now) => loadPlayer(pid, now)
 // 새 업데이트 노트가 배포되면 공지 · 월드 채널에 한 번 알린다
 { const pn = R.D.PATCH && R.D.PATCH[0]; if (pn && dbx.kvGet('patchPosted', 0) < pn.id) { const t = '새 업데이트 노트가 게시되었습니다: 「' + pn.title + '」. 상단의 업데이트 노트 버튼에서 확인할 수 있습니다.'; chat.system('notice', t, Date.now() / 1000); chat.system('world', t, Date.now() / 1000); dbx.kvSet('patchPosted', pn.id); } }
 // 사감 한마디: 기숙사 RP 채널에 (신입생 환영 · 주간 대항전 결과 · 대항전 선두가 바뀔 때). 채팅 시각은 다른 알림처럼 실제 시각
-function headSay(house, text) { const L = D.HOUSE_LORE[house]; if (L && text) chat.headSay(house, L.head, text, Date.now() / 1000); }
-function headWelcome(P) { const L = D.HOUSE_LORE[P.house]; if (L) headSay(P.house, L.say.welcome.replace('{n}', P.name)); }
+function headSay(house, text, extra) { const L = D.HOUSE_LORE[house]; if (L && text) chat.headSay(house, L.head, text, Date.now() / 1000, extra); }
+function headWelcome(P) { const L = D.HOUSE_LORE[P.house]; if (L) headSay(P.house, L.say.welcome.replace('{n}', P.name), { w: 1 }); }   // w: 신입생 환영 (설정에서 이것만 숨길 수 있다)
 world.onWeek = (week, order) => order.forEach((id, i) => { const L = D.HOUSE_LORE[id]; if (L) headSay(id, L.say.rank[i]); });
 world.onLead = (id) => { const L = D.HOUSE_LORE[id]; if (L) headSay(id, L.say.lead); };
 world.onKill = (name) => { const t = name + ' 토벌 성공! 이번 주에 도전한 모든 학생에게 토벌 보상 우편을 보냈습니다.'; chat.system('world', t, Date.now() / 1000); chat.system('notice', t, Date.now() / 1000); };
@@ -303,7 +305,7 @@ function loadPlayer(pid, now) {
   syncOp(P);
   const fp = R.fingerprint(P);
   const pc = setPartyN(P) | setGuildLv(P);
-  R.advance(P, world.ctx(now), now);
+  R.advance(P, world.ctx(now), now); R.questCheck(P, now); questNotes(P);
   if (pc) store.markDirty(pid);
   if (R.fingerprint(P) !== fp) store.markDirty(pid); else store.touch(pid);
   return P;
@@ -523,7 +525,7 @@ routes['POST /api/act'] = async (req, res) => {
     const before = P.wk.dmg;
     setPartyN(P); setGuildLv(P);
     const W0 = world.ctx(now); W0.lecPeers = type === 'lecStart' || type === 'ttApply' ? lecCounts(now) : null;
-    r = R.act(P, W0, now, type, a); W0.lecPeers = null;
+    r = R.act(P, W0, now, type, a); W0.lecPeers = null; questNotes(P);
     if (type === 'lecStart' || type === 'lecCancel' || type === 'ttApply') { lecSync(P); if (type === 'lecStart' || type === 'ttApply') { const j = P.lec[type === 'ttApply' ? 0 : Number(a.slot)]; if (j) lecStarted(P, j.s, now); } }
     if (type === 'exam' && r && r.pass) world.addNews(P.name + ' 학생이 ' + (P.grade >= 8 ? '졸업 시험을 통과해 마스터 과정이 되었습니다' : P.grade + '학년으로 진급했습니다'), now);
     if ((type === 'clsExam' || type === 'setCls') && r) setImmediate(() => { try { chat.clsChanged(pid); } catch (e) { } });
@@ -544,15 +546,37 @@ routes['GET /api/chat/stream'] = (req, res) => {
   if (store.isBanned(pid)) return fail(req, res, 403, '이용이 정지된 계정입니다');
   chat.stream(req, res, pid);
 };
+// 원정 · 파티 · 1:1 새 글: 지금 접속해 있지 않은 받는 사람에게 푸시 (그 종류를 켠 기기만, 같은 사람 · 같은 종류는 1분에 한 번)
+const chatPushAt = new Map();
+function chatPush(P, ch, ids) {
+  const kind = R.CHAT_NOTIFY[ch]; if (!kind) return;
+  const now = Date.now(), name = ch === 'dm' ? '1:1 채팅' : ch === 'party' ? '파티 채팅' : '원정 채팅';
+  [...new Set(ids)].forEach((id) => {
+    if (!id || id === P.id || chat.isOnline(id)) return;
+    const k = id + ':' + kind; if (now - (chatPushAt.get(k) || 0) < 60000) return; chatPushAt.set(k, now);
+    if (chatPushAt.size > 20000) chatPushAt.delete(chatPushAt.keys().next().value);
+    try { push.direct(id, kind, '모네타 아카데미 · ' + name, P.name + ' 님의 새 메시지가 있습니다', 'chat-' + kind); } catch (e) { }
+  });
+}
+function chatPeers(P, ch) {
+  if (ch === 'party') { const pa = partyOf.get(P.id); return pa ? dbx.q.partyMembers.all(pa).map((r) => r.id) : []; }
+  if (ch === 'exr') {
+    const ps = exprooms.peers(P.id); if (ps) return ps;
+    const ck = R.expChatKey(P), j = (P.exp || []).find((x) => x && x.pt && x.pt.ck === ck);
+    return j && j.pt.with ? j.pt.with.map((w) => w.id).filter(Boolean) : [];
+  }
+  return [];
+}
 routes['POST /api/chat/send'] = async (req, res) => {
   const pid = authed(req); if (!pid) return fail(req, res, 401, '로그인이 필요합니다');
   const b = await readJson(req, 4096), P = store.get(pid), meta = dbx.q.playerMeta.get(pid);
   if (!P || !meta || meta.banned || P.needCreate) return fail(req, res, 403, '보낼 수 없습니다');
   try {
     const ch = String(b.ch || ''), now = Date.now() / 1000;
-    if (ch === 'dm') { const m = chat.sendDm(P, meta, String(b.to || ''), b.text, now, b.nonce); return send(req, res, 200, { ok: true, id: m.id, dup: !!m.dup }); }
+    if (ch === 'dm') { const m = chat.sendDm(P, meta, String(b.to || ''), b.text, now, b.nonce); if (!m.dup) chatPush(P, 'dm', [String(b.to || '')]); return send(req, res, 200, { ok: true, id: m.id, dup: !!m.dup }); }
     const m = chat.send(P, meta, ch, b.text, b.kind, now, b.nonce);
     if (m.dup) return send(req, res, 200, { ok: true, id: m.id, dup: true });
+    if (ch === 'party' || ch === 'exr') try { chatPush(P, ch, chatPeers(P, ch)); } catch (e) { log('채팅 푸시 실패', e); }
     send(req, res, 200, { ok: true, id: m.id });
   } catch (e) { if (e.rate) return send(req, res, 429, { error: e.message, rate: true }); fail(req, res, 400, e.message); }
 };
@@ -617,7 +641,7 @@ routes['POST /api/chat/ticket'] = (req, res) => {
 // 공개 범위: 레벨·전투력(visLv) · 능력치(visStat) · 장비(visEq) — 전체 · 친구만 · 비공개
 const VIS = new Set(['all', 'friend', 'none']);
 const PROFILE_DEF = { status: '', bio: '', fav: '', avcredit: '', showStats: true, allowFriend: true, bioFriends: false };   // avcredit: 두상 그림 출처 (선택)
-function profileOf(json) { let p = {}; try { p = JSON.parse(sec.dec(json) || '{}') || {}; } catch (e) { } const o = Object.assign({}, PROFILE_DEF, p); if (!VIS.has(o.visLv)) o.visLv = o.showStats ? 'all' : 'none'; if (!VIS.has(o.visStat)) o.visStat = 'none'; if (!VIS.has(o.visEq)) o.visEq = 'none'; return o; }
+function profileOf(json) { let p = {}; try { p = JSON.parse(sec.dec(json) || '{}') || {}; } catch (e) { } const o = Object.assign({}, PROFILE_DEF, p); if (!VIS.has(o.visLv)) o.visLv = o.showStats ? 'all' : 'none'; if (!VIS.has(o.visStat)) o.visStat = 'none'; if (!VIS.has(o.visEq)) o.visEq = 'none'; if (!VIS.has(o.visFull)) o.visFull = 'none'; return o; }
 const pubItem = (it) => it && { slot: it.slot, wk: it.wk, name: it.name, ilvl: it.ilvl, r: it.r, enh: it.enh, q: it.q, aff: it.aff, eng: it.eng };
 function cleanText(v, max) { return String(v == null ? '' : v).replace(/\r\n?/g, '\n').replace(/[\u0000-\u0009\u000B-\u001F\u007F​-‏‪-‮⁦-⁩]/g, '').replace(/\n{3,}/g, '\n\n').trim().slice(0, max); }
 function isOnline(pid) { return chat.isOnline(pid) || Date.now() - store.seen(pid) < 180000; }
@@ -645,6 +669,7 @@ routes['GET /api/profile'] = (req, res) => {
     const fa = DP && DP.opt && DP.opt.showFam && DP.fam && DP.fam.act, fo = fa && DP.fam.own[fa]; if (fo && R.FAM[fa]) out.fam = { id: fa, lv: fo.lv, nm: fo.nm || '' }; }   // 동행 사역마 (학생이 공개를 켰을 때만)   // 정보 카드 꾸미기
   const fs = self ? null : friendState(me, id), can = (v) => self || v === 'all' || (v === 'friend' && fs === 'ok');
   if (can(pr.visLv)) Object.assign(out, { lvl, power, rank: world.rankOf(power) });
+  if (can(pr.visFull)) { const DP = LP || store.get(id); if (DP) try { out.full = R.fullStats(DP, world.ctx(nowSec()), Math.min(nowSec(), DP.at)); } catch (e) { } }   // 전체 능력치 (기본은 나만 보기)
   if (can(pr.visStat) || can(pr.visEq)) {
     const DP = LP || store.get(id);
     if (DP && can(pr.visStat)) { const c = R.calc(DP, world.ctx(nowSec()), Math.min(nowSec(), DP.at)), st = {}; R.STATS.forEach((k) => { st[k] = Math.round(c.stat[k]); }); out.stats = { st, dps: Math.round(c.totalDps), hp: Math.round(c.hp), def: Math.round(c.def) }; }
@@ -658,7 +683,7 @@ routes['GET /api/profile'] = (req, res) => {
     out.canGuildInvite = !!(mgr && !tg && R.guildCan(gRanksOf(mgr), guildRole.get(me), (dbx.q.gMember.get(me) || {}).rank, 'invite'));
     out.sameParty = !!(partyOf.get(me) && partyOf.get(me) === partyOf.get(id));
   }
-  if (self) Object.assign(out, { showStats: pr.showStats, visLv: pr.visLv, visStat: pr.visStat, visEq: pr.visEq, allowFriend: pr.allowFriend, bioFriends: pr.bioFriends });
+  if (self) Object.assign(out, { showStats: pr.showStats, visLv: pr.visLv, visStat: pr.visStat, visEq: pr.visEq, visFull: pr.visFull, allowFriend: pr.allowFriend, bioFriends: pr.bioFriends });
   else {
     out.friend = fs; out.allowFriend = pr.allowFriend;
     if (pr.bioFriends && out.friend !== 'ok') { out.bio = ''; out.bioHidden = true; }   // 자기소개는 친구에게만
@@ -676,7 +701,7 @@ routes['POST /api/profile'] = async (req, res) => {
   if (b.avcredit !== undefined) pr.avcredit = cleanText(b.avcredit, 60).replace(/\n/g, ' ');
   if (b.fav !== undefined) pr.fav = R.SUBJ[b.fav] ? b.fav : '';
   if (b.showStats !== undefined) { pr.showStats = !!b.showStats; pr.visLv = pr.showStats ? 'all' : 'none'; }   // 예전 화면 호환
-  ['visLv', 'visStat', 'visEq'].forEach((k) => { if (VIS.has(b[k])) pr[k] = b[k]; });
+  ['visLv', 'visStat', 'visEq', 'visFull'].forEach((k) => { if (VIS.has(b[k])) pr[k] = b[k]; });
   pr.showStats = pr.visLv !== 'none';
   if (b.allowFriend !== undefined) pr.allowFriend = !!b.allowFriend;
   if (b.bioFriends !== undefined) pr.bioFriends = !!b.bioFriends;
