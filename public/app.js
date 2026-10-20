@@ -2688,12 +2688,13 @@
     API.marketPrices(need.slice(0, 50)).then(function (j) { if (j.error) return; for (var k in j.prices) { j.prices[k].at = Date.now(); S.mk.prices[k] = j.prices[k]; } if (S.view === 'market' && S.mk.tab === 'sell' && !S.modal) render(); });
   }
   function ago(t) { var s = Math.max(0, Date.now() / 1000 - t); return s < 60 ? '방금' : s < 3600 ? Math.floor(s / 60) + '분 전' : s < 86400 ? Math.floor(s / 3600) + '시간 전' : Math.floor(s / 86400) + '일 전'; }
+  // 시세 한 줄: 「시세 28/개 · 7건 · 최근 31 · 32 · 30 [평균가 넣기]」 (최근 값에 마우스를 올리면 언제 팔렸는지)
   function priceLine(key, unitMat) {
     var p = S.mk.prices[key]; if (!p) return '<div class="tiny faint mkpl">시세 불러오는 중…</div>';
-    if (!p.n) return '<div class="tiny faint mkpl">최근 30일 거래 기록이 없습니다</div>';
-    return '<div class="tiny mkpl"><span class="muted">평균</span> <b class="num gold">' + fmt(p.avg) + '</b>' + (unitMat ? '<span class="faint">/개</span>' : '') + ' <span class="faint">(' + p.n + '건)</span> <span class="muted">· 최근</span> ' +
-      p.recent.map(function (r) { return '<span class="mkrec num" title="' + ago(r.t) + (r.ilvl ? ' · Lv ' + r.ilvl : '') + '">' + fmt(unitMat ? r.price / Math.max(1, r.qty) : r.price) + '<i>' + ago(r.t) + '</i></span>'; }).join('') +
-      ' <button class="btn sm ghost mkfill" data-act="mkfill" data-a="' + esc(key) + '" title="평균가로 채우기">평균가</button></div>';
+    if (!p.n) return '<div class="tiny faint mkpl">최근 30일 거래 기록 없음</div>';
+    return '<div class="tiny mkpl"><span class="muted">시세</span> <b class="num gold">' + fmt(p.avg) + '</b>' + (unitMat ? '<span class="faint">/개</span>' : '') + '<span class="faint"> · ' + p.n + '건 · 최근 </span>' +
+      p.recent.slice(0, 3).map(function (r) { return '<span class="num" title="' + ago(r.t) + (r.ilvl ? ' · Lv ' + r.ilvl : '') + '">' + fmt(unitMat ? r.price / Math.max(1, r.qty) : r.price) + '</span>'; }).join('<span class="faint"> · </span>') +
+      '<button class="mkfill" data-act="mkfill" data-a="' + esc(key) + '" title="가격 칸에 평균가를 넣습니다">평균가 넣기</button></div>';
   }
   // 장비 한 줄 요약: 대표 능력치 + 옵션 수
   function itemBrief(it) {
@@ -2747,7 +2748,14 @@
     } else if (m.tab === 'sell') {
       var items = P.inv.filter(function (it) { return !it.lock; }).sort(function (a, b) { return b.r - a.r || b.ilvl - a.ilvl; });
       if (m.focus) { var fi = items.findIndex(function (it) { return it.u === m.focus; }); if (fi > 0) items.unshift(items.splice(fi, 1)[0]); }
-      h += '<div class="grid g2" style="align-items:start"><div class="card"><h3>장비 올리기</h3><p class="tiny faint">장착 중이거나 잠근 장비는 올릴 수 없습니다. 아래 시세는 같은 부위·등급·레벨 ±5의 최근 30일 판매 기록입니다.</p><div class="stack" style="gap:0;margin-top:6px">' +
+      // 종류 고르기: 장비 · 재료 · 물약 · 소지품 · 휘장 (개수) — 고른 종류만 보이고 「전체」는 모두
+      var nMat = [P.res.stone].concat(Object.keys(D.MATS).map(function (k) { return P.mats[k] || 0; })).filter(function (x) { return x > 0; }).length, nPot = D.POTIONS.filter(function (p) { return P.shelf[p.id] > 0; }).length,
+        nTok = MK_TOKS.filter(function (t) { return t[2](P) > 0; }).length, nBdg = (P.badges || []).filter(function (b) { return b.u !== P.badgeOn && !b.lock; }).length;
+      var SK = [['item', '장비', items.length], ['mat', '재료', nMat], ['pot', '물약', nPot], ['tok', '소지품', nTok], ['badge', '휘장', nBdg], ['all', '전체', -1]];
+      if (m.focus) m.sk = /^pot:/.test(m.focus) ? 'pot' : /^badge:/.test(m.focus) ? 'badge' : 'item';
+      var sk = m.sk || (SK.filter(function (x) { return x[2] > 0; })[0] || SK[0])[0];
+      h += '<div class="filters" style="margin-bottom:10px">' + SK.map(function (x) { return '<button class="btn sm ghost' + (sk === x[0] ? ' on' : '') + '" data-act="mksk" data-a="' + x[0] + '">' + x[1] + (x[2] >= 0 ? ' <span class="num faint">' + x[2] + '</span>' : '') + '</button>'; }).join('') + '</div>';
+      h += '<div class="mksells' + (sk === 'all' ? ' grid g2' : '') + '" data-sel="' + sk + '" style="align-items:start"><div class="card" data-sk="item"><h3>장비 올리기</h3><p class="tiny faint">장착 중이거나 잠근 장비는 올릴 수 없습니다. 아래 시세는 같은 부위·등급·레벨 ±5의 최근 30일 판매 기록입니다.</p><div class="stack" style="gap:0;margin-top:6px">' +
         (items.length ? items.slice(0, 40).map(function (it) {
           var k = pKey({ slot: it.slot, r: it.r, ilvl: it.ilvl });
           var so = (m.sopen || {})[it.u];   // 누르면 능력치 펼침
@@ -2755,12 +2763,12 @@
             '<div class="mksr"><input type="number" min="1" step="1" inputmode="numeric" class="mkprice" id="mkp-' + it.u + '" data-key="' + k + '" placeholder="가격" data-fmt="1"><span class="tiny faint mkfmt"></span><button class="btn sm" data-act="mklist" data-a="item" data-b="' + it.u + '">올리기</button></div></div>';
         }).join('') : '<div class="empty">올릴 수 있는 장비가 없습니다.</div>') + '</div></div>';
       var mats = [['stone', P.res.stone]].concat(Object.keys(D.MATS).map(function (k) { return [k, P.mats[k] || 0]; })).filter(function (x) { return x[1] > 0; });
-      h += '<div class="card"><h3>재료 올리기</h3><p class="tiny faint">수량과 묶음 전체 가격을 정합니다. 시세는 개당 가격입니다.</p><div class="stack" style="gap:0;margin-top:6px">' + (mats.length ? mats.map(function (x) {
+      h += '<div class="card" data-sk="mat"><h3>재료 올리기</h3><p class="tiny faint">수량과 묶음 전체 가격을 정합니다. 시세는 개당 가격입니다.</p><div class="stack" style="gap:0;margin-top:6px">' + (mats.length ? mats.map(function (x) {
         return '<div class="mksell"><div class="mksl"><div class="small">' + MATN(x[0]) + ' <span class="tiny faint">가진 수 ' + fmt(x[1]) + '</span></div>' + priceLine('mat:' + x[0], true) + '</div><div class="mksr"><input type="number" min="1" max="' + x[1] + '" step="1" inputmode="numeric" class="mkqty" id="mkq-' + x[0] + '" placeholder="수량"><input type="number" min="1" step="1" inputmode="numeric" class="mkprice" id="mkp-' + x[0] + '" data-key="mat:' + x[0] + '" data-unit="1" placeholder="가격" data-fmt="1"><span class="tiny faint mkfmt"></span><button class="btn sm" data-act="mklist" data-a="mat" data-b="' + x[0] + '">올리기</button></div></div>';
       }).join('') : '<div class="empty">가진 재료가 없습니다.</div>') + '</div></div>';
       var pots = D.POTIONS.filter(function (p) { return P.shelf[p.id] > 0; });
       if (m.focus && /^pot:/.test(m.focus)) { var pf = pots.findIndex(function (p) { return 'pot:' + p.id === m.focus; }); if (pf > 0) pots.unshift(pots.splice(pf, 1)[0]); }
-      h += '<div class="card"><h3>물약 올리기</h3><p class="tiny faint">연금술로 만든 물약을 선반에서 꺼내 올립니다. 시세는 병당 가격입니다.</p><div class="stack" style="gap:0;margin-top:6px">' + (pots.length ? pots.map(function (p) {
+      h += '<div class="card" data-sk="pot"><h3>물약 올리기</h3><p class="tiny faint">연금술로 만든 물약을 선반에서 꺼내 올립니다. 시세는 병당 가격입니다.</p><div class="stack" style="gap:0;margin-top:6px">' + (pots.length ? pots.map(function (p) {
         return '<div class="mksell' + (m.focus === 'pot:' + p.id ? ' focus' : '') + '" data-anchor="mks-pot:' + p.id + '"><div class="mksl"><div class="small"><span class="pot-ic" style="background:' + p.color + '"></span> ' + p.name + ' <span class="tiny faint">선반에 ' + fmt(P.shelf[p.id]) + '</span></div><div class="tiny faint ell">' + p.desc + '</div>' + priceLine('pot:' + p.id, true) + '</div><div class="mksr"><input type="number" min="1" max="' + P.shelf[p.id] + '" step="1" inputmode="numeric" class="mkqty" id="mkq-pot-' + p.id + '" placeholder="수량" value="1"><input type="number" min="1" step="1" inputmode="numeric" class="mkprice" id="mkp-pot-' + p.id + '" data-key="pot:' + p.id + '" data-unit="1" placeholder="가격" data-fmt="1"><span class="tiny faint mkfmt"></span><button class="btn sm" data-act="mklist" data-a="pot" data-b="' + p.id + '">올리기</button></div></div>';
       }).join('') : '<div class="empty">선반에 물약이 없습니다. 연구실에서 연금술로 만들 수 있습니다.</div>') + '</div></div>' + tokSellCard() + badgeSellCard() + '</div>';
     } else if (m.tab === 'hist') {
@@ -2794,7 +2802,7 @@
   function badgeSellCard() {
     var P = S.P, m = S.mk, list = (P.badges || []).filter(function (b) { return b.u !== P.badgeOn && !b.lock; });
     if (m.focus && /^badge:/.test(m.focus)) { var fi = list.findIndex(function (b) { return 'badge:' + b.u === m.focus; }); if (fi > 0) list.unshift(list.splice(fi, 1)[0]); }
-    return '<div class="card"><h3>휘장 올리기</h3><p class="tiny faint">달고 있는 휘장은 올릴 수 없습니다. 시세는 같은 보석 · 레벨 ±2의 최근 30일 판매 기록입니다.</p><div class="stack" style="gap:0;margin-top:6px">' + (list.length ? list.map(function (b) {
+    return '<div class="card" data-sk="badge"><h3>휘장 올리기</h3><p class="tiny faint">달고 있는 휘장은 올릴 수 없습니다. 시세는 같은 보석 · 레벨 ±2의 최근 30일 판매 기록입니다.</p><div class="stack" style="gap:0;margin-top:6px">' + (list.length ? list.map(function (b) {
       var k = 'badge:' + b.gem + ':' + b.lv, g = R.GEM[b.gem];
       return '<div class="mksell' + (m.focus === 'badge:' + b.u ? ' focus' : '') + '" data-anchor="mks-badge:' + b.u + '"><div class="mksl"><div class="small ell">' + esc(b.name) + ' ' + badgeSvg(b) + ' <span class="num faint">Lv ' + b.lv + '</span></div><div class="tiny faint ell">' + badgeBrief(b) + '</div>' + priceLine(k) + '</div>' +
         '<div class="mksr"><input type="number" min="1" step="1" inputmode="numeric" class="mkprice" id="mkp-badge-' + b.u + '" data-key="' + k + '" placeholder="가격" data-fmt="1"><span class="tiny faint mkfmt"></span><button class="btn sm" data-act="mklist" data-a="badge" data-b="' + b.u + '">올리기</button></div></div>';
@@ -2817,7 +2825,7 @@
   // 소지품 올리기: 환수의 알 · 토벌 도전권 · 망각의 차
   function tokSellCard() {
     var P = S.P, toks = MK_TOKS.filter(function (t) { return t[2](P) > 0; });
-    return '<div class="card"><h3>소지품 올리기</h3><p class="tiny faint">매점에서 별조각으로 산 환수의 알 · 토벌 도전권 · 망각의 차를 ' + CUR + '로 팔 수 있습니다. 시세는 개당 가격입니다.</p><div class="stack" style="gap:0;margin-top:6px">' + (toks.length ? toks.map(function (t) {
+    return '<div class="card" data-sk="tok"><h3>소지품 올리기</h3><p class="tiny faint">매점에서 별조각으로 산 환수의 알 · 토벌 도전권 · 망각의 차를 ' + CUR + '로 팔 수 있습니다. 시세는 개당 가격입니다.</p><div class="stack" style="gap:0;margin-top:6px">' + (toks.length ? toks.map(function (t) {
       return '<div class="mksell"><div class="mksl"><div class="small">' + t[1] + ' <span class="tiny faint">가진 수 ' + fmt(t[2](P)) + '</span></div>' + priceLine('tok:' + t[0], true) + '</div><div class="mksr"><input type="number" min="1" max="' + t[2](P) + '" step="1" inputmode="numeric" class="mkqty" id="mkq-tok-' + t[0] + '" placeholder="수량" value="1"><input type="number" min="1" step="1" inputmode="numeric" class="mkprice" id="mkp-tok-' + t[0] + '" data-key="tok:' + t[0] + '" data-unit="1" placeholder="가격" data-fmt="1"><span class="tiny faint mkfmt"></span><button class="btn sm" data-act="mklist" data-a="tok" data-b="' + t[0] + '">올리기</button></div></div>';
     }).join('') : '<div class="empty">올릴 수 있는 소지품이 없습니다.</div>') + '</div></div>';
   }
@@ -2844,6 +2852,7 @@
     else if (kind === 'item') o.u = k; else { o.mat = k; o.qty = Math.floor(+($('#mkq-' + k) || {}).value || 0); if (!(o.qty >= 1)) { toast('거래소', '수량 입력 필요'); return; } }
     API.marketOp(o).then(function (j) { mkDone(j, '판매 등록이 완료되었습니다'); });
   };
+  ACT.mksk = function (k) { S.mk.sk = k; S.mk.focus = null; render(); };
   ACT.mksopen = function (u) { var m = S.mk; m.sopen = m.sopen || {}; m.sopen[u] = !m.sopen[u]; render(); };
   ACT.mkhf = function (f) { S.mk.hf = f || ''; render(); };
   ACT.mkcancel = function (id) { API.marketOp({ op: 'cancel', id: +id }).then(function (j) { mkDone(j, '판매를 취소했습니다 · 물건이 돌아왔습니다'); }); };
@@ -4590,7 +4599,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102078;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102080;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
