@@ -2052,7 +2052,9 @@
     h += '<p class="small muted" style="margin:-4px 0 12px">토벌 도전권은 한 주에 ' + R.K.WB_BUY_MAX + '번까지 살 수 있으며, 매주 <b>월요일 한국 시간(KST) 0시</b>에 초기화됩니다.</p>';
     var tkLeft = R.wbBuyLeft(P, now());
     h += '<div class="grid gauto">' + D.SHOP.map(function (s) {
-      var locked = s.grade && P.grade < s.grade, price = R.shopPrice(P, s.id), cur = s.cur === 'gold' ? 'gold' : 'shard';
+      var locked = s.grade && P.grade < s.grade, price = R.shopPrice(P, s.id), cur = s.cur === 'gold' ? 'gold' : s.cur === 'stone' ? 'stone' : 'shard';
+      if (s.multi) return '<div class="card"><h4>' + s.name + '</h4><p class="small muted" style="margin:4px 0 10px">' + s.desc + ' <span class="tiny faint">(보유 마석 ' + fmt(P.res.stone) + ' · 마석가루 ' + fmt(P.res.dust || 0) + ')</span></p><div class="row" style="gap:6px;flex-wrap:wrap">' +
+        [1, s.multi].map(function (k) { return '<button class="btn sm primary" data-act="do" data-a="buy" data-b="' + s.id + ':' + k + '"' + (P.res.stone >= price * k ? '' : ' disabled') + '>×' + (k * 10) + ' <span class="cost">마석 ' + fmt(price * k) + '</span></button>'; }).join('') + '</div></div>';
       return '<div class="card"' + (locked ? ' style="opacity:.55"' : '') + '><h4>' + s.name + '</h4><p class="small muted" style="margin:4px 0 10px">' + s.desc + '</p>' +
         (locked ? '<span class="tag">' + s.grade + '학년부터</span>' : '<button class="btn sm primary" data-act="do" data-a="buy" data-b="' + s.id + '"' + (P.res[cur] >= price && (s.id !== 'ticket' || tkLeft > 0) ? '' : ' disabled') + '>구매 <span class="cost">' + fmt(price) + (cur === 'gold' ? ' ' + CUR : ' 별조각') + '</span></button>' + (s.id === 'ticket' ? ' <span class="tiny faint">이번 주 ' + tkLeft + ' / ' + R.K.WB_BUY_MAX + '</span>' : '')) + '</div>';
     }).join('') + '</div><div class="card inset" style="margin-top:14px"><p class="small muted">별조각은 업적, 일일 목표, 출석, 보스 첫 처치, 시험, 결투제, 과제, 월드 보스, 기숙사 대항전에서 얻습니다.</p></div>';
@@ -3381,11 +3383,11 @@
     login: function () { return {}; }, daily: function (b) { return { i: +b }; }, task: function (b) { return { s: b }; }, sellBelow: function (b) { return { r: +b }; },
     unequip: function (b) { return { slot: b }; }, equip: function (b) { return { u: b }; }, lock: function (b) { return { u: b }; }, sell: function (b) { return { u: b }; }, dismantle: function (b) { return { u: b }; }, dismantleBelow: function (b) { return { r: +b }; },
     drink: function (b) { return { id: b }; }, egg: function () { return {}; }, eggInc: function () { return {}; }, eggHatch: function () { return {}; }, feed: function (b) { return { id: b }; },
-    famAct: function (b) { return { id: b }; }, resStart: function (b) { return { id: b }; }, buy: function (b) { return { id: b }; }
+    famAct: function (b) { return { id: b }; }, resStart: function (b) { return { id: b }; }, buy: function (b) { var p = String(b).split(':'); return p[1] ? { id: p[0], n: +p[1] } : { id: b }; }
   };
   var MSG = { login: function (r) { return ['출석 ' + r.streak + '일째', '별조각 +' + r.shard + ', 마석 +' + r.stone]; }, daily: function (r) { return ['일일 목표 완료', '별조각 +' + r.shard + ', ' + MONEY(r.gold, '+')]; },
     task: function (r) { return [r.prof + '의 과제 완료', '별조각 +' + r.shard + (r.item ? ' · ' + r.item.name : '')]; }, sellBelow: function (r) { return ['일괄 판매', r.n + '개 · +' + fmt(r.gold) + ' ' + CUR]; },
-    sell: function (r) { return ['판매가 완료되었습니다', '+' + fmt(r.gold) + ' ' + CUR]; }, dismantle: function (r) { return ['분해했습니다', '마석 +' + r.stone + ' · 마석가루 +' + r.dust]; }, dismantleBelow: function (r) { return ['일괄 분해', r.n + '개 · 마석 +' + r.stone + ' · 마석가루 +' + r.dust]; }, buy: function (r) { return ['구매가 완료되었습니다', r.badge ? r.badge.name : r.item ? r.item.name : r.mana ? '마나 +' + fmt(r.mana) : '']; },
+    sell: function (r) { return ['판매가 완료되었습니다', '+' + fmt(r.gold) + ' ' + CUR]; }, dismantle: function (r) { return ['분해했습니다', '마석 +' + r.stone + ' · 마석가루 +' + r.dust]; }, dismantleBelow: function (r) { return ['일괄 분해', r.n + '개 · 마석 +' + r.stone + ' · 마석가루 +' + r.dust]; }, buy: function (r) { return r.dust ? ['교환이 완료되었습니다', '마석 −' + fmt(r.n * 10) + ' · 마석가루 +' + fmt(r.dust)] : ['구매가 완료되었습니다', r.badge ? r.badge.name : r.item ? r.item.name : r.mana ? '마나 +' + fmt(r.mana) : '']; },
     resStart: function () { return ['연구 시작', '']; }, eggInc: function (r) { return ['알을 품었습니다', '활동할수록 진행도가 오릅니다 · 필요 기여도 ' + fmt(r.need)]; }, eggHatch: function (r) { return ['알이 깨어났습니다', R.FAM[r.f].name + (r.isNew ? ' (새 사역마!)' : r.max ? ' (최대 레벨 · 별조각 +10)' : ' Lv ' + r.lv)]; }, egg: function (r) { return ['알이 깨어났습니다', R.FAM[r.f].name + (r.isNew ? ' (새 사역마!)' : r.max ? ' (최대 레벨 · 별조각 +10)' : ' Lv ' + r.lv)]; } };
   ACT['do'] = function (type, b) {
     var argf = SIMPLE[type]; if (!argf) return;
@@ -4624,7 +4626,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102089;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102090;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
