@@ -4273,7 +4273,7 @@
   function inkOutline(c, bg) {
     var low = c.some(function (v) { return Math.min(contrast(v, bg.refs[0]), contrast(v, bg.refs[1])) < 3; }); if (!low) return '';
     var o = bg.dark ? 'rgba(255,255,255,.5)' : 'rgba(20,16,30,.5)';   // 어두운 배경은 밝은 그림자, 밝은 배경은 어두운 그림자 (부드럽게 번지는 drop-shadow 하나)
-    return 'filter:drop-shadow(0 1px 2px ' + o + ');';
+    return 'filter:drop-shadow(0 0 2px ' + o + ');';
   }
   function decoBgRef(id) { var x = id && R.DECO[id]; if (!x || x.slot !== 'bg') return null; var avg = hexOf([0, 1, 2].map(function (i) { return x.g.reduce(function (t, c) { return t + rgbOf(c)[i]; }, 0) / x.g.length; })); return { dark: decoDark(id), refs: [x.g[0], avg] }; }
   // bg: 이름이 놓인 학생 카드의 배경 꾸미기 (없으면 화면 테마를 따른다)
