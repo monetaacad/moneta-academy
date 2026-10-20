@@ -1863,23 +1863,37 @@
     return h + '</div><p class="tiny faint" style="margin-top:8px">' + (it.lock ? '잠긴 장비입니다. 장착 · 해제만 할 수 있고 강화 · 재련 · 분해 · 판매 · 거래소 · 창고에 넣기는 막혀 있습니다.' : '강화 실패 시 장비는 그대로입니다. 최대 +' + R.ENH_MAX + '. 잠그면 강화 · 판매 같은 실수를 막을 수 있습니다.') + '</p></div>';
   }
   function PRESETS_() { return R.allocPresets(S.P); }
-  // 장비 프리셋: 불러오기 · 저장(덮어쓰기는 한 번 더 눌러 확인)
-  function gearSetRow() {
-    var P = S.P, sets = P.gearSets || [], out = [];
-    for (var i = 0; i < R.GEARSET_N; i++) {
-      var st = sets[i], n = st ? Object.keys(st.eq).length : 0, miss = st ? Object.keys(st.eq).filter(function (s) { var u = st.eq[s]; return !(P.eq[s] && P.eq[s].u === u) && !P.inv.some(function (x) { return x.u === u; }); }).length : 0;
-      var on = st && Object.keys(st.eq).every(function (s) { return P.eq[s] && P.eq[s].u === st.eq[s]; }), armed = S.confirm['gs' + i] > Date.now();
-      var names = st ? D.SLOTS.map(function (sl) { var u = st.eq[sl.id], it = u && R.findItem(P, u); return it ? it.name + (it.enh ? ' +' + it.enh : '') : null; }).filter(Boolean).join(' · ') : '';
-      out.push('<div class="gset' + (on ? ' on' : '') + '"><div class="gsn"><b>프리셋 ' + (i + 1) + '</b>' + (on ? ' <span class="tag ok">장착 중</span>' : '') + '<div class="tiny faint ell" title="' + esc(names) + '">' + (st ? n + '칸' + (miss ? ' · <span class="bad">없는 장비 ' + miss + '</span>' : '') + ' · ' + esc(names) : '비어 있음') + '</div></div>' +
-        '<span class="gsb"><button class="btn sm' + (st && !on ? ' primary' : '') + '" data-act="gsload" data-a="' + i + '"' + (st && !on ? '' : ' disabled') + '>장착</button><button class="btn sm ' + (armed ? 'danger' : 'ghost') + '" data-act="gssave" data-a="' + i + '">' + (armed ? '한 번 더 누르면 덮어씁니다' : '지금 장비 저장') + '</button></span></div>');
-    }
-    return '<div class="card gsets" data-anchor="gsets"><div class="row between"><h3>장비 프리셋</h3><span class="tiny faint">지금 장착한 장비를 저장해 두고 한 번에 바꿔 낍니다</span></div><div class="gslist">' + out.join('') + '</div></div>';
+  // 장비 프리셋: 한 줄에 [1] [2] [3] (누르면 장착) + 편집(팝업에서 지금 장비 저장 · 비우기)
+  function gsInfo(i) {
+    var P = S.P, st = (P.gearSets || [])[i]; if (!st) return { st: null };
+    var keys = Object.keys(st.eq), on = keys.every(function (s) { return P.eq[s] && P.eq[s].u === st.eq[s]; });
+    var miss = keys.filter(function (s) { var u = st.eq[s]; return !(P.eq[s] && P.eq[s].u === u) && !P.inv.some(function (x) { return x.u === u; }); }).length;
+    var names = D.SLOTS.map(function (sl) { var u = st.eq[sl.id], it = u && R.findItem(P, u); return it ? '<span style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</span>' : null; }).filter(Boolean);
+    return { st: st, on: on, miss: miss, n: keys.length, names: names };
   }
+  function gearSetRow() {
+    var b = '';
+    for (var i = 0; i < R.GEARSET_N; i++) { var g = gsInfo(i); b += '<button class="btn sm' + (g.on ? ' primary' : '') + '" data-act="gsload" data-a="' + i + '"' + (g.st && !g.on ? ' title="프리셋 ' + (i + 1) + ' 장착"' : g.on ? ' title="지금 장착 중"' : ' disabled title="비어 있음 · 편집에서 저장"') + '>' + (i + 1) + '</button>'; }
+    return '<div class="gsrow" data-anchor="gsets"><span class="small muted">장비 프리셋</span>' + b + '<button class="btn sm ghost" data-act="gsedit">편집</button></div>';
+  }
+  function gsEditBody() {
+    var out = '';
+    for (var i = 0; i < R.GEARSET_N; i++) {
+      var g = gsInfo(i), armed = S.confirm['gs' + i] > Date.now();
+      out += '<div class="gset' + (g.on ? ' on' : '') + '"><div class="gsn"><b>프리셋 ' + (i + 1) + '</b>' + (g.on ? ' <span class="tag ok">장착 중</span>' : '') + (g.miss ? ' <span class="tag bad">없는 장비 ' + g.miss + '</span>' : '') +
+        '<div class="small" style="margin-top:2px">' + (g.st ? g.names.join(' · ') || '<span class="faint">저장된 장비가 모두 사라졌습니다</span>' : '<span class="faint">비어 있음</span>') + '</div></div>' +
+        '<span class="gsb"><button class="btn sm ' + (armed ? 'danger' : 'primary') + '" data-act="gssave" data-a="' + i + '">' + (armed ? '한 번 더 누르면 덮어씁니다' : '현재 장비 저장') + '</button>' + (g.st ? '<button class="btn sm ghost" data-act="gsclear" data-a="' + i + '">비우기</button>' : '') + '</span></div>';
+    }
+    return '<div class="gslist">' + out + '</div>';
+  }
+  function gsRedraw() { var b = $('#gsedit'); if (b) b.innerHTML = gsEditBody(); render(); }
+  ACT.gsedit = function () { modal(mhead('장비 프리셋', '지금 장착한 장비를 칸에 저장하고, 장비 화면의 1 · 2 · 3으로 한 번에 바꿔 낍니다') + '<div id="gsedit">' + gsEditBody() + '</div><div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn" data-act="modal-close">닫기</button></div>'); };
   ACT.gssave = function (i) {
     var st = (S.P.gearSets || [])[+i], k = 'gs' + i;
-    if (st && !(S.confirm[k] > Date.now())) { S.confirm[k] = Date.now() + 4000; render(); setTimeout(render, 4100); return; }
-    S.confirm[k] = 0; act('gearSet', { op: 'save', i: +i }).then(function (r) { if (r) toast('프리셋 ' + (+i + 1) + '에 저장했습니다', '', 1600); render(); });
+    if (st && !(S.confirm[k] > Date.now())) { S.confirm[k] = Date.now() + 4000; gsRedraw(); setTimeout(gsRedraw, 4100); return; }
+    S.confirm[k] = 0; act('gearSet', { op: 'save', i: +i }).then(function (r) { if (r) toast('프리셋 ' + (+i + 1) + '에 저장했습니다', '', 1600); gsRedraw(); });
   };
+  ACT.gsclear = function (i) { act('gearSet', { op: 'clear', i: +i }).then(function (r) { if (r) toast('프리셋 ' + (+i + 1) + '을 비웠습니다', '', 1400); gsRedraw(); }); };
   ACT.gsload = function (i) { act('gearSet', { op: 'load', i: +i }).then(function (r) { if (r) toast('프리셋 ' + (+i + 1) + ' 장착', r.moved + '칸을 바꿨습니다' + (r.miss ? ' · 가방에 없는 장비 ' + r.miss + '개는 그대로 두었습니다' : ''), 2400); render(); }); };
   // 일괄 판매 · 분해 확인 (다시 보지 않기 · 설정에서 다시 켤 수 있음)
   ACT.bulkask = function (type, r) {
@@ -4408,7 +4422,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102051;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102052;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
