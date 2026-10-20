@@ -1082,6 +1082,8 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 .btag.lock { --tc: var(--brass2); }
 .btag.st-wip { --tc: #6aa8ff; }
 .btag.st-done { --tc: #6fcf97; }
+.btag.st-review { --tc: #d6ad5f; }
+.btag.st-no, .btag.st-norepro { --tc: #9a9cab; }
 .bdlist { padding: 4px 0; }
 .bdrow { display: flex; align-items: center; gap: 8px; width: 100%; padding: 9px 14px; background: none; border: 0; border-bottom: 1px solid var(--line2); color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .bdrow:last-child { border-bottom: 0; }

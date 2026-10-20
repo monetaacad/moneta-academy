@@ -50,8 +50,8 @@ function create(dbx, sec, opts) {
     const p = posts.get(Number(id) | 0); if (!p || !canSee(me, p)) return null;
     return Object.assign(brief(p, me), { body: p.body, canEdit: p.pid === me, canDel: p.pid === me || isOp(me), canStatus: stOk(me, p), comments: dbx.q.bdComs.all(p.id).map((c) => comOut(c, me)) });
   }
-  /* 건의 처리 상태(적용 중 · 해결 완료): 건의 말머리나 관리자만 보기 글에, 학생회장만 붙인다. 바뀌면 쓴 학생에게 알림 */
-  const ST = { '': '', wip: '적용 중', done: '해결 완료' };
+  /* 건의 처리 상태(검토 중 · 적용 중 · 해결 완료 · 반영 안 함 · 재현 안 됨): 건의 말머리나 관리자만 보기 글에, 학생회장만 붙인다. 바뀌면 쓴 학생에게 알림 */
+  const ST = { '': '', review: '검토 중', wip: '적용 중', done: '해결 완료', no: '반영 안 함', norepro: '재현 안 됨' };
   const stOk = (me, p) => (me === 'staff' || !!(opts.isChief && opts.isChief(me))) && (p.tag === 'idea' || p.priv);   // staff = 운영실(관리자 토큰)
   function setStatus(me, id, st) {
     const p = posts.get(Number(id) | 0); if (!p || !stOk(me, p)) fail('상태를 바꿀 수 없는 글입니다');
@@ -112,10 +112,10 @@ function create(dbx, sec, opts) {
   function adminList() {
     return [...posts.values()].filter((p) => p.priv).sort((a, b) => b.last - a.last).slice(0, 200).map((p) => Object.assign(brief(p, 'staff'), { body: p.body, comments: dbx.q.bdComs.all(p.id).map((c) => comOut(c, 'staff')) }));
   }
-  // 운영실 · 건의 모아 보기: 건의 말머리 + 관리자만 보기 글 중 해결 완료가 아닌 것을 텍스트로 (이름은 빼고 글쓴이 · 운영진 · 다른 학생으로만)
+  // 운영실 · 건의 모아 보기: 건의 말머리 + 관리자만 보기 글 중 해결 완료 · 반영 안 함이 아닌 것을 텍스트로 (이름은 빼고 글쓴이 · 운영진 · 다른 학생으로만)
   function exportIdeas() {
-    const ST = { wip: ' [적용 중]', done: ' [해결 완료]' };
-    return [...posts.values()].filter((p) => (p.tag === 'idea' || p.priv) && p.st !== 'done').sort((a, b) => a.id - b.id).map((p) => {
+    const ST = { review: ' [검토 중]', wip: ' [적용 중]', done: ' [해결 완료]', norepro: ' [재현 안 됨]' };
+    return [...posts.values()].filter((p) => (p.tag === 'idea' || p.priv) && p.st !== 'done' && p.st !== 'no').sort((a, b) => a.id - b.id).map((p) => {
       const coms = dbx.q.bdComs.all(p.id).map((c) => '  - ' + (c.pid === 'staff' || c.op ? '운영진' : c.pid === p.pid ? '글쓴이' : '다른 학생') + ': ' + sec.dec(c.body).replace(/\s+/g, ' '));
       return '#' + p.id + (p.priv ? ' (관리자만)' : ' (건의)') + (ST[p.st] || '') + ' ' + p.title + '\n' + p.body + (coms.length ? '\n' + coms.join('\n') : '');
     }).join('\n\n---\n\n');
