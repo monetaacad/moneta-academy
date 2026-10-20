@@ -247,7 +247,7 @@
     var box = $('#sidep'); if (!box || !S.P) return;
     var P = S.P, c = C(), h = '<div class="sph"><span class="navtitle">내 정보</span><button class="spt" data-act="sidetog" aria-expanded="' + SIDE_OPEN + '" title="' + (SIDE_OPEN ? '접기' : '펼치기') + '">' + (SIDE_OPEN ? '접기' : '펼치기') + '<span class="chev' + (SIDE_OPEN ? ' up' : '') + '" aria-hidden="true"></span></button></div>';
     if (SIDE_OPEN) {
-      h += '<div class="spb"><div class="spn"><b>' + inkName(P.name, R.decoView(P).ink) + '</b><span class="tiny faint">' + (P.grade >= 8 ? '마스터' : P.grade + '학년') + ' · Lv ' + P.lvl + ' · ' + clsDot(R.clsOf(P).id, 14) + ' ' + R.clsOf(P).name + '</span></div>' +
+      h += '<div class="spb"><div class="spn"><b>' + inkName(P.name, R.decoView(P).ink) + '</b><span class="tiny faint">' + (P.grade >= 8 ? '마스터' : P.grade + '학년') + ' · Lv ' + P.lvl + ' · ' + clsDot(R.clsOf(P).id, 14) + ' ' + R.clsOf(P).name + '</span>' + xpBar(P, 4) + '</div>' +
         '<button class="sphouse" data-tip="house" tabindex="0" aria-label="기숙사 혜택 보기">' + houseDot(P.house, 16) + '<span>' + house().name + '</span><span class="tiny faint">' + house().latin + '</span></button>' +
         '<dl class="spk"><dt>전투력</dt><dd class="gold">' + fmt(c.power) + (S.rank ? ' <span class="tiny faint">· ' + S.rank + '위</span>' : '') + '</dd><dt>초당 피해</dt><dd>' + fmt(c.totalDps) + '</dd><dt>생명력</dt><dd>' + fmt(c.hp) + '</dd><dt>방어력</dt><dd>' + fmt(c.def) + '</dd></dl>' +
         '<div class="spstat">' + R.STATS.map(function (k) { return '<span><i>' + D.STAT_NAMES[k] + '</i><b class="num">' + fmt(c.stat[k]) + '</b></span>'; }).join('') + '</div>' +
@@ -772,6 +772,7 @@
     if (p.fav && R.SUBJ[p.fav]) rows.push(['좋아하는 과목', R.SUBJ[p.fav].name]);
     if (p.created) rows.push(['입학', new Date(p.created * 1000).toLocaleDateString('ko-KR')]);
     if (rows.length) h += '<dl class="kv" style="margin-top:12px">' + rows.map(function (r) { return '<dt>' + r[0] + '</dt><dd>' + r[1] + '</dd>'; }).join('') + '</dl>';
+    if (p.self && !p.preview && S.P) h += xpBar(S.P, 12);   // 내 정보에서만: 경험치 (다른 학생에게는 보이지 않음)
     if (p.demoPeer) h += '<p class="tiny faint" style="margin-top:10px">데모에서는 채팅에 실린 정보만 보입니다.</p>';
     h += '<div class="row" style="margin-top:14px">';
     if (p.preview) h += '<button class="btn primary" data-act="me" data-a="profile">편집으로 돌아가기</button><button class="btn" data-act="pe-save-preview">이대로 저장</button>';
@@ -942,13 +943,19 @@
   /* ── 아카데미 광장 ── */
   var ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
   function storyUnread() { var P = S.P; return P.story < Math.min(P.grade, 8); }
+  // 경험치 바 + 그 아래 현재 / 다음 레벨까지 필요한 경험치
+  function xpBar(P, mt) {
+    var need = R.xpNeed(P.lvl), pct = Math.min(100, P.xp / need * 100);
+    return '<div class="bar brass" style="margin-top:' + mt + 'px;height:5px" role="progressbar" aria-label="경험치" aria-valuenow="' + Math.floor(P.xp) + '" aria-valuemax="' + need + '"><b style="width:' + pct.toFixed(1) + '%"></b></div>' +
+      '<div class="tiny muted xpnum"><span>경험치</span><span class="num">' + fmt(Math.floor(P.xp)) + ' / ' + fmt(need) + ' (' + pct.toFixed(1) + '%)</span></div>';
+  }
   function meCard() {
     var P = S.P, me = S.me || { id: P.id, name: P.name, house: P.house, av: 0 };
     var h = '<div class="card mecard"><div class="row" style="gap:12px;flex-wrap:nowrap"><button class="avbtn" id="mecard-av" data-act="me" data-a="view" aria-label="내 정보 편집">' + avatarHtml(me, 64) + '</button>' +
       '<div style="flex:1;min-width:0">' + (P.title ? '<div class="pttl">' + esc(R.titleName(P, P.title)) + '</div>' : '') + '<div class="row" style="gap:6px"><h3 style="margin:0">' + esc(P.name) + '</h3><span class="tiny faint">' + R.gradeLabel(P) + ' · Lv ' + P.lvl + '</span></div>' +
       '<div class="small mestatus">' + (me.status ? esc(me.status) : '<span class="faint">한 줄 소개 없음</span>') + '</div>' +
       '<div class="tiny muted" style="margin-top:2px"><span data-tip="power" tabindex="0" class="tipline">전투력 <b class="num gold" data-l="power"></b></span> · ' + S.rank + '위</div></div></div>' +
-      '<div class="bar brass" style="margin-top:10px;height:5px"><b style="width:' + (P.xp / R.xpNeed(P.lvl) * 100).toFixed(1) + '%"></b></div>' +
+      xpBar(P, 10) +
       (P.pts > 0 ? '<div class="row" style="margin-top:10px"><span class="small gold">분배할 능력치 ' + P.pts + '점</span><span class="spacer"></span><button class="btn sm primary" data-act="nav" data-a="gear">분배하기</button></div>' : '') + '</div>';
     return h;
   }
@@ -4059,7 +4066,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102010;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102011;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
