@@ -1914,6 +1914,7 @@ routes['POST /api/admin/board'] = async (req, res) => {
     if (b.op === 'reply') board.comment('staff', b.id, b.text, now);
     else if (b.op === 'del') board.del('staff', b.id);
     else if (b.op === 'cdel') board.cdel('staff', b.cid);
+    else if (b.op === 'status') board.setStatus('staff', b.id, b.st);
     else return fail(req, res, 400, '알 수 없는 요청입니다');
     oplog('admin', '관리자', 'board', b.op + ' #' + (b.id || b.cid)); send(req, res, 200, { ok: true, posts: board.adminList() });
   } catch (e) { if (e.status) return fail(req, res, e.status, e.message); throw e; }
