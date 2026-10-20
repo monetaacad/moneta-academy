@@ -66,6 +66,13 @@
     P.rng = s | 0;
     return ((s >>> 0) % 1000000) / 1000000;
   }
+  // 장비 등급만 따로 굴리는 난수 (P.lrng). 화면으로 보내지 않아서(publicState) 아이템 고유번호 등으로 다음 등급을 짐작할 수 없다
+  function rndL(P) {
+    var s = P.lrng | 0; if (!s) s = (Math.random() * 4294967296) | 0 || 2463534242;
+    s ^= s << 13; s ^= s >>> 17; s ^= s << 5;
+    P.lrng = s | 0;
+    return ((s >>> 0) % 1000000) / 1000000;
+  }
   function ri(P, a, b) { return a + Math.floor(rnd(P) * (b - a + 1)); }
   function pick(P, arr) { return arr[Math.floor(rnd(P) * arr.length)]; }
   R.rnd = rnd;
@@ -334,7 +341,7 @@
     return D.RARITY.map(function (r, i) { return r.w * (i >= 2 ? 1 + boost : 1) * (i >= 1 ? 1 + boost * 0.5 : 1); });
   }
   function rollRarity(P, boost) {
-    var ws = rarityWeights(boost), tot = ws.reduce(function (a, b) { return a + b; }, 0), x = rnd(P) * tot;
+    var ws = rarityWeights(boost), tot = ws.reduce(function (a, b) { return a + b; }, 0), x = rndL(P) * tot;
     for (var i = 0; i < ws.length; i++) { x -= ws[i]; if (x <= 0) return i; }
     return 0;
   }
@@ -1952,7 +1959,9 @@
 
   /* ───────── 클라이언트로 보낼 때 숨길 값 ───────── */
   R.publicState = function (P) {
-    var o = {}; for (var k in P) if (k !== 'rng' && k !== 'pq' && k !== 'px' && k !== 'qRecent' && k !== 'quizCd') o[k] = P[k];
+    var o = {}; for (var k in P) if (k !== 'rng' && k !== 'lrng' && k !== 'pq' && k !== 'px' && k !== 'qRecent' && k !== 'quizCd') o[k] = P[k];
+    // 원정 전리품은 출정할 때 정해 두지만, 아직 줍지 않은 것은 시각만 보낸다 (미리 보고 귀환 · 재출정으로 고르지 못하게)
+    if (P.exp) o.exp = P.exp.map(function (j) { return j && j.loot ? Object.assign({}, j, { loot: j.loot.map(function (x) { return x.at <= P.at ? x : { at: x.at }; }) }) : j; });
     o.examPending = !!P.px;
     return o;
   };

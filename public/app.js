@@ -166,7 +166,7 @@
   function nextEventTime() {
     var P = S.P, t = Infinity;
     P.lec.forEach(function (j) { if (j) t = Math.min(t, j.end); });
-    P.exp.forEach(function (j) { if (j && !j.done) t = Math.min(t, R.expEnd(j)); });   // 끝나서 「원정 완료」를 기다리는 원정은 빼고
+    P.exp.forEach(function (j) { if (j && !j.done) { t = Math.min(t, R.expEnd(j)); (j.loot || []).forEach(function (x) { if (!x.it) t = Math.min(t, x.at); }); } });   // 전리품을 줍는 시각에도 받아 와서 일지에 적는다   // 끝나서 「원정 완료」를 기다리는 원정은 빼고
     (P.lecQ || []).forEach(function (q, i) { if (q && q.at && !P.lec[i]) t = Math.min(t, q.at); });
     if (P.ttRun && P.ttRun.at && !P.lec[0]) t = Math.min(t, P.ttRun.at);   // 꿈길 뒤로 미뤄진 시간표 다음 교시
     P.rsq.forEach(function (q) { if (q) t = Math.min(t, q.end); });
@@ -2858,11 +2858,11 @@
     var j = S.P.exp[i]; if (!j) return '';
     var t = Math.min(now(), j.end), n = Math.floor((t - j.start) / EXP_TICK), from = Math.max(0, n - 30), out = [];
     out.push('<div class="el start"><span class="et num">' + clock(j.start).replace(/^(오전|오후) /, '') + '</span><span>' + j.s + '단계 ' + ro(R.zoneOf(j.s).name) + ' ' + (j.pt && j.pt.with && j.pt.with.length ? josa(j.pt.with.map(function (w) { return esc(w.name); }).join(' · '), '과', '와') + ' 함께 ' : '') + '출발했다.</span></div>');
-    if (from > 0) { var early = (j.loot || []).filter(function (x) { return x.at <= j.start + from * EXP_TICK; }); out.push('<div class="el faint"><span class="et"></span><span>… ' + from + '줄 생략' + (early.length ? ' · 그동안 주운 장비 ' + early.map(function (x) { return '<b style="color:' + rcol(x.it.r) + '">' + esc(x.it.name) + '</b>'; }).join(', ') : '') + ' …</span></div>'); }
+    if (from > 0) { var early = (j.loot || []).filter(function (x) { return x.it && x.at <= j.start + from * EXP_TICK; }); out.push('<div class="el faint"><span class="et"></span><span>… ' + from + '줄 생략' + (early.length ? ' · 그동안 주운 장비 ' + early.map(function (x) { return '<b style="color:' + rcol(x.it.r) + '">' + esc(x.it.name) + '</b>'; }).join(', ') : '') + ' …</span></div>'); }
     for (var k = from + 1; k <= n; k++) {
       var L = expLine(j, k, i), at = j.start + k * EXP_TICK;
       // 이 줄 사이에 실제로 주운 전리품이 있으면 그것을 적는다
-      var got = (j.loot || []).filter(function (x) { return x.at > at - EXP_TICK && x.at <= at; });
+      var got = (j.loot || []).filter(function (x) { return x.it && x.at > at - EXP_TICK && x.at <= at; });   // 아직 받아 오지 않은 전리품(시각만 있음)은 다음 상태 받기 뒤에
       if (got.length) { out.push('<div class="el kloot" data-k="' + k + 'l"><span class="et num">' + clock(at).replace(/^(오전|오후) /, '') + '</span><span>' + got.map(function (x) { return '<b style="color:' + rcol(x.it.r) + '">' + esc(x.it.name) + '</b>'; }).join(', ') + josa(got[got.length - 1].it.name, '을', '를').slice(-1) + ' 주웠다 <span class="eg">' + got.map(function (x) { return (D.RARITY[x.it.r] ? D.RARITY[x.it.r].name : '') + ' ' + R.slotName(x.it); }).join(', ') + '</span></span></div>'); continue; }
       out.push('<div class="el" data-k="' + k + '"><span class="et num">' + clock(at).replace(/^(오전|오후) /, '') + '</span><span>' + L[0] + (L[1] ? ' <span class="eg">' + L[1] + '</span>' : '') + '</span></div>'); }
     if (now() >= j.end) out.push('<div class="el start"><span class="et num">' + clock(j.end).replace(/^(오전|오후) /, '') + '</span><span>원정을 마치고 아카데미로 돌아간다.</span></div>');
@@ -4156,7 +4156,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102033;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102034;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
