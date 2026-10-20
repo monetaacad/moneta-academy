@@ -4159,7 +4159,7 @@
     if (x.st === 'dotted') return { cls: '', style: 'border:' + (small ? 2 : 3) + 'px dotted ' + c + ';' };
     if (x.st === 'framed') return { cls: '', style: 'border:' + (small ? 3 : 5) + 'px solid ' + c + ';box-shadow:inset 0 0 0 1px ' + hexA(x.c, 0.9) + ',inset 0 0 0 ' + (small ? 3 : 4) + 'px ' + hexA('#f6e7c4', 0.35) + ',0 2px 6px rgba(0,0,0,.25);' };   // 나무 액자: 두꺼운 테 + 안쪽 밝은 띠
     if (x.st === 'twin') return { cls: '', style: 'border:2px solid ' + c + ';box-shadow:0 0 0 ' + (small ? 2 : 3) + 'px ' + forTone(x.c2) + ',0 0 0 ' + (small ? 3 : 4) + 'px ' + hexA(x.c, 0.6) + ';' };   // 기숙사 문장: 두 빛깔 겹테
-    if (x.st === 'neon') return { cls: 'fr-neon', style: 'border:1.5px solid ' + (lightUi() ? '#eda4b0' : x.c) + ';--fc:' + hexA(x.c, 0.75) + ';--fc2:' + hexA(x.c, 0.3) + ';' };   // 봄밤 꽃등: 살짝 따뜻한 연분홍 빛이 은은하게 번진다
+    if (x.st === 'neon') return { cls: 'fr-neon', style: 'border:1.5px solid ' + (lightUi() ? '#eda4b0' : x.c) + ';--fc:' + hexA(x.c, 0.75) + ';--fc2:' + hexA(x.c, 0.3) + ';' };   // 꽃잎 등롱: 살짝 따뜻한 연분홍 빛이 은은하게 번진다
     if (x.st === 'pulse') return { cls: 'fr-pulse', style: 'border:2px solid ' + c + ';--fc:' + hexA(x.c, 0.55) + ';' };
     if (x.st === 'gild') return { cls: 'fr-gild', style: 'border:' + (small ? 4 : 5) + 'px double ' + c + ';box-shadow:0 0 ' + (small ? 5 : 12) + 'px ' + hexA(x.c, 0.45) + ',inset 0 0 ' + (small ? 4 : 10) + 'px ' + hexA(x.c, 0.3) + ';' };
     return { cls: '', style: 'border:' + w + 'px ' + (x.st === 'dashed' ? 'dashed' : 'solid') + ' ' + c + ';' + (x.st === 'glow' ? 'box-shadow:0 0 ' + (small ? 6 : 14) + 'px ' + hexA(x.c, 0.5) + ';' : 'box-shadow:inset 0 0 0 1px ' + hexA(x.c, 0.3) + ';') };

@@ -48,7 +48,7 @@ var DATA = (function () {
     { id: 'f_h_clepsydra', house: 'clepsydra', slot: 'frame', name: '물시계관 문장', price: 6000, c: '#6fb5c9', c2: '#1d4a5a', st: 'twin' },
     { id: 'f_h_corona', house: 'corona', slot: 'frame', name: '가시왕관관 문장', price: 6000, c: '#d9736b', c2: '#3a2a1a', st: 'twin' },
     { id: 'f_h_speculum', house: 'speculum', slot: 'frame', name: '거울관 문장', price: 6000, c: '#b99be6', c2: '#3a2a5a', st: 'twin' },
-    { id: 'f_neon', slot: 'frame', name: '봄밤 꽃등', price: 12000, c: '#f9b9c3', st: 'neon' },
+    { id: 'f_neon', slot: 'frame', name: '꽃잎 등롱', price: 12000, c: '#f9b9c3', st: 'neon' },
     { id: 'f_breath', slot: 'frame', name: '숨 쉬는 별빛', price: 15000, c: '#ffe08a', st: 'pulse' },
     { id: 'f_gild', slot: 'frame', name: '금박 장식', price: 20000, c: '#e8c060', st: 'gild' },
     { id: 'f_aurora', slot: 'frame', name: '오로라', price: 30000, c: '#7cf0c0', st: 'aurora' },
