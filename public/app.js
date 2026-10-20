@@ -802,7 +802,7 @@
   function fullStatsHtml(groups) {
     return '<div class="fullst">' + groups.map(function (g) {
       return '<details class="fold fsg" open><summary><h4>' + esc(g.g) + '</h4><span class="tiny faint">' + g.rows.filter(function (r) { return !r.z; }).length + '개 적용</span><span class="chev"></span></summary><div class="fsrows">' + g.rows.map(function (r) {
-        var head = '<span class="fsn">' + esc(r.n) + (r.s.some(function (x) { return x[2]; }) ? ' <span class="tag br fsnow">지금만 포함</span>' : '') + '</span><b class="num fsv">' + esc(r.v) + '</b>';
+        var head = '<span class="fsn">' + statTerm(r.n) + (r.s.some(function (x) { return x[2]; }) ? ' <span class="tag br fsnow">지금만 포함</span>' : '') + '</span><b class="num fsv">' + esc(r.v) + '</b>';
         if (!r.s.length) return '<div class="fsr' + (r.z ? ' z' : '') + '">' + head + '</div>';
         return '<details class="fsr fold' + (r.z ? ' z' : '') + '"><summary>' + head + '<span class="chev"></span></summary><div class="fssrc">' + r.s.map(function (x) { return '<span>' + esc(x[0]) + (x[2] ? ' <span class="tiny gold">지금만</span>' : '') + '</span><b class="num">' + esc(x[1]) + '</b>'; }).join('') + '</div></details>';
       }).join('') + '</div></details>';
@@ -1642,7 +1642,7 @@
     h += '</div><div class="grid g2" style="margin-top:16px"><div class="card"><h3>지역</h3><div class="zonelist" style="margin-top:8px">' + D.ZONES.map(function (zz, zi) {
       var to = zz.abyss ? '∞' : D.ZONES[zi + 1].from - 1, un = P.maxStage >= zz.from;
       return '<div class="zone' + (un ? '' : ' lockz') + '"><div style="min-width:0"><div class="small">' + zz.name + '</div><div class="tiny faint">재료: ' + D.MATS[zz.mat].name + '</div></div><span class="zr">' + zz.from + '–' + to + '</span></div>';
-    }).join('') + '</div></div><div class="card"><div class="row between"><h3>전투 능력</h3><button class="btn sm ghost" data-act="fullstat">전체 능력치</button></div><dl class="kv" style="margin-top:6px"><dt>초당 피해</dt><dd>' + fmt(c.totalDps) + '</dd><dt>물리 공격력</dt><dd>' + fmt(c.patk) + (S.P.cls === 'knight' ? ' <span class="tiny faint">평타</span>' : '') + '</dd><dt>주문 공격력</dt><dd>' + fmt(c.matk) + (S.P.cls !== 'knight' ? ' <span class="tiny faint">평타</span>' : '') + '</dd><dt>주문 · 기술 위력</dt><dd title="주문 위력은 마법 주문, 기술 위력은 물리 주문(검술 · 전투체술 등)의 피해에 곱해집니다">×' + c.spell.toFixed(2) + ' · ×' + c.skill.toFixed(2) + '</dd><dt>공격 속도</dt><dd>' + c.aps.toFixed(2) + '/초</dd><dt>치명타</dt><dd>' + pct(c.critC) + ' · ×' + c.critD.toFixed(2) + '</dd><dt>생명력 · 방어력</dt><dd>' + fmt(c.hp) + ' · ' + fmt(c.def) + '</dd><dt>사역마</dt><dd>' + (P.fam.act ? R.FAM[P.fam.act].name : '없음') + '</dd></dl><p class="tiny faint" style="margin-top:8px">원정은 출정 시점의 능력치로 결과가 정해집니다. 장비를 바꾸면 다음 원정부터 반영됩니다.</p></div></div>';
+    }).join('') + '</div></div><div class="card"><div class="row between"><h3>전투 능력</h3><button class="btn sm ghost" data-act="fullstat">전체 능력치</button></div><dl class="kv" style="margin-top:6px"><dt>초당 피해</dt><dd>' + fmt(c.totalDps) + '</dd><dt>' + statTerm('물리 공격력') + '</dt><dd>' + fmt(c.patk) + (S.P.cls === 'knight' ? ' <span class="tiny faint">평타</span>' : '') + '</dd><dt>' + statTerm('기술 위력') + '</dt><dd>×' + c.skill.toFixed(2) + '</dd><dt>' + statTerm('주문 공격력') + '</dt><dd>' + fmt(c.matk) + (S.P.cls !== 'knight' ? ' <span class="tiny faint">평타</span>' : '') + '</dd><dt>' + statTerm('주문 위력') + '</dt><dd>×' + c.spell.toFixed(2) + '</dd><dt>' + statTerm('공격 속도') + '</dt><dd>' + c.aps.toFixed(2) + '/초</dd><dt>치명타</dt><dd>' + pct(c.critC) + ' · ×' + c.critD.toFixed(2) + '</dd><dt>생명력 · 방어력</dt><dd>' + fmt(c.hp) + ' · ' + fmt(c.def) + '</dd><dt>사역마</dt><dd>' + (P.fam.act ? R.FAM[P.fam.act].name : '없음') + '</dd></dl><p class="tiny faint" style="margin-top:8px">원정은 출정 시점의 능력치로 결과가 정해집니다. 장비를 바꾸면 다음 원정부터 반영됩니다.</p></div></div>';
     return h;
   };
 
@@ -3023,7 +3023,10 @@
     // 하늘 이벤트: 효과는 진행 중인 작업에 자동으로 적용되고, 올려다보면 선물을 받는다
     sky: function () { var ev = R.skyAt(now()); if (!ev) return ''; var seen = S.P && S.P.skyLook === ev.key; return '<b>' + ev.name + '</b><p>' + ev.text + '</p><p class="tiny">하늘 이벤트가 이어지는 동안 올려다보지 않아도 자동으로 적용됩니다(진행 중인 수업 · 원정 · 마나 재생 등).</p><p class="tiny gold" style="margin-top:4px">' + (seen ? '이번 하늘은 이미 올려다보았습니다.' : '「올려다보기」를 누르면 별조각과 마나를 선물로 받습니다.') + '</p>'; },
     gi: function (i) { var g = D.GUIDE[+i]; if (!g) return ''; var sn = g.b.slice(0, 150); return '<b>' + esc(g.t) + '</b><p>' + esc(sn) + (g.b.length > 150 ? '…' : '') + '</p><p class="tiny gold" style="margin-top:4px">' + (matchMedia('(hover: none)').matches ? '한 번 더 누르면 이 안내로 이동합니다' : '누르면 이 안내로 이동합니다') + '</p>'; },
-    g: function (q) { var g = guideFind(q); if (!g) return ''; var b = g.b, k = b.indexOf(q), st = k > 60 ? b.lastIndexOf('. ', k) + 2 : 0, sn = b.slice(Math.max(0, st), Math.max(0, st) + 150); return '<b>' + esc(q) + '</b><p>' + esc(sn) + (b.length > st + 150 ? '…' : '') + '</p><p class="tiny gold" style="margin-top:4px">' + (matchMedia('(hover: none)').matches ? '한 번 더 누르면 가이드로 이동합니다' : '클릭하면 가이드에서 보기') + '</p>'; },
+    g: function (q) { var g = guideFind(q); if (!g) return ''; var sq = Object.keys(STAT_Q).some(function (n) { return STAT_Q[n] === q; }), b = g.b, k = b.indexOf(q), p0 = b.lastIndexOf('. ', k), st = k > 60 || (sq && k > 0) ? (p0 >= 0 ? p0 + 2 : 0) : 0, sn = b.slice(Math.max(0, st), Math.max(0, st) + 150);
+      // 능력치는 그 문장만 (위력은 「평타에는…」까지)
+      if (sq) { var e1 = b.indexOf('. ', k), e2 = e1 >= 0 && b.slice(e1 + 2, e1 + 6) === '평타에는' ? b.indexOf('. ', e1 + 2) : e1; sn = b.slice(st, e2 >= 0 ? e2 + 1 : b.length); var pt = b.indexOf('평타에는'); if (/위력은$/.test(q) && pt >= 0 && sn.indexOf('평타에는') < 0) sn += ' ' + b.slice(pt, b.indexOf('. ', pt) + 1); }
+      return '<b>' + esc(sq ? q.replace(/[은는]$/, '') : q) + '</b><p>' + esc(sn) + (!sq && b.length > st + 150 ? '…' : '') + '</p><p class="tiny gold" style="margin-top:4px">' + (matchMedia('(hover: none)').matches ? '한 번 더 누르면 가이드로 이동합니다' : '클릭하면 가이드에서 보기') + '</p>'; },
     house: function () { var hh = house(); return '<b>' + houseDot(S.P.house, 18) + ' ' + hh.name + ' <span class="faint">' + hh.latin + '</span></b><p class="muted">“' + hh.motto + '”</p><p>기숙사 혜택 (현재 / 최대)</p>' + houseGrow(S.P.house, wctx()) + '<p class="tt-src">처음에는 적힌 효과의 1/10만 받습니다. 기숙사 학생들의 활동이 대항전 점수로 쌓일수록 커져, 기숙사 성장 100%가 되면 적힌 효과(최대)를 그대로 받습니다.</p>'; },
     mana: function () {
       var c = C(), cur = predMana(), full = cur >= c.manaCap ? 0 : (c.manaCap - cur) / Math.max(1e-9, c.mana);
@@ -3064,6 +3067,7 @@
   document.addEventListener('click', function (e) {
     var t = e.target.closest && e.target.closest('.gterm');
     var touch = matchMedia('(hover: none)').matches;
+    if (t && touch && t.closest('summary') && !(tipFor === t && Date.now() - tipAt > 400)) e.preventDefault();   // 접는 줄 안의 용어: 첫 탭은 요약만 (줄은 접거나 펴지 않는다)
     if (t && (!touch || (tipFor === t && Date.now() - tipAt > 400))) { e.preventDefault(); e.stopPropagation(); hideTip(); if (t.dataset.gi) ACT.gjump(t.dataset.gi); else ACT.guide(t.dataset.gq); return; }   // 모바일: 한 번 누르면 요약, 한 번 더 누르면(용어나 요약) 이동
     if (tipEl && !tipEl.hidden && tipEl.contains(e.target) && tipFor && (tipFor.dataset.gq || tipFor.dataset.gi)) { var gf = tipFor; hideTip(); if (gf.dataset.gi) ACT.gjump(gf.dataset.gi); else ACT.guide(gf.dataset.gq); }
   });
@@ -3864,6 +3868,9 @@
     ['[data-act="settings"]', '설정', '테마 · 종이 질감 · 글씨 크기 · 소리 · 알림 · 채팅 탭을 설정합니다. 화면 둘러보기는 여기까지입니다.']
   ];
   // 이 게임에서만 쓰는 말: 밑줄 · 마우스를 올리면 가이드 요약 · 누르면 가이드 검색 (모바일은 누르면 요약, 요약을 한 번 더 누르면 가이드)
+  // 능력치 이름 → 가이드 「공격 능력치」의 그 문장 (툴팁으로 설명, 누르면 가이드로)
+  var STAT_Q = { '공격력': '공격력은', '물리 공격력': '물리 공격력은', '주문 공격력': '주문 공격력은', '주문 위력': '주문 위력은', '기술 위력': '기술 위력은', '공격 속도': '공격 속도는', '치명타 확률': '치명타 확률은', '치명타 피해': '치명타 피해는', '생명력': '생명력은', '방어력': '방어력은' };
+  function statTerm(n) { return STAT_Q[n] ? gterm(esc(n), STAT_Q[n]) : esc(n); }
   function gterm(label, q) { q = q || label; return '<span class="gterm" data-tip="g:' + esc(q) + '" data-gq="' + esc(q) + '" tabindex="0">' + label + '</span>'; }
   function guideFind(q) { var a = D.GUIDE.filter(function (g) { return g.t.indexOf(q) >= 0; }); if (!a.length) a = D.GUIDE.filter(function (g) { return g.b.indexOf(q) >= 0; }); return a[0]; }
   ACT.subjgo = function (id) { var el = $('[data-anchor="subj-' + id + '"]'); if (!el) return; el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); };
@@ -4265,7 +4272,7 @@
   function contrast(a, b) { var x = relL(a), y = relL(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
   function inkOutline(c, bg) {
     var low = c.some(function (v) { return Math.min(contrast(v, bg.refs[0]), contrast(v, bg.refs[1])) < 3; }); if (!low) return '';
-    var o = bg.dark ? 'rgba(255,255,255,.9)' : 'rgba(20,16,30,.85)';   // 어두운 배경은 밝은 테두리, 밝은 배경은 어두운 테두리
+    var o = bg.dark ? 'rgba(255,255,255,.18)' : 'rgba(20,16,30,.17)';   // 어두운 배경은 밝은 테두리, 밝은 배경은 어두운 테두리 (아주 연하게)
     return 'filter:drop-shadow(1px 0 0 ' + o + ') drop-shadow(-1px 0 0 ' + o + ') drop-shadow(0 1px 0 ' + o + ') drop-shadow(0 -1px 0 ' + o + ');';
   }
   function decoBgRef(id) { var x = id && R.DECO[id]; if (!x || x.slot !== 'bg') return null; var avg = hexOf([0, 1, 2].map(function (i) { return x.g.reduce(function (t, c) { return t + rgbOf(c)[i]; }, 0) / x.g.length; })); return { dark: decoDark(id), refs: [x.g[0], avg] }; }
