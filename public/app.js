@@ -4156,6 +4156,12 @@
     if (x.st === 'aurora' || x.st === 'spring') return { cls: 'fr-' + x.st, style: '' };
     var c = forTone(x.c), w = small ? 2 : 2;
     if (x.st === 'double') return { cls: '', style: 'border:' + (small ? 4 : 5) + 'px double ' + c + ';' };
+    if (x.st === 'dotted') return { cls: '', style: 'border:' + (small ? 2 : 3) + 'px dotted ' + c + ';' };
+    if (x.st === 'framed') return { cls: '', style: 'border:' + (small ? 3 : 5) + 'px solid ' + c + ';box-shadow:inset 0 0 0 1px ' + hexA(x.c, 0.9) + ',inset 0 0 0 ' + (small ? 3 : 4) + 'px ' + hexA('#f6e7c4', 0.35) + ',0 2px 6px rgba(0,0,0,.25);' };   // 나무 액자: 두꺼운 테 + 안쪽 밝은 띠
+    if (x.st === 'twin') return { cls: '', style: 'border:2px solid ' + c + ';box-shadow:0 0 0 ' + (small ? 2 : 3) + 'px ' + forTone(x.c2) + ',0 0 0 ' + (small ? 3 : 4) + 'px ' + hexA(x.c, 0.6) + ';' };   // 기숙사 문장: 두 빛깔 겹테
+    if (x.st === 'neon') return { cls: 'fr-neon', style: 'border:1.5px solid ' + (lightUi() ? '#eda4b0' : x.c) + ';--fc:' + hexA(x.c, 0.75) + ';--fc2:' + hexA(x.c, 0.3) + ';' };   // 꽃잎 등롱: 살짝 따뜻한 연분홍 빛이 은은하게 번진다
+    if (x.st === 'pulse') return { cls: 'fr-pulse', style: 'border:2px solid ' + c + ';--fc:' + hexA(x.c, 0.55) + ';' };
+    if (x.st === 'gild') return { cls: 'fr-gild', style: 'border:' + (small ? 4 : 5) + 'px double ' + c + ';box-shadow:0 0 ' + (small ? 5 : 12) + 'px ' + hexA(x.c, 0.45) + ',inset 0 0 ' + (small ? 4 : 10) + 'px ' + hexA(x.c, 0.3) + ';' };
     return { cls: '', style: 'border:' + w + 'px ' + (x.st === 'dashed' ? 'dashed' : 'solid') + ' ' + c + ';' + (x.st === 'glow' ? 'box-shadow:0 0 ' + (small ? 6 : 14) + 'px ' + hexA(x.c, 0.5) + ';' : 'box-shadow:inset 0 0 0 1px ' + hexA(x.c, 0.3) + ';') };
   }
   function decoDark(id) { var x = id && R.DECO[id]; if (!x || x.slot !== 'bg') return false; var L = x.g.reduce(function (t, c) { var n = parseInt(c.slice(1), 16); return t + (0.299 * (n >> 16) + 0.587 * (n >> 8 & 255) + 0.114 * (n & 255)) / 255; }, 0) / x.g.length; return L < 0.5; }
@@ -4197,7 +4203,7 @@
     h += '<span class="spacer"></span><span class="tiny muted">가진 ' + CUR + ' <b class="num gold">' + fmt(P.res.gold) + '</b></span></div></div>';
     h += '<div class="decotabs filters">' + D.DECO_SLOTS.map(function (sl) { var all = D.DECO.filter(function (x) { return x.slot === sl.id; }), own = all.filter(function (x) { return d.own[x.id]; }).length; return '<button class="btn sm ghost' + (slot === sl.id ? ' on' : '') + '" data-act="decoslot" data-a="' + sl.id + '">' + sl.name + ' <span class="tiny faint num">' + own + '/' + all.length + '</span></button>'; }).join('') + '</div>';
     h += '<div class="dchips"><button class="dchip' + (!tr[slot] ? ' on' : '') + '" data-act="decotry" data-a="' + slot + '" data-b=""><span class="dsw none">없음</span><span class="dn">없음</span><span class="dp">&nbsp;</span></button>' +
-      D.DECO.filter(function (x) { return x.slot === slot; }).map(function (x) {
+      D.DECO.filter(function (x) { return x.slot === slot && (!x.house || x.house === P.house || d.own[x.id]); }).map(function (x) {   // 기숙사 문장은 자기 기숙사 것만
         var own = !!d.own[x.id], on = worn[slot] === x.id;
         return '<button class="dchip' + (tr[slot] === x.id ? ' on' : '') + '" data-act="decotry" data-a="' + slot + '" data-b="' + x.id + '" title="' + esc(x.name) + (own ? '' : ' · ' + MONEY(x.price)) + '">' + decoSwatch(x) + '<span class="dn">' + esc(x.name) + '</span><span class="dp' + (on ? ' worn' : own ? ' own' : '') + '">' + (on ? '다는 중' : own ? '가짐' : fmt(x.price)) + '</span></button>';
       }).join('') + '</div>';
@@ -4690,7 +4696,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102102;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102103;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
