@@ -39,7 +39,7 @@
     BAG_BASE: 40,
     EXAM_CD: 3600, BOSS_CD: 600, DUEL_CD: 1800, DUEL_LOSE_CD: 3600,
     WB_TICKET_REGEN: 28800, WB_TICKET_MAX: 3, WB_BUY_MAX: 2, WB_EXTRA_USE: 2,   // 매점 구매 · 추가 도전권 사용: 주마다(월요일 KST 0시) 2번씩
-    SPIRIT_EVERY: 2400, SPIRIT_JAR: 4,   // 정령은 40분마다 병에 한 마리, 최대 4마리
+    SPIRIT_EVERY: 2400, SPIRIT_JAR: 4,   // 정령은 40분마다 병에 한 마리, 기본 4마리 (연구 「정령 병 확장」 한 단계마다 +1)
     EGG_TIME: 21600,
     TZ: 9 * 3600
   };
@@ -132,6 +132,84 @@
     return out;
   };
 
+  /* ───────── 날씨 (모두에게 같은 날씨) ─────────
+     실제 3시간마다 바뀐다. 시각으로만 정해지므로 서버와 데모가 같은 날씨를 본다. 아카데미력 마지막 두 달은 겨울(함박눈은 겨울에만).
+     비 · 눈은 앞뒤에 맑음이 붙으면 흐림으로 바꿔서 「맑음 → 흐림 → 비 → 흐림 → 맑음」처럼 이어지게 한다.
+     하늘 이벤트가 떠 있는 동안은 맑음 (이벤트를 가리지 않게). 맡긴 작업에는 겹친 시간만큼 효과가 들어간다. */
+  R.WX_BLOCK = 3 * 3600;
+  R.WEATHER = [
+    { id: 'clear', name: '맑음', eff: {}, text: '효과 없음', desc: '구름 한 점 없는 하늘입니다.' },
+    { id: 'cloud', name: '흐림', eff: { manaPct: 0.05 }, text: '마나 재생 +5%', desc: '두꺼운 구름이 햇빛을 가려, 마나가 조용히 고입니다.' },
+    { id: 'fog', name: '안개', eff: { dispPct: 0.05 }, text: '사역마 파견 보상 +5%', desc: '안개 속에서 사역마들이 평소보다 많은 것을 찾아옵니다.' },
+    { id: 'rain', name: '비', eff: { brewSpd: 0.1 }, text: '조제 속도 +10%', desc: '빗소리를 들으며 솥을 젓는 날입니다.' },
+    { id: 'storm', name: '뇌우', eff: { goldPct: 0.05 }, text: CUR + ' +5%', desc: '천둥이 칠 때마다 몬스터들이 놀라 주머니를 떨어뜨립니다.' },
+    { id: 'snow', name: '눈', eff: { lectureSpd: 0.05 }, text: '수업 효율 +5%', desc: '밖에 나가기 어려워 강의실이 붐빕니다.' },
+    { id: 'blizzard', name: '함박눈', eff: { lectureSpd: 0.1 }, text: '수업 효율 +10%', desc: '겨울에만 내리는 굵은 눈입니다. 모두가 강의실에 모입니다.' }
+  ];
+  var WX = R.WX = {}; R.WEATHER.forEach(function (w) { WX[w.id] = w; });
+  // 다음 블록 날씨 확률 (지금 날씨 → 다음). 비 · 눈은 흐림이나 같은 계열에서만 오고, 그친 뒤에는 흐림을 거쳐 맑아진다.
+  var WX_NEXT = {
+    norm: {
+      clear: { clear: 60, cloud: 24, fog: 16 },
+      fog: { fog: 30, clear: 40, cloud: 30 },
+      cloud: { cloud: 28, clear: 36, rain: 22, snow: 9, fog: 5 },
+      rain: { rain: 44, storm: 14, cloud: 42 },
+      storm: { rain: 50, cloud: 50 },
+      snow: { snow: 45, cloud: 55 },
+      blizzard: { snow: 60, cloud: 40 }
+    },
+    winter: {
+      clear: { clear: 52, cloud: 34, fog: 14 },
+      fog: { fog: 30, clear: 35, cloud: 35 },
+      cloud: { cloud: 30, clear: 22, snow: 36, rain: 7, fog: 5 },
+      rain: { rain: 40, cloud: 50, snow: 10 },
+      storm: { rain: 50, cloud: 50 },
+      snow: { snow: 40, blizzard: 30, cloud: 30 },
+      blizzard: { blizzard: 45, snow: 40, cloud: 15 }
+    }
+  };
+  var WX_WET = { rain: 1, storm: 1, snow: 1, blizzard: 1 }, WX_RUN = 56;   // 일주일(56블록)마다 맑음에서 다시 시작
+  function wxStep(W, prev, b, last) {
+    var t = b * R.WX_BLOCK, winter = R.calendar(W, t + 1).mi >= D.WORLD.calendarMonths.length - 2;
+    var tb = Object.assign({}, (winter ? WX_NEXT.winter : WX_NEXT.norm)[prev]), hr = Math.floor(((t + K.TZ) % 86400) / 3600);
+    if (hr < 3 || hr >= 9) { tb.clear = (tb.clear || 0) + (tb.fog || 0); delete tb.fog; }   // 안개는 새벽 · 아침(3~9시)에만
+    if (last) { for (var k in tb) if (WX_WET[k]) { tb.cloud = (tb.cloud || 0) + tb[k]; delete tb[k]; } }   // 다음 블록이 맑음에서 다시 시작하니 비 · 눈은 미리 그친다
+    var tot = 0; for (var k1 in tb) tot += tb[k1];
+    var r = hash32(b * 2654435 + 97) % tot;
+    for (var k2 in tb) { if (r < tb[k2]) return k2; r -= tb[k2]; }
+    return 'clear';
+  }
+  R.wxBlock = function (t) { return Math.floor(t / R.WX_BLOCK); };   // 블록 경계는 한국 시간 0 · 3 · 6 … 시 (K.TZ가 3의 배수 시간)
+  var wxCache = {};
+  R.weatherOf = function (W, b) {   // 블록 b의 날씨 id (하늘 이벤트 무시)
+    var a = Math.floor(b / WX_RUN) * WX_RUN, k = W.epoch + ':' + a, run = wxCache[k];
+    if (!run) {
+      run = ['clear']; for (var i = 1; i < WX_RUN; i++) run.push(wxStep(W, run[i - 1], a + i, i === WX_RUN - 1));
+      var keys = Object.keys(wxCache); if (keys.length > 16) delete wxCache[keys[0]];
+      wxCache[k] = run;
+    }
+    return run[b - a];
+  };
+  R.weatherAt = function (W, t) { if (!W || W.epoch == null) return WX.clear; return R.skyAt(t) ? WX.clear : WX[R.weatherOf(W, R.wxBlock(t))]; };
+  R.weatherNext = function (W, t) {   // 다음에 바뀌는 날씨와 그 시각 (하루 안에서)
+    var b = R.wxBlock(t), cur = R.weatherOf(W, b);
+    for (var i = 1; i <= 8; i++) { var id = R.weatherOf(W, b + i); if (id !== cur) return { w: WX[id], at: (b + i) * R.WX_BLOCK }; }
+    return null;
+  };
+  R.weatherOverlap = function (W, t0, t1) {   // [{w, f}] — 겹친 비율. 하늘 이벤트가 떠 있던 시간은 맑음(효과 없음)
+    var out = [], span = t1 - t0; if (!W || W.epoch == null || !(span >= 0)) return out;
+    if (span <= 0) { var w0 = R.weatherAt(W, t0); if (w0.id !== 'clear') out.push({ w: w0, f: 1 }); return out; }
+    var acc = {}, b0 = R.wxBlock(t0), b1 = Math.min(R.wxBlock(t1), b0 + 400), evs = span < 4 * 86400 ? R.skyOverlap(t0, t1).map(function (o) { return o.ev; }) : [];
+    for (var b = b0; b <= b1; b++) {
+      var id = R.weatherOf(W, b); if (id === 'clear') continue;
+      var s = Math.max(b * R.WX_BLOCK, t0), e = Math.min((b + 1) * R.WX_BLOCK, t1), len = Math.max(0, e - s);
+      evs.forEach(function (ev) { len -= Math.max(0, Math.min(ev.end, e) - Math.max(ev.start, s)); });
+      if (len > 0) acc[id] = (acc[id] || 0) + len / span;
+    }
+    for (var id2 in acc) out.push({ w: WX[id2], f: acc[id2] });
+    return out;
+  };
+
   /* ───────── 별샘 의식 (서버 전체가 함께 채우는 하루 목표) ───────── */
   R.RITUAL_BUFF = { name: '별샘의 축복', eff: { xpPct: 0.15, knowPct: 0.15, goldPct: 0.1 }, dur: 4 * 3600, color: '#9fd8ff', text: '4시간 동안 경험치·지식 +15%, ' + CUR + ' +10%' };
   R.ritualGoal = function (active) { return Math.max(5, Math.ceil((active || 0) * 0.35)); };
@@ -161,8 +239,8 @@
     (P.rsq || []).forEach(function (q, i) { if (q && RES[q.id]) add('res' + i + ':' + q.end, 'res', q.end, '연구가 끝났습니다', RES[q.id].name + ' ' + (((P.rs || {})[q.id] || 0) + 1) + '단계'); });
     var disp = (P.fam && P.fam.disp) || {}; for (var f in disp) if (FAM[f]) add('disp' + f + ':' + disp[f].end, 'disp', disp[f].end, R.josa(FAM[f].name, '이', '가') + ' 돌아왔습니다', '사역마 파견 완료');
     var sp = P.spirit || { n: 0, at: now }, n = sp.n || 0, at = sp.at || now, k = Math.floor((now - at) / K.SPIRIT_EVERY);
-    if (k > 0) { n = Math.min(K.SPIRIT_JAR, n + k); at += k * K.SPIRIT_EVERY; }
-    if (n < K.SPIRIT_JAR) { var full = at + (K.SPIRIT_JAR - n) * K.SPIRIT_EVERY; add('jar:' + Math.round(full), 'jar', full, '반딧불 정령 병이 가득 찼습니다', '접속해 풀어 줄 수 있습니다'); }
+    var jm = R.jarMax(P); if (k > 0) { n = Math.min(jm, n + k); at += k * K.SPIRIT_EVERY; }
+    if (n < jm) { var full = at + (jm - n) * K.SPIRIT_EVERY; add('jar:' + Math.round(full), 'jar', full, '반딧불 정령 병이 가득 찼습니다', '접속해 풀어 줄 수 있습니다'); }
     var sk = R.skyNext(now); if (sk) add('sky:' + sk.key, 'sky', sk.start, '하늘에 ' + sk.name + '!', sk.text + ' · 올려다보면 작은 선물');
     var av = R.auctionVisit(now); if (av && !av.active) add('auc:' + av.start, 'auc', av.start, '떠돌이 상인이 왔습니다', '귀한 장비 세 점이 2시간 동안 경매에 오릅니다');
     return out;
@@ -317,6 +395,7 @@
       if (R.scholarship(P, W, t0)) addEff(b, R.SCHOLAR_EFF);
       var wf = weekendFrac(t0, t1); if (wf > 0) addEff(b, D.WEEKEND.eff, wf);
       R.skyOverlap(t0, t1).forEach(function (o) { addEff(b, o.ev.eff, o.f); });
+      R.weatherOverlap(W, t0, t1).forEach(function (o) { addEff(b, o.w.eff, o.f); });   // 날씨
     }
     for (var s in P.eq) {
       var it = P.eq[s]; if (!it) continue;
@@ -395,6 +474,9 @@
   R.enhChance = function (P, it) { var b = bonuses(P, null, 0, 0); return clamp(1 - it.enh * 0.065 + (b.enhBonus || 0) + P.subj.rune.lv * 0.004, it.enh >= 15 ? 0.1 : 0.2, 1); };
 
   /* ───────── 능력치 ───────── */
+  // 능력치 1점당 효과 (calc의 식과 같은 값. 능력치 화면에 합계로 보여 준다)
+  R.STAT_FX = { int: [['주문 공격력', 0.01], ['수업 효율', 0.0008]], wil: [['마나 재생', 0.04], ['생명력', 0.004]], agi: [['공격 속도', 0.01]],
+    vit: [['물리 공격력', 0.01], ['생명력', 0.012], ['방어력', 0.006]], luk: [['치명타 확률', 0.0015], ['전리품 확률', 0.001], ['장비 등급 상승', 0.0008]] };
   function calc(P, W, t0, t1) {
     if (t0 == null) t0 = P.at; if (t1 == null) t1 = t0;
     var b = bonuses(P, W, t0, t1), st = {};
@@ -459,7 +541,31 @@
      알 품기: 부화시키지 않고 지니고 있는 알 하나마다 경험치 +3% (3개까지) */
   R.FAM_SUBJ = 5; R.FAM_LV = 15; R.FAM_OPEN_TEXT = '환수생태학 ' + R.FAM_SUBJ + '레벨 또는 레벨 ' + R.FAM_LV; R.EGG_HOLD_EACH = 0.03; R.EGG_HOLD_MAX = 3;
   R.famOpen = function (P) { return (P.subj && P.subj.beast && P.subj.beast.lv >= R.FAM_SUBJ) || P.lvl >= R.FAM_LV || P.grade >= 3; };
-  R.eggHold = function (P) { return Math.min(R.EGG_HOLD_MAX, (P.fam && P.fam.eggs) || 0); };
+  R.eggHold = function (P) { return Math.min(R.EGG_HOLD_MAX, ((P.fam && P.fam.eggs) || 0) + (P.fam && P.fam.inc ? 1 : 0)); };   // 품고 있는 알도 지닌 알
+  /* 사역마 성장 · 알 품기: 활동 점수(대항전 점수와 같은 기준, 기숙사 특기 배율 · 매점 · 경매 제외)로 오른다.
+     - 동행 중인 사역마: 활동 점수만큼 경험치
+     - 파견: 파견 시간 1시간마다 FAM_DISP_XP (동행보다 낮게)
+     - 품는 알: 활동 점수 × 부화 효율만큼 진행도. 다 차면 마나 없이 부화, 마나로 바로 깨우면 남은 진행도만큼만 마나 */
+  R.FAM_XP_BASE = 300; R.FAM_XP_G = 1.2; R.FAM_DISP_XP = 10; R.FAM_MAX_LV = 20;
+  R.famXpNeed = function (f, lv) { return Math.floor(R.FAM_XP_BASE * (1 + 0.5 * (f ? f.r : 0)) * Math.pow(R.FAM_XP_G, lv - 1)); };
+  R.EGG_INC_BASE = 1500; R.EGG_INC_STEP = 0.25;
+  R.eggNeed = function (P) { return Math.floor(R.EGG_INC_BASE * (1 + R.EGG_INC_STEP * Math.min((P.fam && P.fam.hatched) || 0, 40))); };
+  function famGainXp(P, id, x, t) {
+    var o = P.fam.own[id], f = FAM[id]; if (!o || !f || !(x > 0)) return 0;
+    if (o.lv >= R.FAM_MAX_LV) { o.xp = 0; return 0; }
+    o.xp = (o.xp || 0) + x; var ups = 0;
+    while (o.lv < R.FAM_MAX_LV && o.xp >= R.famXpNeed(f, o.lv)) { o.xp -= R.famXpNeed(f, o.lv); o.lv++; ups++; }
+    if (o.lv >= R.FAM_MAX_LV) o.xp = 0;
+    if (ups) log(P, t || P.at, R.josa(f.name, '이', '가') + ' 함께 성장했습니다 · Lv ' + o.lv, 'good');
+    return ups;
+  }
+  R.famGainXp = famGainXp;
+  // 활동 점수가 생길 때마다: 동행 사역마 경험치 · 품는 알 진행도
+  function famActivity(P, v) {
+    if (!(v > 0) || !P.fam || !R.famOpen(P)) return;
+    if (P.fam.act && P.fam.own[P.fam.act]) famGainXp(P, P.fam.act, v);
+    var inc = P.fam.inc; if (inc && inc.prog < inc.need) { inc.prog = Math.min(inc.need, inc.prog + v * calc(P, null).hatchSpd); if (inc.prog >= inc.need) log(P, P.at, '품고 있던 알이 깨어날 준비가 되었습니다', 'good'); }
+  }
   R.famGift = function (P, t) { if (P.famGift || !R.famOpen(P)) return; P.famGift = 1; if (!Object.keys(P.fam.own).length) { P.fam.eggs++; log(P, t, '사역마를 키울 수 있게 되었습니다! 고드릭 펜 교수가 첫 환수의 알을 주었습니다.', 'story'); } };
   R.xpNeed = function (lv) { return Math.floor(K.XP_A * Math.pow(K.XP_G, lv - 1) + lv * K.XP_L); };
   function addXp(P, x, t) {
@@ -695,7 +801,7 @@
     if (!canceled) { P.st.lecJobs++; if (j.dur >= 28800) P.st.nightJobs++; }
     P.st.lecHours += hours * (canceled ? K.CANCEL_KEEP : 1);
     badgeGain(P, hours * (canceled ? K.CANCEL_KEEP : 1) * R.BADGE_XP.lecH, t);
-    cupAdd(P, hours * 10 * (canceled ? K.CANCEL_KEEP : 1));
+    cupAdd(P, hours * 10 * (canceled ? K.CANCEL_KEEP : 1), 'lec');
     return { k: 'lec', s: j.s, xp: j.xp * k, know: kn, from: lv0, to: P.subj[j.s].lv, t: t, canceled: !!canceled, peers: j.peers || 0, pb: j.pb || 0, ontime: !!j.ontime, auto: !!j.auto };
   }
 
@@ -735,13 +841,14 @@
   }
   function dispatchFinish(P, fid, d, t) {
     var f = FAM[fid], z = R.zoneOf(Math.min(P.maxStage, R.stageCap(P))), h = d.dur / 3600, out = { k: 'disp', f: fid, t: t };
+    out.xp = Math.round(h * R.FAM_DISP_XP); famGainXp(P, fid, out.xp, t);   // 파견 경험치 (시간에 비례, 동행보다 낮게)
     var mult = (1 + f.r * 0.3) * (1 + 0.05 * (P.fam.own[fid].lv - 1)) * (d.bonus || 1);
     var mats = Math.floor(h * 6 * mult + rnd(P) * 3); P.mats[z.mat] = (P.mats[z.mat] || 0) + mats; out.mats = mats; out.mat = z.mat;
     var stones = Math.floor(h * 0.8 * mult + rnd(P)); P.res.stone += stones; out.stones = stones;
     var gold = Math.floor(h * 40 * K.KILL_GOLD * Math.pow(K.G_GOLD, z.from - 1) * mult * K.DISP_GOLD); addGold(P, gold); out.gold = gold;
     if (rnd(P) < h * 0.008 * mult) { P.fam.eggs++; out.egg = 1; }
     if (rnd(P) < h * 0.04) { var sh = ri(P, 1, 3); P.res.shard += sh; out.shard = sh; }
-    P.st.dispatches++; cupAdd(P, 20);
+    P.st.dispatches++; cupAdd(P, 20, 'disp');
     if (d.dur >= 28800) P.st.nightJobs++;
     return out;
   }
@@ -852,8 +959,33 @@
     return x;
   };
 
-  /* ───────── 기숙사 대항전 점수 ───────── */
-  function cupAdd(P, v) { if (P.wk) P.wk.cup += v; }
+  /* ───────── 기숙사 대항전 점수 ─────────
+     기숙사 특기: 자기 기숙사 특기 활동은 점수 ×1.3 (원정 처치 · 기말시험은 모든 기숙사 같음).
+     거래 · 경매는 서로 사고팔아 점수를 올릴 수 있어 원래 점수가 없다. */
+  R.CUP_SPEC_MULT = 1.3;
+  R.cupAdd = function (P, v, cat) { cupAdd(P, v, cat); };
+  R.CUP_SPEC = {
+    lanterna: { cats: ['lec', 'res', 'task'], text: '수업 · 연구 · 교수 과제' },
+    clepsydra: { cats: ['disp', 'brew', 'dream'], text: '사역마 파견 · 물약 조제 · 꿈길' },
+    corona: { cats: ['boss', 'wb', 'duel'], text: '보스 · 월드 보스 · 결투' },
+    speculum: { cats: ['enh', 'spirit', 'sky', 'shop', 'auc'], text: '장비 강화 · 반딧불 정령 · 하늘 올려다보기 · 매점 구매 · 떠돌이 상인 낙찰' }
+  };
+  R.CUP_SHOP_WEEK = 200;   // 매점 구매 점수는 한 주에 이만큼까지 (아르크로 마석을 거듭 사서 점수를 올리지 못하게)
+  R.CUP_AUC = 100;         // 떠돌이 상인 경매 낙찰 1회 (학생끼리 거래인 거래소에는 점수가 없다)
+  function cupAdd(P, v, cat) { if (cat !== 'shop' && cat !== 'auc') famActivity(P, v); if (!P.wk) return; var sp = R.CUP_SPEC[P.house]; P.wk.cup += cat && sp && sp.cats.indexOf(cat) >= 0 ? v * R.CUP_SPEC_MULT : v; }
+  // 대항전 순위 점수: 이번 주 점수가 CUP_ACTIVE 이상인 학생을 「활동 학생」으로 보고, 그 평균(1인 반영은 중간 점수의 3배까지, 최소 5명으로 나눔).
+  // 인원이 많은 기숙사가 합계로 앞서지 않게 한다. cups = 그 기숙사 학생들의 이번 주 점수 목록
+  R.CUP_ACTIVE = 100; R.CUP_MIN_DIV = 5; R.CUP_CAP_X = 3;
+  R.cupScore = function (cups) {
+    var a = (cups || []).filter(function (v) { return v >= R.CUP_ACTIVE; }); if (!a.length) return { score: 0, active: 0 };
+    var o = a.slice().sort(function (x, y) { return x - y; }), med = o.length % 2 ? o[(o.length - 1) / 2] : (o[o.length / 2 - 1] + o[o.length / 2]) / 2, cap = med * R.CUP_CAP_X;   // 한두 명이 평균을 끌어올리지 않게 중간 점수 기준
+    return { score: Math.floor(a.reduce(function (s, v) { return s + Math.min(v, cap); }, 0) / Math.max(R.CUP_MIN_DIV, a.length)), active: a.length };
+  };
+  // 개인 점수 구간 보상 (기숙사 순위와 별개): [점수, 별조각]
+  R.CUP_TIERS = [[10000, 15], [6000, 10], [2000, 5]];   // 2026-10-20 운영 분포 기준: 한 주 예상 하위 25% ≈ 2,400 · 중간 ≈ 6,300 · 상위 10% ≈ 10,500
+  R.CUP_PLACE_SHARD = [0, 18, 15, 12, 10];
+  // 1위 기숙사 장비 보상: 개인 점수 구간에 따라 [점수, 등급] (희귀 · 영웅), 기숙사 안 개인 1위(results.mvp)는 전설. 2~4위 기숙사의 개인 1위(results.mvps)는 영웅
+  R.CUP_GEAR = [[10000, 3], [6000, 2]];
 
   /* ───────── 진행 (advance) ─────────
      P.at부터 now까지 시간을 흘려보낸다. 끝난 작업은 보상을 적용하고 inbox에 보고한다. */
@@ -884,7 +1016,7 @@
     P.exp.forEach(function (j) { var te = R.expEnd(j || {}); if (j && !j.done && te <= now) ev.push({ t: te, f: function () { j.done = te; if (te < j.end) log(P, te, j.s + '단계 원정에서 쓰러졌습니다 · 「원정 완료」를 누르면 모은 것의 80%를 받습니다', 'bad'); } }); });
     P.rsq.forEach(function (q, i) {
       if (q && q.end <= now) ev.push({ t: q.end, f: function () {
-        P.rs[q.id] = (P.rs[q.id] || 0) + 1; P.rsq[i] = null; P.st.researchDone++; cupAdd(P, 25); if (q.end - q.start >= 28800) P.st.nightJobs++;
+        P.rs[q.id] = (P.rs[q.id] || 0) + 1; P.rsq[i] = null; P.st.researchDone++; cupAdd(P, 25, 'res'); if (q.end - q.start >= 28800) P.st.nightJobs++;
         if (q.id === 'sorter' && P.autoSell < 0) P.autoSell = 0;
         log(P, q.end, '연구 완료: ' + RES[q.id].name + ' ' + P.rs[q.id] + '단계', 'good'); inbox(P, { k: 'res', id: q.id, lv: P.rs[q.id], t: q.end });
       } });
@@ -892,7 +1024,7 @@
     P.brew.forEach(function (b) {
       for (var n = b.done; n < b.n; n++) {
         var end = b.start + (n + 1) * b.each; if (end > now) break;
-        (function (end) { ev.push({ t: end, f: function () { P.shelf[b.id] = (P.shelf[b.id] || 0) + 1; b.done++; P.st.brews++; cupAdd(P, 8); } }); })(end);
+        (function (end) { ev.push({ t: end, f: function () { P.shelf[b.id] = (P.shelf[b.id] || 0) + 1; b.done++; P.st.brews++; cupAdd(P, 8, 'brew'); } }); })(end);
       }
     });
     if (P.fam.egg && P.fam.egg.end <= now) ev.push({ t: P.fam.egg.end, f: function () { var o = hatch(P, P.fam.egg.end); o.k = 'hatch'; o.t = now; inbox(P, o); } });
@@ -924,12 +1056,13 @@
   R.spiritJar = function (P, now) {
     var sp = P.spirit;
     if (!sp || sp.n == null) sp = P.spirit = { n: 1, at: now };
-    var add = Math.floor((now - sp.at) / K.SPIRIT_EVERY);
-    if (add > 0) { sp.n = Math.min(K.SPIRIT_JAR, sp.n + add); sp.at += add * K.SPIRIT_EVERY; }
-    if (sp.n >= K.SPIRIT_JAR) sp.at = Math.max(sp.at, now);
+    var add = Math.floor((now - sp.at) / K.SPIRIT_EVERY), jm = R.jarMax(P);
+    if (add > 0) { sp.n = Math.min(jm, sp.n + add); sp.at += add * K.SPIRIT_EVERY; }
+    if (sp.n >= jm) sp.at = Math.max(sp.at, now);
     return sp;
   };
-  R.spiritNext = function (P) { return P.spirit.n >= K.SPIRIT_JAR ? null : P.spirit.at + K.SPIRIT_EVERY; };
+  R.jarMax = function (P) { return K.SPIRIT_JAR + Math.max(0, Math.floor((P && P.rs && P.rs.jarcap) || 0)); };
+  R.spiritNext = function (P) { return P.spirit.n >= R.jarMax(P) ? null : P.spirit.at + K.SPIRIT_EVERY; };
   // 양조·부화는 즉시. 효율 보너스는 비용을 줄인다.
   R.brewMana = function (P, W, now, id) { return Math.ceil(POT[id].mana / calc(P, W, now).brewSpd); };
   R.eggPrice = function (P, W, now) { return Math.ceil(R.eggCost(P) / calc(P, W, now).hatchSpd); };
@@ -1031,6 +1164,7 @@
 
   /* ───────── 전투 시뮬레이션 (보스 · 대련 · 월드 보스) ─────────
      enemy: {hp, atk, boss, name}. 30초 제한. 로그는 재생용으로 압축. */
+  R.CROSS_COUNTER = 0.005;   // 남은 체력이 이 비율 이하(화면 0%)면 동시에 쓰러진 것으로 보고 학생 승리
   function fight(P, c, enemy, limit, untilDead) {
     var dt = 0.1, t = 0, mh = enemy.hp, ph = c.hp, sh = 0, pT = 0, mT = 0, fT = 0, cd = {}, stun = 0, haste = 0, amp = 0, dealt = 0, evs = [];
     var ns = R.spellSlots(P), fam = P.fam.act && P.fam.own[P.fam.act] ? c.atk * famAtkMult(P) : 0;
@@ -1070,6 +1204,8 @@
         }
       }
       ph = Math.min(c.hp, ph + c.hp * c.regen * dt);
+      // 크로스카운터: 쓰러지는 순간 적도 (화면에 0%로 보일 만큼) 거의 쓰러졌다면 학생의 승리로 본다
+      if (ph <= 0 && untilDead && mh <= enemy.hp * R.CROSS_COUNTER) return { win: true, cc: true, t: t, dealt: dealt, ev: evs, pHp: 0, mHp: 0 };
       if (ph <= 0) return { win: false, dead: true, t: t, dealt: dealt, ev: evs, pHp: 0, mHp: Math.max(0, mh / enemy.hp) };
     }
     return { win: !untilDead, t: t, dealt: dealt, ev: evs, pHp: ph / c.hp, mHp: Math.max(0, mh / enemy.hp), timeout: true };
@@ -1147,7 +1283,7 @@
     // 중간 점검: 그때까지 쌓인 피해
     [0.45, 0.8].forEach(function (q) { var at = end * q, sum = 0; ev.forEach(function (e) { if (e[1] === 'h' && e[0] <= at) sum += e[2]; }); if (sum > 0 && sum < foe.hp) add(at, '지금까지 입힌 피해 ' + R.fmt(sum) + ' / ' + R.fmt(foe.hp), 'h'); });
     mates.slice(0, 5).forEach(function (m, i) { var j = Math.floor(Math.random() * pool.length), line = pool.splice(j, 1)[0] || TW_HELP[0]; if (!pool.length) pool = TW_HELP.slice(); var nm = m.name; add(end * (i + 1) / (mates.length + 1.4), line.replace('{n}{이}', jo(nm, '이', '가')).replace('{n}', nm), 't'); });
-    if (r.win) add(end, '✦ ' + jo(foe.name, '이', '가') + ' 무너진다! ' + o.f + '층 돌파 (' + end.toFixed(1) + '초)', 's');
+    if (r.win) add(end, (r.cc ? '✦ 마지막 순간, 일격이 교차한다. 크로스카운터 — ' : '✦ ') + jo(foe.name, '이', '가') + ' 먼저 무너진다! ' + o.f + '층 돌파 (' + end.toFixed(1) + '초)', 's');
     else if (r.dead) add(end, '파티가 버티지 못하고 물러난다. ' + foe.name + ' 체력 ' + Math.round(r.mHp * 100) + '% 남음', 's');
     else add(end, '시간이 다 되었다. ' + foe.name + ' 체력 ' + Math.round(r.mHp * 100) + '% 남음 — 다음에 다시', 's');
     L.sort(function (a, b) { return a[0] - b[0]; });
@@ -1252,6 +1388,7 @@
   R.rivalPreview = function (P, W) { var r = R.rival(P); return r ? R.duelPreview(P, W, r.stage, 4, 1.3) : null; };
 
   /* ───────── 교수님의 과제 ───────── */
+  R.taskShard = function (i) { return 5 + i * 8; };   // 과제 보상 별조각 (i: 0부터)
   R.taskOf = function (P, sid) { var i = P.tasks[sid] || 0, t = D.TASKS[sid] && D.TASKS[sid][i]; return t ? { i: i, t: t } : null; };
   R.taskProg = function (P, sid, t) { return t.k === 'subj' ? P.subj[sid].lv : t.k === 'stage' ? P.st.maxStageAll : (P.st[t.s] || 0); };
 
@@ -1384,7 +1521,7 @@
     var i = int(a.slot, 0, 1), q = P.rsq[i]; if (!q) err('진행 중인 연구가 없습니다');
     var tk = P.tok || {}; if (!(tk.rsDone > 0)) err('연구 즉시 완료 물약이 없습니다');
     tk.rsDone--; q.end = now;
-    P.rs[q.id] = (P.rs[q.id] || 0) + 1; P.rsq[i] = null; P.st.researchDone++; cupAdd(P, 25);
+    P.rs[q.id] = (P.rs[q.id] || 0) + 1; P.rsq[i] = null; P.st.researchDone++; cupAdd(P, 25, 'res');
     if (q.id === 'sorter' && P.autoSell < 0) P.autoSell = 0;
     log(P, now, '연구 즉시 완료 물약: ' + RES[q.id].name + ' ' + P.rs[q.id] + '단계 완료', 'good');
     return { ok: true, id: q.id, lv: P.rs[q.id] };
@@ -1414,7 +1551,7 @@
     P.res.gold -= fee;
     var old = P.cls; P.cls = id; var c = calc(P, W, now), e = R.clsExamFoe(P, W), f = fight(P, c, e, 40, true); P.cls = old;
     if (f.win) clsSet(P, id, now, '전과시험 합격'); else { P.clsCd = now + R.CLS_EXAM_CD; log(P, now, R.CLS[id].name + ' 전과시험 불합격', 'bad'); }
-    return { win: !!f.win, ev: f.ev, maxHp: e.hp, mHp: f.mHp, cls: id, fee: fee };
+    return { win: !!f.win, cc: !!f.cc, ev: f.ev, maxHp: e.hp, mHp: f.mHp, cls: id, fee: fee };
   };
   A.expStart = function (P, W, now, a) {
     if (R.dreaming(P, now)) err('꿈길 중에는 출정할 수 없습니다 (연구를 시작할 수 있습니다)');
@@ -1482,7 +1619,7 @@
   A.ctower = function (P, W, now) {
     var cls = R.ctCls(P), key = R.ctKey(cls), c = calc(P, W, now), f = R.ctBest(P, cls) + 1, foe = R.ctFoe(f, cls);
     var r = fight(P, c, { hp: foe.hp, atk: foe.atk, boss: true }, R.CT_TIME, true);
-    var out = { cls: cls, f: f, foe: foe, win: !!r.win, ev: r.ev, t: r.t, dead: !!r.dead, pct: Math.round((1 - r.mHp) * 100), rw: {}, titles: [] };
+    var out = { cls: cls, f: f, foe: foe, win: !!r.win, cc: !!r.cc, ev: r.ev, t: r.t, dead: !!r.dead, pct: Math.round((1 - r.mHp) * 100), rw: {}, titles: [] };
     badgeGain(P, R.BADGE_XP.fight, now);
     if (!r.win) return out;
     P.st[key] = f; var g = R.ctReward(f), rw = out.rw;
@@ -1499,7 +1636,7 @@
     var e = { hp: R.monHp(b) * K.BOSS_HP, atk: R.monAtk(b) * K.BOSS_ATK, boss: true };
     var f = fight(P, c, e, K.BOSS_TIME, true);
     P.st.bossTries++;
-    var out = { win: f.win, stage: b, boss: def.id, name: def.name, ev: f.ev, t: f.t, mHp: f.mHp, pHp: f.pHp, dead: !!f.dead, maxHp: e.hp };
+    var out = { win: f.win, cc: !!f.cc, stage: b, boss: def.id, name: def.name, ev: f.ev, t: f.t, mHp: f.mHp, pHp: f.pHp, dead: !!f.dead, maxHp: e.hp };
     badgeGain(P, R.BADGE_XP.fight * (f.win ? 2 : 1), now);
     if (f.win) {
       P.maxStage = b + 9; if (P.maxStage > P.st.maxStageAll) P.st.maxStageAll = P.maxStage;
@@ -1510,7 +1647,7 @@
       var it = makeItem(P, pick(P, D.SLOTS).id, b + 2, rollRarity(P, c.rarity + 0.8), 2); out.item = { name: it.name, r: it.r, res: gainItem(P, it, now) };
       if (R.famOpen(P) && rnd(P) < 0.35) { P.fam.eggs++; out.egg = 1; }
       if (rnd(P) < 0.06) { var bd = makeBadge(P); if (gainBadge(P, bd, now, def.name + '의 전리품') === 'got') out.badge = bd.name; }
-      cupAdd(P, 50);
+      cupAdd(P, 50, 'boss');
       log(P, now, def.name + ' 처치! ' + (b + 1) + '~' + (b + 9) + '단계가 열렸습니다', 'story');
       var zn = R.zoneOf(b + 1); if (zn.from === b + 1) log(P, now, '새로운 지역 발견: ' + zn.name, 'story');
     } else { P.bossCd = now + K.BOSS_CD; log(P, now, def.name + '에게 패배했습니다 (' + Math.round((1 - f.mHp) * 100) + '%)', 'bad'); }
@@ -1540,7 +1677,7 @@
     if (P.res.mana < mana * n) err('마나가 부족합니다');
     for (var m in p.mats) if ((P.mats[m] || 0) < p.mats[m] * n) err('재료가 부족합니다');
     P.res.mana -= mana * n; for (var m2 in p.mats) P.mats[m2] -= p.mats[m2] * n;
-    P.shelf[id] = (P.shelf[id] || 0) + n; P.st.brews += n; cupAdd(P, 8 * n);
+    P.shelf[id] = (P.shelf[id] || 0) + n; P.st.brews += n; cupAdd(P, 8 * n, 'brew');
     return { id: id, n: n, mana: mana * n };
   };
   A.brewCancel = function (P, W, now, a) {
@@ -1559,6 +1696,22 @@
   A.equip = function (P, W, now, a) {
     var u = str(a.u), i = P.inv.findIndex(function (x) { return x.u === u; }); if (i < 0) err('가방에 없는 장비입니다');
     var it = P.inv.splice(i, 1)[0], cur = P.eq[it.slot]; P.eq[it.slot] = it; if (cur) P.inv.push(cur); return { ok: true };
+  };
+  // 장비 프리셋 3칸: 지금 장착한 장비를 저장해 두었다가 한 번에 바꿔 낀다 (가방에 없으면 그 칸은 그대로)
+  R.GEARSET_N = 3;
+  A.gearSet = function (P, W, now, a) {
+    var i = int(a.i, 0, R.GEARSET_N - 1), op = str(a.op), sets = P.gearSets || (P.gearSets = []);
+    if (op === 'save') { var eq = {}; for (var s in P.eq) if (P.eq[s]) eq[s] = P.eq[s].u; if (!Object.keys(eq).length) err('장착한 장비가 없습니다'); sets[i] = { eq: eq, at: now }; return { saved: i }; }
+    if (op === 'clear') { sets[i] = null; return { cleared: i }; }
+    if (op !== 'load') err('잘못된 요청');
+    var st = sets[i]; if (!st) err('저장된 프리셋이 없습니다');
+    var moved = 0, miss = 0;
+    D.SLOTS.forEach(function (sl) {
+      var u = st.eq[sl.id]; if (!u || (P.eq[sl.id] && P.eq[sl.id].u === u)) return;
+      var k = P.inv.findIndex(function (x) { return x.u === u; }); if (k < 0) { miss++; return; }
+      var it = P.inv.splice(k, 1)[0], cur = P.eq[sl.id]; P.eq[sl.id] = it; if (cur) P.inv.push(cur); moved++;
+    });
+    return { moved: moved, miss: miss };
   };
   A.unequip = function (P, W, now, a) {
     var s = str(a.slot); if (!SLOT[s] || !P.eq[s]) err('장착한 장비가 없습니다');
@@ -1615,7 +1768,7 @@
     while (tries < (until ? 60 : 1)) {
       if (it.enh >= R.ENH_MAX) { if (!tries) err('최대 강화입니다'); break; }
       var cost = R.enhCost(P, it); if (P.res.gold < cost.gold || P.res.stone < cost.stone) { if (!tries) err(CUR + '나 마석이 부족합니다'); break; }
-      P.res.gold -= cost.gold; P.res.stone -= cost.stone; P.st.enh++; tries++; cupAdd(P, 2);
+      P.res.gold -= cost.gold; P.res.stone -= cost.stone; P.st.enh++; tries++; cupAdd(P, 2, 'enh');
       if (rnd(P) < R.enhChance(P, it)) { it.enh++; success = true; if (it.enh > P.st.maxEnh) P.st.maxEnh = it.enh; if (it.enh >= 10) log(P, now, it.name + ' +' + it.enh + ' 강화 성공', 'good'); break; }
     }
     return { success: success, tries: tries, enh: it.enh, gold: g0 - P.res.gold };
@@ -1634,7 +1787,7 @@
     P.opt.allocW = o; if (P.opt.autoAlloc) R.autoAlloc(P); return { ok: true };
   };
   A.opt = function (P, W, now, a) {
-    var k = str(a.k); if (['autoEquip', 'autoAlloc', 'sound', 'reduceFx', 'hideMyTitle', 'hideOtherTitle', 'dockClosed'].indexOf(k) < 0) err('잘못된 설정');
+    var k = str(a.k); if (['autoEquip', 'autoAlloc', 'sound', 'reduceFx', 'hideMyTitle', 'hideOtherTitle', 'dockClosed', 'bulkAsk', 'showFam'].indexOf(k) < 0) err('잘못된 설정');
     P.opt[k] = !!a.v; if (k === 'autoAlloc' && P.opt[k]) R.autoAlloc(P); return { ok: true };
   };
   A.spell = function (P, W, now, a) {
@@ -1643,15 +1796,35 @@
     var j = id ? P.spells.indexOf(id) : -1; if (j >= 0) P.spells[j] = P.spells[i];
     P.spells[i] = id; return { ok: true };
   };
+  // 마나로 바로 깨우기: 품고 있는 알이 있으면 그 알을 남은 진행도만큼의 마나로, 없으면 보관 중인 알 하나를 전액으로
+  R.eggManaCost = function (P, W, now) { var full = R.eggPrice(P, W, now), inc = P.fam.inc; return inc ? Math.ceil(full * Math.max(0, 1 - inc.prog / inc.need)) : full; };
   A.egg = function (P, W, now) {
-    if (!R.famOpen(P)) err(R.FAM_OPEN_TEXT + '부터 할 수 있습니다'); if (P.fam.egg) err('이미 부화 중입니다'); if (P.fam.eggs <= 0) err('알이 없습니다');
-    var cost = R.eggPrice(P, W, now); if (P.res.mana < cost) err('마나가 부족합니다');
-    P.res.mana -= cost; P.fam.eggs--;
+    if (!R.famOpen(P)) err(R.FAM_OPEN_TEXT + '부터 할 수 있습니다'); if (P.fam.egg) err('이미 부화 중입니다'); if (!P.fam.inc && P.fam.eggs <= 0) err('알이 없습니다');
+    var cost = R.eggManaCost(P, W, now); if (P.res.mana < cost) err('마나가 부족합니다');
+    P.res.mana -= cost; if (P.fam.inc) P.fam.inc = null; else P.fam.eggs--;
     var o = hatch(P, now); o.mana = cost; return o;
+  };
+  A.eggInc = function (P, W, now) {
+    if (!R.famOpen(P)) err(R.FAM_OPEN_TEXT + '부터 할 수 있습니다'); if (P.fam.inc) err('이미 품고 있는 알이 있습니다'); if (P.fam.eggs <= 0) err('알이 없습니다');
+    P.fam.eggs--; P.fam.inc = { need: R.eggNeed(P), prog: 0, start: now }; return { need: P.fam.inc.need };
+  };
+  A.eggHatch = function (P, W, now) {
+    var inc = P.fam.inc; if (!inc) err('품고 있는 알이 없습니다'); if (inc.prog < inc.need) err('아직 깨어날 준비가 되지 않았습니다');
+    P.fam.inc = null; return hatch(P, now);
   };
   A.feed = function (P, W, now, a) {
     var id = str(a.id), o = P.fam.own[id]; if (!o) err('없는 사역마입니다'); if (o.lv >= 20) err('최대 레벨입니다');
     var cost = R.feedCost(P, id); if (P.res.gold < cost) err(CUR + '가 부족합니다'); P.res.gold -= cost; o.lv++; return { lv: o.lv };
+  };
+  // 사역마 이름: 학생이 지어 준 이름(o.nm). 비우면 원래 종 이름으로
+  R.FAM_NAME_MAX = 10;
+  R.famLabel = function (P, id) { var o = P && P.fam && P.fam.own[id], f = FAM[id]; return o && o.nm ? o.nm : f ? f.name : ''; };
+  A.famName = function (P, W, now, a) {
+    var id = str(a.id), o = P.fam.own[id]; if (!o) err('없는 사역마입니다');
+    var nm = String(a.name == null ? '' : a.name).slice(0, 100).replace(/[\u0000-\u001F\u007F\u200B-\u200F\u202A-\u202E\u2066-\u2069]/g, '').replace(/\s+/g, ' ').trim();
+    if (Array.from(nm).length > R.FAM_NAME_MAX) err('이름은 ' + R.FAM_NAME_MAX + '자까지 입력할 수 있습니다');
+    if (nm && nm !== FAM[id].name) o.nm = nm; else delete o.nm;
+    return { ok: true, nm: o.nm || '' };
   };
   A.famAct = function (P, W, now, a) { var id = str(a.id); if (!P.fam.own[id]) err('없는 사역마입니다'); if (P.fam.disp[id]) err('파견 중입니다'); P.fam.act = id; return { ok: true }; };
   /* ── 정보 카드 꾸미기 (아르크로 산다) ── */
@@ -1705,10 +1878,16 @@
     if (j.gold) { addGold(P, j.gold * m); out.gold = Math.floor(j.gold * m); }
     if (j.mats) { var mt = Math.floor(j.mats * m); P.mats[j.mat] = (P.mats[j.mat] || 0) + mt; out.mats = mt; out.mat = j.mat; }
     if (j.stones) { var sn = Math.floor(j.stones * m); P.res.stone += sn; out.stones = sn; }
-    P.st.dreams = (P.st.dreams || 0) + 1; P.st.nightJobs++; cupAdd(P, 15);
+    P.st.dreams = (P.st.dreams || 0) + 1; P.st.nightJobs++; cupAdd(P, 15, 'dream');
     log(P, t, '꿈에서 깼습니다: ' + DREAM[j.kind].name + (j.lucid ? ' (자각몽!)' : ''), 'good');
     return out;
   }
+  // 쉬고 있는 사역마(동행 · 파견 중이 아닌) 모두를 같은 시간으로 파견
+  A.dispatchAll = function (P, W, now, a) {
+    if (!R.famOpen(P)) err(R.FAM_OPEN_TEXT + '부터 할 수 있습니다');
+    var ids = Object.keys(P.fam.own).filter(function (id) { return FAM[id] && !P.fam.disp[id] && P.fam.act !== id; }); if (!ids.length) err('파견을 보낼 수 있는 사역마가 없습니다');
+    ids.forEach(function (id) { A.dispatch(P, W, now, { id: id, d: a.d }); }); return { n: ids.length };
+  };
   A.dispatch = function (P, W, now, a) {
     var id = str(a.id), d = DDUR[str(a.d)];
     if (!R.famOpen(P)) err(R.FAM_OPEN_TEXT + '부터 할 수 있습니다'); if (!P.fam.own[id]) err('없는 사역마입니다'); if (!d) err('잘못된 시간입니다');
@@ -1727,7 +1906,7 @@
     var c = calc(P, W, now), e = R.duelEnemy(ex.duel), f = fight(P, c, e, 45, true);
     var duelPts = f.win ? 30 : 30 * (1 - f.mHp) * 0.85;
     var total = Math.round(written + practical + duelPts + c.examBonus), L = R.letter(total);
-    var res = { grade: run.grade, written: written, practical: practical, duel: duelPts, duelWin: f.win, bonus: c.examBonus, total: total, letter: L,
+    var res = { grade: run.grade, written: written, practical: practical, duel: duelPts, duelWin: f.win, cc: !!f.cc, bonus: c.examBonus, total: total, letter: L,
       pass: total >= 60, ev: f.ev, maxHp: e.hp, examiner: ex.examiner };
     P.px = null;
     if (res.pass) {
@@ -1752,13 +1931,13 @@
     var r = R.rival(P); if (!r) err('결투제를 모두 마쳤습니다'); if (P.duel.cd > now) err('아직 도전할 수 없습니다');
     var c = calc(P, W, now), f = fight(P, c, R.duelEnemy(r.stage, 4, 1.3), 45, true), k = P.duel.rank + 1;
     P.st.bossTries++;
-    var res = { win: f.win, k: k, rival: r.name, hello: r.hello, lose: r.lose, ev: f.ev, mHp: f.mHp, maxHp: R.duelEnemy(r.stage, 4, 1.3).hp };
+    var res = { win: f.win, cc: !!f.cc, k: k, rival: r.name, hello: r.hello, lose: r.lose, ev: f.ev, mHp: f.mHp, maxHp: R.duelEnemy(r.stage, 4, 1.3).hp };
     badgeGain(P, R.BADGE_XP.fight * (f.win ? 2 : 1), now);
     if (f.win) {
       P.duel.rank++; P.st.duelWins++; var first = P.duel.rank > P.st.duelBest; if (first) P.st.duelBest = P.duel.rank;
       var shard = 3 + k + (first ? k : 0), gold = Math.floor(80 * K.KILL_GOLD * Math.pow(K.G_GOLD, r.stage - 1) * c.gold);
       P.res.shard += shard; addGold(P, gold); res.reward = { shard: shard, gold: gold, first: first };
-      P.duel.cd = now + K.DUEL_CD; cupAdd(P, 40);
+      P.duel.cd = now + K.DUEL_CD; cupAdd(P, 40, 'duel');
       log(P, now, '결투제 ' + k + '회전 승리: ' + r.name, 'good');
     } else { P.duel.cd = now + K.DUEL_LOSE_CD; log(P, now, '결투제 ' + k + '회전 패배: ' + r.name, 'bad'); }
     return res;
@@ -1766,7 +1945,7 @@
   A.task = function (P, W, now, a) {
     var sid = str(a.s), o = R.taskOf(P, sid); if (!o) err('남은 과제가 없습니다');
     if (R.taskProg(P, sid, o.t) < o.t.n) err('아직 과제를 마치지 못했습니다');
-    P.tasks[sid] = o.i + 1; var shard = 5 + o.i * 8; P.res.shard += shard; P.st.tasksDone++; cupAdd(P, 15);
+    P.tasks[sid] = o.i + 1; var shard = R.taskShard(o.i); P.res.shard += shard; P.st.tasksDone++; cupAdd(P, 15, 'task');
     var out = { shard: shard, prof: SUBJ[sid].prof };
     if (o.t.item) { var it = makeItem(P, o.t.item, Math.max(P.maxStage, 10), 3, 3); it.name = SUBJ[sid].prof.split(' ')[0] + '의 ' + R.baseName(it); out.item = { name: it.name, r: it.r, res: gainItem(P, it, now) }; }
     log(P, now, SUBJ[sid].prof + '의 과제 완료', 'good'); return out;
@@ -1787,6 +1966,8 @@
     else if (id === 'bagslot') P.bagExtra += 5;
     else if (id === 'matbox') { var zs = D.ZONES.filter(function (z) { return z.from <= P.maxStage; }); out.mats = {}; for (var i = 0; i < 12; i++) { var z = pick(P, zs); P.mats[z.mat] = (P.mats[z.mat] || 0) + 1; out.mats[z.mat] = (out.mats[z.mat] || 0) + 1; } }
     else if (id === 'respec') { var tk = P.tok || (P.tok = {}); tk.respec = (tk.respec || 0) + 1; out.tok = 'respec'; }   // 소지품으로 (마실 때 「소지품」에서 사용)
+    // 대항전 점수: 별조각 물건은 쓴 별조각만큼, 아르크 물건은 5점. 한 주 CUP_SHOP_WEEK점까지
+    var sc = Math.min(cur === 'shard' ? price : 5, Math.max(0, R.CUP_SHOP_WEEK - (P.wk.shop || 0))); if (sc > 0) { P.wk.shop = (P.wk.shop || 0) + sc; cupAdd(P, sc, 'shop'); }
     return out;
   };
   // 망각의 차: 분배한 능력치 포인트를 모두 돌려받는다. 다시 직접 나눌 수 있게 자동 분배는 끈다 (켜 두면 곧바로 같은 대로 다시 나뉘므로)
@@ -1804,8 +1985,8 @@
   };
   A.spirit = function (P, W, now) {
     var sp = R.spiritJar(P, now), n = sp.n; if (n <= 0) err('병이 비어 있습니다');
-    if (n >= K.SPIRIT_JAR) sp.at = now; sp.n = 0;
-    P.st.spirits += n; cupAdd(P, 15 * n);
+    if (n >= R.jarMax(P)) sp.at = now; sp.n = 0;
+    P.st.spirits += n; cupAdd(P, 15 * n, 'spirit');
     var c = calc(P, W, now), out = { n: n, mana: 0, gold: 0, shard: 0, stone: 0 };
     for (var i = 0; i < n; i++) {
       var roll = rnd(P);
@@ -1830,7 +2011,7 @@
     else if (P.wb.extra > 0) { if (R.wbExtraLeft(P, now) <= 0) err('추가 도전권은 이번 주에 ' + K.WB_EXTRA_USE + '번 모두 썼습니다 (월요일 KST 0시 초기화)'); P.wb.extra--; P.wb.exUsed++; }
     else err('도전권이 없습니다');
     var c = calc(P, W, now), f = fight(P, c, R.wbEnemy(P), 30, false), dmg = Math.floor(f.dealt);
-    P.wk.dmg += dmg; P.wk.att++; P.st.wbAttacks++; cupAdd(P, 30);
+    P.wk.dmg += dmg; P.wk.att++; P.st.wbAttacks++; cupAdd(P, 30, 'wb');
     badgeGain(P, R.BADGE_XP.fight, now);
     return { dmg: dmg, ev: f.ev, dead: !!f.dead, t: f.t };
   };
@@ -1840,8 +2021,13 @@
     var r = W && W.results && W.results[pv.id]; if (!r) err('지난주 결과를 집계 중입니다. 잠시 후 다시 시도');
     pv.claimed = true; var out = { shard: 0, items: [], week: pv.id };
     if (pv.cup > 0 && r.cup) {
-      var place = r.cup.indexOf(pv.house) + 1, cs = [0, 25, 15, 10, 6][place] || 0; out.shard += cs; out.cupPlace = place;
-      if (place === 1) { P.st.cupWins++; var it = makeItem(P, pick(P, D.SLOTS).id, Math.min(P.maxStage, R.stageCap(P)), 3, 3); out.items.push({ name: it.name, r: it.r, res: gainItem(P, it, now) }); }
+      var place = r.cup.indexOf(pv.house) + 1, cs = (r.v2 ? R.CUP_PLACE_SHARD : [0, 25, 15, 10, 6])[place] || 0; out.shard += cs; out.cupPlace = place;
+      if (place === 1) P.st.cupWins++;
+      var top = r.mvps && r.mvps[pv.house] === P.id;   // 기숙사 안 개인 1위
+      var gr = place !== 1 ? (r.v2 && top ? 3 : 0) : !r.v2 ? 3 : r.mvp && r.mvp === P.id ? 4 : ((R.CUP_GEAR.filter(function (x) { return pv.cup >= x[0]; })[0] || [0, 0])[1]);
+      if (top && r.v2) out.mvp = true;
+      if (gr) { var it = makeItem(P, pick(P, D.SLOTS).id, Math.min(P.maxStage, R.stageCap(P)), gr, gr); out.items.push({ name: it.name, r: it.r, res: gainItem(P, it, now) }); }
+      if (r.v2) { var ct = R.CUP_TIERS.filter(function (x) { return pv.cup >= x[0]; })[0]; if (ct) { out.shard += ct[1]; out.cupTier = ct[0]; out.cupTierShard = ct[1]; } }   // 개인 점수 구간 보상
     }
     if (pv.att > 0) {
       out.shard += 10; out.wbKilled = !!r.killed;
@@ -1870,7 +2056,7 @@
     var ev = R.skyAt(now); if (!ev) err('지금은 하늘이 조용합니다');
     if (P.skyLook === ev.key) err('이번 ' + R.josa(ev.name, '은', '는') + ' 이미 올려다봤습니다');
     P.skyLook = ev.key; var c = calc(P, W, now), big = ev.id === 'whale', out = { name: ev.name, shard: ri(P, big ? 3 : 1, big ? 5 : 3), mana: Math.floor(c.mana * (big ? 1800 : 600)) };
-    P.res.shard += out.shard; addMana(P, out.mana); cupAdd(P, 10);
+    P.res.shard += out.shard; addMana(P, out.mana); cupAdd(P, 10, 'sky');
     log(P, now, R.josa(ev.name, '을', '를') + ' 올려다봤습니다 (별조각 +' + out.shard + ')', 'news');
     return out;
   };

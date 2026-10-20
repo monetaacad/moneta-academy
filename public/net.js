@@ -100,6 +100,7 @@ var Net = (function () {
   ServerApi.prototype.marketOp = function (o) { return this.req('POST', '/api/market', o); };
   ServerApi.prototype.marketPrices = function (keys) { return this.req('GET', '/api/market/prices?keys=' + encodeURIComponent(keys.join(','))); };
   ServerApi.prototype.marketTrades = function () { return this.req('GET', '/api/market/trades'); };
+  ServerApi.prototype.marketHistory = function () { return this.req('GET', '/api/market/history'); };
   ServerApi.prototype.guilds = function (q) { return this.req('GET', '/api/guilds' + (q ? '?q=' + encodeURIComponent(q) : '')); };
   ServerApi.prototype.guild = function (id) { return this.req('GET', '/api/guild' + (id ? '?id=' + encodeURIComponent(id) : '')); };
   ServerApi.prototype.guildRank = function (sort) { return this.req('GET', '/api/guilds/rank?sort=' + (sort || 'lv')); };

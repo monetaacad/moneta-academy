@@ -248,7 +248,7 @@
     else if (op === 'subj') { Rules.availableSubjects(P).forEach(function (s) { P.subj[s.id].lv += 5; }); msg = '들을 수 있는 과목 모두 +5레벨'; }
     else if (op === 'stage') { P.maxStage = Math.max(P.maxStage, Rules.stageCap(P)); if (P.maxStage > P.st.maxStageAll) P.st.maxStageAll = P.maxStage; msg = P.maxStage + '단계까지 열었습니다'; }
     else if (op === 'finish') { var t = now - 1; if (P.dream) P.dream.end = Math.min(P.dream.end, t); P.lec.forEach(function (j) { if (j) j.end = Math.min(j.end, t); }); P.exp.forEach(function (j) { if (j) j.end = Math.min(j.end, t); }); P.rsq.forEach(function (q) { if (q) q.end = Math.min(q.end, t); }); for (var k in P.fam.disp) P.fam.disp[k].end = Math.min(P.fam.disp[k].end, t); P.examCd = 0; P.bossCd = 0; P.duel.cd = 0; Rules.advance(P, W, now + 0.5); msg = '진행 중인 작업을 모두 끝냈습니다'; }
-    else if (op === 'spirit') { P.spirit = { n: Rules.K.SPIRIT_JAR, at: now }; P.wb.tickets = Rules.K.WB_TICKET_MAX; if (P.tw) P.tw.used = 0; P.daily.rr = 0; msg = '정령 병·도전권·탑 도전 횟수를 채웠습니다'; }
+    else if (op === 'spirit') { P.spirit = { n: Rules.jarMax(P), at: now }; P.wb.tickets = Rules.K.WB_TICKET_MAX; if (P.tw) P.tw.used = 0; P.daily.rr = 0; msg = '정령 병·도전권·탑 도전 횟수를 채웠습니다'; }
     else return Promise.resolve({ error: '알 수 없는 도구' });
     Rules.log(P, now, '[테스트 도구] ' + msg, 'news');
     return this._ok(now, { ok: true, msg: msg });

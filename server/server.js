@@ -118,6 +118,11 @@ const exprooms = ExpRoom.create({ loadPlayer: (pid, now) => loadPlayer(pid, now)
   nameOf: (pid) => { const r = dbx.q.getProfile.get(pid); return r ? r.name : ''; } });
 // 새 업데이트 노트가 배포되면 공지 채널에 한 번 알린다
 { const pn = R.D.PATCH && R.D.PATCH[0]; if (pn && dbx.kvGet('patchPosted', 0) < pn.id) { chat.system('notice', '새 업데이트 노트가 게시되었습니다: 「' + pn.title + '」. 상단의 업데이트 노트 버튼에서 확인할 수 있습니다.', Date.now() / 1000); dbx.kvSet('patchPosted', pn.id); } }
+// 사감 한마디: 기숙사 RP 채널에 (신입생 환영 · 주간 대항전 결과 · 대항전 선두가 바뀔 때). 채팅 시각은 다른 알림처럼 실제 시각
+function headSay(house, text) { const L = D.HOUSE_LORE[house]; if (L && text) chat.headSay(house, L.head, text, Date.now() / 1000); }
+function headWelcome(P) { const L = D.HOUSE_LORE[P.house]; if (L) headSay(P.house, L.say.welcome.replace('{n}', P.name)); }
+world.onWeek = (week, order) => order.forEach((id, i) => { const L = D.HOUSE_LORE[id]; if (L) headSay(id, L.say.rank[i]); });
+world.onLead = (id) => { const L = D.HOUSE_LORE[id]; if (L) headSay(id, L.say.lead); };
 world.onKill = (name) => { const t = name + ' 토벌 성공! 이번 주에 도전한 모든 학생에게 토벌 보상 우편을 보냈습니다.'; chat.system('world', t, Date.now() / 1000); chat.system('notice', t, Date.now() / 1000); };
 
 // 월드 보스 토벌 보상: 이번 주에 한 번이라도 도전한 학생 모두에게 우편 (막 잡은 학생은 아직 저장 전일 수 있어 따로 넣는다)
@@ -327,7 +332,14 @@ function lecStarted(P, sid, now) {
 }
 // 예전에 공지 채널에 올라간 교수 한마디(「[과목] 교수: “…”」)를 한 번 지운다
 if (!dbx.kvGet('profNoticeClean', 0)) { dbx.q.recentChat.all('notice', 500).forEach((r) => { if (r.pid === 'system' || !r.pid) { const tx = sec.dec(r.text); if (/^\[[^\]]+\] [^:]+: “/.test(tx)) chat.remove(r.id); } }); dbx.kvSet('profNoticeClean', 1); }
-function aucBrief(now) { const v = R.auctionVisit(now); return v ? { start: v.start, end: v.end, active: v.active } : null; }
+// 지금 경매: 정해진 2시간이 지나도 막판 입찰로 늘어난 물건이 남아 있으면 그 방문을 계속 연다 (늘어나는 데 끝이 없다)
+function aucVisitNow(now) {
+  const v = R.auctionVisit(now); if (!v) return v;
+  const open = (id) => dbx.q.aucByVisit.all(id).filter((r) => !r.done && r.ends > now);
+  if (!v.active) { const pid = v.id - 1, pv = open(pid); if (pv.length) return { id: pid, start: Math.floor(pid / 2) * 86400 - R.K.TZ + R.AUCTION_HOURS[pid % 2] * 3600, end: Math.max.apply(null, pv.map((r) => r.ends)), active: true, extended: true }; return v; }
+  const cur = open(v.id); return cur.length ? Object.assign({}, v, { end: Math.max(v.end, Math.max.apply(null, cur.map((r) => r.ends))) }) : v;
+}
+function aucBrief(now) { const v = aucVisitNow(now); return v ? { start: v.start, end: v.end, active: v.active } : null; }
 function classView(now) { return { n: lecCounts(now), prof: profLines(now) }; }
 
 // 가방이 가득 차서 넘친 장비(P.mailQ)를 우편으로 보낸다 (10개씩, 30일). 응답을 보낼 때와 저장할 때
@@ -348,7 +360,10 @@ function statePayload(P, now) {
 const routes = {};
 routes['GET /api/health'] = (req, res) => { const mv = MAINT.on ? maintView(authed(req)) : null; if (mv && !mv.bypass) return send(req, res, 503, { ok: false, maint: mv }); send(req, res, 200, { ok: true, now: nowSec() }); };
 // 로그인하지 않은 방문자에게는 학생 이름·랭킹 같은 정보를 보내지 않는다
-routes['GET /api/meta'] = (req, res) => { const me = authed(req), mv = maintView(me); if (mv && mv.on && !mv.bypass) return send(req, res, 503, { error: '점검 중입니다', maint: mv }); send(req, res, 200, Object.assign({ build: BUILD.build, minBuild: BUILD.minBuild, maint: mv, now: nowSec(), scale: cfg.timeScale, registerOpen: cfg.registerOpen, inviteRequired: cfg.inviteRequired, houses: world.houseView() }, me ? { world: world.publicView(nowSec(), store.online(120000)) } : {})); };
+// 기숙사별 학생 수 (가입 화면에 표시, 1분마다 다시 센다)
+let houseN = { at: 0, n: {} };
+function houseCounts() { if (Date.now() - houseN.at > 60000) { const n = {}; dbx.q.houseCount.all().forEach((r) => { n[r.house] = Number(r.n) || 0; }); houseN = { at: Date.now(), n }; } return houseN.n; }
+routes['GET /api/meta'] = (req, res) => { const me = authed(req), mv = maintView(me); if (mv && mv.on && !mv.bypass) return send(req, res, 503, { error: '점검 중입니다', maint: mv }); send(req, res, 200, Object.assign({ build: BUILD.build, minBuild: BUILD.minBuild, maint: mv, now: nowSec(), scale: cfg.timeScale, registerOpen: cfg.registerOpen, inviteRequired: cfg.inviteRequired, houses: world.houseView(), houseN: houseCounts() }, me ? { world: world.publicView(nowSec(), store.online(120000)) } : {})); };
 
 routes['POST /api/register'] = async (req, res) => {
   if (!cfg.registerOpen) return fail(req, res, 403, '지금은 입학 신청을 받지 않습니다');
@@ -386,6 +401,7 @@ routes['POST /api/register'] = async (req, res) => {
   const token = newSession(id);
   log(`입학: ${name} (${house})${code ? ' 초대코드 ' + code : ''}${opInv ? ' · 운영자' : ''}`);
   world.addNews(P.name + ' 학생이 ' + (R.HOUSE[P.house] ? R.HOUSE[P.house].name : '아카데미') + '에 입학했습니다', now);
+  headWelcome(P);
   send(req, res, 200, Object.assign({ token }, statePayload(P, now)), { 'Set-Cookie': cookie(token, cfg.sessionDays * 86400) });
 };
 // 이름 바꾸기: 처음 정한 이름은 한 번 언제든, 바꾼 뒤에는 30일(R.NAME_CD)이 지나야 다시. 같은 이름(대소문자 무시)은 쓸 수 없다.
@@ -621,7 +637,8 @@ routes['GET /api/profile'] = (req, res) => {
   if (LP) { const s = R.summary(LP, world.W, Math.min(nowSec(), LP.at)); lvl = s.lvl; grade = s.grade; power = s.power; }
   const out = { id, op: isChatOp(id) || undefined, name: row.name, house: row.house, grade, guest: !!row.guest, created: row.created, av: row.avatar_v && dbx.q.getAvatar.get(id).avatar ? row.avatar_v : 0,
     status: pr.status, bio: pr.bio, fav: pr.fav, avcredit: pr.avcredit || '', online: self || isOnline(id), self, title: LP ? R.titleName(LP, LP.title) : row.title };
-  { const DP = LP || store.get(id); out.deco = R.decoView(DP); if (DP && R.CLS[DP.cls]) out.cls = DP.cls; const bw = DP && R.badgeWorn(DP); if (bw) out.badge = { gem: bw.gem, lv: bw.lv, name: bw.name }; }   // 정보 카드 꾸미기
+  { const DP = LP || store.get(id); out.deco = R.decoView(DP); if (DP && R.CLS[DP.cls]) out.cls = DP.cls; const bw = DP && R.badgeWorn(DP); if (bw) out.badge = { gem: bw.gem, lv: bw.lv, name: bw.name };
+    const fa = DP && DP.opt && DP.opt.showFam && DP.fam && DP.fam.act, fo = fa && DP.fam.own[fa]; if (fo && R.FAM[fa]) out.fam = { id: fa, lv: fo.lv, nm: fo.nm || '' }; }   // 동행 사역마 (학생이 공개를 켰을 때만)   // 정보 카드 꾸미기
   const fs = self ? null : friendState(me, id), can = (v) => self || v === 'all' || (v === 'friend' && fs === 'ok');
   if (can(pr.visLv)) Object.assign(out, { lvl, power, rank: world.rankOf(power) });
   if (can(pr.visStat) || can(pr.visEq)) {
@@ -1017,6 +1034,13 @@ routes['GET /api/market/prices'] = (req, res) => {
 };
 // 실시간 거래: 막 팔린 물건 (누가 샀는지는 보이지 않는다)
 const mkTradeOut = (r) => ({ id: r.id, kind: r.kind, name: r.name, slot: r.slot, r: r.rarity, ilvl: r.ilvl, qty: r.qty, price: r.price, t: r.done_at });
+// 나의 거래 내역: 최근 30일 판 것 · 산 것 (산 사람 이름은 판매자에게도 보이지 않는다)
+routes['GET /api/market/history'] = (req, res) => {
+  const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
+  if (limited('mkh:' + me, 1, 6)) return fail(req, res, 429, '요청이 너무 잦습니다');
+  const since = Math.floor(Date.now() / 1000) - 30 * 86400;
+  send(req, res, 200, { fee: MK.FEE, list: dbx.q.mkHistory.all(me, me, since).map((r) => ({ id: r.id, side: r.seller === me ? 'sell' : 'buy', kind: r.kind, name: r.name, slot: r.slot, r: r.rarity, ilvl: r.ilvl, qty: r.qty, price: r.price, got: r.seller === me ? Math.floor(r.price * (1 - MK.FEE)) : 0, t: r.done_at, seller: r.seller === me ? '' : r.seller_name, npc: String(r.seller).startsWith('npc:') })) });
+};
 routes['GET /api/market/trades'] = (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
   if (limited('mktr:' + me, 1, 6)) return fail(req, res, 429, '요청이 너무 잦습니다');
@@ -1198,7 +1222,7 @@ routes['POST /api/tower'] = async (req, res) => {
         if (skipped.length) chat.system('party', skipped.join(', ') + ' 님은 이번 주에 다른 파티에서 이미 ' + f + '층 이상의 보상을 받아 이번 보상은 건너뜁니다.', Date.now() / 1000, party);
         chat.system('party', '✦ ' + P.name + ' 님이 별의 탑 ' + f + '층을 넘었습니다! 파티원 모두에게 보상 우편이 갔습니다.', Date.now() / 1000, party);
       });
-      R.log(P, now, '별의 탑 ' + f + '층 돌파', 'good');
+      later(() => { const Q = store.get(me); if (Q) { R.log(Q, nowSec(), '별의 탑 ' + f + '층 돌파', 'good'); store.markDirty(me); } });   // 활동 기록도 대본이 끝난 뒤에
     } else {
       later(() => chat.system('party', P.name + ' 님이 별의 탑 ' + f + '층에 도전했지만 물러났습니다 (' + Math.round((1 - r.mHp) * 100) + '%)', Date.now() / 1000, party));
     }
@@ -1238,7 +1262,7 @@ routes['POST /api/ritual'] = async (req, res) => {
 
 /* ───────── 떠돌이 상인 경매 ─────────
    하루 두 번(12시·20시, 2시간) 귀한 장비 세 점을 경매에 붙인다. 부른 값은 바로 맡겨 두고, 더 높은 값이 나오면 돌려준다.
-   끝나기 2분 안에 부르면 2분 늘어난다. 낙찰품은 우편으로. 값은 학생만 부른다(NPC는 부르지 않는다). */
+   끝나기 2분 안에 부르면 2분 늘어난다 (몇 번이든, 정해진 2시간이 지나도). 낙찰품은 우편으로. 값은 학생만 부른다(NPC는 부르지 않는다). */
 function aucOut(r, me) { let item = null; try { item = JSON.parse(r.item); } catch (e) { } return { id: r.id, name: r.name, r: r.rarity, ilvl: r.ilvl, slot: r.slot, item, ends: r.ends, min: r.min, price: r.price, need: R.auctionStep(r.price, r.min), bidder: r.bidder_name, mine: !!me && r.bidder === me, npc: String(r.bidder).startsWith('npc:'), bids: r.bids, done: !!r.done }; }
 function aucRefund(pid, amount, name, why) {
   if (!pid || String(pid).startsWith('npc:') || !amount) return;
@@ -1270,6 +1294,7 @@ function aucTick(now) {
     if (!dbx.q.aucDone.run(r.id).changes) return;
     if (r.bidder && !String(r.bidder).startsWith('npc:')) {
       let it = null; try { it = JSON.parse(r.item); } catch (e) { }
+      try { const Q = loadPlayer(r.bidder, nowSec()); if (Q) { R.cupAdd(Q, R.CUP_AUC, 'auc'); store.markDirty(r.bidder); } } catch (e) { log('낙찰 대항전 점수 실패', e); }   // 대항전 점수 (거울관 특기)
       if (it) sendMail(r.bidder, '떠돌이 상인', '낙찰: ' + r.name, r.bidder_name + ' 님, ' + R.fmt(r.price) + ' ' + CUR + '에 낙찰되었습니다. 좋은 주인을 만나 다행이군요.\n— 떠돌이 상인', { items: [it] }, Math.floor(Date.now() / 1000) + 14 * 86400, true);
       chat.system('notice', '떠돌이 상인: ' + r.bidder_name + ' 님이 ' + R.josa('「' + r.name + '」', '을', '를') + ' ' + R.fmt(r.price) + ' ' + CUR + '에 낙찰받았습니다.', Date.now() / 1000);
     }
@@ -1279,7 +1304,7 @@ function aucTick(now) {
 routes['GET /api/auction'] = (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
   if (limited('aug:' + me, 1, 10)) return fail(req, res, 429, '요청이 너무 잦습니다');
-  const now = nowSec(); aucTick(now); const v = R.auctionVisit(now);
+  const now = nowSec(); aucTick(now); const v = aucVisitNow(now);
   send(req, res, 200, { now, visit: v, lots: v ? dbx.q.aucByVisit.all(v.id).map((r) => aucOut(r, me)) : [], recent: dbx.q.aucRecent.all().map((r) => ({ name: r.name, r: r.rarity, price: r.price, bidder: r.bidder_name })) });
 };
 routes['POST /api/auction'] = async (req, res) => {
@@ -1419,6 +1444,27 @@ routes['POST /api/admin/mail'] = async (req, res) => {
   names.forEach((n) => { const row = dbx.q.playerByKey.get(nameKey(n)); if (row) ids.push(sendMail(row.id, '운영진', title, b.body, rw, exp, true)); else missing.push(n); });
   log('우편(' + ids.length + '명) ' + title); send(req, res, 200, { ok: true, ids, missing });
 };
+// 운영실: 학생마다 1회용 초대코드를 새로 발급해 우편으로 한 장씩 보낸다 (dry = 받을 학생 수만 미리 세기)
+// 받는 학생: 정지 · 게스트 제외, activeDays > 0이면 그 기간 안에 접속한 학생만. 코드 메모 = 「우편 배포 날짜 · 받은 학생 이름」. 본문의 {코드}를 그 학생의 코드로 바꾼다 (없으면 끝에 붙인다)
+routes['POST /api/admin/invitemail'] = async (req, res) => {
+  if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
+  const b = await readJson(req, 8192), now = Math.floor(Date.now() / 1000), act = Math.max(0, Math.min(3650, Number(b.activeDays) || 0));
+  const rows = dbx.db.prepare('SELECT id, name FROM players WHERE banned = 0 AND guest = 0' + (act ? ' AND last_seen >= ?' : '')).all(...(act ? [now - act * 86400] : []));
+  if (b.dry) return send(req, res, 200, { n: rows.length });
+  const title = String(b.title || '').trim(); if (!title) return fail(req, res, 400, '제목 입력 필요');
+  if (Number(b.expect) !== rows.length) return fail(req, res, 409, '받을 학생 수가 바뀌었습니다. 다시 확인 필요 (지금 ' + rows.length + '명)');
+  const codeDays = Math.max(0, Math.min(3650, Number(b.codeDays) || 0)), mailExp = now + Math.max(1, Math.min(3650, Number(b.mailDays) || 30)) * 86400;
+  const body = String(b.body || ''), note = '우편 배포 ' + new Date(now * 1000 + 9 * 3600000).toISOString().slice(0, 10);
+  let n = 0;
+  dbx.tx(() => { rows.forEach((r) => {
+    let c; do { c = newCode(); } while (dbx.q.getInvite.get(c));
+    dbx.q.insertInvite.run(c, 1, now, codeDays ? now + codeDays * 86400 : 0, (note + ' · ' + r.name).slice(0, 80), 0);   // 메모에 받은 학생 이름
+    sendMail(r.id, '운영진', title, body.indexOf('{코드}') >= 0 ? body.split('{코드}').join(c) : body + (body ? '\n\n' : '') + '초대코드: ' + c, {}, mailExp, false); n++;
+  }); });
+  oplog('admin', '관리자', 'invitemail', title + ' · ' + n + '명');
+  log('초대코드 우편 ' + n + '명 · ' + title);
+  send(req, res, 200, { ok: true, n });
+};
 routes['GET /api/admin/mail'] = (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
   const names = new Map();
@@ -1541,7 +1587,7 @@ routes['POST /api/guild'] = async (req, res) => {
     if (gCount(g.id) >= R.guildCap(g.lv)) return fail(req, res, 400, '정원(' + R.guildCap(g.lv) + '명)이 가득 찼습니다');
     if (g.mode === 'apply') {
       dbx.q.gAppPut.run(me, g.id, now, sec.enc(cleanText(b.msg, 120)));
-      const ranks = gRanksOf(g); guildOf.forEach((gid, pid) => { if (gid === g.id && R.guildCan(ranks, guildRole.get(pid), (dbx.q.gMember.get(pid) || {}).rank, 'invite')) chat.ping(pid, 'gapp', { name: P.name }); });
+      const ranks = gRanksOf(g); guildOf.forEach((gid, pid) => { if (gid === g.id && R.guildCan(ranks, guildRole.get(pid), (dbx.q.gMember.get(pid) || {}).rank, 'invite')) { chat.ping(pid, 'gapp', { name: P.name }); addNote(pid, 'guild', P.name + ' 님이 동아리 「' + g.name + '」에 가입을 신청했습니다', { view: 'guild', gtab: 'admin' }); } });
       return send(req, res, 200, { ok: true, applied: true });
     }
     gJoin(me, g.id, 'member'); gSys(g.id, P.name + ' 님이 동아리에 들어왔습니다.'); gLog(g.id, P.name + ' 님 가입');
@@ -1587,6 +1633,11 @@ routes['POST /api/guild'] = async (req, res) => {
       if (guildOf.get(target)) return fail(req, res, 400, '이미 다른 동아리에 들어간 학생입니다');
       if (gCount(mine) >= R.guildCap(g.lv)) return fail(req, res, 400, '정원이 가득 찼습니다');
       gJoin(target, mine, 'member'); gSys(mine, nameOf(target) + ' 님이 동아리에 들어왔습니다.'); gLog(mine, nameOf(target) + ' 님 가입 (' + P.name + ' 님이 승인)');
+      addNote(target, 'guild', '동아리 「' + g.name + '」 가입이 승인되었습니다', { view: 'guild' });
+    } else {   // 거절: 사유는 선택 (적으면 알림에 함께 보낸다)
+      const why = cleanText(b.reason, 100).replace(/\s+/g, ' ');
+      addNote(target, 'guild', '동아리 「' + g.name + '」 가입 신청이 거절되었습니다' + (why ? ' · 사유: ' + why : ''), { view: 'guild' });
+      gLog(mine, nameOf(target) + ' 님 가입 신청 거절 (' + P.name + ')');
     }
     return ok();
   }
@@ -1916,6 +1967,7 @@ routes['POST /api/recreate'] = async (req, res) => {
   store.drop(pid); store.put(P); store.markDirty(pid);
   log(`다시 입학: ${name} (${house})`);
   world.addNews(P.name + ' 학생이 ' + (R.HOUSE[P.house] ? R.HOUSE[P.house].name : '아카데미') + '에 입학했습니다', now);
+  headWelcome(P);
   send(req, res, 200, statePayload(P, now));
 };
 routes['POST /api/admin/ban'] = async (req, res) => {
@@ -1991,8 +2043,51 @@ routes['POST /api/admin/chat/system'] = async (req, res) => {
   const b = await readJson(req, 2048); if (!chat.CHANNELS[b.ch] || !b.text) return fail(req, res, 400, 'ch, text가 필요합니다');
   chat.system(b.ch, String(b.text).slice(0, 300), Date.now() / 1000); send(req, res, 200, { ok: true });
 };
+// 운영실: 분포 통계 (이름 · 아이디 없이 숫자 분위만). 밸런스 조정용으로 Claude에게 붙여 넣는다
+routes['GET /api/admin/dist'] = (req, res) => {
+  if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
+  const db = dbx.db, now = Math.floor(Date.now() / 1000), wk = R.weekId(nowSec());
+  const pct = (a) => { a = a.filter((v) => v != null && isFinite(v)).sort((x, y) => x - y); if (!a.length) return { n: 0 }; const q = (p) => Math.round(a[Math.min(a.length - 1, Math.floor(a.length * p))] * 100) / 100; return { n: a.length, p10: q(0.1), p25: q(0.25), p50: q(0.5), p75: q(0.75), p90: q(0.9), p99: q(0.99), max: q(1) }; };
+  const by = (rows, key, val) => { const m = { all: [] }; rows.forEach((r) => { const v = Number(r[val]); m.all.push(v); (m[r[key]] = m[r[key]] || []).push(v); }); const o = {}; for (const k in m) o[k] = pct(m[k]); return o; };
+  const players = db.prepare('SELECT house, power, lvl, grade, max_stage, wb_dps, last_seen FROM players WHERE banned = 0 AND guest = 0').all();
+  const act = players.filter((p) => p.last_seen >= now - 7 * 86400);
+  const grades = {}; act.forEach((p) => { grades[p.grade] = (grades[p.grade] || 0) + 1; });
+  const fight = (rows) => ({ power: by(rows, 'house', 'power'), lvl: by(rows, 'house', 'lvl'), maxStage: by(rows, 'house', 'max_stage'), wbDps: by(rows, 'house', 'wb_dps') });
+  const cup = {}; db.prepare('SELECT DISTINCT week FROM weekly WHERE week <= ? ORDER BY week DESC LIMIT 4').all(wk).forEach(({ week }) => {
+    const rows = db.prepare('SELECT house, cup, dmg, att FROM weekly WHERE week = ?').all(week);
+    const c = rows.filter((r) => r.cup > 0), o = by(c, 'house', 'cup'); for (const h in o) if (h !== 'all') o[h].a100 = c.filter((r) => r.house === h && r.cup >= (R.CUP_ACTIVE || 100)).length;
+    cup[week] = { now: week === wk, cup: o, wbDmg: pct(rows.filter((r) => r.dmg > 0).map((r) => r.dmg)), wbAttacks: pct(rows.filter((r) => r.att > 0).map((r) => r.att)) };
+  });
+  // 최근 7일 활동 학생의 세부 전투 능력 (저장된 상태로 다시 계산): 학과별 · 학년별 딜 · 딜 구성 · 생존 · 탑
+  const detail = [];
+  db.prepare('SELECT id, house, grade, state FROM players WHERE banned = 0 AND guest = 0 AND last_seen >= ? LIMIT 5000').all(now - 7 * 86400).forEach((r) => {
+    try {
+      const P = store.peek(r.id) || (() => { const x = JSON.parse(r.state); R.fixState(x); return x; })();
+      const c = R.calc(P, world.ctx(nowSec()), Math.min(nowSec(), P.at || nowSec())), st = P.st || {};
+      detail.push({ cls: P.cls === 'knight' ? 'knight' : 'mage', grade: P.grade, house: r.house, dps: c.totalDps, basic: c.dps, spell: c.spellDps, fam: c.famDps, spellShare: c.totalDps > 0 ? c.spellDps / c.totalDps : 0,
+        patk: c.patk, matk: c.matk, hp: c.hp, def: c.def, critC: c.critC, aps: c.aps, power: c.power, lvl: P.lvl, twK: st.twK || 0, twM: st.twM || 0 });
+    } catch (e) { }
+  });
+  const KEYS = ['dps', 'basic', 'spell', 'fam', 'spellShare', 'patk', 'matk', 'hp', 'def', 'critC', 'aps', 'power', 'lvl'];
+  const group = (key) => { const g = {}; detail.forEach((d) => { (g[d[key]] = g[d[key]] || []).push(d); }); const o = {}; for (const k in g) { o[k] = { n: g[k].length }; KEYS.forEach((f) => { o[k][f] = pct(g[k].map((d) => d[f])); }); } return o; };
+  const all = { n: detail.length }; KEYS.forEach((f) => { all[f] = pct(detail.map((d) => d[f])); });
+  const clsGrade = {}; detail.forEach((d) => { const k = d.cls + ':' + d.grade; (clsGrade[k] = clsGrade[k] || []).push(d); }); const cg = {}; for (const k in clsGrade) cg[k] = { n: clsGrade[k].length, dps: pct(clsGrade[k].map((d) => d.dps)), hp: pct(clsGrade[k].map((d) => d.hp)), power: pct(clsGrade[k].map((d) => d.power)) };
+  const towers = { infKnight: pct(detail.filter((d) => d.twK > 0).map((d) => d.twK)), infMage: pct(detail.filter((d) => d.twM > 0).map((d) => d.twM)), starTowerWeek: pct(db.prepare('SELECT floor FROM tower WHERE week = ? AND floor > 0').all(wk).map((r) => r.floor)) };
+  oplog('admin', '관리자', 'dist', '분포 통계 복사');
+  send(req, res, 200, { at: now, week: wk, students: { all: players.length, active7d: act.length, gradeActive7d: grades }, fightActive7d: fight(act), fightAll: fight(players), weekly: cup,
+    detailActive7d: { note: 'dps=초당 피해 합계(basic 평타 + spell 주문 + fam 사역마), spellShare=주문 비중, patk/matk=물리/주문 공격력, critC=치명타 확률, aps=초당 공격 횟수', all, byCls: group('cls'), byGrade: group('grade'), byClsGrade: cg }, towers });
+};
 routes['GET /api/admin/ideas'] = (req, res) => { if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다'); send(req, res, 200, { text: board.exportIdeas() }); };
-routes['GET /api/admin/sys'] = (req, res) => { if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다'); send(req, res, 200, { build: BUILD, maint: MAINT, pin: dbx.kvGet('pinNotice', null) }); };
+routes['GET /api/admin/sys'] = (req, res) => { if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다'); send(req, res, 200, { build: BUILD, maint: MAINT, pin: dbx.kvGet('pinNotice', null), epoch: world.W.epoch, cal: R.calendar(world.W, nowSec()) }); };
+// 개교일(아카데미력 서사달 1일이 되는 날, 한국 시간 날짜). 바꾸면 달력 · 달 축복 · 날씨가 그 날짜 기준으로 다시 계산된다
+routes['POST /api/admin/epoch'] = async (req, res) => {
+  if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
+  const b = await readJson(req, 256), m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(b.date || ''));
+  const t = m ? Math.floor(Date.parse(m[1] + '-' + m[2] + '-' + m[3] + 'T00:00:00+09:00') / 1000) : NaN;
+  if (!isFinite(t) || t > nowSec()) return fail(req, res, 400, '오늘 이전 날짜(YYYY-MM-DD) 입력 필요');
+  world.W.epoch = t; dbx.kvSet('epoch', t); world.invalidate(); oplog('admin', '', 'epoch', b.date);
+  send(req, res, 200, { ok: true, epoch: t, cal: R.calendar(world.W, nowSec()) });
+};
 // 새 버전 알리기: {build, minBuild} — 접속한 모두에게 'ver'을 보낸다
 routes['POST /api/admin/build'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');

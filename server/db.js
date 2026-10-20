@@ -134,6 +134,7 @@ function open(dir) {
     );
     CREATE INDEX IF NOT EXISTS market_open ON market(status, kind, price);
     CREATE INDEX IF NOT EXISTS market_seller ON market(seller, status);
+    CREATE INDEX IF NOT EXISTS market_buyer ON market(buyer, status);
     CREATE INDEX IF NOT EXISTS market_sold ON market(status, done_at);
     CREATE INDEX IF NOT EXISTS market_exp ON market(status, expires);
   `);
@@ -368,6 +369,9 @@ function open(dir) {
     upsertWeekly: db.prepare(`INSERT INTO weekly (week, pid, house, cup, dmg, att) VALUES (?, ?, ?, ?, ?, ?)
       ON CONFLICT(week, pid) DO UPDATE SET house = excluded.house, cup = excluded.cup, dmg = excluded.dmg, att = excluded.att`),
     houseCup: db.prepare(`SELECT COALESCE(SUM(cup), 0) AS s, COUNT(*) AS n FROM (SELECT cup FROM weekly WHERE week = ? AND house = ? AND cup > 0 ORDER BY cup DESC LIMIT ?)`),
+    houseCount: db.prepare(`SELECT house, COUNT(*) AS n FROM players WHERE banned = 0 AND guest = 0 GROUP BY house`),
+    houseTop: db.prepare(`SELECT w.pid, w.cup FROM weekly w JOIN players p ON p.id = w.pid WHERE w.week = ? AND w.house = ? AND p.banned = 0 ORDER BY w.cup DESC LIMIT 1`),
+    houseCups: db.prepare(`SELECT cup FROM weekly WHERE week = ? AND house = ? AND cup > 0`),
     houseMembers: db.prepare(`SELECT COUNT(*) AS n FROM weekly WHERE week = ? AND house = ? AND cup > 0`),
     topDmg: db.prepare(`SELECT w.pid, p.name, p.house, w.dmg FROM weekly w JOIN players p ON p.id = w.pid WHERE w.week = ? AND w.dmg > 0 AND p.banned = 0 ORDER BY w.dmg DESC LIMIT ?`),
     dmgList: db.prepare(`SELECT dmg FROM weekly WHERE week = ? AND dmg > 0 ORDER BY dmg DESC`),
@@ -449,6 +453,7 @@ function open(dir) {
     mkSoldTok: db.prepare(`SELECT name, qty, price, done_at FROM market WHERE kind = 'tok' AND status = 'sold' AND data = ? AND done_at > ? ORDER BY done_at DESC LIMIT 50`),
     mkSoldPot: db.prepare(`SELECT name, qty, price, done_at FROM market WHERE kind = 'pot' AND status = 'sold' AND data = ? AND done_at > ? ORDER BY done_at DESC LIMIT 50`),
     mkTrades: db.prepare(`SELECT id, kind, name, slot, rarity, ilvl, qty, price, done_at FROM market WHERE status = 'sold' ORDER BY done_at DESC, id DESC LIMIT ?`),
+    mkHistory: db.prepare(`SELECT id, kind, name, slot, rarity, ilvl, qty, price, done_at, seller, buyer, COALESCE((SELECT name FROM players WHERE id = market.seller), seller_name) AS seller_name FROM market WHERE status = 'sold' AND (seller = ? OR buyer = ?) AND done_at > ? ORDER BY done_at DESC, id DESC LIMIT 100`),
     mkSetStatus: db.prepare(`UPDATE market SET status = ?, buyer = ?, done_at = ? WHERE id = ? AND status = 'open'`),
     mkMine: db.prepare(`SELECT id, kind, data, name, slot, rarity, ilvl, qty, price, created, expires, status, done_at FROM market WHERE seller = ? AND (status = 'open' OR done_at > ?) ORDER BY id DESC LIMIT 40`),
     mkMineOpen: db.prepare(`SELECT COUNT(*) AS n FROM market WHERE seller = ? AND status = 'open'`),

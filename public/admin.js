@@ -72,7 +72,7 @@
   $('#bdhide').addEventListener('change', function () { try { localStorage.setItem('arc_admin_bdhide', $('#bdhide').checked ? '1' : '0'); } catch (e) { } bdshow(BDJ); });
   function bdload() { api('GET', '/api/admin/board').then(bdshow); }
   // 문의 상태: 답변 여부 · 답변 뒤 새 댓글 · 게시판 처리 상태(적용 중 / 해결 완료)와 연동. 숨기기를 켜면 답변함 · 해결 완료는 숨기되 새 댓글이 있으면 보인다
-  var ST = { wip: '적용 중', done: '해결 완료' };
+  var ST = { review: '검토 중', wip: '적용 중', done: '해결 완료', no: '반영 안 함', norepro: '재현 안 됨' };
   function bdstate(p) {
     var lastOp = -1; p.comments.forEach(function (c, i) { if (c.op) lastOp = i; });
     var answered = lastOp >= 0, fresh = answered && p.comments.slice(lastOp + 1).some(function (c) { return !c.op; });
@@ -83,7 +83,7 @@
     $('#bdbox').innerHTML = (hide && list.length < all.length ? '<p class="tiny faint">숨긴 글 ' + (all.length - list.length) + '개</p>' : '') + (list.length ? list.map(function (p) {
       var s = bdstate(p), tag = s.fresh ? '<span class="small gold">새 댓글</span>' : !s.answered ? '<span class="small gold">새 문의</span>' : '<span class="small" style="color:#74bfa9">답변함</span>';
       var stTag = ST[p.st] ? ' <span class="small" style="color:' + (p.st === 'done' ? '#6fcf97' : '#6aa8ff') + '">' + ST[p.st] + '</span>' : '';
-      var stBtns = [['wip', '적용 중'], ['done', '해결 완료'], ['', '표시 없음']].map(function (o) { return '<button class="btn sm' + ((p.st || '') === o[0] ? ' primary' : ' ghost') + '" data-a="bdst" data-c="' + p.id + '" data-s="' + o[0] + '">' + o[1] + '</button>'; }).join('');
+      var stBtns = [['review', '검토 중'], ['wip', '적용 중'], ['done', '해결 완료'], ['no', '반영 안 함'], ['norepro', '재현 안 됨'], ['', '표시 없음']].map(function (o) { return '<button class="btn sm' + ((p.st || '') === o[0] ? ' primary' : ' ghost') + '" data-a="bdst" data-c="' + p.id + '" data-s="' + o[0] + '">' + o[1] + '</button>'; }).join('');
       return '<details class="bdq"' + (s.answered && !s.fresh ? '' : ' open') + '><summary><b>' + esc(p.title) + '</b> <span class="small faint">' + esc(p.author) + ' · ' + when(p.created) + ' · 댓글 ' + p.comments.length + '</span> ' + tag + stTag + '</summary>' +
         '<div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap"><span class="tiny faint">처리 상태 (게시판과 연동)</span>' + stBtns + '</div>' +
         '<div class="msgtext" style="white-space:pre-wrap;margin:8px 0">' + esc(p.body) + '</div>' +
@@ -117,7 +117,7 @@
   function oplog() { api('GET', '/api/admin/oplog').then(function (j) { $('#oplog').innerHTML = (j.log || []).map(function (l) { return '<tr><td>' + when(l.t) + '</td><td>' + esc(l.name || l.actor) + '</td><td>' + esc({ slow: '슬로우 모드', role: '운영자 지정', maint: '점검', build: '새 버전' }[l.action] || l.action) + '</td><td>' + esc(l.detail) + '</td></tr>'; }).join('') || '<tr><td colspan="4" class="faint">기록이 없습니다</td></tr>'; }); }
   function kst(t) { return t ? new Date(t * 1000).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) : ''; }
   function showPin(p) { $('#pinnow').textContent = p && p.text ? '고정 중: ' + p.text.slice(0, 60) + (p.text.length > 60 ? '…' : '') : '고정 공지 없음'; }
-  function sys() { api('GET', '/api/admin/sys').then(function (j) { if (j.error) return; showPin(j.pin); var m = j.maint || {}, b = j.build || {}; $('#sysnow').textContent = '지금: ' + (m.on ? '점검 중' + (m.until ? ' (' + kst(m.until) + ' 종료 예정)' : '') : m.start ? '점검 예고 ' + kst(m.start) : '점검 없음') + ' · 화면 빌드 ' + (b.build || 0) + (b.minBuild ? ' · 최소 ' + b.minBuild : ''); }); }
+  function sys() { api('GET', '/api/admin/sys').then(function (j) { if (j.error) return; showPin(j.pin); var m = j.maint || {}, b = j.build || {}; $('#sysnow').textContent = '지금: ' + (m.on ? '점검 중' + (m.until ? ' (' + kst(m.until) + ' 종료 예정)' : '') : m.start ? '점검 예고 ' + kst(m.start) : '점검 없음') + ' · 화면 빌드 ' + (b.build || 0) + (b.minBuild ? ' · 최소 ' + b.minBuild : ''); if (j.epoch) { var e = new Date((j.epoch + 9 * 3600) * 1000).toISOString().slice(0, 10); $('#epnow').textContent = '지금 개교일: ' + e + (j.cal ? ' · 오늘은 ' + j.cal.year + '년 ' + j.cal.month + ' ' + j.cal.d + '일' : '') + (j.epoch > Date.now() / 1000 ? ' (개교일이 미래라 달력이 1일에 멈춰 있습니다)' : ''); if (!$('#epdate').value) $('#epdate').value = e; } }); }
   function tsOf(id) { var v = $(id).value; return v ? Math.floor(new Date(v + ':00+09:00').getTime() / 1000) : 0; }
   function maint(o, msg) { api('POST', '/api/admin/maint', o).then(function (j) { toast(j.error || msg); sys(); oplog(); }); }
   var A = {
@@ -125,6 +125,7 @@
     mtplan: function () { var st = tsOf('#mtstart'); if (!st || st < Date.now() / 1000) return toast('이후 시각 선택 필요'); maint({ start: st, until: tsOf('#mtuntil'), msg: $('#mtmsg').value }, '점검을 예고했습니다'); },
     mton: function () { if (!confirm('지금 점검을 시작합니다. 운영자가 아닌 학생은 모두 점검 화면으로 바뀝니다.')) return; maint({ on: true, until: tsOf('#mtuntil'), msg: $('#mtmsg').value }, '점검을 시작했습니다'); },
     mtoff: function () { maint({ on: false }, '점검을 끝냈습니다'); },
+    epoch: function () { var v = $('#epdate').value; if (!v) return toast('날짜 선택 필요'); if (!confirm('개교일을 ' + v + '로 바꿉니다. 아카데미력 날짜 · 달 축복 · 날씨가 이 날짜 기준으로 바뀝니다.')) return; api('POST', '/api/admin/epoch', { date: v }).then(function (j) { toast(j.error || ('개교일을 바꿨습니다 · 오늘은 ' + j.cal.month + ' ' + j.cal.d + '일')); sys(); oplog(); }); },
     build: function () { api('POST', '/api/admin/build', { build: +$('#bdbuild').value || 0, minBuild: +$('#bdmin').value || 0 }).then(function (j) { toast(j.error || '새 버전을 알렸습니다'); sys(); oplog(); }); },
     opon: function () { var n = $('#un').value.trim(); if (!n) return; api('POST', '/api/admin/ops', { name: n, rank: 'admin' }).then(function (j) { $('#umsg').textContent = j.error || n + ' 님을 학생회(운영진)로 지정했습니다 · 칭호 「학생회」를 낄 수 있습니다'; oplog(); }); },
     opchief: function () { var n = $('#un').value.trim(); if (!n) return; if (!confirm(n + ' 님을 학생회장으로 지정합니다.')) return; api('POST', '/api/admin/ops', { name: n, rank: 'chief' }).then(function (j) { $('#umsg').textContent = j.error || n + ' 님을 학생회장으로 지정했습니다 · 칭호 「학생회장」 · 「학생회」를 낄 수 있습니다'; oplog(); }); },
@@ -152,6 +153,18 @@
     opoff: function () { var n = $('#un').value.trim(); if (!n) return; api('POST', '/api/admin/ops', { name: n, op: false }).then(function (j) { $('#umsg').textContent = j.error || n + ' 님의 운영자 권한을 뗐습니다'; oplog(); }); },
     slow: function () { api('POST', '/api/admin/slow', { sec: +$('#slowsec').value || 0 }).then(function (j) { toast(j.error || (j.sec ? '월드 슬로우 모드 ' + j.sec + '초' : '슬로우 모드를 껐습니다')); oplog(); }); },
     mforever: function () { $('#mexp').value = 'forever'; $('#mdatew').hidden = true; },
+    // 초대코드 우편 배포: 받을 학생 수를 먼저 세고, 확인을 받은 뒤 보낸다
+    imsend: function () {
+      var o = { title: $('#imt').value.trim(), body: $('#imb').value, activeDays: +$('#imact').value, codeDays: +$('#imcd').value, mailDays: +$('#immd').value || 30 };
+      if (!o.title) { $('#immsg').textContent = '제목 입력 필요'; return; }
+      api('POST', '/api/admin/invitemail', Object.assign({ dry: true }, o)).then(function (j) {
+        if (j.error) { $('#immsg').textContent = j.error; return; }
+        if (!j.n) { $('#immsg').textContent = '받을 학생이 없습니다'; return; }
+        if (!confirm(j.n + '명에게 1회용 초대코드를 한 장씩 새로 발급해 우편으로 보냅니다.\n제목: ' + o.title + '\n코드 기한: ' + $('#imcd').selectedOptions[0].text + '\n\n보낸 뒤에는 되돌릴 수 없습니다.')) return;
+        o.expect = j.n; $('#immsg').textContent = '보내는 중…';
+        api('POST', '/api/admin/invitemail', o).then(function (k) { $('#immsg').textContent = k.error || k.n + '명에게 보냈습니다'; if (!k.error) { invites(); oplog(); } });
+      });
+    },
     mail: function () {
       var to = document.querySelector('input[name=mto]:checked').value, rw = {}, n = 0;
       document.querySelectorAll('[data-rw]').forEach(function (i) { var v = Math.floor(+i.value || 0); if (v > 0) { rw[i.dataset.rw] = v; n++; } });
@@ -184,6 +197,16 @@
     iless: function () { ISHOW = 10; invites(); },
     ubmore: function (el) { var c = el.dataset.c; UBOPEN[c] = !UBOPEN[c]; invites(); },
     bdst: function (el) { api('POST', '/api/admin/board', { op: 'status', id: +el.dataset.c, st: el.dataset.s || '' }).then(function (j) { if (j.error) { toast(j.error); return; } bdshow(j); toast(el.dataset.s ? '「' + ST[el.dataset.s] + '」 표시를 붙였습니다' : '상태 표시를 뗐습니다'); }); },
+    // 분포 통계: 이름 · 아이디 없이 숫자 분위만 (밸런스 조정용으로 Claude에게 붙여 넣는다)
+    distcopy: function () {
+      api('GET', '/api/admin/dist').then(function (j) {
+        if (j.error) { toast(j.error); return; }
+        var t = '[모네타 분포 통계 ' + when(j.at) + ']\n' + JSON.stringify(j);
+        var done = function () { toast('복사했습니다 (학생 ' + j.students.all + '명 · 최근 7일 ' + j.students.active7d + '명) · Claude에게 붙여 넣으세요'); };
+        if (navigator.clipboard) navigator.clipboard.writeText(t).then(done, function () { window.prompt('아래 내용을 복사하세요', t); });
+        else window.prompt('아래 내용을 복사하세요', t);
+      });
+    },
     ideacopy: function () {
       api('GET', '/api/admin/ideas').then(function (j) {
         if (j.error) { toast(j.error); return; } if (!j.text) { toast('복사할 글이 없습니다'); return; }
