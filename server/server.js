@@ -346,7 +346,10 @@ function statePayload(P, now) {
 const routes = {};
 routes['GET /api/health'] = (req, res) => { const mv = MAINT.on ? maintView(authed(req)) : null; if (mv && !mv.bypass) return send(req, res, 503, { ok: false, maint: mv }); send(req, res, 200, { ok: true, now: nowSec() }); };
 // 로그인하지 않은 방문자에게는 학생 이름·랭킹 같은 정보를 보내지 않는다
-routes['GET /api/meta'] = (req, res) => { const me = authed(req), mv = maintView(me); if (mv && mv.on && !mv.bypass) return send(req, res, 503, { error: '점검 중입니다', maint: mv }); send(req, res, 200, Object.assign({ build: BUILD.build, minBuild: BUILD.minBuild, maint: mv, now: nowSec(), scale: cfg.timeScale, registerOpen: cfg.registerOpen, inviteRequired: cfg.inviteRequired, houses: world.houseView() }, me ? { world: world.publicView(nowSec(), store.online(120000)) } : {})); };
+// 기숙사별 학생 수 (가입 화면에 표시, 1분마다 다시 센다)
+let houseN = { at: 0, n: {} };
+function houseCounts() { if (Date.now() - houseN.at > 60000) { const n = {}; dbx.q.houseCount.all().forEach((r) => { n[r.house] = Number(r.n) || 0; }); houseN = { at: Date.now(), n }; } return houseN.n; }
+routes['GET /api/meta'] = (req, res) => { const me = authed(req), mv = maintView(me); if (mv && mv.on && !mv.bypass) return send(req, res, 503, { error: '점검 중입니다', maint: mv }); send(req, res, 200, Object.assign({ build: BUILD.build, minBuild: BUILD.minBuild, maint: mv, now: nowSec(), scale: cfg.timeScale, registerOpen: cfg.registerOpen, inviteRequired: cfg.inviteRequired, houses: world.houseView(), houseN: houseCounts() }, me ? { world: world.publicView(nowSec(), store.online(120000)) } : {})); };
 
 routes['POST /api/register'] = async (req, res) => {
   if (!cfg.registerOpen) return fail(req, res, 403, '지금은 입학 신청을 받지 않습니다');

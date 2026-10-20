@@ -54,6 +54,15 @@
   function dotImg(k, size, label, cls) { var u = DOT_IMG[k]; if (!u) return ''; return '<img class="dimg' + (cls ? ' ' + cls : '') + '" src="' + u + '" width="' + size + '" height="' + size + '" alt="' + (label || '') + '"' + (label ? '' : ' aria-hidden="true"') + ' draggable="false">'; }
   function houseDot(id, size) { var h = R.HOUSE[id]; return dotImg(id, size, h ? h.name + ' 문장' : '', 'hdot'); }
   // 기숙사 성장: 효과 현재 / 최대 + 성장 막대. Wl = 세계(hpts · hfull)
+  // 대항전 규칙 안내 (인원 보정 · 기숙사 특기 · 보상)
+  function cupRuleBox(P) {
+    var sp = R.CUP_SPEC[P.house], tier = R.CUP_TIERS.filter(function (x) { return P.wk.cup >= x[0]; })[0];
+    return '<div class="gnotice" style="margin-top:10px"><b class="tiny gold">대항전 규칙이 바뀌었습니다</b><ul class="tiny" style="margin:4px 0 0 16px;line-height:1.7">' +
+      '<li><b>인원 보정</b> · 기숙사 점수는 이번 주 ' + R.CUP_ACTIVE + '점 이상 활동한 학생의 <b>평균</b>입니다. 인원이 많은 기숙사가 유리하지 않습니다. (한 학생의 점수는 활동 학생 중간 점수의 ' + R.CUP_CAP_X + '배까지만 반영, 활동 학생이 ' + R.CUP_MIN_DIV + '명보다 적으면 ' + R.CUP_MIN_DIV + '명으로 나눕니다)</li>' +
+      '<li><b>기숙사 특기</b> · 자기 기숙사 특기 활동은 점수 ×' + R.CUP_SPEC_MULT + '. ' + D.HOUSES.map(function (h) { return '<span style="color:' + h.color + '">' + h.name + '</span> ' + R.CUP_SPEC[h.id].text; }).join(' · ') + '</li>' +
+      '<li><b>보상</b> · 순위 별조각 ' + R.CUP_PLACE_SHARD.slice(1).join(' · ') + '. 순위와 별개로 내 점수 ' + R.CUP_TIERS.slice().reverse().map(function (x) { return fmt(x[0]) + '점 이상 +' + x[1]; }).join(' · ') + ' 별조각.</li></ul>' +
+      '<p class="tiny faint" style="margin-top:4px">내 이번 주 점수 <b class="num">' + fmt(P.wk.cup) + '</b>' + (sp ? ' · 내 기숙사 특기: ' + sp.text : '') + (tier ? ' · 개인 보상 구간 ' + fmt(tier[0]) + '점 달성' : '') + '. 수업 시간, 처치, 보스, 시험, 결투, 정령, 양조, 파견, 연구, 강화, 과제가 모두 점수가 됩니다.</p></div>';
+  }
   function houseGrow(hid, Wl) {
     var p = R.housePct(Wl, hid), g = Math.round((p - R.HOUSE_BASE) / (1 - R.HOUSE_BASE) * 100), hh = R.HOUSE[hid];
     return '<span class="hb gold">' + R.houseEffText(hid, p) + '</span><span class="hgrow"><span class="tiny faint">기숙사 성장 <b class="num">' + g + '%</b></span><span class="bar" style="height:5px;display:block;margin-top:2px"><b style="width:' + g + '%;background:' + hh.color + '"></b></span></span>';
@@ -1595,8 +1604,8 @@
     var cup = W.cup || [], top = Math.max(1, cup[0] ? cup[0].score : 1);
     h += '<div class="card"><div class="row between"><h3>기숙사 대항전</h3><span class="small muted">' + left(W.weekEnd) + ' 남음</span></div><div class="stack" style="gap:8px;margin-top:8px">' + cup.map(function (r, i) {
       var hh = R.HOUSE[r.id], me = r.id === P.house;
-      return '<div><div class="row small"><span class="num faint" style="width:16px">' + (i + 1) + '</span>' + houseDot(r.id, 18) + '<span style="color:' + hh.color + '">' + hh.name + '</span>' + (me ? '<span class="tag br">내 기숙사</span>' : '') + '<span class="spacer"></span><span class="num">' + fmt(r.score) + '</span></div><div class="bar" style="margin-top:3px;height:6px"><b style="width:' + (r.score / top * 100).toFixed(1) + '%;background:' + hh.color + '"></b></div></div>';
-    }).join('') + '</div><p class="tiny faint" style="margin-top:8px">기숙사마다 상위 30명의 점수 합계. 내 이번 주 점수 <b class="num">' + fmt(P.wk.cup) + '</b>. 수업 시간, 처치, 보스, 시험, 결투, 정령, 양조, 파견, 연구, 강화, 과제가 모두 점수가 됩니다. 순위 보상: 별조각 25·15·10·6, 1위 기숙사는 영웅 장비.</p>' +
+      return '<div><div class="row small"><span class="num faint" style="width:16px">' + (i + 1) + '</span>' + houseDot(r.id, 18) + '<span style="color:' + hh.color + '">' + hh.name + '</span>' + (me ? '<span class="tag br">내 기숙사</span>' : '') + '<span class="spacer"></span><span class="tiny faint">' + (r.active != null ? '활동 ' + r.active + '명 · ' : '') + '</span><span class="num">' + fmt(r.score) + '</span></div><div class="bar" style="margin-top:3px;height:6px"><b style="width:' + (r.score / top * 100).toFixed(1) + '%;background:' + hh.color + '"></b></div></div>';
+    }).join('') + '</div>' + cupRuleBox(P) +
       (W.lastWeek ? '<p class="tiny muted" style="margin-top:4px">지난주: 1위 ' + R.HOUSE[W.lastWeek.cup[0]].name + ', 월드 보스 ' + (W.lastWeek.killed ? '토벌 성공' : '토벌 실패') + '</p>' : '') + '</div>';
     h += '<div class="card"><h3>기숙사 성장</h3><p class="tiny faint" style="margin:2px 0 8px">대항전 점수가 쌓일수록 기숙사 혜택이 1/10에서 최대 값까지 커집니다. 혜택은 현재 / 최대.</p><div class="stack" style="gap:10px">' + D.HOUSES.map(function (hh) {
       return '<div><div class="row small">' + houseDot(hh.id, 18) + '<span style="color:' + hh.color + '">' + hh.name + '</span>' + (hh.id === P.house ? '<span class="tag br">내 기숙사</span>' : '') + '</div><div class="hgrowrow">' + houseGrow(hh.id, W) + '</div></div>';
@@ -3127,7 +3136,7 @@
   ACT.weekclaim = function () {
     act('weekClaim').then(function (r) {
       if (!r) return; Snd.play('ach');
-      modal(mhead('지난주 보상', '') + '<ul class="report">' + (r.cupPlace ? '<li>기숙사 대항전 ' + r.cupPlace + '위</li>' : '') + (r.tier ? '<li>월드 보스 ' + (r.wbKilled ? '토벌 성공' : '토벌 실패') + (r.tier < 4 ? ' · 피해 상위 ' + ['', '1%', '10%', '50%'][r.tier] : '') + '</li>' : '') + '<li>별조각 +' + r.shard + '</li>' + (r.egg ? '<li class="gold">환수의 알' + (r.egg > 1 ? ' ×' + r.egg + ' (보스 ' + r.egg + '마리 토벌)' : '') + '</li>' : '') + r.items.map(function (it) { return '<li style="color:' + rcol(it.r) + '">' + esc(it.name) + '</li>'; }).join('') + '</ul>' +
+      modal(mhead('지난주 보상', '') + '<ul class="report">' + (r.cupPlace ? '<li>기숙사 대항전 ' + r.cupPlace + '위</li>' : '') + (r.cupTier ? '<li>대항전 개인 점수 ' + fmt(r.cupTier) + '점 이상 · 별조각 +' + r.cupTierShard + '</li>' : '') + (r.tier ? '<li>월드 보스 ' + (r.wbKilled ? '토벌 성공' : '토벌 실패') + (r.tier < 4 ? ' · 피해 상위 ' + ['', '1%', '10%', '50%'][r.tier] : '') + '</li>' : '') + '<li>별조각 +' + r.shard + '</li>' + (r.egg ? '<li class="gold">환수의 알' + (r.egg > 1 ? ' ×' + r.egg + ' (보스 ' + r.egg + '마리 토벌)' : '') + '</li>' : '') + r.items.map(function (it) { return '<li style="color:' + rcol(it.r) + '">' + esc(it.name) + '</li>'; }).join('') + '</ul>' +
         '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>');
     });
   };
@@ -4136,8 +4145,8 @@
     }
     h += '</form>';
     var HW = M.houses ? { hpts: M.houses.pts, hfull: M.houses.full } : M.world || null;
-    if (tab !== 'login' && tab !== 'findid') h += '<div><div class="section-t">기숙사 선택</div><p class="small muted" style="margin-bottom:10px">기숙사는 바꿀 수 없습니다. 매주 기숙사 대항전에서 함께 겨룹니다. 기숙사 혜택은 처음에 1/10만 받고, 기숙사 학생들이 활동할수록 최대 값까지 커집니다. 혜택은 지금 받는 값 / 최대 값입니다.</p>' + glossCard() + '<div class="housepick">' + D.HOUSES.map(function (hh) {
-      return '<button data-act="ihouse" data-a="' + hh.id + '" class="' + (S.ihouse === hh.id ? 'on' : '') + '"><span class="hhead">' + dotImg(hh.id + '_big', 72, hh.name + ' 문장', 'hdot hbig') + '<span class="hn" style="color:' + hh.color + '">' + hh.name + ' <span class="faint small">' + hh.latin + '</span></span></span><span class="hm">“' + hh.motto + '”</span><span class="small muted">' + hh.desc + '</span>' + houseGrow(hh.id, HW) + '</button>';
+    if (tab !== 'login' && tab !== 'findid') h += '<div><div class="section-t">기숙사 선택</div><p class="small muted" style="margin-bottom:10px">기숙사는 바꿀 수 없습니다. 매주 기숙사 대항전에서 함께 겨룹니다. 기숙사 혜택은 처음에 1/10만 받고, 기숙사 학생들이 활동할수록 최대 값까지 커집니다. 혜택은 지금 받는 값 / 최대 값입니다.</p><p class="small gold" style="margin-bottom:10px">기숙사 대항전 점수는 기숙사 인원수에 따라 보정되므로, 인원이 많은 기숙사가 유리하지 않습니다.</p>' + glossCard() + '<div class="housepick">' + D.HOUSES.map(function (hh) {
+      return '<button data-act="ihouse" data-a="' + hh.id + '" class="' + (S.ihouse === hh.id ? 'on' : '') + '"><span class="hhead">' + dotImg(hh.id + '_big', 72, hh.name + ' 문장', 'hdot hbig') + '<span class="hn" style="color:' + hh.color + '">' + hh.name + ' <span class="faint small">' + hh.latin + '</span></span>' + (M.houseN ? '<span class="tiny muted" style="margin-left:auto">현재 ' + fmt(M.houseN[hh.id] || 0) + '명</span>' : '') + '</span><span class="hm">“' + hh.motto + '”</span><span class="small muted">' + hh.desc + '</span>' + houseGrow(hh.id, HW) + '</button>';
     }).join('') + '</div></div>';
     if (tab !== 'login' && tab !== 'findid') h += '<div><div class="section-t">학과 선택</div><p class="small muted" style="margin-bottom:10px">싸우는 방식입니다. 입학한 뒤에는 전과시험을 봐서 바꿀 수 있습니다.</p><div class="housepick clspick">' + D.CLASSES.map(function (x) {
       return '<button data-act="icls" data-a="' + x.id + '" class="' + (S.icls === x.id ? 'on' : '') + '"><span class="hhead">' + clsDot(x.id, 40) + '<span class="hn">' + x.name + '</span></span><span class="small muted">' + x.desc + '</span><span class="hb gold">' + x.bonusText + '</span><span class="tiny faint">잘 맞는 자리: ' + x.pos + ' · 전용 수업: ' + x.subj + ' · 전용 주문: ' + x.spells + '</span></button>';
@@ -4261,7 +4270,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102039;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102040;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
