@@ -30,6 +30,8 @@ function create(dbx, sec, opts) {
       if (tag === 'priv') { if (!op || !p.priv) return; }
       else if (tag === 'mine') { if (p.pid !== me) return; }
       else { if (p.priv) return; if (tag && p.tag !== tag) return; }   // 관리자만 보기 글은 일반 목록에 나오지 않는다 (운영진 포함)
+      if (f.sp === 'idea' ? p.tag !== 'idea' : p.tag === 'idea') return;   // 건의함(건의 말머리)과 게시판(나머지)을 나눠 보인다
+      if (f.st && (p.st || '') !== f.st) return;   // 건의함: 처리 상태로 보기
       if (f.hideDone && p.st === 'done') return;   // 해결 완료 숨기기
       if (q) {
         const hit = qt === 'author' ? nameOf(p.pid).toLowerCase().replace(/ /g, '').indexOf(q.replace(/ /g, '')) >= 0

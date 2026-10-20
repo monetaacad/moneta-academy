@@ -33,6 +33,7 @@
 
   /* ───────── 아이콘 ───────── */
   var IC = {
+    idea: '<path d="M7.5 12V3.5h9V12"/><path d="M12 9.6l-1.9-1.8a1.15 1.15 0 0 1 1.9-1.3 1.15 1.15 0 0 1 1.9 1.3z" fill="currentColor" stroke-width="0.8"/><rect x="3.5" y="12" width="17" height="9" rx="1.5"/><path d="M7 12h10" stroke-width="2.4"/>',   // 마음의 소리함: 하트 쪽지가 상자로
     home: '<path d="M4 20V10l8-6 8 6v10M9 20v-6h6v6"/>', lecture: '<path d="M4 5h6a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H4zM20 5h-6a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h6z"/>',
     exam: '<path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h5"/>', explore: '<circle cx="12" cy="12" r="8"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/>',
     gear: '<path d="M8 4l4 2 4-2 3 5-3 2v9H8v-9L5 9z"/>', work: '<path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3M7.5 14h9"/>',
@@ -77,7 +78,7 @@
   function icon(k) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IC[k] + '</svg>'; }
   var VIEWS = [
     { id: 'home', name: '아카데미 광장' }, { id: 'lecture', name: '강의실' }, { id: 'explore', name: '원정' }, { id: 'tower', name: '별의 탑' }, { id: 'ctower', name: '무한의 탑' }, { id: 'exam', name: '시험·결투' },
-    { id: 'world', name: '월드 보스' }, { id: 'party', name: '파티' }, { id: 'guild', name: '동아리' }, { id: 'friends', name: '친구' }, { id: 'board', name: '게시판' }, { id: 'auction', name: '떠돌이 상인' }, { id: 'market', name: '거래소' }, { id: 'gear', name: '장비·능력' }, { id: 'work', name: '공방', grade: 2 }, { id: 'lib', name: '서고' },
+    { id: 'world', name: '월드 보스' }, { id: 'party', name: '파티' }, { id: 'guild', name: '동아리' }, { id: 'friends', name: '친구' }, { id: 'board', name: '게시판' }, { id: 'idea', name: '건의함' }, { id: 'auction', name: '떠돌이 상인' }, { id: 'market', name: '거래소' }, { id: 'gear', name: '장비·능력' }, { id: 'work', name: '공방', grade: 2 }, { id: 'lib', name: '서고' },
     { id: 'shop', name: '매점' }, { id: 'lore', name: '세계관' }, { id: 'rec', name: '기록실' }, { id: 'rank', name: '랭킹' }, { id: 'hcup', name: '기숙사' }
   ];
   function viewOpen(v) { return !v.grade || S.P.grade >= v.grade || (v.id === 'work' && R.famOpen(S.P)); }   // 공방은 사역마가 열리면(레벨) 2학년 전에도
@@ -92,7 +93,8 @@
   ];
   var TAB_NAMES = { auction: '떠돌이 상인', home: '광장', lecture: '강의실', lib: '서고 · 연구', explore: '원정', tower: '별의 탑', ctower: '무한의 탑', exam: '시험 · 결투제', world: '월드 보스', rank: '랭킹', hcup: '기숙사', gear: '장비 · 능력치', work: '공방', party: '파티', guild: '동아리', friends: '친구', board: '게시판', market: '거래소', shop: '매점', lore: '세계관', rec: '업적 · 도감' };
   S.gtab = {};
-  function groupOf(v) { return GROUPS.find(function (g) { return g.tabs.indexOf(v) >= 0; }) || GROUPS[0]; }
+  var IDEA_GROUP = { id: 'idea', name: '건의함', tabs: ['idea'] };   // 건의함: 안내도 밖(상단 아이콘)에서 연다
+  function groupOf(v) { return GROUPS.find(function (g) { return g.tabs.indexOf(v) >= 0; }) || (v === 'idea' ? IDEA_GROUP : GROUPS[0]); }
 
   /* ───────── 토스트 · 모달 ───────── */
   // 비활성 버튼: 왜 안 되는지 data-why에 적어 두면, 눌렀을 때 잠깐 알려 준다 (비활성 버튼은 클릭을 받지 못하므로 좌표로 찾는다)
@@ -242,7 +244,7 @@
       '<div class="memenu" id="memenu" role="menu" hidden><button role="menuitem" data-act="me" data-a="view">' + icon('user') + '내 정보</button><button role="menuitem" data-act="me" data-a="friends">' + icon('chat') + '친구<span class="tag br num" id="mm-fr" hidden></span></button><button role="menuitem" data-act="nav" data-a="party">' + icon('party') + '파티<span class="tag br num" id="mm-pt" hidden></span></button><button role="menuitem" data-act="nav" data-a="guild">' + icon('guild') + '동아리</button><button role="menuitem" data-act="goto" data-a="rec" data-b="titles">' + icon('rec') + '칭호 도감</button></div></div>' +
       '<div class="topmeta"><span class="seg cal" data-l="cal" data-html="1"></span><span class="seg" data-l="buffs" data-html="1"></span><span class="seg conn" id="conn" hidden>서버 연결이 끊겼습니다 · 다시 연결 중</span></div>' +
       '<div class="resbar">' + chip('mana', '마나', '#7fb8ff') + chip('gold', CUR, '#f0cf8a') + chip('know', '지식', '#a6e3cf') + chip('stone', '마석', '#c4a5ff') + chip('shard', '별조각', '#fff0a0') + '</div>' +
-      '<div class="topbtns"><button class="icon-btn notebtn" data-act="notes" aria-label="알림" title="알림">' + icon('bell') + '<span class="ibadge" id="notebadge" hidden></span></button><button class="icon-btn mailbtn" data-act="mailbox" aria-label="우편함" title="우편함">' + icon('mail') + '<span class="ibadge" id="mailbadge" hidden></span></button><button class="icon-btn patchbtn" data-act="patch" aria-label="업데이트 노트" title="업데이트 노트">' + icon('patch') + '<span class="ibadge dot" id="patchbadge"' + (patchNew() ? '' : ' hidden') + '></span></button><button class="icon-btn guidebtn" data-act="guide" aria-label="플레이 가이드" title="플레이 가이드">' + icon('guide') + '</button><button class="icon-btn" data-act="settings" aria-label="설정" title="설정">' + icon('cog') + '</button></div>' +
+      '<div class="topbtns"><button class="icon-btn notebtn" data-act="notes" aria-label="알림" title="알림">' + icon('bell') + '<span class="ibadge" id="notebadge" hidden></span></button><button class="icon-btn mailbtn" data-act="mailbox" aria-label="우편함" title="우편함">' + icon('mail') + '<span class="ibadge" id="mailbadge" hidden></span></button><button class="icon-btn patchbtn" data-act="patch" aria-label="업데이트 노트" title="업데이트 노트">' + icon('patch') + '<span class="ibadge dot" id="patchbadge"' + (patchNew() ? '' : ' hidden') + '></span></button><button class="icon-btn ideabtn" data-act="nav" data-a="idea" aria-label="건의함" title="건의함">' + icon('idea') + '</button><button class="icon-btn guidebtn" data-act="guide" aria-label="플레이 가이드" title="플레이 가이드">' + icon('guide') + '</button><button class="icon-btn" data-act="settings" aria-label="설정" title="설정">' + icon('cog') + '</button></div>' +
       '</div></header>' +
       '<div class="body"><nav class="nav" id="nav" aria-label="아카데미 안내도"></nav><main id="view"></main><aside id="chatdock" class="dock" aria-label="실시간 채팅"></aside></div>';
     updateMeBadge();
@@ -3075,8 +3077,8 @@
   };
   // 가이드 › 건의하기: 게시판 글쓰기를 「건의」 말머리로 바로 연다 (쓰던 건의 글이 있으면 이어서)
   ACT.suggest = function () {
-    closeModal(); var b = S.bd; if (!b.draft || b.draft.id || b.draft.tag !== 'idea') b.draft = { tag: 'idea', title: '', body: '', priv: false };
-    b.mode = 'write'; ACT.nav('board'); window.scrollTo(0, 0); setTimeout(function () { var t = $('#bd-title'); if (t && !t.value) t.focus(); }, 80);
+    closeModal(); bdUse('idea'); var b = S.bd; if (!b.draft || b.draft.id || b.draft.tag !== 'idea') b.draft = { tag: 'idea', title: '', body: '', priv: false };
+    b.mode = 'write'; ACT.nav('idea'); window.scrollTo(0, 0); setTimeout(function () { var t = $('#bd-title'); if (t && !t.value) t.focus(); }, 80);
   };
   ACT.gcat = function (c) { S.gcat = c; S.gfocus = null; S.ghist = []; var q = $('#g-q') ? $('#g-q').value : ''; $$('.mbox .filters .btn').forEach(function (b) { b.classList.toggle('on', b.dataset.a === c); }); $('#g-list').innerHTML = guideList(q); };
 
@@ -4300,12 +4302,16 @@
   /* ───────── 교류 › 게시판 ─────────
      말머리(질문·모집·거래·RP·잡담·건의)와 「관리자만 보기」(문의: 쓴 사람과 운영진만). 목록 → 글 → 댓글, 글쓰기는 같은 화면 안에서. */
   var BTAG = {}; D.BOARD_TAGS.forEach(function (t) { BTAG[t.id] = t; });
-  S.bd = { tag: '', q: '', qt: 'all', page: 1, data: null, at: 0, post: null, mode: 'list', draft: null, com: '' };
+  // 게시판과 건의함은 같은 글 저장소를 쓰고 화면만 나눈다 (건의 말머리 글 = 건의함). 화면마다 목록 상태를 따로 둔다
+  function bdNew() { return { tag: '', st: '', q: '', qt: 'all', page: 1, data: null, at: 0, post: null, mode: 'list', draft: null, com: '' }; }
+  S.bd = bdNew(); S.bdSpace = 'board'; S.bdStore = {};
+  function bdUse(sp) { if (S.bdSpace === sp) return; S.bdStore[S.bdSpace] = S.bd; S.bd = S.bdStore[sp] || bdNew(); S.bdSpace = sp; }
+  function bdView() { return S.view === 'board' || S.view === 'idea'; }
   function bdTag(id) { var t = BTAG[id]; return t ? '<span class="btag" style="--tc:' + t.c + '">' + t.name + '</span>' : ''; }
   function bdWhen(t) { var d = Date.now() / 1000 - t; return d < 86400 ? ago(t) : new Date(t * 1000).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' }); }
   function loadBoard() {
     var b = S.bd; b.at = Date.now(); if (!API.board) return;
-    API.board({ tag: b.tag, q: b.q, qt: b.q ? b.qt : '', page: b.page, hd: bdHideDone() ? 1 : '' }).then(function (j) { if (j.error) { b.err = j.error; } else { b.err = ''; b.data = j; } if (S.view === 'board' && !S.modal && b.mode === 'list') render(); });
+    API.board({ tag: b.tag, q: b.q, qt: b.q ? b.qt : '', page: b.page, hd: bdHideDone() ? 1 : '', sp: S.bdSpace === 'idea' ? 'idea' : '', st: S.bdSpace === 'idea' ? b.st || '' : '' }).then(function (j) { if (j.error) { b.err = j.error; } else { b.err = ''; b.data = j; } if (bdView() && !S.modal && b.mode === 'list') render(); });
   }
   // 건의 처리 상태 (학생회장이 붙인다) · 해결 완료 숨기기(이 기기에 기억)
   var BD_ST = { review: '검토 중', wip: '확인 중', done: '해결 완료', no: '반영 안 함', norepro: '재현 안 됨' };
@@ -4313,18 +4319,22 @@
   function bdHideDone() { try { return localStorage.getItem('arc_bdhd') === '1'; } catch (e) { return !!S.bdHd; } }
   ACT.bdhd = function () { var v = !bdHideDone(); S.bdHd = v; try { localStorage.setItem('arc_bdhd', v ? '1' : '0'); } catch (e) { } S.bd.page = 1; loadBoard(); };
   ACT.bdst = function (id, st) { API.boardOp({ op: 'status', id: +id, st: st || '' }).then(function (j) { if (j.error) { toast('게시판', j.error); return; } if (j.post) S.bd.post = j.post; S.bd.data = null; render(); toast(st ? '「' + BD_ST[st] + '」 표시를 붙였습니다' : '상태 표시를 뗐습니다', '', 1600); }); };
-  function openPost(id) { var b = S.bd; API.board({ id: id }).then(function (j) { if (j.error) { toast('게시판', j.error); return; } b.post = j.post; b.mode = 'post'; b.com = ''; if (S.view === 'board') { render(); window.scrollTo(0, 0); } }); }
-  V.board = function () {
+  function openPost(id) { API.board({ id: id }).then(function (j) { if (j.error) { toast('게시판', j.error); return; } var want = j.post.tag === 'idea' ? 'idea' : 'board'; bdUse(want); var b = S.bd; if (S.view !== want) ACT.nav(want); b.post = j.post; b.mode = 'post'; b.com = ''; if (bdView()) { render(); window.scrollTo(0, 0); } }); }
+  V.board = function () { bdUse('board'); return boardView(false); };
+  V.idea = function () { bdUse('idea'); return boardView(true); };
+  var IDEA_ST = [['', '전체'], ['review', '검토 중'], ['wip', '확인 중'], ['done', '해결 완료'], ['no', '반영 안 함'], ['norepro', '재현 안 됨']];
+  function boardView(idea) {
     var b = S.bd, d = b.data;
-    var h = pageHead('묻고 · 모이고 · 나누는 곳', '게시판', '질문 · 모집 · 거래 · RP · 잡담 · 건의 · 문의');
+    var h = idea ? pageHead('학생회 건의함', '건의함', '불편한 점 · 바라는 점 · 버그 제보') : pageHead('묻고 · 모이고 · 나누는 곳', '게시판', '질문 · 모집 · 거래 · RP · 잡담 · 문의 <span class="tiny faint">· 건의는 상단 건의함에서</span>');
     if (b.mode === 'write') return h + bdWrite();
     if (b.mode === 'post' && b.post) return h + bdPost(b.post);
     if (!d || Date.now() - b.at > 30000) { if (Date.now() - b.at > 1500) loadBoard(); }
-    var op = d && d.op, filters = [['', '전체']].concat(D.BOARD_TAGS.map(function (t) { return [t.id, t.name]; })).concat([['mine', '내 글']]);
+    var op = d && d.op, filters = idea ? [['', '전체'], ['mine', '내 건의']] : [['', '전체']].concat(D.BOARD_TAGS.filter(function (t) { return t.id !== 'idea'; }).map(function (t) { return [t.id, t.name]; })).concat([['mine', '내 글']]);
     if (op) filters.push(['priv', '관리자만 보기' + (d.privN ? ' ' + d.privN : '')]);
     h += '<div class="card bdtop"><div class="row"><div class="filters">' + filters.map(function (f) { return '<button class="btn sm ghost' + (b.tag === f[0] ? ' on' : '') + (f[0] === 'priv' ? ' bdpriv' : '') + '" data-act="bdtag" data-a="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '</div><span class="spacer"></span><label class="tog tiny" style="margin-right:6px"><input type="checkbox" data-act="bdhd"' + (bdHideDone() ? ' checked' : '') + '> 해결 완료 숨기기</label><button class="btn sm primary" data-act="bdwrite">글쓰기</button></div>' +
       '<div class="row bdsearch"><select id="bd-qt" aria-label="검색 범위" style="width:auto">' + [['all', '제목+내용'], ['title', '제목'], ['author', '작성자']].map(function (o) { return '<option value="' + o[0] + '"' + (b.qt === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select><input id="bd-q" maxlength="30" placeholder="검색어" value="' + esc(b.q) + '"><button class="btn sm" data-act="bdsearch">검색</button>' + (b.q ? '<button class="btn sm ghost" data-act="bdclear">검색 지우기</button>' : '') + '</div>' +
       (b.tag === 'mine' ? '<p class="tiny faint" style="margin-top:6px">내가 작성한 글입니다. 「관리자만 보기」로 남긴 문의와 운영진 답변도 여기서 봅니다.</p>' : b.tag === 'priv' ? '<p class="tiny gold" style="margin-top:6px">운영진에게만 보이는 문의·건의입니다. 일반 목록에는 나오지 않습니다.</p>' : '') + '</div>';
+    if (idea) h += '<div class="filters bdstf" style="margin:-4px 0 10px">' + IDEA_ST.map(function (x) { return '<button class="btn sm ghost' + ((b.st || '') === x[0] ? ' on' : '') + '" data-act="bdstf" data-a="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div>';   // 처리 상태로 보기
     if (b.err) h += '<p class="small bad">' + esc(b.err) + '</p>';
     if (!d) return h + '<div class="empty">불러오는 중…</div>';
     if (!d.list.length) return h + '<div class="empty">' + (b.q ? '찾는 글이 없습니다.' : '아직 글이 없습니다. 첫 글을 남길 차례.') + '</div>';
@@ -4367,9 +4377,9 @@
     return h;
   }
   function bdWrite() {
-    var b = S.bd, dr = b.draft || { tag: 'q', title: '', body: '', priv: false };
+    var b = S.bd, dr = b.draft || { tag: S.bdSpace === 'idea' ? 'idea' : 'q', title: '', body: '', priv: false };
     var h = '<div class="card bdwrite"><div class="row between"><h3>' + (dr.id ? '글 수정' : '글쓰기') + '</h3><button class="btn sm ghost" data-act="bdcancel">취소</button></div>' +
-      '<div class="filters" role="radiogroup" aria-label="말머리" style="margin-top:8px">' + D.BOARD_TAGS.map(function (t) { return '<button class="btn sm ghost' + (dr.tag === t.id ? ' on' : '') + '" role="radio" aria-checked="' + (dr.tag === t.id) + '" data-act="bdwtag" data-a="' + t.id + '">' + t.name + '</button>'; }).join('') + '</div>' +
+      (S.bdSpace === 'idea' ? '<p class="tiny faint" style="margin-top:6px">건의 · 버그 제보는 운영진이 확인한 뒤 처리 상태(검토 중 · 확인 중 · 해결 완료 등)를 붙입니다.</p>' : '<div class="filters" role="radiogroup" aria-label="말머리" style="margin-top:8px">' + D.BOARD_TAGS.filter(function (t) { return t.id !== 'idea'; }).map(function (t) { return '<button class="btn sm ghost' + (dr.tag === t.id ? ' on' : '') + '" role="radio" aria-checked="' + (dr.tag === t.id) + '" data-act="bdwtag" data-a="' + t.id + '">' + t.name + '</button>'; }).join('') + '</div>') +
       '<div class="field" style="margin-top:10px"><label class="small muted" for="bd-title">제목 <span class="faint">(40자)</span></label><input id="bd-title" maxlength="40" value="' + esc(dr.title) + '"></div>' +
       '<div class="field" style="margin-top:10px"><label class="small muted" for="bd-body">내용 <span class="faint" id="bd-n">' + dr.body.length + ' / 3000</span></label><textarea id="bd-body" maxlength="3000" rows="10" style="font-family:var(--f-body);font-size:14px"' + (dr.tag === 'rp' ? ' placeholder="대사 *행동* — 채팅처럼 별표 사이는 행동 지문"' : '') + '>' + esc(dr.body) + '</textarea>' + (dr.tag === 'rp' ? '<span class="tiny faint">RP 글은 채팅처럼 <i class="act">*별표 사이*</i>가 행동 지문으로 보입니다.</span>' : '') + '</div>' +
       '<label class="tog" style="margin-top:10px"><input type="checkbox" id="bd-priv"' + (dr.priv ? ' checked' : '') + '> 관리자만 보기 <span class="tiny faint">문의·건의·신고처럼 운영진에게만 보내는 글. 목록에 나오지 않고, 나와 운영진만 볼 수 있습니다.</span></label>' +
@@ -4383,10 +4393,11 @@
   ACT.bdtag = function (t) { S.bd.tag = t; S.bd.page = 1; S.bd.data = null; render(); loadBoard(); };
   ACT.bdsearch = function () { var b = S.bd; b.q = (($('#bd-q') || {}).value || '').trim(); b.qt = ($('#bd-qt') || {}).value || 'all'; b.page = 1; b.data = null; render(); loadBoard(); };
   ACT.bdclear = function () { S.bd.q = ''; S.bd.page = 1; S.bd.data = null; render(); loadBoard(); };
+  ACT.bdstf = function (st) { S.bd.st = st || ''; S.bd.page = 1; S.bd.data = null; render(); loadBoard(); };
   ACT.bdpage = function (n) { S.bd.page = +n; S.bd.data = null; render(); loadBoard(); window.scrollTo(0, 0); };
   ACT.bdopen = function (id) { openPost(+id); };
   ACT.bdback = function () { S.bd.mode = 'list'; S.bd.post = null; render(); loadBoard(); };
-  ACT.bdwrite = function () { var b = S.bd; if (!b.draft || b.draft.id) b.draft = { tag: b.tag && BTAG[b.tag] ? b.tag : 'q', title: '', body: '', priv: b.tag === 'priv' }; b.mode = 'write'; render(); window.scrollTo(0, 0); };
+  ACT.bdwrite = function () { var b = S.bd; if (!b.draft || b.draft.id) b.draft = { tag: S.bdSpace === 'idea' ? 'idea' : b.tag && BTAG[b.tag] && b.tag !== 'idea' ? b.tag : 'q', title: '', body: '', priv: b.tag === 'priv' }; b.mode = 'write'; render(); window.scrollTo(0, 0); };
   ACT.bdedit = function () { var p = S.bd.post; if (!p) return; S.bd.draft = { id: p.id, tag: p.tag, title: p.title, body: p.body, priv: p.priv }; S.bd.mode = 'write'; render(); };
   ACT.bdcancel = function () { var b = S.bd, wasEdit = b.draft && b.draft.id; b.draft = null; b.mode = wasEdit && b.post ? 'post' : 'list'; render(); };
   ACT.bdwtag = function (t) { bdKeep(); S.bd.draft.tag = t; render(); };
@@ -4741,7 +4752,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102114;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102115;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

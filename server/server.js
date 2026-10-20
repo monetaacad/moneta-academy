@@ -1425,7 +1425,7 @@ routes['GET /api/board'] = (req, res) => {
   const u = new URL(req.url, 'http://x').searchParams;
   const id = u.get('id');
   if (id) { const p = board.get(me, id); return p ? send(req, res, 200, { post: p }) : fail(req, res, 404, '없는 글이거나 볼 수 없는 글입니다'); }
-  send(req, res, 200, board.list(me, { tag: u.get('tag') || '', q: u.get('q') || '', qt: u.get('qt') || '', page: u.get('page') || 1, hideDone: u.get('hd') === '1' }));
+  send(req, res, 200, board.list(me, { tag: u.get('tag') || '', q: u.get('q') || '', qt: u.get('qt') || '', page: u.get('page') || 1, hideDone: u.get('hd') === '1', sp: u.get('sp') === 'idea' ? 'idea' : '', st: String(u.get('st') || '').slice(0, 10) }));
 };
 routes['POST /api/board'] = async (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
