@@ -324,6 +324,13 @@ function open(dir) {
       floor INTEGER NOT NULL DEFAULT 0,
       log TEXT NOT NULL DEFAULT '[]'
     );
+    -- 성장 스냅샷: 하루(한국 날짜) 한 번, 학생마다 한 줄 (레벨 · 전투력 · 누적 통계). 성장곡선 분석용
+    CREATE TABLE IF NOT EXISTS growth (
+      day INTEGER NOT NULL,
+      pid TEXT NOT NULL,
+      data TEXT NOT NULL,
+      PRIMARY KEY (day, pid)
+    );
   `);
   const gcols = db.prepare(`PRAGMA table_info(guilds)`).all().map((c) => c.name);
   [['lv', 'INTEGER NOT NULL DEFAULT 1'], ['xp', 'INTEGER NOT NULL DEFAULT 0'], ['gold', 'REAL NOT NULL DEFAULT 0'], ['ranks', "TEXT NOT NULL DEFAULT '{}'"]].forEach((c) => { if (gcols.indexOf(c[0]) < 0) db.exec(`ALTER TABLE guilds ADD COLUMN ${c[0]} ${c[1]}`); });
@@ -342,6 +349,9 @@ function open(dir) {
   ['moneta.db', 'moneta.db-wal', 'moneta.db-shm'].forEach((f) => { try { fs.chmodSync(path.join(dir, f), 0o600); } catch (e) { } });
   try { fs.chmodSync(dir, 0o700); } catch (e) { }
   const q = {
+    growthPut: db.prepare(`INSERT OR REPLACE INTO growth (day, pid, data) VALUES (?, ?, ?)`),
+    growthFrom: db.prepare(`SELECT day, pid, data FROM growth WHERE day >= ? ORDER BY day, pid`),
+    growthDays: db.prepare(`SELECT day, COUNT(*) AS n FROM growth GROUP BY day ORDER BY day DESC LIMIT 400`),
     insertPlayer: db.prepare(`INSERT INTO players (id, name, name_key, house, pass, created, last_seen, state) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`),
     playerByKey: db.prepare(`SELECT id, name, pass, banned FROM players WHERE name_key = ?`),
     playerSearch: db.prepare(`SELECT id, name, house, grade, lvl, avatar_v, title, last_seen FROM players WHERE name_key LIKE ? ESCAPE '\\' AND banned = 0 AND guest = 0 ORDER BY (name_key = ?) DESC, last_seen DESC LIMIT 20`),
