@@ -137,6 +137,18 @@
         $('#umsg').textContent = '학생 이름 「' + j.name + '」 · 아이디 ' + (j.login ? '「' + j.login + '」' : '(아직 기록 없음 · 다음 로그인 때 기록 · 아이디 칸에 짐작 아이디를 넣고 조회하면 맞는지 확인 가능)') + chk + (j.rank ? ' · ' + j.rank : '') + (j.banned ? ' · 이용 정지' : '');
       });
     },
+    // 학생 활동 기록: 게임 안 기록 최근 50줄(같은 일이 이어지면 ×횟수)과 영웅 · 전설 장비 보유 현황
+    plog: function () {
+      var n = $('#un').value.trim(); if (!n) { $('#umsg').textContent = '학생 이름 입력 필요'; return; }
+      api('POST', '/api/admin/plog', { name: n }).then(function (j) {
+        if (j.error) { $('#umsg').textContent = j.error; $('#plog').innerHTML = ''; return; }
+        $('#umsg').textContent = '「' + j.name + '」 활동 기록 · 원정 완료 ' + j.st.expJobs + '회 · 지금까지 얻은 영웅 ' + j.st.epicFound + '개 · 전설 ' + j.st.legendFound + '개';
+        var RN = ['일반', '고급', '희귀', '영웅', '전설'];
+        $('#plog').innerHTML = '<p class="small" style="margin-top:8px"><b>보유 영웅 · 전설</b> ' + (j.high.length ? j.high.map(function (x) { return esc(RN[x.r] + ' · ' + x.name + ' (Lv ' + x.ilvl + ', ' + x.at + ')'); }).join(' / ') : '없음') + '</p>' +
+          '<div class="scroll" style="margin-top:8px;max-height:320px"><table><thead><tr><th>때</th><th>기록</th></tr></thead><tbody>' + j.log.map(function (l) { return '<tr><td>' + when(l.t) + '</td><td>' + esc(l.m) + (l.n > 1 ? ' <b>×' + l.n + '</b>' : '') + '</td></tr>'; }).join('') + '</tbody></table></div>' +
+          '<p class="tiny faint" style="margin-top:4px">같은 기록이 이어지면 한 줄로 묶고 횟수(×)를 표시합니다. 시각은 마지막으로 일어난 때입니다.</p>';
+      });
+    },
     opoff: function () { var n = $('#un').value.trim(); if (!n) return; api('POST', '/api/admin/ops', { name: n, op: false }).then(function (j) { $('#umsg').textContent = j.error || n + ' 님의 운영자 권한을 뗐습니다'; oplog(); }); },
     slow: function () { api('POST', '/api/admin/slow', { sec: +$('#slowsec').value || 0 }).then(function (j) { toast(j.error || (j.sec ? '월드 슬로우 모드 ' + j.sec + '초' : '슬로우 모드를 껐습니다')); oplog(); }); },
     mforever: function () { $('#mexp').value = 'forever'; $('#mdatew').hidden = true; },
