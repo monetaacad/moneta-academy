@@ -1790,6 +1790,7 @@ mark.hl { color: inherit; background: linear-gradient(transparent 38%, color-mix
 .fsr .fsn { flex: 1; min-width: 0; }
 .fsr .fsv { text-align: right; }
 .fsr.z { opacity: .5; }
+.kv .kvz { opacity: .5; }   /* 전투 능력 요약: 전체 능력치처럼 적용되지 않는(×1.00) 위력은 흐리게 */
 .fsnow { font-size: 10px; padding: 0 5px; }
 .fssrc { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 2px 6px 8px 14px; font-size: 12px; color: var(--muted); }
 .fssrc b { color: var(--ink2); }
