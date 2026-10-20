@@ -232,7 +232,8 @@
   };
   // 알림을 보낼 일: 화면(창을 내렸을 때 알림)과 서버(푸시 알림)가 같은 목록을 쓴다
   // kind = 설정에서 고르는 종류, key = 같은 일을 두 번 알리지 않기 위한 이름, t = 일어나는 시각
-  R.NOTIFY_KINDS = [['lec', '수업'], ['exp', '원정'], ['res', '연구'], ['disp', '사역마 파견'], ['jar', '정령 병이 가득 참'], ['sky', '하늘 이벤트 시작'], ['auc', '떠돌이 상인 도착'], ['aucbid', '경매 입찰 (밀림 · 마감 5분 전)']];
+  R.CHAT_NOTIFY = { exr: 'chexr', party: 'chparty', dm: 'chdm' };   // 새 채팅 알림 종류 (처음부터 켜 둔다)
+  R.NOTIFY_KINDS = [['lec', '수업'], ['exp', '원정'], ['res', '연구'], ['disp', '사역마 파견'], ['jar', '정령 병이 가득 참'], ['sky', '하늘 이벤트 시작'], ['auc', '떠돌이 상인 도착'], ['aucbid', '경매 입찰 (밀림 · 마감 5분 전)'], ['chexr', '원정 채팅'], ['chparty', '파티 채팅'], ['chdm', '1:1 채팅']];
   R.notifyEvents = function (P, now) {
     var out = [], add = function (key, kind, t, title, body) { if (t > 0) out.push({ key: key, kind: kind, t: t, title: title, body: body }); };
     (P.lec || []).forEach(function (j, i) { if (j) add('lec' + i + ':' + j.end, 'lec', j.end, '수업이 끝났습니다', (R.SUBJ[j.s] ? R.SUBJ[j.s].name : '수업') + ' · 다음 수업 시작 가능'); });
