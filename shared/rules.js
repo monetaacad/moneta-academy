@@ -856,12 +856,15 @@
      기숙사 특기: 자기 기숙사 특기 활동은 점수 ×1.3 (원정 처치 · 기말시험은 모든 기숙사 같음).
      거래 · 경매는 서로 사고팔아 점수를 올릴 수 있어 원래 점수가 없다. */
   R.CUP_SPEC_MULT = 1.3;
+  R.cupAdd = function (P, v, cat) { cupAdd(P, v, cat); };
   R.CUP_SPEC = {
     lanterna: { cats: ['lec', 'res', 'task'], text: '수업 · 연구 · 교수 과제' },
     clepsydra: { cats: ['disp', 'brew', 'dream'], text: '사역마 파견 · 물약 조제 · 꿈길' },
     corona: { cats: ['boss', 'wb', 'duel'], text: '보스 · 월드 보스 · 결투' },
-    speculum: { cats: ['enh', 'spirit', 'sky'], text: '장비 강화 · 반딧불 정령 · 하늘 올려다보기' }
+    speculum: { cats: ['enh', 'spirit', 'sky', 'shop', 'auc'], text: '장비 강화 · 반딧불 정령 · 하늘 올려다보기 · 매점 구매 · 떠돌이 상인 낙찰' }
   };
+  R.CUP_SHOP_WEEK = 200;   // 매점 구매 점수는 한 주에 이만큼까지 (아르크로 마석을 거듭 사서 점수를 올리지 못하게)
+  R.CUP_AUC = 100;         // 떠돌이 상인 경매 낙찰 1회 (학생끼리 거래인 거래소에는 점수가 없다)
   function cupAdd(P, v, cat) { if (!P.wk) return; var sp = R.CUP_SPEC[P.house]; P.wk.cup += cat && sp && sp.cats.indexOf(cat) >= 0 ? v * R.CUP_SPEC_MULT : v; }
   // 대항전 순위 점수: 이번 주 점수가 CUP_ACTIVE 이상인 학생을 「활동 학생」으로 보고, 그 평균(1인 반영은 중간 점수의 3배까지, 최소 5명으로 나눔).
   // 인원이 많은 기숙사가 합계로 앞서지 않게 한다. cups = 그 기숙사 학생들의 이번 주 점수 목록
@@ -1807,6 +1810,8 @@
     else if (id === 'bagslot') P.bagExtra += 5;
     else if (id === 'matbox') { var zs = D.ZONES.filter(function (z) { return z.from <= P.maxStage; }); out.mats = {}; for (var i = 0; i < 12; i++) { var z = pick(P, zs); P.mats[z.mat] = (P.mats[z.mat] || 0) + 1; out.mats[z.mat] = (out.mats[z.mat] || 0) + 1; } }
     else if (id === 'respec') { var tk = P.tok || (P.tok = {}); tk.respec = (tk.respec || 0) + 1; out.tok = 'respec'; }   // 소지품으로 (마실 때 「소지품」에서 사용)
+    // 대항전 점수: 별조각 물건은 쓴 별조각만큼, 아르크 물건은 5점. 한 주 CUP_SHOP_WEEK점까지
+    var sc = Math.min(cur === 'shard' ? price : 5, Math.max(0, R.CUP_SHOP_WEEK - (P.wk.shop || 0))); if (sc > 0) { P.wk.shop = (P.wk.shop || 0) + sc; cupAdd(P, sc, 'shop'); }
     return out;
   };
   // 망각의 차: 분배한 능력치 포인트를 모두 돌려받는다. 다시 직접 나눌 수 있게 자동 분배는 끈다 (켜 두면 곧바로 같은 대로 다시 나뉘므로)

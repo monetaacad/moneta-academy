@@ -1271,6 +1271,7 @@ function aucTick(now) {
     if (!dbx.q.aucDone.run(r.id).changes) return;
     if (r.bidder && !String(r.bidder).startsWith('npc:')) {
       let it = null; try { it = JSON.parse(r.item); } catch (e) { }
+      try { const Q = loadPlayer(r.bidder, nowSec()); if (Q) { R.cupAdd(Q, R.CUP_AUC, 'auc'); store.markDirty(r.bidder); } } catch (e) { log('낙찰 대항전 점수 실패', e); }   // 대항전 점수 (거울관 특기)
       if (it) sendMail(r.bidder, '떠돌이 상인', '낙찰: ' + r.name, r.bidder_name + ' 님, ' + R.fmt(r.price) + ' ' + CUR + '에 낙찰되었습니다. 좋은 주인을 만나 다행이군요.\n— 떠돌이 상인', { items: [it] }, Math.floor(Date.now() / 1000) + 14 * 86400, true);
       chat.system('notice', '떠돌이 상인: ' + r.bidder_name + ' 님이 ' + R.josa('「' + r.name + '」', '을', '를') + ' ' + R.fmt(r.price) + ' ' + CUR + '에 낙찰받았습니다.', Date.now() / 1000);
     }
