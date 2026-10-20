@@ -1794,3 +1794,9 @@ mark.hl { color: inherit; background: linear-gradient(transparent 38%, color-mix
 .pcard.bglight .av0 { color: color-mix(in srgb, var(--hc) 55%, #000); border-color: color-mix(in srgb, var(--hc) 55%, #000); background: rgba(255, 255, 255, .5); }
 .pcard.bgdark .small span[style*="color"] { color: color-mix(in srgb, currentColor 60%, #fff) !important; }   /* 기숙사 이름: 배경에 맞춰 밝게 · 어둡게 */
 .pcard.bglight .small span[style*="color"] { color: color-mix(in srgb, currentColor 55%, #000) !important; }
+/* 거래소 여러 개 올리기: 수량 × 개당 가격 = 최종가, 시세 경고 */
+.mksell input.mkunit { width: 110px; }
+.mksr .mktot { white-space: nowrap; }
+.mksell .mkwarn { grid-column: 1 / -1; }
+.mksell .mkwarn:empty { display: none; }
+@media (max-width: 600px) { .mksr { flex-wrap: wrap; } .mksr input.mkunit { flex: 1; width: auto; min-width: 0; } }

@@ -677,7 +677,7 @@ var DATA = (function () {
   // 기말시험 과목: subj = 공통(모두 기준 레벨), opt = 선택(이 중 레벨이 가장 높은 1과목이 반영. 예전 과목이 반드시 들어 있다)
   D.EXAMS = [
     { grade: 1, title: '1학년 기말: 기초 마법 이론', subj: ['elem', 'ward'], opt: ['syntax', 'sword', 'arcana'], req: 3, duel: 9, examiner: '견습 시험관 골렘' },
-    { grade: 2, title: '2학년 기말: 원소와 연금', subj: ['ward', 'alch'], opt: ['elem', 'martial', 'mend'], req: 6, duel: 17, examiner: '연금 키메라' },
+    { grade: 2, title: '2학년 기말: 원소와 연금', subj: ['ward', 'alch'], opt: ['elem', 'martial', 'mend', 'beast'], req: 6, duel: 17, examiner: '연금 키메라' },
     { grade: 3, title: '3학년 기말: 생명과 주문', subj: ['alch', 'beast'], opt: ['syntax', 'martial', 'sword'], req: 10, duel: 26, examiner: '환수 사육사의 그리핀' },
     { grade: 4, title: '4학년 기말: 하늘을 읽는 자', subj: ['beast', 'astro'], opt: ['elem', 'martial', 'mend'], req: 14, duel: 35, examiner: '별자리 수호상' },
     { grade: 5, title: '5학년 기말: 결계와 비행', subj: ['ward', 'astro'], opt: ['flight', 'sword'], req: 18, duel: 45, examiner: '카야 교관의 분신' },
