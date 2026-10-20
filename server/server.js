@@ -707,10 +707,12 @@ routes['POST /api/push/unsub'] = async (req, res) => {
   const pid = authed(req); if (!pid) return fail(req, res, 401, '로그인이 필요합니다');
   const b = await readJson(req, 4096); push.unsubscribe(pid, b.endpoint); send(req, res, 200, { ok: true });
 };
+// 친구 개인 메모: 쓴 학생에게만 내려 준다 (상대에게는 보이지 않는다)
+const memoOf = (m) => { if (!m) return ''; try { return sec.dec(m); } catch (e) { return ''; } };
 routes['GET /api/friends'] = (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
   if (limited('fl:' + me, 1, 10)) return fail(req, res, 429, '요청이 너무 잦습니다');
-  const mine = dbx.q.friendList.all(me).map((r) => ({ id: r.id, state: r.state === 'ok' ? 'ok' : 'out', name: r.name, house: r.house, grade: r.grade, lvl: r.lvl, av: r.avatar_v, title: r.title, status: profileOf(r.profile).status, online: r.state === 'ok' && isOnline(r.id), seen: r.last_seen }));
+  const mine = dbx.q.friendList.all(me).map((r) => ({ id: r.id, state: r.state === 'ok' ? 'ok' : 'out', name: r.name, house: r.house, grade: r.grade, lvl: r.lvl, av: r.avatar_v, title: r.title, status: profileOf(r.profile).status, online: r.state === 'ok' && isOnline(r.id), seen: r.last_seen, memo: memoOf(r.memo) }));
   const inc = dbx.q.friendIncoming.all(me).map((r) => ({ id: r.id, name: r.name, house: r.house, grade: r.grade, lvl: r.lvl, av: r.avatar_v, t: r.t }));
   send(req, res, 200, { friends: mine.filter((f) => f.state === 'ok').sort((a, b) => (b.online - a.online) || (b.seen - a.seen)), out: mine.filter((f) => f.state === 'out'), inc });
 };
@@ -750,6 +752,12 @@ routes['POST /api/friends'] = async (req, res) => {
     dbx.tx(() => { dbx.q.friendPut.run(me, id, 'ok', t); dbx.q.friendPut.run(id, me, 'ok', t); });
     addNote(id, 'friend', pname(me) + ' 님이 친구 신청을 받았습니다', { me: 'friends' });
     return send(req, res, 200, { ok: true, state: 'ok' });
+  }
+  if (op === 'memo') {
+    if (st !== 'ok' && st !== 'out') return fail(req, res, 400, '친구에게만 메모를 남길 수 있습니다');
+    const memo = String(b.memo || '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 60);
+    dbx.q.friendMemo.run(memo ? sec.enc(memo) : '', me, id);
+    return send(req, res, 200, { ok: true, memo });
   }
   if (op === 'remove' || op === 'decline' || op === 'cancel') { dbx.q.friendDel.run(me, id, id, me); return send(req, res, 200, { ok: true, state: null }); }
   fail(req, res, 400, '알 수 없는 요청입니다');
