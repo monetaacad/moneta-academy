@@ -1572,7 +1572,7 @@
     if (!list.length) h += '<div class="empty">가방이 비어 있습니다. 원정에서 장비를 가져옵니다.</div>';
     else h += '<div class="inv">' + list.map(function (it) {
       var up = R.powerWith(P, it) - c.power;
-      return '<button class="itm rb' + it.r + (S.sel === it.u ? ' sel' : '') + '" data-act="sel" data-a="' + it.u + '"><span class="in" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</span><span class="il">' + R.slotName(it) + ' · Lv ' + it.ilvl + '</span>' + (up > 0 ? '<span class="up">▲</span>' : '') + (it.lock ? '<span class="lk">잠금</span>' : '') + '</button>';
+      return '<button class="itm rb' + it.r + (S.sel === it.u ? ' sel' : '') + '" data-act="sel" data-a="' + it.u + '"><span class="in" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</span><span class="il">' + R.slotName(it) + ' · Lv ' + it.ilvl + '</span>' + (up > 0 ? '<span class="up">▲</span>' : '') + (it.lock ? '<span class="lk">잠금</span>' : '') + '</button>' + (S.sel === it.u ? '<div class="invdetail">' + detailCard() + '</div>' : '');
     }).join('') + '</div>';
     h += '<hr class="sep"><div class="row small"><span class="muted">일괄 판매(잠금 제외)</span>' + D.RARITY.slice(0, 4).map(function (r) { return '<button class="btn sm ghost" data-act="do" data-a="sellBelow" data-b="' + r.id + '">' + r.name + ' 이하</button>'; }).join('') + '</div>' +
       '<div class="row small" style="margin-top:6px"><span class="muted">일괄 분해(잠금 제외)</span>' + D.RARITY.slice(0, 4).map(function (r) { return '<button class="btn sm ghost" data-act="do" data-a="dismantleBelow" data-b="' + r.id + '">' + r.name + ' 이하</button>'; }).join('') + '</div><p class="tiny faint" style="margin-top:4px">마석 <b class="num">' + fmt(P.res.stone) + '</b> · ' + dotImg('dust', 14) + ' 마석가루 <b class="num">' + fmt(P.res.dust || 0) + '</b> — 분해하면 ' + CUR + ' 대신 마석과 마석가루를 얻고, 가루는 재련에 사용합니다.</p>';
@@ -1666,7 +1666,7 @@
     var P = S.P, it = S.sel && R.findItem(P, S.sel);
     if (!it) return '<div class="card detail"><h3>장비 살펴보기</h3><p class="small muted">장착 칸이나 가방의 장비를 누르면 능력치와 강화 정보를 볼 수 있습니다. 초록 ▲는 지금보다 전투력이 오르는 장비입니다.</p></div>';
     var eqd = P.eq[it.slot] && P.eq[it.slot].u === it.u, c = C(), cost = R.enhCost(P, it), ch = R.enhChance(P, it), delta = eqd ? 0 : R.powerWith(P, it) - c.power;
-    var h = '<div class="card detail hl"><div class="tiny" style="color:' + rcol(it.r) + '">' + D.RARITY[it.r].name + ' ' + R.slotName(it) + ' · Lv ' + it.ilvl + (eqd ? ' · 장착 중' : '') + '</div><div class="nm" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</div><div style="margin-top:8px">' + statLines(it) + '</div>';
+    var h = '<div class="card detail hl' + (eqd ? '' : ' bagsel') + '"><div class="tiny" style="color:' + rcol(it.r) + '">' + D.RARITY[it.r].name + ' ' + R.slotName(it) + ' · Lv ' + it.ilvl + (eqd ? ' · 장착 중' : '') + '</div><div class="nm" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</div><div style="margin-top:8px">' + statLines(it) + '</div>';
     if (!eqd) h += '<div class="small" style="margin-top:8px">장착 시 전투력 <b class="num ' + (delta >= 0 ? 'good' : 'bad') + '">' + (delta >= 0 ? '+' : '') + fmt(delta) + '</b></div>';
     h += '<hr class="sep"><div class="row small"><span class="muted">강화 +' + it.enh + ' → +' + (it.enh + 1) + '</span><span class="spacer"></span>' + (it.enh >= R.ENH_MAX ? '<span class="tag br">최대 강화</span>' : '<span>성공 확률 <b class="num">' + Math.round(ch * 100) + '%</b></span>') + '</div>' + enhPreview(it, eqd) + '<div class="row" style="margin-top:10px">';
     h += eqd ? '<button class="btn sm" data-act="do" data-a="unequip" data-b="' + it.slot + '">해제</button>' : '<button class="btn sm primary" data-act="do" data-a="equip" data-b="' + it.u + '">장착</button>';
@@ -2993,7 +2993,7 @@
   };
   ACT.dailyall = function () { var P = S.P, list = P.daily.q.map(function (q, i) { return !q.done && R.dailyProg(P, q) >= q.goal ? i : -1; }).filter(function (i) { return i >= 0; }); (function next() { var i = list.shift(); if (i == null) return render(); act('daily', { i: i }).then(next); })(); };
   ACT.enh = function (u, until) { act('enhance', { u: u, until: until === 'until' }).then(function (r) { if (!r) return; Snd.play(r.success ? 'enh' : 'fail'); toast(r.success ? '강화 성공! +' + r.enh : '강화 실패', r.tries + '회 시도 · ' + MONEY(r.gold), 1800); render(); }); };
-  ACT.sel = function (u) { S.sel = u || null; render(); };
+  ACT.sel = function (u) { S.sel = u || null; render(); var d = $('.invdetail'); if (d && d.offsetParent) d.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); };   // 한 칸일 때 가방 안에 펼친 살펴보기가 보이게
   ACT.invf = function (f) { S.invF = f; render(); };
   /* ── 소지품: 장비가 아닌 것(알 · 도전권 · 물약 · 망각의 차 등)을 한곳에. 칸 제한 없음, 바로 쓰기 · 바로가기 ── */
   function bagTabs(c) { var nn = invNew().length; return '<div class="tabs bagtabs" role="tablist" style="margin-bottom:8px"><button role="tab" class="' + (S.bagTab !== 'inv' ? 'on' : '') + '" data-act="bagtab" data-a="eq">장비 가방 <span class="num tiny">' + S.P.inv.length + ' / ' + c.bag + '</span></button><button role="tab" class="' + (S.bagTab === 'inv' ? 'on' : '') + '" data-act="bagtab" data-a="inv">소지품' + (nn ? ' <span class="tag br">새 ' + nn + '</span>' : '') + '</button></div>'; }
@@ -4071,7 +4071,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102014;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102015;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
