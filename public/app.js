@@ -241,10 +241,10 @@
     }).join('') + '<div id="sidep" class="sidep"></div>';
     updateBadges(); updateSide();
   }
-  /* ── 왼쪽 안내도 아래: 내 정보 요약 (넓은 화면에서만, 접어 두면 제목 줄만) ── */
+  /* ── 왼쪽 안내도 아래: 내 정보 요약 (접어 두면 제목 줄만). 모바일은 안내도가 하단 바라서 광장 맨 위(#sidep-m)에 같은 내용 ── */
   var SIDE_OPEN = true; try { SIDE_OPEN = localStorage.getItem('arc_side') !== '0'; } catch (e) { }
   function updateSide() {
-    var box = $('#sidep'); if (!box || !S.P) return;
+    var boxes = $$('#sidep, #sidep-m'); if (!boxes.length || !S.P) return;
     var P = S.P, c = C(), h = '<div class="sph"><span class="navtitle">내 정보</span><button class="spt" data-act="sidetog" aria-expanded="' + SIDE_OPEN + '" title="' + (SIDE_OPEN ? '접기' : '펼치기') + '">' + (SIDE_OPEN ? '접기' : '펼치기') + '<span class="chev' + (SIDE_OPEN ? ' up' : '') + '" aria-hidden="true"></span></button></div>';
     if (SIDE_OPEN) {
       h += '<div class="spb"><div class="spn"><b>' + inkName(P.name, R.decoView(P).ink) + '</b><span class="tiny faint">' + (P.grade >= 8 ? '마스터' : P.grade + '학년') + ' · Lv ' + P.lvl + ' · ' + clsDot(R.clsOf(P).id, 14) + ' ' + R.clsOf(P).name + '</span>' + xpBar(P, 4) + '</div>' +
@@ -256,7 +256,7 @@
         (R.badgeWorn(P) ? (function (b) { return '<div class="tiny muted spfam">휘장 · <span style="color:' + R.GEM[b.gem].color + '">' + esc(b.name) + '</span> Lv ' + b.lv + '</div>'; })(R.badgeWorn(P)) : '') +
         (P.fam.act && R.FAM[P.fam.act] ? '<div class="tiny muted spfam">동행 · ' + R.FAM[P.fam.act].name + ' Lv ' + P.fam.own[P.fam.act].lv + '</div>' : '') + '</div>';
     }
-    if (box.__h !== h) { box.__h = h; box.innerHTML = h; }
+    boxes.forEach(function (box) { if (box.__h !== h) { box.__h = h; box.innerHTML = h; } });
   }
   function groupTabs() {
     var g = groupOf(S.view); if (g.tabs.length < 2) return '';
@@ -772,7 +772,6 @@
     if (p.fav && R.SUBJ[p.fav]) rows.push(['좋아하는 과목', R.SUBJ[p.fav].name]);
     if (p.created) rows.push(['입학', new Date(p.created * 1000).toLocaleDateString('ko-KR')]);
     if (rows.length) h += '<dl class="kv" style="margin-top:12px">' + rows.map(function (r) { return '<dt>' + r[0] + '</dt><dd>' + r[1] + '</dd>'; }).join('') + '</dl>';
-    if (p.self && !p.preview && S.P) h += xpBar(S.P, 12);   // 내 정보에서만: 경험치 (다른 학생에게는 보이지 않음)
     if (p.demoPeer) h += '<p class="tiny faint" style="margin-top:10px">데모에서는 채팅에 실린 정보만 보입니다.</p>';
     h += '<div class="row" style="margin-top:14px">';
     if (p.preview) h += '<button class="btn primary" data-act="me" data-a="profile">편집으로 돌아가기</button><button class="btn" data-act="pe-save-preview">이대로 저장</button>';
@@ -1052,6 +1051,7 @@
   V.home = function () {
     var P = S.P, cal = R.calendar(wctx(), now());
     var h = pageHead('아카데미력 ' + cal.year + '년 ' + cal.month + ' ' + cal.d + '일' + (cal.weekend ? ' · 주말' : ''), '<span class="phimg">' + dotImg('plaza', 40, '', 'twimg') + '아카데미 광장</span>', house().name + ' · ' + R.gradeLabel(P));
+    h += '<div id="sidep-m" class="sidep sidep-m card"></div>';   // 모바일만: 좌측 「내 정보」 요약과 같은 내용
     h += mqCard() + plazaScene() + noticeTicker();
     var storyH = '';
     if (storyUnread()) { var ch = D.STORY[P.story]; storyH = '<div class="card chapter hl"><div class="roman">' + ROMAN[P.story + 1] + '</div><div class="eyebrow tiny gold">새 이야기</div><h3>' + ch.title + '</h3><p class="small muted">읽고 나면 「세계관」에서 언제든 다시 볼 수 있습니다.</p><div class="row" style="margin-top:8px"><button class="btn primary sm" data-act="story" data-a="' + P.story + '">읽기</button></div></div>'; }
@@ -4066,7 +4066,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102011;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102012;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
