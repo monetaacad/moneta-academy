@@ -4278,7 +4278,7 @@
   function decoBgRef(id) { var x = id && R.DECO[id]; if (!x || x.slot !== 'bg') return null; var avg = hexOf([0, 1, 2].map(function (i) { return x.g.reduce(function (t, c) { return t + rgbOf(c)[i]; }, 0) / x.g.length; })); return { dark: decoDark(id), refs: [x.g[0], avg] }; }
   // bg: 이름이 놓인 학생 카드의 배경 꾸미기 (없으면 화면 테마를 따른다)
   function inkAttr(id, bg) {
-    var x = id && R.DECO[id]; if (!x || x.slot !== 'ink') return null; var c = x.c.map(forTone), ol = bg ? inkOutline(c, bg) : '';
+    var x = id && R.DECO[id]; if (!x || x.slot !== 'ink') return null; var c = bg ? x.c.slice() : x.c.map(forTone), ol = bg ? inkOutline(c, bg) : '';   // 배경 꾸미기가 있으면 바탕이 고정이라 테마와 상관없이 원래 잉크 색
     return c.length === 1 ? { cls: '', style: 'color:' + c[0] + ';' + ol } : { cls: 'ink' + (x.anim ? ' anim' : ''), style: 'background-image:linear-gradient(90deg,' + c.join(',') + ');' + ol };
   }
   function inkName(name, id, bg) { var k = inkAttr(id, bg); return k ? '<span class="' + k.cls + '" style="' + k.style + '">' + esc(name) + '</span>' : esc(name); }
