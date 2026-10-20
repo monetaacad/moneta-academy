@@ -195,6 +195,9 @@
   /* ───────── 자리 비운 동안 보고 ───────── */
   // 얻은 장비 이름: 높은 등급부터 3개, 나머지는 「외 N개 +」를 눌러 펼친다
   var RES_TAG = { sold: '판매', dis: '분해', mail: '우편' };
+  // 장비 프리셋에 들어 있는 장비: 몇 번 프리셋인지 (가방 · 거래소 · 동아리 창고에서 표시)
+  function presetNo(u) { var o = []; (S.P.gearSets || []).forEach(function (st, i) { if (st && st.eq) for (var k in st.eq) if (st.eq[k] === u) { o.push(i + 1); break; } }); return o; }
+  function presetTag(u) { var n = presetNo(u); return n.length ? ' <span class="pst" title="장비 프리셋 ' + n.join(' · ') + '번에 들어 있는 장비">프리셋 ' + n.join('·') + '</span>' : ''; }
   function itemNames(items) {
     var arr = items.map(function (it, i) { return [it, i]; }).sort(function (a, b) { return b[0].r - a[0].r || (b[0].ilvl || 0) - (a[0].ilvl || 0) || a[1] - b[1]; }).map(function (x) { return x[0]; });
     var nm = function (it) { return '<span style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</span>' + (RES_TAG[it.res] ? '<span class="tiny faint">(' + RES_TAG[it.res] + ')</span>' : ''); };
@@ -1767,7 +1770,7 @@
     if (!list.length) h += '<div class="empty">가방이 비어 있습니다. 원정에서 장비를 가져옵니다.</div>';
     else h += '<div class="inv">' + list.map(function (it) {
       var up = R.powerWith(P, it) - c.power;
-      return '<button class="itm rb' + it.r + (S.sel === it.u ? ' sel' : '') + '" data-act="sel" data-a="' + it.u + '"><span class="in" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</span><span class="il">' + R.slotName(it) + ' · Lv ' + it.ilvl + '</span>' + (up > 0 ? '<span class="up">▲</span>' : '') + (it.lock ? '<span class="lk">잠금</span>' : '') + '</button>' + (S.sel === it.u ? '<div class="invdetail">' + detailCard() + '</div>' : '');
+      return '<button class="itm rb' + it.r + (S.sel === it.u ? ' sel' : '') + '" data-act="sel" data-a="' + it.u + '"><span class="in" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</span><span class="il">' + R.slotName(it) + ' · Lv ' + it.ilvl + presetTag(it.u) + '</span>' + (up > 0 ? '<span class="up">▲</span>' : '') + (it.lock ? '<span class="lk">잠금</span>' : '') + '</button>' + (S.sel === it.u ? '<div class="invdetail">' + detailCard() + '</div>' : '');
     }).join('') + '</div>';
     h += '<hr class="sep"><div class="row small"><span class="muted">일괄 판매(잠금 제외)</span>' + D.RARITY.slice(0, 4).map(function (r) { return '<button class="btn sm ghost rk rk' + r.id + '" data-act="bulkask" data-a="sellBelow" data-b="' + r.id + '">' + r.name + ' 이하</button>'; }).join('') + '</div>' +
       '<div class="row small" style="margin-top:6px"><span class="muted">일괄 분해(잠금 제외)</span>' + D.RARITY.slice(0, 4).map(function (r) { return '<button class="btn sm ghost rk rk' + r.id + '" data-act="bulkask" data-a="dismantleBelow" data-b="' + r.id + '">' + r.name + ' 이하</button>'; }).join('') + '</div><p class="tiny faint" style="margin-top:4px">마석 <b class="num">' + fmt(P.res.stone) + '</b> · ' + dotImg('dust', 14) + ' 마석가루 <b class="num">' + fmt(P.res.dust || 0) + '</b> — 분해하면 ' + CUR + ' 대신 마석과 마석가루를 얻고, 가루는 재련에 사용합니다.</p>';
@@ -2463,7 +2466,7 @@
     var take = g.perms && g.perms.take, P = S.P, bag = P.inv.filter(function (it) { return !it.lock; }).sort(function (a, b) { return b.r - a.r || b.ilvl - a.ilvl; });
     var h = '<div class="grid g2"><div class="card"><div class="row between"><h3>부실 금고</h3><b class="num gold" style="font-size:18px">' + fmt(g.gold) + ' ' + CUR + '</b></div><p class="tiny faint">누구나 넣을 수 있고, 꺼내기는 「창고에서 꺼내기」 권한이 있는 부원만 할 수 있습니다. 모든 출입은 기록에 남습니다.</p>' +
       '<div class="row" style="margin-top:8px"><input id="g-gold" type="number" min="1" step="1" inputmode="numeric" placeholder="' + CUR + '" data-fmt="1" style="width:150px"><span class="tiny faint mkfmt"></span><button class="btn sm" data-act="ggold" data-a="deposit">넣기</button>' + (take ? '<button class="btn sm ghost" data-act="ggold" data-a="withdraw">꺼내기</button>' : '') + '</div></div>' +
-      '<div class="card"><h3>장비 넣기</h3>' + (bag.length ? '<div class="row" style="margin-top:6px"><select id="g-item" style="flex:1;min-width:0">' + bag.slice(0, 60).map(function (it) { return '<option value="' + it.u + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + ' · ' + D.RARITY[it.r].name + ' Lv ' + it.ilvl + '</option>'; }).join('') + '</select><button class="btn sm" data-act="gitem">넣기</button></div>' : '<p class="small muted">가방에 넣을 장비가 없습니다 (잠근 장비 제외).</p>') + '</div></div>';
+      '<div class="card"><h3>장비 넣기</h3>' + (bag.length ? '<div class="row" style="margin-top:6px"><select id="g-item" style="flex:1;min-width:0">' + bag.slice(0, 60).map(function (it) { var pn = presetNo(it.u); return '<option value="' + it.u + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + ' · ' + D.RARITY[it.r].name + ' Lv ' + it.ilvl + (pn.length ? ' · 프리셋 ' + pn.join('·') : '') + '</option>'; }).join('') + '</select><button class="btn sm" data-act="gitem">넣기</button></div>' : '<p class="small muted">가방에 넣을 장비가 없습니다 (잠근 장비 제외).</p>') + '</div></div>';
     h += '<div class="card" style="margin-top:12px"><div class="row between"><h3>창고</h3><span class="num small muted">' + g.items.length + ' / ' + g.slots + '칸</span></div>';
     h += g.items.length ? '<div class="inv" style="margin-top:8px">' + g.items.map(function (x) {
       return '<div class="itm rb' + x.r + '" title="' + esc(x.by) + ' 님이 넣음"><span class="in" style="color:' + rcol(x.r) + '">' + esc(x.name) + '</span><span class="il">' + R.slotName(x.item || x) + ' · Lv ' + x.ilvl + ' · ' + esc(x.by) + '</span>' + '<span class="row" style="gap:4px;margin-top:4px"><button class="btn sm ghost" data-act="gitemview" data-a="' + x.id + '">자세히</button>' + (take ? '<button class="btn sm ghost" data-act="gop" data-a="withdraw" data-b="' + x.id + '">꺼내기</button>' : '') + '</span></div>';
@@ -2787,7 +2790,7 @@
         (items.length ? items.slice(0, 40).map(function (it) {
           var k = pKey({ slot: it.slot, r: it.r, ilvl: it.ilvl });
           var so = (m.sopen || {})[it.u];   // 누르면 능력치 펼침
-          return '<div class="mksell' + (m.focus === it.u ? ' focus' : '') + '" data-anchor="mks-' + it.u + '"><div class="mksl"><button class="mksbtn" data-act="mksopen" data-a="' + it.u + '" aria-expanded="' + !!so + '" title="능력치 보기"><span class="small ell" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</span><span class="mkchev tiny faint">' + (so ? '접기 ▴' : '능력치 ▾') + '</span></button><div class="tiny faint ell">' + R.slotName(it) + ' Lv ' + it.ilvl + ' · ' + itemBrief(it) + ' · 상점 ' + fmt(R.sellPrice(it)) + ' ' + CUR + '</div>' + (so ? '<div class="mkst">' + statLines(it) + '</div>' : '') + priceLine(k) + '</div>' +
+          return '<div class="mksell' + (m.focus === it.u ? ' focus' : '') + '" data-anchor="mks-' + it.u + '"><div class="mksl"><button class="mksbtn" data-act="mksopen" data-a="' + it.u + '" aria-expanded="' + !!so + '" title="능력치 보기"><span class="small ell" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</span><span class="mkchev tiny faint">' + (so ? '접기 ▴' : '능력치 ▾') + '</span></button><div class="tiny faint ell">' + R.slotName(it) + ' Lv ' + it.ilvl + ' · ' + itemBrief(it) + ' · 상점 ' + fmt(R.sellPrice(it)) + ' ' + CUR + '' + presetTag(it.u) + '</div>' + (so ? '<div class="mkst">' + statLines(it) + '</div>' : '') + priceLine(k) + '</div>' +
             '<div class="mksr"><input type="number" min="1" step="1" inputmode="numeric" class="mkprice" id="mkp-' + it.u + '" data-key="' + k + '" placeholder="가격" data-fmt="1"><span class="tiny faint mkfmt"></span><button class="btn sm" data-act="mklist" data-a="item" data-b="' + it.u + '">올리기</button></div></div>';
         }).join('') : '<div class="empty">올릴 수 있는 장비가 없습니다.</div>') + '</div></div>';
       var mats = [['stone', P.res.stone]].concat(Object.keys(D.MATS).map(function (k) { return [k, P.mats[k] || 0]; })).filter(function (x) { return x[1] > 0; });
@@ -4646,7 +4649,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102094;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102095;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
