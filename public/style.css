@@ -1382,8 +1382,13 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 .bdcom.reply { padding-top: 6px; padding-bottom: 6px; }
 .bdmore { margin: 2px 0 4px; }
 .bdcform.reply { margin: 6px 0 4px; }
-.cm.rcm .cx { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; padding: 8px 10px; border: 1px solid var(--line2); border-radius: 8px; background: color-mix(in srgb, var(--brass) 6%, transparent); }
-.cm.rcm .rcpos { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.cm.rcm .cx { display: block; padding: 5px 9px; border: 1px solid var(--line2); border-radius: 8px; background: color-mix(in srgb, var(--brass) 6%, transparent); font-size: 13px; line-height: 1.5; }
+.cm.rcm .rchead { display: block; }
+.cm.rcm .rcpos { display: inline-flex; flex-wrap: wrap; gap: 3px; align-items: center; margin-left: 6px; vertical-align: 1px; }
+.cm.rcm .rcpos .postag { font-size: 10.5px; padding: 0 5px; line-height: 1.6; }
+.cm.rcm .rcfoot { display: flex; align-items: center; gap: 8px; margin-top: 3px; }
+.cm.rcm .rcfoot .rcnote { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.cm.rcm .rcfoot .btn { margin-left: auto; flex: none; padding: 2px 9px; }
 .cm.rcm .rcnote { color: var(--ink2); font-style: italic; }
 .erpeek { display: flex; flex-direction: column; gap: 6px; }
 .erprow { gap: 8px; padding: 6px 8px; border: 1px solid var(--line2); border-radius: 6px; background: var(--sunk); }
