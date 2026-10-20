@@ -1765,6 +1765,20 @@ routes['POST /api/admin/lookup'] = async (req, res) => {
   oplog('admin', '관리자', 'lookup', (row.name || '') + ' 아이디 확인');
   send(req, res, 200, { name: row.name, login: login || null, match, rank: row.role === 'chief' ? '학생회장' : row.role === 'admin' ? '학생회' : '', banned: !!row.banned });
 };
+// 운영실: 아이디를 잃어버린 학생에게 새 아이디를 정해 준다 (비밀번호는 그대로 → 새 아이디 + 원래 비밀번호로 로그인)
+routes['POST /api/admin/setlogin'] = async (req, res) => {
+  if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
+  const b = await readJson(req, 1024), row = dbx.q.playerByKey.get(nameKey(String(b.name || ''))), login = String(b.login || '').trim().toLowerCase();
+  if (!row) return fail(req, res, 404, '없는 학생입니다');
+  if (!LOGIN_RE.test(login)) return fail(req, res, 400, LOGIN_RULE);
+  if (login === nameKey(row.name)) return fail(req, res, 400, '아이디는 학생 이름과 다르게 정해 주세요');
+  const lkey = loginKey(login), other = dbx.q.playerByLogin.get(lkey);
+  if (other && other.id !== row.id) return fail(req, res, 409, '이미 쓰는 아이디입니다');
+  dbx.q.setLoginKey.run(lkey, row.id);
+  try { dbx.db.prepare('UPDATE players SET login_enc = ? WHERE id = ?').run(sec.enc(login), row.id); } catch (e) { }
+  oplog('admin', '관리자', 'setlogin', row.name + ' 아이디 새로 정함');
+  send(req, res, 200, { name: row.name, login });
+};
 routes['POST /api/admin/reset'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
   const b = await readJson(req, 1024), row = dbx.q.playerByKey.get(nameKey(String(b.name || '')));

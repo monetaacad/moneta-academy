@@ -150,6 +150,12 @@
     },
     mute: function () { api('POST', '/api/admin/mute', { name: $('#un').value.trim(), minutes: +$('#um').value }).then(function (j) { $('#umsg').textContent = j.error || '적용했습니다'; }); },
     grant: function () { api('POST', '/api/admin/grant', { name: $('#un').value.trim(), shard: +$('#ug').value, reason: $('#ur').value }).then(function (j) { $('#umsg').textContent = j.error || '지급했습니다 (보유 ' + j.shard + ')'; }); },
+    // 아이디를 잃어버린 학생: 아이디 칸에 넣은 값으로 새로 정한다 (비밀번호는 그대로)
+    setlogin: function () {
+      var n = $('#un').value.trim(), lg = $('#ulogin').value.trim(); if (!n || !lg) { $('#umsg').textContent = '학생 이름과 새 아이디 입력 필요'; return; }
+      if (!confirm('「' + n + '」의 아이디를 「' + lg + '」(으)로 새로 정합니다.\n예전 아이디로는 더 이상 로그인할 수 없고, 비밀번호는 그대로입니다.')) return;
+      api('POST', '/api/admin/setlogin', { name: n, login: lg }).then(function (j) { $('#umsg').textContent = j.error || '「' + j.name + '」의 아이디를 「' + j.login + '」(으)로 정했습니다 · 새 아이디와 원래 비밀번호로 로그인'; oplog(); });
+    },
     reset: function () {
       var n = $('#un').value.trim(), lg = $('#ulogin').value.trim(); if (!n) { $('#umsg').textContent = '학생 이름 입력 필요'; return; }
       if (!lg) { $('#umsg').textContent = '초기화할 학생의 아이디 입력 필요 (이름과 아이디가 모두 맞아야 합니다)'; return; }
