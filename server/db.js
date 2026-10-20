@@ -152,6 +152,7 @@ function open(dir) {
   if (cols.indexOf('avatar_v') < 0) db.exec(`ALTER TABLE players ADD COLUMN avatar_v INTEGER NOT NULL DEFAULT 0`);
   // 로그인 아이디: 평문 대신 HMAC 색인(sec.index)만 둔다. 게임 안에는 나오지 않는다. 빈 값은 server.js가 시작할 때 채운다
   { const fc = db.prepare(`PRAGMA table_info(friends)`).all().map((c) => c.name); if (fc.indexOf('memo') < 0) db.exec(`ALTER TABLE friends ADD COLUMN memo TEXT NOT NULL DEFAULT ''`); }   // 친구 개인 메모
+  { const ac = db.prepare(`PRAGMA table_info(auction)`).all().map((c) => c.name); if (ac.length && ac.indexOf('tier') < 0) db.exec(`ALTER TABLE auction ADD COLUMN tier INTEGER NOT NULL DEFAULT 2`); }   // 떠돌이 상인 구간 (0 신입생 · 1 중급 · 2 상급)
   { const ic = db.prepare(`PRAGMA table_info(invites)`).all().map((c) => c.name); if (ic.indexOf('op') < 0) db.exec(`ALTER TABLE invites ADD COLUMN op INTEGER NOT NULL DEFAULT 0`); }   // 운영자 초대코드
   if (cols.indexOf('login_key') < 0) db.exec(`ALTER TABLE players ADD COLUMN login_key TEXT NOT NULL DEFAULT ''`);
   if (cols.indexOf('login_enc') < 0) db.exec(`ALTER TABLE players ADD COLUMN login_enc TEXT NOT NULL DEFAULT ''`);   // 아이디 (암호화 · 운영실 확인용)
@@ -313,7 +314,8 @@ function open(dir) {
       bidder_name TEXT NOT NULL DEFAULT '',
       bids INTEGER NOT NULL DEFAULT 0,
       npc_cap INTEGER NOT NULL DEFAULT 0,
-      done INTEGER NOT NULL DEFAULT 0
+      done INTEGER NOT NULL DEFAULT 0,
+      tier INTEGER NOT NULL DEFAULT 2
     );
     CREATE INDEX IF NOT EXISTS auction_visit ON auction(visit);
     CREATE TABLE IF NOT EXISTS tower (
@@ -521,7 +523,7 @@ function open(dir) {
     mailStatePurge: db.prepare(`DELETE FROM mail_state WHERE mail NOT IN (SELECT id FROM mail)`),
     aucByVisit: db.prepare(`SELECT * FROM auction WHERE visit = ? ORDER BY id`),
     aucGet: db.prepare(`SELECT * FROM auction WHERE id = ?`),
-    aucInsert: db.prepare(`INSERT INTO auction (visit, item, name, rarity, ilvl, slot, ends, min, npc_cap) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`),
+    aucInsert: db.prepare(`INSERT INTO auction (visit, item, name, rarity, ilvl, slot, ends, min, npc_cap, tier) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
     aucBid: db.prepare(`UPDATE auction SET price = ?, bidder = ?, bidder_name = ?, bids = bids + 1, ends = ? WHERE id = ? AND price = ? AND done = 0`),
     aucOpenEnded: db.prepare(`SELECT * FROM auction WHERE done = 0 AND ends <= ?`),
     aucOpen: db.prepare(`SELECT * FROM auction WHERE done = 0`),

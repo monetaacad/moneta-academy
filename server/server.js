@@ -1261,9 +1261,9 @@ routes['POST /api/ritual'] = async (req, res) => {
 };
 
 /* ───────── 떠돌이 상인 경매 ─────────
-   하루 두 번(12시·20시, 2시간) 귀한 장비 세 점을 경매에 붙인다. 부른 값은 바로 맡겨 두고, 더 높은 값이 나오면 돌려준다.
+   하루 두 번(12시·20시, 2시간) 구간(신입생 · 중급 · 상급)마다 귀한 장비 세 점씩 경매에 붙인다. 부른 값은 바로 맡겨 두고, 더 높은 값이 나오면 돌려준다.
    끝나기 2분 안에 부르면 2분 늘어난다 (몇 번이든, 정해진 2시간이 지나도). 낙찰품은 우편으로. 값은 학생만 부른다(NPC는 부르지 않는다). */
-function aucOut(r, me) { let item = null; try { item = JSON.parse(r.item); } catch (e) { } return { id: r.id, name: r.name, r: r.rarity, ilvl: r.ilvl, slot: r.slot, item, ends: r.ends, min: r.min, price: r.price, need: R.auctionStep(r.price, r.min), bidder: r.bidder_name, mine: !!me && r.bidder === me, npc: String(r.bidder).startsWith('npc:'), bids: r.bids, done: !!r.done }; }
+function aucOut(r, me) { let item = null; try { item = JSON.parse(r.item); } catch (e) { } return { id: r.id, name: r.name, r: r.rarity, ilvl: r.ilvl, slot: r.slot, item, ends: r.ends, min: r.min, price: r.price, need: R.auctionStep(r.price, r.min), bidder: r.bidder_name, mine: !!me && r.bidder === me, npc: String(r.bidder).startsWith('npc:'), bids: r.bids, done: !!r.done, tier: r.tier == null ? 2 : r.tier, cap: R.aucCap(r) }; }
 function aucRefund(pid, amount, name, why) {
   if (!pid || String(pid).startsWith('npc:') || !amount) return;
   const Q = store.get(pid); if (!Q) return;
@@ -1282,12 +1282,16 @@ function aucTick(now) {
   const v = R.auctionVisit(now);
   if (v && v.active && !dbx.q.aucByVisit.all(v.id).length) {
     const stages = dbx.db.prepare(`SELECT max_stage FROM players WHERE last_seen > ? AND banned = 0 ORDER BY max_stage`).all(Math.floor(Date.now() / 1000) - 7 * 86400).map((r) => r.max_stage);
-    const med = stages.length ? stages[Math.floor(stages.length / 2)] : 10, dummy = { rng: crypto.randomInt(1, 2147483647) };
-    [3, 3, Math.random() < 0.5 ? 4 : 3].forEach((r) => {
-      const it = R.makeItem(dummy, R.D.SLOTS[crypto.randomInt(R.D.SLOTS.length)].id, med + 3, r, r), min = Math.max(50, R.sellPrice(it) * 8);
-      dbx.q.aucInsert.run(v.id, JSON.stringify(it), it.name, it.r, it.ilvl, it.slot, Math.floor(v.end), min, Math.floor(min * (1.6 + Math.random() * 1.2)));
+    const at = (p) => stages.length ? stages[Math.min(stages.length - 1, Math.floor(stages.length * p))] : 10, dummy = { rng: crypto.randomInt(1, 2147483647) };
+    // 구간마다 3점: 신입생(하위 25%) · 중급(중간값) · 상급(상위 12%) 단계 + 3. 영웅 2점 + 영웅/전설(50%) 1점
+    R.AUC_TIERS.forEach((tp, tier) => {
+      const lv = Math.max(1, at(tp.p) + 3);
+      [3, 3, Math.random() < 0.5 ? 4 : 3].forEach((r) => {
+        const it = R.makeItem(dummy, R.D.SLOTS[crypto.randomInt(R.D.SLOTS.length)].id, lv, r, r), min = Math.max(50, R.sellPrice(it) * 8);
+        dbx.q.aucInsert.run(v.id, JSON.stringify(it), it.name, it.r, it.ilvl, it.slot, Math.floor(v.end), min, 0, tier);
+      });
     });
-    chat.system('notice', '떠돌이 상인이 아카데미 광장에 짐을 풀었습니다. 귀한 장비 세 점이 경매에 올라왔습니다 (2시간).', Date.now() / 1000);
+    chat.system('notice', '떠돌이 상인이 아카데미 광장에 짐을 풀었습니다. 신입생 · 중급 · 상급 구간마다 귀한 장비 세 점씩 경매에 올라왔습니다 (2시간).', Date.now() / 1000);
     chat.pingAll('auction', { visit: v.id });
   }
   dbx.q.aucOpenEnded.all(Math.floor(now)).forEach((r) => {
@@ -1316,6 +1320,7 @@ routes['POST /api/auction'] = async (req, res) => {
   const P = loadPlayer(me, now); if (!P) return fail(req, res, 401, '학생 정보를 찾을 수 없습니다');
   const row = dbx.q.aucGet.get(Number(b.id)); if (!row || row.done || row.ends <= now) return fail(req, res, 400, '경매가 끝났습니다');
   if (row.bidder === me) return fail(req, res, 400, '이미 가장 높은 값을 부른 상태입니다');
+  const cap = R.aucCap(row); if (cap && P.maxStage > cap) return fail(req, res, 400, '이 구간은 원정 최고 단계 ' + cap + '단계 이하 학생만 입찰할 수 있습니다');
   const amount = Math.floor(Number(b.amount)), need = R.auctionStep(row.price, row.min);
   if (!isFinite(amount) || amount < need) return fail(req, res, 400, R.fmt(need) + ' ' + CUR + ' 이상 불러야 합니다');
   if (amount > 1e15) return fail(req, res, 400, '값 확인 필요');
