@@ -569,7 +569,7 @@ details[open] > summary .chev { transform: rotate(-135deg) translate(-2px, -2px)
 .glist { display: flex; flex-direction: column; gap: 10px; max-height: 58vh; overflow-y: auto; padding-right: 4px; }
 .gitem { background: var(--sunk); border: 1px solid var(--line2); border-radius: 10px; padding: 10px 12px; }
 .gitem h4 { color: var(--brass2); font-size: 14.5px; }
-.gitem p { margin-top: 4px; }
+.gitem p { margin-top: 6px; line-height: 1.7; }
 mark { background: rgba(240, 207, 138, .28); color: var(--ink); border-radius: 3px; padding: 0 1px; }
 @media (max-width: 480px) { .guidebtn span { display: none; } .guidebtn { padding: 6px 8px; } }
 
@@ -1099,11 +1099,11 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 .bdcform { display: flex; gap: 8px; align-items: flex-end; } .bdcform textarea { flex: 1; min-width: 0; font-family: var(--f-body); font-size: 14px; }
 @media (max-width: 600px) { .bdrow { flex-wrap: wrap; padding: 9px 12px; row-gap: 3px; } .bdt { flex: 1 1 60%; } .bda { width: auto; text-align: left; order: 5; } .bdw { order: 6; width: auto; margin-left: auto; } }
 /* 다른 동아리 목록 · 순위 */
-.glist { display: flex; flex-direction: column; margin-top: 6px; }
-.gitem { display: flex; align-items: center; gap: 10px; padding: 10px 6px; border-bottom: 1px solid var(--line2); }
-.gitem:last-child { border-bottom: 0; }
-.gitem.me { background: rgba(214, 173, 95, .1); border-radius: 8px; }
-.gitem .rk { width: 22px; text-align: right; color: var(--faint); flex: none; }
+.gdlist { display: flex; flex-direction: column; margin-top: 6px; }   /* 가이드의 .glist · .gitem과 이름이 겹치지 않게 */
+.gditem { display: flex; align-items: center; gap: 10px; padding: 10px 6px; border-bottom: 1px solid var(--line2); }
+.gditem:last-child { border-bottom: 0; }
+.gditem.me { background: rgba(214, 173, 95, .1); border-radius: 8px; }
+.gditem .rk { width: 22px; text-align: right; color: var(--faint); flex: none; }
 .gim { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .gintro { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-wrap; }
 /* 아주 좁은 화면: 자원 다섯 칸이 한 줄에 다 들어오게 */
@@ -1639,3 +1639,16 @@ mark.hl { color: inherit; background: linear-gradient(transparent 38%, color-mix
 @media (max-width: 720px) { .gslist { grid-template-columns: minmax(0, 1fr); } .gset { flex-direction: row; align-items: center; } .gset .gsn { flex: 1; } .gset .gsb { flex: none; } }
 .gsets { margin-top: 10px; }
 .exmb { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; padding: 0; margin-left: 2px; border: 1px solid var(--line); border-radius: 6px; background: var(--sunk); color: var(--brass2); font: inherit; font-size: 13px; line-height: 1; cursor: pointer; vertical-align: 1px; }
+.splink { border: 0; background: none; padding: 0; font: inherit; cursor: pointer; text-align: left; }
+.splink:hover { color: var(--brass2); text-decoration: underline; }
+.spname { border: 0; background: none; padding: 0; font: inherit; font-weight: 700; color: inherit; cursor: pointer; text-align: left; }
+.spname:hover { text-decoration: underline; }
+/* 상단 헤더: 두상이 눌리지 않게, 학원력 · 효과 줄이 자원 칸 밑으로 겹쳐 들어가지 않게 (넘치면 말줄임) */
+#head-av, #head-av .av, #head-av img { flex: none; }
+@media (min-width: 901px) {
+  .top-row .crest { flex: 0 1 auto; min-width: 120px; }
+  .topmeta { overflow: hidden; flex: 1 1 0; }
+  .topmeta .seg { max-width: 100%; min-width: 0; }
+  .topmeta .seg.cal { overflow: hidden; text-overflow: ellipsis; display: block; }
+}
+@media (min-width: 901px) and (max-width: 1360px) { .wxbtn .wxn { display: none; } }

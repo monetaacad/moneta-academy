@@ -261,9 +261,9 @@
   var SIDE_OPEN = true; try { SIDE_OPEN = localStorage.getItem('arc_side') !== '0'; } catch (e) { }
   function updateSide() {
     var boxes = $$('#sidep, #sidep-m'); if (!boxes.length || !S.P) return;
-    var P = S.P, c = C(), h = '<div class="sph"><span class="navtitle">내 정보</span><button class="spt" data-act="sidetog" aria-expanded="' + SIDE_OPEN + '" title="' + (SIDE_OPEN ? '접기' : '펼치기') + '">' + (SIDE_OPEN ? '접기' : '펼치기') + '<span class="chev' + (SIDE_OPEN ? ' up' : '') + '" aria-hidden="true"></span></button></div>';
+    var P = S.P, c = C(), h = '<div class="sph"><button class="navtitle splink" data-act="me" data-a="view" title="내 정보 화면으로">내 정보</button><button class="spt" data-act="sidetog" aria-expanded="' + SIDE_OPEN + '" title="' + (SIDE_OPEN ? '접기' : '펼치기') + '">' + (SIDE_OPEN ? '접기' : '펼치기') + '<span class="chev' + (SIDE_OPEN ? ' up' : '') + '" aria-hidden="true"></span></button></div>';
     if (SIDE_OPEN) {
-      h += '<div class="spb"><div class="spn"><b>' + inkName(P.name, R.decoView(P).ink) + '</b><span class="tiny faint">' + (P.grade >= 8 ? '마스터' : P.grade + '학년') + ' · Lv ' + P.lvl + ' · ' + clsDot(R.clsOf(P).id, 14) + ' ' + R.clsOf(P).name + '</span>' + xpBar(P, 4) + '</div>' +
+      h += '<div class="spb"><div class="spn"><button class="spname" data-act="mycard" title="다른 학생에게 보이는 내 학생 카드">' + inkName(P.name, R.decoView(P).ink) + '</button><span class="tiny faint">' + (P.grade >= 8 ? '마스터' : P.grade + '학년') + ' · Lv ' + P.lvl + ' · ' + clsDot(R.clsOf(P).id, 14) + ' ' + R.clsOf(P).name + '</span>' + xpBar(P, 4) + '</div>' +
         '<button class="sphouse" data-tip="house" tabindex="0" aria-label="기숙사 혜택 보기">' + houseDot(P.house, 16) + '<span>' + house().name + '</span><span class="tiny faint">' + house().latin + '</span></button>' +
         '<dl class="spk"><dt>전투력</dt><dd class="gold">' + fmt(c.power) + (S.rank ? ' <span class="tiny faint">· ' + S.rank + '위</span>' : '') + '</dd><dt>초당 피해</dt><dd>' + fmt(c.totalDps) + '</dd><dt>생명력</dt><dd>' + fmt(c.hp) + '</dd><dt>방어력</dt><dd>' + fmt(c.def) + '</dd></dl>' +
         '<div class="spstat">' + R.STATS.map(function (k) { return '<span><i>' + D.STAT_NAMES[k] + '</i><b class="num">' + fmt(c.stat[k]) + '</b></span>'; }).join('') + '</div>' +
@@ -2260,11 +2260,13 @@
     if (!t) return '<div class="card" data-anchor="tower"><h3>별의 탑</h3><p class="small muted">불러오는 중…</p></div>';
     if (!t.party) return '';
     var n = t.next, est = n.est, top = t.team.reduce(function (a, m) { return Math.max(a, m.dps); }, 1);
-    var h = '<div class="card tower" data-anchor="tower"><div class="row between"><h3 class="twhead">' + dotImg('tower', 32, '', 'twimg') + '별의 탑 <span class="tag br">이번 주 ' + t.floor + '층</span></h3><span class="tiny faint">월요일에 0층부터 · ' + left(t.weekEnd) + ' 남음</span></div>' +
+    var live = t.log.filter(function (l) { return l.sc && twLive(l); })[0];   // 일지가 재생되는 동안은 결과(올라간 층 · 다음 층)를 감춘다
+    var h = '<div class="card tower" data-anchor="tower"><div class="row between"><h3 class="twhead">' + dotImg('tower', 32, '', 'twimg') + '별의 탑 <span class="tag br">이번 주 ' + (live ? live.f - 1 : t.floor) + '층</span></h3><span class="tiny faint">월요일에 0층부터 · ' + left(t.weekEnd) + ' 남음</span></div>' +
       '<p class="tiny faint" style="margin-top:2px">파티원 모두의 힘을 모아 한 층씩 오릅니다. 접속하지 않은 파티원도 힘을 보태고, 층을 넘으면 그때 파티에 있던 모두에게 보상 우편이 발송됩니다. 도전 횟수는 파티가 아니라 학생마다 하루 ' + t.tries + '번이며 매일 한국 시간(KST) 자정에 초기화됩니다. 탑 기록은 파티의 것이라 새로 들어온 파티원은 지금 층부터 함께 오르고, 나간 사람은 기록을 가져가지 않습니다. 마지막 한 명까지 나가 파티가 없어지면 그 주의 탑 기록도 함께 사라집니다(이미 받은 보상은 그대로). 파티를 옮기거나 새로 만들어도 같은 층 보상은 한 주에 한 번만 받습니다.</p>' +
+      (live ? '<div class="twnext"><div class="twf num">' + live.f + '<span>층</span></div><div style="flex:1;min-width:0"><b>' + esc(live.name) + ' 님 도전 중</b><div class="small muted" style="margin-top:4px">결과는 일지가 끝나면 표시됩니다.</div></div></div>' :
       '<div class="twnext"><div class="twf num">' + n.floor + '<span>층</span></div><div style="flex:1;min-width:0"><b>' + esc(n.name) + '</b><div class="tiny faint">' + n.stage + '단계 수준 · 체력 ' + fmt(n.hp) + '</div>' +
       '<div class="small" style="margin-top:4px">' + (est.win ? '<span class="good">승산 있음</span> — 약 ' + est.ttk.toFixed(1) + '초' : '<span class="bad">아직 버겁습니다</span> — 45초 안에 체력의 약 ' + Math.round(est.frac * 100) + '%') + '</div>' +
-      '<div class="tiny" style="margin-top:4px">보상(모두에게) <span class="rwd">' + esc(R.rewardText(n.reward)) + '</span>' + (t.myBest >= n.floor ? ' <span class="tiny gold">· 나는 이번 주에 ' + t.myBest + '층까지 이미 받아서 이 층 보상은 건너뜁니다</span>' : '') + '</div></div></div>' +
+      '<div class="tiny" style="margin-top:4px">보상(모두에게) <span class="rwd">' + esc(R.rewardText(n.reward)) + '</span>' + (t.myBest >= n.floor ? ' <span class="tiny gold">· 나는 이번 주에 ' + t.myBest + '층까지 이미 받아서 이 층 보상은 건너뜁니다</span>' : '') + '</div></div></div>') +
       '<div class="twteam">' + t.team.map(function (m) { return '<div class="twm"><span class="small ell" style="color:' + (R.HOUSE[m.house] ? R.HOUSE[m.house].color : 'inherit') + '">' + esc(m.name) + (m.npc ? ' <span class="tag npc">NPC</span>' : '') + (m.me ? ' <span class="tag">나</span>' : '') + '</span><div class="bar brass" style="height:5px"><b style="width:' + (m.dps / top * 100).toFixed(1) + '%"></b></div><span class="tiny faint num">' + fmt(m.dps) + '/초</span></div>'; }).join('') + '</div>' +
       '<div class="row" style="margin-top:10px"><span class="tiny faint">파티 합계 초당 피해 <b class="num">' + fmt(t.teamDps) + '</b></span><span class="spacer"></span>' + (t.playing ? '<span class="tag br">' + esc(t.playing.name) + ' 님 도전 중</span>' : '<button class="btn primary" data-act="tower"' + (t.left > 0 ? '' : ' disabled') + '>' + n.floor + '층 도전 <span class="cost">내 도전 ' + t.left + '/' + t.tries + '</span></button>') + '<div class="tiny faint" style="width:100%;text-align:right;margin-top:4px">내 도전 횟수 · 학생마다 하루 ' + t.tries + '번 · KST 자정 초기화</div>' + '</div>';
     if (t.log.length) h += '<div class="twlog">' + t.log.slice(0, 6).map(function (l) { return '<div class="tiny"><span class="faint num">' + clock(l.t) + '</span> ' + esc(l.name) + ' · ' + l.f + '층 ' + (l.sc && twLive(l) ? '<span class="gold">도전 중…</span>' : l.win ? '<span class="good">돌파</span>' : '<span class="faint">' + l.pct + '%</span>') + '</div>'; }).join('') + '</div>';
@@ -2479,9 +2481,9 @@
     if (q) ranked = ranked.filter(function (x) { return (x.name + ' ' + (x.intro || '')).toLowerCase().indexOf(q) >= 0; });
     var mine = ranked.filter(function (x) { return x.id === ((d.mine && d.mine.id) || mineId); })[0], shown = S.gmore || 20, restN = Math.max(0, ranked.length - shown);
     if (mine && !q) h += '<p class="small" style="margin:6px 0">우리 동아리 <b class="num gold">' + mine.rank + '위</b> / ' + d.total + '곳</p>';
-    h += ranked.length ? '<div class="glist">' + ranked.slice(0, shown).map(function (x) {
+    h += ranked.length ? '<div class="gdlist">' + ranked.slice(0, shown).map(function (x) {
       var me = x.id === ((d.mine && d.mine.id) || mineId), full = x.n >= x.max;
-      return '<div class="gitem' + (me ? ' me' : '') + '"><span class="num rk">' + x.rank + '</span>' + gEmblem(x.color, x.name, 36, x.icon) + '<div class="gim"><div><b>' + esc(x.name) + '</b> <span class="tiny faint">Lv ' + x.lv + ' · ' + x.n + '/' + x.max + '명' + (x.owner ? ' · 회장 ' + esc(x.owner) : '') + '</span>' + (me ? ' <span class="tag br">우리 동아리</span>' : '') + '</div>' +
+      return '<div class="gditem' + (me ? ' me' : '') + '"><span class="num rk">' + x.rank + '</span>' + gEmblem(x.color, x.name, 36, x.icon) + '<div class="gim"><div><b>' + esc(x.name) + '</b> <span class="tiny faint">Lv ' + x.lv + ' · ' + x.n + '/' + x.max + '명' + (x.owner ? ' · 회장 ' + esc(x.owner) : '') + '</span>' + (me ? ' <span class="tag br">우리 동아리</span>' : '') + '</div>' +
         (x.intro ? '<div class="tiny muted gintro">' + esc(x.intro) + '</div>' : '<div class="tiny faint">소개가 없습니다</div>') +
         '<div class="tiny faint">' + (x.mode === 'apply' ? '신청 후 승인' : '누구나 가입') + ' · 전투력 합 ' + fmt(x.power) + '</div></div>' +
         (member || me ? '' : apps[x.id] ? '<button class="btn sm ghost" data-act="gop" data-a="cancelApp" data-b="' + esc(x.id) + '">신청 취소</button>' : full ? '<span class="tag">정원 참</span>' : '<button class="btn sm' + (x.mode === 'apply' ? '' : ' primary') + '" data-act="gjoin" data-a="' + esc(x.id) + '" data-b="' + x.mode + '">' + (x.mode === 'apply' ? '가입 신청' : '들어가기') + '</button>') + '</div>';
@@ -3868,6 +3870,11 @@
       '<div class="stack" style="gap:8px;margin-top:10px"><label class="tog"><input type="checkbox" id="pe-friend"' + (me.allowFriend !== false ? ' checked' : '') + '> 친구 신청 받기</label><label class="tog"><input type="checkbox" id="pe-biof"' + (me.bioFriends ? ' checked' : '') + '> 자기소개는 친구에게만 보이기</label></div>' +
       '<div class="row" style="margin-top:14px"><button class="btn primary" data-act="pe-save">저장</button><button class="btn ghost" data-act="pe-preview">다른 학생에게 보이는 모습</button><span class="tiny" id="pe-msg"></span></div>';
   }
+  // 내 학생 카드: 다른 학생에게 보이는 모습 그대로 (공개 범위 반영)
+  ACT.mycard = function () {
+    modal(mhead('내 학생 카드', '다른 학생에게 보이는 모습') + '<div id="pbox">' + myCard() + '</div>');
+    loadMe().then(function () { var b = $('#pbox'); if (b && S.modal) b.innerHTML = myCard(); });
+  };
   ACT.me = function (tab) {
     var d = peRead(); if (d) S.peDraft = peDirty(d) ? d : null;   // 편집 중이던 내용 보관
     S.meTab = tab || 'view'; if (S.meTab !== 'deco') S.decoTry = null;
@@ -4390,7 +4397,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102049;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102050;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
