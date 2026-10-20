@@ -53,12 +53,13 @@
     });
     g.addEventListener('dblclick', function () { setW(W0); try { localStorage.removeItem('arc_admin_imw'); } catch (e) { } });
   })();
-  // 마감: 코드를 만든 때부터 마지막 사용(가입)까지 걸린 시간. 아직 남았으면 첫 사용까지 (가입 시각으로 계산하므로 이미 마감된 코드에도 보인다)
+  // 마감: 마지막 사용(가입) 시각 + 코드를 만든 때부터 걸린 시간. 아직 남았으면 첫 사용 시각 (가입 시각으로 계산하므로 이미 마감된 코드에도 보인다)
   function dur(s) { s = Math.max(0, Math.round(s)); return s < 60 ? s + '초' : s < 3600 ? Math.floor(s / 60) + '분 ' + (s % 60) + '초' : s < 86400 ? Math.floor(s / 3600) + '시간 ' + Math.floor(s % 3600 / 60) + '분' : Math.floor(s / 86400) + '일 ' + Math.floor(s % 86400 / 3600) + '시간'; }
+  function whenS(t) { var d = new Date(t * 1000), p = function (n) { return String(n).padStart(2, '0'); }; return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds()); }   // 초까지
   function closeCell(i) {
     if (!i.first_at) return '<td class="faint">-</td>';
     var full = i.uses >= i.max_uses, tip = '코드 생성 ' + when(i.created) + ' · 첫 사용 ' + when(i.first_at) + (i.max_uses > 1 ? ' · 마지막 사용 ' + when(i.last_at) : '');
-    return '<td class="num" title="' + esc(tip) + '">' + (full ? '<b>' + dur(i.last_at - i.created) + '</b>' : '<span class="faint">첫 사용 ' + dur(i.first_at - i.created) + '</span>') + '</td>';
+    return '<td class="num" title="' + esc(tip) + '">' + (full ? '<b>' + whenS(i.last_at) + '</b> <span class="faint">' + dur(i.last_at - i.created) + '</span>' : '<span class="faint">첫 사용 ' + whenS(i.first_at) + '</span>') + '</td>';
   }
   function invites() {
     api('GET', '/api/admin/invites').then(function (j) {
