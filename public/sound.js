@@ -52,7 +52,7 @@ var Snd = (function () {
     click: { rev: 0.15, n: [[2093, 0, 0.08, 'sine', 0.015, 0.003, 'b']] }
   };
   S.play = function (k) {
-    if (!S.on || S.off[k]) return; var c = ac(); if (!c) return;
+    if (!S.on || S.off[k] || (S.fgOnly && document.hidden)) return; var c = ac(); if (!c) return;   // fgOnly: 창을 내리거나 다른 탭을 볼 때는 울리지 않음
     var s = SEQ[k]; if (!s) return;
     var now = c.currentTime;
     if (S.last[k] && now - S.last[k] < (k === 'kill' ? 0.25 : 0.08)) return;

@@ -951,6 +951,7 @@
   };
   function goBtn(k) { var g = GO[k]; if (!g) return ''; var v = VIEWS.find(function (x) { return x.id === g[0]; }); if (v && !viewOpen(v)) return ''; return '<button class="btn sm ghost" data-act="goto" data-a="' + g[0] + '" data-b="' + (g[1] || '') + '">이동</button>'; }
   ACT.goto = function (view, anchor) {
+    if (S.examRes) { S.examRes = null; S.afterClose = null; }   // 합격 창에서 「바로 가기」로 떠나면 합격 창으로 돌아오지 않는다
     var d = typeof peRead === 'function' && peRead(); if (d && peDirty(d)) S.peDraft = d;
     if (S.modal) closeModal();
     if (view === 'work' && (anchor === 'alch' || anchor === 'fam')) { S.workTab = anchor; anchor = ''; }
@@ -1211,6 +1212,11 @@
     return a.length ? '<div class="tiny gold submile">다음 · ' + a.slice(0, 2).map(function (x) { return 'Lv ' + x[0] + ' ' + x[1]; }).join(' · ') + '</div>' : '';
   }
   // 기말시험 준비도: 필기 · 실기 · 대련 세 칸 (점수 공식은 숨기고, 무엇을 하면 차는지만)
+  // 선택 과목 고르기: 「자동(가장 높은 과목)」 또는 직접 고른 과목. 학년마다 저장
+  function examPickHtml(P, ex, cur) {
+    var o = (ex.opt || []).filter(function (k) { return R.subjVisible(P, R.SUBJ[k]); }), mine = P.examPick && P.examPick[ex.grade];
+    return '<div class="row small" style="gap:6px;margin-top:6px">' + gterm('선택 과목') + '<select data-act="exampick" style="width:auto"><option value=""' + (mine ? '' : ' selected') + '>자동 (가장 높은 과목)</option>' + o.map(function (k) { return '<option value="' + k + '"' + (mine === k ? ' selected' : '') + '>' + R.SUBJ[k].name + ' Lv ' + P.subj[k].lv + '</option>'; }).join('') + '</select></div>';
+  }
   function examReady(P, ex) {
     var th = R.examTheory(P, ex), pr = R.examPractical(P, ex), du = R.duelPreview(P, wctx(), ex.duel), avg = 0;
     var xs = R.examSubjs(P, ex), xo = R.examOpt(P, ex); xs.forEach(function (s) { avg += P.subj[s].lv / xs.length; });
@@ -1219,7 +1225,7 @@
     var chips = xs.map(function (s) { var lv = P.subj[s].lv; return '<span class="tag ' + (lv >= ex.req ? 'ok' : 'br') + '"' + (s === xo ? ' title="선택 과목: ' + esc(R.examSubjText(P, ex).split(' + ')[1] || '') + ' (가장 레벨이 높은 과목이 반영됩니다)"' : '') + '>' + R.SUBJ[s].name + (s === xo ? '(선택)' : '') + ' ' + lv + '/' + ex.req + '</span>'; }).join(' ');
     return '<div class="rready">' +
       row('필기', dots(th, 30), '시험 과목 평균 Lv <b class="num">' + avg.toFixed(1) + '</b> <span class="faint">· 기준보다 3 높으면 만점</span>', th < 29.5 ? '<button class="btn sm ghost" data-act="nav" data-a="lecture">수업 가기</button>' : '') +
-      row('실기', dots(pr, 40), chips + (xo ? ' <span class="faint tiny">· 선택 과목은 ' + esc(R.examSubjText(P, ex).split(' + ')[1] || '') + ' 중 레벨이 가장 높은 과목이 반영됩니다</span>' : '') + ' <span class="faint tiny">· 기준을 채우면 절반 이상, 평균이 기준 +4면 만점</span>', pr < 39.5 ? '<button class="btn sm ghost" data-act="nav" data-a="lecture">수업 가기</button>' : '') +
+      row('실기', dots(pr, 40), chips + (xo ? examPickHtml(P, ex, xo) : '') + ' <span class="faint tiny">· 기준을 채우면 절반 이상, 평균이 기준 +4면 만점</span>', pr < 39.5 ? '<button class="btn sm ghost" data-act="nav" data-a="lecture">수업 가기</button>' : '') +
       row('대련', dots(du.win ? 30 : 30 * du.frac * 0.85, 30), (du.win ? '<span class="good">승산 있음</span> · 약 ' + du.ttk.toFixed(1) + '초' : '<span class="bad">버거움</span> · 시험관 체력의 약 ' + Math.round(du.frac * 100) + '%까지') + ' <span class="faint">· ' + esc(ex.examiner) + '</span>', du.win ? '' : '<button class="btn sm ghost" data-act="nav" data-a="gear">장비 가기</button>') +
       '</div>';
   }
@@ -3642,9 +3648,9 @@
         Snd.play(r.pass ? 'pass' : 'fail');
         var h = mhead(r.pass ? '합격!' : '불합격', ex.title);
         h += '<div class="row" style="gap:20px;align-items:center"><div class="letter ' + (r.pass ? 'gold' : 'bad') + '">' + r.letter + '</div><div class="score-row" style="flex:1"><span>이론</span><b class="num">' + r.written.toFixed(1) + ' / 30</b><span>실기</span><b class="num">' + r.practical.toFixed(1) + ' / 40</b><span>대련 ' + (r.duelWin ? '(승리)' : '(패배)') + '</span><b class="num">' + r.duel.toFixed(1) + ' / 30</b>' + (r.bonus ? '<span>침묵달 가산점</span><b class="num">+' + r.bonus + '</b>' : '') + '<span><b>총점</b></span><b class="num gold">' + r.total + '</b></div></div>';
-        if (r.pass) h += '<hr class="sep"><p class="small">보상: 별조각 +' + r.reward.shard + ', ' + MONEY(r.reward.gold, '+') + ', <span style="color:' + rcol(r.reward.item.r) + '">' + esc(r.reward.item.name) + '</span>' + (r.reward.egg ? ', <span class="gold">환수의 알</span>' : '') + '</p>' + (r.badge ? '<p class="small gold" style="margin-top:6px">2학년을 마친 기념으로 아카데미가 ' + R.josa('「' + esc(r.badge) + '」', '을', '를') + ' 수여했습니다. 장비 · 능력 화면에서 볼 수 있습니다.</p>' : '') + (r.letter === 'S' ? '<p class="tiny gold" style="margin-top:4px">수석 성적! S 보상을 받았습니다.</p>' : '') + '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn" data-act="promo" data-a="' + S.P.grade + '">새로 열린 것</button><button class="btn primary" data-act="story" data-a="' + (Math.min(S.P.grade, 8) - 1) + '" autofocus>다음 이야기</button></div>';
+        if (r.pass) h += '<hr class="sep"><p class="small">보상: 별조각 +' + r.reward.shard + ', ' + MONEY(r.reward.gold, '+') + ', <span style="color:' + rcol(r.reward.item.r) + '">' + esc(r.reward.item.name) + '</span>' + (r.reward.egg ? ', <span class="gold">환수의 알</span>' : '') + '</p>' + (r.badge ? '<p class="small gold" style="margin-top:6px">2학년을 마친 기념으로 아카데미가 ' + R.josa('「' + esc(r.badge) + '」', '을', '를') + ' 수여했습니다. 장비 · 능력 화면에서 볼 수 있습니다.</p>' : '') + (r.letter === 'S' ? '<p class="tiny gold" style="margin-top:4px">수석 성적! S 보상을 받았습니다.</p>' : '') + '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn" data-act="exampromo">새로 열린 것</button><button class="btn primary" data-act="examstory" data-a="' + (Math.min(S.P.grade, 8) - 1) + '" autofocus>다음 이야기</button></div>';
         else h += '<p class="small muted" style="margin-top:8px">60점 이상이면 합격입니다. 1시간 뒤 다시 응시할 수 있습니다.</p><div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>';
-        if (r.pass) S.afterClose = function () { promoModal(S.P.grade); };
+        if (r.pass) { S.examRes = { h: h, g: S.P.grade, seenP: false }; S.afterClose = examResClose; }
         modal(h); renderNav();
       });
     });
@@ -3675,6 +3681,12 @@
       '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>', true);
   }
   ACT.promo = function (g) { promoModal(+g); };
+  // 시험 합격 창: 「새로 열린 것」 · 「다음 이야기」를 보고 닫으면 합격 창으로 돌아온다 (다른 쪽도 볼 수 있게).
+  // 합격 창을 닫을 때 새로 열린 것을 아직 안 봤으면 한 번 보여 준다
+  function examResBack() { if (!S.examRes) return; modal(S.examRes.h); S.afterClose = examResClose; }
+  function examResClose() { var x = S.examRes; S.examRes = null; if (x && !x.seenP) promoModal(x.g); }
+  ACT.exampromo = function () { var x = S.examRes; if (!x) return; x.seenP = true; promoModal(x.g); S.afterClose = examResBack; };
+  ACT.examstory = function (i) { if (!S.examRes) { ACT.story(i); return; } ACT.story(i); S.afterClose = examResBack; };
   ACT.story = function (i) { var s = D.STORY[+i]; modal(mhead(s.title, '') + '<p style="white-space:pre-line;color:var(--ink2)">' + esc(s.text) + '</p><div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn primary" data-act="modal-close" autofocus>계속</button></div>'); act('storySeen', { n: +i + 1 }); };
   /* ── 기숙사: 배정 거울 연출(가입 직후) · 기숙사 정보 카드(기숙사 RP 채팅 상단 · 사감 이름) ── */
   // 기숙사 설정 항목: 촘촘한 2열(이름 | 내용). short = 배정 거울용 (위치 · 휴게실 · 사감 · 인사만)
@@ -3873,7 +3885,7 @@
     // 예전에는 body 전체를 zoom 해서 100vh 기준 높이까지 커져 채팅창 아래·안내도 아래가 화면 밖으로 잘렸다.
     document.body.style.zoom = ''; document.documentElement.style.setProperty('--fz', String(PREF.font || 1));
     document.documentElement.classList.toggle('fzoom', PREF.font !== 1);
-    Snd.vol(PREF.sfxVol); Snd.off = {}; for (var k in PREF.sfxOff) if (PREF.sfxOff[k]) Snd.setOff(k, true);
+    Snd.vol(PREF.sfxVol); Snd.fgOnly = PREF.sfxBg === false; Snd.off = {}; for (var k in PREF.sfxOff) if (PREF.sfxOff[k]) Snd.setOff(k, true);
   }
   applyPref();
   /* ── 테마: 색 토큰은 style.css의 :root[data-skin]에, 하늘·기숙사·등급 색은 여기서 ──
@@ -3967,6 +3979,7 @@
       '<label class="tog"><input type="checkbox" data-act="opt" data-a="bulkAsk"' + (P.opt.bulkAsk !== false ? ' checked' : '') + '> 장비 일괄 판매 · 분해 전에 확인 창 띄우기</label></div>';
     h += '<div class="setsec"' + st('소리') + '><div class="section-t">소리</div>' +
       '<label class="tog"><input type="checkbox" id="opt-snd" data-act="opt" data-a="sound"' + (P.opt.sound ? ' checked' : '') + '> 효과음</label>' +
+      '<label class="tog"><input type="checkbox" data-act="sfxbg"' + (PREF.sfxBg !== false ? ' checked' : '') + '> 창을 내리거나 다른 탭을 볼 때도 효과음 재생 (채팅 알림 소리 등)</label>' +
       '<div class="row small slider"><span class="muted">효과음 크기</span><input type="range" id="opt-sfxvol" min="0" max="100" step="1" value="' + Math.round(PREF.sfxVol * 100) + '" aria-label="효과음 크기"><span class="num tiny faint" id="opt-sfxvol-v">' + Math.round(PREF.sfxVol * 100) + '%</span><button class="btn sm ghost" data-act="sfxtest">들어 보기</button></div>' +
       '<div class="sfxlist' + (P.opt.sound ? '' : ' off') + '">' + Snd.KEYS.map(function (k) { return '<label class="tog"><input type="checkbox" data-act="sfxone" data-a="' + k[0] + '"' + (PREF.sfxOff[k[0]] ? '' : ' checked') + '> ' + k[1] + '</label>'; }).join('') + '</div>' +
       '<hr class="sep">' +
@@ -3996,6 +4009,7 @@
   ACT.settab = function (t) { S.setTab = t; ACT.settings(); var b = $('.mbox'); if (b) b.scrollTop = 0; };
   ACT.setfont = function (v) { PREF.font = +v; savePref(); applyPref(); ACT.settings(); };
   ACT.sfxtest = function () { Snd.preview(); };
+  ACT.sfxbg = function (a, b, el) { PREF.sfxBg = el.checked; savePref(); applyPref(); };
   ACT.sfxone = function (k, b, el) { if (el.checked) delete PREF.sfxOff[k]; else PREF.sfxOff[k] = true; savePref(); applyPref(); if (el.checked && S.P.opt.sound) Snd.play(k); };
   ACT.bgm = function (a, b, el) { Bgm.set(el.checked); bgmScene(); };
   ACT.bgmbg = function (a, b, el) { Bgm.setBg(el.checked); };
@@ -4674,7 +4688,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102099;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102101;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
@@ -4813,6 +4827,7 @@
   document.addEventListener('change', function (e) {
     var el = e.target;
     if (el.dataset.act === 'pick-sel') { S.pick[el.dataset.a] = el.value; render(); }
+    else if (el.dataset.act === 'exampick') act('examPick', { s: el.value }).then(function (r) { if (r) { toast('선택 과목', el.value ? R.SUBJ[el.value].name + ' 과목으로 응시합니다' : '가장 레벨이 높은 과목이 자동으로 반영됩니다'); render(); } });
     else if (el.dataset.act === 'autosell') ACT.autosell();
     else if (el.dataset.act === 'automode') ACT.automode();
     else if (el.id === 'pe-file' && el.files && el.files[0]) onAvatarFile(el.files[0]);

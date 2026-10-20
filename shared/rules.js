@@ -1442,6 +1442,7 @@
   function sjLv(P, k) { return ((P.subj || {})[k] || {}).lv || 0; }
   R.examOpt = function (P, ex) {
     var o = (ex.opt || []).filter(function (k) { return (P.subj || {})[k] && (!P.grade || R.subjVisible(P, SUBJ[k])); }), best = null;
+    var pk = P.examPick && P.examPick[ex.grade]; if (pk && o.indexOf(pk) >= 0) return pk;   // 학생이 고른 선택 과목 (학년마다 저장, 고르지 않으면 가장 높은 과목)
     o.forEach(function (k) { if (best == null || sjLv(P, k) > sjLv(P, best) || (sjLv(P, k) === sjLv(P, best) && SUBJ[k].cls && SUBJ[k].cls === P.cls)) best = k; });   // 같으면 학과 전용 과목을 먼저
     return best;
   };
@@ -1644,6 +1645,12 @@
     clsSet(P, id, now); return { ok: true };
   };
   // 전과시험: 옮기려는 학과의 몸으로 시험관과 대련해 이기면 옮긴다. 응시료는 이기든 지든 내고, 지면 하루 뒤 다시
+  A.examPick = function (P, W, now, a) {
+    var ex = R.examFor(P); if (!ex || P.grade >= 8) err('남은 시험이 없습니다');
+    var k = a.s ? str(a.s) : ''; if (k && ((ex.opt || []).indexOf(k) < 0 || !R.subjVisible(P, SUBJ[k]))) err('선택할 수 없는 과목입니다');
+    var m = P.examPick || (P.examPick = {}); if (k) m[ex.grade] = k; else delete m[ex.grade];
+    return { ok: true, s: R.examOpt(P, ex) };
+  };
   A.clsExam = function (P, W, now, a) {
     var id = str(a.cls); if (!R.CLS[id]) err('학과 선택 필요');
     if ((P.cls || 'mage') === id) err('지금 학과와 같습니다');
