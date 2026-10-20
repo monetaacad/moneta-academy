@@ -861,7 +861,7 @@
       if (p.friend === 'ok') h += '<button class="btn sm ghost" data-act="fop" data-a="remove" data-b="' + pid + '">친구 끊기</button>';
     }
     h += '</div>';
-    if (m && !p.self) h += '<hr class="sep"><p class="small muted msgq">' + chatText(m.text) + '</p><div class="row" style="margin-top:8px"><button class="btn sm" data-act="cblock" data-a="' + esc(m.pid) + '">이 학생 가리기</button><button class="btn sm danger" data-act="creport" data-a="' + m.id + '">이 메시지 신고</button></div><p class="tiny faint" style="margin-top:6px">가리기는 내 화면에서만 적용됩니다. 신고는 운영진에게 전달됩니다.</p>';
+    if (m && !p.self) h += '<hr class="sep"><p class="small muted msgq">' + chatText(m.text) + '</p><div class="row" style="margin-top:8px"><button class="btn sm" data-act="cblock" data-a="' + esc(m.pid) + '">이 학생 가리기</button><button class="btn sm danger" data-act="creportform" data-a="' + m.id + '">이 메시지 신고</button></div><div id="crp-box"></div><p class="tiny faint" style="margin-top:6px">가리기는 내 화면에서만 적용됩니다. 신고는 운영진에게 전달되며, 운영진은 신고된 메시지와 앞뒤 대화를 함께 확인합니다.</p>';
     return h;
   }
   function openProfile(pid, m) {
@@ -3592,7 +3592,11 @@
   };
   ACT.cblock = function (pid) { if (S.chat.blocked.indexOf(pid) < 0) S.chat.blocked.push(pid); try { localStorage.setItem('arc_blocked', JSON.stringify(S.chat.blocked)); } catch (e) { } closeModal(); renderDock(); toast('이 학생을 가렸습니다', '이제 이 학생의 메시지가 보이지 않습니다', 1800); };
   ACT.unblockall = function () { S.chat.blocked = []; try { localStorage.removeItem('arc_blocked'); } catch (e) { } renderDock(); };
-  ACT.creport = function (id) { API.chatReport(+id || id, '').then(function (j) { closeModal(); toast(j.error ? '신고하지 못했습니다' : '신고가 접수되었습니다', j.error || '관리자가 확인합니다', 2200); }); };
+  // 신고: 사유 입력칸을 연 뒤 「신고 보내기」로 전달 (사유는 선택, 200자까지)
+  ACT.creportform = function (id) { var box = $('#crp-box'); if (!box) return ACT.creport(id); if (box.innerHTML) { $('#crp-reason') && $('#crp-reason').focus(); return; }
+    box.innerHTML = '<label class="small" style="display:block;margin-top:10px">신고 사유 <span class="tiny faint">(선택 · 200자 이내)</span><textarea id="crp-reason" maxlength="200" rows="3" style="width:100%;margin-top:4px" placeholder="예: 욕설, 도배, 개인정보 노출"></textarea></label><div class="row" style="justify-content:flex-end;margin-top:6px"><button class="btn sm danger" data-act="creport" data-a="' + esc(String(id)) + '">신고 보내기</button></div>';
+    $('#crp-reason').focus(); };
+  ACT.creport = function (id) { var rs = $('#crp-reason'); API.chatReport(+id || id, rs ? rs.value.trim().slice(0, 200) : '').then(function (j) { closeModal(); toast(j.error ? '신고하지 못했습니다' : '신고가 접수되었습니다', j.error || '관리자가 확인합니다', 2200); }); };
   ACT['rp-skip'] = function () { if (S.replay) S.replay.skip(); };
   ACT.spirit = function () { act('spirit').then(function (r) { if (!r) return; Snd.play('spirit'); var g = []; if (r.mana) g.push('마나 +' + fmt(r.mana)); if (r.gold) g.push('' + MONEY(r.gold, '+')); if (r.shard) g.push('별조각 +' + r.shard); if (r.stone) g.push('마석 +' + r.stone); toast('정령 ' + r.n + '마리를 풀어 주었습니다', g.join(' · '), 2600); render(); }); };
   // 기말시험: 문제 풀이 없이 버튼 하나로 채점 (이론 30 · 실기 40 · 대련 30)
@@ -4626,7 +4630,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102090;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102091;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

@@ -122,14 +122,24 @@
         '<div class="form" style="margin-top:6px"><textarea id="bdr-' + p.id + '" rows="2" maxlength="500" placeholder="운영진 답변 (500자)" style="flex:1;min-width:220px"></textarea><button class="btn sm primary" data-a="bdreply" data-c="' + p.id + '">답변</button><button class="btn sm danger" data-a="bddel" data-c="' + p.id + '">글 지우기</button></div></details>';
     }).join('') : '<p class="faint small">' + (all.length ? '보일 문의가 없습니다 (숨긴 글은 위 체크를 풀면 보입니다).' : '문의가 없습니다.') + '</p>');
   }
+  // 신고 앞뒤 대화: 펼친 신고의 대화 HTML (msg_id → html). 30초마다 목록을 새로 그려도 펼친 채로 둔다
+  var RCTX = {};
+  function rctxHtml(j) {
+    if (j.error) return '<p class="small faint">' + esc(j.error) + '</p>';
+    return '<div class="scroll" style="max-height:340px"><table><tbody>' + j.list.map(function (m) {
+      return '<tr' + (m.me ? ' style="background:rgba(224,124,114,.16)"' : '') + '><td class="tiny" style="white-space:nowrap">' + whenS(m.t) + '</td><td style="white-space:nowrap">' + (m.me ? '<b>' + esc(m.name) + '</b>' : esc(m.name)) + '</td><td class="msgtext">' + (m.kind === 'act' ? '<i>' : '') + (m.deleted ? '<s class="faint">' + esc(m.text) + '</s> <span class="tiny faint">(삭제됨)</span>' : esc(m.text)) + (m.kind === 'act' ? '</i>' : '') + '</td></tr>';
+    }).join('') + '</tbody></table></div><p class="tiny faint" style="margin-top:4px">같은 채널의 앞 10건 · 뒤 10건입니다. 붉은 줄이 신고된 메시지입니다.</p>';
+  }
   function reports() {
     api('GET', '/api/admin/reports' + ($('#showres').checked ? '?resolved=1' : '')).then(function (j) {
       $('#reports').innerHTML = (j.reports || []).map(function (r) {
-        return '<tr><td>' + when(r.t) + '</td><td>' + (r.ch === 'rp' ? 'RP' : '월드') + '</td><td>' + esc(r.author) + '</td><td class="msgtext">' + (r.deleted ? '<s class="faint">' + esc(r.text) + '</s>' : esc(r.text)) + '</td><td>' + esc(r.reporter) + '</td><td><div class="row" style="gap:4px">' +
+        return '<tr><td>' + when(r.t) + '</td><td>' + esc(r.chName || r.ch) + '</td><td>' + esc(r.author) + '</td><td class="msgtext">' + (r.deleted ? '<s class="faint">' + esc(r.text) + '</s>' : esc(r.text)) + '</td><td>' + esc(r.reporter) + '</td><td class="msgtext">' + (r.reason ? esc(r.reason) : '<span class="faint">—</span>') + '</td><td><div class="row" style="gap:4px">' +
+          '<button class="btn sm ghost" data-a="rctx" data-c="' + r.msg_id + '">앞뒤 대화</button>' +
           (r.deleted ? '' : '<button class="btn sm danger" data-a="del" data-c="' + r.msg_id + '" data-r="' + r.id + '">삭제</button>') +
           '<button class="btn sm" data-a="rmute" data-p="' + esc(r.author_id) + '" data-r="' + r.id + '" data-m="1440">1일 금지</button>' +
-          (r.resolved ? '' : '<button class="btn sm ghost" data-a="resolve" data-r="' + r.id + '">처리 완료</button>') + '</div></td></tr>';
-      }).join('') || '<tr><td colspan="6" class="faint">' + ($('#showres').checked ? '처리한 신고가 없습니다' : '새 신고가 없습니다') + '</td></tr>';
+          (r.resolved ? '' : '<button class="btn sm ghost" data-a="resolve" data-r="' + r.id + '">처리 완료</button>') + '</div></td></tr>' +
+          (RCTX[r.msg_id] ? '<tr class="rctx"><td colspan="7">' + RCTX[r.msg_id] + '</td></tr>' : '');
+      }).join('') || '<tr><td colspan="7" class="faint">' + ($('#showres').checked ? '처리한 신고가 없습니다' : '새 신고가 없습니다') + '</td></tr>';
     });
   }
   var MRW = [['shard', '별조각'], ['gold', CUR], ['stone', '마석'], ['mana', '마나'], ['know', '지식'], ['egg', '환수의 알'], ['ticket', '토벌 도전권'], ['respec', '망각의 차'], ['rsDone', '연구 즉시 완료 물약'], ['gradeUp', '학년 진급 물약'], ['gear', '희귀 장비 상자']];
@@ -262,6 +272,10 @@
     bdreply: function (el) { var t = $('#bdr-' + el.dataset.c); if (!t || !t.value.trim()) return; api('POST', '/api/admin/board', { op: 'reply', id: +el.dataset.c, text: t.value.trim() }).then(function (j) { if (j.error) return toast(j.error); toast('답변했습니다 · 학생에게 우편 알림'); bdshow(j); }); },
     bddel: function (el) { if (!confirm('이 글을 지울까요?')) return; api('POST', '/api/admin/board', { op: 'del', id: +el.dataset.c }).then(function (j) { if (j.error) return toast(j.error); bdshow(j); }); },
     bdcdel: function (el) { api('POST', '/api/admin/board', { op: 'cdel', cid: +el.dataset.c }).then(function (j) { if (j.error) return toast(j.error); bdshow(j); }); },
+    rctx: function (el) {
+      var id = el.dataset.c; if (RCTX[id]) { delete RCTX[id]; reports(); return; }
+      api('GET', '/api/admin/reports/ctx?id=' + encodeURIComponent(id)).then(function (j) { RCTX[id] = rctxHtml(j); reports(); });
+    },
     resolve: function (el) { api('POST', '/api/admin/reports/resolve', { id: +el.dataset.r }).then(reports); },
     unpin: function () { api('POST', '/api/admin/notice', { unpin: true }).then(function (j) { showPin(null); toast(j.error || '고정을 풀었습니다'); }); },
     notice: function () {

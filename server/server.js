@@ -2079,7 +2079,18 @@ routes['POST /api/admin/board'] = async (req, res) => {
 routes['GET /api/admin/reports'] = (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
   const u = new URL(req.url, 'http://x');
-  send(req, res, 200, { reports: dbx.q.listReports.all(u.searchParams.get('resolved') === '1' ? 1 : 0, 200).map((r) => Object.assign(r, { text: sec.dec(r.text), reason: sec.dec(r.reason) })) });
+  const chName = (c) => { const k = c && chat.chOf(c), d = k && chat.CHANNELS[k]; return d ? d.name : String(c || ''); };
+  send(req, res, 200, { reports: dbx.q.listReports.all(u.searchParams.get('resolved') === '1' ? 1 : 0, 200).map((r) => Object.assign(r, { text: sec.dec(r.text), reason: sec.dec(r.reason), chName: chName(r.ch) })) });
+};
+// 운영실: 신고된 메시지의 앞뒤 대화 (같은 채널 · 같은 방, 앞 10건 · 뒤 10건, 지운 메시지 포함)
+routes['GET /api/admin/reports/ctx'] = (req, res) => {
+  if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
+  const id = Number(new URL(req.url, 'http://x').searchParams.get('id')) | 0, m = id && dbx.q.getChat.get(id);
+  if (!m) return fail(req, res, 404, '없는 메시지입니다 (오래되어 지워졌을 수 있습니다)');
+  const cols = 'SELECT id, t, pid, name, kind, text, deleted FROM chat WHERE ch = ? AND id ';
+  const rows = dbx.db.prepare(cols + '< ? ORDER BY id DESC LIMIT 10').all(m.ch, id).reverse().concat([m], dbx.db.prepare(cols + '> ? ORDER BY id LIMIT 10').all(m.ch, id));
+  oplog('admin', '관리자', 'reportctx', '신고 #' + id + ' 앞뒤 대화 확인');
+  send(req, res, 200, { id, list: rows.map((r) => { let tx = ''; try { tx = sec.dec(r.text); } catch (e) { } return { id: r.id, t: r.t, name: r.name, kind: r.kind, text: tx, deleted: !!r.deleted, me: r.id === id }; }) });
 };
 routes['POST /api/admin/reports/resolve'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
