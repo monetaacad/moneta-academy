@@ -1474,6 +1474,24 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 @keyframes scfam { from { transform: translate(78px, 142px); } to { transform: translate(126px, 150px); } }
 @media (prefers-reduced-motion: reduce) { .scene * { animation: none !important; } }
 .scene.nofx * { animation: none !important; }
+/* 날씨: 비 · 눈은 같은 무늬 두 장을 이어 붙여 아래로 흘린다 · 번개는 가끔 번쩍 */
+.scene .wx-rain { animation: wxfall .7s linear infinite; }
+.scene .wx-snow { animation: wxsnow 9s linear infinite; } .scene .wx-snow.big { animation-duration: 6s; }
+.scene .wx-fog { animation: wxfog 14s ease-in-out infinite alternate; }
+.scene .wx-flash { opacity: 0; animation: wxflash 9s linear infinite; }
+.scene.nofx .wx-flash { display: none; }
+@keyframes wxfall { from { transform: translateY(0); } to { transform: translateY(200px); } }
+@keyframes wxsnow { 0% { transform: translate(0, 0); } 50% { transform: translate(8px, 100px); } 100% { transform: translate(0, 200px); } }
+@keyframes wxfog { from { transform: translateX(-20px); } to { transform: translateX(20px); } }
+@keyframes wxflash { 0%, 61%, 64%, 66%, 100% { opacity: 0; } 62% { opacity: .55; } 65% { opacity: .3; } }
+@media (prefers-reduced-motion: reduce) { .scene .wxp, .scene .wx-fog { animation: none; } .scene .wx-flash { display: none; } }
+.sc-wx { border: 0; background: none; padding: 0; font: inherit; color: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 3px; }
+.sc-wx:hover { text-decoration: underline; }
+.wxbtn { border: 0; background: none; padding: 0 0 0 4px; font: inherit; color: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 3px; vertical-align: -2px; }
+.wxbtn:hover .wxn { text-decoration: underline; }
+.wxlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px; margin-top: 6px; }
+.wxrow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 8px; border-radius: 8px; background: var(--sunk); }
+.wxrow.on { box-shadow: 0 0 0 1px var(--brass) inset; }
 @media (max-width: 600px) { .sc-art { height: 168px; } .sc-bar { position: static; padding: 6px 8px; background: rgba(12, 14, 28, .85); flex-wrap: wrap; } .sc-bar .sc-chip { background: none; padding: 2px 0; white-space: normal; flex-wrap: wrap; max-width: 100%; overflow: visible; row-gap: 4px; } .sc-chip { font-size: 11px; padding: 3px 8px; } }
 /* 시간표: 빈자리 한 줄 */
 .tl.idlesum .tli { opacity: .8; }
@@ -1605,3 +1623,4 @@ mark.hl { color: inherit; background: linear-gradient(transparent 38%, color-mix
 .rnk-name { cursor: pointer; color: inherit; text-decoration: underline dotted; text-underline-offset: 3px; }
 .rnk-name:hover { color: var(--brass); }
 .cpin.fold .stag { flex: none; }
+@media (max-width: 600px) { .wxbtn .wxn { display: none; } }   /* 좁은 화면: 상단 날씨는 아이콘만 */
