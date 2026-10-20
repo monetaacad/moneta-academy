@@ -1865,6 +1865,12 @@
     log(P, t, '꿈에서 깼습니다: ' + DREAM[j.kind].name + (j.lucid ? ' (자각몽!)' : ''), 'good');
     return out;
   }
+  // 쉬고 있는 사역마(동행 · 파견 중이 아닌) 모두를 같은 시간으로 파견
+  A.dispatchAll = function (P, W, now, a) {
+    if (!R.famOpen(P)) err(R.FAM_OPEN_TEXT + '부터 할 수 있습니다');
+    var ids = Object.keys(P.fam.own).filter(function (id) { return FAM[id] && !P.fam.disp[id] && P.fam.act !== id; }); if (!ids.length) err('파견을 보낼 수 있는 사역마가 없습니다');
+    ids.forEach(function (id) { A.dispatch(P, W, now, { id: id, d: a.d }); }); return { n: ids.length };
+  };
   A.dispatch = function (P, W, now, a) {
     var id = str(a.id), d = DDUR[str(a.d)];
     if (!R.famOpen(P)) err(R.FAM_OPEN_TEXT + '부터 할 수 있습니다'); if (!P.fam.own[id]) err('없는 사역마입니다'); if (!d) err('잘못된 시간입니다');

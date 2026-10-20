@@ -1980,7 +1980,7 @@
     if (inc) { var ip = Math.min(1, inc.prog / inc.need); h += '<div class="incbox"><div class="row small"><b>품고 있는 알</b><span class="spacer"></span><span class="num">' + fmt(Math.floor(inc.prog)) + ' / ' + fmt(inc.need) + ' (' + Math.floor(ip * 100) + '%)</span></div><div class="bar brass" style="height:8px;margin-top:4px"><b style="width:' + (ip * 100).toFixed(1) + '%"></b></div><div class="tiny faint" style="margin-top:2px">부화 효율 ×' + C().hatchSpd.toFixed(2) + ' · 활동 점수 × 부화 효율만큼 오릅니다</div></div>'; }
     h += '<div class="row" style="margin-top:10px;gap:6px">' + (inc ? (inc.prog >= inc.need ? '<button class="btn primary" data-act="do" data-a="eggHatch">부화시키기</button>' : '<button class="btn" data-act="do" data-a="egg"' + (predMana() >= price ? '' : ' disabled') + '>마나로 바로 깨우기 <span class="cost">마나 ' + fmt(price) + '</span></button>') :
       '<button class="btn primary" data-act="do" data-a="eggInc"' + (P.fam.eggs > 0 ? '' : ' disabled') + '>알 품기 <span class="cost">필요 ' + fmt(R.eggNeed(P)) + '</span></button><button class="btn" data-act="do" data-a="egg"' + (P.fam.eggs > 0 && predMana() >= price ? '' : ' disabled') + '>마나로 바로 깨우기 <span class="cost">마나 ' + fmt(price) + '</span></button>') + '</div>';
-    h += '</div><div class="card inset"><h4>파견</h4><p class="small muted" style="margin-top:4px">동행하지 않는 사역마를 정해진 시간 동안 내보내면 재료, 마석, ' + CUR + ', 가끔 알과 별조각을 물어 옵니다. 8·12시간 파견은 잠들기 전에 시작해 두는 장시간 방치용입니다.</p>' + durPicker('dd', D.DISPATCH_DUR, '8h') + '</div></div><div class="grid gauto">';
+    h += '</div><div class="card inset"><h4>파견</h4><p class="small muted" style="margin-top:4px">동행하지 않는 사역마를 정해진 시간 동안 내보내면 재료, 마석, ' + CUR + ', 가끔 알과 별조각을 물어 옵니다. 8·12시간 파견은 잠들기 전에 시작해 두는 장시간 방치용입니다.</p>' + durPicker('dd', D.DISPATCH_DUR, '8h') + (function () { var idle = Object.keys(P.fam.own).filter(function (id) { return R.FAM[id] && !P.fam.disp[id] && P.fam.act !== id; }).length; return idle ? '<div class="row" style="margin-top:8px"><button class="btn sm primary" data-act="dispall">쉬고 있는 사역마 모두 파견 <span class="cost">' + idle + '마리 · ' + R.DDUR[S.pick.dd || '8h'].label + '</span></button></div>' : ''; })() + '<p class="tiny faint" style="margin-top:6px">파견에서 돌아온 사역마는 따로 받지 않아도 됩니다. 돌아오면 저절로 받아지고, 「끝난 작업 보고」에 한꺼번에 표시됩니다.</p></div></div><div class="grid gauto">';
     var dk = S.pick.dd || '8h';
     D.FAMILIARS.forEach(function (f) {
       var o = P.fam.own[f.id], fr = D.FAM_RARITY[f.r];
@@ -2263,7 +2263,8 @@
   ACT.ctower = function () {
     act('ctower').then(function (r) {
       if (!r) return; var nm = R.CT_NAME[r.cls], fo = r.foe;
-      replay({ title: nm + ' ' + r.f + '층', sub: fo.name, enemy: { id: 'ct', arch: fo.arch, c1: fo.c1, c2: fo.c2, boss: true, name: fo.name }, ev: r.ev, maxHp: fo.hp }, function () {
+      var fn = fo.name.replace(/^탑의 문지기 · /, '');   // 모바일에서 이름이 어색하게 줄바꿈되지 않게 「탑의 문지기」는 부제로
+      replay({ title: nm + ' ' + r.f + '층', sub: fn !== fo.name ? '탑의 문지기' : '', enemy: { id: 'ct', arch: fo.arch, c1: fo.c1, c2: fo.c2, boss: true, name: fn }, ev: r.ev, maxHp: fo.hp }, function () {
         Snd.play(r.win ? 'pass' : 'fail'); var rwT = R.rewardText(r.rw);
         modal(mhead(nm + ' ' + r.f + '층', r.win ? '돌파했습니다' : '이번에는 오르지 못했습니다') +
           '<p>' + (r.win ? '<span class="good">' + esc(R.josa(fo.name, '을', '를')) + '</span> ' + (Math.round(r.t * 10) / 10) + '초 만에 쓰러뜨렸습니다.' : esc(fo.name) + '의 체력을 ' + r.pct + '% 깎았습니다. ' + (r.dead ? '생명력이 바닥났습니다.' : R.CT_TIME + '초 안에 쓰러뜨리지 못했습니다.')) + '</p>' +
@@ -3408,6 +3409,7 @@
   ACT.rectab = function (t) { S.recTab = t; render(); };
   ACT.titleset = function (id) { act('title', { id: id || '' }).then(function (r) { if (!r) return; toast(id ? '칭호를 적용했습니다' : '칭호를 해제했습니다', r.title || '', 1800); loadMe(); render(); }); };
   ACT.brew = function (id) { act('brew', { id: id, n: +(S.pick.bn || 1) }).then(function (r) { if (r) { Snd.play('enh'); toast('물약이 완성되었습니다', R.POT[id].name + ' ' + r.n + '병 · 선반에 올렸습니다', 1800); } render(); }); };
+  ACT.dispall = function () { var d = S.pick.dd || '8h'; act('dispatchAll', { d: d }).then(function (r) { if (r) toast('사역마 ' + r.n + '마리 파견', clock(now() + R.DDUR[d].s) + '에 돌아옵니다', 2200); render(); }); };
   ACT.dispatch = function (id) { var d = S.pick.dd || '8h'; act('dispatch', { id: id, d: d }).then(function (r) { if (r) toast(R.FAM[id].name + ' 파견', clock(now() + R.DDUR[d].s) + '에 돌아옵니다', 2000); render(); }); };
   ACT['spell-pick'] = function (i) {
     i = +i; S.spellSlot = i;
@@ -4344,12 +4346,23 @@
   /* ───────── 입학 · 로그인 화면 ───────── */
   /* ── 기숙사 테스트 (로그인 · 가입 화면): 한 문항씩, 고른 답의 기숙사에 1점. 10문항부터는 중간에 결과를 볼 수 있다 ── */
   function hqShuffle(n) { var a = []; for (var i = 0; i < n; i++) a.push(i); for (var j = n - 1; j > 0; j--) { var k = Math.floor(Math.random() * (j + 1)), t = a[j]; a[j] = a[k]; a[k] = t; } return a; }
+  // 첫 화면 홍보 카드: 네 기숙사 문장과 함께, 누르면 소개부터
+  function hqPromo() {
+    return '<div class="hqpromo" data-act="hqintro" role="button" tabindex="0"><div class="hqcrests">' + D.HOUSES.map(function (h) { return dotImg(h.id + '_big', 52, h.name + ' 문장', 'hdot'); }).join('') + '</div>' +
+      '<div class="hqt">나에게 어울리는 기숙사는?</div><div class="hqs">30가지 질문으로 알아보는 기숙사 테스트</div><span class="btn sm primary" style="margin-top:8px">테스트 시작하기</span></div>';
+  }
+  ACT.hqintro = function () {
+    modal(mhead('기숙사 테스트', '나에게 어울리는 기숙사 찾기 · 30문항') + '<p class="small" style="line-height:1.7">별의 종의 울림을 들은 신입생은 입학하는 날 네 기숙사 가운데 한 곳을 선택합니다. 30가지 질문에 답하면 당신과 가장 잘 어울리는 기숙사를 알려 드립니다. 정답은 없으니 마음이 가는 답을 선택하십시오.</p>' +
+      '<div class="stack" style="gap:6px;margin-top:10px">' + D.HOUSES.map(function (h) { return '<div class="row small" style="gap:8px">' + dotImg(h.id + '_big', 28, h.name + ' 문장', 'hdot') + '<b style="color:' + h.color + '">' + h.name + '</b><span class="tiny faint">“' + esc(h.motto) + '”</span></div>'; }).join('') + '</div>' +
+      '<p class="tiny faint" style="margin-top:10px">이전 문항으로 돌아가 답을 바꿀 수 있으며, 10문항부터는 중간에 결과를 볼 수 있습니다. 결과는 참고용이며 기숙사는 가입할 때 직접 선택합니다.</p>' +
+      '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:12px"><button class="btn ghost" data-act="modal-close">닫기</button><button class="btn primary" data-act="hquiz" autofocus>시작하기</button></div>');
+  };
   ACT.hquiz = function () { S.hq = { i: 0, ans: [], ord: D.HOUSE_QUIZ.map(function (q) { return hqShuffle(q.a.length); }) }; hqDraw(); };
   function hqDraw() {
     var Q = D.HOUSE_QUIZ, t = S.hq; if (!t) return;
     if (t.i >= Q.length) return hqResult();
     var q = Q[t.i], done = t.ans.filter(Boolean).length;
-    modal(mhead('나에게 어울리는 기숙사 찾기', (t.i + 1) + ' / ' + Q.length) + '<div class="bar brass" style="height:6px;margin-bottom:12px"><b style="width:' + (t.i / Q.length * 100).toFixed(1) + '%"></b></div>' +
+    modal(mhead('기숙사 테스트', (t.i + 1) + ' / ' + Q.length) + '<div class="bar brass" style="height:6px;margin-bottom:12px"><b style="width:' + (t.i / Q.length * 100).toFixed(1) + '%"></b></div>' +
       '<p style="font-size:16px;line-height:1.6;margin-bottom:12px">' + esc(q.q) + '</p><div class="stack" style="gap:8px">' +
       t.ord[t.i].map(function (k) { var a = q.a[k]; return '<button class="btn hqopt' + (t.ans[t.i] === a[1] ? ' primary' : '') + '" data-act="hqpick" data-a="' + a[1] + '" style="justify-content:flex-start;text-align:left;white-space:normal">' + esc(a[0]) + '</button>'; }).join('') + '</div>' +
       '<div class="row" style="margin-top:14px;gap:8px">' + (t.i > 0 ? '<button class="btn sm ghost" data-act="hqprev">이전</button>' : '') + '<span class="spacer"></span>' + (done >= 10 ? '<button class="btn sm ghost" data-act="hqend">여기까지 결과 보기</button>' : '<span class="tiny faint">10문항부터 중간에 결과를 볼 수 있습니다</span>') + '</div>');
@@ -4377,7 +4390,7 @@
     var tab = S.authTab && tabs.some(function (t) { return t[0] === S.authTab; }) ? S.authTab : tabs[0][0];
     var h = '<div class="body" style="grid-template-columns:minmax(0,1fr)"><main><div class="intro"><img class="crestbig" src="' + LOGO_URL + '" width="96" height="96" alt=""><h1>모네타 아카데미</h1>' +
       '<p class="lede">별의 종의 울림을 듣는 이들에게만 초대장이 날아드는 곳.<br>오선의 열차를 타고 구름섬 라디아로.<br>모네타 아카데미에 오신 것을 환영합니다.</p>' +
-      '<p style="margin-top:8px"><button class="btn sm ghost" data-act="hquiz">나에게 어울리는 기숙사 찾기 <span class="cost">30문항</span></button></p>';
+      hqPromo();
     if (!server) h += '<div class="card inset"><p class="small">이 페이지는 <b>미리보기</b>입니다. 진행 상황은 이 브라우저에만 저장되고, 다른 학생과 월드 보스·대항전은 가상입니다. 실제 게임은 아카데미 서버에서 열립니다.</p></div>';
     if (tabs.length > 1) h += '<div class="tabs" role="tablist">' + tabs.map(function (t) { return '<button role="tab" class="' + (tab === t[0] ? 'on' : '') + '" data-act="authtab" data-a="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
     h += '<form id="authform" class="card stack" style="gap:12px" autocomplete="on">';
@@ -4525,7 +4538,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102059;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102060;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

@@ -1701,3 +1701,11 @@ mark.hl { color: inherit; background: linear-gradient(transparent 38%, color-mix
 /* 사역마: 품는 알 진행도 · 경험치 막대 */
 .incbox { margin-top: 10px; padding: 8px 10px; border-radius: 8px; background: var(--sunk); border: 1px solid var(--line2); }
 .famxp { margin-top: 5px; }
+
+/* 첫 화면: 기숙사 테스트 홍보 카드 */
+.hqpromo { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; margin: 14px auto 6px; max-width: 420px; padding: 14px 16px 16px; border-radius: 14px; cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--brass) 55%, transparent); background: radial-gradient(120% 140% at 50% 0%, color-mix(in srgb, var(--brass) 18%, var(--panel)), var(--panel)); box-shadow: 0 6px 22px var(--shadow); transition: transform .15s ease; }
+.hqpromo:hover { transform: translateY(-2px); }
+.hqpromo .hqcrests { display: flex; gap: 8px; justify-content: center; margin-bottom: 6px; }
+.hqpromo .hqt { font-family: 'Hahmlet', serif; font-size: 19px; font-weight: 700; color: var(--brass2); }
+.hqpromo .hqs { font-size: 12.5px; color: var(--muted); }
