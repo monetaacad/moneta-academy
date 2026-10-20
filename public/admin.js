@@ -173,6 +173,16 @@
     unban: function () { api('POST', '/api/admin/ban', { name: $('#un').value.trim(), ban: false }).then(function (j) { $('#umsg').textContent = j.error || '해제했습니다'; }); },
     backup: function () { api('POST', '/api/admin/backup', {}).then(function (j) { $('#umsg').textContent = j.error || '백업했습니다: ' + j.file; }); }
   };
+  // 운영실 항목 접기: 각 카드의 제목(h3)을 누르면 접고 펼친다. 접은 항목은 이 브라우저에 기억
+  (function () {
+    var KEY = 'arc_admin_fold', folded = {}; try { folded = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { }
+    function name(h) { return (h.childNodes[0] && h.childNodes[0].textContent || h.textContent).trim(); }
+    Array.prototype.forEach.call(document.querySelectorAll('#main .card'), function (c) {
+      var h = c.querySelector(':scope > h3, :scope > .row:first-child > h3'); if (!h) return;
+      h.classList.add('fh'); h.title = '눌러서 접기 · 펼치기'; if (folded[name(h)]) c.classList.add('fold');
+      h.addEventListener('click', function () { var on = c.classList.toggle('fold'); if (on) folded[name(h)] = 1; else delete folded[name(h)]; try { localStorage.setItem(KEY, JSON.stringify(folded)); } catch (e) { } });
+    });
+  })();
   document.addEventListener('click', function (e) { var el = e.target.closest('[data-a]'); if (el && A[el.dataset.a]) { e.preventDefault(); A[el.dataset.a](el); } });
   $('#go').addEventListener('click', function () { tok = $('#tok').value.trim(); enter(); });
   $('#tok').addEventListener('keydown', function (e) { if (e.key === 'Enter') { tok = $('#tok').value.trim(); enter(); } });

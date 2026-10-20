@@ -22,6 +22,24 @@
 .adm .form label.tog { flex-direction: row; align-items: center; font-size: 13px; }
 .adm .msgtext { max-width: 360px; overflow-wrap: anywhere; }
 .adm .dis td { opacity: .45; }
+/* 초대코드 표: 칸 폭이 내용에 따라 출렁이지 않게 (좁은 화면은 가로 스크롤) */
+.adm .scroll > table { min-width: 680px; }
+.adm table:has(#invites) { table-layout: fixed; }
+.adm table:has(#invites) th:nth-child(1) { width: 150px; } .adm table:has(#invites) th:nth-child(2) { width: 64px; } .adm table:has(#invites) th:nth-child(3) { width: 92px; }
+.adm table:has(#invites) th:nth-child(5) { width: 130px; } .adm table:has(#invites) th:nth-child(6) { width: 92px; }
+.adm #invites td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.adm #invites td:nth-child(4) { white-space: normal; overflow-wrap: anywhere; }
+/* 게시판 문의함: 글마다 상자, 본문은 상자 폭 전체 */
+.adm .bdq { border: 1px solid var(--line2); border-radius: 10px; padding: 10px 12px; margin-top: 8px; background: var(--sunk); }
+.adm .bdq > summary { cursor: pointer; list-style-position: inside; }
+.adm .bdq .msgtext { max-width: none; }
+.adm .bdq .form textarea { flex: 1 1 260px; }
+/* 항목 접기: 제목을 누르면 접고 펼친다 (이 브라우저에 기억) */
+.adm .card > h3.fh, .adm .card > .row > h3.fh { cursor: pointer; user-select: none; }
+.adm h3.fh::before { content: '▾ '; color: var(--muted); font-size: .8em; }
+.adm .card.fold h3.fh::before { content: '▸ '; }
+.adm .card.fold > :not(:first-child) { display: none; }
+.adm .card.fold > .row:first-child > :not(:first-child) { display: none; }
 </style>
 </head>
 <body>
