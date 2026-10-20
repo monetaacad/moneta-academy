@@ -1432,8 +1432,8 @@
     if (R.expEnd(j) <= now) return A.expClaim(P, W, now, a);   // 이미 끝난 원정은 귀환이 아니라 완료로
     var o = expFinish(P, j, now, clamp((now - j.start) / j.dur, 0, 1), 'recall'); P.exp[i] = null; log(P, now, j.s + '단계 원정에서 직접 귀환했습니다', 'news'); return o;
   };
-  /* ───────── 학과의 탑 (개인): 기사의 탑 · 마법사의 탑 ─────────
-     혼자 오르는 탑. 학과마다 따로 층을 쌓으며 줄어들지 않는다(주간 초기화 없음). 하루 3번 도전(KST 자정 초기화, 별의 탑과 따로 셈), 한 번에 한 층.
+  /* ───────── 무한의 탑 (개인): 기사의 탑 · 마법사의 탑 ─────────
+     혼자 오르는 끝없는 탑. 학과마다 따로 층을 쌓으며 줄어들지 않는다(주간 초기화 없음). 도전 횟수 제한 없이 한 번에 한 층 — 전투력이 되는 만큼 오른다.
      난이도: 적의 공격이 아주 세고(보스 공격 ×3) 체력은 낮으며(×0.6) 60초 안에 쓰러뜨려야 한다 → 화력만으로 밀기 어렵고 생명력 · 회복도 필요.
      층 곡선: 전투력 약 4천은 15층, 약 1.6만은 40층 언저리에서 막힌다. 시련의 층(50층마다)은 갑자기 어려운 벽(체력 ×1.8 · 공격 ×1.4),
      넘고 나면 3~4층은 쉬워졌다가 금세 다시 따라잡힌다. */
@@ -1447,7 +1447,7 @@
   R.ctCls = function (P) { return P.cls === 'knight' ? 'knight' : 'mage'; };
   R.ctKey = function (cls) { return cls === 'knight' ? 'twK' : 'twM'; };
   R.ctBest = function (P, cls) { return (P.st && P.st[R.ctKey(cls || R.ctCls(P))]) || 0; };
-  R.ctLeft = function (P, now) { var d = R.dayKST(now), t = P.ctd; return !t || t.day !== d ? R.CT_TRIES : Math.max(0, R.CT_TRIES - t.used); };
+  R.ctLeft = function () { return Infinity; };   // 무한의 탑: 도전 횟수 제한 없음
   R.ctStage = function (f) {
     var s; if (f >= 40) s = 32 + (f - 40) * 0.3;
     else for (var i = 1; i < CT_PTS.length; i++) if (f <= CT_PTS[i][0]) { var a = CT_PTS[i - 1], b = CT_PTS[i]; s = a[1] + (b[1] - a[1]) * (f - a[0]) / (b[0] - a[0]); break; }
@@ -1468,8 +1468,6 @@
   };
   R.ctTitle = function (cls, f) { return D.TITLES.find(function (t) { return t.stat === R.ctKey(cls) && t.n === f; }); };
   A.ctower = function (P, W, now) {
-    if (R.ctLeft(P, now) <= 0) err('오늘의 도전 횟수를 모두 사용했습니다 (KST 자정 초기화)');
-    var d = R.dayKST(now); if (!P.ctd || P.ctd.day !== d) P.ctd = { day: d, used: 0 }; P.ctd.used++;
     var cls = R.ctCls(P), key = R.ctKey(cls), c = calc(P, W, now), f = R.ctBest(P, cls) + 1, foe = R.ctFoe(f, cls);
     var r = fight(P, c, { hp: foe.hp, atk: foe.atk, boss: true }, R.CT_TIME, true);
     var out = { cls: cls, f: f, foe: foe, win: !!r.win, ev: r.ev, t: r.t, dead: !!r.dead, pct: Math.round((1 - r.mHp) * 100), rw: {}, titles: [] };

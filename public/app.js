@@ -61,9 +61,9 @@
   function clsDot(id, size) { var c = R.CLS[id]; return dotImg(id, size, c ? c.name : '', 'cdot'); }
   function icon(k) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IC[k] + '</svg>'; }
   var VIEWS = [
-    { id: 'home', name: '아카데미 광장' }, { id: 'lecture', name: '강의실' }, { id: 'explore', name: '원정' }, { id: 'tower', name: '별의 탑' }, { id: 'ctower', name: '학과의 탑' }, { id: 'exam', name: '시험·결투' },
-    { id: 'world', name: '토벌·랭킹' }, { id: 'party', name: '파티' }, { id: 'guild', name: '동아리' }, { id: 'friends', name: '친구' }, { id: 'board', name: '게시판' }, { id: 'auction', name: '떠돌이 상인' }, { id: 'market', name: '거래소' }, { id: 'gear', name: '장비·능력' }, { id: 'work', name: '공방', grade: 2 }, { id: 'lib', name: '서고' },
-    { id: 'shop', name: '매점' }, { id: 'lore', name: '세계관' }, { id: 'rec', name: '기록실' }
+    { id: 'home', name: '아카데미 광장' }, { id: 'lecture', name: '강의실' }, { id: 'explore', name: '원정' }, { id: 'tower', name: '별의 탑' }, { id: 'ctower', name: '무한의 탑' }, { id: 'exam', name: '시험·결투' },
+    { id: 'world', name: '월드 보스' }, { id: 'party', name: '파티' }, { id: 'guild', name: '동아리' }, { id: 'friends', name: '친구' }, { id: 'board', name: '게시판' }, { id: 'auction', name: '떠돌이 상인' }, { id: 'market', name: '거래소' }, { id: 'gear', name: '장비·능력' }, { id: 'work', name: '공방', grade: 2 }, { id: 'lib', name: '서고' },
+    { id: 'shop', name: '매점' }, { id: 'lore', name: '세계관' }, { id: 'rec', name: '기록실' }, { id: 'rank', name: '랭킹' }
   ];
   function viewOpen(v) { return !v.grade || S.P.grade >= v.grade || (v.id === 'work' && R.famOpen(S.P)); }   // 공방은 사역마가 열리면(레벨) 2학년 전에도
   // 안내도: 비슷한 곳끼리 묶고, 안에서 탭으로 옮겨 다닌다
@@ -73,9 +73,9 @@
     { id: 'adv', name: '원정·전투', icon: 'explore', tabs: ['explore', 'tower', 'ctower', 'exam', 'world'] },
     { id: 'craft', name: '장비·공방', icon: 'gear', tabs: ['gear', 'work'] },
     { id: 'social', name: '교류·상점', icon: 'party', tabs: ['party', 'guild', 'friends', 'board', 'market', 'auction', 'shop'] },
-    { id: 'book', name: '기록', icon: 'lore', tabs: ['lore', 'rec'] }
+    { id: 'book', name: '기록·랭킹', icon: 'lore', tabs: ['lore', 'rec', 'rank'] }
   ];
-  var TAB_NAMES = { auction: '떠돌이 상인', home: '광장', lecture: '강의실', lib: '서고 · 연구', explore: '원정', tower: '별의 탑', ctower: '학과의 탑', exam: '시험 · 결투제', world: '월드 보스 · 랭킹', gear: '장비 · 능력치', work: '공방', party: '파티', guild: '동아리', friends: '친구', board: '게시판', market: '거래소', shop: '매점', lore: '세계관', rec: '업적 · 도감' };
+  var TAB_NAMES = { auction: '떠돌이 상인', home: '광장', lecture: '강의실', lib: '서고 · 연구', explore: '원정', tower: '별의 탑', ctower: '무한의 탑', exam: '시험 · 결투제', world: '월드 보스 · 대항전', rank: '랭킹', gear: '장비 · 능력치', work: '공방', party: '파티', guild: '동아리', friends: '친구', board: '게시판', market: '거래소', shop: '매점', lore: '세계관', rec: '업적 · 도감' };
   S.gtab = {};
   function groupOf(v) { return GROUPS.find(function (g) { return g.tabs.indexOf(v) >= 0; }) || GROUPS[0]; }
 
@@ -1121,7 +1121,7 @@
     var skv = R.skyAt(now()); if (skv && P.skyLook !== skv.key) out.push({ t: dotImg('sky_' + skv.id, 16, '', 'skyic') + '하늘에 ' + skv.name + '! 올려다보기', s: skv.text, act: 'skylook', btn: '올려다보기' });
     if (S.rit && !S.rit.mine) out.push({ t: '별샘 의식에 마나 봉헌', s: '모두 함께 ' + S.rit.n + ' / ' + S.rit.goal + '명 · 채우면 ' + R.RITUAL_BUFF.text, act: 'ritual', btn: '봉헌' });
     if (S.auc && S.auc.active) out.push({ t: '떠돌이 상인이 와 있습니다', s: '귀한 장비 세 점 경매 · ' + left(S.auc.end) + ' 남음', go: 'auction' });
-    if (R.ctLeft(P, now()) > 0) out.push({ t: R.CT_NAME[R.ctCls(P)] + ' 도전 ' + R.ctLeft(P, now()) + '번 남음', s: '혼자 오르는 개인 탑 · 현재 ' + R.ctBest(P) + '층', go: 'ctower' });
+    (function () { var cf = R.ctBest(P) + 1, fo = R.ctFoe(cf, R.ctCls(P)), pv2 = R.duelPreview(P, wctx(), fo.stage, R.K.BOSS_HP * 0.6 * (fo.wall ? 1.8 : 1), R.K.BOSS_ATK * 3 * (fo.wall ? 1.4 : 1)); if (pv2.win && pv2.ttk < R.CT_TIME) out.push({ t: '무한의 탑 ' + cf + '층에 도전할 수 있습니다', s: R.CT_NAME[R.ctCls(P)] + ' · 승산 있음', go: 'ctower' }); })();
     if (S.party && R.towerLeft(P, now()) > 0) out.push({ t: '별의 탑 도전 ' + R.towerLeft(P, now()) + '번 남음 (내 횟수)', s: '파티의 힘을 모아 한 층씩 · 돌파하면 파티원 모두에게 보상 우편', go: 'tower' });
     var idleR = 0; for (var r = 0; r < c.resSlots; r++) if (!P.rsq[r]) idleR++;
     if (idleR) out.push({ t: '비어 있는 연구 자리 ' + idleR + '개', s: '', go: 'lib' });
@@ -1541,9 +1541,20 @@
     h += '<div class="card"><h3>기숙사 성장</h3><p class="tiny faint" style="margin:2px 0 8px">대항전 점수가 쌓일수록 기숙사 혜택이 1/10에서 최대 값까지 커집니다. 혜택은 현재 / 최대.</p><div class="stack" style="gap:10px">' + D.HOUSES.map(function (hh) {
       return '<div><div class="row small">' + houseDot(hh.id, 18) + '<span style="color:' + hh.color + '">' + hh.name + '</span>' + (hh.id === P.house ? '<span class="tag br">내 기숙사</span>' : '') + '</div><div class="hgrowrow">' + houseGrow(hh.id, W) + '</div></div>';
     }).join('') + '</div></div>';
+    h += '</div></div>';
+    return h;
+  };
+  /* ── 랭킹 (기록 그룹): 전투력 · 원정 최고 단계 · 월드 보스 피해 · 무한의 탑 · 동아리 ── */
+  V.rank = function () {
+    var P = S.P, W = S.W || {}, MR = myRanks();
+    if (!S.lastWorld || Date.now() - S.lastWorld > 30000) refreshWorld();
+    var h = pageHead('아카데미의 기록', '랭킹', '학생 ' + fmt(W.players || 0) + '명');
+    h += '<div class="grid g2"><div class="stack">';
     h += '<div class="card">' + rkHead('전투력 순위', '장비 · 능력치 · 주문을 모두 반영한 전투력입니다.', MR.power || S.rank) + rankList((W.topPower || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: fmt(r.power), sub: R.gradeLabel({ grade: r.grade }) + ' · Lv ' + r.lvl }; }), 'power', { rank: MR.power || S.rank, v: fmt(C().power), sub: '' }) + '</div>';
     h += '<div class="card">' + rkHead('원정 최고 단계 순위', '보스를 이겨 연 원정의 가장 깊은 단계입니다. 같은 단계면 전투력이 높은 학생이 앞섭니다.', MR.stage) + rankList((W.topStage || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: r.stage + '단계' }; }), 'stage', { rank: MR.stage, v: P.maxStage + '단계' }) + '</div>';
-    ['knight', 'mage'].forEach(function (cl) { var L = cl === 'knight' ? W.topTwK : W.topTwM, mine = R.ctCls(P) === cl, rk = cl === 'knight' ? MR.twK : MR.twM, b = R.ctBest(P, cl); h += '<div class="card">' + rkHead(R.CT_NAME[cl] + ' 순위', R.CLS[cl].name + '가 혼자 오르는 학과의 탑에서 도달한 가장 높은 층입니다.', b > 0 ? rk : null, mine && !b ? '아직 기록 없음' : '') + rankList((L || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: r.f + '층' }; }), 'ct' + cl, b > 0 ? { rank: rk, v: b + '층' } : null) + '</div>'; });
+    h += '<div class="card">' + rkHead('이번 주 월드 보스 피해 순위', '이번 주(월요일 KST 0시~) 월드 보스에 입힌 피해 합계입니다.', MR.dmg, P.wk.dmg > 0 ? '' : '이번 주 기록 없음') + rankList((W.topDmg || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: fmt(r.dmg) }; }), 'dmg', { rank: MR.dmg, v: fmt(P.wk.dmg) }) + '</div>';
+    h += '</div><div class="stack">';
+    ['knight', 'mage'].forEach(function (cl) { var L = cl === 'knight' ? W.topTwK : W.topTwM, mine = R.ctCls(P) === cl, rk = cl === 'knight' ? MR.twK : MR.twM, b = R.ctBest(P, cl); h += '<div class="card">' + rkHead(R.CT_NAME[cl] + ' 순위', R.CLS[cl].name + '가 혼자 오르는 무한의 탑에서 도달한 가장 높은 층입니다.', b > 0 ? rk : null, mine && !b ? '아직 기록 없음' : '') + rankList((L || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: r.f + '층' }; }), 'ct' + cl, b > 0 ? { rank: rk, v: b + '층' } : null) + '</div>'; });
     var gr = gRankData('lv');
     h += '<div class="card"><div class="row between"><h3>동아리 순위</h3><button class="btn sm ghost" data-act="grall">전체 보기</button></div>' + (!gr ? '<div class="empty">불러오는 중…</div>' : gr.list.length ? (gr.mine ? '<p class="small" style="margin-top:4px">우리 동아리 <b class="num gold">' + gr.mine.rank + '위</b></p>' : '') + gRankRows(gr.list.slice(0, 10), true, gr.mine && gr.mine.id, 'lv') : '<div class="empty" style="margin-top:8px">아직 동아리가 없습니다.</div>') + '</div>';
     h += '</div></div>';
@@ -1564,7 +1575,7 @@
   ACT.rkmore = function (k) { S.rkOpen[k] = !S.rkOpen[k]; render(); };
   // 내 순위들 (랭킹 화면을 볼 때만, 30초 캐시)
   function myRanks() {
-    if (API.myRanks && (!S.myRanksAt || Date.now() - S.myRanksAt > 30000)) { S.myRanksAt = Date.now(); API.myRanks().then(function (j) { if (j && j.ranks) { S.myRanks = j.ranks; if (S.view === 'world' && !S.modal) render(); } }); }
+    if (API.myRanks && (!S.myRanksAt || Date.now() - S.myRanksAt > 30000)) { S.myRanksAt = Date.now(); API.myRanks().then(function (j) { if (j && j.ranks) { S.myRanks = j.ranks; if ((S.view === 'world' || S.view === 'rank') && !S.modal) render(); } }); }
     return S.myRanks || {};
   }
   function rkHead(title, desc, rank, noRec) { return '<div class="row between"><h3>' + title + '</h3><span class="small">' + (rank ? '내 순위 <b class="num gold">' + rank + '위</b>' : noRec ? '<span class="faint">' + noRec + '</span>' : '') + '</span></div>' + (desc ? '<p class="tiny faint" style="margin:2px 0 4px">' + desc + '</p>' : ''); }
@@ -2021,20 +2032,20 @@
       '<div class="row" style="justify-content:flex-end;margin-top:14px">' + (r.win ? '<button class="btn" data-act="mailbox">우편함 열기</button>' : '') + '<button class="btn primary" data-act="modal-close" autofocus>확인</button></div>');
   }
   // 별의 탑 화면 (원정·전투): 파티가 있으면 일지 · 도전 칸, 없으면 파티와 함께 오른다는 안내
-  /* ── 학과의 탑 (개인): 기사의 탑 · 마법사의 탑 ── */
+  /* ── 무한의 탑 (개인): 기사의 탑 · 마법사의 탑 ── */
   V.ctower = function () {
-    var P = S.P, cl = R.ctCls(P), nm = R.CT_NAME[cl], best = R.ctBest(P, cl), f = best + 1, foe = R.ctFoe(f, cl), left = R.ctLeft(P, now());
+    var P = S.P, cl = R.ctCls(P), nm = R.CT_NAME[cl], best = R.ctBest(P, cl), f = best + 1, foe = R.ctFoe(f, cl), left = Infinity;
     var pv = R.duelPreview(P, wctx(), foe.stage, R.K.BOSS_HP * 0.6 * (foe.wall ? 1.8 : 1), R.K.BOSS_ATK * 3 * (foe.wall ? 1.4 : 1)), nextMile = Math.ceil(f / R.CT_MILE) * R.CT_MILE, mt = R.ctTitle(cl, nextMile), rw = R.ctReward(f);
-    var h = pageHead('혼자 오르는 ' + R.CLS[cl].name + ' 전용 탑', '<span class="phimg">' + clsDot(cl, 36) + nm + '</span>', '오늘 도전 <b class="num gold">' + left + '</b> / ' + R.CT_TRIES);
-    h += '<div class="card hl"><div class="row between"><h3>' + nm + ' <span class="tag br">최고 ' + best + '층</span></h3><span class="tiny faint">KST 자정에 도전 횟수 초기화</span></div>' +
-      '<p class="tiny faint" style="margin-top:2px">혼자 한 층씩 오르는 ' + R.CLS[cl].name + ' 전용 탑입니다. 도전 한 번에 한 층과 싸우며, 오른 층은 줄어들지 않습니다. 탑의 적은 공격이 매우 강해 화력만큼 생명력과 회복도 중요합니다(' + R.CT_TIME + '초 제한).</p>' +
+    var h = pageHead('무한의 탑 · 혼자 오르는 ' + R.CLS[cl].name + ' 전용 탑', '<span class="phimg">' + clsDot(cl, 36) + nm + '</span>', '최고 <b class="num gold">' + best + '</b>층');
+    h += '<div class="card hl"><div class="row between"><h3>' + nm + ' <span class="tag br">최고 ' + best + '층</span></h3><span class="tiny faint">도전 횟수 제한 없음</span></div>' +
+      '<p class="tiny faint" style="margin-top:2px">끝없이 이어지는 ' + R.CLS[cl].name + ' 전용 탑입니다. 도전 횟수 제한 없이 한 층씩 싸우며, 전투력이 되는 만큼 오를 수 있습니다. 오른 층은 줄어들지 않습니다. 탑의 적은 공격이 매우 강해 화력만큼 생명력과 회복도 중요합니다(' + R.CT_TIME + '초 제한).</p>' +
       '<div class="twnext" style="margin-top:10px"><div class="twf num">' + f + '<span>층</span></div><div style="flex:1;min-width:0"><b' + (foe.wall ? ' class="gold"' : '') + '>' + esc(foe.name) + '</b><div class="tiny faint">' + foe.stage + '단계 수준 · 체력 ' + fmt(foe.hp) + (foe.wall ? ' · <span class="bad">시련의 층: 탑의 문지기가 지킵니다</span>' : '') + '</div>' +
       '<div class="small" style="margin-top:4px">' + (pv.win && pv.ttk < R.CT_TIME ? '<span class="good">승산 있음</span> — 약 ' + pv.ttk.toFixed(1) + '초' : '<span class="bad">아직 버겁습니다</span>') + '</div>' +
       '<div class="tiny" style="margin-top:4px">이 층 보상 <span class="rwd">' + esc(R.rewardText(rw)) + '</span></div></div></div>' +
-      '<div class="row" style="margin-top:12px"><span class="tiny faint">' + (mt ? nextMile + '층 돌파 시 칭호 「' + esc(mt.name) + '」 · 별조각 30 · 희귀 장비 상자 · 환수의 알' : nextMile + '층 돌파 시 별조각 30 · 희귀 장비 상자 · 환수의 알') + '</span><span class="spacer"></span><button class="btn primary" data-act="ctower"' + (left > 0 ? '' : why('오늘의 도전 횟수를 모두 사용했습니다 (KST 자정 초기화)')) + '>' + f + '층 도전</button></div></div>';
+      '<div class="row" style="margin-top:12px"><span class="tiny faint">' + (mt ? nextMile + '층 돌파 시 칭호 「' + esc(mt.name) + '」 · 별조각 30 · 희귀 장비 상자 · 환수의 알' : nextMile + '층 돌파 시 별조각 30 · 희귀 장비 상자 · 환수의 알') + '</span><span class="spacer"></span><button class="btn primary" data-act="ctower"' + '' + '>' + f + '층 도전</button></div></div>';
     var got = D.TITLES.filter(function (t) { return t.stat === R.ctKey(cl); });
     h += '<div class="card" style="margin-top:14px"><h3>' + nm + ' 칭호</h3><div class="stack" style="gap:6px;margin-top:8px">' + got.map(function (t) { var ok = best >= t.n; return '<div class="row small"><span class="' + (ok ? 'gold' : 'faint') + '">' + (ok ? '✦ ' : '· ') + esc(t.name) + '</span><span class="spacer"></span><span class="tiny ' + (ok ? 'good' : 'faint') + '">' + t.n + '층' + (ok ? ' · 획득' : '') + '</span></div>'; }).join('') + '</div>' +
-      '<p class="tiny faint" style="margin-top:8px">보상: 층마다 ' + CUR + ', 2층마다 마석 1, 10층마다 별조각 3, ' + R.CT_MILE + '층마다 칭호와 추가 보상. 시련의 층(50층마다)은 탑의 문지기가 지켜 갑자기 어려워지고, 넘은 뒤 몇 층은 다시 쉬워집니다. 학과를 바꾸면 그 학과의 탑을 따로 오릅니다. 순위는 「토벌·랭킹」에서 볼 수 있습니다.</p></div>';
+      '<p class="tiny faint" style="margin-top:8px">보상: 층마다 ' + CUR + ', 2층마다 마석 1, 10층마다 별조각 3, ' + R.CT_MILE + '층마다 칭호와 추가 보상. 시련의 층(50층마다)은 탑의 문지기가 지켜 갑자기 어려워지고, 넘은 뒤 몇 층은 다시 쉬워집니다. 학과를 바꾸면 그 학과의 탑을 따로 오릅니다. 순위는 「기록·랭킹 → 랭킹」에서 볼 수 있습니다.</p></div>';
     return h;
   };
   ACT.ctower = function () {
@@ -3327,7 +3338,8 @@
     ],
     lib: [['.page-head', '서고', '마나와 지식으로 연구를 진행합니다. 연구는 한 번에 하나만 진행되며 단계가 오를수록 오래 걸리므로, 잠들기 전에 긴 연구를 시작해 두면 좋습니다.']],
     exam: [['#view .card', '기말시험', '시험 과목이 모두 기준 레벨에 도달하면 응시할 수 있습니다. 「예상 성적」을 확인한 뒤 응시합니다. 합격하면 다음 학년으로 진급합니다.'], ['h:성적표', '성적표', '학년별 성적이 기록됩니다. 「안내」를 누르면 진급 때 열린 콘텐츠를 다시 볼 수 있습니다.'], ['h:대진표', '결투제', '라이벌과 차례로 겨뤄 별조각과 ' + CUR + '를 받습니다. 지면 1시간 뒤 다시 도전할 수 있습니다.']],
-    world: [['[data-anchor="wb"]', '월드 보스', '서버의 모든 학생이 함께 체력을 깎는 보스입니다. 도전권은 8시간마다 충전됩니다.'], ['h:기숙사 대항전', '기숙사 대항전', '모든 활동이 기숙사 점수로 쌓이며, 매주 순위에 따라 보상이 지급됩니다.'], ['h:전투력 순위', '순위', '전투력 · 최고 단계 · 동아리 순위를 확인합니다.']],
+    world: [['[data-anchor="wb"]', '월드 보스', '서버의 모든 학생이 함께 체력을 깎는 보스입니다. 도전권은 8시간마다 충전됩니다.'], ['h:기숙사 대항전', '기숙사 대항전', '모든 활동이 기숙사 점수로 쌓이며, 매주 순위에 따라 보상이 지급됩니다.']],
+    rank: [['h:전투력 순위', '랭킹', '전투력 · 원정 최고 단계 · 월드 보스 피해 · 무한의 탑 · 동아리 순위를 확인합니다. 순위는 10위까지 보이며 「더보기」로 50위까지 펼칠 수 있습니다.']],
     party: [['#view .card', '파티', '최대 4명이 함께하며 파티원 한 명당 원정 ' + CUR + ' · 경험치가 오릅니다. 파티를 만든 뒤 친구를 초대하거나 아카데미 친구(NPC)를 부를 수 있습니다. 파티와 함께 오르는 별의 탑은 「원정·전투 → 별의 탑」에 있습니다.']],
     tower: [['.page-head', '별의 탑', '파티원 모두의 능력을 합쳐 한 층씩 오릅니다. 층을 처음 넘으면 파티원 모두에게 보상 우편이 발송됩니다. 파티가 없으면 먼저 파티를 만드세요(혼자서도 만들 수 있습니다).']],
     guild: [['#view .card', '동아리', '동아리를 찾아 가입하거나 직접 만들 수 있습니다. 출석과 기부로 동아리 레벨을 올리면 부원 모두가 혜택을 받습니다.']],
@@ -4143,7 +4155,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102026;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102028;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
@@ -4241,7 +4253,7 @@
   // 원정·시험·토벌 화면은 전투곡, 나머지는 광장곡
   var BATTLE_VIEWS = { explore: 1, exam: 1, world: 1 };
   function bgmScene() { if (S.P) Bgm.want(BATTLE_VIEWS[S.view] ? 'battle' : 'calm', now()); }
-  function refreshWorld() { API.world().then(function (w) { if (w && !w.error) { S.W = w; S.lastWorld = Date.now(); if (S.view === 'world' && !S.modal) softRender(); } }); }
+  function refreshWorld() { API.world().then(function (w) { if (w && !w.error) { S.W = w; S.lastWorld = Date.now(); if ((S.view === 'world' || S.view === 'rank') && !S.modal) softRender(); } }); }
   // 서버 부담 줄이기: 창이 보일 때만, 작업이 끝날 때 + 2분마다 한 번 상태를 받는다.
   // 창을 10분 넘게 숨겨 두면 채팅 연결도 닫고, 다시 보면 이어 붙인다.
   function loop() {
