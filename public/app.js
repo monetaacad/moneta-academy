@@ -4258,21 +4258,21 @@
   function hexA(h, a) { var c = parseInt(h.slice(1), 16); return 'rgba(' + ((c >> 16) & 255) + ',' + ((c >> 8) & 255) + ',' + (c & 255) + ',' + a + ')'; }
   function lum(h) { var c = parseInt(h.slice(1), 16); return (0.299 * ((c >> 16) & 255) + 0.587 * ((c >> 8) & 255) + 0.114 * (c & 255)) / 255; }
   function forTone(c) { return lightUi() ? mixDark(c, lum(c) > 0.82 ? 0.6 : 0.4) : c; }
-  // 학생 카드 배경 꾸미기 위: 배경(첫 색 · 평균 색)과의 밝기 대비가 3 이상이 될 때까지만 잉크를 밝게(어두운 배경) · 진하게(밝은 배경) 조금씩 옮긴다 (색조는 그대로)
+  // 학생 카드 배경 꾸미기 위: 잉크 색은 그대로 두고, 배경(첫 색 · 평균 색)과 대비가 낮을 때(3 미만)만 잉크와 반대되는 테두리를 두른다
   function rgbOf(h) { var c = parseInt(h.slice(1), 16); return [(c >> 16) & 255, (c >> 8) & 255, c & 255]; }
   function hexOf(a) { return '#' + a.map(function (v) { v = Math.round(v); return (v < 16 ? '0' : '') + v.toString(16); }).join(''); }
   function relL(h) { var a = rgbOf(h).map(function (v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); return 0.2126 * a[0] + 0.7152 * a[1] + 0.0722 * a[2]; }
   function contrast(a, b) { var x = relL(a), y = relL(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
-  function inkFit(c, bg) {
-    var dk = bg.dark, base = dk ? c : mixDark(c, lum(c) > 0.82 ? 0.6 : 0.4), x = base, k = 0, to = dk ? 255 : 0;
-    while (k < 1 && Math.min(contrast(x, bg.refs[0]), contrast(x, bg.refs[1])) < 3) { k += 0.05; x = hexOf(rgbOf(base).map(function (v) { return v + (to - v) * k; })); }
-    return x;
+  function inkOutline(c, bg) {
+    var low = c.some(function (v) { return Math.min(contrast(v, bg.refs[0]), contrast(v, bg.refs[1])) < 3; }); if (!low) return '';
+    var o = bg.dark ? 'rgba(255,255,255,.9)' : 'rgba(20,16,30,.85)';   // 어두운 배경은 밝은 테두리, 밝은 배경은 어두운 테두리
+    return 'filter:drop-shadow(1px 0 0 ' + o + ') drop-shadow(-1px 0 0 ' + o + ') drop-shadow(0 1px 0 ' + o + ') drop-shadow(0 -1px 0 ' + o + ');';
   }
   function decoBgRef(id) { var x = id && R.DECO[id]; if (!x || x.slot !== 'bg') return null; var avg = hexOf([0, 1, 2].map(function (i) { return x.g.reduce(function (t, c) { return t + rgbOf(c)[i]; }, 0) / x.g.length; })); return { dark: decoDark(id), refs: [x.g[0], avg] }; }
   // bg: 이름이 놓인 학생 카드의 배경 꾸미기 (없으면 화면 테마를 따른다)
   function inkAttr(id, bg) {
-    var x = id && R.DECO[id]; if (!x || x.slot !== 'ink') return null; var c = x.c.map(function (v) { return bg ? inkFit(v, bg) : forTone(v); });
-    return c.length === 1 ? { cls: '', style: 'color:' + c[0] } : { cls: 'ink' + (x.anim ? ' anim' : ''), style: 'background-image:linear-gradient(90deg,' + c.join(',') + ')' };
+    var x = id && R.DECO[id]; if (!x || x.slot !== 'ink') return null; var c = x.c.map(forTone), ol = bg ? inkOutline(c, bg) : '';
+    return c.length === 1 ? { cls: '', style: 'color:' + c[0] + ';' + ol } : { cls: 'ink' + (x.anim ? ' anim' : ''), style: 'background-image:linear-gradient(90deg,' + c.join(',') + ');' + ol };
   }
   function inkName(name, id, bg) { var k = inkAttr(id, bg); return k ? '<span class="' + k.cls + '" style="' + k.style + '">' + esc(name) + '</span>' : esc(name); }
   function decoFrame(id, small) {

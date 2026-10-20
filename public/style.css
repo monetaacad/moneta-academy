@@ -1800,9 +1800,6 @@ mark.hl { color: inherit; background: linear-gradient(transparent 38%, color-mix
 .pcard.bgdark { color: #f4ecd8; --ink: #f4ecd8; --ink2: #e6dcc4; --muted: #ddd3bc; --faint: #c2b8a2; --brass: #e6be66; --brass2: #f2d283; --verd: #93e0c6; --rose: #f2a19a; --line: rgba(255, 255, 255, .3); --line2: rgba(255, 255, 255, .2); --sunk: rgba(0, 0, 0, .28); }
 .pcard.bglight { color: #2a2418; --ink: #2a2418; --ink2: #3a3222; --muted: #54493a; --faint: #6e6250; --brass: #8a6420; --brass2: #7a5518; --verd: #2c7560; --rose: #a8443c; --line: rgba(60, 40, 10, .32); --line2: rgba(60, 40, 10, .2); --sunk: rgba(255, 255, 255, .45); }   /* 글씨 · 태그 · 동아리 문장까지 배경에 맞춰 (테마와 상관없이) */
 .pcard.bgdark h2, .pcard.bglight h2 { color: var(--ink); }
-/* 배경 꾸미기 위의 잉크 이름: 배경 밝기에 맞춘 잉크 색에 아주 얇은 빛 테두리를 덧붙인다 (그라데이션 잉크는 글자 모양에 색을 입히므로 drop-shadow) */
-.pcard.bgdark .pname > span { filter: drop-shadow(0 0 1px rgba(0, 0, 0, .55)); }
-.pcard.bglight .pname > span { filter: drop-shadow(0 0 1px rgba(255, 255, 255, .7)); }
 .pcard.bgdark .av0 { color: color-mix(in srgb, var(--hc) 55%, #fff); border-color: color-mix(in srgb, var(--hc) 55%, #fff); background: rgba(0, 0, 0, .3); }
 .pcard.bglight .av0 { color: color-mix(in srgb, var(--hc) 55%, #000); border-color: color-mix(in srgb, var(--hc) 55%, #000); background: rgba(255, 255, 255, .5); }
 .pcard.bgdark .small span[style*="color"] { color: color-mix(in srgb, currentColor 60%, #fff) !important; }   /* 기숙사 이름: 배경에 맞춰 밝게 · 어둡게 */
