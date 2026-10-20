@@ -620,6 +620,7 @@
         if (arr.some(function (x) { return x.id === m.id || (m.nonce && x.nonce === m.nonce && x.pid === m.pid); })) return;
         arr.push(m); if (arr.length > 300) arr.splice(0, arr.length - 300);
         var mine = S.P && m.pid === S.P.id, open = dockOpen();
+        if (!mine && (m.ch === 'party' || m.ch === 'exr')) chatAlert(m.ch, m.name);
         if (open && S.chat.ch === m.ch) {
           var log = $('#chatlog');
           if (log) { var pend = mine && m.nonce && /^[\w-]+$/.test(m.nonce) ? log.querySelector('[data-nonce="' + m.nonce + '"]') : null; if (pend) pend.outerHTML = msgHtml(m); else queueLog(msgHtml(m), mine); }
@@ -634,6 +635,7 @@
         if (th) { th.last = m.id; th.t = m.t; th.from = m.from; th.text = m.text.slice(0, 60); S.dm.threads.splice(S.dm.threads.indexOf(th), 1); S.dm.threads.unshift(th); }
         else { S.dm.threads.unshift({ peer: m.peer, last: m.id, t: m.t, from: m.from, text: m.text.slice(0, 60), name: m.from === S.P.id ? S.dm.peerName : m.name, online: true, friend: true }); }
         var viewing = dockOpen() && S.chat.ch === 'dm' && S.dm.peer === m.peer;
+        if (m.from !== S.P.id && !(viewing && !document.hidden && document.hasFocus())) chatAlert('dm', m.name);
         if (viewing) { var log = $('#dmlog'); if (log) { log.insertAdjacentHTML('beforeend', dmMsgHtml(m)); log.scrollTop = log.scrollHeight; } markRead('dm'); }
         else { S.chat.unread.dm = countUnread('dm'); if (m.from !== S.P.id && !(dockOpen() && S.chat.ch === 'dm')) toast((m.name || '친구') + '의 1:1', m.text.slice(0, 60), 3500); if (dockOpen() && S.chat.ch === 'dm' && !S.dm.peer) renderDock(); }
         updateUnread();
@@ -3947,7 +3949,7 @@
       '<label class="tog"><input type="checkbox" id="opt-notify" data-act="notify"' + (PREF.notify && perm === 'granted' ? ' checked' : '') + (perm === 'none' ? ' disabled' : '') + '> 창을 내려 두었거나 다른 탭을 보고 있을 때 작업이 끝나면 알림</label>' +
       (perm === 'none' ? '<p class="tiny faint">이 브라우저(또는 이 화면)에서는 알림을 사용할 수 없습니다.</p>' : perm === 'denied' ? '<p class="tiny bad">브라우저에서 알림이 막혀 있습니다. 주소창 좌측의 사이트 설정에서 알림을 허용해야 합니다.</p>' : '') +
       pushRow() + '<div class="sfxlist' + (PREF.notify || PREF.push ? '' : ' off') + '">' + [['lec', '수업'], ['exp', '원정'], ['res', '연구'], ['disp', '사역마 파견'], ['jar', '정령 병이 가득 참'], ['sky', '하늘 이벤트 시작'], ['auc', '떠돌이 상인 도착'], ['aucbid', '경매 입찰 (밀림 · 마감 5분 전)']].map(function (t) { return '<label class="tog"><input type="checkbox" data-act="ntone" data-a="' + t[0] + '"' + (ntOn(t[0]) ? ' checked' : '') + '> ' + t[1] + '</label>'; }).join('') + '</div></div>';
-    h += '<div class="setsec"><div class="section-t">채팅</div><label class="tog"><input type="checkbox" id="opt-hmt" data-act="opt" data-a="hideMyTitle"' + (P.opt.hideMyTitle ? ' checked' : '') + '> 채팅에서 내 칭호 숨기기</label>' +
+    h += '<div class="setsec"><div class="section-t">채팅</div><p class="tiny faint">새 메시지 알림: 효과음, 다른 탭을 보고 있을 때 브라우저 알림(위 알림을 켠 경우), 게임을 닫아 두었을 때 푸시(푸시를 켠 기기). 알림에는 메시지 내용이 표시되지 않습니다.</p>' + [['chexr', '원정 채팅'], ['chparty', '파티 채팅'], ['chdm', '1:1 채팅']].map(function (t) { return '<label class="tog"><input type="checkbox" data-act="ntone" data-a="' + t[0] + '"' + (ntOn(t[0]) ? ' checked' : '') + '> ' + t[1] + ' 새 메시지 알림</label>'; }).join('') + '<label class="tog"><input type="checkbox" id="opt-hmt" data-act="opt" data-a="hideMyTitle"' + (P.opt.hideMyTitle ? ' checked' : '') + '> 채팅에서 내 칭호 숨기기</label>' +
       '<label class="tog"><input type="checkbox" id="opt-hot" data-act="opt" data-a="hideOtherTitle"' + (P.opt.hideOtherTitle ? ' checked' : '') + '> 채팅에서 다른 학생 칭호 숨기기</label><p class="tiny faint">정보창에는 칭호가 그대로 보입니다.</p></div>';
     h += '<div class="setsec"><div class="section-t">게임</div><label class="tog"><input type="checkbox" id="opt-ae2" data-act="opt" data-a="autoEquip"' + (P.opt.autoEquip ? ' checked' : '') + '> 더 좋은 장비 자동 장착</label>' +
       '<label class="tog"><input type="checkbox" id="opt-aa2" data-act="opt" data-a="autoAlloc"' + (P.opt.autoAlloc ? ' checked' : '') + '> 능력치 자동 분배</label>' +
@@ -3970,7 +3972,18 @@
   ACT.ntone = function (k, b, el) { PREF.nt[k] = el.checked; savePref(); scheduleNotify(); pushSync(); };
   /* ── 푸시 알림: 게임을 닫아 두어도 서버가 기기로 보낸다 (서버판 · 지원하는 브라우저만) ── */
   function pushOk() { return API.mode === 'server' && 'serviceWorker' in navigator && 'PushManager' in window && typeof Notification !== 'undefined'; }
-  function ntOn(k) { return k === 'aucbid' && PREF.nt[k] == null ? true : !!PREF.nt[k]; }   // 경매 입찰 알림은 처음부터 켜 둔다
+  function ntOn(k) { return (k === 'aucbid' || /^ch/.test(k)) && PREF.nt[k] == null ? true : !!PREF.nt[k]; }   // 경매 입찰 · 채팅 알림은 처음부터 켜 둔다
+  // 원정 · 파티 · 1:1 새 글 알림: 효과음 + 다른 탭 · 창을 내려 두었으면 브라우저 알림 (보고 있는 탭이면 울리지 않는다). 종류마다 4초에 한 번
+  var chatAlertAt = {};
+  function chatAlert(ch, from) {
+    var k = R.CHAT_NOTIFY[ch]; if (!k || !ntOn(k)) return;
+    var away = document.hidden || !document.hasFocus(); if (!away && dockOpen() && S.chat.ch === ch) return;
+    var t = Date.now(); if (t - (chatAlertAt[k] || 0) < 4000) return; chatAlertAt[k] = t;
+    Snd.play('msg');
+    if (away && (PREF.notify || PREF.push) && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      try { var n = new Notification('모네타 아카데미 · ' + (ch === 'dm' ? '1:1 채팅' : ch === 'party' ? '파티 채팅' : '원정 채팅'), { body: (from || '학생') + ' 님의 새 메시지가 있습니다', icon: FAV_URL, tag: 'chat-' + k }); n.onclick = function () { window.focus(); n.close(); }; } catch (e) { }
+    }
+  }
   function pushOpts() { var k = {}; R.NOTIFY_KINDS.forEach(function (x) { if (ntOn(x[0])) k[x[0]] = 1; }); return { kinds: k, quiet: PREF.quiet !== false }; }
   function b64key(s) { var p = '='.repeat((4 - s.length % 4) % 4), raw = atob((s + p).replace(/-/g, '+').replace(/_/g, '/')), a = new Uint8Array(raw.length); for (var i = 0; i < raw.length; i++) a[i] = raw.charCodeAt(i); return a; }
   function pushReg() { return navigator.serviceWorker.ready; }
@@ -4630,7 +4643,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102091;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102092;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

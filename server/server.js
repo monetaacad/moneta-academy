@@ -544,15 +544,37 @@ routes['GET /api/chat/stream'] = (req, res) => {
   if (store.isBanned(pid)) return fail(req, res, 403, '이용이 정지된 계정입니다');
   chat.stream(req, res, pid);
 };
+// 원정 · 파티 · 1:1 새 글: 지금 접속해 있지 않은 받는 사람에게 푸시 (그 종류를 켠 기기만, 같은 사람 · 같은 종류는 1분에 한 번)
+const chatPushAt = new Map();
+function chatPush(P, ch, ids) {
+  const kind = R.CHAT_NOTIFY[ch]; if (!kind) return;
+  const now = Date.now(), name = ch === 'dm' ? '1:1 채팅' : ch === 'party' ? '파티 채팅' : '원정 채팅';
+  [...new Set(ids)].forEach((id) => {
+    if (!id || id === P.id || chat.isOnline(id)) return;
+    const k = id + ':' + kind; if (now - (chatPushAt.get(k) || 0) < 60000) return; chatPushAt.set(k, now);
+    if (chatPushAt.size > 20000) chatPushAt.delete(chatPushAt.keys().next().value);
+    try { push.direct(id, kind, '모네타 아카데미 · ' + name, P.name + ' 님의 새 메시지가 있습니다', 'chat-' + kind); } catch (e) { }
+  });
+}
+function chatPeers(P, ch) {
+  if (ch === 'party') { const pa = partyOf.get(P.id); return pa ? dbx.q.partyMembers.all(pa).map((r) => r.id) : []; }
+  if (ch === 'exr') {
+    const ps = exprooms.peers(P.id); if (ps) return ps;
+    const ck = R.expChatKey(P), j = (P.exp || []).find((x) => x && x.pt && x.pt.ck === ck);
+    return j && j.pt.with ? j.pt.with.map((w) => w.id).filter(Boolean) : [];
+  }
+  return [];
+}
 routes['POST /api/chat/send'] = async (req, res) => {
   const pid = authed(req); if (!pid) return fail(req, res, 401, '로그인이 필요합니다');
   const b = await readJson(req, 4096), P = store.get(pid), meta = dbx.q.playerMeta.get(pid);
   if (!P || !meta || meta.banned || P.needCreate) return fail(req, res, 403, '보낼 수 없습니다');
   try {
     const ch = String(b.ch || ''), now = Date.now() / 1000;
-    if (ch === 'dm') { const m = chat.sendDm(P, meta, String(b.to || ''), b.text, now, b.nonce); return send(req, res, 200, { ok: true, id: m.id, dup: !!m.dup }); }
+    if (ch === 'dm') { const m = chat.sendDm(P, meta, String(b.to || ''), b.text, now, b.nonce); if (!m.dup) chatPush(P, 'dm', [String(b.to || '')]); return send(req, res, 200, { ok: true, id: m.id, dup: !!m.dup }); }
     const m = chat.send(P, meta, ch, b.text, b.kind, now, b.nonce);
     if (m.dup) return send(req, res, 200, { ok: true, id: m.id, dup: true });
+    if (ch === 'party' || ch === 'exr') try { chatPush(P, ch, chatPeers(P, ch)); } catch (e) { log('채팅 푸시 실패', e); }
     send(req, res, 200, { ok: true, id: m.id });
   } catch (e) { if (e.rate) return send(req, res, 429, { error: e.message, rate: true }); fail(req, res, 400, e.message); }
 };

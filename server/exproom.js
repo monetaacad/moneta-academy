@@ -220,6 +220,8 @@ function create(o) {
   } catch (e) { log('함께 원정 방 되살리기 실패', e); }
   // 원정 채팅 열쇠: 방 번호는 서버를 켤 때마다 1부터라 예전 방 대화와 겹치지 않게 만든 시각을 붙인다
   function chatKey(pid) { const r = rooms.get(roomOf.get(pid)); if (!r) return null; if (!r.ck) r.ck = Date.now().toString(36) + '-' + r.id; return r.ck; }
-  return { inRoom: (pid) => roomOf.has(pid), chatKey, persist: () => { savedJson = ''; persist(); }, list, op, tick, peek, forget: (pid) => { leaveAny(pid); invites.delete(pid); }, invN: (pid) => myInvites(pid).length, size: () => rooms.size };
+  // 같은 방 사람들 (방에 있을 때만)
+  function peers(pid) { const r = rooms.get(roomOf.get(pid)); return r ? people(r).map((m) => m.id) : null; }
+  return { inRoom: (pid) => roomOf.has(pid), chatKey, peers, persist: () => { savedJson = ''; persist(); }, list, op, tick, peek, forget: (pid) => { leaveAny(pid); invites.delete(pid); }, invN: (pid) => myInvites(pid).length, size: () => rooms.size };
 }
 module.exports = { create };
