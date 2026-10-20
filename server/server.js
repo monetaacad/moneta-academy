@@ -1275,7 +1275,7 @@ const aucBidders = new Map(), aucWarned = new Set();   // 물건마다 값을 �
 function aucBidRaw(row, amount, pid, pname, now) {
   if (!aucBidders.has(row.id)) aucBidders.set(row.id, new Set()); aucBidders.get(row.id).add(pid);
   const ends = row.ends - now < R.AUCTION_SNIPE ? Math.floor(now + R.AUCTION_SNIPE) : row.ends;
-  if (!dbx.q.aucBid.run(amount, pid, pname, ends, row.id, row.price).changes) return null;
+  if (!dbx.q.aucBid.run(amount, pid, pname, ends, ends, row.id, row.price).changes) return null;
   aucRefund(row.bidder, row.price, row.name, '더 높은 값이 나와');
   const nr = dbx.q.aucGet.get(row.id); chat.pingAll('auction', aucOut(nr, null)); return nr;
 }
@@ -1320,7 +1320,7 @@ routes['GET /api/auction'] = (req, res) => {
   if (limited('aug:' + me, 1, 10)) return fail(req, res, 429, '요청이 너무 잦습니다');
   const now = nowSec(); aucTick(now); const v = aucVisitNow(now);
   // 앞 방문에서 막판 연장으로 아직 끝나지 않은 물건 (다음 방문이 시작돼도 보이게)
-  const ext = dbx.db.prepare('SELECT * FROM auction WHERE done = 0 AND ends > ? AND visit <> ? ORDER BY id').all(Math.floor(now), v ? v.id : -1).map((r) => aucOut(r, me));
+  const ext = dbx.db.prepare('SELECT * FROM auction WHERE done = 0 AND ext = 1 AND ends > ? AND visit <> ? ORDER BY id').all(Math.floor(now), v ? v.id : -1).map((r) => aucOut(r, me));
   send(req, res, 200, { now, visit: v, ext, lots: v ? dbx.q.aucByVisit.all(v.id).map((r) => aucOut(r, me)) : [], recent: dbx.q.aucRecent.all().map((r) => ({ name: r.name, r: r.rarity, price: r.price, bidder: r.bidder_name })) });
 };
 routes['POST /api/auction'] = async (req, res) => {
