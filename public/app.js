@@ -214,7 +214,7 @@
       else if (o.k === 'res') lines.push('<li><b>연구 완료</b> — ' + R.RES[o.id].name + ' ' + o.lv + '단계</li>');
       else if (o.k === 'hatch') lines.push('<li><b>부화</b> — ' + R.FAM[o.f].name + (o.isNew ? ' <span class="gold">(새 사역마)</span>' : '') + '</li>');
       else if (o.k === 'disp') lines.push('<li><b>' + R.FAM[o.f].name + '</b> 귀환 — ' + D.MATS[o.mat].name + ' ' + o.mats + ', 마석 ' + o.stones + ', ' + MONEY(o.gold, '+') + (o.egg ? ', <span class="gold">환수의 알</span>' : '') + (o.shard ? ', 별조각 +' + o.shard : '') + (o.xp ? ', 경험치 +' + o.xp : '') + '</li>');
-      else if (o.k === 'dream') { var dn = R.DREAM[o.kind]; lines.push('<li><b>' + (dn ? dn.name : '꿈') + '</b>에서 깼습니다' + (o.lucid ? ' <span class="gold">(자각몽 · 1.5배)</span>' : '') + ' — ' + [o.xp ? R.SUBJ[o.s].name + ' 경험치 +' + fmt(o.xp) + (o.to > o.from ? ' <span class="gold">(Lv ' + o.from + '→' + o.to + ')</span>' : '') : '', o.know ? '지식 +' + fmt(o.know) : '', o.shard ? '별조각 +' + o.shard : '', o.gold ? MONEY(o.gold, '+') : '', o.mats ? D.MATS[o.mat].name + ' ' + o.mats : '', o.stones ? '마석 ' + o.stones : '', o.egg ? '<span class="gold">환수의 알</span>' : ''].filter(Boolean).join(', ') + (o.line != null && D.DREAM_LINES[o.line] ? '<div class="tiny muted">꿈 일기: “' + D.DREAM_LINES[o.line] + '”</div>' : '') + '</li>'); }
+      else if (o.k === 'dream') { var dn = R.DREAM[o.kind]; lines.push('<li><b>' + (dn ? dn.name : '꿈') + '</b>에서 깼습니다' + (o.lucid ? ' <span class="gold">(자각몽 · 1.5배)</span>' : '') + (o.review && R.SUBJ[o.s] ? ' <span class="gold">· 복습 효과: ' + clock(o.review) + '까지 ' + R.SUBJ[o.s].name + ' 수업 경험치 +' + Math.round(R.REVIEW_BONUS * 100) + '%</span>' : '') + ' — ' + [o.xp ? R.SUBJ[o.s].name + ' 경험치 +' + fmt(o.xp) + (o.to > o.from ? ' <span class="gold">(Lv ' + o.from + '→' + o.to + ')</span>' : '') : '', o.know ? '지식 +' + fmt(o.know) : '', o.shard ? '별조각 +' + o.shard : '', o.gold ? MONEY(o.gold, '+') : '', o.mats ? D.MATS[o.mat].name + ' ' + o.mats : '', o.stones ? '마석 ' + o.stones : '', o.egg ? '<span class="gold">환수의 알</span>' : ''].filter(Boolean).join(', ') + (o.line != null && D.DREAM_LINES[o.line] ? '<div class="tiny muted">꿈 일기: “' + D.DREAM_LINES[o.line] + '”</div>' : '') + '</li>'); }
       else if (o.k === 'ach') { var a = D.ACH.find(function (x) { return x.id === o.id; }); if (a) lines.push('<li><b>업적</b> — ' + a.name + ' (별조각 +' + a.r + ')</li>'); }
     });
     if (!lines.length) { act('inboxAck', { upto: S.inboxUpto }); return; }
@@ -1347,7 +1347,7 @@
       var sj = P.subj[S2.id], open = S2.unlock <= Math.min(P.grade, 7);
       var on = P.lec.some(function (x) { return x && x.s === S2.id; }), inEx = ex && P.grade < 8 && (ex.subj.indexOf(S2.id) >= 0 || (ex.opt || []).indexOf(S2.id) >= 0);
       var nextSp = D.SPELLS.filter(function (sp) { return sp.req && sp.req[0] === S2.id && sj.lv < sp.req[1]; })[0];
-      var h2 = '<div class="card subj' + (on ? ' active' : '') + (open ? '' : ' lockd') + '" data-anchor="subj-' + S2.id + '"><div class="hd"><h3>' + S2.name + '</h3>' + (inEx ? '<span class="tag ' + (sj.lv >= ex.req ? 'ok' : 'br') + '">시험 ' + ex.req + '</span>' : '') + '<span class="lv">' + sj.lv + '</span></div><div class="prof">' + S2.prof + (open && clsN(S2.id, true) ? ' · <span class="classmates">지금 ' + clsN(S2.id, true) + '명 수강 중</span>' : '') + '</div>';
+      var h2 = '<div class="card subj' + (on ? ' active' : '') + (open ? '' : ' lockd') + '" data-anchor="subj-' + S2.id + '"><div class="hd"><h3>' + S2.name + '</h3>' + (R.reviewOn(P, S2.id, now()) ? '<span class="tag ok" title="복습하는 꿈에서 깬 뒤 3시간 안에 이 과목 수업을 시작하면 경험치 +' + Math.round(R.REVIEW_BONUS * 100) + '%">복습 효과 ~' + clock(P.review.until) + '</span>' : '') + (inEx ? '<span class="tag ' + (sj.lv >= ex.req ? 'ok' : 'br') + '">시험 ' + ex.req + '</span>' : '') + '<span class="lv">' + sj.lv + '</span></div><div class="prof">' + S2.prof + (open && clsN(S2.id, true) ? ' · <span class="classmates">지금 ' + clsN(S2.id, true) + '명 수강 중</span>' : '') + '</div>';
       if (!open) return h2 + '<p class="small muted">' + S2.unlock + '학년부터 수강할 수 있습니다.</p></div>';
       return h2 + '<div class="bar"><b style="width:' + (sj.xp / R.subjXpNeed(sj.lv) * 100).toFixed(1) + '%"></b></div><div class="row tiny faint"><span>과목 경험치 ' + fmt(sj.xp) + ' / ' + fmt(R.subjXpNeed(sj.lv)) + '</span><span class="spacer"></span><span>레벨당 ' + D.STAT_NAMES[S2.stat] + ' +1.2, ' + D.STAT_NAMES[S2.stat2] + ' +0.6</span></div>' +
         '<p class="small muted">' + S2.desc + '</p><blockquote>' + S2.line + '</blockquote>' + subjMiles(S2.id) + taskBox(S2.id) +
@@ -2219,7 +2219,7 @@
         (kind === 'study' ? '<div class="field"><label class="small muted" for="drs">복습할 과목</label><select id="drs" data-act="pick-sel" data-a="drs">' + subs.map(function (x) { return '<option value="' + x.id + '"' + (x.id === sid ? ' selected' : '') + '>' + x.name + ' (Lv ' + P.subj[x.id].lv + ')</option>'; }).join('') + '</select></div>' : '') +
         durPicker('drd', D.DREAM_DUR, '8h') +
         '<div class="small" style="margin:6px 0">예상: ' + [pv.xp ? '과목 경험치 +' + fmt(pv.xp) : '', pv.know ? '지식 +' + fmt(pv.know) : '', pv.shard ? '별조각 +' + pv.shard : '', pv.egg ? '환수의 알 ' + Math.round(pv.egg * 100) + '%' : '', pv.gold ? MONEY(pv.gold, '+') : '', pv.mats ? D.MATS[pv.mat].name + ' ' + pv.mats : '', pv.stones ? '마석 ' + pv.stones : ''].filter(Boolean).join(' · ') + '</div>' +
-        ((P.lecQ || []).some(Boolean) || P.ttRun ? '<p class="tiny gold" style="margin:4px 0">예약한 다음 교시 · 시간표의 남은 교시는 꿈길 동안 멈췄다가 깨어나면 이어집니다 (꿈길 시간만큼 늦어집니다).</p>' : '<p class="tiny faint" style="margin:4px 0">꿈길 동안 수업 예약 · 시간표는 멈췄다가 깨어나면 이어집니다.</p>') +
+        ((P.lecQ || []).some(Boolean) || P.ttRun ? '<p class="tiny gold" style="margin:4px 0">듣던 강의는 꿈속에서도 이어지지만, 예약한 다음 교시 · 시간표의 남은 교시는 꿈길 동안 멈췄다가 깨어나면 이어집니다 (꿈길 시간만큼 늦어집니다).</p>' : '<p class="tiny faint" style="margin:4px 0">듣던 강의는 꿈속에서도 끝까지 이어집니다(잠들기 전에 강의를 걸어 두면 함께 받습니다). 수업 예약 · 시간표는 멈췄다가 깨어나면 이어집니다.</p>') +
         '<button class="btn primary" data-act="dreamgo">' + R.DRDUR[dk].label + ' 꿈길 시작</button>';
       sum = '<span class="gold">비어 있음</span>';
     }
@@ -3393,7 +3393,7 @@
     S.pick['ls' + k] = sid; render();
     setTimeout(function () { var el = $('[data-anchor="lslot' + k + '"]'); if (!el) return; el.scrollIntoView({ block: 'center', behavior: 'smooth' }); el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }, 30);
   };
-  ACT['lec-start'] = function (i) { i = +i; var s = S.pick['ls' + i], d = curDur('ld' + i, '1h'); act('lecStart', { slot: i, s: s, d: d.k }).then(function (r) { if (r) { Snd.play('click'); toast(R.SUBJ[s].name + ' 수업 시작' + (r.ontime ? ' · 제때 입실!' : ''), clock(now() + d.s) + '에 끝납니다' + (r.ontime ? ' · 과목 경험치 +' + Math.round(R.ONTIME_BONUS * 100) + '%' : ''), 2200); } render(); }); };
+  ACT['lec-start'] = function (i) { i = +i; var s = S.pick['ls' + i], d = curDur('ld' + i, '1h'); act('lecStart', { slot: i, s: s, d: d.k }).then(function (r) { if (r) { Snd.play('click'); toast(R.SUBJ[s].name + ' 수업 시작' + (r.ontime ? ' · 제때 입실!' : ''), clock(now() + d.s) + '에 끝납니다' + (r.ontime ? ' · 과목 경험치 +' + Math.round(R.ONTIME_BONUS * 100) + '%' : '') + (r.review ? ' · 복습 효과 +' + Math.round(R.REVIEW_BONUS * 100) + '%' : ''), 2200); } render(); }); };
   ACT.es = function (i, d) { var cap = Math.min(S.P.maxStage, R.stageCap(S.P)), s = (S.pick['es' + i] || 1) + +d; if (R.isBoss(s)) s += +d; S.pick['es' + i] = Math.max(1, Math.min(cap, s)); if (R.isBoss(S.pick['es' + i])) S.pick['es' + i]--; render(); };
   ACT['es-best'] = function (i) { S.pick['es' + i] = R.bestStage(S.P, wctx()); render(); };
   // 끝난 원정: 끝나는 순간 다시 그리고(완료 단추), 학생이 눌러야 결과를 받는다
@@ -4734,7 +4734,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102108;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102109;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
