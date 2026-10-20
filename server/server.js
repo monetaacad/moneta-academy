@@ -440,10 +440,11 @@ routes['POST /api/login'] = async (req, res) => {
   if (!(await checkPass(pw, row.pass))) return fail(req, res, 401, '아이디나 비밀번호가 맞지 않습니다');
   if (row.banned) return fail(req, res, 403, '이용이 정지된 계정입니다');
   if (needsRehash(row.pass)) dbx.q.setPass.run(await hashPass(pw), row.id);
-  try { const le = dbx.db.prepare('SELECT login_enc FROM players WHERE id = ?').get(row.id); if (le && !le.login_enc) dbx.db.prepare('UPDATE players SET login_enc = ? WHERE id = ?').run(sec.enc(LOGIN_RE.test(login.toLowerCase()) ? login.toLowerCase() : login.trim()), row.id); } catch (e) { }   // 예전 학생은 로그인할 때 아이디를 기록 (이름이 아이디인 학생은 이름 그대로)
+  let pwTemp = false;
+  try { const le = dbx.db.prepare('SELECT login_enc, pw_temp FROM players WHERE id = ?').get(row.id); pwTemp = !!(le && le.pw_temp); if (le && !le.login_enc) dbx.db.prepare('UPDATE players SET login_enc = ? WHERE id = ?').run(sec.enc(LOGIN_RE.test(login.toLowerCase()) ? login.toLowerCase() : login.trim()), row.id); } catch (e) { }   // 예전 학생은 로그인할 때 아이디를 기록 (이름이 아이디인 학생은 이름 그대로)
   const token = newSession(row.id), now = nowSec();
   const P = loadPlayer(row.id, now);
-  send(req, res, 200, Object.assign({ token }, statePayload(P, now)), { 'Set-Cookie': cookie(token, cfg.sessionDays * 86400) });
+  send(req, res, 200, Object.assign({ token }, statePayload(P, now), pwTemp ? { pwTemp: true } : {}), { 'Set-Cookie': cookie(token, cfg.sessionDays * 86400) });
 };
 routes['POST /api/logout'] = (req, res) => {
   const tok = getToken(req); if (tok) { dbx.q.delSession.run(tokKey(tok)); sessionCache.delete(tokKey(tok)); }
@@ -457,6 +458,7 @@ routes['POST /api/password'] = async (req, res) => {
   if (!row || !(await checkPass(String(b.old || ''), row.pass))) return fail(req, res, 401, '현재 비밀번호가 맞지 않습니다');
   const pw = String(b.password || ''); { const why = pwProblem(pw, P.name); if (why) return fail(req, res, 400, why); }
   dbx.q.setPass.run(await hashPass(pw), pid);
+  try { dbx.db.prepare('UPDATE players SET pw_temp = 0 WHERE id = ?').run(pid); } catch (e) { }
   send(req, res, 200, { ok: true });
 };
 routes['GET /api/state'] = (req, res) => {
@@ -1789,6 +1791,22 @@ routes['POST /api/admin/lookup'] = async (req, res) => {
   if (!login && row.login_key && row.login_key === sec.index('login:' + row.name_key)) { login = row.name; save(login); }   // 아이디 이전에 가입 → 이름이 아이디
   oplog('admin', '관리자', 'lookup', (row.name || '') + ' 아이디 확인');
   send(req, res, 200, { name: row.name, login: login || null, match, rank: row.role === 'chief' ? '학생회장' : row.role === 'admin' ? '학생회' : '', banned: !!row.banned });
+};
+// 운영실: 비밀번호를 잃어버린 학생에게 임시 비밀번호를 발급한다. 모든 기기에서 로그아웃되고, 로그인하면 비밀번호를 바꾸라고 안내한다
+routes['POST /api/admin/resetpw'] = async (req, res) => {
+  if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
+  const b = await readJson(req, 1024), row = dbx.q.playerByKey.get(nameKey(String(b.name || '')));
+  if (!row) return fail(req, res, 404, '없는 학생입니다');
+  const abc = 'abcdefghjkmnpqrstuvwxyz', num = '23456789', pick = (s) => s[crypto.randomInt(s.length)];
+  let temp = ''; for (let i = 0; i < 6; i++) temp += pick(abc); for (let i = 0; i < 4; i++) temp += pick(num);   // 글자 6 + 숫자 4 (헷갈리는 l · o · 0 · 1 제외)
+  dbx.q.setPass.run(await hashPass(temp), row.id);
+  dbx.db.prepare('UPDATE players SET pw_temp = 1 WHERE id = ?').run(row.id);
+  dbx.q.delSessionsFor.run(row.id);
+  for (const [k, v] of sessionCache) if (v.pid === row.id) sessionCache.delete(k);
+  chat.kick(row.id);
+  let login = ''; try { const r = dbx.db.prepare('SELECT login_enc FROM players WHERE id = ?').get(row.id); login = r && r.login_enc ? sec.dec(r.login_enc) : ''; } catch (e) { }
+  oplog('admin', '관리자', 'resetpw', row.name + ' 임시 비밀번호 발급');
+  send(req, res, 200, { name: row.name, login: login || null, temp });
 };
 // 운영실: 아이디를 잃어버린 학생에게 새 아이디를 정해 준다 (비밀번호는 그대로 → 새 아이디 + 원래 비밀번호로 로그인)
 routes['POST /api/admin/setlogin'] = async (req, res) => {

@@ -3955,7 +3955,7 @@
   ACT['auth-go'] = function (tab) {
     var name = $('#a-name') ? $('#a-name').value.trim() : '', id = $('#a-id') ? $('#a-id').value.trim() : '', pw = $('#a-pw') ? $('#a-pw').value : '', msg = $('#a-msg');
     if ($('#a-name')) S.authName = name; if ($('#a-id')) S.authId = id;
-    function done(j) { if (j.error) { msg.textContent = j.error; return; } absorb(j); if (S.P && S.P.needCreate) { S.authName = ''; authScreen(); return; } start(); if (tab === 'login') afterSync(); else if (!PREF.tutDone) { S.onbChain = true; onbGuide(0, true); } else { S.afterClose = function () { if (S.view !== 'home') ACT.nav('home'); ACT.mqscene('intro'); }; ACT.story(0); } }
+    function done(j) { if (j.error) { msg.textContent = j.error; return; } absorb(j); if (S.P && S.P.needCreate) { S.authName = ''; authScreen(); return; } start(); if (tab === 'login') { afterSync(); if (j.pwTemp) setTimeout(function () { ACT.settings(); setTimeout(function () { var o = $('#pw-old'); if (o) { o.scrollIntoView({ block: 'center' }); o.focus({ preventScroll: true }); } var m = $('#pw-msg'); if (m) m.textContent = '임시 비밀번호로 로그인했습니다. 새 비밀번호로 바꿔 주세요'; }, 300); }, 400); } else if (!PREF.tutDone) { S.onbChain = true; onbGuide(0, true); } else { S.afterClose = function () { if (S.view !== 'home') ACT.nav('home'); ACT.mqscene('intro'); }; ACT.story(0); } }
     if (tab === 'login') { if (!id) { msg.textContent = '아이디 입력 필요'; return; } msg.textContent = '확인 중…'; return API.login(id, pw).then(done); }
     if (tab === 'findid') {
       var nid = $('#a-nid') ? $('#a-nid').value.trim() : '';
@@ -4059,7 +4059,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102008;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102009;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
