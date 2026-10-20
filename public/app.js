@@ -33,7 +33,7 @@
 
   /* ───────── 아이콘 ───────── */
   var IC = {
-    idea: '<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.7.5 1.1 1.2 1.1 2V16h5v-.2c0-.8.4-1.5 1.1-2A6 6 0 0 0 12 3z"/>',
+    idea: '<path d="M7.5 12V3.5h9V12"/><path d="M12 9.6l-1.9-1.8a1.15 1.15 0 0 1 1.9-1.3 1.15 1.15 0 0 1 1.9 1.3z" fill="currentColor" stroke-width="0.8"/><rect x="3.5" y="12" width="17" height="9" rx="1.5"/><path d="M7 12h10" stroke-width="2.4"/>',   // 마음의 소리함: 하트 쪽지가 상자로
     home: '<path d="M4 20V10l8-6 8 6v10M9 20v-6h6v6"/>', lecture: '<path d="M4 5h6a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H4zM20 5h-6a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h6z"/>',
     exam: '<path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h5"/>', explore: '<circle cx="12" cy="12" r="8"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/>',
     gear: '<path d="M8 4l4 2 4-2 3 5-3 2v9H8v-9L5 9z"/>', work: '<path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3M7.5 14h9"/>',
