@@ -927,7 +927,7 @@
     var svg = '<svg class="scene-svg" viewBox="0 0 600 200" preserveAspectRatio="xMinYMax slice" role="img" aria-label="아카데미 광장 풍경 · ' + { night: '밤', dawn: '새벽', day: '낮', dusk: '노을' }[ph] + '">' + defs + o + '</svg>';
     // 그림 위 작은 글자 (필요한 것만)
     var nx = R.skyNext(t);
-    var skyTxt = ev ? dotImg('sky_' + ev.id, 18, '', 'skyic') + '<b>' + ev.name + '</b> <span data-l="left:' + ev.end + '"></span> 남음 · <span class="sc-sub">' + ev.text + '</span>' + (P.skyLook === ev.key ? ' · 올려다봄' : ' <button class="sc-btn" data-act="skylook">올려다보기</button>') : clock(t) + ' · ' + { night: '별이 뜬 밤', dawn: '동트는 새벽', day: '맑은 낮', dusk: '노을 지는 저녁' }[ph] + (nx ? ' · <span class="sc-sub">다음 하늘 ' + nx.name + ' ' + clock(nx.start) + '</span>' : '');
+    var skyTxt = ev ? dotImg('sky_' + ev.id, 18, '', 'skyic') + '<b class="sc-evn" data-tip="sky" tabindex="0">' + ev.name + ' ⓘ</b> <span data-l="left:' + ev.end + '"></span> 남음' + (P.skyLook === ev.key ? ' · 올려다봄' : ' <button class="sc-btn" data-act="skylook" data-tip="sky">올려다보기</button>') : clock(t) + ' · ' + { night: '별이 뜬 밤', dawn: '동트는 새벽', day: '맑은 낮', dusk: '노을 지는 저녁' }[ph] + (nx ? ' · <span class="sc-sub">다음 하늘 ' + nx.name + ' ' + clock(nx.start) + '</span>' : '');
     // 오늘의 축복 (달 · 요일 · 장학금): 누르면 자세히
     var bl = [cal.month + ' ' + cal.bonus.text.replace(/^[^—]+— /, '')]; if (cal.weekend) bl.push(D.WEEKEND.text.replace(/^[^—]+— /, '').replace(/ \(토·일\)$/, ''));
     if (R.scholarship(P, wctx(), t)) bl.push('후배 장학금');
@@ -2511,6 +2511,8 @@
     return { gold: g, xp: x, know: k, ne: ne, nl: nl };
   }
   var TIP = {
+    // 하늘 이벤트: 효과는 진행 중인 작업에 자동으로 적용되고, 올려다보면 선물을 받는다
+    sky: function () { var ev = R.skyAt(now()); if (!ev) return ''; var seen = S.P && S.P.skyLook === ev.key; return '<b>' + ev.name + '</b><p>' + ev.text + '</p><p class="tiny">하늘 이벤트가 이어지는 동안 올려다보지 않아도 자동으로 적용됩니다(진행 중인 수업 · 원정 · 마나 재생 등).</p><p class="tiny gold" style="margin-top:4px">' + (seen ? '이번 하늘은 이미 올려다보았습니다.' : '「올려다보기」를 누르면 별조각과 마나를 선물로 받습니다.') + '</p>'; },
     gi: function (i) { var g = D.GUIDE[+i]; if (!g) return ''; var sn = g.b.slice(0, 150); return '<b>' + esc(g.t) + '</b><p>' + esc(sn) + (g.b.length > 150 ? '…' : '') + '</p><p class="tiny gold" style="margin-top:4px">' + (matchMedia('(hover: none)').matches ? '한 번 더 누르면 이 안내로 이동합니다' : '누르면 이 안내로 이동합니다') + '</p>'; },
     g: function (q) { var g = guideFind(q); if (!g) return ''; var b = g.b, k = b.indexOf(q), st = k > 60 ? b.lastIndexOf('. ', k) + 2 : 0, sn = b.slice(Math.max(0, st), Math.max(0, st) + 150); return '<b>' + esc(q) + '</b><p>' + esc(sn) + (b.length > st + 150 ? '…' : '') + '</p><p class="tiny gold" style="margin-top:4px">' + (matchMedia('(hover: none)').matches ? '한 번 더 누르면 가이드로 이동합니다' : '클릭하면 가이드에서 보기') + '</p>'; },
     house: function () { var hh = house(); return '<b>' + houseDot(S.P.house, 18) + ' ' + hh.name + ' <span class="faint">' + hh.latin + '</span></b><p class="muted">“' + hh.motto + '”</p><p>기숙사 혜택 (현재 / 최대)</p>' + houseGrow(S.P.house, wctx()) + '<p class="tt-src">처음에는 적힌 효과의 1/10만 받습니다. 기숙사 학생들의 활동이 대항전 점수로 쌓일수록 커져, 기숙사 성장 100%가 되면 적힌 효과(최대)를 그대로 받습니다.</p>'; },
@@ -4084,7 +4086,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102018;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102019;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
