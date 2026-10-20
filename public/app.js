@@ -2786,7 +2786,10 @@
     else if (m.tab === 'hist') { if (!m.hist || Date.now() - (m.hiAt || 0) > 30000) { if (Date.now() - (m.hiAt || 0) > 1500) loadHist(); } }
     else if (!d || Date.now() - m.at > 30000) { if (Date.now() - m.at > 1500) loadMarket(); }
     var h = pageHead('부엉이 상단', '거래소', '수수료 5% · 3일 보관 · 한 번에 10개');
-    h += '<div class="tabs" role="tablist">' + [['buy', '사기'], ['sell', '팔기'], ['live', '실시간 거래'], ['mine', '내 물건'], ['hist', '거래 내역']].map(function (t) { return '<button role="tab" class="' + (m.tab === t[0] ? 'on' : '') + '" data-act="mktab" data-a="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
+    // 올린 물건 수 (판매 중 / 한 번에 올릴 수 있는 수): 내 물건 탭 이름과 팔기 화면 위에
+    var openN = d && d.mine ? d.mine.filter(function (x) { return x.status === 'open'; }).length : null, openMax = (d && d.maxOpen) || 10, openTxt = openN == null ? '' : ' <span class="num tiny' + (openN >= openMax ? ' bad' : ' faint') + '">' + openN + ' / ' + openMax + '</span>';
+    h += '<div class="tabs" role="tablist">' + [['buy', '사기'], ['sell', '팔기'], ['live', '실시간 거래'], ['mine', '내 물건' + openTxt], ['hist', '거래 내역']].map(function (t) { return '<button role="tab" class="' + (m.tab === t[0] ? 'on' : '') + '" data-act="mktab" data-a="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
+    if (m.tab === 'sell' && openN != null) h += '<div class="row small" style="justify-content:flex-end;margin:-8px 0 8px"><span class="muted">올린 물건 <b class="num' + (openN >= openMax ? ' bad' : ' gold') + '">' + openN + ' / ' + openMax + '</b></span></div>';
     var low = d && d.grade && P.grade < d.grade;   // 학년이 모자라면 구경만
     if (low) { if (m.tab === 'sell' || m.tab === 'mine') m.tab = 'buy'; h += '<div class="card inset" style="margin-bottom:12px"><p class="small gold">거래소에서 사고팔기는 ' + d.grade + '학년부터입니다. 지금은 구경만 할 수 있습니다.</p></div>'; }
     var sellWait = P.created ? P.created + 86400 - now() : 0;   // 판매 등록은 입학 24시간 뒤부터 (서버 MK.SELL_AFTER)
@@ -2869,11 +2872,12 @@
       }).join('') + '</div>';
       h += '</div>';
     } else {
-      var mine = d && d.mine ? d.mine : [];
+      var mine = d && d.mine ? d.mine.filter(function (x) { return x.status === 'open'; }) : [];   // 판매 중인 것만 (팔린 물건은 거래 내역에)
+      h += '<p class="tiny faint" style="margin-bottom:6px">판매 중인 물건 ' + mine.length + ' / ' + openMax + ' · 팔린 물건은 「거래 내역」에서 볼 수 있습니다. 기한이 지나거나 내린 물건은 바로 돌아옵니다.</p>';
       h += mine.length ? '<div class="mklist">' + mine.map(function (x) {
         var st = { open: '<span class="tag br">판매 중 · ' + R.fmtTime(Math.max(0, x.expires - Date.now() / 1000)) + ' 남음</span>', sold: '<span class="tag ok">팔림 · +' + fmt(Math.floor(x.price * (1 - (d.fee || 0.05)))) + ' ' + CUR + '</span>', canceled: '<span class="tag">취소함</span>', expired: '<span class="tag">기한 지나 돌아옴</span>' }[x.status] || '';
         return '<div class="mkrow"><div class="mki"><span class="mkn ell"' + (x.kind === 'item' ? ' style="color:' + rcol(x.r) + '"' : '') + '>' + esc(x.name) + (x.kind !== 'item' ? ' ×' + fmt(x.qty) : '') + '</span><div>' + st + '</div></div><b class="num gold mkpr">' + fmt(x.price) + '</b>' + (x.status === 'open' ? '<button class="btn sm ghost" data-act="mkcancel" data-a="' + x.id + '">내리기</button>' : '') + '</div>';
-      }).join('') + '</div>' : '<div class="empty">올린 물건이 없습니다.</div>';
+      }).join('') + '</div>' : '<div class="empty">판매 중인 물건이 없습니다.</div>';
     }
     return h;
   };
@@ -4734,7 +4738,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102112;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102113;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
