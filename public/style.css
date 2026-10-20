@@ -904,6 +904,11 @@ button.mkn:hover { text-decoration: underline; }
 .rkrow input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--brass); }
 .pguild { display: flex; gap: 6px; align-items: center; margin-top: 5px; font-size: 13px; }
 .pguild .gemb { border-radius: 6px; }
+.gemb svg { display: block; color: color-mix(in srgb, var(--gc, #d6ad5f) 35%, var(--ink)); }
+.giconpick { display: grid; grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); gap: 4px; margin-top: 6px; max-height: 180px; overflow-y: auto; }
+.gicon { display: grid; place-items: center; height: 34px; border-radius: 8px; border: 1px solid var(--line2); background: var(--sunk); color: var(--muted); cursor: pointer; padding: 0; }
+.gicon:hover { color: var(--ink); border-color: var(--brass); }
+.gicon.on { background: color-mix(in srgb, var(--gc, #d6ad5f) 30%, var(--sunk)); border-color: var(--gc, #d6ad5f); color: var(--ink); }
 /* 보내는 중인 내 글 · 새 글 알림 단추 */
 .cm.pending { opacity: .55; }
 .cm.pending.late .ct::after { content: ' 지연'; color: var(--rose); }

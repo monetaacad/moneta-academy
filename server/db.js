@@ -201,6 +201,7 @@ function open(dir) {
     );
     CREATE INDEX IF NOT EXISTS board_com ON board_comments(post, id);
   `);
+  { const gc = db.prepare(`PRAGMA table_info(guilds)`).all().map((c) => c.name); if (gc.length && gc.indexOf('icon') < 0) db.exec(`ALTER TABLE guilds ADD COLUMN icon TEXT NOT NULL DEFAULT ''`); }   // 동아리 아이콘 (D.GUILD_ICONS id)
   { const bp = db.prepare(`PRAGMA table_info(board_posts)`).all().map((c) => c.name); if (bp.indexOf('st') < 0) db.exec(`ALTER TABLE board_posts ADD COLUMN st TEXT NOT NULL DEFAULT ''`); }   // 건의 처리 상태: '' · wip(적용 중) · done(해결 완료)
   db.exec(`
     CREATE TABLE IF NOT EXISTS oplog (
@@ -230,7 +231,8 @@ function open(dir) {
       color TEXT NOT NULL DEFAULT '#d6ad5f',
       owner TEXT NOT NULL,
       mode TEXT NOT NULL DEFAULT 'open',   -- open 바로 가입 | apply 신청 후 승인
-      created INTEGER NOT NULL
+      created INTEGER NOT NULL,
+      icon TEXT NOT NULL DEFAULT ''        -- 동아리 아이콘 (D.GUILD_ICONS id)
     );
     CREATE TABLE IF NOT EXISTS guild_members (
       pid TEXT PRIMARY KEY,
@@ -444,13 +446,13 @@ function open(dir) {
     // 동아리
     gGet: db.prepare(`SELECT * FROM guilds WHERE id = ?`),
     gByKey: db.prepare(`SELECT id FROM guilds WHERE name_key = ?`),
-    gInsert: db.prepare(`INSERT INTO guilds (id, name, name_key, intro, color, owner, mode, created) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`),
-    gUpdate: db.prepare(`UPDATE guilds SET intro = ?, notice = ?, color = ?, mode = ? WHERE id = ?`),
+    gInsert: db.prepare(`INSERT INTO guilds (id, name, name_key, intro, color, owner, mode, created, icon) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`),
+    gUpdate: db.prepare(`UPDATE guilds SET intro = ?, notice = ?, color = ?, mode = ?, icon = ? WHERE id = ?`),
     gOwner: db.prepare(`UPDATE guilds SET owner = ? WHERE id = ?`),
     gDelete: db.prepare(`DELETE FROM guilds WHERE id = ?`),
-    gList: db.prepare(`SELECT g.id, g.name, g.intro, g.color, g.mode, g.created, g.lv, (SELECT COUNT(*) FROM guild_members m WHERE m.guild = g.id) AS n, p.name AS owner_name FROM guilds g LEFT JOIN players p ON p.id = g.owner ORDER BY n DESC, g.created ASC LIMIT 100`),
+    gList: db.prepare(`SELECT g.id, g.name, g.intro, g.color, g.icon, g.mode, g.created, g.lv, (SELECT COUNT(*) FROM guild_members m WHERE m.guild = g.id) AS n, p.name AS owner_name FROM guilds g LEFT JOIN players p ON p.id = g.owner ORDER BY n DESC, g.created ASC LIMIT 100`),
     gMembers: db.prepare(`SELECT m.pid AS id, m.role, m.rank, m.contrib, m.cday, m.dday, m.dpts, m.joined, p.name, p.house, p.grade, p.lvl, p.avatar_v, p.last_seen, p.title FROM guild_members m JOIN players p ON p.id = m.pid WHERE m.guild = ? ORDER BY CASE m.role WHEN 'owner' THEN 0 WHEN 'officer' THEN 1 ELSE 2 END, m.joined`),
-    gRank: db.prepare(`SELECT g.id, g.name, g.intro, g.created, g.color, g.mode, g.lv, g.xp, COUNT(m.pid) AS n, COALESCE(SUM(p.power), 0) AS pw, o.name AS owner_name FROM guilds g LEFT JOIN guild_members m ON m.guild = g.id LEFT JOIN players p ON p.id = m.pid LEFT JOIN players o ON o.id = g.owner GROUP BY g.id`),
+    gRank: db.prepare(`SELECT g.id, g.name, g.intro, g.created, g.color, g.icon, g.mode, g.lv, g.xp, COUNT(m.pid) AS n, COALESCE(SUM(p.power), 0) AS pw, o.name AS owner_name FROM guilds g LEFT JOIN guild_members m ON m.guild = g.id LEFT JOIN players p ON p.id = m.pid LEFT JOIN players o ON o.id = g.owner GROUP BY g.id`),
     gAllMembers: db.prepare(`SELECT m.pid, m.guild, m.role, g.lv FROM guild_members m JOIN guilds g ON g.id = m.guild`),
     gMember: db.prepare(`SELECT * FROM guild_members WHERE pid = ?`),
     gSetRank: db.prepare(`UPDATE guild_members SET rank = ? WHERE pid = ?`),
@@ -472,7 +474,7 @@ function open(dir) {
     glPrune: db.prepare(`DELETE FROM guild_log WHERE guild = ? AND id <= (SELECT id FROM guild_log WHERE guild = ? ORDER BY id DESC LIMIT 1 OFFSET 200)`),
     glDelGuild: db.prepare(`DELETE FROM guild_log WHERE guild = ?`),
     ginvPut: db.prepare(`INSERT INTO guild_invites (pid, guild, by, t) VALUES (?, ?, ?, ?) ON CONFLICT(pid, guild) DO UPDATE SET by = excluded.by, t = excluded.t`),
-    ginvMine: db.prepare(`SELECT i.guild, i.by, i.t, g.name, g.color, g.lv, (SELECT COUNT(*) FROM guild_members m WHERE m.guild = g.id) AS n FROM guild_invites i JOIN guilds g ON g.id = i.guild WHERE i.pid = ? ORDER BY i.t DESC LIMIT 20`),
+    ginvMine: db.prepare(`SELECT i.guild, i.by, i.t, g.name, g.color, g.icon, g.lv, (SELECT COUNT(*) FROM guild_members m WHERE m.guild = g.id) AS n FROM guild_invites i JOIN guilds g ON g.id = i.guild WHERE i.pid = ? ORDER BY i.t DESC LIMIT 20`),
     ginvGet: db.prepare(`SELECT * FROM guild_invites WHERE pid = ? AND guild = ?`),
     ginvDel: db.prepare(`DELETE FROM guild_invites WHERE pid = ? AND guild = ?`),
     ginvDelPid: db.prepare(`DELETE FROM guild_invites WHERE pid = ?`),

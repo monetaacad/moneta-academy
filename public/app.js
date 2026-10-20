@@ -531,7 +531,7 @@
     if (m.kind === 'staff') return '<div class="cm staff" data-id="' + m.id + '"><span class="ct num">' + time + '</span><span class="cx"><span class="stag">운영진 공지</span> <mark class="hl">' + chatText(m.text) + '</mark></span></div>';   // 운영진 공지: 형광펜
     if (m.kind === 'recruit') {   // 함께 원정 모집 카드
       var rc = {}; try { rc = JSON.parse(m.text) || {}; } catch (e) { }
-      if (rc.type === 'guild') return '<div class="cm rcm' + (me ? ' mine' : '') + '" data-id="' + m.id + '"><span class="ct num">' + time + '</span><span class="cx"><span class="rchead"><b>' + esc(m.name) + '</b> 님의 동아리 홍보 · ' + gEmblem(/^#[0-9a-fA-F]{3,8}$/.test(rc.color || '') ? rc.color : '#d6ad5f', rc.name || '', 18) + ' <b>' + esc(rc.name || '') + '</b> Lv ' + (+rc.lv || 1) + ' · <b class="num">' + (+rc.n || 1) + '/' + (+rc.max || 0) + '</b> · ' + (rc.mode === 'apply' ? '신청 후 승인' : '누구나 가입') + '</span>' +
+      if (rc.type === 'guild') return '<div class="cm rcm' + (me ? ' mine' : '') + '" data-id="' + m.id + '"><span class="ct num">' + time + '</span><span class="cx"><span class="rchead"><b>' + esc(m.name) + '</b> 님의 동아리 홍보 · ' + gEmblem(/^#[0-9a-fA-F]{3,8}$/.test(rc.color || '') ? rc.color : '#d6ad5f', rc.name || '', 18, rc.icon) + ' <b>' + esc(rc.name || '') + '</b> Lv ' + (+rc.lv || 1) + ' · <b class="num">' + (+rc.n || 1) + '/' + (+rc.max || 0) + '</b> · ' + (rc.mode === 'apply' ? '신청 후 승인' : '누구나 가입') + '</span>' +
         (rc.note ? '<span class="rcnote">“' + esc(rc.note) + '”</span>' : '') + (me ? '' : '<button class="btn sm" data-act="gpeek" data-a="' + esc(String(rc.g || '')) + '">살펴보기</button>') + '</span></div>';
       if (rc.type === 'party') return '<div class="cm rcm' + (me ? ' mine' : '') + '" data-id="' + m.id + '"><span class="ct num">' + time + '</span><span class="cx"><span class="rchead"><b>' + esc(m.name) + '</b> 님의 파티원 모집 · <b>' + esc(rc.name || '') + '</b> · <b class="num">' + (+rc.n || 1) + '/' + (+rc.max || 4) + '</b>' + (rc.floor ? ' · 별의 탑 ' + (+rc.floor) + '층 돌파' : ' · 별의 탑 도전') + '</span>' +
         (rc.note ? '<span class="rcnote">“' + esc(rc.note) + '”</span>' : '') + (me ? '' : '<button class="btn sm" data-act="ptjoinrec" data-a="' + esc(String(rc.party || '')) + '">파티 들어가기</button>') + '</span></div>';
@@ -764,7 +764,7 @@
     var hh = R.HOUSE[p.house], dc = p.deco || {}, fr = decoFrame(dc.frame), bgs = decoBg(dc.bg), dk = dc.frame || dc.bg;
     var h = (p.preview ? '<p class="tiny gold" style="margin-bottom:10px">미리보기 · 저장하지 않은 내용이 들어 있습니다</p>' : '') + '<div class="pcard' + (dk ? ' deco ' + fr.cls : '') + '"' + (dk ? ' style="' + fr.style + bgs + '"' : '') + '>' + (dc.stamp && R.DECO[dc.stamp] ? '<span class="pstamp" title="' + R.DECO[dc.stamp].name + '" aria-hidden="true">' + R.DECO[dc.stamp].glyph + '</span>' : '') + '<div class="pav">' + avatarHtml(p, 100) + (p.avcredit && (p.av || p.avData) ? '<span class="avcredit" title="두상 출처">' + esc(p.avcredit) + '</span>' : '') + '</div>' + '<div style="min-width:0">' + (p.title ? '<div class="pttl">' + (R.OP_TITLES[p.title] ? '<span class="ttl' + R.opTitleCls(p.title) + '">' + esc(p.title) + '</span>' : esc(p.title)) + '</div>' : '') + '<h2 class="pname">' + inkName(p.name, dc.ink) + (p.badge && R.GEM[p.badge.gem] ? ' <span class="pbdg" title="' + esc((p.badge.name || '') + ' · Lv ' + p.badge.lv) + '">' + badgeSvg(p.badge, 26) + '</span>' : '') + (p.online ? ' <span class="odot" title="접속 중"></span>' : '') + '</h2>' +
       '<div class="small">' + (hh ? houseDot(p.house, 16) + ' ' : '') + '<span style="color:' + (hh ? hh.color : 'inherit') + '">' + (hh ? hh.name : '') + '</span> · ' + (p.grade >= 8 ? '마스터 과정' : p.grade + '학년') + (p.lvl ? ' · Lv ' + p.lvl : '') + (R.CLS[p.cls] ? ' · <span class="pcls">' + clsDot(p.cls, 14) + ' ' + R.CLS[p.cls].name + '</span>' : '') + '</div>' +
-      (p.guild ? '<div class="pguild">' + gEmblem(p.guild.color, p.guild.name, 20) + '<b>' + esc(p.guild.name) + '</b><span class="tiny faint">Lv ' + (p.guild.lv || 1) + '</span>' + (p.guild.rank ? '<span class="tag' + (p.guild.role === 'owner' ? ' br' : p.guild.role === 'officer' ? ' ok' : '') + '">' + esc(p.guild.rank) + '</span>' : '') + '</div>' : '') +
+      (p.guild ? '<div class="pguild">' + gEmblem(p.guild.color, p.guild.name, 20, p.guild.icon) + '<b>' + esc(p.guild.name) + '</b><span class="tiny faint">Lv ' + (p.guild.lv || 1) + '</span>' + (p.guild.rank ? '<span class="tag' + (p.guild.role === 'owner' ? ' br' : p.guild.role === 'officer' ? ' ok' : '') + '">' + esc(p.guild.rank) + '</span>' : '') + '</div>' : '') +
       (p.status ? '<div class="pstatus">' + esc(p.status) + '</div>' : '') + '</div></div>';
     if (p.bio) { var long = p.bio.length > 120 || (p.bio.match(/\n/g) || []).length > 3; h += '<div class="pbiow' + (long ? ' clamp' : '') + '"><p class="pbio">' + esc(p.bio) + '</p>' + (long ? '<button class="btn sm ghost biomore" data-act="biomore">더보기</button>' : '') + '</div>'; } else if (p.bioHidden) h += '<p class="tiny faint" style="margin-top:10px">자기소개는 친구에게만 공개되어 있습니다.</p>';
     var rows = [];
@@ -2068,11 +2068,15 @@
       if (S.modal && $('#ginfo')) ACT.ginfo();
     });
   }
-  function gEmblem(color, name, size) { return '<span class="gemb" style="--gc:' + color + ';width:' + size + 'px;height:' + size + 'px;font-size:' + Math.round(size * 0.45) + 'px">' + esc((name || '?').slice(0, 1)) + '</span>'; }
+  // 동아리 아이콘: 동아리 색 바탕 + Material 아이콘. 아직 고르지 않은 동아리는 이름으로 하나를 정해 보여 준다
+  var GICON = {}; D.GUILD_ICONS.forEach(function (x) { GICON[x.id] = x; });
+  function gIconOf(icon, name) { if (GICON[icon]) return GICON[icon]; var h = 0, t = String(name || ''); for (var i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) >>> 0; return D.GUILD_ICONS[h % D.GUILD_ICONS.length]; }
+  function gIconSvg(x, px) { return '<svg viewBox="0 -960 960 960" width="' + px + '" height="' + px + '" fill="currentColor" aria-hidden="true"><path d="' + x.d + '"/></svg>'; }
+  function gEmblem(color, name, size, icon) { var x = gIconOf(icon, name); return '<span class="gemb" title="' + esc(x.name) + '" style="--gc:' + color + ';width:' + size + 'px;height:' + size + 'px">' + gIconSvg(x, Math.round(size * 0.62)) + '</span>'; }
   function gRankTag(m) { return '<span class="tag' + (m.role === 'owner' ? ' br' : m.role === 'officer' ? ' ok' : '') + '">' + esc(m.rankName || GROLE[m.role]) + '</span>'; }
   function gHead(g) {
     var full = g.lv >= g.maxLv, pctx = full ? 100 : Math.min(100, g.xp / g.need * 100);
-    return '<div class="card hl gheadc"><div class="row" style="gap:12px;flex-wrap:nowrap">' + gEmblem(g.color, g.name, 52) + '<div style="flex:1;min-width:0"><div class="row" style="gap:8px"><h3 style="margin:0">' + esc(g.name) + '</h3><span class="tag br num">Lv ' + g.lv + '</span></div>' +
+    return '<div class="card hl gheadc"><div class="row" style="gap:12px;flex-wrap:nowrap">' + gEmblem(g.color, g.name, 52, g.icon) + '<div style="flex:1;min-width:0"><div class="row" style="gap:8px"><h3 style="margin:0">' + esc(g.name) + '</h3><span class="tag br num">Lv ' + g.lv + '</span></div>' +
       '<div class="tiny faint">' + g.n + ' / ' + g.max + '명 · ' + (g.mode === 'apply' ? '신청 후 승인' : '누구나 가입') + ' · 나는 <b class="gold">' + esc(g.myRankName || GROLE[g.myRole]) + '</b> · 내 기여도 <b class="num">' + fmt(g.my ? g.my.contrib : 0) + '</b></div>' +
       '<div class="bar brass" style="margin-top:6px;height:6px"><b style="width:' + pctx.toFixed(1) + '%"></b></div><div class="tiny faint num" style="margin-top:2px">' + (full ? '최고 레벨' : fmt(g.xp) + ' / ' + fmt(g.need) + ' → Lv ' + (g.lv + 1)) + ' · 부원 모두 ' + CUR + '·경험치 +' + (g.bonus * 100).toFixed(1).replace(/\.0$/, '') + '%</div></div></div>' +
       (g.notice ? '<div class="gnotice"><b class="tiny gold">공지</b><p class="small">' + esc(g.notice) + '</p></div>' : '') +
@@ -2153,7 +2157,7 @@
     }
     if (p.notice) h += '<div class="card"><h3>공지 · 소개</h3><div class="field" style="margin-top:6px"><label class="small muted" for="gd-notice">공지 <span class="faint">(바꾸면 동아리 채팅에 알림)</span></label><input id="gd-notice" maxlength="300" value="' + esc(g.notice || '') + '"></div>' +
       '<div class="field" style="margin-top:8px"><label class="small muted" for="gd-intro">소개</label><textarea id="gd-intro" maxlength="300" rows="3" style="font-family:var(--f-body);font-size:13.5px">' + esc(g.intro || '') + '</textarea></div>' +
-      (staff ? '<div class="row small" style="margin-top:8px"><span class="muted">색</span>' + GCOLORS.map(function (c) { return '<button class="gcol' + (g.color === c ? ' on' : '') + '" data-act="gcol" data-a="' + c + '" style="background:' + c + '" aria-label="색 ' + c + '"></button>'; }).join('') + '</div>' +
+      (staff ? gIconPicker(g) + '<div class="row small" style="margin-top:8px"><span class="muted">색</span>' + GCOLORS.map(function (c) { return '<button class="gcol' + (g.color === c ? ' on' : '') + '" data-act="gcol" data-a="' + c + '" style="background:' + c + '" aria-label="색 ' + c + '"></button>'; }).join('') + '</div>' +
         '<div class="row small" style="margin-top:8px"><span class="muted">가입</span><label class="tog"><input type="radio" name="gd-mode" value="open"' + (g.mode !== 'apply' ? ' checked' : '') + '> 누구나</label><label class="tog"><input type="radio" name="gd-mode" value="apply"' + (g.mode === 'apply' ? ' checked' : '') + '> 신청 후 승인</label></div>' : '') +
       '<div class="row" style="margin-top:10px"><button class="btn sm primary" data-act="gedit">저장</button></div></div>';
     h += '</div><div class="stack">';
@@ -2184,7 +2188,7 @@
     h += '<div class="tabs" role="tablist">' + [['find', '찾기 · 만들기'], ['rank', '목록 · 순위']].map(function (x) { return '<button role="tab" class="' + (S.gtab0 === x[0] ? 'on' : '') + '" data-act="gtab0" data-a="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div>';
     if (S.gtab0 === 'rank') return h + gOthersTab(false);
     var inv = L.invites || [];
-    if (inv.length) h += '<div class="card hl" style="margin-bottom:12px"><h3>받은 초대 <span class="tag br num">' + inv.length + '</span></h3>' + inv.map(function (x) { return '<div class="frow">' + gEmblem(x.color, x.name, 36) + '<div style="flex:1;min-width:0"><b>' + esc(x.name) + '</b> <span class="tiny faint">Lv ' + x.lv + ' · ' + x.n + '명 · ' + esc(x.by) + ' 님의 초대</span></div><button class="btn sm primary" data-act="gop" data-a="inviteAccept" data-b="' + esc(x.id) + '">들어가기</button><button class="btn sm ghost" data-act="gop" data-a="inviteDecline" data-b="' + esc(x.id) + '">거절</button></div>'; }).join('') + '</div>';
+    if (inv.length) h += '<div class="card hl" style="margin-bottom:12px"><h3>받은 초대 <span class="tag br num">' + inv.length + '</span></h3>' + inv.map(function (x) { return '<div class="frow">' + gEmblem(x.color, x.name, 36, x.icon) + '<div style="flex:1;min-width:0"><b>' + esc(x.name) + '</b> <span class="tiny faint">Lv ' + x.lv + ' · ' + x.n + '명 · ' + esc(x.by) + ' 님의 초대</span></div><button class="btn sm primary" data-act="gop" data-a="inviteAccept" data-b="' + esc(x.id) + '">들어가기</button><button class="btn sm ghost" data-act="gop" data-a="inviteDecline" data-b="' + esc(x.id) + '">거절</button></div>'; }).join('') + '</div>';
     var gcd = S.gcDraft || {};   // 쓰던 내용은 화면을 옮겨도 남는다
     h += '<div class="grid g2"><div class="stack"><div class="card hl"><h3>동아리 만들기</h3><p class="small muted" style="margin-top:2px">마음 맞는 학생들과 모임을 꾸려 보세요. 동아리 채팅에는 캐릭터로 말하는 <b>RP</b>와 캐릭터 밖에서 이야기하는 <b>오너</b> 두 갈래가 있습니다. 부원이 기여하면 동아리 레벨이 오르고, 정원·창고·보너스가 커집니다.</p>' +
       '<div class="field" style="margin-top:8px"><label class="small muted" for="gc-name">이름 <span class="faint">(2~12자)</span></label><input id="gc-name" maxlength="12" placeholder="예: 별빛 관측회" value="' + esc(gcd.name || '') + '"></div>' +
@@ -2192,7 +2196,7 @@
       '<div class="row small" style="margin-top:8px"><span class="muted">가입</span><label class="tog"><input type="radio" name="gc-mode" value="open"' + (gcd.mode === 'apply' ? '' : ' checked') + '> 누구나</label><label class="tog"><input type="radio" name="gc-mode" value="apply"' + (gcd.mode === 'apply' ? ' checked' : '') + '> 신청 후 승인</label></div>' +
       '<div class="row" style="margin-top:10px"><button class="btn primary sm" data-act="gcreate">만들기</button></div></div></div>';
     h += '<div class="stack"><div class="card"><div class="row between"><h3>동아리 찾기</h3><span class="tiny faint">' + L.list.length + '곳</span></div><div class="row" style="margin-top:6px"><input id="gq" maxlength="12" placeholder="이름이나 소개로 찾기" value="' + esc(S.gq || '') + '" style="flex:1;min-width:0"><button class="btn sm" data-act="gsearch">찾기</button></div>' +
-      (L.list.length ? L.list.map(function (x) { return '<div class="frow">' + gEmblem(x.color, x.name, 36) + '<div style="flex:1;min-width:0"><b>' + esc(x.name) + '</b> <span class="tiny faint">Lv ' + (x.lv || 1) + ' · ' + x.n + '/' + x.max + '명 · ' + esc(x.owner || '') + '</span>' + (x.intro ? '<div class="tiny muted ell">' + esc(x.intro) + '</div>' : '') + '</div>' +
+      (L.list.length ? L.list.map(function (x) { return '<div class="frow">' + gEmblem(x.color, x.name, 36, x.icon) + '<div style="flex:1;min-width:0"><b>' + esc(x.name) + '</b> <span class="tiny faint">Lv ' + (x.lv || 1) + ' · ' + x.n + '/' + x.max + '명 · ' + esc(x.owner || '') + '</span>' + (x.intro ? '<div class="tiny muted ell">' + esc(x.intro) + '</div>' : '') + '</div>' +
         (x.applied ? '<button class="btn sm ghost" data-act="gop" data-a="cancelApp" data-b="' + esc(x.id) + '">신청 취소</button>' : '<button class="btn sm ' + (x.mode === 'apply' ? '' : 'primary') + '" data-act="gjoin" data-a="' + esc(x.id) + '" data-b="' + x.mode + '">' + (x.mode === 'apply' ? '가입 신청' : '들어가기') + '</button>') + '</div>'; }).join('') : '<div class="empty" style="margin-top:8px">아직 동아리가 없습니다. 첫 동아리를 열어 보세요.</div>') + '</div></div></div>';
     return h;
   };
@@ -2215,7 +2219,7 @@
   function gRankRows(list, member, mineId, sort) {
     return '<ol class="rank grank">' + list.map(function (x) {
       var me = x.id === mineId;
-      return '<li' + (me ? ' class="me"' : '') + '><span class="num rk">' + x.rank + '</span><span class="rn">' + gEmblem(x.color, x.name, 22) + ' <b>' + esc(x.name) + '</b> <span class="tiny faint">Lv ' + x.lv + ' · ' + x.n + '/' + x.max + '명' + (x.owner ? ' · 회장 ' + esc(x.owner) : '') + '</span></span>' +
+      return '<li' + (me ? ' class="me"' : '') + '><span class="num rk">' + x.rank + '</span><span class="rn">' + gEmblem(x.color, x.name, 22, x.icon) + ' <b>' + esc(x.name) + '</b> <span class="tiny faint">Lv ' + x.lv + ' · ' + x.n + '/' + x.max + '명' + (x.owner ? ' · 회장 ' + esc(x.owner) : '') + '</span></span>' +
         '<span class="num rv">' + (sort === 'power' ? fmt(x.power) : 'Lv ' + x.lv) + '</span>' + (!member && !me && x.n < x.max ? '<button class="btn sm ghost" data-act="gjoin" data-a="' + esc(x.id) + '" data-b="' + x.mode + '">' + (x.mode === 'apply' ? '신청' : '들어가기') + '</button>' : '') + '</li>';
     }).join('') + '</ol>';
   }
@@ -2235,7 +2239,7 @@
     if (mine && !q) h += '<p class="small" style="margin:6px 0">우리 동아리 <b class="num gold">' + mine.rank + '위</b> / ' + d.total + '곳</p>';
     h += ranked.length ? '<div class="glist">' + ranked.slice(0, shown).map(function (x) {
       var me = x.id === ((d.mine && d.mine.id) || mineId), full = x.n >= x.max;
-      return '<div class="gitem' + (me ? ' me' : '') + '"><span class="num rk">' + x.rank + '</span>' + gEmblem(x.color, x.name, 36) + '<div class="gim"><div><b>' + esc(x.name) + '</b> <span class="tiny faint">Lv ' + x.lv + ' · ' + x.n + '/' + x.max + '명' + (x.owner ? ' · 회장 ' + esc(x.owner) : '') + '</span>' + (me ? ' <span class="tag br">우리 동아리</span>' : '') + '</div>' +
+      return '<div class="gitem' + (me ? ' me' : '') + '"><span class="num rk">' + x.rank + '</span>' + gEmblem(x.color, x.name, 36, x.icon) + '<div class="gim"><div><b>' + esc(x.name) + '</b> <span class="tiny faint">Lv ' + x.lv + ' · ' + x.n + '/' + x.max + '명' + (x.owner ? ' · 회장 ' + esc(x.owner) : '') + '</span>' + (me ? ' <span class="tag br">우리 동아리</span>' : '') + '</div>' +
         (x.intro ? '<div class="tiny muted gintro">' + esc(x.intro) + '</div>' : '<div class="tiny faint">소개가 없습니다</div>') +
         '<div class="tiny faint">' + (x.mode === 'apply' ? '신청 후 승인' : '누구나 가입') + ' · 전투력 합 ' + fmt(x.power) + '</div></div>' +
         (member || me ? '' : apps[x.id] ? '<button class="btn sm ghost" data-act="gop" data-a="cancelApp" data-b="' + esc(x.id) + '">신청 취소</button>' : full ? '<span class="tag">정원 참</span>' : '<button class="btn sm' + (x.mode === 'apply' ? '' : ' primary') + '" data-act="gjoin" data-a="' + esc(x.id) + '" data-b="' + x.mode + '">' + (x.mode === 'apply' ? '가입 신청' : '들어가기') + '</button>') + '</div>';
@@ -2249,7 +2253,7 @@
   ACT.grall = function () { S.gtab2 = 'others'; S.gtab0 = 'rank'; S.grk.sort = 'lv'; ACT.nav('guild'); };
   ACT.grsort = function (s) { S.gmore = 20; S.grk.sort = ['lv', 'power', 'n', 'new'].indexOf(s) >= 0 ? s : 'lv'; render(); };
   function gDone(j, msg) { if (j.error) { toast('동아리', j.error); return; } absorb(j); S.grk.d = {}; S.grk.at = {}; if (msg) toast(msg, '', 1800); S.gd = j.guild !== undefined ? j.guild : S.gd; if (S.gd && !S.gd.myRole) S.gd = null; var id = S.gd ? S.gd.id : null; if (id !== S.guild) { S.guild = id; renderDock(); } loadGuild(); if (!j.P) sync(true); }
-  ACT.gcreate = function () { var m = $$('input[name=gc-mode]').filter(function (x) { return x.checked; })[0]; API.guildOp({ op: 'create', name: $('#gc-name').value, intro: $('#gc-intro').value, mode: m ? m.value : 'open', color: GCOLORS[Math.floor(Math.random() * GCOLORS.length)] }).then(function (j) { if (!j.error) S.gcDraft = null; gDone(j, '동아리를 열었습니다'); }); };
+  ACT.gcreate = function () { var m = $$('input[name=gc-mode]').filter(function (x) { return x.checked; })[0]; API.guildOp({ op: 'create', name: $('#gc-name').value, intro: $('#gc-intro').value, mode: m ? m.value : 'open', color: GCOLORS[Math.floor(Math.random() * GCOLORS.length)], icon: D.GUILD_ICONS[Math.floor(Math.random() * D.GUILD_ICONS.length)].id }).then(function (j) { if (!j.error) S.gcDraft = null; gDone(j, '동아리를 열었습니다'); }); };
   ACT.gjoin = function (id) { ACT.gpeek(id); };
   ACT.gjoingo = function (id) { var m = $('#gp-msg'); API.guildOp({ op: 'join', id: id, msg: m ? m.value : '' }).then(function (j) { if (!j.error) closeModal(); gDone(j, j.applied ? '가입 신청을 보냈습니다' : '동아리에 들어갔습니다'); }); };
   // 가입 전 동아리 살펴보기: 회장 · 소개 · 부원
@@ -2257,7 +2261,7 @@
   function gPeekHtml(x, full) {
     var mem = (full && full.members) || [], owner = (mem.filter(function (m) { return m.role === 'owner'; })[0] || {}).name || x.owner || '';
     var intro = (full && full.intro) || x.intro || '', mineG = S.gd && S.gd.id, isMine = mineG === x.id, applied = ((S.gdList && S.gdList.list) || []).some(function (y) { return y.id === x.id && y.applied; }), isFull = x.n >= x.max;
-    var h = '<div class="row" style="gap:10px;align-items:center">' + gEmblem(x.color, x.name, 44) + '<div><b style="font-size:16px">' + esc(x.name) + '</b><div class="tiny faint">Lv ' + (x.lv || 1) + ' · ' + x.n + ' / ' + x.max + '명 · ' + (x.mode === 'apply' ? '신청 후 승인' : '누구나 가입') + '</div></div></div>' +
+    var h = '<div class="row" style="gap:10px;align-items:center">' + gEmblem(x.color, x.name, 44, x.icon) + '<div><b style="font-size:16px">' + esc(x.name) + '</b><div class="tiny faint">Lv ' + (x.lv || 1) + ' · ' + x.n + ' / ' + x.max + '명 · ' + (x.mode === 'apply' ? '신청 후 승인' : '누구나 가입') + '</div></div></div>' +
       '<dl class="kv" style="margin-top:10px"><dt>회장</dt><dd>' + (owner ? esc(owner) : '-') + '</dd>' + (x.power != null ? '<dt>전투력 합</dt><dd class="num">' + fmt(x.power) + '</dd>' : '') + (full && full.bonus != null ? '<dt>부원 혜택</dt><dd>' + CUR + '·경험치 +' + (full.bonus * 100).toFixed(1).replace(/\.0$/, '') + '%</dd>' : '') + '</dl>' +
       '<div class="section-t" style="margin-top:10px">소개</div><p class="small" style="white-space:pre-wrap;margin-top:4px">' + (intro ? esc(intro) : '<span class="faint">소개가 없습니다.</span>') + '</p>';
     if (mem.length) h += '<div class="section-t" style="margin-top:10px">부원 ' + mem.length + '명</div><div class="filters" style="margin-top:4px">' + mem.slice(0, 24).map(function (m) { return '<span class="tag">' + esc(m.name) + (m.role === 'owner' ? ' · 회장' : '') + '</span>'; }).join('') + (mem.length > 24 ? '<span class="tiny faint">외 ' + (mem.length - 24) + '명</span>' : '') + '</div>';
@@ -2292,8 +2296,14 @@
     modal(mhead('적용 중인 효과', rows.length + '개') + (rows.length ? '<div class="bufflist">' + rows.map(function (r) { return '<div class="buffrow">' + r.ic + '<div style="flex:1;min-width:0"><div class="row between"><b>' + esc(r.name) + '</b><span class="num gold" data-l="left:' + r.end + '">' + left(r.end) + '</span></div><div class="small">' + esc(r.eff || '') + '</div>' + (r.sub && r.sub !== r.eff ? '<div class="tiny faint">' + esc(r.sub) + '</div>' : '') + '</div></div>'; }).join('') + '</div>' : '<p class="small muted">지금 적용 중인 효과가 없습니다.</p>'));
   };
   ACT.gsearch = function () { S.gq = ($('#gq') || {}).value || ''; loadGuild(); };
-  ACT.gcol = function (c) { S.gcolPick = c; $$('.gcol').forEach(function (b) { b.classList.toggle('on', b.dataset.a === c); }); };
-  ACT.gedit = function () { var m = $$('input[name=gd-mode]').filter(function (x) { return x.checked; })[0]; API.guildOp({ op: 'edit', notice: $('#gd-notice').value, intro: $('#gd-intro').value, color: S.gcolPick || (S.gd && S.gd.color), mode: m ? m.value : undefined }).then(function (j) { gDone(j, '저장되었습니다'); }); };
+  // 아이콘 고르기 (회장 · 부회장): 50종 중 하나, 저장을 눌러야 바뀐다
+  function gIconPicker(g) {
+    var cur = S.giconPick != null ? S.giconPick : (g.icon || ''), col = S.gcolPick || g.color;
+    return '<div class="small" style="margin-top:8px"><span class="muted">아이콘</span> <span class="tiny faint">' + (GICON[cur] ? GICON[cur].name : '선택 안 함 (이름으로 자동 표시)') + '</span></div><div class="giconpick" style="--gc:' + col + '">' + D.GUILD_ICONS.map(function (x) { return '<button class="gicon' + (cur === x.id ? ' on' : '') + '" data-act="gicon" data-a="' + x.id + '" title="' + esc(x.name) + '" aria-label="아이콘 ' + esc(x.name) + '">' + gIconSvg(x, 20) + '</button>'; }).join('') + '</div>';
+  }
+  ACT.gicon = function (id) { S.giconPick = id; $$('.gicon').forEach(function (b) { b.classList.toggle('on', b.dataset.a === id); }); var t = $('.giconpick') && $('.giconpick').previousElementSibling; if (t && GICON[id]) t.querySelector('.tiny').textContent = GICON[id].name; };
+  ACT.gcol = function (c) { S.gcolPick = c; var gp = $('.giconpick'); if (gp) gp.style.setProperty('--gc', c); $$('.gcol').forEach(function (b) { b.classList.toggle('on', b.dataset.a === c); }); };
+  ACT.gedit = function () { var m = $$('input[name=gd-mode]').filter(function (x) { return x.checked; })[0]; API.guildOp({ op: 'edit', notice: $('#gd-notice').value, intro: $('#gd-intro').value, color: S.gcolPick || (S.gd && S.gd.color), icon: S.giconPick != null ? S.giconPick : undefined, mode: m ? m.value : undefined }).then(function (j) { if (!j.error) S.giconPick = null; gDone(j, '저장되었습니다'); }); };
   ACT.gdonate = function (v) {
     var pts = v ? +v : Math.floor(+(($('#g-don') || {}).value) || 0), g = S.gd; if (!(pts >= 1) || !g || !g.my) { toast('동아리', '기부할 점수 입력 필요'); return; }
     API.guildOp({ op: 'donate', gold: pts * g.my.unit }).then(function (j) { gDone(j, j.got ? '기부했습니다 · 기여도 +' + j.got + ' (' + MONEY(j.cost) + ')' : ''); });
@@ -4086,7 +4096,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102020;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102021;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
