@@ -154,6 +154,8 @@ function create(store, cfg, log) {
         cup: cupStandings(week),
         topPower: q.topPower.all(20).map(pub),
         topStage: q.topStage.all(20).map(pub),
+        topTwK: q.topCt.all('$.st.twK', '$.st.twK', 20).map((r) => ({ id: r.id, name: r.name, house: r.house, f: r.f })),
+        topTwM: q.topCt.all('$.st.twM', '$.st.twM', 20).map((r) => ({ id: r.id, name: r.name, house: r.house, f: r.f })),
         topDmg: q.topDmg.all(week, 20).map((r) => ({ id: r.pid, name: r.name, house: r.house, dmg: Math.floor(r.dmg) })),
         wbStats: q.sumDmg.get(week),
         players: Number(q.countPlayers.get().n)
@@ -163,7 +165,7 @@ function create(store, cfg, log) {
     return {
       epoch: W.epoch, now, week: R.weekId(now), weekEnd: R.weekStart(R.weekId(now) + 1),
       boss: b ? { id: b.id, name: b.name, maxHp: b.maxHp, hp: b.hp, killedAt: b.killedAt, round: b.round || 1, kills: (b.kills || 0) + (b.killedAt ? 1 : 0), participants: Number(cache.wbStats.n) || 0 } : null,
-      cup: cache.cup, hpts: W.hpts, hfull: W.hfull, topPower: cache.topPower, topStage: cache.topStage, topDmg: cache.topDmg,
+      cup: cache.cup, hpts: W.hpts, hfull: W.hfull, topPower: cache.topPower, topStage: cache.topStage, topTwK: cache.topTwK, topTwM: cache.topTwM, topDmg: cache.topDmg,
       notices: W.notices.slice(0, 8), news: W.news.slice(0, 20), players: cache.players, online: online || 0,
       lastWeek: W.results[R.weekId(now) - 1] || null
     };
