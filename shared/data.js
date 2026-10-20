@@ -1048,7 +1048,7 @@ var DATA = (function () {
     { id: 'duel10', name: '결투제 4강', desc: '결투제 상대 10명 이기기', stat: 'duelBest', n: 10, r: 25 },
     { id: 'duel15', name: '결투제 우승', desc: '이름 없는 사서를 이기기', stat: 'duelBest', n: 15, r: 60 },
     { id: 'task8', name: '교수님의 신뢰', desc: '교수님의 과제 8개 완료', stat: 'tasksDone', n: 8, r: 10 },
-    { id: 'task24', name: '모든 교수의 제자', desc: '교수님의 과제 30개 모두 완료', stat: 'tasksDone', n: 30, r: 50 }
+    { id: 'task24', name: '모든 교수의 제자', desc: '교수님의 과제 24개 완료', stat: 'tasksDone', n: 24, r: 50 }
   ];
 
   /* ───────── 일일 의뢰 ───────── */
