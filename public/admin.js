@@ -31,7 +31,28 @@
   }
   try { if (localStorage.getItem('arc_admin_ihide') !== '0') $('#ihide').checked = true; } catch (e) { $('#ihide').checked = true; }
   $('#ihide').addEventListener('change', function () { try { localStorage.setItem('arc_admin_ihide', $('#ihide').checked ? '1' : '0'); } catch (e) { } invites(); });
-  var ISHOW = 10;
+  var ISHOW = 10, UBOPEN = {};
+  // 사용한 학생: 여러 명이면 앞 2명만 보이고 「외 N명」으로 펼친다
+  function ubCell(i) {
+    var names = String(i.used_by || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+    if (names.length <= 2) return '<td class="iub" title="' + esc(names.join(', ')) + '">' + esc(names.join(', ')) + '</td>';
+    var open = UBOPEN[i.code];
+    return '<td class="iub' + (open ? ' open' : '') + '">' + esc((open ? names : names.slice(0, 2)).join(', ')) + '<button class="ubm" data-a="ubmore" data-c="' + esc(i.code) + '">' + (open ? '접기' : '외 ' + (names.length - 2) + '명') + '</button></td>';
+  }
+  // 메모 칸 너비: 경계를 끌어서 조절 (이 브라우저에 기억)
+  (function () {
+    var tb = $('#invites').closest('table'), g = $('#imgrip'), W0 = 180;
+    function setW(w) { w = Math.max(80, Math.min(600, Math.round(w))); tb.style.setProperty('--imw', w + 'px'); return w; }
+    try { var sw = +localStorage.getItem('arc_admin_imw'); if (sw) setW(sw); } catch (e) { }
+    g.addEventListener('pointerdown', function (e) {
+      e.preventDefault(); var x0 = e.clientX, w0 = g.parentNode.getBoundingClientRect().width, w = w0;
+      g.setPointerCapture(e.pointerId); g.classList.add('drag');
+      function mv(ev) { w = setW(w0 + ev.clientX - x0); }
+      function up() { g.classList.remove('drag'); g.removeEventListener('pointermove', mv); g.removeEventListener('pointerup', up); g.removeEventListener('pointercancel', up); try { localStorage.setItem('arc_admin_imw', String(w)); } catch (e2) { } }
+      g.addEventListener('pointermove', mv); g.addEventListener('pointerup', up); g.addEventListener('pointercancel', up);
+    });
+    g.addEventListener('dblclick', function () { setW(W0); try { localStorage.removeItem('arc_admin_imw'); } catch (e) { } });
+  })();
   function invites() {
     api('GET', '/api/admin/invites').then(function (j) {
       // 다 쓴 · 막은 · 기한 지난 코드는 숨길 수 있다 (이 브라우저에 기억)
@@ -40,7 +61,7 @@
       var full = list.length; list = list.slice(0, ISHOW);   // 10개씩 보이고 「더보기」로 20개씩 더
       $('#icount').textContent = hide && list.length < all.length ? '숨긴 코드 ' + (all.length - list.length) + '개' : '';
       $('#invites').innerHTML = list.map(function (i) {
-        return '<tr class="' + (i.disabled ? 'dis' : '') + '"><td class="num">' + esc(i.code) + (i.op ? ' <b style="color:#e07c72">운영자</b>' : '') + '</td><td class="num">' + i.uses + ' / ' + i.max_uses + '</td><td>' + (i.expires ? when(i.expires) : '무기한') + '</td><td>' + esc(i.note) + '</td><td>' + esc(i.used_by || '') + '</td><td><button class="btn sm ghost" data-a="' + (i.disabled ? 'enable' : 'disable') + '" data-c="' + esc(i.code) + '">' + (i.disabled ? '다시 쓰기' : '중지') + '</button></td></tr>';
+        return '<tr class="' + (i.disabled ? 'dis' : '') + '"><td class="num">' + esc(i.code) + (i.op ? ' <b style="color:#e07c72">운영자</b>' : '') + '</td><td class="num">' + i.uses + ' / ' + i.max_uses + '</td><td>' + (i.expires ? when(i.expires) : '무기한') + '</td><td>' + esc(i.note) + '</td>' + ubCell(i) + '<td><button class="btn sm ghost" data-a="' + (i.disabled ? 'enable' : 'disable') + '" data-c="' + esc(i.code) + '">' + (i.disabled ? '다시 쓰기' : '중지') + '</button></td></tr>';
       }).join('') || '<tr><td colspan="6" class="faint">' + (all.length ? '쓸 수 있는 코드가 없습니다 (숨긴 코드는 위 체크를 풀면 보입니다)' : '아직 발급한 코드가 없습니다') + '</td></tr>';
       $('#imore').innerHTML = full > list.length ? '<button class="btn sm ghost" data-a="imore">더보기 (' + list.length + ' / ' + full + ')</button>' : (ISHOW > 10 && full > 10 ? '<button class="btn sm ghost" data-a="iless">접기</button>' : '');
     });
@@ -149,6 +170,7 @@
     bdload: function () { bdload(); },
     imore: function () { ISHOW += 20; invites(); },
     iless: function () { ISHOW = 10; invites(); },
+    ubmore: function (el) { var c = el.dataset.c; UBOPEN[c] = !UBOPEN[c]; invites(); },
     bdst: function (el) { api('POST', '/api/admin/board', { op: 'status', id: +el.dataset.c, st: el.dataset.s || '' }).then(function (j) { if (j.error) { toast(j.error); return; } bdshow(j); toast(el.dataset.s ? '「' + ST[el.dataset.s] + '」 표시를 붙였습니다' : '상태 표시를 뗐습니다'); }); },
     ideacopy: function () {
       api('GET', '/api/admin/ideas').then(function (j) {
