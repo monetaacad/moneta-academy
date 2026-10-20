@@ -2727,7 +2727,7 @@
     if (m.tab === 'live') return loadTrades();
     if (m.tab === 'hist') return loadHist();
     var f = m.tab === 'buy' ? { kind: m.kind, slot: m.kind === 'item' ? m.slot : '', r: m.kind === 'item' ? m.r : '', mat: m.kind === 'mat' ? m.mat : '', pot: m.kind === 'pot' ? m.pot : '', tok: m.kind === 'tok' ? (m.tok || '') : '', gem: m.kind === 'badge' ? (m.gem || '') : '', q: m.q, sort: m.sort } : {};
-    return API.market(f).then(function (j) { if (j.error) { m.err = j.error; } else { m.err = ''; m.data = j; } if (m.tab === 'sell') loadPrices(); if (S.view === 'market' && !S.modal) render(); });
+    return API.market(f).then(function (j) { if (j.error) { m.err = j.error; } else { m.err = ''; m.data = j; } if (m.tab === 'sell' || m.tab === 'buy') loadPrices(); if (S.view === 'market' && !S.modal) render(); });
   }
   function loadHist() { var m = S.mk; m.hiAt = Date.now(); if (!API.marketHistory) { m.hist = []; return Promise.resolve(); } return API.marketHistory().then(function (j) { if (!j.error) m.hist = j.list || []; if (S.view === 'market' && !S.modal) render(); }); }
   function loadTrades() { var m = S.mk; m.trAt = Date.now(); return API.marketTrades().then(function (j) { if (!j.error) m.trades = j.trades || []; if (!m.data) m.data = { grade: 1 }; if (S.view === 'market' && !S.modal) render(); }); }
@@ -2740,12 +2740,28 @@
     D.POTIONS.forEach(function (p) { if (P.shelf[p.id] > 0) keys['pot:' + p.id] = 1; });
     MK_TOKS.forEach(function (t) { if (t[2](P) > 0) keys['tok:' + t[0]] = 1; });
     (P.badges || []).forEach(function (b) { if (b.u !== P.badgeOn && !b.lock) keys['badge:' + b.gem + ':' + b.lv] = 1; });
+    var dl = S.mk.data && S.mk.data.list; if (S.mk.tab === 'buy' && dl) dl.slice(0, 60).forEach(function (x) { keys[x.kind === 'badge' && x.badge ? 'badge:' + x.badge.gem + ':' + x.badge.lv : pKey(x)] = 1; });   // 사기 화면: 올라온 물건의 시세
     var need = Object.keys(keys).filter(function (k) { return !S.mk.prices[k] || Date.now() - S.mk.prices[k].at > 60000; });
     if (!need.length || !API.marketPrices) return;
-    API.marketPrices(need.slice(0, 50)).then(function (j) { if (j.error) return; for (var k in j.prices) { j.prices[k].at = Date.now(); S.mk.prices[k] = j.prices[k]; } if (S.view === 'market' && S.mk.tab === 'sell' && !S.modal) render(); });
+    API.marketPrices(need.slice(0, 50)).then(function (j) { if (j.error) return; for (var k in j.prices) { j.prices[k].at = Date.now(); S.mk.prices[k] = j.prices[k]; } if (S.view === 'market' && (S.mk.tab === 'sell' || S.mk.tab === 'buy') && !S.modal) render(); });
   }
   function ago(t) { var s = Math.max(0, Date.now() / 1000 - t); return s < 60 ? '방금' : s < 3600 ? Math.floor(s / 60) + '분 전' : s < 86400 ? Math.floor(s / 3600) + '시간 전' : Math.floor(s / 86400) + '일 전'; }
   // 시세 한 줄: 「시세 28/개 · 7건 · 최근 31 · 32 · 30 [평균가 넣기]」 (최근 값에 마우스를 올리면 언제 팔렸는지)
+  // 여러 개 올리기: 수량 × 개당 가격 = 최종가 (실시간), 시세와 많이 다르면 경고
+  function mkQtyInputs(id, max, key, def) {
+    return '<input type="number" min="1" max="' + max + '" step="1" inputmode="numeric" class="mkqty" id="mkq-' + id + '" placeholder="수량"' + (def ? ' value="' + def + '"' : '') + ' aria-label="수량"><span class="faint">×</span><input type="number" min="1" step="1" inputmode="numeric" class="mkunit" data-key="' + key + '" placeholder="개당 가격" data-fmt="1" aria-label="개당 가격"><span class="tiny faint mkfmt"></span><span class="mktot small">= <b class="num gold">-</b></span>';
+  }
+  // 시세 대비: 평균가의 절반 미만이거나 두 배 넘으면 경고 (unit: 개당 또는 한 개 가격)
+  var MK_LOW = 0.5, MK_HIGH = 2;
+  function mkWarn(key, unit) { var p = S.mk.prices[key]; if (!p || !p.avg || !(unit > 0)) return null; var r = unit / p.avg; return r < MK_LOW ? { low: 1, pct: Math.round(r * 100), avg: p.avg } : r > MK_HIGH ? { high: 1, pct: Math.round(r * 100), avg: p.avg } : null; }
+  function mkRowUpdate(row) {
+    var q = row.querySelector('.mkqty'), un = row.querySelector('.mkunit'), pr = row.querySelector('.mkprice'), inp = un || pr; if (!inp) return;
+    var qty = q ? Math.max(0, Math.floor(+q.value || 0)) : 1, unit = Math.floor(+inp.value || 0), tot = row.querySelector('.mktot b');
+    if (tot) tot.textContent = un && qty && unit ? fmt(qty * unit) : '-';
+    var w = mkWarn(inp.dataset.key, unit), box = row.querySelector('.mkwarn'); if (!box) return;
+    box.innerHTML = w ? '<span class="bad">' + (un ? '개당 ' : '') + '평균가(' + fmt(w.avg) + ')의 ' + w.pct + '%입니다 · ' + (w.low ? '너무 싸게 올리는 것은 아닌지 확인' : '평균보다 많이 비쌉니다') + '</span>' : '';
+    var btn = row.querySelector('[data-act="mklist"]'); if (btn && btn.dataset.armed && !w) { delete btn.dataset.armed; btn.textContent = '올리기'; btn.classList.remove('armed'); }
+  }
   function priceLine(key, unitMat) {
     var p = S.mk.prices[key]; if (!p) return '<div class="tiny faint mkpl">시세 불러오는 중…</div>';
     if (!p.n) return '<div class="tiny faint mkpl">최근 30일 거래 기록 없음</div>';
@@ -2788,6 +2804,7 @@
       else if (!d.list.length) h += '<div class="empty">조건에 맞는 물건이 없습니다.</div>';
       else h += '<div class="mklist">' + d.list.map(function (x) {
         var can = !x.mine && !low && P.res.gold >= x.price, armed = S.confirm['mk' + x.id] > Date.now(), open = m.open[x.id], info, sub;
+        var bw = x.mine ? null : mkWarn(x.kind === 'badge' && x.badge ? 'badge:' + x.badge.gem + ':' + x.badge.lv : pKey(x), x.qty > 1 ? x.price / x.qty : x.price);   // 시세와 많이 다르면 표시
         if (x.kind === 'item' && x.item) {
           var up = R.powerWith(P, x.item) - c.power;
           info = '<span class="mkn ell" style="color:' + rcol(x.r) + '">' + esc(x.name) + '</span><span class="mkchev tiny faint">' + (open ? '접기 ▴' : '옵션 ▾') + '</span>';
@@ -2800,7 +2817,7 @@
         else { info = '<span class="mkn">' + esc(x.name) + ' <span class="num">×' + fmt(x.qty) + '</span></span>'; sub = '개당 ' + fmt(x.price / x.qty) + ' · 가진 수 ' + fmt(x.mat === 'stone' ? P.res.stone : (P.mats[x.mat] || 0)); }
         var tap = x.kind === 'item' && x.item;   // 장비는 줄(이름·요약) 어디를 눌러도 옵션이 펼쳐진다 (휴대폰에서 이름만 누르기 어려워서)
         return '<div class="mkrow' + (open ? ' open' : '') + '"><div class="mki' + (tap ? ' tap" data-act="mkopen" data-a="' + x.id + '" role="button" tabindex="0" aria-expanded="' + !!open + '"' : '"') + '>' + info + '<div class="tiny faint ell">' + sub + ' · ' + esc(x.seller) + (x.npc ? ' <span class="tag npc">NPC</span>' : '') + ' · ' + R.fmtTime(Math.max(0, x.expires - Date.now() / 1000)) + '</div>' + (open && x.item ? '<div class="mkst">' + statLines(x.item) + '</div>' + cmpBlock(x.item) : '') + '</div>' +
-          '<b class="num gold mkpr">' + fmt(x.price) + '</b>' + (x.mine ? '<span class="tag">내 물건</span>' : '<button class="btn sm primary" data-act="mkbuy" data-a="' + x.id + '"' + (can ? '' : why(low ? '학년이 낮아 살 수 없습니다' : CUR + '가 부족합니다')) + '>사기</button>') + '</div>';
+          '<b class="num gold mkpr">' + fmt(x.price) + '</b>' + (bw ? '<span class="tag no" title="최근 30일 평균가 ' + fmt(bw.avg) + (x.qty > 1 ? ' (개당)' : '') + '">평균의 ' + bw.pct + '%</span>' : '') + (x.mine ? '<span class="tag">내 물건</span>' : '<button class="btn sm primary' + (armed ? ' armed' : '') + '" data-act="mkbuy" data-a="' + x.id + '"' + (bw && bw.high ? ' data-warn="' + bw.pct + '"' : '') + (can ? '' : why(low ? '학년이 낮아 살 수 없습니다' : CUR + '가 부족합니다')) + '>' + (armed ? '한 번 더 누르면 구매' : '사기') + '</button>') + '</div>';
       }).join('') + '</div>';
     } else if (m.tab === 'sell') {
       var items = P.inv.filter(function (it) { return !it.lock; }).sort(function (a, b) { return b.r - a.r || b.ilvl - a.ilvl; });
@@ -2817,16 +2834,16 @@
           var k = pKey({ slot: it.slot, r: it.r, ilvl: it.ilvl });
           var so = (m.sopen || {})[it.u];   // 누르면 능력치 펼침
           return '<div class="mksell' + (m.focus === it.u ? ' focus' : '') + '" data-anchor="mks-' + it.u + '"><div class="mksl"><button class="mksbtn" data-act="mksopen" data-a="' + it.u + '" aria-expanded="' + !!so + '" title="능력치 보기"><span class="small ell" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</span><span class="mkchev tiny faint">' + (so ? '접기 ▴' : '능력치 ▾') + '</span></button><div class="tiny faint ell">' + R.slotName(it) + ' Lv ' + it.ilvl + ' · ' + itemBrief(it) + ' · 상점 ' + fmt(R.sellPrice(it)) + ' ' + CUR + '' + presetTag(it.u) + '</div>' + (so ? '<div class="mkst">' + statLines(it) + '</div>' : '') + priceLine(k) + '</div>' +
-            '<div class="mksr"><input type="number" min="1" step="1" inputmode="numeric" class="mkprice" id="mkp-' + it.u + '" data-key="' + k + '" placeholder="가격" data-fmt="1"><span class="tiny faint mkfmt"></span><button class="btn sm" data-act="mklist" data-a="item" data-b="' + it.u + '">올리기</button></div></div>';
+            '<div class="mksr"><input type="number" min="1" step="1" inputmode="numeric" class="mkprice" id="mkp-' + it.u + '" data-key="' + k + '" placeholder="가격" data-fmt="1"><span class="tiny faint mkfmt"></span><button class="btn sm" data-act="mklist" data-a="item" data-b="' + it.u + '">올리기</button></div><div class="mkwarn tiny"></div></div>';
         }).join('') : '<div class="empty">올릴 수 있는 장비가 없습니다.</div>') + '</div></div>';
       var mats = [['stone', P.res.stone]].concat(Object.keys(D.MATS).map(function (k) { return [k, P.mats[k] || 0]; })).filter(function (x) { return x[1] > 0; });
-      h += '<div class="card" data-sk="mat"><h3>재료 올리기</h3><p class="tiny faint">수량과 묶음 전체 가격을 정합니다. 시세는 개당 가격입니다.</p><div class="stack" style="gap:0;margin-top:6px">' + (mats.length ? mats.map(function (x) {
-        return '<div class="mksell"><div class="mksl"><div class="small">' + MATN(x[0]) + ' <span class="tiny faint">가진 수 ' + fmt(x[1]) + '</span></div>' + priceLine('mat:' + x[0], true) + '</div><div class="mksr"><input type="number" min="1" max="' + x[1] + '" step="1" inputmode="numeric" class="mkqty" id="mkq-' + x[0] + '" placeholder="수량"><input type="number" min="1" step="1" inputmode="numeric" class="mkprice" id="mkp-' + x[0] + '" data-key="mat:' + x[0] + '" data-unit="1" placeholder="가격" data-fmt="1"><span class="tiny faint mkfmt"></span><button class="btn sm" data-act="mklist" data-a="mat" data-b="' + x[0] + '">올리기</button></div></div>';
+      h += '<div class="card" data-sk="mat"><h3>재료 올리기</h3><p class="tiny faint">수량과 개당 가격을 정하면 최종가(묶음 전체 가격)가 계산됩니다. 시세는 개당 가격입니다.</p><div class="stack" style="gap:0;margin-top:6px">' + (mats.length ? mats.map(function (x) {
+        return '<div class="mksell"><div class="mksl"><div class="small">' + MATN(x[0]) + ' <span class="tiny faint">가진 수 ' + fmt(x[1]) + '</span></div>' + priceLine('mat:' + x[0], true) + '</div><div class="mksr">' + mkQtyInputs(x[0], x[1], 'mat:' + x[0], '') + '<button class="btn sm" data-act="mklist" data-a="mat" data-b="' + x[0] + '">올리기</button></div><div class="mkwarn tiny"></div></div>';
       }).join('') : '<div class="empty">가진 재료가 없습니다.</div>') + '</div></div>';
       var pots = D.POTIONS.filter(function (p) { return P.shelf[p.id] > 0; });
       if (m.focus && /^pot:/.test(m.focus)) { var pf = pots.findIndex(function (p) { return 'pot:' + p.id === m.focus; }); if (pf > 0) pots.unshift(pots.splice(pf, 1)[0]); }
       h += '<div class="card" data-sk="pot"><h3>물약 올리기</h3><p class="tiny faint">연금술로 만든 물약을 선반에서 꺼내 올립니다. 시세는 병당 가격입니다.</p><div class="stack" style="gap:0;margin-top:6px">' + (pots.length ? pots.map(function (p) {
-        return '<div class="mksell' + (m.focus === 'pot:' + p.id ? ' focus' : '') + '" data-anchor="mks-pot:' + p.id + '"><div class="mksl"><div class="small"><span class="pot-ic" style="background:' + p.color + '"></span> ' + p.name + ' <span class="tiny faint">선반에 ' + fmt(P.shelf[p.id]) + '</span></div><div class="tiny faint ell">' + p.desc + '</div>' + priceLine('pot:' + p.id, true) + '</div><div class="mksr"><input type="number" min="1" max="' + P.shelf[p.id] + '" step="1" inputmode="numeric" class="mkqty" id="mkq-pot-' + p.id + '" placeholder="수량" value="1"><input type="number" min="1" step="1" inputmode="numeric" class="mkprice" id="mkp-pot-' + p.id + '" data-key="pot:' + p.id + '" data-unit="1" placeholder="가격" data-fmt="1"><span class="tiny faint mkfmt"></span><button class="btn sm" data-act="mklist" data-a="pot" data-b="' + p.id + '">올리기</button></div></div>';
+        return '<div class="mksell' + (m.focus === 'pot:' + p.id ? ' focus' : '') + '" data-anchor="mks-pot:' + p.id + '"><div class="mksl"><div class="small"><span class="pot-ic" style="background:' + p.color + '"></span> ' + p.name + ' <span class="tiny faint">선반에 ' + fmt(P.shelf[p.id]) + '</span></div><div class="tiny faint ell">' + p.desc + '</div>' + priceLine('pot:' + p.id, true) + '</div><div class="mksr">' + mkQtyInputs('pot-' + p.id, P.shelf[p.id], 'pot:' + p.id, 1) + '<button class="btn sm" data-act="mklist" data-a="pot" data-b="' + p.id + '">올리기</button></div><div class="mkwarn tiny"></div></div>';
       }).join('') : '<div class="empty">선반에 물약이 없습니다. 연구실에서 연금술로 만들 수 있습니다.</div>') + '</div></div>' + tokSellCard() + badgeSellCard() + '</div>';
     } else if (m.tab === 'hist') {
       var hl = m.hist, hf = m.hf || '', sold = (hl || []).filter(function (x) { return x.side === 'sell'; }), bought = (hl || []).filter(function (x) { return x.side === 'buy'; });
@@ -2862,7 +2879,7 @@
     return '<div class="card" data-sk="badge"><h3>휘장 올리기</h3><p class="tiny faint">달고 있는 휘장은 올릴 수 없습니다. 시세는 같은 보석 · 레벨 ±2의 최근 30일 판매 기록입니다.</p><div class="stack" style="gap:0;margin-top:6px">' + (list.length ? list.map(function (b) {
       var k = 'badge:' + b.gem + ':' + b.lv, g = R.GEM[b.gem];
       return '<div class="mksell' + (m.focus === 'badge:' + b.u ? ' focus' : '') + '" data-anchor="mks-badge:' + b.u + '"><div class="mksl"><div class="small ell">' + esc(b.name) + ' ' + badgeSvg(b) + ' <span class="num faint">Lv ' + b.lv + '</span></div><div class="tiny faint ell">' + badgeBrief(b) + '</div>' + priceLine(k) + '</div>' +
-        '<div class="mksr"><input type="number" min="1" step="1" inputmode="numeric" class="mkprice" id="mkp-badge-' + b.u + '" data-key="' + k + '" placeholder="가격" data-fmt="1"><span class="tiny faint mkfmt"></span><button class="btn sm" data-act="mklist" data-a="badge" data-b="' + b.u + '">올리기</button></div></div>';
+        '<div class="mksr"><input type="number" min="1" step="1" inputmode="numeric" class="mkprice" id="mkp-badge-' + b.u + '" data-key="' + k + '" placeholder="가격" data-fmt="1"><span class="tiny faint mkfmt"></span><button class="btn sm" data-act="mklist" data-a="badge" data-b="' + b.u + '">올리기</button></div><div class="mkwarn tiny"></div></div>';
     }).join('') : '<div class="empty">올릴 수 있는 휘장이 없습니다.</div>') + '</div></div>';
   }
   ACT.mksellbadge = function (u) {
@@ -2871,7 +2888,7 @@
     setTimeout(function () { var el = $('[data-anchor="mks-' + f + '"]'), inp = $('#mkp-badge-' + u); if (el) { el.scrollIntoView({ block: 'center' }); el.classList.add('flash'); } if (inp) inp.focus(); }, 80);
   };
   ACT.mkopen = function (id) { S.mk.open[id] = !S.mk.open[id]; render(); };
-  ACT.mkfill = function (key, b, el) { var p = S.mk.prices[key]; if (!p || !p.avg) return; var row = el.closest('.mksell'), inp = row && row.querySelector('.mkprice'), q = row && row.querySelector('.mkqty'); if (!inp) return; var n = q ? Math.max(1, Math.floor(+q.value || 1)) : 1; if (q && !q.value) q.value = n; inp.value = Math.max(1, Math.round(p.avg * n)); inp.dispatchEvent(new Event('input', { bubbles: true })); inp.focus(); };
+  ACT.mkfill = function (key, b, el) { var p = S.mk.prices[key]; if (!p || !p.avg) return; var row = el.closest('.mksell'), inp = row && (row.querySelector('.mkunit') || row.querySelector('.mkprice')), q = row && row.querySelector('.mkqty'); if (!inp) return; if (q && !q.value) q.value = 1; inp.value = Math.max(1, Math.round(p.avg)); inp.dispatchEvent(new Event('input', { bubbles: true })); };
   // 가방에서 바로 「거래소에서 팔기」
   ACT.mksellgo = function (u) {
     var d = S.mk.data; if (d && d.grade && S.P.grade < d.grade) { toast('거래소', d.grade + '학년부터 팔 수 있습니다'); return; }
@@ -2883,7 +2900,7 @@
   function tokSellCard() {
     var P = S.P, toks = MK_TOKS.filter(function (t) { return t[2](P) > 0; });
     return '<div class="card" data-sk="tok"><h3>소지품 올리기</h3><p class="tiny faint">매점에서 별조각으로 산 환수의 알 · 토벌 도전권 · 망각의 차를 ' + CUR + '로 팔 수 있습니다. 시세는 개당 가격입니다.</p><div class="stack" style="gap:0;margin-top:6px">' + (toks.length ? toks.map(function (t) {
-      return '<div class="mksell"><div class="mksl"><div class="small">' + t[1] + ' <span class="tiny faint">가진 수 ' + fmt(t[2](P)) + '</span></div>' + priceLine('tok:' + t[0], true) + '</div><div class="mksr"><input type="number" min="1" max="' + t[2](P) + '" step="1" inputmode="numeric" class="mkqty" id="mkq-tok-' + t[0] + '" placeholder="수량" value="1"><input type="number" min="1" step="1" inputmode="numeric" class="mkprice" id="mkp-tok-' + t[0] + '" data-key="tok:' + t[0] + '" data-unit="1" placeholder="가격" data-fmt="1"><span class="tiny faint mkfmt"></span><button class="btn sm" data-act="mklist" data-a="tok" data-b="' + t[0] + '">올리기</button></div></div>';
+      return '<div class="mksell"><div class="mksl"><div class="small">' + t[1] + ' <span class="tiny faint">가진 수 ' + fmt(t[2](P)) + '</span></div>' + priceLine('tok:' + t[0], true) + '</div><div class="mksr">' + mkQtyInputs('tok-' + t[0], t[2](P), 'tok:' + t[0], 1) + '<button class="btn sm" data-act="mklist" data-a="tok" data-b="' + t[0] + '">올리기</button></div><div class="mkwarn tiny"></div></div>';
     }).join('') : '<div class="empty">올릴 수 있는 소지품이 없습니다.</div>') + '</div></div>';
   }
   ACT.mksellpot = function (id) {
@@ -2897,16 +2914,20 @@
   function mkDone(j, msg) { if (j.error) { toast('거래소', j.error); return; } absorb(j); toast(msg, '', 2000); Snd.play('click'); loadMarket(); render(); }
   // 사기: 한 번 누르면 바로 산다 (누르는 사이 두 번 사지 않게 잠깐 잠근다)
   ACT.mkbuy = function (id, b, el) {
+    // 평균가의 두 배가 넘으면 한 번 더 눌러야 산다
+    if (el && el.dataset.warn && !(S.confirm['mk' + id] > Date.now())) { S.confirm['mk' + id] = Date.now() + 4000; render(); setTimeout(render, 4100); toast('거래소', '평균가의 ' + el.dataset.warn + '%인 물건입니다. 한 번 더 누르면 구매합니다'); return; }
     if (S.mkBusy) return; S.mkBusy = true; if (el) el.disabled = true;
     API.marketOp({ op: 'buy', id: +id }).then(function (j) { S.mkBusy = false; mkDone(j, '구매가 완료되었습니다'); }, function () { S.mkBusy = false; render(); });
   };
-  ACT.mklist = function (kind, k) {
-    var price = Math.floor(+($('#mkp-' + (kind === 'pot' ? 'pot-' : kind === 'tok' ? 'tok-' : kind === 'badge' ? 'badge-' : '') + k) || {}).value || 0); if (!(price >= 1)) { toast('거래소', '가격 입력 필요'); return; }
+  ACT.mklist = function (kind, k, el) {
+    var row = el && el.closest('.mksell'), q = row && row.querySelector('.mkqty'), un = row && row.querySelector('.mkunit'), pr = row && row.querySelector('.mkprice');
+    var qty = q ? Math.floor(+q.value || 0) : 1; if (q && !(qty >= 1)) { toast('거래소', '수량 입력 필요'); return; }
+    var unit = Math.floor(+((un || pr) || {}).value || 0); if (!(unit >= 1)) { toast('거래소', (un ? '개당 ' : '') + '가격 입력 필요'); return; }
+    var price = un ? unit * qty : unit, w = mkWarn(((un || pr) || {}).dataset.key, unit);
+    // 시세와 많이 다르면 한 번 더 눌러야 올린다
+    if (w && el && !el.dataset.armed) { el.dataset.armed = '1'; el.classList.add('armed'); el.textContent = '한 번 더 누르면 올립니다'; setTimeout(function () { if (el.dataset.armed) { delete el.dataset.armed; el.classList.remove('armed'); el.textContent = '올리기'; } }, 4000); return; }
     var o = { op: 'list', price: price };
-    if (kind === 'pot') { price = Math.floor(+($('#mkp-pot-' + k) || {}).value || 0); if (!(price >= 1)) { toast('거래소', '가격 입력 필요'); return; } o.price = price; o.pot = k; o.qty = Math.floor(+($('#mkq-pot-' + k) || {}).value || 0); if (!(o.qty >= 1)) { toast('거래소', '수량 입력 필요'); return; } }
-    else if (kind === 'badge') o.badge = k;
-    else if (kind === 'tok') { o.tok = k; o.qty = Math.floor(+($('#mkq-tok-' + k) || {}).value || 0); if (!(o.qty >= 1)) { toast('거래소', '수량 입력 필요'); return; } }
-    else if (kind === 'item') o.u = k; else { o.mat = k; o.qty = Math.floor(+($('#mkq-' + k) || {}).value || 0); if (!(o.qty >= 1)) { toast('거래소', '수량 입력 필요'); return; } }
+    if (kind === 'pot') { o.pot = k; o.qty = qty; } else if (kind === 'badge') o.badge = k; else if (kind === 'tok') { o.tok = k; o.qty = qty; } else if (kind === 'item') o.u = k; else { o.mat = k; o.qty = qty; }
     API.marketOp(o).then(function (j) { mkDone(j, '판매 등록이 완료되었습니다'); });
   };
   ACT.mksk = function (k) { S.mk.sk = k; S.mk.focus = null; render(); };
@@ -4847,7 +4868,8 @@
   document.addEventListener('input', function (e) { var el = e.target;
     if (el.id === 'opt-bgmvol') { Bgm.setVol(+el.value / 100); var lv = $('#opt-bgmvol-v'); if (lv) lv.textContent = el.value + '%'; return; }
     if (el.id === 'opt-sfxvol') { PREF.sfxVol = +el.value / 100; savePref(); applyPref(); var sv = $('#opt-sfxvol-v'); if (sv) sv.textContent = el.value + '%'; return; }
-    if (el.dataset && el.dataset.fmt) { var sp = el.nextElementSibling; if (sp && sp.classList.contains('mkfmt')) sp.textContent = +el.value >= 10000 ? '= ' + fmt(+el.value) : ''; } });
+    if (el.dataset && el.dataset.fmt) { var sp = el.nextElementSibling; if (sp && sp.classList.contains('mkfmt')) sp.textContent = +el.value >= 10000 ? '= ' + fmt(+el.value) : ''; }
+    var mrow = el.closest && el.closest('.mksell'); if (mrow) mkRowUpdate(mrow); });
   document.addEventListener('visibilitychange', function () { if (!document.hidden && S.P) { sync(true); if (S.chat.paused) { S.chat.paused = false; chatConnect(); } } });
   var wasWide = wide();
   window.addEventListener('resize', function () { var sky = $('#sky'); if (sky) A.sky(sky, curTheme().sky); if (S.P && wide() !== wasWide) { wasWide = wide(); if (S.chat.open == null) { renderDock(); document.body.classList.toggle('dock-open', dockOpen()); } } });
