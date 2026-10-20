@@ -1356,10 +1356,13 @@
     return h;
   };
   // 다음 교시 예약 칸 (수업 중인 슬롯 아래)
+  // 꿈길 중이면: 예약 교시 · 시간표 다음 교시는 깨어난 뒤 이어진다
+  function dreamWake() { var d = S.P.dream; return d && d.end > now() ? d.end : 0; }
+  function dreamHold(t) { var w = dreamWake(); return w && (!t || t < w) ? ' <span class="tiny gold">· 꿈길 중이라 깨어난 뒤(' + clock(w) + ') 시작</span>' : ''; }
   function queueBox(i, l) {
     var P = S.P, q = P.lecQ && P.lecQ[i];
     if (l.tt || P.ttRun) return '<div class="qbox"><span class="tiny faint">시간표 수업 중에는 다음 교시를 예약할 수 없습니다 · 시간표의 다음 교시가 이어집니다</span></div>';
-    if (q) return '<div class="qbox"><span class="tiny gold">다음 교시 예약</span><div class="row small" style="gap:6px"><b>' + R.SUBJ[q.s].name + '</b><span class="faint">' + R.DUR[q.d].label + ' · ' + clock(l.end) + ' 시작</span><span class="spacer"></span><button class="btn sm ghost" data-act="lecq-del" data-a="' + i + '">예약 취소</button></div></div>';
+    if (q) return '<div class="qbox"><span class="tiny gold">다음 교시 예약</span><div class="row small" style="gap:6px"><b>' + R.SUBJ[q.s].name + '</b><span class="faint">' + R.DUR[q.d].label + ' · ' + clock(Math.max(l.end, dreamWake())) + ' 시작</span>' + dreamHold(l.end) + '<span class="spacer"></span><button class="btn sm ghost" data-act="lecq-del" data-a="' + i + '">예약 취소</button></div></div>';
     if (!S.qOpen || S.qOpen[i] !== true) return '<div class="qbox"><button class="btn sm ghost" data-act="lecq-open" data-a="' + i + '">＋ 다음 교시 예약</button> <span class="tiny faint">수업이 끝나면 자동으로 시작 · 한 칸</span></div>';
     var subs = R.availableSubjects(P), sel = S.pick['qs' + i] || l.s, dk = S.pick['qd' + i] || l.dur && Object.keys(R.DUR).find(function (k) { return R.DUR[k].s === l.dur; }) || '1h';
     return '<div class="qbox"><span class="tiny gold">다음 교시 예약</span><div class="row qrow" style="gap:6px;margin-top:4px;flex-wrap:wrap"><select id="qs' + i + '" data-act="pick-sel" data-a="qs' + i + '" style="flex:1 1 150px;min-width:140px">' + subs.map(function (s) { return '<option value="' + s.id + '"' + (s.id === sel ? ' selected' : '') + '>' + s.name + ' (Lv ' + P.subj[s.id].lv + ')</option>'; }).join('') + '</select>' +
@@ -1373,7 +1376,7 @@
   function ttCard(c) {
     var P = S.P, tt = (P.tt || []).map(R.ttNorm), run = P.ttRun, busy = !!P.lec[0], open = S.ttEdit != null;
     var h = '<div class="card ttcard" style="margin-bottom:14px"><div class="row between"><h3>시간표</h3><span class="tiny faint">교시를 최대 4시간까지 짜 두고 「시간표 듣기」로 차례로 이어 듣기 · 교시가 바뀔 때 종이 울립니다</span></div>';
-    if (run) h += '<p class="small gold" style="margin-top:6px">「' + esc(run.name) + '」 듣는 중 · ' + (run.i + 1) + ' / ' + run.p.length + '교시' + (run.p[run.i + 1] ? ' · 다음: ' + R.SUBJ[run.p[run.i + 1].s].name + ' ' + R.DUR[run.p[run.i + 1].d].label : ' · 마지막 교시') + '</p>';
+    if (run) h += '<p class="small gold" style="margin-top:6px">「' + esc(run.name) + '」 듣는 중 · ' + (run.i + 1) + ' / ' + run.p.length + '교시' + (run.p[run.i + 1] ? ' · 다음: ' + R.SUBJ[run.p[run.i + 1].s].name + ' ' + R.DUR[run.p[run.i + 1].d].label : ' · 마지막 교시') + '</p>' + (dreamWake() ? '<p class="tiny gold">꿈길 중: 다음 교시는 깨어난 뒤(' + clock(dreamWake()) + ') 이어집니다</p>' : '');
     h += '<div class="ttlist">';
     for (var k = 0; k < R.TT_MAX; k++) {
       var t = tt[k];
@@ -2205,7 +2208,7 @@
     if (j && j.end > now()) {
       var dn = R.DREAM[j.kind];
       h += '<div class="row">' + dotImg('dream', 28, '', 'evimg') + '<div style="flex:1;min-width:0"><b>' + dn.name + '</b>' + (j.s ? ' <span class="tiny muted">' + R.SUBJ[j.s].name + '</span>' : '') + '<div class="bar" style="margin-top:4px;height:6px"><b data-b="prog:' + j.start + ':' + j.end + '" style="--bfill:#8f86d8;background:linear-gradient(90deg,#8f86d8,#c8b8ff)"></b></div><div class="tiny faint" style="margin-top:3px"><span data-l="left:' + j.end + '"></span> 남음 · ' + clock(j.end) + '에 깹니다</div></div>' +
-        '<button class="btn sm ghost" data-act="dreamcancel" title="깨면 이번 꿈의 보상을 받을 수 없습니다">꿈에서 깨기</button>' + '</div>';
+        '<button class="btn sm ghost" data-act="dreamcancel" title="깨면 이번 꿈의 보상을 받을 수 없습니다">꿈에서 깨기</button>' + '</div>' + ((P.lecQ || []).some(Boolean) || P.ttRun ? '<p class="tiny gold" style="margin-top:6px">예약한 다음 교시 · 시간표의 남은 교시는 깨어나면(' + clock(j.end) + ') 이어집니다.</p>' : '');
       sum = dn.name + ' · <span data-l="left:' + j.end + '"></span>';
     } else {
       var kind = S.pick.drk || 'study', subs = R.availableSubjects(P), sid = S.pick.drs; if (!subs.some(function (x) { return x.id === sid; })) { sid = defaultSubject(subs); S.pick.drs = sid; }
@@ -2216,6 +2219,7 @@
         (kind === 'study' ? '<div class="field"><label class="small muted" for="drs">복습할 과목</label><select id="drs" data-act="pick-sel" data-a="drs">' + subs.map(function (x) { return '<option value="' + x.id + '"' + (x.id === sid ? ' selected' : '') + '>' + x.name + ' (Lv ' + P.subj[x.id].lv + ')</option>'; }).join('') + '</select></div>' : '') +
         durPicker('drd', D.DREAM_DUR, '8h') +
         '<div class="small" style="margin:6px 0">예상: ' + [pv.xp ? '과목 경험치 +' + fmt(pv.xp) : '', pv.know ? '지식 +' + fmt(pv.know) : '', pv.shard ? '별조각 +' + pv.shard : '', pv.egg ? '환수의 알 ' + Math.round(pv.egg * 100) + '%' : '', pv.gold ? MONEY(pv.gold, '+') : '', pv.mats ? D.MATS[pv.mat].name + ' ' + pv.mats : '', pv.stones ? '마석 ' + pv.stones : ''].filter(Boolean).join(' · ') + '</div>' +
+        ((P.lecQ || []).some(Boolean) || P.ttRun ? '<p class="tiny gold" style="margin:4px 0">예약한 다음 교시 · 시간표의 남은 교시는 꿈길 동안 멈췄다가 깨어나면 이어집니다 (꿈길 시간만큼 늦어집니다).</p>' : '<p class="tiny faint" style="margin:4px 0">꿈길 동안 수업 예약 · 시간표는 멈췄다가 깨어나면 이어집니다.</p>') +
         '<button class="btn primary" data-act="dreamgo">' + R.DRDUR[dk].label + ' 꿈길 시작</button>';
       sum = '<span class="gold">비어 있음</span>';
     }
@@ -4718,7 +4722,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102105;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102106;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
