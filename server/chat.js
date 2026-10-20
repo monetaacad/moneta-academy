@@ -17,7 +17,7 @@ const CHANNELS = {
   crp: { name: '학과 RP', max: 500 },                   // 같은 학과끼리 (캐릭터로)
   cooc: { name: '학과 사담', max: 500 },                // 같은 학과끼리 (캐릭터 밖)
   notice: { name: '공지', max: 500, readonly: true },   // 운영진·아카데미 알림만
-  recruit: { name: '모집', max: 2000, readonly: true },  // 함께 원정 모집 알림 (방에서 「모집 알림」으로만 올라온다)
+  recruit: { name: '모집', max: 2000, sayMax: 300 },   // 모집 알림 카드(max: 카드 JSON) + 일반 대화(sayMax, 월드와 같은 길이)
   dm: { name: '1:1', max: 500 }                         // 친구끼리 (dm 표에 따로 저장)
 };
 const KEEP_MEM = 80;       // 접속 시 보내는 채널별 최근 대화
@@ -195,7 +195,7 @@ function create(dbx, log, opts) {
     if (GROUP[ch] && !party) throw new Error(ch === 'party' ? '파티에 들어가 있지 않습니다' : ch === 'exr' ? '함께 원정 중이 아닙니다' : KIND[ch] === 'guild' ? '동아리에 들어가 있지 않습니다' : KIND[ch] === 'cls' ? '학과 선택 필요' : '보낼 수 없는 채널입니다');
     if (meta.muted_until && meta.muted_until > now) throw new Error('채팅이 금지된 상태입니다 (' + Math.ceil((meta.muted_until - now) / 60) + '분 남음)');
     kind = kind === 'me' ? 'me' : 'say';
-    const t = clean(text, C.max); if (!t) throw new Error('내용 입력 필요');
+    const t = clean(text, C.sayMax || C.max); if (!t) throw new Error('내용 입력 필요');
     // 속도 제한: 1.5초에 1개, 연속 4개까지. 같은 말 10초 안에 반복 금지
     rate(P, t, now);
     const m = store(ch, party, { ch, t: now, pid: P.id, name: P.name, house: P.house, grade: P.grade, guest: !!meta.guest, kind, text: t, title: titleOf(P), ink: inkOf(P) || undefined, op: isOp(P.id) ? 1 : undefined, nonce: nonce || undefined });
