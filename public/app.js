@@ -4392,7 +4392,7 @@
   var IDEA_ST = [['', '전체'], ['review', '검토 중'], ['wip', '확인 중'], ['done', '해결 완료'], ['no', '반영 안 함'], ['norepro', '재현 안 됨']];
   function boardView(idea) {
     var b = S.bd, d = b.data;
-    var h = idea ? pageHead('학생회 건의함', '건의함', '불편한 점 · 바라는 점 · 버그 제보') : pageHead('묻고 · 모이고 · 나누는 곳', '게시판', '질문 · 모집 · 거래 · RP · 잡담 · 문의 <span class="tiny faint">· 건의는 상단 건의함에서</span>');
+    var h = idea ? pageHead('학생회 건의함', '건의함', '불편한 점 · 바라는 점 · 버그 제보') : pageHead('묻고 · 모이고 · 나누는 곳', '게시판', '질문 · 정보 · 모집 · 거래 · RP · 잡담 · 문의 <span class="tiny faint">· 건의는 상단 건의함에서</span>');
     if (b.mode === 'write') return h + bdWrite();
     if (b.mode === 'post' && b.post) return h + bdPost(b.post);
     if (!d || Date.now() - b.at > 30000) { if (Date.now() - b.at > 1500) loadBoard(); }
@@ -4819,7 +4819,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102118;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102119;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
