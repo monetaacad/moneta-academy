@@ -1379,9 +1379,10 @@
   }
   function taskBox(sid) {
     var P = S.P, o = R.taskOf(P, sid), done = P.tasks[sid] || 0;
-    if (!o) return '<div class="tiny faint">교수님의 과제 3/3 완료</div>';
-    var p = R.taskProg(P, sid, o.t), ok = p >= o.t.n;
-    return '<div class="card inset" style="padding:9px 11px"><div class="row between tiny"><span class="gold">과제 ' + (done + 1) + '/3</span><span class="num faint">' + fmt(Math.min(p, o.t.n)) + ' / ' + fmt(o.t.n) + '</span></div><p class="small" style="margin:4px 0 6px">' + o.t.t + '</p>' +
+    var tn = (D.TASKS[sid] || []).length; if (!o) return '<div class="tiny faint">교수님의 과제 ' + tn + '/' + tn + ' 완료</div>';
+    var p = R.taskProg(P, sid, o.t), ok = p >= o.t.n, sl = o.t.item && D.SLOTS.find(function (x) { return x.id === o.t.item; });
+    var rw = '보상: 별조각 ' + R.taskShard(o.i) + (sl ? ' · <span style="color:' + rcol(3) + '">영웅 ' + sl.name + '</span>' : '');
+    return '<div class="card inset" style="padding:9px 11px"><div class="row between tiny"><span class="gold">과제 ' + (done + 1) + '/' + tn + '</span><span class="num faint">' + fmt(Math.min(p, o.t.n)) + ' / ' + fmt(o.t.n) + '</span></div><p class="small" style="margin:4px 0 6px">' + o.t.t + '</p><div class="tiny faint" style="margin:-2px 0 6px">' + rw + '</div>' +
       (ok ? '<button class="btn sm primary" data-act="do" data-a="task" data-b="' + sid + '">과제 제출</button>' : '<div class="bar brass" style="height:5px"><b style="width:' + Math.min(100, p / o.t.n * 100) + '%"></b></div>') + '</div>';
   }
 
@@ -3542,7 +3543,7 @@
     if (g === 2) { out.push(['공방 · 연금술', '재료와 마나로 물약을 만들고, 거래소에 내다 팔 수도 있습니다.', 'work', 'alch']); }
     // 거래소는 서버에서 정한 학년(기본 1학년)부터 — 그 학년일 때만 새로 열린 것으로 보인다
     if (g === ((S.mk && S.mk.data && S.mk.data.grade) || 1)) out.push(['거래소 사고팔기', '장비 · 재료 · 물약 · 휘장을 다른 학생과 ' + CUR + '로 거래합니다.', 'market', '']);
-    if (g === 3) { out.push(['아카데미 휘장', '2학년을 마친 기념으로 브로치를 수여합니다. 달고 있으면 별빛을 모아 성장합니다.', 'gear', 'badge']); }
+    if (g === 3) { out.push(['아카데미 휘장 수여', '2학년을 마친 기념으로 브로치를 수여합니다. 달고 있으면 별빛을 모아 성장합니다.', 'gear', 'badge']); }
     var s0 = R.spellSlots({ grade: g - 1 }), s1 = R.spellSlots({ grade: g });
     if (s1 > s0) out.push(['주문 슬롯 ' + s1 + '칸', '보스 · 결투 · 월드 보스에서 자동으로 사용하는 주문을 하나 더 장착합니다.', 'explore', '']);
     if (g >= 8) out.push(['심연', '81단계부터 끝없이 이어지는 원정 지역과 심연 연구가 열립니다.', 'explore', '']);
@@ -4541,7 +4542,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102064;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102065;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
