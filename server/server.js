@@ -2019,7 +2019,7 @@ routes['GET /api/admin/dist'] = (req, res) => {
   send(req, res, 200, { at: now, week: wk, students: { all: players.length, active7d: act.length, gradeActive7d: grades }, fightActive7d: fight(act), fightAll: fight(players), weekly: cup });
 };
 routes['GET /api/admin/ideas'] = (req, res) => { if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다'); send(req, res, 200, { text: board.exportIdeas() }); };
-routes['GET /api/admin/sys'] = (req, res) => { if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다'); send(req, res, 200, { build: BUILD, maint: MAINT, pin: dbx.kvGet('pinNotice', null), epoch: world.W.epoch }); };
+routes['GET /api/admin/sys'] = (req, res) => { if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다'); send(req, res, 200, { build: BUILD, maint: MAINT, pin: dbx.kvGet('pinNotice', null), epoch: world.W.epoch, cal: R.calendar(world.W, nowSec()) }); };
 // 개교일(아카데미력 서사달 1일이 되는 날, 한국 시간 날짜). 바꾸면 달력 · 달 축복 · 날씨가 그 날짜 기준으로 다시 계산된다
 routes['POST /api/admin/epoch'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');

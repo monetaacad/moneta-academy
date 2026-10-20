@@ -24,7 +24,7 @@ EnvironmentFile=/etc/moneta.env
 Environment=PORT=8080
 Environment=HOST=127.0.0.1
 Environment=DATA_DIR=/opt/moneta/data
-Environment=SERVER_EPOCH=2026-11-02T00:00:00+09:00
+# 개교일(SERVER_EPOCH)은 처음 켤 때 한 번만 쓰인다. 바꾸려면 운영실 「개교일」 칸 (미래 날짜를 넣으면 달력이 1일에 멈춘다)
 Environment=TRUST_PROXY=1
 Environment=COOKIE_SECURE=1
 Environment=EXPECTED_PLAYERS=500
