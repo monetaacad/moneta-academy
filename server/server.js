@@ -2001,7 +2001,7 @@ routes['GET /api/admin/dist'] = (req, res) => {
   const fight = (rows) => ({ power: by(rows, 'house', 'power'), lvl: by(rows, 'house', 'lvl'), maxStage: by(rows, 'house', 'max_stage'), wbDps: by(rows, 'house', 'wb_dps') });
   const cup = {}; db.prepare('SELECT DISTINCT week FROM weekly WHERE week <= ? ORDER BY week DESC LIMIT 4').all(wk).forEach(({ week }) => {
     const rows = db.prepare('SELECT house, cup, dmg, att FROM weekly WHERE week = ?').all(week);
-    const c = rows.filter((r) => r.cup > 0), o = by(c, 'house', 'cup'); for (const h in o) if (h !== 'all') o[h].a100 = c.filter((r) => r.house === h && r.cup >= R.CUP_ACTIVE).length;
+    const c = rows.filter((r) => r.cup > 0), o = by(c, 'house', 'cup'); for (const h in o) if (h !== 'all') o[h].a100 = c.filter((r) => r.house === h && r.cup >= (R.CUP_ACTIVE || 100)).length;
     cup[week] = { now: week === wk, cup: o, wbDmg: pct(rows.filter((r) => r.dmg > 0).map((r) => r.dmg)), wbAttacks: pct(rows.filter((r) => r.att > 0).map((r) => r.att)) };
   });
   oplog('admin', '관리자', 'dist', '분포 통계 복사');
