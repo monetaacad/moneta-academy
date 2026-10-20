@@ -336,7 +336,11 @@ if (!dbx.kvGet('profNoticeClean', 0)) { dbx.q.recentChat.all('notice', 500).forE
 function aucVisitNow(now) {
   const v = R.auctionVisit(now); if (!v) return v;
   const open = (id) => dbx.q.aucByVisit.all(id).filter((r) => !r.done && r.ends > now);
-  if (!v.active) { const pid = v.id - 1, pv = open(pid); if (pv.length) return { id: pid, start: Math.floor(pid / R.AUCTION_HOURS.length) * 86400 - R.K.TZ + R.AUCTION_HOURS[pid % R.AUCTION_HOURS.length] * 3600, end: Math.max.apply(null, pv.map((r) => r.ends)), active: true, extended: true }; return v; }
+  if (!v.active) {   // 쉬는 시간: 아직 마감되지 않은 가장 최근 방문이 있으면 그 창을 그대로 보여 준다 (연장 · 방문 일정 변경 등)
+    const last = dbx.db.prepare('SELECT visit FROM auction WHERE done = 0 AND ends > ? ORDER BY id DESC LIMIT 1').get(Math.floor(now)); if (!last) return v;
+    const pid = last.visit, pv = open(pid), all = dbx.q.aucByVisit.all(pid); if (!pv.length) return v;
+    return { id: pid, start: Math.min.apply(null, all.map((r) => r.ends)) - R.AUCTION_LEN, end: Math.max.apply(null, pv.map((r) => r.ends)), active: true, extended: true };
+  }
   const cur = open(v.id); return cur.length ? Object.assign({}, v, { end: Math.max(v.end, Math.max.apply(null, cur.map((r) => r.ends))) }) : v;
 }
 function aucBrief(now) { const v = aucVisitNow(now); return v ? { start: v.start, end: v.end, active: v.active } : null; }
