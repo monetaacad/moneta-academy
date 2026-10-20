@@ -538,7 +538,31 @@
      알 품기: 부화시키지 않고 지니고 있는 알 하나마다 경험치 +3% (3개까지) */
   R.FAM_SUBJ = 5; R.FAM_LV = 15; R.FAM_OPEN_TEXT = '환수생태학 ' + R.FAM_SUBJ + '레벨 또는 레벨 ' + R.FAM_LV; R.EGG_HOLD_EACH = 0.03; R.EGG_HOLD_MAX = 3;
   R.famOpen = function (P) { return (P.subj && P.subj.beast && P.subj.beast.lv >= R.FAM_SUBJ) || P.lvl >= R.FAM_LV || P.grade >= 3; };
-  R.eggHold = function (P) { return Math.min(R.EGG_HOLD_MAX, (P.fam && P.fam.eggs) || 0); };
+  R.eggHold = function (P) { return Math.min(R.EGG_HOLD_MAX, ((P.fam && P.fam.eggs) || 0) + (P.fam && P.fam.inc ? 1 : 0)); };   // 품고 있는 알도 지닌 알
+  /* 사역마 성장 · 알 품기: 활동 점수(대항전 점수와 같은 기준, 기숙사 특기 배율 · 매점 · 경매 제외)로 오른다.
+     - 동행 중인 사역마: 활동 점수만큼 경험치
+     - 파견: 파견 시간 1시간마다 FAM_DISP_XP (동행보다 낮게)
+     - 품는 알: 활동 점수 × 부화 효율만큼 진행도. 다 차면 마나 없이 부화, 마나로 바로 깨우면 남은 진행도만큼만 마나 */
+  R.FAM_XP_BASE = 300; R.FAM_XP_G = 1.2; R.FAM_DISP_XP = 10; R.FAM_MAX_LV = 20;
+  R.famXpNeed = function (f, lv) { return Math.floor(R.FAM_XP_BASE * (1 + 0.5 * (f ? f.r : 0)) * Math.pow(R.FAM_XP_G, lv - 1)); };
+  R.EGG_INC_BASE = 1500; R.EGG_INC_STEP = 0.25;
+  R.eggNeed = function (P) { return Math.floor(R.EGG_INC_BASE * (1 + R.EGG_INC_STEP * Math.min((P.fam && P.fam.hatched) || 0, 40))); };
+  function famGainXp(P, id, x, t) {
+    var o = P.fam.own[id], f = FAM[id]; if (!o || !f || !(x > 0)) return 0;
+    if (o.lv >= R.FAM_MAX_LV) { o.xp = 0; return 0; }
+    o.xp = (o.xp || 0) + x; var ups = 0;
+    while (o.lv < R.FAM_MAX_LV && o.xp >= R.famXpNeed(f, o.lv)) { o.xp -= R.famXpNeed(f, o.lv); o.lv++; ups++; }
+    if (o.lv >= R.FAM_MAX_LV) o.xp = 0;
+    if (ups) log(P, t || P.at, R.josa(f.name, '이', '가') + ' 함께 성장했습니다 · Lv ' + o.lv, 'good');
+    return ups;
+  }
+  R.famGainXp = famGainXp;
+  // 활동 점수가 생길 때마다: 동행 사역마 경험치 · 품는 알 진행도
+  function famActivity(P, v) {
+    if (!(v > 0) || !P.fam || !R.famOpen(P)) return;
+    if (P.fam.act && P.fam.own[P.fam.act]) famGainXp(P, P.fam.act, v);
+    var inc = P.fam.inc; if (inc && inc.prog < inc.need) { inc.prog = Math.min(inc.need, inc.prog + v * calc(P, null).hatchSpd); if (inc.prog >= inc.need) log(P, P.at, '품고 있던 알이 깨어날 준비가 되었습니다', 'good'); }
+  }
   R.famGift = function (P, t) { if (P.famGift || !R.famOpen(P)) return; P.famGift = 1; if (!Object.keys(P.fam.own).length) { P.fam.eggs++; log(P, t, '사역마를 키울 수 있게 되었습니다! 고드릭 펜 교수가 첫 환수의 알을 주었습니다.', 'story'); } };
   R.xpNeed = function (lv) { return Math.floor(K.XP_A * Math.pow(K.XP_G, lv - 1) + lv * K.XP_L); };
   function addXp(P, x, t) {
@@ -814,6 +838,7 @@
   }
   function dispatchFinish(P, fid, d, t) {
     var f = FAM[fid], z = R.zoneOf(Math.min(P.maxStage, R.stageCap(P))), h = d.dur / 3600, out = { k: 'disp', f: fid, t: t };
+    out.xp = Math.round(h * R.FAM_DISP_XP); famGainXp(P, fid, out.xp, t);   // 파견 경험치 (시간에 비례, 동행보다 낮게)
     var mult = (1 + f.r * 0.3) * (1 + 0.05 * (P.fam.own[fid].lv - 1)) * (d.bonus || 1);
     var mats = Math.floor(h * 6 * mult + rnd(P) * 3); P.mats[z.mat] = (P.mats[z.mat] || 0) + mats; out.mats = mats; out.mat = z.mat;
     var stones = Math.floor(h * 0.8 * mult + rnd(P)); P.res.stone += stones; out.stones = stones;
@@ -944,7 +969,7 @@
   };
   R.CUP_SHOP_WEEK = 200;   // 매점 구매 점수는 한 주에 이만큼까지 (아르크로 마석을 거듭 사서 점수를 올리지 못하게)
   R.CUP_AUC = 100;         // 떠돌이 상인 경매 낙찰 1회 (학생끼리 거래인 거래소에는 점수가 없다)
-  function cupAdd(P, v, cat) { if (!P.wk) return; var sp = R.CUP_SPEC[P.house]; P.wk.cup += cat && sp && sp.cats.indexOf(cat) >= 0 ? v * R.CUP_SPEC_MULT : v; }
+  function cupAdd(P, v, cat) { if (cat !== 'shop' && cat !== 'auc') famActivity(P, v); if (!P.wk) return; var sp = R.CUP_SPEC[P.house]; P.wk.cup += cat && sp && sp.cats.indexOf(cat) >= 0 ? v * R.CUP_SPEC_MULT : v; }
   // 대항전 순위 점수: 이번 주 점수가 CUP_ACTIVE 이상인 학생을 「활동 학생」으로 보고, 그 평균(1인 반영은 중간 점수의 3배까지, 최소 5명으로 나눔).
   // 인원이 많은 기숙사가 합계로 앞서지 않게 한다. cups = 그 기숙사 학생들의 이번 주 점수 목록
   R.CUP_ACTIVE = 100; R.CUP_MIN_DIV = 5; R.CUP_CAP_X = 3;
@@ -1764,11 +1789,21 @@
     var j = id ? P.spells.indexOf(id) : -1; if (j >= 0) P.spells[j] = P.spells[i];
     P.spells[i] = id; return { ok: true };
   };
+  // 마나로 바로 깨우기: 품고 있는 알이 있으면 그 알을 남은 진행도만큼의 마나로, 없으면 보관 중인 알 하나를 전액으로
+  R.eggManaCost = function (P, W, now) { var full = R.eggPrice(P, W, now), inc = P.fam.inc; return inc ? Math.ceil(full * Math.max(0, 1 - inc.prog / inc.need)) : full; };
   A.egg = function (P, W, now) {
-    if (!R.famOpen(P)) err(R.FAM_OPEN_TEXT + '부터 할 수 있습니다'); if (P.fam.egg) err('이미 부화 중입니다'); if (P.fam.eggs <= 0) err('알이 없습니다');
-    var cost = R.eggPrice(P, W, now); if (P.res.mana < cost) err('마나가 부족합니다');
-    P.res.mana -= cost; P.fam.eggs--;
+    if (!R.famOpen(P)) err(R.FAM_OPEN_TEXT + '부터 할 수 있습니다'); if (P.fam.egg) err('이미 부화 중입니다'); if (!P.fam.inc && P.fam.eggs <= 0) err('알이 없습니다');
+    var cost = R.eggManaCost(P, W, now); if (P.res.mana < cost) err('마나가 부족합니다');
+    P.res.mana -= cost; if (P.fam.inc) P.fam.inc = null; else P.fam.eggs--;
     var o = hatch(P, now); o.mana = cost; return o;
+  };
+  A.eggInc = function (P, W, now) {
+    if (!R.famOpen(P)) err(R.FAM_OPEN_TEXT + '부터 할 수 있습니다'); if (P.fam.inc) err('이미 품고 있는 알이 있습니다'); if (P.fam.eggs <= 0) err('알이 없습니다');
+    P.fam.eggs--; P.fam.inc = { need: R.eggNeed(P), prog: 0, start: now }; return { need: P.fam.inc.need };
+  };
+  A.eggHatch = function (P, W, now) {
+    var inc = P.fam.inc; if (!inc) err('품고 있는 알이 없습니다'); if (inc.prog < inc.need) err('아직 깨어날 준비가 되지 않았습니다');
+    P.fam.inc = null; return hatch(P, now);
   };
   A.feed = function (P, W, now, a) {
     var id = str(a.id), o = P.fam.own[id]; if (!o) err('없는 사역마입니다'); if (o.lv >= 20) err('최대 레벨입니다');
