@@ -153,7 +153,7 @@ function create(store, cfg, log) {
         at: now,
         cup: cupStandings(week),
         topPower: q.topPower.all(50).map(pub),
-        topStage: q.topStage.all(50).map(pub),
+        topStage: q.topStage.all(50).map(pub), topLvl: q.topLvl.all(50).map(pub),
         topTwK: q.topCt.all('$.st.twK', '$.st.twK', 50).map((r) => ({ id: r.id, name: r.name, house: r.house, f: r.f })),
         topTwM: q.topCt.all('$.st.twM', '$.st.twM', 50).map((r) => ({ id: r.id, name: r.name, house: r.house, f: r.f })),
         topDmg: q.topDmg.all(week, 50).map((r) => ({ id: r.pid, name: r.name, house: r.house, dmg: Math.floor(r.dmg) })),
@@ -165,7 +165,7 @@ function create(store, cfg, log) {
     return {
       epoch: W.epoch, now, week: R.weekId(now), weekEnd: R.weekStart(R.weekId(now) + 1),
       boss: b ? { id: b.id, name: b.name, maxHp: b.maxHp, hp: b.hp, killedAt: b.killedAt, round: b.round || 1, kills: (b.kills || 0) + (b.killedAt ? 1 : 0), participants: Number(cache.wbStats.n) || 0 } : null,
-      cup: cache.cup, hpts: W.hpts, hfull: W.hfull, topPower: cache.topPower, topStage: cache.topStage, topTwK: cache.topTwK, topTwM: cache.topTwM, topDmg: cache.topDmg,
+      cup: cache.cup, hpts: W.hpts, hfull: W.hfull, topPower: cache.topPower, topStage: cache.topStage, topLvl: cache.topLvl, topTwK: cache.topTwK, topTwM: cache.topTwM, topDmg: cache.topDmg,
       notices: W.notices.slice(0, 8), news: W.news.slice(0, 20), players: cache.players, online: online || 0,
       lastWeek: W.results[R.weekId(now) - 1] || null
     };
@@ -175,7 +175,7 @@ function create(store, cfg, log) {
   // 내 순위들 (랭킹 화면에서만 부른다): 기록이 없으면 null
   function myRanks(P, power, now) {
     const st = P.st || {}, dmg = (P.wk && P.wk.id === R.weekId(now) && P.wk.dmg) || 0;
-    return { power: rankOf(power), stage: Number(q.rankStage.get(P.maxStage, P.maxStage, power).r), dmg: dmg > 0 ? Number(q.rankDmg.get(R.weekId(now), dmg).r) : null,
+    return { power: rankOf(power), stage: Number(q.rankStage.get(P.maxStage, P.maxStage, power).r), lvl: Number(q.rankLvl.get(P.lvl, P.lvl, P.maxStage, P.maxStage, power).r), dmg: dmg > 0 ? Number(q.rankDmg.get(R.weekId(now), dmg).r) : null,
       twK: st.twK > 0 ? Number(q.rankCt.get('$.st.twK', st.twK).r) : null, twM: st.twM > 0 ? Number(q.rankCt.get('$.st.twM', st.twM).r) : null };
   }
 

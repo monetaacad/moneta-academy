@@ -1544,14 +1544,14 @@
     h += '</div></div>';
     return h;
   };
-  /* ── 랭킹 (기록 그룹): 전투력 · 원정 최고 단계 · 월드 보스 피해 · 무한의 탑 · 동아리 ── */
+  /* ── 랭킹 (기록 그룹): 전투력 · 레벨 · 월드 보스 피해 · 무한의 탑 · 동아리 ── */
   V.rank = function () {
     var P = S.P, W = S.W || {}, MR = myRanks();
     if (!S.lastWorld || Date.now() - S.lastWorld > 30000) refreshWorld();
     var h = pageHead('아카데미의 기록', '랭킹', '학생 ' + fmt(W.players || 0) + '명');
     h += '<div class="grid g2"><div class="stack">';
     h += '<div class="card">' + rkHead('전투력 순위', '장비 · 능력치 · 주문을 모두 반영한 전투력입니다.', MR.power || S.rank) + rankList((W.topPower || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: fmt(r.power), sub: R.gradeLabel({ grade: r.grade }) + ' · Lv ' + r.lvl }; }), 'power', { rank: MR.power || S.rank, v: fmt(C().power), sub: '' }) + '</div>';
-    h += '<div class="card">' + rkHead('원정 최고 단계 순위', '보스를 이겨 연 원정의 가장 깊은 단계입니다. 같은 단계면 전투력이 높은 학생이 앞섭니다.', MR.stage) + rankList((W.topStage || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: r.stage + '단계' }; }), 'stage', { rank: MR.stage, v: P.maxStage + '단계' }) + '</div>';
+    h += '<div class="card">' + rkHead('레벨 순위', '학생 레벨 순위입니다. 같은 레벨이면 원정 최고 단계, 그다음 전투력이 높은 학생이 앞섭니다. 이름 옆에 학년과 원정 최고 단계를 함께 표시합니다.', MR.lvl) + rankList((W.topLvl || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: 'Lv ' + r.lvl, sub: R.gradeLabel({ grade: r.grade }) + ' · 원정 ' + r.stage + '단계' }; }), 'lvl', { rank: MR.lvl, v: 'Lv ' + P.lvl, sub: R.gradeLabel({ grade: P.grade }) + ' · 원정 ' + P.maxStage + '단계' }) + '</div>';
     h += '<div class="card">' + rkHead('이번 주 월드 보스 피해 순위', '이번 주(월요일 KST 0시~) 월드 보스에 입힌 피해 합계입니다.', MR.dmg, P.wk.dmg > 0 ? '' : '이번 주 기록 없음') + rankList((W.topDmg || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: fmt(r.dmg) }; }), 'dmg', { rank: MR.dmg, v: fmt(P.wk.dmg) }) + '</div>';
     h += '</div><div class="stack">';
     ['knight', 'mage'].forEach(function (cl) { var L = cl === 'knight' ? W.topTwK : W.topTwM, mine = R.ctCls(P) === cl, rk = cl === 'knight' ? MR.twK : MR.twM, b = R.ctBest(P, cl); h += '<div class="card">' + rkHead(R.CT_NAME[cl] + ' 순위', R.CLS[cl].name + '가 혼자 오르는 무한의 탑에서 도달한 가장 높은 층입니다.', b > 0 ? rk : null, mine && !b ? '아직 기록 없음' : '') + rankList((L || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: r.f + '층' }; }), 'ct' + cl, b > 0 ? { rank: rk, v: b + '층' } : null) + '</div>'; });
@@ -1567,7 +1567,7 @@
     var open = key && S.rkOpen[key], shown = rows.slice(0, open ? 50 : 10);
     function li(r, rank, mine) { return '<li' + (mine || r.name === S.P.name ? ' class="me"' : '') + '><span class="num rk">' + rank + '</span><span class="rn"><span style="color:' + (R.HOUSE[r.house] ? R.HOUSE[r.house].color : 'inherit') + '">●</span> ' + (r.id ? '<a class="rnk-name" data-act="prof" data-a="' + esc(r.id) + '">' + esc(r.name) + '</a>' : esc(r.name)) + (r.sub ? ' <span class="tiny faint">' + r.sub + '</span>' : '') + '</span><span class="num rv">' + r.v + '</span></li>'; }
     var h = '<ol class="rank">' + shown.map(function (r, i) { return li(r, i + 1); }).join('');
-    if (me && me.rank && me.rank > shown.length && !shown.some(function (r) { return r.name === S.P.name; })) h += '<li class="sep" aria-hidden="true">⋯</li>' + li({ id: S.P.id, name: S.P.name, house: S.P.house, v: me.v }, me.rank, true);
+    if (me && me.rank && me.rank > shown.length && !shown.some(function (r) { return r.name === S.P.name; })) h += '<li class="sep" aria-hidden="true">⋯</li>' + li({ id: S.P.id, name: S.P.name, house: S.P.house, v: me.v, sub: me.sub }, me.rank, true);
     h += '</ol>';
     if (key && rows.length > 10) h += '<div class="row" style="justify-content:center;margin-top:6px"><button class="btn sm ghost" data-act="rkmore" data-a="' + key + '">' + (open ? '접기' : '더보기 (' + Math.min(50, rows.length) + '위까지)') + '</button></div>';
     return h;
@@ -3340,7 +3340,7 @@
     lib: [['.page-head', '서고', '마나와 지식으로 연구를 진행합니다. 연구는 한 번에 하나만 진행되며 단계가 오를수록 오래 걸리므로, 잠들기 전에 긴 연구를 시작해 두면 좋습니다.']],
     exam: [['#view .card', '기말시험', '시험 과목이 모두 기준 레벨에 도달하면 응시할 수 있습니다. 「예상 성적」을 확인한 뒤 응시합니다. 합격하면 다음 학년으로 진급합니다.'], ['h:성적표', '성적표', '학년별 성적이 기록됩니다. 「안내」를 누르면 진급 때 열린 콘텐츠를 다시 볼 수 있습니다.'], ['h:대진표', '결투제', '라이벌과 차례로 겨뤄 별조각과 ' + CUR + '를 받습니다. 지면 1시간 뒤 다시 도전할 수 있습니다.']],
     world: [['[data-anchor="wb"]', '월드 보스', '서버의 모든 학생이 함께 체력을 깎는 보스입니다. 도전권은 8시간마다 충전됩니다.'], ['h:기숙사 대항전', '기숙사 대항전', '모든 활동이 기숙사 점수로 쌓이며, 매주 순위에 따라 보상이 지급됩니다.']],
-    rank: [['h:전투력 순위', '랭킹', '전투력 · 원정 최고 단계 · 월드 보스 피해 · 무한의 탑 · 동아리 순위를 확인합니다. 순위는 10위까지 보이며 「더보기」로 50위까지 펼칠 수 있습니다.']],
+    rank: [['h:전투력 순위', '랭킹', '전투력 · 레벨 · 월드 보스 피해 · 무한의 탑 · 동아리 순위를 확인합니다. 순위는 10위까지 보이며 「더보기」로 50위까지 펼칠 수 있습니다.']],
     party: [['#view .card', '파티', '최대 4명이 함께하며 파티원 한 명당 원정 ' + CUR + ' · 경험치가 오릅니다. 파티를 만든 뒤 친구를 초대하거나 아카데미 친구(NPC)를 부를 수 있습니다. 파티와 함께 오르는 별의 탑은 「원정·전투 → 별의 탑」에 있습니다.']],
     tower: [['.page-head', '별의 탑', '파티원 모두의 능력을 합쳐 한 층씩 오릅니다. 층을 처음 넘으면 파티원 모두에게 보상 우편이 발송됩니다. 파티가 없으면 먼저 파티를 만드세요(혼자서도 만들 수 있습니다).']],
     guild: [['#view .card', '동아리', '동아리를 찾아 가입하거나 직접 만들 수 있습니다. 출석과 기부로 동아리 레벨을 올리면 부원 모두가 혜택을 받습니다.']],
@@ -4156,7 +4156,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102033;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102034;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

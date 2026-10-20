@@ -352,6 +352,8 @@ function open(dir) {
     topCt: db.prepare(`SELECT id, name, house, grade, CAST(json_extract(state, ?) AS INTEGER) AS f FROM players WHERE banned = 0 AND CAST(json_extract(state, ?) AS INTEGER) > 0 ORDER BY f DESC, power DESC LIMIT ?`),
     topStage: db.prepare(`SELECT id, name, house, power, lvl, grade, max_stage FROM players WHERE banned = 0 ORDER BY max_stage DESC, power DESC LIMIT ?`),
     rankPower: db.prepare(`SELECT COUNT(*) + 1 AS r FROM players WHERE banned = 0 AND power > ?`),
+    topLvl: db.prepare(`SELECT id, name, house, power, lvl, grade, max_stage FROM players WHERE banned = 0 ORDER BY lvl DESC, max_stage DESC, power DESC LIMIT ?`),
+    rankLvl: db.prepare(`SELECT COUNT(*) + 1 AS r FROM players WHERE banned = 0 AND (lvl > ? OR (lvl = ? AND (max_stage > ? OR (max_stage = ? AND power > ?))))`),
     rankStage: db.prepare(`SELECT COUNT(*) + 1 AS r FROM players WHERE banned = 0 AND (max_stage > ? OR (max_stage = ? AND power > ?))`),
     rankDmg: db.prepare(`SELECT COUNT(*) + 1 AS r FROM weekly w JOIN players p ON p.id = w.pid WHERE w.week = ? AND w.dmg > ? AND p.banned = 0`),
     rankCt: db.prepare(`SELECT COUNT(*) + 1 AS r FROM players WHERE banned = 0 AND CAST(json_extract(state, ?) AS INTEGER) > ?`),
