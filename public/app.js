@@ -640,6 +640,7 @@
       },
       ritual: function (d) { if (S.rit) { S.rit.n = d.n; S.rit.goal = d.goal; if (d.done && !S.rit.done) { S.rit.done = d.done; sync(true); } } if (S.view === 'home' && !S.modal) render(); },
       auction: function () { if (S.view === 'auction' && !S.modal && Date.now() - (S.aucAt || 0) > 1500) loadAuction(); },
+      aucsoon: function (d) { toast('떠돌이 상인 · 마감 5분 전', (d.name || '') + (d.top ? ' — 지금 가장 높은 값을 부른 상태입니다. 막판에 밀리지 않는지 확인하세요' : ' — 지금 가장 높은 값은 ' + fmt(d.price || 0) + ' ' + CUR + '입니다. 다시 값을 부를 수 있습니다'), 6000); if (S.view === 'auction') loadAuction(); },
       outbid: function (d) { toast('떠돌이 상인', (d.name || '') + ' — 더 높은 입찰이 나와 맡겨 둔 ' + CUR + '를 돌려받았습니다', 4000); sync(true); if (S.view === 'auction') loadAuction(); },
       mail: function (d) { if (S.mbox) { loadMailbox(); return; } if (d && d.id && d.id <= (S.mailTop || 0)) return; if (d && d.id) S.mailTop = d.id; S.mailN = (S.mailN || 0) + 1; updateMailBadge(); toast('새 우편이 도착했습니다', '우측 상단 우편함에서 확인', 3500); Snd.play('msg'); },
       slow: function (d) {
@@ -968,6 +969,23 @@
   };
   // 달마다 잎 빛깔 (서사달 → 침묵달)
   var LEAF = ['#6fae6a', '#7cc27a', '#5aa860', '#4f8f55', '#c9a24a', '#d1773f', '#a85a3a', '#9fb3c4', '#c7d6e2'];
+  /* 별자리 별고래: 거의 투명한 몸 + 테두리 빛번짐(glow 필터 id) + 별을 잇는 별자리 선 + 반짝이는 별 · 몸속 별가루 · 물줄기 별가루.
+     꼬리를 들어 올리고 머리를 살짝 숙인 헤엄치는 자세, 머리가 우측, 폭 약 120 */
+  function whaleArt(glow) {
+    var body = 'M120 30 C121 18 110 8 92 6 C72 4 52 8 36 6 C30 5 24 3 18 1 C13 -2 7 -6 0 -9 C4 -3 9 1 14 4 C8 6 3 10 -2 15 C6 14 13 11 20 9 C30 17 44 27 60 32 C78 38 98 42 110 40 C116 39 120 35 120 30 Z', fin = 'M74 37 C72 44 66 49 58 51 C63 45 65 41 66 37 Z';
+    var pts = [[0, -9], [16, 4], [-2, 15], [34, 7], [56, 6], [84, 5], [108, 12], [120, 30], [100, 40], [72, 36], [58, 51], [44, 26], [22, 10]];
+    var lines = [[0, 1], [1, 2], [1, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 9], [9, 10], [9, 11], [11, 12], [12, 1]];
+    return '<g class="wswim">' +
+      '<path d="' + body + '" fill="none" stroke="#a9c8ff" stroke-width="3.2" opacity=".75" filter="url(#' + glow + ')"/><path d="' + fin + '" fill="none" stroke="#a9c8ff" stroke-width="2.4" opacity=".6" filter="url(#' + glow + ')"/>' +
+      '<path d="' + body + '" fill="url(#' + glow + 'B)" stroke="#eef4ff" stroke-width=".7" stroke-opacity=".8"/><path d="' + fin + '" fill="url(#' + glow + 'B)" stroke="#eef4ff" stroke-width=".6" stroke-opacity=".7"/>' +
+      '<path d="M119 33 C110 35 100 35 90 33 M112 39 C102 40 90 39 80 36" stroke="#dbe7ff" stroke-width=".55" fill="none" opacity=".5"/><circle cx="108" cy="24" r="1.2" fill="#ffffff"/>' +
+      [[44, 14], [62, 14], [72, 22], [90, 16], [100, 24], [56, 22], [86, 30], [96, 32], [30, 9]].map(function (q, i) { return '<circle class="wst w' + (i % 3) + '" cx="' + q[0] + '" cy="' + q[1] + '" r=".55" fill="#f4f8ff" opacity=".85"/>'; }).join('') +
+      '<g stroke="#f2f7ff" stroke-width=".7" stroke-opacity=".8" stroke-linecap="round">' + lines.map(function (l) { var a = pts[l[0]], b = pts[l[1]]; return '<line x1="' + a[0] + '" y1="' + a[1] + '" x2="' + b[0] + '" y2="' + b[1] + '"/>'; }).join('') + '</g>' +
+      pts.map(function (q, i) { var big = i === 0 || i === 2 || i === 5 || i === 6; return '<circle class="wst w' + (i % 3) + '" cx="' + q[0] + '" cy="' + q[1] + '" r="' + (big ? 1.9 : 1.2) + '" fill="#ffffff"/>' + (big ? '<circle class="wst w' + (i % 3) + '" cx="' + q[0] + '" cy="' + q[1] + '" r="4.5" fill="#cfe2ff" opacity=".35" filter="url(#' + glow + ')"/>' : ''); }).join('') +
+      '<g class="wsp"><path d="M104 0 l1 -2.4 l1 2.4 l2.4 1 l-2.4 1 l-1 2.4 l-1 -2.4 l-2.4 -1Z" fill="#ffffff"/><circle cx="111" cy="-4" r="1" fill="#e9f2ff"/><circle cx="99" cy="-3" r=".8" fill="#e9f2ff"/></g>' +
+      '<g class="wtr"><circle cx="-8" cy="0" r=".9" fill="#dfeaff"/><circle cx="-13" cy="7" r=".7" fill="#dfeaff"/><circle cx="-8" cy="14" r=".6" fill="#dfeaff"/></g></g>';
+  }
+  function whaleDefs(id) { return '<filter id="' + id + '" x="-40%" y="-80%" width="180%" height="260%"><feGaussianBlur stdDeviation="3"/></filter><linearGradient id="' + id + 'B" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c4d8ff" stop-opacity=".2"/><stop offset="1" stop-color="#6a7fd0" stop-opacity=".1"/></linearGradient>'; }
   function sceneJar(n, max) {
     var o = '', spots = [[38, 156], [48, 148], [42, 138], [53, 160]];
     for (var i = 0; i < Math.min(n, max); i++) { var p = spots[i % spots.length]; o += '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="5.5" fill="url(#scGlow)" class="ffl f' + i + '"/><circle cx="' + p[0] + '" cy="' + p[1] + '" r="2" fill="#fff6c0" class="ffl f' + i + '"/>'; }
@@ -1020,7 +1038,7 @@
     var wx = R.weatherAt(wctx(), t), wid = wx.id, gloomy = wid !== 'clear' && wid !== 'fog';   // 날씨: 흐리거나 비 · 눈이면 해 · 흰 구름을 그리지 않는다
     var defs = '<defs><linearGradient id="scSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + sp[0] + '"/><stop offset=".6" stop-color="' + sp[1] + '"/><stop offset="1" stop-color="' + sp[2] + '"/></linearGradient>' +
       '<radialGradient id="scGlow"><stop offset="0" stop-color="#fff3a0" stop-opacity=".9"/><stop offset="1" stop-color="#fff3a0" stop-opacity="0"/></radialGradient>' +
-      '<radialGradient id="scSun"><stop offset="0" stop-color="#fff8d8"/><stop offset=".45" stop-color="#ffe9a0" stop-opacity=".9"/><stop offset="1" stop-color="#ffe9a0" stop-opacity="0"/></radialGradient>' +
+      whaleDefs('scWg') + '<radialGradient id="scSun"><stop offset="0" stop-color="#fff8d8"/><stop offset=".45" stop-color="#ffe9a0" stop-opacity=".9"/><stop offset="1" stop-color="#ffe9a0" stop-opacity="0"/></radialGradient>' +
       '<linearGradient id="scAur" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#6ff0be" stop-opacity="0"/><stop offset=".3" stop-color="#6ff0be" stop-opacity=".55"/><stop offset=".7" stop-color="#8fb8ff" stop-opacity=".45"/><stop offset="1" stop-color="#b090ff" stop-opacity="0"/></linearGradient>' +
       '<linearGradient id="scTail" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#ffffff" stop-opacity=".9"/><stop offset="1" stop-color="#bcd8ff" stop-opacity="0"/></linearGradient>' +
       '<linearGradient id="scWater" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + (dark ? '#5aa6d6' : '#9fdcf2') + '"/><stop offset="1" stop-color="' + (dark ? '#2a5f8a' : '#4f9fc4') + '"/></linearGradient>' +
@@ -1041,7 +1059,7 @@
       if (ev.id === 'meteor') for (var m = 0; m < 5; m++) e += '<line class="met m' + m + '" x1="' + (140 + m * 80) + '" y1="' + (12 + (m % 3) * 16) + '" x2="' + (110 + m * 80) + '" y2="' + (-4 + (m % 3) * 16) + '" stroke="url(#scTail)" stroke-width="1.6" stroke-linecap="round"/>';
       else if (ev.id === 'aurora') e += '<g class="aur"><path d="M0 40 C120 10 220 70 340 30 S520 20 600 44 L600 62 C500 40 420 76 320 50 S120 36 0 64Z" fill="url(#scAur)"/><path d="M40 70 C160 48 260 92 380 60 S540 56 600 76 L600 86 C520 72 420 100 320 80 S160 70 40 90Z" fill="url(#scAur)" opacity=".6"/></g>';
       else if (ev.id === 'comet') e += '<path d="M430 34 L330 58 L332 62 Z" fill="url(#scTail)"/><circle cx="431" cy="34" r="4" fill="#ffffff"/><circle cx="431" cy="34" r="10" fill="url(#scSun)" opacity=".7"/>';
-      else if (ev.id === 'whale') e += '<g class="whale"><g transform="translate(96 0) scale(-1 1)"><path d="M0 20 C10 4 54 2 72 14 C80 8 88 4 94 2 C92 10 92 16 96 24 C88 22 82 20 76 22 C62 36 18 38 0 20Z" fill="#7d96d6" opacity=".9"/><path d="M8 24 C24 32 54 32 70 22" stroke="#cfdcf7" stroke-width="2" fill="none" opacity=".8"/><circle cx="14" cy="16" r="1.6" fill="#ffffff"/><path d="M30 4 C30 -4 26 -8 22 -10 M30 4 C32 -4 36 -8 40 -10" stroke="#cfe6ff" stroke-width="1.2" fill="none" opacity=".7"/></g></g>';
+      else if (ev.id === 'whale') e += '<g class="whale"><g transform="scale(1.4)">' + whaleArt('scWg') + '</g></g>';
       o += '<g class="sc-ev' + (P.skyLook === ev.key ? '' : ' hot') + '"' + (P.skyLook === ev.key ? '' : ' data-act="skylook" role="button" aria-label="' + ev.name + ' 올려다보기"') + '>' + e + '<rect width="600" height="100" fill="transparent"/></g>';
     }
     // 능선 (멀리 → 가까이). 하늘과 능선 그라데이션만으로 채운다
@@ -2136,7 +2154,7 @@
       '<div class="tiny faint" style="margin-top:3px">' + (rt.done ? '<span class="good">오늘의 의식이 이루어졌습니다</span> · 봉헌하면 ' + R.RITUAL_BUFF.text : newbie() ? '하루 한 번(KST 자정 초기화) 마나를 봉헌해 모두 함께 채웁니다. 채우면 봉헌한 모두에게 ' + R.RITUAL_BUFF.text : '채우면 ' + R.RITUAL_BUFF.text) + '</div></div>' +
       (rt.mine ? '<span class="tag ok">봉헌함</span>' : '<button class="btn sm" data-act="ritual"' + (predMana() >= rt.cost ? '' : why('마나가 부족합니다')) + '>봉헌 <span class="cost">마나 ' + fmt(rt.cost) + '</span></button>') + '</div>';
     // 떠돌이 상인
-    if (au) h += '<div class="evrow">' + dotImg('merchant', 30, '', 'evimg' + (au.active ? '' : ' dim')) + '<div style="flex:1;min-width:0"><b>떠돌이 상인</b><div class="tiny faint">' + (au.active ? '<span class="gold">광장에 와 있습니다</span> · <span data-l="left:' + au.end + '"></span> 남음 · 귀한 장비 아홉 점 경매' : '다음 방문 ' + clock(au.start) + ' · 2시간 동안 경매') + '</div></div><button class="btn sm' + (au.active ? ' primary' : ' ghost') + '" data-act="nav" data-a="auction">' + (au.active ? '경매 보기' : '둘러보기') + '</button></div>';
+    if (au) h += '<div class="evrow">' + dotImg('merchant', 30, '', 'evimg' + (au.active ? '' : ' dim')) + '<div style="flex:1;min-width:0"><b>떠돌이 상인</b><div class="tiny faint">' + (au.active ? '<span class="gold">광장에 와 있습니다</span> · <span data-l="left:' + au.end + '"></span> 남음 · 귀한 장비 아홉 점 경매' : '다음 방문 ' + clock(au.start) + ' · 1시간 동안 경매') + '</div></div><button class="btn sm' + (au.active ? ' primary' : ' ghost') + '" data-act="nav" data-a="auction">' + (au.active ? '경매 보기' : '둘러보기') + '</button></div>';
     // 접었을 때 한 줄: 하늘 · 의식 · 상인
     var sm = [];
     if (rt) sm.push('의식 <span class="num">' + rt.n + '/' + rt.goal + '</span>' + (rt.mine ? ' ✓' : ''));
@@ -2180,7 +2198,7 @@
     if (document.body.dataset.sky === id) return; document.body.dataset.sky = id;
     var fx = $('#skyfx'); if (!fx) { fx = document.createElement('div'); fx.id = 'skyfx'; fx.setAttribute('aria-hidden', 'true'); var skyc = $('#sky'); if (skyc) skyc.parentNode.insertBefore(fx, skyc.nextSibling); else document.body.appendChild(fx); }
     var inner = ''; if (id === 'meteor') for (var i = 0; i < 9; i++) inner += '<i style="left:' + (i * 10 - 6) + '%;top:' + (5 + (i * 37) % 30) + '%;animation-delay:' + (i * 1.3) + 's"></i>';
-    else if (id === 'aurora') inner = '<b></b><b></b>'; else if (id === 'comet') inner = '<i class="comet"></i>'; else if (id === 'whale') inner = '<i class="whale"></i>';
+    else if (id === 'aurora') inner = '<b></b><b></b>'; else if (id === 'comet') inner = '<i class="comet"></i>'; else if (id === 'whale') inner = '<svg class="whale" viewBox="-20 -14 146 68"><defs>' + whaleDefs('fxWg') + '</defs>' + whaleArt('fxWg') + '</svg>';
     fx.className = id ? 'fx-' + id : ''; fx.innerHTML = inner;
     if (ev && S.view === 'home' && !S.modal) render();
   }
@@ -2190,10 +2208,10 @@
   V.auction = function () {
     var d = S.aucD, P = S.P, c = C();
     if (!d || Date.now() - (S.aucAt || 0) > 15000) { if (Date.now() - (S.aucAt || 0) > 1500) loadAuction(); }
-    var h = pageHead('하루 두 번, 낮 12시·밤 8시', '<span class="phimg">' + dotImg('merchant', 40, '', 'twimg') + '떠돌이 상인</span>', '입찰한 ' + CUR + '는 맡겨 두며, 더 높은 입찰이 나오면 돌려받습니다');
+    var h = pageHead('하루 세 번, 낮 12시 · 저녁 6시 · 밤 10시', '<span class="phimg">' + dotImg('merchant', 40, '', 'twimg') + '떠돌이 상인</span>', '입찰한 ' + CUR + '는 맡겨 두며, 더 높은 입찰이 나오면 돌려받습니다');
     if (!d) return h + '<div class="card"><p class="small muted">불러오는 중…</p></div>';
     var v = d.visit;
-    h += '<div class="card inset" style="margin-bottom:12px"><p class="small">' + (v && v.active ? '<b class="gold">상인이 와 있습니다.</b> <span data-l="left:' + v.end + '"></span> 뒤에 떠납니다. 끝나기 2분 안에 값을 부르면 경매가 2분 늘어납니다. 낙찰품은 우편으로 보내 드립니다.' : '상인은 지금 다른 섬을 돌고 있습니다. 다음 방문은 <b>' + (v ? clock(v.start) : '—') + '</b>, 2시간 동안 신입생 · 중급 · 상급 구간마다 귀한 장비 세 점씩 경매에 붙입니다.') + (d.demo ? ' <span class="gold">데모: NPC 학생들이 시간이 갈수록 값을 올립니다.</span>' : '') + '</p></div>';
+    h += '<div class="card inset" style="margin-bottom:12px"><p class="small">' + (v && v.active ? '<b class="gold">상인이 와 있습니다.</b> <span data-l="left:' + v.end + '"></span> 뒤에 떠납니다. 끝나기 2분 안에 값을 부르면 경매가 2분 늘어납니다. 낙찰품은 우편으로 보내 드립니다.' : '상인은 지금 다른 섬을 돌고 있습니다. 다음 방문은 <b>' + (v ? clock(v.start) : '—') + '</b>, 1시간 동안 신입생 · 중급 · 상급 구간마다 귀한 장비 세 점씩 경매에 붙입니다.') + (d.demo ? ' <span class="gold">데모: NPC 학생들이 시간이 갈수록 값을 올립니다.</span>' : '') + '</p></div>';
     // 구간별(신입생 · 중급 · 상급) 머리글 + 접기. 입찰할 수 없는 구간은 처음에 접어 둔다 (펼친 상태는 이 기기에 기억)
     function lotHtml(l) {
       var up = l.item ? R.powerWith(P, l.item) - c.power : 0, live = !l.done && l.ends > now(), no = l.cap && P.maxStage > l.cap;   // no: 이 구간에는 입찰할 수 없음
@@ -2201,6 +2219,7 @@
         '<div class="mkp"><span class="tiny faint">' + (l.price ? '지금 가장 높은 값' : '시작가') + '</span><b class="num gold">' + fmt(l.price || l.min) + '</b><span class="tiny ' + (l.mine ? 'good' : 'faint') + '">' + (l.price ? (l.mine ? '내가 가장 높음' : esc(l.bidder) + (l.npc ? ' (NPC)' : '')) + ' · ' + l.bids + '번' : '아직 아무도 안 부름') + '</span>' +
         (live ? '<span class="tiny faint"><span data-l="left:' + l.ends + '"></span> 남음</span>' + (l.mine ? '' : no ? '<span class="tag">원정 최고 단계 ' + l.cap + '단계 이하만 입찰</span>' : '<div class="row" style="gap:4px;flex-wrap:nowrap"><input type="number" class="aucamt" id="auc-' + l.id + '" min="' + l.need + '" value="' + l.need + '" data-fmt="1" style="width:110px"><button class="btn sm primary" data-act="bid" data-a="' + l.id + '"' + (P.res.gold >= l.need ? '' : ' disabled title="' + CUR + '가 모자랍니다"') + '>부르기</button></div><span class="tiny faint mkfmt"></span>') : '<span class="tag">끝남</span>') + '</div></div>';
     }
+    if (d.ext && d.ext.length) h += '<div class="auchd open auchx"><b>연장 중인 경매</b><span class="tiny faint">앞 방문에서 막판 입찰로 늘어난 물건 · 끝날 때까지 값을 부를 수 있습니다</span></div><div class="mklist">' + d.ext.map(lotHtml).join('') + '</div>';
     if (v && v.active && d.lots.length) {
       var tiers = [0, 1, 2].map(function (t) { return d.lots.filter(function (l) { return (l.tier == null ? 2 : l.tier) === t; }); });
       tiers.forEach(function (ls, t) {
@@ -3710,7 +3729,7 @@
     guild: [['#view .card', '동아리', '동아리를 찾아 가입하거나 직접 만들 수 있습니다. 출석과 기부로 동아리 레벨을 올리면 부원 모두가 혜택을 받습니다.']],
     friends: [['.page-head', '친구', '이름으로 친구를 신청하거나 채팅에서 이름을 눌러 신청합니다. 친구와는 1:1 대화와 파티 초대를 바로 할 수 있습니다.']],
     board: [['.page-head', '게시판', '말머리를 선택해 글을 작성합니다. 「관리자만 보기」로 작성하면 운영진에게 문의 · 건의 · 신고를 보낼 수 있습니다.']],
-    auction: [['.page-head', '떠돌이 상인', '매일 낮 12시와 밤 8시에 2시간 동안 신입생 · 중급 · 상급 구간마다 귀한 장비 세 점씩(모두 아홉 점) 경매합니다. 신입생 · 중급 구간은 원정 최고 단계가 정해진 단계 이하인 학생만 입찰할 수 있습니다. 더 높은 입찰이 나오면 입찰한 ' + CUR + '를 즉시 돌려받습니다.']],
+    auction: [['.page-head', '떠돌이 상인', '매일 낮 12시 · 저녁 6시 · 밤 10시에 1시간 동안 신입생 · 중급 · 상급 구간마다 귀한 장비 세 점씩(모두 아홉 점) 경매합니다. 신입생 · 중급 구간은 원정 최고 단계가 정해진 단계 이하인 학생만 입찰할 수 있습니다. 더 높은 입찰이 나오면 입찰한 ' + CUR + '를 즉시 돌려받습니다.']],
     market: [['#view .tabs', '거래소', '「사기」에서 다른 학생의 물건을 사고, 「팔기」에서 내 물건을 올립니다. 「팔기」에는 최근 시세가 표시됩니다.']],
     gear: [['h:장비 살펴보기', '장비', '장착 칸이나 가방의 장비를 누르면 능력치와 강화 · 재련 · 분해 · 잠금 메뉴가 표시됩니다.'], ['[data-anchor="bag"]', '가방 · 소지품', '초록 ▲ 표시는 현재보다 전투력이 오르는 장비입니다. 「소지품」 탭에는 환수의 알 · 토벌 도전권 · 물약 · 망각의 차가 모이며, 바로 사용하거나 해당 화면으로 이동할 수 있습니다.'], ['h:능력치', '능력치', '레벨업 포인트를 직접 분배하거나, 자동 분배를 활성화하고 프리셋을 선택할 수 있습니다.'], ['[data-anchor="badge"]', '아카데미 휘장', '달고 있는 휘장 하나만 효과가 있으며, 원정 · 수업 · 전투에서 별빛을 모아 성장합니다.']],
     work: [['h:연금술', '연금술', '재료와 마나로 물약을 즉시 만듭니다. 물약 효과는 마신 뒤 현실 시간으로 흐르며, 마신 뒤 시작하는 수업 · 원정부터 적용됩니다.'], ['h:사역마', '사역마', '환수의 알을 부화시켜 동행하거나 파견을 보냅니다. 동행 중인 사역마는 능력치를 올려 줍니다.']],
@@ -3916,7 +3935,7 @@
     h += '<div class="setsec"><div class="section-t">알림</div>' +
       '<label class="tog"><input type="checkbox" id="opt-notify" data-act="notify"' + (PREF.notify && perm === 'granted' ? ' checked' : '') + (perm === 'none' ? ' disabled' : '') + '> 창을 내려 두었거나 다른 탭을 보고 있을 때 작업이 끝나면 알림</label>' +
       (perm === 'none' ? '<p class="tiny faint">이 브라우저(또는 이 화면)에서는 알림을 사용할 수 없습니다.</p>' : perm === 'denied' ? '<p class="tiny bad">브라우저에서 알림이 막혀 있습니다. 주소창 좌측의 사이트 설정에서 알림을 허용해야 합니다.</p>' : '') +
-      pushRow() + '<div class="sfxlist' + (PREF.notify || PREF.push ? '' : ' off') + '">' + [['lec', '수업'], ['exp', '원정'], ['res', '연구'], ['disp', '사역마 파견'], ['jar', '정령 병이 가득 참'], ['sky', '하늘 이벤트 시작'], ['auc', '떠돌이 상인 도착']].map(function (t) { return '<label class="tog"><input type="checkbox" data-act="ntone" data-a="' + t[0] + '"' + (PREF.nt[t[0]] ? ' checked' : '') + '> ' + t[1] + '</label>'; }).join('') + '</div></div>';
+      pushRow() + '<div class="sfxlist' + (PREF.notify || PREF.push ? '' : ' off') + '">' + [['lec', '수업'], ['exp', '원정'], ['res', '연구'], ['disp', '사역마 파견'], ['jar', '정령 병이 가득 참'], ['sky', '하늘 이벤트 시작'], ['auc', '떠돌이 상인 도착'], ['aucbid', '경매 입찰 (밀림 · 마감 5분 전)']].map(function (t) { return '<label class="tog"><input type="checkbox" data-act="ntone" data-a="' + t[0] + '"' + (ntOn(t[0]) ? ' checked' : '') + '> ' + t[1] + '</label>'; }).join('') + '</div></div>';
     h += '<div class="setsec"><div class="section-t">채팅</div><label class="tog"><input type="checkbox" id="opt-hmt" data-act="opt" data-a="hideMyTitle"' + (P.opt.hideMyTitle ? ' checked' : '') + '> 채팅에서 내 칭호 숨기기</label>' +
       '<label class="tog"><input type="checkbox" id="opt-hot" data-act="opt" data-a="hideOtherTitle"' + (P.opt.hideOtherTitle ? ' checked' : '') + '> 채팅에서 다른 학생 칭호 숨기기</label><p class="tiny faint">정보창에는 칭호가 그대로 보입니다.</p></div>';
     h += '<div class="setsec"><div class="section-t">게임</div><label class="tog"><input type="checkbox" id="opt-ae2" data-act="opt" data-a="autoEquip"' + (P.opt.autoEquip ? ' checked' : '') + '> 더 좋은 장비 자동 장착</label>' +
@@ -3940,7 +3959,8 @@
   ACT.ntone = function (k, b, el) { PREF.nt[k] = el.checked; savePref(); scheduleNotify(); pushSync(); };
   /* ── 푸시 알림: 게임을 닫아 두어도 서버가 기기로 보낸다 (서버판 · 지원하는 브라우저만) ── */
   function pushOk() { return API.mode === 'server' && 'serviceWorker' in navigator && 'PushManager' in window && typeof Notification !== 'undefined'; }
-  function pushOpts() { var k = {}; R.NOTIFY_KINDS.forEach(function (x) { if (PREF.nt[x[0]]) k[x[0]] = 1; }); return { kinds: k, quiet: PREF.quiet !== false }; }
+  function ntOn(k) { return k === 'aucbid' && PREF.nt[k] == null ? true : !!PREF.nt[k]; }   // 경매 입찰 알림은 처음부터 켜 둔다
+  function pushOpts() { var k = {}; R.NOTIFY_KINDS.forEach(function (x) { if (ntOn(x[0])) k[x[0]] = 1; }); return { kinds: k, quiet: PREF.quiet !== false }; }
   function b64key(s) { var p = '='.repeat((4 - s.length % 4) % 4), raw = atob((s + p).replace(/-/g, '+').replace(/_/g, '/')), a = new Uint8Array(raw.length); for (var i = 0; i < raw.length; i++) a[i] = raw.charCodeAt(i); return a; }
   function pushReg() { return navigator.serviceWorker.ready; }
   // 켜 두었으면 이 기기 등록을 서버와 맞춘다 (접속할 때 · 알림 종류를 바꿀 때). 등록이 사라졌으면 다시 만든다
@@ -3990,7 +4010,7 @@
       for (var f in P.fam.disp) add('disp' + f + ':' + P.fam.disp[f].end, 'disp', P.fam.disp[f].end, R.josa(R.FAM[f].name, '이', '가') + ' 돌아왔습니다', '사역마 파견 완료');
       var jr = jar(); if (jr.full) add('jar:' + Math.round(jr.full), 'jar', jr.full, '반딧불 정령 병이 가득 찼습니다', '접속해 풀어 줄 수 있습니다');
       var sk = R.skyNext(now()); if (sk) add('sky:' + sk.key, 'sky', sk.start, '하늘에 ' + sk.name + '!', sk.text + ' · 올려다보면 작은 선물');
-      if (S.auc && !S.auc.active) add('auc:' + S.auc.start, 'auc', S.auc.start, '떠돌이 상인이 왔습니다', '귀한 장비 아홉 점이 2시간 동안 경매에 오릅니다');
+      if (S.auc && !S.auc.active) add('auc:' + S.auc.start, 'auc', S.auc.start, '떠돌이 상인이 왔습니다', '귀한 장비 아홉 점이 1시간 동안 경매에 오릅니다');
     }
     for (var k in nTimers) if (!want[k]) { clearTimeout(nTimers[k]); delete nTimers[k]; }
     Object.keys(want).forEach(function (k) {
@@ -4599,7 +4619,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102081;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102086;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
