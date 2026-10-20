@@ -415,7 +415,7 @@ routes['POST /api/login'] = async (req, res) => {
   if (!(await checkPass(pw, row.pass))) return fail(req, res, 401, '아이디나 비밀번호가 맞지 않습니다');
   if (row.banned) return fail(req, res, 403, '이용이 정지된 계정입니다');
   if (needsRehash(row.pass)) dbx.q.setPass.run(await hashPass(pw), row.id);
-  try { const le = dbx.db.prepare('SELECT login_enc FROM players WHERE id = ?').get(row.id); if (le && !le.login_enc && LOGIN_RE.test(login.toLowerCase())) dbx.db.prepare('UPDATE players SET login_enc = ? WHERE id = ?').run(sec.enc(login.toLowerCase()), row.id); } catch (e) { }   // 예전 학생은 로그인할 때 아이디를 기록
+  try { const le = dbx.db.prepare('SELECT login_enc FROM players WHERE id = ?').get(row.id); if (le && !le.login_enc) dbx.db.prepare('UPDATE players SET login_enc = ? WHERE id = ?').run(sec.enc(LOGIN_RE.test(login.toLowerCase()) ? login.toLowerCase() : login.trim()), row.id); } catch (e) { }   // 예전 학생은 로그인할 때 아이디를 기록 (이름이 아이디인 학생은 이름 그대로)
   const token = newSession(row.id), now = nowSec();
   const P = loadPlayer(row.id, now);
   send(req, res, 200, Object.assign({ token }, statePayload(P, now)), { 'Set-Cookie': cookie(token, cfg.sessionDays * 86400) });
@@ -1750,15 +1750,20 @@ function resetCharacter(oldId) {
   return { name: row.name, id: newId };
 }
 // 운영실: 학생 이름 ↔ 아이디 확인 (크로스체크용). 아이디는 암호화해 두었다가 여기서만 풀어 보여 준다
+// 기록이 없으면 ① 이름이 곧 아이디인 예전 학생인지 색인으로 확인하고 ② 이름 · 아이디를 함께 넣으면 그 아이디가 맞는지 색인으로 대조한다 (맞으면 기록)
 routes['POST /api/admin/lookup'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
   const b = await readJson(req, 1024), lg = String(b.login || '').trim(), nm = String(b.name || '').trim();
-  const sel = 'SELECT id, name, role, login_enc, banned, deleted FROM players WHERE ';
+  const sel = 'SELECT id, name, name_key, role, login_key, login_enc, banned, deleted FROM players WHERE ';
   const row = nm ? dbx.db.prepare(sel + 'name_key = ?').get(nameKey(nm)) : lg ? dbx.db.prepare(sel + 'login_key = ?').get(loginKey(lg)) : null;
   if (!row) return fail(req, res, 404, nm ? '없는 학생 이름입니다' : lg ? '없는 아이디입니다' : '이름이나 아이디 입력 필요');
   let login = ''; try { login = row.login_enc ? sec.dec(row.login_enc) : ''; } catch (e) { }
+  const save = (v) => { try { dbx.db.prepare('UPDATE players SET login_enc = ? WHERE id = ?').run(sec.enc(v), row.id); } catch (e) { } };
+  let match = null;
+  if (nm && lg) { match = !!row.login_key && loginKey(lg) === row.login_key; if (match && !login) { login = LOGIN_RE.test(lg.toLowerCase()) ? lg.toLowerCase() : lg; save(login); } }
+  if (!login && row.login_key && row.login_key === sec.index('login:' + row.name_key)) { login = row.name; save(login); }   // 아이디 이전에 가입 → 이름이 아이디
   oplog('admin', '관리자', 'lookup', (row.name || '') + ' 아이디 확인');
-  send(req, res, 200, { name: row.name, login: login || null, rank: row.role === 'chief' ? '학생회장' : row.role === 'admin' ? '학생회' : '', banned: !!row.banned });
+  send(req, res, 200, { name: row.name, login: login || null, match, rank: row.role === 'chief' ? '학생회장' : row.role === 'admin' ? '학생회' : '', banned: !!row.banned });
 };
 routes['POST /api/admin/reset'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
