@@ -1369,10 +1369,23 @@
   /* ───────── 시험 ───────── */
   R.examFor = function (P) { return D.EXAMS[P.grade - 1] || null; };
   R.eligMin = function (ex) { return ex.req; };
-  R.examEligible = function (P, ex) { return ex.subj.every(function (s) { return P.subj[s].lv >= R.eligMin(ex); }); };
+  // 시험에 반영되는 과목: 공통 + 선택 중 가장 레벨이 높은 1과목 (그 학과가 들을 수 있는 과목만)
+  function sjLv(P, k) { return ((P.subj || {})[k] || {}).lv || 0; }
+  R.examOpt = function (P, ex) {
+    var o = (ex.opt || []).filter(function (k) { return (P.subj || {})[k] && (!P.grade || R.subjVisible(P, SUBJ[k])); }), best = null;
+    o.forEach(function (k) { if (best == null || sjLv(P, k) > sjLv(P, best) || (sjLv(P, k) === sjLv(P, best) && SUBJ[k].cls && SUBJ[k].cls === P.cls)) best = k; });   // 같으면 학과 전용 과목을 먼저
+    return best;
+  };
+  R.examSubjs = function (P, ex) { var b = R.examOpt(P, ex); return b ? ex.subj.concat([b]) : ex.subj.slice(); };
+  // 화면 문구: 「원소역학 · 결계공학 + 주문구문학 / 검술·방패술 중 1과목」 (그 학생이 들을 수 있는 선택 과목만)
+  R.examSubjText = function (P, ex) {
+    var nm = function (k) { return SUBJ[k].name; }, o = (ex.opt || []).filter(function (k) { return !P || !P.grade || R.subjVisible(P, SUBJ[k]); });
+    return ex.subj.map(nm).join(' · ') + (o.length ? ' + ' + o.map(nm).join(' / ') + ' 중 1과목' : '');
+  };
+  R.examEligible = function (P, ex) { return R.examSubjs(P, ex).every(function (s) { return sjLv(P, s) >= R.eligMin(ex); }); };
   R.examPractical = function (P, ex) {
     // 응시 기준(모든 과목 req)을 채우면 25점, 평균이 req+4에 가까울수록 최대 40점
-    var avg = 0, minr = 1; ex.subj.forEach(function (sid) { avg += P.subj[sid].lv / ex.subj.length; minr = Math.min(minr, P.subj[sid].lv / ex.req); });
+    var xs = R.examSubjs(P, ex), avg = 0, minr = 1; xs.forEach(function (sid) { avg += sjLv(P, sid) / xs.length; minr = Math.min(minr, sjLv(P, sid) / ex.req); });
     if (minr < 1) return 25 * clamp(minr, 0, 1);
     return 25 + 15 * clamp((avg - ex.req) / 4, 0, 1);
   };
@@ -1397,7 +1410,7 @@
     var ex = R.examFor(P); if (!ex || P.grade >= 8) return null;
     var c = calc(P, W, t || P.at), du = R.duelPreview(P, W, ex.duel, null, null, t), duel = du.win ? 30 : 30 * du.frac * 0.85, bonus = c.examBonus || 0;
     // 아직 자격이 없으면 모든 시험 과목이 기준 레벨이 됐을 때로 어림한다
-    function tot(n) { var sj = {}; ex.subj.forEach(function (k) { sj[k] = { lv: Math.max(P.subj[k].lv, ex.req) + n }; }); var Q = { subj: sj }; return Math.round(R.examTheory(Q, ex) + R.examPractical(Q, ex) + duel + bonus); }
+    function tot(n) { var sj = {}; R.examSubjs(P, ex).forEach(function (k) { sj[k] = { lv: Math.max(P.subj[k].lv, ex.req) + n }; }); var Q = { subj: sj }; return Math.round(R.examTheory(Q, ex) + R.examPractical(Q, ex) + duel + bonus); }
     function need(min) { for (var n = 0; n <= 12; n++) if (tot(n) >= min) return n; return -1; }
     var total = tot(0);
     return { th: R.examTheory(P, ex), pr: R.examPractical(P, ex), duel: duel, duelWin: du.win, bonus: bonus, total: total, letter: R.letter(total), toS: need(95), toA: need(85) };
@@ -1916,7 +1929,7 @@
     P.fam.disp[id] = { start: now, end: now + d.s, dur: d.s, bonus: 1 + (b.dispPct || 0) + P.subj.beast.lv * R.BEAST_DISP }; return { ok: true };
   };
   // 이론 30: 시험 과목 평균 레벨이 기준이면 21점, 기준보다 3 높으면 30점 (문제 풀이 없음)
-  R.examTheory = function (P, ex) { var avg = ex.subj.reduce(function (s2, k) { return s2 + P.subj[k].lv; }, 0) / ex.subj.length; return clamp(21 + (avg - ex.req) * 3, 0, 30); };
+  R.examTheory = function (P, ex) { var xs = R.examSubjs(P, ex), avg = xs.reduce(function (s2, k) { return s2 + sjLv(P, k); }, 0) / xs.length; return clamp(21 + (avg - ex.req) * 3, 0, 30); };
   A.exam = function (P, W, now) {
     var ex0 = R.examFor(P); if (!ex0 || P.grade >= 8) err('남은 시험이 없습니다');
     if (P.examCd > now) err('재응시 대기 중입니다'); if (!R.examEligible(P, ex0)) err('응시 자격이 부족합니다');
@@ -2137,8 +2150,8 @@
     if (q.k === 'boss') { var won = P.maxStage >= q.n + 9; return { text: R.zoneOf(q.n).boss.name + ' 처치 (' + q.n + '단계 보스)', cur: won ? 1 : 0, need: 1, ok: won }; }
     if (q.k === 'elig') {
       var ex = D.EXAMS[(g || P.grade) - 1]; if (!ex || P.grade > ex.grade) return { text: '기말시험 준비', cur: 1, need: 1, ok: true };
-      var n = ex.subj.filter(function (s) { return P.subj[s].lv >= ex.req; }).length;
-      return { text: '시험 과목 모두 Lv ' + ex.req + ' (' + ex.subj.map(function (s) { return R.SUBJ[s].name; }).join(' · ') + ')', cur: n, need: ex.subj.length, ok: n >= ex.subj.length };
+      var xs = R.examSubjs(P, ex), n = xs.filter(function (s) { return P.subj[s].lv >= ex.req; }).length;
+      return { text: '시험 과목 모두 Lv ' + ex.req + ' (' + R.examSubjText(P, ex) + ')', cur: n, need: xs.length, ok: n >= xs.length };
     }
     if (q.k === 'exam') { var ex2 = D.EXAMS[q.n - 1], ok4 = P.grade > q.n; return { text: (ex2 ? ex2.title.split(':')[0] : q.n + '학년 기말') + ' 합격', cur: ok4 ? 1 : 0, need: 1, ok: ok4 }; }
     if (q.k === 'badge') { var ok5 = !!R.badgeWorn(P); return { text: '휘장 달기', cur: ok5 ? 1 : 0, need: 1, ok: ok5 }; }
