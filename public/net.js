@@ -92,6 +92,7 @@ var Net = (function () {
   ServerApi.prototype.playerSearch = function (q) { return this.req('GET', '/api/players?q=' + encodeURIComponent(q)); };
   ServerApi.prototype.friends = function () { return this.req('GET', '/api/friends'); };
   ServerApi.prototype.friendOp = function (op, id, name) { return this.req('POST', '/api/friends', { op: op, id: id, name: name }); };
+  ServerApi.prototype.friendMemo = function (id, memo) { return this.req('POST', '/api/friends', { op: 'memo', id: id, memo: memo }); };
   ServerApi.prototype.party = function () { return this.req('GET', '/api/party'); };
   ServerApi.prototype.partyOp = function (o) { return this.req('POST', '/api/party', o); };
   ServerApi.prototype.market = function (f) { var q = []; for (var k in f) if (f[k] !== '' && f[k] != null) q.push(k + '=' + encodeURIComponent(f[k])); return this.req('GET', '/api/market' + (q.length ? '?' + q.join('&') : '')); };

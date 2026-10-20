@@ -818,6 +818,27 @@
   function pinKey() { return S.pin ? String(S.pin.id || S.pin.t) : ''; }
   function pinFolded() { try { return !!pinKey() && localStorage.getItem('arc_pinfold') === pinKey(); } catch (e) { return !!S.pinFold; } }
   ACT.pinfold = function () { var f = !pinFolded(); S.pinFold = f; try { if (f) localStorage.setItem('arc_pinfold', pinKey()); else localStorage.removeItem('arc_pinfold'); } catch (e) { } renderDock(); };
+  // 친구 개인 메모: 나에게만 보인다 (상대 학생에게도 보이지 않음)
+  function fmemoView(f) { var m = f.memo || ''; return '<button class="fmemo-b' + (m ? '' : ' empty') + '" data-act="fmemo" data-a="' + esc(f.id) + '" title="나에게만 보이는 개인 메모입니다">' + (m ? '📝 ' + esc(m) : '+ 개인 메모') + '</button>'; }
+  ACT.fmemo = function (id) {
+    var box = document.getElementById('fm-' + id); if (!box) return;
+    var old = document.getElementById('fme-' + id); if (old) old.remove();
+    var ed = document.createElement('div'); ed.id = 'fme-' + id; ed.className = 'row fmemo-ed';   // 줄 아래 전체 폭 (모바일에서도 넉넉하게)
+    box.closest('.frow').insertAdjacentElement('afterend', ed); box.hidden = true;
+    ed.innerHTML = '<input maxlength="60" placeholder="나에게만 보이는 개인 메모입니다" value="' + esc((S.frMemo || {})[id] || '') + '" aria-label="개인 메모"><button class="btn sm primary" data-act="fmemosave" data-a="' + esc(id) + '">저장</button><button class="btn sm ghost" data-act="fmemocancel" data-a="' + esc(id) + '">취소</button>';
+    var inp = ed.querySelector('input'); inp.focus(); inp.select();
+    inp.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); ACT.fmemosave(id); } else if (e.key === 'Escape') ACT.fmemocancel(id); });
+  };
+  ACT.fmemocancel = function (id) { var ed = document.getElementById('fme-' + id); if (ed) ed.remove(); var box = document.getElementById('fm-' + id); if (box) { box.hidden = false; box.innerHTML = fmemoView({ id: id, memo: (S.frMemo || {})[id] }); } };
+  ACT.fmemosave = function (id) {
+    var ed = document.getElementById('fme-' + id), inp = ed && ed.querySelector('input'); if (!inp || !API.friendMemo) return;
+    API.friendMemo(id, inp.value).then(function (j) {
+      if (j.error) { toast('저장할 수 없습니다', j.error); return; }
+      (S.frMemo = S.frMemo || {})[id] = j.memo; S.frHtml = ''; ACT.fmemocancel(id);
+      var fl = $('#flist'); if (fl) S.frHtml = fl.innerHTML;
+      toast(j.memo ? '메모를 저장했습니다' : '메모를 지웠습니다', '', 1400);
+    });
+  };
   ACT.fop = function (op, id) {
     API.friendOp(op, id).then(function (j) {
       if (j.error) { toast('할 수 없습니다', j.error); return; }
@@ -3744,7 +3765,8 @@
     API.friends().then(function (j) {
       var box = $('#flist'); if (!box) return;
       if (j.error) { box.innerHTML = '<p class="small bad">' + esc(j.error) + '</p>'; return; }
-      function row(f, btns) { return '<div class="frow"><button class="avbtn" data-act="prof" data-a="' + esc(f.id) + '">' + avatarHtml(f, 36) + '</button><div style="flex:1;min-width:0"><button class="cn" style="color:' + (R.HOUSE[f.house] ? R.HOUSE[f.house].color : 'inherit') + '" data-act="prof" data-a="' + esc(f.id) + '">' + esc(f.name) + '</button>' + (f.online ? ' <span class="odot" title="접속 중"></span>' : '') + ' <span class="tiny faint">' + (f.grade >= 8 ? '마스터' : f.grade + '학년') + ' · Lv ' + f.lvl + '</span>' + (f.status ? '<div class="tiny muted ell">' + esc(f.status) + '</div>' : f.seen && !f.online ? '<div class="tiny faint">마지막 접속 ' + clock(f.seen) + '</div>' : '') + '</div>' + btns + '</div>'; }
+      function row(f, btns) { return '<div class="frow"><button class="avbtn" data-act="prof" data-a="' + esc(f.id) + '">' + avatarHtml(f, 36) + '</button><div style="flex:1;min-width:0"><button class="cn" style="color:' + (R.HOUSE[f.house] ? R.HOUSE[f.house].color : 'inherit') + '" data-act="prof" data-a="' + esc(f.id) + '">' + esc(f.name) + '</button>' + (f.online ? ' <span class="odot" title="접속 중"></span>' : '') + ' <span class="tiny faint">' + (f.grade >= 8 ? '마스터' : f.grade + '학년') + ' · Lv ' + f.lvl + '</span>' + (f.status ? '<div class="tiny muted ell">' + esc(f.status) + '</div>' : f.seen && !f.online ? '<div class="tiny faint">마지막 접속 ' + clock(f.seen) + '</div>' : '') + (f.memo != null && !j.demo ? '<div class="fmemo" id="fm-' + esc(f.id) + '">' + fmemoView(f) + '</div>' : '') + '</div>' + btns + '</div>'; }
+      S.frMemo = {}; j.friends.concat(j.out).forEach(function (f) { S.frMemo[f.id] = f.memo || ''; });
       var h = '';
       if (j.demo) h += '<p class="small muted">데모에서는 친구를 맺을 수 없습니다. 서버를 열면 검색하거나 채팅에서 이름을 눌러 친구 신청을 할 수 있습니다.</p>';
       if (j.inc.length) h += '<div class="section-t">받은 신청 ' + j.inc.length + '</div>' + j.inc.map(function (f) { return row(f, '<button class="btn sm primary" data-act="fop" data-a="accept" data-b="' + esc(f.id) + '">수락</button><button class="btn sm ghost" data-act="fop" data-a="decline" data-b="' + esc(f.id) + '">거절</button>'); }).join('');
@@ -4156,7 +4178,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102034;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102035;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

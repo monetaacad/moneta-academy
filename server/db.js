@@ -92,6 +92,7 @@ function open(dir) {
       fid TEXT NOT NULL,
       state TEXT NOT NULL,          -- 'req' 보낸 신청, 'ok' 친구
       t INTEGER NOT NULL,
+      memo TEXT NOT NULL DEFAULT '',   -- pid만 보는 개인 메모 (암호화)
       PRIMARY KEY (pid, fid)
     );
     CREATE INDEX IF NOT EXISTS friends_fid ON friends(fid, state);
@@ -149,6 +150,7 @@ function open(dir) {
   if (cols.indexOf('role') < 0) db.exec(`ALTER TABLE players ADD COLUMN role TEXT NOT NULL DEFAULT 'user'`);   // 'admin' 운영자 | 'user'
   if (cols.indexOf('avatar_v') < 0) db.exec(`ALTER TABLE players ADD COLUMN avatar_v INTEGER NOT NULL DEFAULT 0`);
   // 로그인 아이디: 평문 대신 HMAC 색인(sec.index)만 둔다. 게임 안에는 나오지 않는다. 빈 값은 server.js가 시작할 때 채운다
+  { const fc = db.prepare(`PRAGMA table_info(friends)`).all().map((c) => c.name); if (fc.indexOf('memo') < 0) db.exec(`ALTER TABLE friends ADD COLUMN memo TEXT NOT NULL DEFAULT ''`); }   // 친구 개인 메모
   { const ic = db.prepare(`PRAGMA table_info(invites)`).all().map((c) => c.name); if (ic.indexOf('op') < 0) db.exec(`ALTER TABLE invites ADD COLUMN op INTEGER NOT NULL DEFAULT 0`); }   // 운영자 초대코드
   if (cols.indexOf('login_key') < 0) db.exec(`ALTER TABLE players ADD COLUMN login_key TEXT NOT NULL DEFAULT ''`);
   if (cols.indexOf('login_enc') < 0) db.exec(`ALTER TABLE players ADD COLUMN login_enc TEXT NOT NULL DEFAULT ''`);   // 아이디 (암호화 · 운영실 확인용)
@@ -412,7 +414,8 @@ function open(dir) {
     friendPut: db.prepare(`INSERT INTO friends (pid, fid, state, t) VALUES (?, ?, ?, ?) ON CONFLICT(pid, fid) DO UPDATE SET state = excluded.state, t = excluded.t`),
     friendDel: db.prepare(`DELETE FROM friends WHERE (pid = ? AND fid = ?) OR (pid = ? AND fid = ?)`),
     friendCount: db.prepare(`SELECT COUNT(*) AS n FROM friends WHERE pid = ? AND state = 'ok'`),
-    friendList: db.prepare(`SELECT f.fid AS id, f.state, f.t, p.name, p.house, p.grade, p.lvl, p.last_seen, p.avatar_v, p.profile, p.title FROM friends f JOIN players p ON p.id = f.fid WHERE f.pid = ? AND p.banned = 0 ORDER BY p.last_seen DESC LIMIT 300`),
+    friendMemo: db.prepare(`UPDATE friends SET memo = ? WHERE pid = ? AND fid = ?`),
+    friendList: db.prepare(`SELECT f.fid AS id, f.state, f.t, f.memo, p.name, p.house, p.grade, p.lvl, p.last_seen, p.avatar_v, p.profile, p.title FROM friends f JOIN players p ON p.id = f.fid WHERE f.pid = ? AND p.banned = 0 ORDER BY p.last_seen DESC LIMIT 300`),
     friendIncoming: db.prepare(`SELECT f.pid AS id, f.t, p.name, p.house, p.grade, p.lvl, p.avatar_v FROM friends f JOIN players p ON p.id = f.pid WHERE f.fid = ? AND f.state = 'req' AND p.banned = 0 ORDER BY f.t DESC LIMIT 100`),
     friendIncomingCount: db.prepare(`SELECT COUNT(*) AS n FROM friends WHERE fid = ? AND state = 'req'`),
     // 파티
