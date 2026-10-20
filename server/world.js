@@ -96,7 +96,8 @@ function create(store, cfg, log) {
     const at = (p) => dmgs.length ? dmgs[Math.min(dmgs.length - 1, Math.max(0, Math.ceil(dmgs.length * p) - 1))] : Infinity;
     const same = W.boss && W.boss.week === week, paidKills = same ? W.boss.paidKills || 0 : 0, kills = same ? (W.boss.kills || 0) + (W.boss.killedAt ? 1 : 0) : 0, killed = kills > 0;   // 추가 보스까지 잡은 수
     cup.forEach((c) => { W.hbase[c.id] = (W.hbase[c.id] || 0) + c.sum; }); kvSet('hbase', W.hbase); W.hAt = 0;
-    W.results[week] = { v2: 1, cup: cup.map((c) => c.id), cupScores: cup, killed, kills, paidKills, tiers: [at(0.01), at(0.10), at(0.50)], bossName: W.boss && W.boss.week === week ? W.boss.name : '', participants: dmgs.length };
+    const top = cup[0] ? q.houseTop.get(week, cup[0].id) : null, mvp = top && top.cup >= R.CUP_ACTIVE ? top.pid : '';   // 1위 기숙사 개인 1위 → 전설 장비
+    W.results[week] = { v2: 1, mvp, cup: cup.map((c) => c.id), cupScores: cup, killed, kills, paidKills, tiers: [at(0.01), at(0.10), at(0.50)], bossName: W.boss && W.boss.week === week ? W.boss.name : '', participants: dmgs.length };
     const keys = Object.keys(W.results).map(Number).sort((a, b) => b - a);
     keys.slice(10).forEach((k) => delete W.results[k]);
     kvSet('results', W.results);
