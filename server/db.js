@@ -393,7 +393,7 @@ function open(dir) {
     getInvite: db.prepare(`SELECT code, max_uses, uses, expires, disabled, note, op FROM invites WHERE code = ?`),
     useInvite: db.prepare(`UPDATE invites SET uses = uses + 1 WHERE code = ? AND uses < max_uses AND disabled = 0`),
     insertInvite: db.prepare(`INSERT INTO invites (code, max_uses, uses, created, expires, note, op) VALUES (?, ?, 0, ?, ?, ?, ?)`),
-    listInvites: db.prepare(`SELECT i.code, i.max_uses, i.uses, i.created, i.expires, i.note, i.disabled, i.op, (SELECT group_concat(name, ', ') FROM players p WHERE p.invite = i.code) AS used_by FROM invites i ORDER BY i.created DESC LIMIT ?`),
+    listInvites: db.prepare(`SELECT i.code, i.max_uses, i.uses, i.created, i.expires, i.note, i.disabled, i.op, (SELECT group_concat(name, ', ') FROM players p WHERE p.invite = i.code) AS used_by, (SELECT MIN(created) FROM players p WHERE p.invite = i.code) AS first_at, (SELECT MAX(created) FROM players p WHERE p.invite = i.code) AS last_at FROM invites i ORDER BY i.created DESC LIMIT ?`),
     disableInvite: db.prepare(`UPDATE invites SET disabled = ? WHERE code = ?`),
     insertChat: db.prepare(`INSERT INTO chat (ch, t, pid, name, house, grade, guest, kind, text, title, ink) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
     recentChat: db.prepare(`SELECT id, ch, t, pid, name, house, grade, guest, kind, text, title, ink FROM chat WHERE ch = ? AND deleted = 0 ORDER BY id DESC LIMIT ?`),

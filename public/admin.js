@@ -53,6 +53,14 @@
     });
     g.addEventListener('dblclick', function () { setW(W0); try { localStorage.removeItem('arc_admin_imw'); } catch (e) { } });
   })();
+  // 마감: 마지막 사용(가입) 시각 + 코드를 만든 때부터 걸린 시간. 아직 남았으면 첫 사용 시각 (가입 시각으로 계산하므로 이미 마감된 코드에도 보인다)
+  function dur(s) { s = Math.max(0, Math.round(s)); return s < 60 ? s + '초' : s < 3600 ? Math.floor(s / 60) + '분 ' + (s % 60) + '초' : s < 86400 ? Math.floor(s / 3600) + '시간 ' + Math.floor(s % 3600 / 60) + '분' : Math.floor(s / 86400) + '일 ' + Math.floor(s % 86400 / 3600) + '시간'; }
+  function whenS(t) { var d = new Date(t * 1000), p = function (n) { return String(n).padStart(2, '0'); }; return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds()); }   // 초까지
+  function closeCell(i) {
+    if (!i.first_at) return '<td class="faint">-</td>';
+    var full = i.uses >= i.max_uses, tip = '코드 생성 ' + when(i.created) + ' · 첫 사용 ' + when(i.first_at) + (i.max_uses > 1 ? ' · 마지막 사용 ' + when(i.last_at) : '');
+    return '<td class="num iclose" title="' + esc(tip) + '">' + (full ? '<b>' + whenS(i.last_at) + '</b><div class="tiny faint">' + dur(i.last_at - i.created) + ' 만에 마감</div>' : '<span class="faint">첫 사용 ' + whenS(i.first_at) + '</span>') + '</td>';
+  }
   function invites() {
     api('GET', '/api/admin/invites').then(function (j) {
       // 다 쓴 · 막은 · 기한 지난 코드는 숨길 수 있다 (이 브라우저에 기억)
@@ -61,8 +69,8 @@
       var full = list.length; list = list.slice(0, ISHOW);   // 10개씩 보이고 「더보기」로 20개씩 더
       $('#icount').textContent = hide && list.length < all.length ? '숨긴 코드 ' + (all.length - list.length) + '개' : '';
       $('#invites').innerHTML = list.map(function (i) {
-        return '<tr class="' + (i.disabled ? 'dis' : '') + '"><td class="num">' + esc(i.code) + (i.op ? ' <b style="color:#e07c72">운영자</b>' : '') + '</td><td class="num">' + i.uses + ' / ' + i.max_uses + '</td><td>' + (i.expires ? when(i.expires) : '무기한') + '</td><td>' + esc(i.note) + '</td>' + ubCell(i) + '<td><button class="btn sm ghost" data-a="' + (i.disabled ? 'enable' : 'disable') + '" data-c="' + esc(i.code) + '">' + (i.disabled ? '다시 쓰기' : '중지') + '</button></td></tr>';
-      }).join('') || '<tr><td colspan="6" class="faint">' + (all.length ? '쓸 수 있는 코드가 없습니다 (숨긴 코드는 위 체크를 풀면 보입니다)' : '아직 발급한 코드가 없습니다') + '</td></tr>';
+        return '<tr class="' + (i.disabled ? 'dis' : '') + '"><td class="num">' + esc(i.code) + (i.op ? ' <b style="color:#e07c72">운영자</b>' : '') + '</td><td class="num">' + i.uses + ' / ' + i.max_uses + '</td>' + closeCell(i) + '<td>' + (i.expires ? when(i.expires) : '무기한') + '</td><td>' + esc(i.note) + '</td>' + ubCell(i) + '<td><button class="btn sm ghost" data-a="' + (i.disabled ? 'enable' : 'disable') + '" data-c="' + esc(i.code) + '">' + (i.disabled ? '다시 쓰기' : '중지') + '</button></td></tr>';
+      }).join('') || '<tr><td colspan="7" class="faint">' + (all.length ? '쓸 수 있는 코드가 없습니다 (숨긴 코드는 위 체크를 풀면 보입니다)' : '아직 발급한 코드가 없습니다') + '</td></tr>';
       $('#imore').innerHTML = full > list.length ? '<button class="btn sm ghost" data-a="imore">더보기 (' + list.length + ' / ' + full + ')</button>' : (ISHOW > 10 && full > 10 ? '<button class="btn sm ghost" data-a="iless">접기</button>' : '');
     });
   }
