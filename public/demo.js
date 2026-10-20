@@ -499,7 +499,7 @@
     var mk = this._mk(), now = Date.now() / 1000; f = f || {}; this._save();
     var list = mk.list.filter(function (x) {
       if (x.status !== 'open' || x.mineL) return false; if ((f.kind || 'item') !== x.kind) return false;
-      if (x.kind === 'item') { if (f.slot === 'sword' ? !(x.slot === 'staff' && x.item && x.item.wk === 'sword') : f.slot === 'staff' ? !(x.slot === 'staff' && !(x.item && x.item.wk === 'sword')) : f.slot && x.slot !== f.slot) return false; if (f.r !== '' && f.r != null && +f.r !== x.r) return false; if (f.q && x.name.indexOf(f.q) < 0) return false; }
+      if (x.kind === 'item') { if (f.slot === 'sword' ? !(x.slot === 'staff' && x.item && x.item.wk === 'sword') : f.slot === 'staff' ? !(x.slot === 'staff' && !(x.item && x.item.wk === 'sword')) : f.slot === 'manual' ? !(x.slot === 'tome' && x.item && x.item.wk === 'manual') : f.slot === 'tome' ? !(x.slot === 'tome' && !(x.item && x.item.wk === 'manual')) : f.slot && x.slot !== f.slot) return false; if (f.r !== '' && f.r != null && +f.r !== x.r) return false; if (f.q && x.name.indexOf(f.q) < 0) return false; }
       else if (x.kind === 'pot') { if (f.pot && x.pot !== f.pot) return false; }
       else if (x.kind === 'badge') { if (f.gem && x.gem !== f.gem) return false; }
       else if (f.mat && x.mat !== f.mat) return false;

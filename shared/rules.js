@@ -130,7 +130,7 @@
   R.ritualGoal = function (active) { return Math.max(5, Math.ceil((active || 0) * 0.35)); };
   R.ritualCost = function (P, W, now) { return Math.floor(calc(P, W, now).mana * 1800); };   // 마나 30분 분
   // 효과 묶음 → 「경험치 +50%, 수업 효율 +100%」 (버프 · 날씨 설명용)
-  var EFF_NAME = { xpPct: '경험치', goldPct: CUR, knowPct: '지식', lectureSpd: '수업 효율', manaPct: '마나 재생', manaCap: '마나 저장', hpPct: '체력', atkPct: '공격력', defPct: '방어력', physPct: '물리 피해', spellPct: '주문 위력', dropPct: '전리품', dispPct: '파견 보상', hatchSpd: '부화 속도', brewSpd: '조제 속도', enhBonus: '강화 성공률', bossDmg: '보스 피해', cdr: '재사용 대기', leech: '흡혈' };
+  var EFF_NAME = { xpPct: '경험치', goldPct: CUR, knowPct: '지식', lectureSpd: '수업 효율', manaPct: '마나 재생', manaCap: '마나 저장', hpPct: '체력', atkPct: '공격력', defPct: '방어력', physPct: '물리 피해', spellPct: '주문 위력', skillPct: '기술 위력', dropPct: '전리품', dispPct: '파견 보상', hatchSpd: '부화 속도', brewSpd: '조제 속도', enhBonus: '강화 성공률', bossDmg: '보스 피해', cdr: '재사용 대기', leech: '흡혈' };
   R.effText = function (eff) {
     var out = []; for (var k in eff || {}) { var v = eff[k]; if (!v || !EFF_NAME[k]) { if (k === 'examBonus' && v) out.push('시험 +' + v + '점'); continue; } out.push(EFF_NAME[k] + ' ' + (v > 0 ? '+' : '−') + (k === 'manaCap' ? Math.round(Math.abs(v) / 3600 * 10) / 10 + '시간' : Math.round(Math.abs(v) * 1000) / 10 + '%')); }
     return out.join(', ');
@@ -340,12 +340,16 @@
   }
   function uid(P) { return (rnd(P) * 2176782336 | 0).toString(36) + (rnd(P) * 2176782336 | 0).toString(36); }
   // 장비 이름 바탕 · 종류 이름 (무기 칸은 지팡이 / 검)
-  R.baseName = function (it) { return D.ITEM_NAMES[it.slot === 'staff' && it.wk === 'sword' ? 'sword' : it.slot][tierOf(it.ilvl)]; };
-  R.slotName = function (it) { return it && it.slot === 'staff' ? (it.wk === 'sword' ? '검' : '지팡이') : it && SLOT[it.slot] ? SLOT[it.slot].name : ''; };
+  R.baseName = function (it) { return D.ITEM_NAMES[it.slot === 'staff' && it.wk === 'sword' ? 'sword' : it.slot === 'tome' && it.wk === 'manual' ? 'manual' : it.slot][tierOf(it.ilvl)]; };
+  R.slotName = function (it) { return it && it.slot === 'staff' ? (it.wk === 'sword' ? '검' : '지팡이') : it && it.slot === 'tome' && it.wk === 'manual' ? '전술서' : it && SLOT[it.slot] ? SLOT[it.slot].name : ''; };
+  // 장비의 칸 정의: 전술서는 마도서 칸이지만 주 능력치가 기술 위력(물리 주문 피해)
+  var MANUAL_SLOT = null;
+  R.slotDef = function (it) { if (it.slot === 'tome' && it.wk === 'manual') return MANUAL_SLOT || (MANUAL_SLOT = Object.assign({}, SLOT.tome, { main: 'skillPct' })); return SLOT[it.slot]; };
   function makeItem(P, slot, ilvl, r, minR) {
     if (r == null) r = 0; if (minR != null && r < minR) r = minR;
     var it = { u: uid(P), slot: slot, ilvl: Math.max(1, Math.round(ilvl)), r: r, enh: 0, q: Math.round((0.9 + rnd(P) * 0.2) * 1000) / 1000, aff: [], lock: false };
     if (slot === 'staff' && rnd(P) < (P.cls === 'knight' ? 0.7 : 0.3)) it.wk = 'sword';   // 무기: 기사는 검이, 마법사는 지팡이가 더 잘 나온다
+    if (slot === 'tome' && rnd(P) < (P.cls === 'knight' ? 0.7 : 0.3)) it.wk = 'manual';   // 마도서 칸: 기사는 전술서가, 마법사는 마도서가 더 잘 나온다
     var pool = D.AFFIXES.slice(), n = D.RARITY[r].affix;
     for (var i = 0; i < n && pool.length; i++) {
       var a = pool.splice(Math.floor(rnd(P) * pool.length), 1)[0], v;
@@ -359,8 +363,8 @@
   }
   R.makeItem = makeItem;
   function mainVal(it) {
-    var S = SLOT[it.slot], rm = D.RARITY[it.r].mult;
-    if (S.main === 'spellPct') return S.base * (1 + it.ilvl * 0.025) * rm * it.q * (1 + it.enh * 0.08);
+    var S = R.slotDef(it), rm = D.RARITY[it.r].mult;
+    if (S.main === 'spellPct' || S.main === 'skillPct') return S.base * (1 + it.ilvl * 0.025) * rm * it.q * (1 + it.enh * 0.08);
     if (S.main === 'int' || S.main === 'luk') return S.base * (1 + it.ilvl * 0.09) * rm * it.q * (1 + it.enh * 0.08);
     return S.base * Math.pow(1.12, it.ilvl - 1) * rm * it.q * (1 + it.enh * 0.1);
   }
@@ -371,7 +375,7 @@
     return S.subBase * Math.pow(1.12, it.ilvl - 1) * rm * it.q * (1 + it.enh * 0.1);
   }
   function itemStats(it) {
-    var o = {}, S = SLOT[it.slot];
+    var o = {}, S = R.slotDef(it);
     o[S.main] = (o[S.main] || 0) + mainVal(it);
     if (S.sub) o[S.sub] = (o[S.sub] || 0) + subVal(it);
     for (var i = 0; i < it.aff.length; i++) { var a = it.aff[i]; o[a.id] = (o[a.id] || 0) + a.v; }
@@ -405,6 +409,7 @@
     c.critC = Math.min(0.8, 0.05 + st.luk * 0.0015 + (b.critC || 0));
     c.critD = 1.5 + (b.critD || 0);
     c.spell = 1 + (b.spellPct || 0) + P.subj.syntax.lv * 0.02;
+    c.skill = 1 + (b.skillPct || 0);   // 기술 위력: 물리 주문(기사 주문 · 전투체술학)에만 곱한다
     c.mana = K.MANA_BASE * (1 + st.wil * 0.04) * (1 + (b.manaPct || 0));
     c.manaCap = c.mana * (K.MANA_CAP_H * 3600 + (b.manaCap || 0));
     c.lecSpd = 1 + (b.lectureSpd || 0) + st.int * 0.0008;
@@ -462,7 +467,7 @@
     return ups;
   }
   // 주문 한 번의 기준 피해: 물리 기술(phys)은 물리 공격력, 나머지는 주문 공격력 × 주문 위력
-  R.spellHit = function (c, sp) { return sp.phys ? (c.patk || c.atk) : (c.matk || c.atk) * c.spell; };
+  R.spellHit = function (c, sp) { return sp.phys ? (c.patk || c.atk) * (c.skill || 1) : (c.matk || c.atk) * c.spell; };
   // 자동 분배 프리셋 (학과마다 공격 능력치가 다르다)
   R.ALLOC_PRESETS = {
     mage: { balance: { int: 3, wil: 1.5, agi: 1, vit: 1.5, luk: 1 }, attack: { int: 4, wil: 0.5, agi: 2, vit: 1, luk: 1.5 }, guard: { int: 2, wil: 1.5, agi: 0.5, vit: 3, luk: 0.5 }, scholar: { int: 2, wil: 3, agi: 0.5, vit: 1, luk: 1 } },
