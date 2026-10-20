@@ -231,7 +231,8 @@ function open(dir) {
       color TEXT NOT NULL DEFAULT '#d6ad5f',
       owner TEXT NOT NULL,
       mode TEXT NOT NULL DEFAULT 'open',   -- open 바로 가입 | apply 신청 후 승인
-      created INTEGER NOT NULL
+      created INTEGER NOT NULL,
+      icon TEXT NOT NULL DEFAULT ''        -- 동아리 아이콘 (D.GUILD_ICONS id)
     );
     CREATE TABLE IF NOT EXISTS guild_members (
       pid TEXT PRIMARY KEY,
