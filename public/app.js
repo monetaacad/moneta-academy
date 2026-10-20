@@ -1528,7 +1528,8 @@
           '<div class="row" style="margin-top:12px"><span class="small">도전권 <b class="num gold">' + P.wb.tickets + '</b> / ' + R.K.WB_TICKET_MAX + (P.wb.tickets < R.K.WB_TICKET_MAX ? ' · 다음 충전 <span class="num" data-l="left:' + (P.wb.at + R.K.WB_TICKET_REGEN) + '"></span>' : '') + (P.wb.extra > 0 ? ' · 추가 도전권 <b class="num">' + P.wb.extra + '</b> <span class="tiny faint">(이번 주 ' + R.wbExtraLeft(P, now()) + '번 더 사용 가능)</span>' : '') + '</span><span class="spacer"></span><button class="btn primary" data-act="wb"' + (R.wbCanAttack(P, now()) ? '' : ' disabled') + '>30초 공격</button></div>') +
         '<p class="tiny faint" style="margin-top:8px">이번 주 내 피해 ' + fmt(P.wk.dmg) + ' (' + P.wk.att + '회). 보상: 토벌하는 순간 도전한 학생 모두에게 별조각 20과 환수의 알(우편). 다음 주에 참여 별조각 10과 피해 상위 1%·10%·50% 추가 보상.</p></div>';
     }
-    h += '<div class="card"><h3>이번 주 피해 순위</h3>' + rankList((W.topDmg || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: fmt(r.dmg) }; })) + '</div>';
+    var MR = myRanks();
+    h += '<div class="card">' + rkHead('이번 주 월드 보스 피해 순위', '이번 주(월요일 KST 0시~) 월드 보스에 입힌 피해 합계입니다.', MR.dmg, P.wk.dmg > 0 ? '' : '이번 주 기록 없음') + rankList((W.topDmg || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: fmt(r.dmg) }; }), 'dmg', { rank: MR.dmg, v: fmt(P.wk.dmg) }) + '</div>';
     h += '</div><div class="stack">';
     // 대항전
     var cup = W.cup || [], top = Math.max(1, cup[0] ? cup[0].score : 1);
@@ -1540,20 +1541,33 @@
     h += '<div class="card"><h3>기숙사 성장</h3><p class="tiny faint" style="margin:2px 0 8px">대항전 점수가 쌓일수록 기숙사 혜택이 1/10에서 최대 값까지 커집니다. 혜택은 현재 / 최대.</p><div class="stack" style="gap:10px">' + D.HOUSES.map(function (hh) {
       return '<div><div class="row small">' + houseDot(hh.id, 18) + '<span style="color:' + hh.color + '">' + hh.name + '</span>' + (hh.id === P.house ? '<span class="tag br">내 기숙사</span>' : '') + '</div><div class="hgrowrow">' + houseGrow(hh.id, W) + '</div></div>';
     }).join('') + '</div></div>';
-    h += '<div class="card"><div class="row between"><h3>전투력 순위</h3><span class="small">내 순위 <b class="num gold">' + S.rank + '</b></span></div>' + rankList((W.topPower || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: fmt(r.power), sub: R.gradeLabel({ grade: r.grade }) + ' · Lv ' + r.lvl }; })) + '</div>';
-    h += '<div class="card"><h3>최고 단계 순위</h3>' + rankList((W.topStage || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: r.stage + '단계' }; })) + '</div>';
-    ['knight', 'mage'].forEach(function (cl) { var L = cl === 'knight' ? W.topTwK : W.topTwM; h += '<div class="card"><div class="row between"><h3>' + R.CT_NAME[cl] + ' 순위</h3>' + (R.ctCls(P) === cl ? '<span class="small">내 기록 <b class="num gold">' + R.ctBest(P, cl) + '층</b></span>' : '') + '</div>' + rankList((L || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: r.f + '층' }; })) + '</div>'; });
+    h += '<div class="card">' + rkHead('전투력 순위', '장비 · 능력치 · 주문을 모두 반영한 전투력입니다.', MR.power || S.rank) + rankList((W.topPower || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: fmt(r.power), sub: R.gradeLabel({ grade: r.grade }) + ' · Lv ' + r.lvl }; }), 'power', { rank: MR.power || S.rank, v: fmt(C().power), sub: '' }) + '</div>';
+    h += '<div class="card">' + rkHead('원정 최고 단계 순위', '보스를 이겨 연 원정의 가장 깊은 단계입니다. 같은 단계면 전투력이 높은 학생이 앞섭니다.', MR.stage) + rankList((W.topStage || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: r.stage + '단계' }; }), 'stage', { rank: MR.stage, v: P.maxStage + '단계' }) + '</div>';
+    ['knight', 'mage'].forEach(function (cl) { var L = cl === 'knight' ? W.topTwK : W.topTwM, mine = R.ctCls(P) === cl, rk = cl === 'knight' ? MR.twK : MR.twM, b = R.ctBest(P, cl); h += '<div class="card">' + rkHead(R.CT_NAME[cl] + ' 순위', R.CLS[cl].name + '가 혼자 오르는 학과의 탑에서 도달한 가장 높은 층입니다.', b > 0 ? rk : null, mine && !b ? '아직 기록 없음' : '') + rankList((L || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: r.f + '층' }; }), 'ct' + cl, b > 0 ? { rank: rk, v: b + '층' } : null) + '</div>'; });
     var gr = gRankData('lv');
     h += '<div class="card"><div class="row between"><h3>동아리 순위</h3><button class="btn sm ghost" data-act="grall">전체 보기</button></div>' + (!gr ? '<div class="empty">불러오는 중…</div>' : gr.list.length ? (gr.mine ? '<p class="small" style="margin-top:4px">우리 동아리 <b class="num gold">' + gr.mine.rank + '위</b></p>' : '') + gRankRows(gr.list.slice(0, 10), true, gr.mine && gr.mine.id, 'lv') : '<div class="empty" style="margin-top:8px">아직 동아리가 없습니다.</div>') + '</div>';
     h += '</div></div>';
     return h;
   };
-  function rankList(rows) {
-    if (!rows.length) return '<div class="empty" style="margin-top:8px">아직 기록이 없습니다.</div>';
-    return '<ol class="rank">' + rows.map(function (r, i) {
-      return '<li' + (r.name === S.P.name ? ' class="me"' : '') + '><span class="num rk">' + (i + 1) + '</span><span class="rn"><span style="color:' + (R.HOUSE[r.house] ? R.HOUSE[r.house].color : 'inherit') + '">●</span> ' + (r.id ? '<a class="rnk-name" data-act="prof" data-a="' + esc(r.id) + '">' + esc(r.name) + '</a>' : esc(r.name)) + (r.sub ? ' <span class="tiny faint">' + r.sub + '</span>' : '') + '</span><span class="num rv">' + r.v + '</span></li>';
-    }).join('') + '</ol>';
+  /* 순위 목록: 10위까지, 「더보기」로 50위까지. 내가 보이는 범위 밖이면 맨 아래에 내 순위를 같은 모양으로 한 줄 더 */
+  S.rkOpen = {};
+  function rankList(rows, key, me) {
+    if (!rows.length && !(me && me.rank)) return '<div class="empty" style="margin-top:8px">아직 기록이 없습니다.</div>';
+    var open = key && S.rkOpen[key], shown = rows.slice(0, open ? 50 : 10);
+    function li(r, rank, mine) { return '<li' + (mine || r.name === S.P.name ? ' class="me"' : '') + '><span class="num rk">' + rank + '</span><span class="rn"><span style="color:' + (R.HOUSE[r.house] ? R.HOUSE[r.house].color : 'inherit') + '">●</span> ' + (r.id ? '<a class="rnk-name" data-act="prof" data-a="' + esc(r.id) + '">' + esc(r.name) + '</a>' : esc(r.name)) + (r.sub ? ' <span class="tiny faint">' + r.sub + '</span>' : '') + '</span><span class="num rv">' + r.v + '</span></li>'; }
+    var h = '<ol class="rank">' + shown.map(function (r, i) { return li(r, i + 1); }).join('');
+    if (me && me.rank && me.rank > shown.length && !shown.some(function (r) { return r.name === S.P.name; })) h += '<li class="sep" aria-hidden="true">⋯</li>' + li({ id: S.P.id, name: S.P.name, house: S.P.house, v: me.v }, me.rank, true);
+    h += '</ol>';
+    if (key && rows.length > 10) h += '<div class="row" style="justify-content:center;margin-top:6px"><button class="btn sm ghost" data-act="rkmore" data-a="' + key + '">' + (open ? '접기' : '더보기 (' + Math.min(50, rows.length) + '위까지)') + '</button></div>';
+    return h;
   }
+  ACT.rkmore = function (k) { S.rkOpen[k] = !S.rkOpen[k]; render(); };
+  // 내 순위들 (랭킹 화면을 볼 때만, 30초 캐시)
+  function myRanks() {
+    if (API.myRanks && (!S.myRanksAt || Date.now() - S.myRanksAt > 30000)) { S.myRanksAt = Date.now(); API.myRanks().then(function (j) { if (j && j.ranks) { S.myRanks = j.ranks; if (S.view === 'world' && !S.modal) render(); } }); }
+    return S.myRanks || {};
+  }
+  function rkHead(title, desc, rank, noRec) { return '<div class="row between"><h3>' + title + '</h3><span class="small">' + (rank ? '내 순위 <b class="num gold">' + rank + '위</b>' : noRec ? '<span class="faint">' + noRec + '</span>' : '') + '</span></div>' + (desc ? '<p class="tiny faint" style="margin:2px 0 4px">' + desc + '</p>' : ''); }
 
   /* ── 장비 ── */
   V.gear = function () {
@@ -2014,13 +2028,13 @@
     var h = pageHead('혼자 오르는 ' + R.CLS[cl].name + ' 전용 탑', '<span class="phimg">' + clsDot(cl, 36) + nm + '</span>', '오늘 도전 <b class="num gold">' + left + '</b> / ' + R.CT_TRIES);
     h += '<div class="card hl"><div class="row between"><h3>' + nm + ' <span class="tag br">최고 ' + best + '층</span></h3><span class="tiny faint">KST 자정에 도전 횟수 초기화</span></div>' +
       '<p class="tiny faint" style="margin-top:2px">혼자 한 층씩 오르는 ' + R.CLS[cl].name + ' 전용 탑입니다. 도전 한 번에 한 층과 싸우며, 오른 층은 줄어들지 않습니다. 탑의 적은 공격이 매우 강해 화력만큼 생명력과 회복도 중요합니다(' + R.CT_TIME + '초 제한).</p>' +
-      '<div class="twnext" style="margin-top:10px"><div class="twf num">' + f + '<span>층</span></div><div style="flex:1;min-width:0"><b' + (foe.wall ? ' class="gold"' : '') + '>' + esc(foe.name) + '</b><div class="tiny faint">' + foe.stage + '단계 수준 · 체력 ' + fmt(foe.hp) + (foe.wall ? ' · <span class="bad">칭호 층: 갑자기 강해집니다</span>' : '') + '</div>' +
+      '<div class="twnext" style="margin-top:10px"><div class="twf num">' + f + '<span>층</span></div><div style="flex:1;min-width:0"><b' + (foe.wall ? ' class="gold"' : '') + '>' + esc(foe.name) + '</b><div class="tiny faint">' + foe.stage + '단계 수준 · 체력 ' + fmt(foe.hp) + (foe.wall ? ' · <span class="bad">시련의 층: 탑의 문지기가 지킵니다</span>' : '') + '</div>' +
       '<div class="small" style="margin-top:4px">' + (pv.win && pv.ttk < R.CT_TIME ? '<span class="good">승산 있음</span> — 약 ' + pv.ttk.toFixed(1) + '초' : '<span class="bad">아직 버겁습니다</span>') + '</div>' +
       '<div class="tiny" style="margin-top:4px">이 층 보상 <span class="rwd">' + esc(R.rewardText(rw)) + '</span></div></div></div>' +
       '<div class="row" style="margin-top:12px"><span class="tiny faint">' + (mt ? nextMile + '층 돌파 시 칭호 「' + esc(mt.name) + '」 · 별조각 30 · 희귀 장비 상자 · 환수의 알' : nextMile + '층 돌파 시 별조각 30 · 희귀 장비 상자 · 환수의 알') + '</span><span class="spacer"></span><button class="btn primary" data-act="ctower"' + (left > 0 ? '' : why('오늘의 도전 횟수를 모두 사용했습니다 (KST 자정 초기화)')) + '>' + f + '층 도전</button></div></div>';
     var got = D.TITLES.filter(function (t) { return t.stat === R.ctKey(cl); });
     h += '<div class="card" style="margin-top:14px"><h3>' + nm + ' 칭호</h3><div class="stack" style="gap:6px;margin-top:8px">' + got.map(function (t) { var ok = best >= t.n; return '<div class="row small"><span class="' + (ok ? 'gold' : 'faint') + '">' + (ok ? '✦ ' : '· ') + esc(t.name) + '</span><span class="spacer"></span><span class="tiny ' + (ok ? 'good' : 'faint') + '">' + t.n + '층' + (ok ? ' · 획득' : '') + '</span></div>'; }).join('') + '</div>' +
-      '<p class="tiny faint" style="margin-top:8px">보상: 층마다 ' + CUR + ', 2층마다 마석 1, 10층마다 별조각 3, ' + R.CT_MILE + '층마다 칭호와 추가 보상. 칭호 층은 문지기가 지켜 갑자기 어려워지고, 넘은 뒤 몇 층은 다시 쉬워집니다. 학과를 바꾸면 그 학과의 탑을 따로 오릅니다. 순위는 「토벌·랭킹」에서 볼 수 있습니다.</p></div>';
+      '<p class="tiny faint" style="margin-top:8px">보상: 층마다 ' + CUR + ', 2층마다 마석 1, 10층마다 별조각 3, ' + R.CT_MILE + '층마다 칭호와 추가 보상. 시련의 층(50층마다)은 탑의 문지기가 지켜 갑자기 어려워지고, 넘은 뒤 몇 층은 다시 쉬워집니다. 학과를 바꾸면 그 학과의 탑을 따로 오릅니다. 순위는 「토벌·랭킹」에서 볼 수 있습니다.</p></div>';
     return h;
   };
   ACT.ctower = function () {
@@ -4129,7 +4143,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102025;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102026;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

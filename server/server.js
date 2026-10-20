@@ -469,6 +469,12 @@ routes['GET /api/state'] = (req, res) => {
   send(req, res, 200, statePayload(P, now));
 };
 // 세계: 내용이 같으면 304 (ETag는 본문 해시). 접속자 수가 바뀌면 본문도 바뀐다.
+routes['GET /api/myranks'] = (req, res) => {
+  const pid = authed(req); if (!pid) return fail(req, res, 401, '로그인이 필요합니다');
+  if (limited('mr:' + pid, 2, 10)) return fail(req, res, 429, '요청이 너무 잦습니다');
+  const now = nowSec(), P = loadPlayer(pid, now); if (!P) return fail(req, res, 401, '학생 정보를 찾을 수 없습니다');
+  send(req, res, 200, { ranks: world.myRanks(P, R.summary(P, world.W, now).power, now) });
+};
 routes['GET /api/world'] = (req, res) => {
   if (!authed(req)) return fail(req, res, 401, '로그인이 필요합니다');
   if (limited('w:' + clientIp(req), 2, 10)) return fail(req, res, 429, '요청이 너무 잦습니다');

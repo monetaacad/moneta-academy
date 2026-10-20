@@ -152,11 +152,11 @@ function create(store, cfg, log) {
       cache = {
         at: now,
         cup: cupStandings(week),
-        topPower: q.topPower.all(20).map(pub),
-        topStage: q.topStage.all(20).map(pub),
-        topTwK: q.topCt.all('$.st.twK', '$.st.twK', 20).map((r) => ({ id: r.id, name: r.name, house: r.house, f: r.f })),
-        topTwM: q.topCt.all('$.st.twM', '$.st.twM', 20).map((r) => ({ id: r.id, name: r.name, house: r.house, f: r.f })),
-        topDmg: q.topDmg.all(week, 20).map((r) => ({ id: r.pid, name: r.name, house: r.house, dmg: Math.floor(r.dmg) })),
+        topPower: q.topPower.all(50).map(pub),
+        topStage: q.topStage.all(50).map(pub),
+        topTwK: q.topCt.all('$.st.twK', '$.st.twK', 50).map((r) => ({ id: r.id, name: r.name, house: r.house, f: r.f })),
+        topTwM: q.topCt.all('$.st.twM', '$.st.twM', 50).map((r) => ({ id: r.id, name: r.name, house: r.house, f: r.f })),
+        topDmg: q.topDmg.all(week, 50).map((r) => ({ id: r.pid, name: r.name, house: r.house, dmg: Math.floor(r.dmg) })),
         wbStats: q.sumDmg.get(week),
         players: Number(q.countPlayers.get().n)
       };
@@ -172,13 +172,19 @@ function create(store, cfg, log) {
   }
   function pub(r) { return { id: r.id, name: r.name, house: r.house, power: Math.floor(r.power), lvl: r.lvl, grade: r.grade, stage: r.max_stage }; }
   function rankOf(power) { return Number(q.rankPower.get(power).r); }
+  // 내 순위들 (랭킹 화면에서만 부른다): 기록이 없으면 null
+  function myRanks(P, power, now) {
+    const st = P.st || {}, dmg = (P.wk && P.wk.id === R.weekId(now) && P.wk.dmg) || 0;
+    return { power: rankOf(power), stage: Number(q.rankStage.get(P.maxStage, P.maxStage, power).r), dmg: dmg > 0 ? Number(q.rankDmg.get(R.weekId(now), dmg).r) : null,
+      twK: st.twK > 0 ? Number(q.rankCt.get('$.st.twK', st.twK).r) : null, twM: st.twM > 0 ? Number(q.rankCt.get('$.st.twM', st.twM).r) : null };
+  }
 
   // 규칙 엔진에 넘기는 세계 (W.results로 주간 보상 판정)
   function ctx(now) { W.now = now; return W; }
 
   // 종료 직전: 미뤄 둔 저장까지 모두 (월드 보스 체력 · 소식 · 공지 · 결과)
   function saveAll() { if (newsT) { clearTimeout(newsT); newsT = null; } kvSet('boss', W.boss); kvSet('news', W.news); kvSet('notices', W.notices); kvSet('results', W.results); bossDirty = false; }
-  const api = { W, houseView, tick, summonBoss, wbForecast, WB_SUMMON_FILL, saveAll, applyDamage, addNotice, addNews, publicView, ctx, rankOf, finalizeWeek, cupStandings, invalidate() { cache.at = 0; } };
+  const api = { W, houseView, tick, summonBoss, wbForecast, WB_SUMMON_FILL, saveAll, applyDamage, addNotice, addNews, publicView, ctx, rankOf, myRanks, finalizeWeek, cupStandings, invalidate() { cache.at = 0; } };
   return api;
 }
 module.exports = { create };

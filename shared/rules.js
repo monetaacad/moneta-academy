@@ -1435,7 +1435,7 @@
   /* ───────── 학과의 탑 (개인): 기사의 탑 · 마법사의 탑 ─────────
      혼자 오르는 탑. 학과마다 따로 층을 쌓으며 줄어들지 않는다(주간 초기화 없음). 하루 3번 도전(KST 자정 초기화, 별의 탑과 따로 셈), 한 번에 한 층.
      난이도: 적의 공격이 아주 세고(보스 공격 ×3) 체력은 낮으며(×0.6) 60초 안에 쓰러뜨려야 한다 → 화력만으로 밀기 어렵고 생명력 · 회복도 필요.
-     층 곡선: 전투력 약 4천은 15층, 약 1.6만은 40층 언저리에서 막힌다. 칭호 층(50층마다)은 갑자기 어려운 벽(체력 ×1.8 · 공격 ×1.4),
+     층 곡선: 전투력 약 4천은 15층, 약 1.6만은 40층 언저리에서 막힌다. 시련의 층(50층마다)은 갑자기 어려운 벽(체력 ×1.8 · 공격 ×1.4),
      넘고 나면 3~4층은 쉬워졌다가 금세 다시 따라잡힌다. */
   R.CT_TRIES = 3; R.CT_MILE = 50; R.CT_TIME = 60;
   R.CT_NAME = { knight: '기사의 탑', mage: '마법사의 탑' };
@@ -1451,13 +1451,13 @@
   R.ctStage = function (f) {
     var s; if (f >= 40) s = 32 + (f - 40) * 0.3;
     else for (var i = 1; i < CT_PTS.length; i++) if (f <= CT_PTS[i][0]) { var a = CT_PTS[i - 1], b = CT_PTS[i]; s = a[1] + (b[1] - a[1]) * (f - a[0]) / (b[0] - a[0]); break; }
-    var m = f % R.CT_MILE; if (f > R.CT_MILE && m >= 1 && m <= 4) s -= 5 - m;   // 칭호 층을 넘은 직후 3~4층은 쉬워진다
+    var m = f % R.CT_MILE; if (f > R.CT_MILE && m >= 1 && m <= 4) s -= 5 - m;   // 시련의 층을 넘은 직후 3~4층은 쉬워진다
     return Math.max(1, Math.round(s));
   };
   R.ctWall = function (f) { return f % R.CT_MILE === 0; };
   R.ctFoe = function (f, cls) {
     var L = R.CT_FOES[cls] || R.CT_FOES.mage, s = R.ctStage(f), k = Math.ceil(f / L.length), d = L[(f - 1) % L.length], w = R.ctWall(f);
-    return { name: (w ? '칭호의 문지기 · ' : '') + d[0] + (k > 1 ? ' ' + toRoman(Math.min(k, 10)) + (k > 10 ? '+' : '') : ''), arch: d[1], c1: d[2], c2: d[3], stage: s, wall: w,
+    return { name: (w ? '탑의 문지기 · ' : '') + d[0] + (k > 1 ? ' ' + toRoman(Math.min(k, 10)) + (k > 10 ? '+' : '') : ''), arch: d[1], c1: d[2], c2: d[3], stage: s, wall: w,
       hp: R.monHp(s) * K.BOSS_HP * 0.6 * (w ? 1.8 : 1), atk: R.monAtk(s) * K.BOSS_ATK * 3 * (w ? 1.4 : 1), boss: true };
   };
   R.ctReward = function (f) {
