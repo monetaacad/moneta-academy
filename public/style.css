@@ -1692,3 +1692,6 @@ mark.hl { color: inherit; background: linear-gradient(transparent 38%, color-mix
 .tag.hd { color: var(--brass2); border-color: color-mix(in srgb, var(--brass) 50%, transparent); font-size: 10px; padding: 0 5px; margin-right: 4px; }
 .cm.head .cb { color: var(--ink2); }
 @media (max-width: 520px) { .hmirror { gap: 12px; } .hmglass { width: 76px; height: 106px; } .hmname { font-size: 22px; } }
+
+/* 장비 살펴보기: 강화 단추 위 보유 재화 줄 */
+.ownline { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 8px; padding: 6px 10px; border-radius: 8px; background: var(--sunk); border: 1px solid var(--line2); }
