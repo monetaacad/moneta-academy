@@ -802,7 +802,7 @@ routes['POST /api/friends'] = async (req, res) => {
 
 
 /* ───────── 파티 (최대 4명) ─────────
-   파티원 한 명당 원정 아르크·경험치 +3% (최대 +9%). 파티 전용 채팅 채널. */
+   파티원 한 명당 원정 아르크 +3% (최대 +9%) · 경험치 +1% (최대 +3%). 파티 전용 채팅 채널. */
 const PARTY_MAX = 4, PARTY_NAME_RE = /^[가-힣A-Za-z0-9_ ]{2,12}$/;
 const partySize = new Map();
 dbx.q.partyAllMembers.all().forEach((r) => { partyOf.set(r.pid, r.party); partySize.set(r.party, (partySize.get(r.party) || 0) + 1); });
@@ -829,7 +829,7 @@ function partyCount(id) { const pa = dbx.q.partyGet.get(id); return (partySize.g
 function partyView(me) {
   const id = partyOf.get(me); if (!id) return null;
   const pa = dbx.q.partyGet.get(id); if (!pa) return null;
-  return { id, name: pa.name, leader: pa.leader, allgo: !!pa.allgo, max: PARTY_MAX, bonus: 0.03 * ((partySize.get(id) || 1) - 1),
+  return { id, name: pa.name, leader: pa.leader, allgo: !!pa.allgo, max: PARTY_MAX, bonus: R.PARTY_GOLD * (Math.min(partySize.get(id) || 1, 4) - 1), bonusXp: R.PARTY_XP * (Math.min(partySize.get(id) || 1, 4) - 1),
     members: dbx.q.partyMembers.all(id).map((m) => ({ id: m.id, name: m.name, house: m.house, grade: m.grade, lvl: m.lvl, av: m.avatar_v, title: m.title, online: m.id === me || isOnline(m.id), seen: m.last_seen, leader: m.id === pa.leader }))
       .concat(partyNpcs(pa).map((k) => { const n = NPCS[k]; return { id: 'npc:' + k, npc: true, online: true, name: n.name, who: n.who, house: n.house, grade: n.grade, title: 'NPC' }; })),
     npcPool: NPCS.map((n) => ({ k: n.k, name: n.name, who: n.who })) };

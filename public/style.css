@@ -208,6 +208,8 @@ main { min-width: 0; container-type: inline-size; container-name: page; }
 .tag.br { color: var(--brass2); border-color: var(--line); }
 .empty { color: var(--faint); font-size: 13px; padding: 18px; text-align: center; border: 1px dashed var(--line2); border-radius: var(--rad); }
 .lock-note { color: var(--faint); font-size: 12.5px; display: flex; gap: 6px; align-items: center; }
+/* 일괄 판매 · 분해 버튼: 등급 색 */
+.btn.rk { font-weight: 600; } .btn.rk0 { color: var(--r0) !important; border-color: var(--r0) !important; } .btn.rk1 { color: var(--r1) !important; border-color: var(--r1) !important; } .btn.rk2 { color: var(--r2) !important; border-color: var(--r2) !important; } .btn.rk3 { color: var(--r3) !important; border-color: var(--r3) !important; }
 .r0 { color: var(--r0); } .r1 { color: var(--r1); } .r2 { color: var(--r2); } .r3 { color: var(--r3); } .r4 { color: var(--r4); }
 
 /* 홈 */

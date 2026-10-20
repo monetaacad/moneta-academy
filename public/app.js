@@ -1422,15 +1422,15 @@
     if (mine) {
       var e = mine.est;
       h += '<div class="erroom mine"><div class="row between"><b>' + mine.s + '단계 <span class="small muted">' + esc(mine.zone) + ' · ' + R.DUR[mine.d].label + '</span></b><span class="small"><b class="num gold" data-erleft="' + mine.id + '">' + erLeftTxt(mine) + '</b></span></div>' +
-        '<div class="ermembers">' + mine.members.map(function (m) { return '<span class="erm' + (m.me ? ' me' : '') + (m.npc ? ' npc' : '') + '"><span class="postag p-' + m.pos + '">' + R.EXP_POS[m.pos].name + '</span>' + erName(m) + (m.host ? ' <span class="tiny faint">방장</span>' : '') + (m.npc ? ' <span class="tiny faint">동행</span>' + (mine.isHost ? '<button class="erx" data-act="ernpcdel" data-a="' + m.k + '" aria-label="돌려보내기">×</button>' : '') : '') + '</span>'; }).join('') +
+        '<div class="ermembers">' + mine.members.map(function (m) { return '<span class="erm' + (m.me ? ' me' : '') + (m.npc ? ' npc' : '') + '"><span class="postag p-' + m.pos + '">' + R.EXP_POS[m.pos].name + '</span>' + erName(m) + (m.host ? ' <span class="tiny faint">방장</span>' : '') + (m.npc ? ' <span class="tiny faint">동행</span>' + (m.mineNpc ? '<button class="erx" data-act="ernpcdel" data-a="' + m.k + '" aria-label="돌려보내기">×</button>' : '') : '') + '</span>'; }).join('') +
         Array(Math.max(0, mine.max - mine.n) + 1).join('<span class="erm empty">빈자리</span>') + '</div>' +
         (e ? '<div class="small" style="margin-top:6px">지금 출정하면 내 몫: 약 ' + fmt(Math.round(e.kills)) + '마리 · <b class="num">' + MONEY(e.gold, '+') + '</b> · 경험치 +' + fmt(e.xp) + ' · <span class="tag ' + (e.risk <= 0.25 ? 'ok' : e.risk <= 0.5 ? 'br' : 'no') + '">' + e.label + '</span>' + '<div class="tiny muted" style="margin-top:2px">몬스터가 나를 노릴 확률 약 ' + Math.round((e.frac || 0) * 100) + '%' + (e.red ? ' · 지원 덕에 받는 피해 −' + Math.round(e.red * 100) + '%' : '') + '</div></div>' : '') +
-        '<p class="tiny faint" style="margin-top:4px">방장이 「지금 출발」을 누르면 출정하며, 4명이 모이면 15초 뒤 자동으로 출정합니다. 인원이 모이지 않으면 아카데미 친구(방장 힘의 60%)를 동행시킬 수 있습니다. 한 명 늘 때마다 각자 몫 +' + Math.round(R.EXP_PARTY_BONUS * 100) + '%.</p>' +
-        (mine.n < mine.max && !mine.party ? '<div class="row errec" style="margin-top:8px;gap:6px"><input id="er-note" maxlength="60" placeholder="모집 알림에 한 줄 덧붙이기 (선택 · 60자)" style="flex:1;min-width:140px" value="' + esc(S.erNote || '') + '"><button class="btn sm" data-act="errecruit">모집 알림</button></div>' : '') +
+        '<p class="tiny faint" style="margin-top:4px">방장이 「지금 출발」을 누르면 출정하며, 4명이 모이면 15초 뒤 자동으로 출정합니다. 인원이 모이지 않으면 방에 있는 학생 누구나 아카데미 친구(부른 학생 힘의 60%)를 동행시킬 수 있습니다. 한 명 늘 때마다 각자 몫 +' + Math.round(R.EXP_PARTY_BONUS * 100) + '%.</p>' +
+        (mine.n < mine.max && !mine.party ? '<div class="row errec" style="margin-top:8px;gap:6px"><input id="er-note" type="text" name="note-er-note" autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-form-type="other" maxlength="60" placeholder="모집 알림에 한 줄 덧붙이기 (선택 · 60자)" style="flex:1;min-width:140px" value="' + esc(S.erNote || '') + '"><button class="btn sm" data-act="errecruit">모집 알림</button></div>' : '') +
         (mine.n < mine.max ? '<div class="tiny gold" style="margin-top:10px">빈자리 채우기</div><div class="erfill">' +
           (er.party && er.party.can && er.party.n > 1 ? erTile('erbring', 'party', '파티원 함께 참가', '파티원을 이 방에 함께 들입니다') : '') +
           erTile('erinvite', 'mail', '친구 · 동아리원 초대', '초대장을 보내 부릅니다') +
-          (mine.isHost ? erTile('ernpc', 'user', '아카데미 친구 동행', '방장 힘의 60%로 함께 싸웁니다') : '') + '</div>' : '') +
+          erTile('ernpc', 'user', '아카데미 친구 동행', '부른 학생 힘의 60%로 함께 싸웁니다') + '</div>' : '') +
         '<div class="row" style="margin-top:10px;justify-content:flex-end;flex-wrap:wrap"><button class="btn ghost sm" data-act="erleave">나가기</button>' + (mine.isHost ? '<button class="btn primary sm" data-act="ergo">지금 출발</button>' : '<span class="tiny faint">방장이 출발시키면 떠납니다</span>') + '</div></div>';
     } else if (!free) {
       h += '<p class="small muted" style="margin-top:10px">비어 있는 원정 슬롯이 있어야 함께 원정에 참가할 수 있습니다.</p>';
@@ -1455,7 +1455,7 @@
   function erTile(act, ic, name, desc) { return '<button class="ertile" data-act="' + act + '">' + icon(ic) + '<span><b>' + name + '</b><span class="tiny muted">' + desc + '</span></span></button>'; }
   // 함께 원정 이름: 누르면 정보 카드 (동행 NPC는 NPC 카드)
   function erName(m) { return m.npc ? '<button class="cn" data-act="npccard" data-a="' + (+m.k || 0) + '">' + esc(m.name) + '</button>' : m.id ? '<button class="cn" data-act="prof" data-a="' + esc(m.id) + '">' + esc(m.name) + '</button>' : esc(m.name); }
-  ACT.npccard = function (k) { var r = D.RIVALS[+k]; if (!r) return; modal(mhead(esc(r.name), esc(r.who) + ' · 아카데미 친구 (NPC)') + '<p class="small muted">아카데미에 사는 가상의 학생입니다. 함께 원정에 동행하면 방장 힘의 60%로 싸웁니다.</p><p style="margin-top:10px;font-style:italic;color:var(--ink2)">“' + esc(r.hello) + '”</p>'); };
+  ACT.npccard = function (k) { var r = D.RIVALS[+k]; if (!r) return; modal(mhead(esc(r.name), esc(r.who) + ' · 아카데미 친구 (NPC)') + '<p class="small muted">아카데미에 사는 가상의 학생입니다. 함께 원정에 동행하면 부른 학생 힘의 60%로 싸웁니다.</p><p style="margin-top:10px;font-style:italic;color:var(--ink2)">“' + esc(r.hello) + '”</p>'); };
   function erOp(o, msg) {
     if (S.erBusy2) return; S.erBusy2 = true;
     return API.expRoom(o).then(function (j) { S.erBusy2 = false; if (j.error) { toast('함께 원정', j.error); return; } if (msg) toast('함께 원정', msg); erPartyToast(j); erAbsorb(j); render(); }, function () { S.erBusy2 = false; });
@@ -1744,8 +1744,8 @@
       var up = R.powerWith(P, it) - c.power;
       return '<button class="itm rb' + it.r + (S.sel === it.u ? ' sel' : '') + '" data-act="sel" data-a="' + it.u + '"><span class="in" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</span><span class="il">' + R.slotName(it) + ' · Lv ' + it.ilvl + '</span>' + (up > 0 ? '<span class="up">▲</span>' : '') + (it.lock ? '<span class="lk">잠금</span>' : '') + '</button>' + (S.sel === it.u ? '<div class="invdetail">' + detailCard() + '</div>' : '');
     }).join('') + '</div>';
-    h += '<hr class="sep"><div class="row small"><span class="muted">일괄 판매(잠금 제외)</span>' + D.RARITY.slice(0, 4).map(function (r) { return '<button class="btn sm ghost" data-act="bulkask" data-a="sellBelow" data-b="' + r.id + '">' + r.name + ' 이하</button>'; }).join('') + '</div>' +
-      '<div class="row small" style="margin-top:6px"><span class="muted">일괄 분해(잠금 제외)</span>' + D.RARITY.slice(0, 4).map(function (r) { return '<button class="btn sm ghost" data-act="bulkask" data-a="dismantleBelow" data-b="' + r.id + '">' + r.name + ' 이하</button>'; }).join('') + '</div><p class="tiny faint" style="margin-top:4px">마석 <b class="num">' + fmt(P.res.stone) + '</b> · ' + dotImg('dust', 14) + ' 마석가루 <b class="num">' + fmt(P.res.dust || 0) + '</b> — 분해하면 ' + CUR + ' 대신 마석과 마석가루를 얻고, 가루는 재련에 사용합니다.</p>';
+    h += '<hr class="sep"><div class="row small"><span class="muted">일괄 판매(잠금 제외)</span>' + D.RARITY.slice(0, 4).map(function (r) { return '<button class="btn sm ghost rk rk' + r.id + '" data-act="bulkask" data-a="sellBelow" data-b="' + r.id + '">' + r.name + ' 이하</button>'; }).join('') + '</div>' +
+      '<div class="row small" style="margin-top:6px"><span class="muted">일괄 분해(잠금 제외)</span>' + D.RARITY.slice(0, 4).map(function (r) { return '<button class="btn sm ghost rk rk' + r.id + '" data-act="bulkask" data-a="dismantleBelow" data-b="' + r.id + '">' + r.name + ' 이하</button>'; }).join('') + '</div><p class="tiny faint" style="margin-top:4px">마석 <b class="num">' + fmt(P.res.stone) + '</b> · ' + dotImg('dust', 14) + ' 마석가루 <b class="num">' + fmt(P.res.dust || 0) + '</b> — 분해하면 ' + CUR + ' 대신 마석과 마석가루를 얻고, 가루는 재련에 사용합니다.</p>';
     if (P.rs.sorter) h += '<div class="row small" style="margin-top:8px"><label class="muted" for="autosell">자동 판매</label><select id="autosell" data-act="autosell" style="width:auto">' + [[-1, '사용 안 함']].concat(D.RARITY.slice(0, 4).map(function (r) { return [r.id, r.name + ' 이하']; })).map(function (o) { return '<option value="' + o[0] + '"' + (P.autoSell === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select><select id="automode" data-act="automode" style="width:auto" aria-label="자동 처리 방식"><option value="sell"' + (P.autoDis ? '' : ' selected') + '>판매 (' + CUR + ')</option><option value="dis"' + (P.autoDis ? ' selected' : '') + '>분해 (마석·가루)</option></select></div>';
     else h += '<p class="tiny faint" style="margin-top:8px">서고의 「분류 마법」을 연구하면 자동 판매를 사용할 수 있습니다.</p>';
     h += '<label class="tog" style="margin-top:8px"><input type="checkbox" id="opt-ae" data-act="opt" data-a="autoEquip"' + (P.opt.autoEquip ? ' checked' : '') + '> 더 좋은 장비 자동 장착</label></div></div>';
@@ -2091,14 +2091,14 @@
   V.party = function () {
     var d = S.partyD;
     if (!d || Date.now() - S.partyAt > 20000) { if (Date.now() - S.partyAt > 1500) loadParty(); }
-    var h = pageHead('함께 다니는 학생들', '파티', '최대 4명 · 파티원 1명당 원정 ' + CUR + '·경험치 +3%');
+    var h = pageHead('함께 다니는 학생들', '파티', '최대 4명 · 파티원 1명당 원정 ' + CUR + ' +3% · 경험치 +1%');
     if (!d) return h + '<div class="card"><p class="small muted">불러오는 중…</p></div>';
     if (d.demo) h += '<div class="card inset" style="margin-bottom:14px"><p class="small">데모: 혼자서도 파티를 만들고, 빈자리에 NPC 학생을 불러 파티 채팅을 시험해 볼 수 있습니다. 기록은 이 브라우저에만 남습니다.</p></div>';
     h += '<div class="grid g2"><div class="stack">';
     var pa = d.party;
     if (pa) {
       var lead = pa.leader === S.P.id;
-      h += '<div class="card hl"><div class="row between"><h3>' + esc(pa.name) + '</h3><span class="tag ok">원정 ' + CUR + '·경험치 +' + Math.round(pa.bonus * 100) + '%</span></div><p class="tiny faint" style="margin-top:2px">' + pa.members.length + ' / ' + pa.max + '명</p><div style="margin-top:8px">' +
+      h += '<div class="card hl"><div class="row between"><h3>' + esc(pa.name) + '</h3><span class="tag ok">원정 ' + CUR + ' +' + Math.round(pa.bonus * 100) + '% · 경험치 +' + Math.round((pa.bonusXp || 0) * 100) + '%</span></div><p class="tiny faint" style="margin-top:2px">' + pa.members.length + ' / ' + pa.max + '명</p><div style="margin-top:8px">' +
         pa.members.map(function (m) {
           if (m.npc) return '<div class="frow"><span class="av av0" style="width:40px;height:40px;font-size:17px;--hc:' + (R.HOUSE[m.house] ? R.HOUSE[m.house].color : '#d6ad5f') + '">' + esc(m.name.slice(0, 1)) + '</span><div style="flex:1;min-width:0"><b>' + esc(m.name) + '</b> <span class="tag npc">NPC</span><div class="tiny faint">' + esc(m.who) + ' · 파티 보너스에는 포함되지 않습니다</div></div>' + (lead ? '<button class="btn sm ghost" data-act="pop" data-a="npcRemove" data-b="' + String(m.id).slice(4) + '">돌려보내기</button>' : '') + '</div>';
           var btns = m.id === S.P.id ? '<span class="tag">나</span>' : lead ? '<button class="btn sm ghost" data-act="pop" data-a="lead" data-b="' + esc(m.id) + '">파티장 넘기기</button><button class="btn sm danger" data-act="pop" data-a="kick" data-b="' + esc(m.id) + '">내보내기</button>' : '';
@@ -2108,10 +2108,10 @@
         '<div class="row" style="margin-top:12px"><button class="btn primary sm" data-act="chattab" data-a="party">파티 채팅</button><span class="spacer"></span><button class="btn sm danger" data-act="pop" data-a="leave">파티 나가기</button></div></div>';
       h += '<div class="card twlink"><div class="row" style="gap:10px;align-items:center">' + dotImg('tower', 32, '', 'twimg') + '<div style="flex:1;min-width:0"><b>별의 탑</b><div class="tiny faint">파티원들과 힘을 모아 한 주 동안 함께 오르는 탑 · 「원정·전투 → 별의 탑」</div></div><button class="btn sm primary" data-act="nav" data-a="tower">별의 탑으로</button></div></div>';
       if (lead && pa.members.length < pa.max && pa.npcPool) h += '<div class="card"><h3>아카데미 친구 부르기 <span class="tag npc">NPC</span></h3><p class="tiny faint" style="margin-top:2px">결투제 대진표의 학생들입니다. 빈자리를 채워 함께 다니고 파티 채팅에서 가끔 말을 겁니다. 파티 보너스에는 들어가지 않습니다.</p><div class="filters" style="margin-top:8px">' + pa.npcPool.filter(function (n) { return /학년|쌍둥이/.test(n.who) && !pa.members.some(function (m) { return m.id === 'npc:' + n.k; }); }).map(function (n) { return '<button class="btn sm ghost" data-act="pop" data-a="npcAdd" data-b="' + n.k + '" title="' + esc(n.who) + '">' + esc(n.name) + '</button>'; }).join('') + '</div></div>';
-      if (lead && pa.members.length < pa.max) h += '<div class="card"><h3>파티원 모집</h3><p class="tiny faint" style="margin-top:2px">채팅 「모집」 탭에 알림을 올립니다. 알림을 본 학생은 30분 동안 초대 없이 바로 들어올 수 있습니다. 별의 탑을 함께 오를 사람을 찾아 보세요.</p><div class="row" style="margin-top:8px;gap:6px"><input id="pt-rec" maxlength="60" placeholder="한 줄 덧붙이기 (선택 · 60자)" style="flex:1;min-width:0" value="' + esc(S.ptRec || '') + '"><button class="btn sm primary" data-act="ptrec">모집 알림</button></div></div>';
+      if (lead && pa.members.length < pa.max) h += '<div class="card"><h3>파티원 모집</h3><p class="tiny faint" style="margin-top:2px">채팅 「모집」 탭에 알림을 올립니다. 알림을 본 학생은 30분 동안 초대 없이 바로 들어올 수 있습니다. 별의 탑을 함께 오를 사람을 찾아 보세요.</p><div class="row" style="margin-top:8px;gap:6px"><input id="pt-rec" type="text" name="note-pt-rec" autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-form-type="other" maxlength="60" placeholder="한 줄 덧붙이기 (선택 · 60자)" style="flex:1;min-width:0" value="' + esc(S.ptRec || '') + '"><button class="btn sm primary" data-act="ptrec">모집 알림</button></div></div>';
       if (pa.members.length < pa.max) h += '<div class="card"><h3>초대하기</h3><div class="row" style="margin-top:8px"><input id="pt-inv" maxlength="12" placeholder="학생 이름" style="flex:1;min-width:0"><button class="btn sm primary" data-act="pop" data-a="invite">초대</button></div><p class="tiny faint" style="margin-top:6px">채팅에서 이름을 눌러 정보창의 「파티 초대」로도 부를 수 있습니다.</p></div>';
     } else {
-      h += '<div class="card hl"><h3>파티 만들기</h3><p class="small muted" style="margin-top:4px">혼자서도 만들 수 있습니다. 마음 맞는 학생들과 최대 4명까지 파티를 맺으세요. 파티원 한 명당 원정 ' + CUR + '·경험치가 3%씩(최대 9%) 오르고, 파티원끼리만 보이는 채팅 채널이 생깁니다.</p>' +
+      h += '<div class="card hl"><h3>파티 만들기</h3><p class="small muted" style="margin-top:4px">혼자서도 만들 수 있습니다. 마음 맞는 학생들과 최대 4명까지 파티를 맺으세요. 파티원 한 명당 원정 ' + CUR + '가 3%씩(최대 9%), 경험치가 1%씩(최대 3%) 오르고, 파티원끼리만 보이는 채팅 채널이 생깁니다.</p>' +
         '<div class="row" style="margin-top:10px"><input id="pt-name" maxlength="12" placeholder="파티 이름 (2~12자)" style="flex:1;min-width:0"><button class="btn sm primary" data-act="pop" data-a="create">만들기</button></div></div>';
     }
     h += '</div><div class="stack">';
@@ -2373,7 +2373,7 @@
       '<div class="card"><h3>레벨 혜택</h3><dl class="kv" style="margin-top:6px"><dt>정원</dt><dd>' + g.max + '명</dd><dt>창고</dt><dd>' + g.slots + '칸</dd><dt>' + CUR + '·경험치</dt><dd>+' + (g.bonus * 100).toFixed(1).replace(/\.0$/, '') + '%</dd></dl>' +
       (g.lv < g.maxLv ? '<p class="tiny faint" style="margin-top:6px">다음 레벨: 정원 ' + R.guildCap(g.lv + 1) + '명 · 창고 ' + R.guildSlots(g.lv + 1) + '칸 · +' + (R.guildBonus(g.lv + 1) * 100).toFixed(1).replace(/\.0$/, '') + '%' + R.guildUnlockText(g.lv, g.lv + 1) + '</p>' : '') + '</div></div>';
     h += gRitCard(g) + gWqCard(g);
-    if (g.perms && g.perms.invite && g.n < g.max) h += '<div class="card" style="margin-top:12px"><h4>모집 홍보</h4><p class="tiny faint" style="margin-top:2px">채팅 「모집」 탭에 동아리 소개 카드를 올립니다. 동아리마다 10분에 한 번.</p><div class="row" style="margin-top:8px;gap:6px"><input id="g-rec" maxlength="60" placeholder="한 줄 덧붙이기 (선택 · 60자)" style="flex:1;min-width:0" value="' + esc(S.gRec || '') + '"><button class="btn sm primary" data-act="grec">모집 홍보</button></div></div>';
+    if (g.perms && g.perms.invite && g.n < g.max) h += '<div class="card" style="margin-top:12px"><h4>모집 홍보</h4><p class="tiny faint" style="margin-top:2px">채팅 「모집」 탭에 동아리 소개 카드를 올립니다. 동아리마다 10분에 한 번.</p><div class="row" style="margin-top:8px;gap:6px"><input id="g-rec" type="text" name="note-g-rec" autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-form-type="other" maxlength="60" placeholder="한 줄 덧붙이기 (선택 · 60자)" style="flex:1;min-width:0" value="' + esc(S.gRec || '') + '"><button class="btn sm primary" data-act="grec">모집 홍보</button></div></div>';
     if (g.intro) h += '<div class="card" style="margin-top:12px"><h4>소개</h4><p class="small muted" style="margin-top:4px;white-space:pre-wrap">' + esc(g.intro) + '</p></div>';
     var top = (g.members || []).slice().sort(function (a, b) { return (b.contrib || 0) - (a.contrib || 0); }).slice(0, 5);
     if (top.length) h += '<div class="card" style="margin-top:12px"><h4>기여도 순위</h4><ol class="rank">' + top.map(function (m, i) { return '<li' + (m.id === S.P.id ? ' class="me"' : '') + '><span class="num rk">' + (i + 1) + '</span><span class="rn">' + esc(m.name) + ' <span class="tiny faint">' + esc(m.rankName || '') + '</span></span><span class="num rv">' + fmt(m.contrib || 0) + '</span></li>'; }).join('') + '</ol></div>';
@@ -3041,7 +3041,7 @@
   function ptTeam(j, i) {
     var st = ptState(j);
     return '<div class="ptteam" data-pt="' + i + '" style="height:' + (j.pt.team.length * PT_ROW) + 'px">' + j.pt.team.map(function (m, k) {
-      var me = k === j.pt.me, x = st[k], meta = m.npc ? '동행 · 방장 힘의 60%' : [(m.grade >= 8 ? '마스터' : (m.grade || 1) + '학년'), 'Lv ' + (m.lvl || 1), R.CLS[m.cls] ? R.CLS[m.cls].name : ''].filter(Boolean).join(' · '), pw = !m.npc && m.power ? '전투력 ' + fmt(m.power) : '';
+      var me = k === j.pt.me, x = st[k], meta = m.npc ? '동행 · 부른 학생 힘의 60%' : [(m.grade >= 8 ? '마스터' : (m.grade || 1) + '학년'), 'Lv ' + (m.lvl || 1), R.CLS[m.cls] ? R.CLS[m.cls].name : ''].filter(Boolean).join(' · '), pw = !m.npc && m.power ? '전투력 ' + fmt(m.power) : '';
       var nm = m.npc ? '<button class="cn" data-act="npccard" data-a="' + (+m.k || 0) + '">' + esc(m.name) + '</button>' : m.id ? '<button class="cn" data-act="prof" data-a="' + esc(m.id) + '">' + esc(m.name) + '</button>' : esc(m.name);
       return '<div class="ptm' + (me ? ' me' : '') + '" data-k="' + k + '" style="transform:translateY(' + (x.rank * PT_ROW) + 'px)"><span class="ptr num">' + (x.rank + 1) + '</span><span class="postag p-' + m.pos + '">' + R.EXP_POS[m.pos].name + '</span>' +
         '<span class="ptn">' + nm + ' <span class="tiny faint ptmeta">' + esc(meta) + (pw ? '<span class="ptpw"><span class="ptsep"> · </span>' + pw + '</span>' : '') + '</span></span>' +
@@ -4570,7 +4570,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102068;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102072;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
