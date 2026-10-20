@@ -101,6 +101,8 @@ const chat = Chat.create(dbx, log, { initExtra: (pid) => ({ build: BUILD.build, 
 const Board = require('./board.js');
 // 알림 기록: 우편과 따로, 일어난 일을 모아 보여 준다 (최근 100개, 30일)
 function pname(pid) { const w = dbx.q.getProfile.get(pid); return w ? w.name : '학생'; }
+// 할 일 달성(학기 이야기 · 일일 목표 · 교수님 과제): 규칙이 P.noteQ에 넣은 것을 알림으로 옮긴다
+function questNotes(P) { if (!P || !P.noteQ || !P.noteQ.length) return; const q = P.noteQ; P.noteQ = []; q.forEach((x) => addNote(P.id, 'quest', x[0], x[1])); store.markDirty(P.id); }
 function addNote(pid, kind, text, link) {
   if (!pid || String(pid).startsWith('npc:') || pid === 'staff') return;
   try { dbx.q.noteInsert.run(pid, Math.floor(Date.now() / 1000), kind, sec.enc(String(text).slice(0, 300)), link ? JSON.stringify(link) : ''); chat.ping(pid, 'note', { n: Number(dbx.q.noteUnread.get(pid).n) }); } catch (e) { log('알림 저장 실패', e); }
@@ -303,7 +305,7 @@ function loadPlayer(pid, now) {
   syncOp(P);
   const fp = R.fingerprint(P);
   const pc = setPartyN(P) | setGuildLv(P);
-  R.advance(P, world.ctx(now), now);
+  R.advance(P, world.ctx(now), now); R.questCheck(P, now); questNotes(P);
   if (pc) store.markDirty(pid);
   if (R.fingerprint(P) !== fp) store.markDirty(pid); else store.touch(pid);
   return P;
@@ -523,7 +525,7 @@ routes['POST /api/act'] = async (req, res) => {
     const before = P.wk.dmg;
     setPartyN(P); setGuildLv(P);
     const W0 = world.ctx(now); W0.lecPeers = type === 'lecStart' || type === 'ttApply' ? lecCounts(now) : null;
-    r = R.act(P, W0, now, type, a); W0.lecPeers = null;
+    r = R.act(P, W0, now, type, a); W0.lecPeers = null; questNotes(P);
     if (type === 'lecStart' || type === 'lecCancel' || type === 'ttApply') { lecSync(P); if (type === 'lecStart' || type === 'ttApply') { const j = P.lec[type === 'ttApply' ? 0 : Number(a.slot)]; if (j) lecStarted(P, j.s, now); } }
     if (type === 'exam' && r && r.pass) world.addNews(P.name + ' 학생이 ' + (P.grade >= 8 ? '졸업 시험을 통과해 마스터 과정이 되었습니다' : P.grade + '학년으로 진급했습니다'), now);
     if ((type === 'clsExam' || type === 'setCls') && r) setImmediate(() => { try { chat.clsChanged(pid); } catch (e) { } });
