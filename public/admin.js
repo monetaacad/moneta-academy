@@ -72,7 +72,7 @@
   $('#bdhide').addEventListener('change', function () { try { localStorage.setItem('arc_admin_bdhide', $('#bdhide').checked ? '1' : '0'); } catch (e) { } bdshow(BDJ); });
   function bdload() { api('GET', '/api/admin/board').then(bdshow); }
   // 문의 상태: 답변 여부 · 답변 뒤 새 댓글 · 게시판 처리 상태(적용 중 / 해결 완료)와 연동. 숨기기를 켜면 답변함 · 해결 완료는 숨기되 새 댓글이 있으면 보인다
-  var ST = { wip: '적용 중', done: '해결 완료' };
+  var ST = { review: '검토 중', wip: '적용 중', done: '해결 완료', no: '반영 안 함', norepro: '재현 안 됨' };
   function bdstate(p) {
     var lastOp = -1; p.comments.forEach(function (c, i) { if (c.op) lastOp = i; });
     var answered = lastOp >= 0, fresh = answered && p.comments.slice(lastOp + 1).some(function (c) { return !c.op; });
@@ -83,7 +83,7 @@
     $('#bdbox').innerHTML = (hide && list.length < all.length ? '<p class="tiny faint">숨긴 글 ' + (all.length - list.length) + '개</p>' : '') + (list.length ? list.map(function (p) {
       var s = bdstate(p), tag = s.fresh ? '<span class="small gold">새 댓글</span>' : !s.answered ? '<span class="small gold">새 문의</span>' : '<span class="small" style="color:#74bfa9">답변함</span>';
       var stTag = ST[p.st] ? ' <span class="small" style="color:' + (p.st === 'done' ? '#6fcf97' : '#6aa8ff') + '">' + ST[p.st] + '</span>' : '';
-      var stBtns = [['wip', '적용 중'], ['done', '해결 완료'], ['', '표시 없음']].map(function (o) { return '<button class="btn sm' + ((p.st || '') === o[0] ? ' primary' : ' ghost') + '" data-a="bdst" data-c="' + p.id + '" data-s="' + o[0] + '">' + o[1] + '</button>'; }).join('');
+      var stBtns = [['review', '검토 중'], ['wip', '적용 중'], ['done', '해결 완료'], ['no', '반영 안 함'], ['norepro', '재현 안 됨'], ['', '표시 없음']].map(function (o) { return '<button class="btn sm' + ((p.st || '') === o[0] ? ' primary' : ' ghost') + '" data-a="bdst" data-c="' + p.id + '" data-s="' + o[0] + '">' + o[1] + '</button>'; }).join('');
       return '<details class="bdq"' + (s.answered && !s.fresh ? '' : ' open') + '><summary><b>' + esc(p.title) + '</b> <span class="small faint">' + esc(p.author) + ' · ' + when(p.created) + ' · 댓글 ' + p.comments.length + '</span> ' + tag + stTag + '</summary>' +
         '<div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap"><span class="tiny faint">처리 상태 (게시판과 연동)</span>' + stBtns + '</div>' +
         '<div class="msgtext" style="white-space:pre-wrap;margin:8px 0">' + esc(p.body) + '</div>' +

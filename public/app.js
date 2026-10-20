@@ -4073,7 +4073,7 @@
     API.board({ tag: b.tag, q: b.q, qt: b.q ? b.qt : '', page: b.page, hd: bdHideDone() ? 1 : '' }).then(function (j) { if (j.error) { b.err = j.error; } else { b.err = ''; b.data = j; } if (S.view === 'board' && !S.modal && b.mode === 'list') render(); });
   }
   // 건의 처리 상태 (학생회장이 붙인다) · 해결 완료 숨기기(이 기기에 기억)
-  var BD_ST = { wip: '적용 중', done: '해결 완료' };
+  var BD_ST = { review: '검토 중', wip: '적용 중', done: '해결 완료', no: '반영 안 함', norepro: '재현 안 됨' };
   function bdSt(st) { return BD_ST[st] ? '<span class="btag st-' + st + '">' + BD_ST[st] + '</span>' : ''; }
   function bdHideDone() { try { return localStorage.getItem('arc_bdhd') === '1'; } catch (e) { return !!S.bdHd; } }
   ACT.bdhd = function () { var v = !bdHideDone(); S.bdHd = v; try { localStorage.setItem('arc_bdhd', v ? '1' : '0'); } catch (e) { } S.bd.page = 1; loadBoard(); };
@@ -4109,7 +4109,7 @@
     var b = S.bd, armed = S.confirm['bd' + p.id] > Date.now();
     var h = '<div class="row" style="margin-bottom:10px"><button class="btn sm ghost" data-act="bdback">← 목록</button><span class="spacer"></span>' +
       (p.canEdit ? '<button class="btn sm ghost" data-act="bdedit">수정</button>' : '') + (p.canDel ? '<button class="btn sm ' + (armed ? 'danger' : 'ghost') + '" data-act="bddel" data-a="' + p.id + '">' + (armed ? '한 번 더 누르면 지웁니다' : '지우기') + '</button>' : '') + '</div>';
-    h += '<article class="card bdpost"><div class="row" style="gap:6px;flex-wrap:wrap">' + bdTag(p.tag) + (p.priv ? '<span class="btag lock">관리자만 보기</span>' : '') + bdSt(p.st) + (p.canStatus ? '<span class="spacer"></span>' + [['wip', '적용 중'], ['done', '해결 완료'], ['', '표시 없음']].map(function (o) { return '<button class="btn sm' + ((p.st || '') === o[0] ? ' primary' : ' ghost') + '" data-act="bdst" data-a="' + p.id + '" data-b="' + o[0] + '">' + o[1] + '</button>'; }).join('') : '') + '</div><h2 class="bdh">' + esc(p.title) + '</h2>' +
+    h += '<article class="card bdpost"><div class="row" style="gap:6px;flex-wrap:wrap">' + bdTag(p.tag) + (p.priv ? '<span class="btag lock">관리자만 보기</span>' : '') + bdSt(p.st) + (p.canStatus ? '<span class="spacer"></span>' + [['review', '검토 중'], ['wip', '적용 중'], ['done', '해결 완료'], ['no', '반영 안 함'], ['norepro', '재현 안 됨'], ['', '표시 없음']].map(function (o) { return '<button class="btn sm' + ((p.st || '') === o[0] ? ' primary' : ' ghost') + '" data-act="bdst" data-a="' + p.id + '" data-b="' + o[0] + '">' + o[1] + '</button>'; }).join('') : '') + '</div><h2 class="bdh">' + esc(p.title) + '</h2>' +
       '<div class="tiny faint"><button class="cn" data-act="prof" data-a="' + esc(p.aid) + '">' + esc(p.author) + '</button>' + (p.aop && R.OP_TITLES[p.aop] ? ' <span class="ttl' + R.opTitleCls(p.aop) + '">' + esc(p.aop) + '</span>' : '') + ' · ' + new Date(p.created * 1000).toLocaleString('ko-KR') + (p.updated > p.created + 60 ? ' · 고침' : '') + '</div>' +
       (p.priv ? '<p class="tiny gold" style="margin-top:8px">작성자와 운영진만 볼 수 있는 글입니다. 운영진이 답하면 우편으로 알려 드립니다.</p>' : '') +
       '<div class="bdbody">' + (p.tag === 'rp' ? rpText(p.body) : esc(p.body)) + '</div></article>';
@@ -4464,7 +4464,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102053;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102054;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
