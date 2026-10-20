@@ -1743,8 +1743,8 @@
       var up = R.powerWith(P, it) - c.power;
       return '<button class="itm rb' + it.r + (S.sel === it.u ? ' sel' : '') + '" data-act="sel" data-a="' + it.u + '"><span class="in" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</span><span class="il">' + R.slotName(it) + ' · Lv ' + it.ilvl + '</span>' + (up > 0 ? '<span class="up">▲</span>' : '') + (it.lock ? '<span class="lk">잠금</span>' : '') + '</button>' + (S.sel === it.u ? '<div class="invdetail">' + detailCard() + '</div>' : '');
     }).join('') + '</div>';
-    h += '<hr class="sep"><div class="row small"><span class="muted">일괄 판매(잠금 제외)</span>' + D.RARITY.slice(0, 4).map(function (r) { return '<button class="btn sm ghost" data-act="bulkask" data-a="sellBelow" data-b="' + r.id + '">' + r.name + ' 이하</button>'; }).join('') + '</div>' +
-      '<div class="row small" style="margin-top:6px"><span class="muted">일괄 분해(잠금 제외)</span>' + D.RARITY.slice(0, 4).map(function (r) { return '<button class="btn sm ghost" data-act="bulkask" data-a="dismantleBelow" data-b="' + r.id + '">' + r.name + ' 이하</button>'; }).join('') + '</div><p class="tiny faint" style="margin-top:4px">마석 <b class="num">' + fmt(P.res.stone) + '</b> · ' + dotImg('dust', 14) + ' 마석가루 <b class="num">' + fmt(P.res.dust || 0) + '</b> — 분해하면 ' + CUR + ' 대신 마석과 마석가루를 얻고, 가루는 재련에 사용합니다.</p>';
+    h += '<hr class="sep"><div class="row small"><span class="muted">일괄 판매(잠금 제외)</span>' + D.RARITY.slice(0, 4).map(function (r) { return '<button class="btn sm ghost rk rk' + r.id + '" data-act="bulkask" data-a="sellBelow" data-b="' + r.id + '">' + r.name + ' 이하</button>'; }).join('') + '</div>' +
+      '<div class="row small" style="margin-top:6px"><span class="muted">일괄 분해(잠금 제외)</span>' + D.RARITY.slice(0, 4).map(function (r) { return '<button class="btn sm ghost rk rk' + r.id + '" data-act="bulkask" data-a="dismantleBelow" data-b="' + r.id + '">' + r.name + ' 이하</button>'; }).join('') + '</div><p class="tiny faint" style="margin-top:4px">마석 <b class="num">' + fmt(P.res.stone) + '</b> · ' + dotImg('dust', 14) + ' 마석가루 <b class="num">' + fmt(P.res.dust || 0) + '</b> — 분해하면 ' + CUR + ' 대신 마석과 마석가루를 얻고, 가루는 재련에 사용합니다.</p>';
     if (P.rs.sorter) h += '<div class="row small" style="margin-top:8px"><label class="muted" for="autosell">자동 판매</label><select id="autosell" data-act="autosell" style="width:auto">' + [[-1, '사용 안 함']].concat(D.RARITY.slice(0, 4).map(function (r) { return [r.id, r.name + ' 이하']; })).map(function (o) { return '<option value="' + o[0] + '"' + (P.autoSell === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select><select id="automode" data-act="automode" style="width:auto" aria-label="자동 처리 방식"><option value="sell"' + (P.autoDis ? '' : ' selected') + '>판매 (' + CUR + ')</option><option value="dis"' + (P.autoDis ? ' selected' : '') + '>분해 (마석·가루)</option></select></div>';
     else h += '<p class="tiny faint" style="margin-top:8px">서고의 「분류 마법」을 연구하면 자동 판매를 사용할 수 있습니다.</p>';
     h += '<label class="tog" style="margin-top:8px"><input type="checkbox" id="opt-ae" data-act="opt" data-a="autoEquip"' + (P.opt.autoEquip ? ' checked' : '') + '> 더 좋은 장비 자동 장착</label></div></div>';
@@ -2090,14 +2090,14 @@
   V.party = function () {
     var d = S.partyD;
     if (!d || Date.now() - S.partyAt > 20000) { if (Date.now() - S.partyAt > 1500) loadParty(); }
-    var h = pageHead('함께 다니는 학생들', '파티', '최대 4명 · 파티원 1명당 원정 ' + CUR + '·경험치 +3%');
+    var h = pageHead('함께 다니는 학생들', '파티', '최대 4명 · 파티원 1명당 원정 ' + CUR + ' +3% · 경험치 +1%');
     if (!d) return h + '<div class="card"><p class="small muted">불러오는 중…</p></div>';
     if (d.demo) h += '<div class="card inset" style="margin-bottom:14px"><p class="small">데모: 혼자서도 파티를 만들고, 빈자리에 NPC 학생을 불러 파티 채팅을 시험해 볼 수 있습니다. 기록은 이 브라우저에만 남습니다.</p></div>';
     h += '<div class="grid g2"><div class="stack">';
     var pa = d.party;
     if (pa) {
       var lead = pa.leader === S.P.id;
-      h += '<div class="card hl"><div class="row between"><h3>' + esc(pa.name) + '</h3><span class="tag ok">원정 ' + CUR + '·경험치 +' + Math.round(pa.bonus * 100) + '%</span></div><p class="tiny faint" style="margin-top:2px">' + pa.members.length + ' / ' + pa.max + '명</p><div style="margin-top:8px">' +
+      h += '<div class="card hl"><div class="row between"><h3>' + esc(pa.name) + '</h3><span class="tag ok">원정 ' + CUR + ' +' + Math.round(pa.bonus * 100) + '% · 경험치 +' + Math.round((pa.bonusXp || 0) * 100) + '%</span></div><p class="tiny faint" style="margin-top:2px">' + pa.members.length + ' / ' + pa.max + '명</p><div style="margin-top:8px">' +
         pa.members.map(function (m) {
           if (m.npc) return '<div class="frow"><span class="av av0" style="width:40px;height:40px;font-size:17px;--hc:' + (R.HOUSE[m.house] ? R.HOUSE[m.house].color : '#d6ad5f') + '">' + esc(m.name.slice(0, 1)) + '</span><div style="flex:1;min-width:0"><b>' + esc(m.name) + '</b> <span class="tag npc">NPC</span><div class="tiny faint">' + esc(m.who) + ' · 파티 보너스에는 포함되지 않습니다</div></div>' + (lead ? '<button class="btn sm ghost" data-act="pop" data-a="npcRemove" data-b="' + String(m.id).slice(4) + '">돌려보내기</button>' : '') + '</div>';
           var btns = m.id === S.P.id ? '<span class="tag">나</span>' : lead ? '<button class="btn sm ghost" data-act="pop" data-a="lead" data-b="' + esc(m.id) + '">파티장 넘기기</button><button class="btn sm danger" data-act="pop" data-a="kick" data-b="' + esc(m.id) + '">내보내기</button>' : '';
@@ -2110,7 +2110,7 @@
       if (lead && pa.members.length < pa.max) h += '<div class="card"><h3>파티원 모집</h3><p class="tiny faint" style="margin-top:2px">채팅 「모집」 탭에 알림을 올립니다. 알림을 본 학생은 30분 동안 초대 없이 바로 들어올 수 있습니다. 별의 탑을 함께 오를 사람을 찾아 보세요.</p><div class="row" style="margin-top:8px;gap:6px"><input id="pt-rec" maxlength="60" placeholder="한 줄 덧붙이기 (선택 · 60자)" style="flex:1;min-width:0" value="' + esc(S.ptRec || '') + '"><button class="btn sm primary" data-act="ptrec">모집 알림</button></div></div>';
       if (pa.members.length < pa.max) h += '<div class="card"><h3>초대하기</h3><div class="row" style="margin-top:8px"><input id="pt-inv" maxlength="12" placeholder="학생 이름" style="flex:1;min-width:0"><button class="btn sm primary" data-act="pop" data-a="invite">초대</button></div><p class="tiny faint" style="margin-top:6px">채팅에서 이름을 눌러 정보창의 「파티 초대」로도 부를 수 있습니다.</p></div>';
     } else {
-      h += '<div class="card hl"><h3>파티 만들기</h3><p class="small muted" style="margin-top:4px">혼자서도 만들 수 있습니다. 마음 맞는 학생들과 최대 4명까지 파티를 맺으세요. 파티원 한 명당 원정 ' + CUR + '·경험치가 3%씩(최대 9%) 오르고, 파티원끼리만 보이는 채팅 채널이 생깁니다.</p>' +
+      h += '<div class="card hl"><h3>파티 만들기</h3><p class="small muted" style="margin-top:4px">혼자서도 만들 수 있습니다. 마음 맞는 학생들과 최대 4명까지 파티를 맺으세요. 파티원 한 명당 원정 ' + CUR + '가 3%씩(최대 9%), 경험치가 1%씩(최대 3%) 오르고, 파티원끼리만 보이는 채팅 채널이 생깁니다.</p>' +
         '<div class="row" style="margin-top:10px"><input id="pt-name" maxlength="12" placeholder="파티 이름 (2~12자)" style="flex:1;min-width:0"><button class="btn sm primary" data-act="pop" data-a="create">만들기</button></div></div>';
     }
     h += '</div><div class="stack">';
@@ -4554,7 +4554,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102067;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102069;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

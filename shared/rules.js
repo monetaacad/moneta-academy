@@ -379,7 +379,7 @@
     var h = HOUSE[P.house]; if (h) addEff(b, h.bonus, R.housePct(W, P.house));
     var cl = R.CLS[P.cls || 'mage']; if (cl) addEff(b, cl.bonus);   // 학과
     if (P.guildLv > 0) { var gb = R.guildBonus(P.guildLv); b.goldPct = (b.goldPct || 0) + gb; b.xpPct = (b.xpPct || 0) + gb; }   // 동아리 레벨 보너스
-    if (P.partyN > 1) { var pb = 0.03 * (Math.min(P.partyN, 4) - 1); b.goldPct = (b.goldPct || 0) + pb; b.xpPct = (b.xpPct || 0) + pb; }   // 파티 보너스
+    if (P.partyN > 1) { var pn = Math.min(P.partyN, 4) - 1; b.goldPct = (b.goldPct || 0) + R.PARTY_GOLD * pn; b.xpPct = (b.xpPct || 0) + R.PARTY_XP * pn; }   // 파티 보너스 (솔로와 성장 격차를 줄이려 경험치는 작게)
     for (var id in P.rs) if (RES[id]) addEff(b, RES[id].eff, P.rs[id]);
     var eh = R.eggHold(P); if (eh) b.xpPct = (b.xpPct || 0) + eh * R.EGG_HOLD_EACH;   // 알 품기
     for (var fid in P.fam.own) { var f = FAM[fid]; if (f) b[f.bonus] = (b[f.bonus] || 0) + R.famBonus(f, P.fam.own[fid].lv, P); }
@@ -670,6 +670,7 @@
     rear: { id: 'rear', name: '후열', dps: 1.1, def: 1, take: 1.1, red: 0, need: 'dmg', desc: '공격 주문을 장착해야 선택할 수 있습니다 · 공격 +10% · 받는 피해 +10%' },
     sup: { id: 'sup', name: '지원', dps: 0.85, def: 1, take: 1, red: 0.15, need: 'care', desc: '보호막·치유 주문을 장착해야 선택할 수 있습니다 · 파티가 받는 피해 −15% · 공격 −15%' }
   };
+  R.PARTY_GOLD = 0.03; R.PARTY_XP = 0.01;   // 파티 보너스: 사람 파티원 1명당 (최대 3명분)
   R.EXP_PARTY_MAX = 4; R.EXP_PARTY_BONUS = 0.05; R.EXP_AGGRO = 0.8;
   R.expPositions = function (P) {
     var has = { dmg: false, care: false }, ns = R.spellSlots(P);
