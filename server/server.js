@@ -1319,7 +1319,9 @@ routes['GET /api/auction'] = (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
   if (limited('aug:' + me, 1, 10)) return fail(req, res, 429, '요청이 너무 잦습니다');
   const now = nowSec(); aucTick(now); const v = aucVisitNow(now);
-  send(req, res, 200, { now, visit: v, lots: v ? dbx.q.aucByVisit.all(v.id).map((r) => aucOut(r, me)) : [], recent: dbx.q.aucRecent.all().map((r) => ({ name: r.name, r: r.rarity, price: r.price, bidder: r.bidder_name })) });
+  // 앞 방문에서 막판 연장으로 아직 끝나지 않은 물건 (다음 방문이 시작돼도 보이게)
+  const ext = dbx.db.prepare('SELECT * FROM auction WHERE done = 0 AND ends > ? AND visit <> ? ORDER BY id').all(Math.floor(now), v ? v.id : -1).map((r) => aucOut(r, me));
+  send(req, res, 200, { now, visit: v, ext, lots: v ? dbx.q.aucByVisit.all(v.id).map((r) => aucOut(r, me)) : [], recent: dbx.q.aucRecent.all().map((r) => ({ name: r.name, r: r.rarity, price: r.price, bidder: r.bidder_name })) });
 };
 routes['POST /api/auction'] = async (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');

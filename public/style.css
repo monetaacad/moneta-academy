@@ -1760,3 +1760,4 @@ mark.hl { color: inherit; background: linear-gradient(transparent 38%, color-mix
   .mksr { justify-content: stretch; }
   .mksr input.mkprice { flex: 1; width: auto; min-width: 0; }
 }
+.auchx { cursor: default; border-color: var(--brass); }
