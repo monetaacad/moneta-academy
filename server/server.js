@@ -325,7 +325,14 @@ function lecStarted(P, sid, now) {
 }
 // 예전에 공지 채널에 올라간 교수 한마디(「[과목] 교수: “…”」)를 한 번 지운다
 if (!dbx.kvGet('profNoticeClean', 0)) { dbx.q.recentChat.all('notice', 500).forEach((r) => { if (r.pid === 'system' || !r.pid) { const tx = sec.dec(r.text); if (/^\[[^\]]+\] [^:]+: “/.test(tx)) chat.remove(r.id); } }); dbx.kvSet('profNoticeClean', 1); }
-function aucBrief(now) { const v = R.auctionVisit(now); return v ? { start: v.start, end: v.end, active: v.active } : null; }
+// 지금 경매: 정해진 2시간이 지나도 막판 입찰로 늘어난 물건이 남아 있으면 그 방문을 계속 연다 (늘어나는 데 끝이 없다)
+function aucVisitNow(now) {
+  const v = R.auctionVisit(now); if (!v) return v;
+  const open = (id) => dbx.q.aucByVisit.all(id).filter((r) => !r.done && r.ends > now);
+  if (!v.active) { const pid = v.id - 1, pv = open(pid); if (pv.length) return { id: pid, start: Math.floor(pid / 2) * 86400 - R.K.TZ + R.AUCTION_HOURS[pid % 2] * 3600, end: Math.max.apply(null, pv.map((r) => r.ends)), active: true, extended: true }; return v; }
+  const cur = open(v.id); return cur.length ? Object.assign({}, v, { end: Math.max(v.end, Math.max.apply(null, cur.map((r) => r.ends))) }) : v;
+}
+function aucBrief(now) { const v = aucVisitNow(now); return v ? { start: v.start, end: v.end, active: v.active } : null; }
 function classView(now) { return { n: lecCounts(now), prof: profLines(now) }; }
 
 // 가방이 가득 차서 넘친 장비(P.mailQ)를 우편으로 보낸다 (10개씩, 30일). 응답을 보낼 때와 저장할 때
@@ -1239,7 +1246,7 @@ routes['POST /api/ritual'] = async (req, res) => {
 
 /* ───────── 떠돌이 상인 경매 ─────────
    하루 두 번(12시·20시, 2시간) 귀한 장비 세 점을 경매에 붙인다. 부른 값은 바로 맡겨 두고, 더 높은 값이 나오면 돌려준다.
-   끝나기 2분 안에 부르면 2분 늘어난다. 낙찰품은 우편으로. 값은 학생만 부른다(NPC는 부르지 않는다). */
+   끝나기 2분 안에 부르면 2분 늘어난다 (몇 번이든, 정해진 2시간이 지나도). 낙찰품은 우편으로. 값은 학생만 부른다(NPC는 부르지 않는다). */
 function aucOut(r, me) { let item = null; try { item = JSON.parse(r.item); } catch (e) { } return { id: r.id, name: r.name, r: r.rarity, ilvl: r.ilvl, slot: r.slot, item, ends: r.ends, min: r.min, price: r.price, need: R.auctionStep(r.price, r.min), bidder: r.bidder_name, mine: !!me && r.bidder === me, npc: String(r.bidder).startsWith('npc:'), bids: r.bids, done: !!r.done }; }
 function aucRefund(pid, amount, name, why) {
   if (!pid || String(pid).startsWith('npc:') || !amount) return;
@@ -1281,7 +1288,7 @@ function aucTick(now) {
 routes['GET /api/auction'] = (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
   if (limited('aug:' + me, 1, 10)) return fail(req, res, 429, '요청이 너무 잦습니다');
-  const now = nowSec(); aucTick(now); const v = R.auctionVisit(now);
+  const now = nowSec(); aucTick(now); const v = aucVisitNow(now);
   send(req, res, 200, { now, visit: v, lots: v ? dbx.q.aucByVisit.all(v.id).map((r) => aucOut(r, me)) : [], recent: dbx.q.aucRecent.all().map((r) => ({ name: r.name, r: r.rarity, price: r.price, bidder: r.bidder_name })) });
 };
 routes['POST /api/auction'] = async (req, res) => {
