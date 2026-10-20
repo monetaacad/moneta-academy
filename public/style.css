@@ -863,6 +863,9 @@ button.mkn:hover { text-decoration: underline; }
 
 /* ── 가방: 촘촘하게 ── */
 .gearcols { align-items: start; }
+/* 한 칸일 때(모바일 · 좁은 본문): 장비 살펴보기 → 가방 → 능력치 순서로, 고른 장비와 가방을 붙여 비교하기 쉽게 */
+@media (max-width: 900px) { .gearcols > .stack { display: contents; } .gearcols > .stack > [data-anchor="alloc"] { order: 2; } }
+@container page (max-width: 720px) { .gearcols > .stack { display: contents; } .gearcols > .stack > [data-anchor="alloc"] { order: 2; } }
 .inv { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 6px; max-height: 520px; overflow-y: auto; padding-right: 2px; }
 .itm { min-height: 0; padding: 6px 8px; gap: 1px; }
 .itm .in { font-size: 12px; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
