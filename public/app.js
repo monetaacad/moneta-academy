@@ -1183,7 +1183,7 @@
     D.SPELLS.forEach(function (sp) { if (sp.req && sp.req[0] === sid && lv < sp.req[1] && (!sp.cls || sp.cls.indexOf(cls) >= 0)) a.push([sp.req[1], '주문 「' + sp.name + '」']); });
     if (sid === 'alch') D.POTIONS.forEach(function (p) { if (lv < p.unlock) a.push([p.unlock, '물약 「' + p.name + '」']); });
     if (sid === 'beast' && !R.famOpen(P)) a.push([R.FAM_SUBJ, '사역마 · 첫 환수의 알']);
-    if (ex && P.grade < 8 && ex.subj.indexOf(sid) >= 0 && lv < ex.req) a.push([ex.req, '기말 기준']);
+    if (ex && P.grade < 8 && lv < ex.req) { if (ex.subj.indexOf(sid) >= 0) a.push([ex.req, '기말 기준']); else if (R.examOpt(P, ex) === sid) a.push([ex.req, '기말 선택 과목']); }
     var s = R.mqStep(P); if (s) s.st.g.forEach(function (q) { if (q.k === 'subj' && q.s === sid && lv < q.n) a.push([q.n, '학기 이야기']); });
     a.sort(function (x, y) { return x[0] - y[0]; });
     return a.length ? '<div class="tiny gold submile">다음 · ' + a.slice(0, 2).map(function (x) { return 'Lv ' + x[0] + ' ' + x[1]; }).join(' · ') + '</div>' : '';
@@ -1191,13 +1191,13 @@
   // 기말시험 준비도: 필기 · 실기 · 대련 세 칸 (점수 공식은 숨기고, 무엇을 하면 차는지만)
   function examReady(P, ex) {
     var th = R.examTheory(P, ex), pr = R.examPractical(P, ex), du = R.duelPreview(P, wctx(), ex.duel), avg = 0;
-    ex.subj.forEach(function (s) { avg += P.subj[s].lv / ex.subj.length; });
+    var xs = R.examSubjs(P, ex), xo = R.examOpt(P, ex); xs.forEach(function (s) { avg += P.subj[s].lv / xs.length; });
     function dots(v, max) { var n = Math.max(0, Math.min(4, Math.round(v / max * 4))); return '<span class="rdots" aria-label="4칸 중 ' + n + '칸">' + [0, 1, 2, 3].map(function (k) { return '<i class="' + (k < n ? 'on' : '') + '"></i>'; }).join('') + '</span>'; }
     function row(name, d, body, btn) { return '<div class="rrow"><b class="small rname">' + name + '</b>' + d + '<div class="small rbody">' + body + '</div>' + (btn || '') + '</div>'; }
-    var chips = ex.subj.map(function (s) { var lv = P.subj[s].lv; return '<span class="tag ' + (lv >= ex.req ? 'ok' : 'br') + '">' + R.SUBJ[s].name + ' ' + lv + '/' + ex.req + '</span>'; }).join(' ');
+    var chips = xs.map(function (s) { var lv = P.subj[s].lv; return '<span class="tag ' + (lv >= ex.req ? 'ok' : 'br') + '"' + (s === xo ? ' title="선택 과목: ' + esc(R.examSubjText(P, ex).split(' + ')[1] || '') + ' (가장 레벨이 높은 과목이 반영됩니다)"' : '') + '>' + R.SUBJ[s].name + (s === xo ? '(선택)' : '') + ' ' + lv + '/' + ex.req + '</span>'; }).join(' ');
     return '<div class="rready">' +
       row('필기', dots(th, 30), '시험 과목 평균 Lv <b class="num">' + avg.toFixed(1) + '</b> <span class="faint">· 기준보다 3 높으면 만점</span>', th < 29.5 ? '<button class="btn sm ghost" data-act="nav" data-a="lecture">수업 가기</button>' : '') +
-      row('실기', dots(pr, 40), chips + ' <span class="faint tiny">· 기준을 채우면 절반 이상, 평균이 기준 +4면 만점</span>', pr < 39.5 ? '<button class="btn sm ghost" data-act="nav" data-a="lecture">수업 가기</button>' : '') +
+      row('실기', dots(pr, 40), chips + (xo ? ' <span class="faint tiny">· 선택 과목은 ' + esc(R.examSubjText(P, ex).split(' + ')[1] || '') + ' 중 레벨이 가장 높은 과목이 반영됩니다</span>' : '') + ' <span class="faint tiny">· 기준을 채우면 절반 이상, 평균이 기준 +4면 만점</span>', pr < 39.5 ? '<button class="btn sm ghost" data-act="nav" data-a="lecture">수업 가기</button>' : '') +
       row('대련', dots(du.win ? 30 : 30 * du.frac * 0.85, 30), (du.win ? '<span class="good">승산 있음</span> · 약 ' + du.ttk.toFixed(1) + '초' : '<span class="bad">버거움</span> · 시험관 체력의 약 ' + Math.round(du.frac * 100) + '%까지') + ' <span class="faint">· ' + esc(ex.examiner) + '</span>', du.win ? '' : '<button class="btn sm ghost" data-act="nav" data-a="gear">장비 가기</button>') +
       '</div>';
   }
@@ -1265,7 +1265,7 @@
     if (P.wkPrev && !P.wkPrev.claimed) out.push({ t: '지난주 월드 보스·대항전 보상', s: '', go: 'hcup' });
     if (P.pts > 0) out.push({ t: '능력치 포인트 ' + P.pts + '점 분배', s: '', go: 'gear' });
     if (ex && P.grade < 8) {
-      var miss = ex.subj.filter(function (s) { return P.subj[s].lv < ex.req; });
+      var miss = R.examSubjs(P, ex).filter(function (s) { return P.subj[s].lv < ex.req; });
       if (P.examCd > now()) out.push({ t: ex.title + ' 재응시 대기', s: left(P.examCd) + ' 후', go: 'exam' });
       else if (!miss.length) out.push({ t: ex.title + ' 응시 가능', s: '', go: 'exam' });
       else out.push({ t: ex.title + ' 준비', s: miss.map(function (s) { return R.SUBJ[s].name + ' ' + P.subj[s].lv + '/' + ex.req; }).join(', '), go: 'lecture' });
@@ -1316,7 +1316,7 @@
     var lecFull = true; for (var li = 0; li < c.lecSlots; li++) if (!P.lec[li]) lecFull = false;   // 빈 수업 슬롯이 없으면 과목 카드의 「수업 듣기」는 흐리게
     h += '<div class="grid gauto">' + D.SUBJECTS.filter(function (x) { return R.subjVisible(P, x); }).map(function (S2) {
       var sj = P.subj[S2.id], open = S2.unlock <= Math.min(P.grade, 7);
-      var on = P.lec.some(function (x) { return x && x.s === S2.id; }), inEx = ex && P.grade < 8 && ex.subj.indexOf(S2.id) >= 0;
+      var on = P.lec.some(function (x) { return x && x.s === S2.id; }), inEx = ex && P.grade < 8 && (ex.subj.indexOf(S2.id) >= 0 || (ex.opt || []).indexOf(S2.id) >= 0);
       var nextSp = D.SPELLS.filter(function (sp) { return sp.req && sp.req[0] === S2.id && sj.lv < sp.req[1]; })[0];
       var h2 = '<div class="card subj' + (on ? ' active' : '') + (open ? '' : ' lockd') + '" data-anchor="subj-' + S2.id + '"><div class="hd"><h3>' + S2.name + '</h3>' + (inEx ? '<span class="tag ' + (sj.lv >= ex.req ? 'ok' : 'br') + '">시험 ' + ex.req + '</span>' : '') + '<span class="lv">' + sj.lv + '</span></div><div class="prof">' + S2.prof + (open && clsN(S2.id, true) ? ' · <span class="classmates">지금 ' + clsN(S2.id, true) + '명 수강 중</span>' : '') + '</div>';
       if (!open) return h2 + '<p class="small muted">' + S2.unlock + '학년부터 수강할 수 있습니다.</p></div>';
@@ -1391,7 +1391,7 @@
   function classInfo(sid) { var n = clsN(sid), pl = S.cls && S.cls.prof && S.cls.prof[sid]; return (n ? '지금 이 강의실에 <b>' + n + '명</b> · 함께 들으면 과목 경험치 <b class="good">+' + Math.round(R.peerBonus(n) * 100) + '%</b>' : '지금 이 과목을 듣는 학생은 없습니다 · 함께 들으면 1명당 경험치 +1% (최대 +' + R.PEER_MAX + '%)') + (pl ? '<div class="profline">' + esc(R.SUBJ[sid].prof) + ': “' + esc(pl) + '”</div>' : ''); }
   function defaultSubject(subs) {
     var P = S.P, ex = R.examFor(P);
-    var pri = subs.filter(function (s) { return ex && P.grade < 8 && ex.subj.indexOf(s.id) >= 0 && P.subj[s.id].lv < ex.req; });
+    var xs = ex ? R.examSubjs(P, ex) : [], pri = subs.filter(function (s) { return ex && P.grade < 8 && xs.indexOf(s.id) >= 0 && P.subj[s.id].lv < ex.req; });
     var list = pri.length ? pri : subs;
     return list.length ? list.slice().sort(function (a, b) { return P.subj[a.id].lv - P.subj[b.id].lv; })[0].id : null;
   }
@@ -3638,7 +3638,7 @@
     else if (R.stageCap({ grade: g - 1, lvl: P.lvl }) < R.gradeCap({ grade: g })) out.push(['원정 ' + R.gradeCap({ grade: g }) + '단계까지', '보스를 이기면 다음 10단계가 열립니다. 레벨이 높으면 조금 더 깊이 갈 수 있습니다.', 'explore', 'boss']);
     D.RESEARCH.forEach(function (r) { if (r.grade === g && !r.gone) out.push(['연구 「' + r.name + '」', r.desc, 'lib', '']); });
     D.SHOP.forEach(function (x) { if (x.grade === g) out.push(['매점 「' + x.name + '」', x.desc, 'shop', '']); });
-    var ex = D.EXAMS[g - 1]; if (ex && g < 8) out.push(['다음 목표: ' + ex.title, '시험 과목 ' + ex.subj.map(function (s) { return R.SUBJ[s].name; }).join(' · ') + ' 모두 Lv ' + ex.req, 'exam', '']);
+    var ex = D.EXAMS[g - 1]; if (ex && g < 8) out.push(['다음 목표: ' + ex.title, '시험 과목 ' + R.examSubjText(S.P, ex) + ' 모두 Lv ' + ex.req, 'exam', '']);
     return out;
   }
   function promoModal(g) {
@@ -4643,7 +4643,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102092;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102093;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
