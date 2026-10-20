@@ -875,7 +875,7 @@
     return { score: Math.floor(a.reduce(function (s, v) { return s + Math.min(v, cap); }, 0) / Math.max(R.CUP_MIN_DIV, a.length)), active: a.length };
   };
   // 개인 점수 구간 보상 (기숙사 순위와 별개): [점수, 별조각]
-  R.CUP_TIERS = [[3000, 15], [1500, 10], [500, 5]];
+  R.CUP_TIERS = [[10000, 15], [6000, 10], [2000, 5]];   // 2026-10-20 운영 분포 기준: 한 주 예상 하위 25% ≈ 2,400 · 중간 ≈ 6,300 · 상위 10% ≈ 10,500
   R.CUP_PLACE_SHARD = [0, 18, 15, 12, 10];
 
   /* ───────── 진행 (advance) ─────────
