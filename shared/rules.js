@@ -1161,6 +1161,7 @@
 
   /* ───────── 전투 시뮬레이션 (보스 · 대련 · 월드 보스) ─────────
      enemy: {hp, atk, boss, name}. 30초 제한. 로그는 재생용으로 압축. */
+  R.CROSS_COUNTER = 0.005;   // 남은 체력이 이 비율 이하(화면 0%)면 동시에 쓰러진 것으로 보고 학생 승리
   function fight(P, c, enemy, limit, untilDead) {
     var dt = 0.1, t = 0, mh = enemy.hp, ph = c.hp, sh = 0, pT = 0, mT = 0, fT = 0, cd = {}, stun = 0, haste = 0, amp = 0, dealt = 0, evs = [];
     var ns = R.spellSlots(P), fam = P.fam.act && P.fam.own[P.fam.act] ? c.atk * famAtkMult(P) : 0;
@@ -1200,6 +1201,8 @@
         }
       }
       ph = Math.min(c.hp, ph + c.hp * c.regen * dt);
+      // 크로스카운터: 쓰러지는 순간 적도 (화면에 0%로 보일 만큼) 거의 쓰러졌다면 학생의 승리로 본다
+      if (ph <= 0 && untilDead && mh <= enemy.hp * R.CROSS_COUNTER) return { win: true, cc: true, t: t, dealt: dealt, ev: evs, pHp: 0, mHp: 0 };
       if (ph <= 0) return { win: false, dead: true, t: t, dealt: dealt, ev: evs, pHp: 0, mHp: Math.max(0, mh / enemy.hp) };
     }
     return { win: !untilDead, t: t, dealt: dealt, ev: evs, pHp: ph / c.hp, mHp: Math.max(0, mh / enemy.hp), timeout: true };
@@ -1277,7 +1280,7 @@
     // 중간 점검: 그때까지 쌓인 피해
     [0.45, 0.8].forEach(function (q) { var at = end * q, sum = 0; ev.forEach(function (e) { if (e[1] === 'h' && e[0] <= at) sum += e[2]; }); if (sum > 0 && sum < foe.hp) add(at, '지금까지 입힌 피해 ' + R.fmt(sum) + ' / ' + R.fmt(foe.hp), 'h'); });
     mates.slice(0, 5).forEach(function (m, i) { var j = Math.floor(Math.random() * pool.length), line = pool.splice(j, 1)[0] || TW_HELP[0]; if (!pool.length) pool = TW_HELP.slice(); var nm = m.name; add(end * (i + 1) / (mates.length + 1.4), line.replace('{n}{이}', jo(nm, '이', '가')).replace('{n}', nm), 't'); });
-    if (r.win) add(end, '✦ ' + jo(foe.name, '이', '가') + ' 무너진다! ' + o.f + '층 돌파 (' + end.toFixed(1) + '초)', 's');
+    if (r.win) add(end, (r.cc ? '✦ 마지막 순간, 일격이 교차한다. 크로스카운터 — ' : '✦ ') + jo(foe.name, '이', '가') + ' 먼저 무너진다! ' + o.f + '층 돌파 (' + end.toFixed(1) + '초)', 's');
     else if (r.dead) add(end, '파티가 버티지 못하고 물러난다. ' + foe.name + ' 체력 ' + Math.round(r.mHp * 100) + '% 남음', 's');
     else add(end, '시간이 다 되었다. ' + foe.name + ' 체력 ' + Math.round(r.mHp * 100) + '% 남음 — 다음에 다시', 's');
     L.sort(function (a, b) { return a[0] - b[0]; });
@@ -1544,7 +1547,7 @@
     P.res.gold -= fee;
     var old = P.cls; P.cls = id; var c = calc(P, W, now), e = R.clsExamFoe(P, W), f = fight(P, c, e, 40, true); P.cls = old;
     if (f.win) clsSet(P, id, now, '전과시험 합격'); else { P.clsCd = now + R.CLS_EXAM_CD; log(P, now, R.CLS[id].name + ' 전과시험 불합격', 'bad'); }
-    return { win: !!f.win, ev: f.ev, maxHp: e.hp, mHp: f.mHp, cls: id, fee: fee };
+    return { win: !!f.win, cc: !!f.cc, ev: f.ev, maxHp: e.hp, mHp: f.mHp, cls: id, fee: fee };
   };
   A.expStart = function (P, W, now, a) {
     if (R.dreaming(P, now)) err('꿈길 중에는 출정할 수 없습니다 (연구를 시작할 수 있습니다)');
@@ -1612,7 +1615,7 @@
   A.ctower = function (P, W, now) {
     var cls = R.ctCls(P), key = R.ctKey(cls), c = calc(P, W, now), f = R.ctBest(P, cls) + 1, foe = R.ctFoe(f, cls);
     var r = fight(P, c, { hp: foe.hp, atk: foe.atk, boss: true }, R.CT_TIME, true);
-    var out = { cls: cls, f: f, foe: foe, win: !!r.win, ev: r.ev, t: r.t, dead: !!r.dead, pct: Math.round((1 - r.mHp) * 100), rw: {}, titles: [] };
+    var out = { cls: cls, f: f, foe: foe, win: !!r.win, cc: !!r.cc, ev: r.ev, t: r.t, dead: !!r.dead, pct: Math.round((1 - r.mHp) * 100), rw: {}, titles: [] };
     badgeGain(P, R.BADGE_XP.fight, now);
     if (!r.win) return out;
     P.st[key] = f; var g = R.ctReward(f), rw = out.rw;
@@ -1629,7 +1632,7 @@
     var e = { hp: R.monHp(b) * K.BOSS_HP, atk: R.monAtk(b) * K.BOSS_ATK, boss: true };
     var f = fight(P, c, e, K.BOSS_TIME, true);
     P.st.bossTries++;
-    var out = { win: f.win, stage: b, boss: def.id, name: def.name, ev: f.ev, t: f.t, mHp: f.mHp, pHp: f.pHp, dead: !!f.dead, maxHp: e.hp };
+    var out = { win: f.win, cc: !!f.cc, stage: b, boss: def.id, name: def.name, ev: f.ev, t: f.t, mHp: f.mHp, pHp: f.pHp, dead: !!f.dead, maxHp: e.hp };
     badgeGain(P, R.BADGE_XP.fight * (f.win ? 2 : 1), now);
     if (f.win) {
       P.maxStage = b + 9; if (P.maxStage > P.st.maxStageAll) P.st.maxStageAll = P.maxStage;
@@ -1889,7 +1892,7 @@
     var c = calc(P, W, now), e = R.duelEnemy(ex.duel), f = fight(P, c, e, 45, true);
     var duelPts = f.win ? 30 : 30 * (1 - f.mHp) * 0.85;
     var total = Math.round(written + practical + duelPts + c.examBonus), L = R.letter(total);
-    var res = { grade: run.grade, written: written, practical: practical, duel: duelPts, duelWin: f.win, bonus: c.examBonus, total: total, letter: L,
+    var res = { grade: run.grade, written: written, practical: practical, duel: duelPts, duelWin: f.win, cc: !!f.cc, bonus: c.examBonus, total: total, letter: L,
       pass: total >= 60, ev: f.ev, maxHp: e.hp, examiner: ex.examiner };
     P.px = null;
     if (res.pass) {
@@ -1914,7 +1917,7 @@
     var r = R.rival(P); if (!r) err('결투제를 모두 마쳤습니다'); if (P.duel.cd > now) err('아직 도전할 수 없습니다');
     var c = calc(P, W, now), f = fight(P, c, R.duelEnemy(r.stage, 4, 1.3), 45, true), k = P.duel.rank + 1;
     P.st.bossTries++;
-    var res = { win: f.win, k: k, rival: r.name, hello: r.hello, lose: r.lose, ev: f.ev, mHp: f.mHp, maxHp: R.duelEnemy(r.stage, 4, 1.3).hp };
+    var res = { win: f.win, cc: !!f.cc, k: k, rival: r.name, hello: r.hello, lose: r.lose, ev: f.ev, mHp: f.mHp, maxHp: R.duelEnemy(r.stage, 4, 1.3).hp };
     badgeGain(P, R.BADGE_XP.fight * (f.win ? 2 : 1), now);
     if (f.win) {
       P.duel.rank++; P.st.duelWins++; var first = P.duel.rank > P.st.duelBest; if (first) P.st.duelBest = P.duel.rank;
