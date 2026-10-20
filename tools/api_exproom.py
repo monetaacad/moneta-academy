@@ -26,8 +26,18 @@ bad = Bu.req('POST', '/api/exproom', {'op': 'join', 'id': rid, 'pos': 'sup'})
 if not bad.get('error'): errs.append('sup allowed without care spell')
 r = Bu.req('POST', '/api/exproom', {'op': 'join', 'id': rid, 'pos': 'rear'})
 if r.get('error'): errs.append('join ' + r['error'])
+# 파티원도 동행을 부를 수 있고, 힘은 부른 학생의 60%. 부른 학생 · 방장만 돌려보낸다
 x = Bu.req('POST', '/api/exproom', {'op': 'npc'})
-if not x.get('error'): errs.append('non-host could add npc')
+if x.get('error'): errs.append('member npc ' + x['error'])
+else:
+    bm = [y for y in x.get('rooms', []) if y['mine']][0]['members']
+    me_b = [m for m in bm if m.get('me')][0]; nb = [m for m in bm if m.get('npc')][0]
+    if nb['power'] != round(me_b['power'] * 0.6): errs.append('npc power not from adder %s %s' % (nb['power'], me_b['power']))
+    if not nb.get('mineNpc'): errs.append('adder cannot remove own npc')
+    am = [y for y in A.req('GET', '/api/exprooms').get('rooms', []) if y['mine']][0]['members']
+    if not [m for m in am if m.get('npc')][0].get('mineNpc'): errs.append('host cannot remove npc')
+    d = A.req('POST', '/api/exproom', {'op': 'npcdel', 'k': nb['k']})
+    if d.get('error'): errs.append('host npcdel ' + d['error'])
 r = A.req('POST', '/api/exproom', {'op': 'npc'})
 mine = [x for x in r.get('rooms', []) if x['mine']]
 if not mine or mine[0]['n'] != 3: errs.append('npc not added ' + str(r.get('error')))
