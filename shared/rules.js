@@ -222,16 +222,17 @@
   };
   R.ritualBless = function (P, start) { P.buffs.ritual = { name: R.RITUAL_BUFF.name, eff: R.RITUAL_BUFF.eff, start: start, end: start + R.RITUAL_BUFF.dur, color: R.RITUAL_BUFF.color }; };
 
-  /* ───────── 떠돌이 상인 (하루 두 번, 한국 시간 12시·20시부터 2시간 경매) ───────── */
-  R.AUCTION_HOURS = [12, 20]; R.AUCTION_LEN = 7200; R.AUCTION_SNIPE = 120;
+  /* ───────── 떠돌이 상인 (하루 세 번, 한국 시간 12시 · 18시 · 22시부터 1시간 경매) ───────── */
+  R.AUCTION_HOURS = [12, 18, 22]; R.AUCTION_LEN = 3600; R.AUCTION_SNIPE = 120;   // 하루 세 번(낮 12시 · 저녁 6시 · 밤 10시) 1시간
   R.auctionVisit = function (t) {
     var d = R.dayKST(t), out = null;
-    for (var dd = d; dd <= d + 1 && !out; dd++) R.AUCTION_HOURS.forEach(function (h, i) { var s = dd * 86400 - K.TZ + h * 3600; if (!out && s + R.AUCTION_LEN > t) out = { id: dd * 2 + i, start: s, end: s + R.AUCTION_LEN, active: t >= s }; });
+    var N = R.AUCTION_HOURS.length;
+    for (var dd = d; dd <= d + 1 && !out; dd++) R.AUCTION_HOURS.forEach(function (h, i) { var s = dd * 86400 - K.TZ + h * 3600; if (!out && s + R.AUCTION_LEN > t) out = { id: dd * N + i, start: s, end: s + R.AUCTION_LEN, active: t >= s }; });
     return out;
   };
   // 알림을 보낼 일: 화면(창을 내렸을 때 알림)과 서버(푸시 알림)가 같은 목록을 쓴다
   // kind = 설정에서 고르는 종류, key = 같은 일을 두 번 알리지 않기 위한 이름, t = 일어나는 시각
-  R.NOTIFY_KINDS = [['lec', '수업'], ['exp', '원정'], ['res', '연구'], ['disp', '사역마 파견'], ['jar', '정령 병이 가득 참'], ['sky', '하늘 이벤트 시작'], ['auc', '떠돌이 상인 도착']];
+  R.NOTIFY_KINDS = [['lec', '수업'], ['exp', '원정'], ['res', '연구'], ['disp', '사역마 파견'], ['jar', '정령 병이 가득 참'], ['sky', '하늘 이벤트 시작'], ['auc', '떠돌이 상인 도착'], ['aucbid', '경매 입찰 (밀림 · 마감 5분 전)']];
   R.notifyEvents = function (P, now) {
     var out = [], add = function (key, kind, t, title, body) { if (t > 0) out.push({ key: key, kind: kind, t: t, title: title, body: body }); };
     (P.lec || []).forEach(function (j, i) { if (j) add('lec' + i + ':' + j.end, 'lec', j.end, '수업이 끝났습니다', (R.SUBJ[j.s] ? R.SUBJ[j.s].name : '수업') + ' · 다음 수업 시작 가능'); });
@@ -242,7 +243,7 @@
     var jm = R.jarMax(P); if (k > 0) { n = Math.min(jm, n + k); at += k * K.SPIRIT_EVERY; }
     if (n < jm) { var full = at + (jm - n) * K.SPIRIT_EVERY; add('jar:' + Math.round(full), 'jar', full, '반딧불 정령 병이 가득 찼습니다', '접속해 풀어 줄 수 있습니다'); }
     var sk = R.skyNext(now); if (sk) add('sky:' + sk.key, 'sky', sk.start, '하늘에 ' + sk.name + '!', sk.text + ' · 올려다보면 작은 선물');
-    var av = R.auctionVisit(now); if (av && !av.active) add('auc:' + av.start, 'auc', av.start, '떠돌이 상인이 왔습니다', '귀한 장비 아홉 점이 2시간 동안 경매에 오릅니다');
+    var av = R.auctionVisit(now); if (av && !av.active) add('auc:' + av.start, 'auc', av.start, '떠돌이 상인이 왔습니다', '귀한 장비 아홉 점이 1시간 동안 경매에 오릅니다');
     return out;
   };
   // 이미 서버가 처리해 보고함(inbox)에 들어간 일 (접속 중이라 상태가 먼저 갱신된 경우도 알림이 빠지지 않게)

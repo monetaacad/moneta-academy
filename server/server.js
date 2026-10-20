@@ -332,11 +332,11 @@ function lecStarted(P, sid, now) {
 }
 // 예전에 공지 채널에 올라간 교수 한마디(「[과목] 교수: “…”」)를 한 번 지운다
 if (!dbx.kvGet('profNoticeClean', 0)) { dbx.q.recentChat.all('notice', 500).forEach((r) => { if (r.pid === 'system' || !r.pid) { const tx = sec.dec(r.text); if (/^\[[^\]]+\] [^:]+: “/.test(tx)) chat.remove(r.id); } }); dbx.kvSet('profNoticeClean', 1); }
-// 지금 경매: 정해진 2시간이 지나도 막판 입찰로 늘어난 물건이 남아 있으면 그 방문을 계속 연다 (늘어나는 데 끝이 없다)
+// 지금 경매: 정해진 1시간이 지나도 막판 입찰로 늘어난 물건이 남아 있으면 그 방문을 계속 연다 (늘어나는 데 끝이 없다)
 function aucVisitNow(now) {
   const v = R.auctionVisit(now); if (!v) return v;
   const open = (id) => dbx.q.aucByVisit.all(id).filter((r) => !r.done && r.ends > now);
-  if (!v.active) { const pid = v.id - 1, pv = open(pid); if (pv.length) return { id: pid, start: Math.floor(pid / 2) * 86400 - R.K.TZ + R.AUCTION_HOURS[pid % 2] * 3600, end: Math.max.apply(null, pv.map((r) => r.ends)), active: true, extended: true }; return v; }
+  if (!v.active) { const pid = v.id - 1, pv = open(pid); if (pv.length) return { id: pid, start: Math.floor(pid / R.AUCTION_HOURS.length) * 86400 - R.K.TZ + R.AUCTION_HOURS[pid % R.AUCTION_HOURS.length] * 3600, end: Math.max.apply(null, pv.map((r) => r.ends)), active: true, extended: true }; return v; }
   const cur = open(v.id); return cur.length ? Object.assign({}, v, { end: Math.max(v.end, Math.max.apply(null, cur.map((r) => r.ends))) }) : v;
 }
 function aucBrief(now) { const v = aucVisitNow(now); return v ? { start: v.start, end: v.end, active: v.active } : null; }
@@ -1261,7 +1261,7 @@ routes['POST /api/ritual'] = async (req, res) => {
 };
 
 /* ───────── 떠돌이 상인 경매 ─────────
-   하루 두 번(12시·20시, 2시간) 구간(신입생 · 중급 · 상급)마다 귀한 장비 세 점씩 경매에 붙인다. 부른 값은 바로 맡겨 두고, 더 높은 값이 나오면 돌려준다.
+   하루 세 번(12시 · 18시 · 22시, 1시간) 구간(신입생 · 중급 · 상급)마다 귀한 장비 세 점씩 경매에 붙인다. 부른 값은 바로 맡겨 두고, 더 높은 값이 나오면 돌려준다.
    끝나기 2분 안에 부르면 2분 늘어난다 (몇 번이든, 정해진 2시간이 지나도). 낙찰품은 우편으로. 값은 학생만 부른다(NPC는 부르지 않는다). */
 function aucOut(r, me) { let item = null; try { item = JSON.parse(r.item); } catch (e) { } return { id: r.id, name: r.name, r: r.rarity, ilvl: r.ilvl, slot: r.slot, item, ends: r.ends, min: r.min, price: r.price, need: R.auctionStep(r.price, r.min), bidder: r.bidder_name, mine: !!me && r.bidder === me, npc: String(r.bidder).startsWith('npc:'), bids: r.bids, done: !!r.done, tier: r.tier == null ? 2 : r.tier, cap: R.aucCap(r) }; }
 function aucRefund(pid, amount, name, why) {
@@ -1269,8 +1269,11 @@ function aucRefund(pid, amount, name, why) {
   const Q = store.get(pid); if (!Q) return;
   Q.res.gold += amount; R.log(Q, nowSec(), '떠돌이 상인: ' + name + ' — ' + why + ' 맡겨 둔 ' + R.fmt(amount) + ' ' + CUR + '를 돌려받았습니다', 'news'); store.markDirty(pid);
   chat.ping(pid, 'outbid', { name, why });
+  try { push.direct(pid, 'aucbid', '떠돌이 상인', name + ' — ' + why + ' 맡겨 둔 ' + R.fmt(amount) + ' ' + CUR + '를 돌려받았습니다. 다시 값을 부를 수 있습니다.', 'aucbid-' + name); } catch (e) { }
 }
+const aucBidders = new Map(), aucWarned = new Set();   // 물건마다 값을 불렀던 학생 · 마감 5분 전 알림을 보낸 물건 (서버를 다시 켜면 비워진다)
 function aucBidRaw(row, amount, pid, pname, now) {
+  if (!aucBidders.has(row.id)) aucBidders.set(row.id, new Set()); aucBidders.get(row.id).add(pid);
   const ends = row.ends - now < R.AUCTION_SNIPE ? Math.floor(now + R.AUCTION_SNIPE) : row.ends;
   if (!dbx.q.aucBid.run(amount, pid, pname, ends, row.id, row.price).changes) return null;
   aucRefund(row.bidder, row.price, row.name, '더 높은 값이 나와');
@@ -1291,9 +1294,16 @@ function aucTick(now) {
         dbx.q.aucInsert.run(v.id, JSON.stringify(it), it.name, it.r, it.ilvl, it.slot, Math.floor(v.end), min, 0, tier);
       });
     });
-    chat.system('notice', '떠돌이 상인이 아카데미 광장에 짐을 풀었습니다. 신입생 · 중급 · 상급 구간마다 귀한 장비 세 점씩 경매에 올라왔습니다 (2시간).', Date.now() / 1000);
+    chat.system('notice', '떠돌이 상인이 아카데미 광장에 짐을 풀었습니다. 신입생 · 중급 · 상급 구간마다 귀한 장비 세 점씩 경매에 올라왔습니다 (1시간).', Date.now() / 1000);
     chat.pingAll('auction', { visit: v.id });
   }
+  // 마감 5분 전: 값을 불렀던 학생들에게 알림 (1위는 「지키는 중」, 밀린 학생은 「다시 부를 수 있음」)
+  dbx.db.prepare('SELECT * FROM auction WHERE done = 0 AND ends > ? AND ends <= ?').all(Math.floor(now), Math.floor(now) + 300).forEach((r) => {
+    if (aucWarned.has(r.id)) return; aucWarned.add(r.id); if (aucWarned.size > 500) aucWarned.delete(aucWarned.values().next().value);
+    const who = new Set(aucBidders.get(r.id) || []); if (r.bidder) who.add(r.bidder);
+    who.forEach((pid) => { if (String(pid).startsWith('npc:')) return; const top = pid === r.bidder, msg = r.name + (top ? ' 경매가 곧 끝납니다 · 지금 가장 높은 값(' + R.fmt(r.price) + ')을 부른 상태입니다' : ' 경매가 곧 끝납니다 · 지금 가장 높은 값은 ' + R.fmt(r.price) + ' ' + CUR + '입니다');
+      chat.ping(pid, 'aucsoon', { name: r.name, top, price: r.price, ends: r.ends }); try { push.direct(pid, 'aucbid', '떠돌이 상인 · 마감 5분 전', msg, 'aucsoon-' + r.id); } catch (e) { } });
+  });
   dbx.q.aucOpenEnded.all(Math.floor(now)).forEach((r) => {
     if (!dbx.q.aucDone.run(r.id).changes) return;
     if (r.bidder && !String(r.bidder).startsWith('npc:')) {
