@@ -2659,7 +2659,7 @@
     bossbtn: function () { return S.P.bossCd > now() ? left(S.P.bossCd) + ' 후' : '보스 도전'; },
     chatonline: function () { return (S.chat.on ? '접속 ' + S.chat.online + '명' : '연결 중…'); },
     jarsvg: function () { var j = jar(); return sceneJar(j.n, j.max); },
-    jarchip: function () { var j = jar(); return gterm('반딧불 정령 병', '반딧불 정령 병') + ' <b class="num">' + j.n + '</b>/' + j.max + '마리' + (j.n >= j.max ? ' · 가득' : ' · 다음 ' + left(j.next)) + ' <span class="sc-sub">· 풀어 주면 마나 · 지식 · ' + CUR + ' 등</span>'; },
+    jarchip: function () { var j = jar(); return gterm('반딧불 정령 병', '반딧불 정령 병') + ' <b class="num">' + j.n + '</b>/' + j.max + '마리' + (j.n >= j.max ? ' · 가득' : ' · 다음 ' + left(j.next)) + ''; },
     jardots: function () { var j = jar(), o = ''; for (var i = 0; i < j.max; i++) o += '<i class="' + (i < j.n ? 'on' : '') + '"></i>'; return o; },
     jartxt: function () { var j = jar(); return j.n >= j.max ? '<b class="gold">병이 가득 찼습니다</b>' : '<b class="num">' + j.n + '</b> / ' + j.max + '마리 · 다음 ' + left(j.next) + ' · 가득 ' + clock(j.full); },
     expk: function (i) { var j = S.P.exp[+i]; return j ? fmt(Math.floor(j.kps * j.dur * j.eff * Math.min(1, (now() - j.start) / j.dur))) : '0'; },
@@ -4086,7 +4086,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102019;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102020;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
