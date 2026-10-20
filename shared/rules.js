@@ -538,7 +538,31 @@
      알 품기: 부화시키지 않고 지니고 있는 알 하나마다 경험치 +3% (3개까지) */
   R.FAM_SUBJ = 5; R.FAM_LV = 15; R.FAM_OPEN_TEXT = '환수생태학 ' + R.FAM_SUBJ + '레벨 또는 레벨 ' + R.FAM_LV; R.EGG_HOLD_EACH = 0.03; R.EGG_HOLD_MAX = 3;
   R.famOpen = function (P) { return (P.subj && P.subj.beast && P.subj.beast.lv >= R.FAM_SUBJ) || P.lvl >= R.FAM_LV || P.grade >= 3; };
-  R.eggHold = function (P) { return Math.min(R.EGG_HOLD_MAX, (P.fam && P.fam.eggs) || 0); };
+  R.eggHold = function (P) { return Math.min(R.EGG_HOLD_MAX, ((P.fam && P.fam.eggs) || 0) + (P.fam && P.fam.inc ? 1 : 0)); };   // 품고 있는 알도 지닌 알
+  /* 사역마 성장 · 알 품기: 활동 점수(대항전 점수와 같은 기준, 기숙사 특기 배율 · 매점 · 경매 제외)로 오른다.
+     - 동행 중인 사역마: 활동 점수만큼 경험치
+     - 파견: 파견 시간 1시간마다 FAM_DISP_XP (동행보다 낮게)
+     - 품는 알: 활동 점수 × 부화 효율만큼 진행도. 다 차면 마나 없이 부화, 마나로 바로 깨우면 남은 진행도만큼만 마나 */
+  R.FAM_XP_BASE = 300; R.FAM_XP_G = 1.2; R.FAM_DISP_XP = 10; R.FAM_MAX_LV = 20;
+  R.famXpNeed = function (f, lv) { return Math.floor(R.FAM_XP_BASE * (1 + 0.5 * (f ? f.r : 0)) * Math.pow(R.FAM_XP_G, lv - 1)); };
+  R.EGG_INC_BASE = 1500; R.EGG_INC_STEP = 0.25;
+  R.eggNeed = function (P) { return Math.floor(R.EGG_INC_BASE * (1 + R.EGG_INC_STEP * Math.min((P.fam && P.fam.hatched) || 0, 40))); };
+  function famGainXp(P, id, x, t) {
+    var o = P.fam.own[id], f = FAM[id]; if (!o || !f || !(x > 0)) return 0;
+    if (o.lv >= R.FAM_MAX_LV) { o.xp = 0; return 0; }
+    o.xp = (o.xp || 0) + x; var ups = 0;
+    while (o.lv < R.FAM_MAX_LV && o.xp >= R.famXpNeed(f, o.lv)) { o.xp -= R.famXpNeed(f, o.lv); o.lv++; ups++; }
+    if (o.lv >= R.FAM_MAX_LV) o.xp = 0;
+    if (ups) log(P, t || P.at, R.josa(f.name, '이', '가') + ' 함께 성장했습니다 · Lv ' + o.lv, 'good');
+    return ups;
+  }
+  R.famGainXp = famGainXp;
+  // 활동 점수가 생길 때마다: 동행 사역마 경험치 · 품는 알 진행도
+  function famActivity(P, v) {
+    if (!(v > 0) || !P.fam || !R.famOpen(P)) return;
+    if (P.fam.act && P.fam.own[P.fam.act]) famGainXp(P, P.fam.act, v);
+    var inc = P.fam.inc; if (inc && inc.prog < inc.need) { inc.prog = Math.min(inc.need, inc.prog + v * calc(P, null).hatchSpd); if (inc.prog >= inc.need) log(P, P.at, '품고 있던 알이 깨어날 준비가 되었습니다', 'good'); }
+  }
   R.famGift = function (P, t) { if (P.famGift || !R.famOpen(P)) return; P.famGift = 1; if (!Object.keys(P.fam.own).length) { P.fam.eggs++; log(P, t, '사역마를 키울 수 있게 되었습니다! 고드릭 펜 교수가 첫 환수의 알을 주었습니다.', 'story'); } };
   R.xpNeed = function (lv) { return Math.floor(K.XP_A * Math.pow(K.XP_G, lv - 1) + lv * K.XP_L); };
   function addXp(P, x, t) {
@@ -814,6 +838,7 @@
   }
   function dispatchFinish(P, fid, d, t) {
     var f = FAM[fid], z = R.zoneOf(Math.min(P.maxStage, R.stageCap(P))), h = d.dur / 3600, out = { k: 'disp', f: fid, t: t };
+    out.xp = Math.round(h * R.FAM_DISP_XP); famGainXp(P, fid, out.xp, t);   // 파견 경험치 (시간에 비례, 동행보다 낮게)
     var mult = (1 + f.r * 0.3) * (1 + 0.05 * (P.fam.own[fid].lv - 1)) * (d.bonus || 1);
     var mats = Math.floor(h * 6 * mult + rnd(P) * 3); P.mats[z.mat] = (P.mats[z.mat] || 0) + mats; out.mats = mats; out.mat = z.mat;
     var stones = Math.floor(h * 0.8 * mult + rnd(P)); P.res.stone += stones; out.stones = stones;
@@ -944,7 +969,7 @@
   };
   R.CUP_SHOP_WEEK = 200;   // 매점 구매 점수는 한 주에 이만큼까지 (아르크로 마석을 거듭 사서 점수를 올리지 못하게)
   R.CUP_AUC = 100;         // 떠돌이 상인 경매 낙찰 1회 (학생끼리 거래인 거래소에는 점수가 없다)
-  function cupAdd(P, v, cat) { if (!P.wk) return; var sp = R.CUP_SPEC[P.house]; P.wk.cup += cat && sp && sp.cats.indexOf(cat) >= 0 ? v * R.CUP_SPEC_MULT : v; }
+  function cupAdd(P, v, cat) { if (cat !== 'shop' && cat !== 'auc') famActivity(P, v); if (!P.wk) return; var sp = R.CUP_SPEC[P.house]; P.wk.cup += cat && sp && sp.cats.indexOf(cat) >= 0 ? v * R.CUP_SPEC_MULT : v; }
   // 대항전 순위 점수: 이번 주 점수가 CUP_ACTIVE 이상인 학생을 「활동 학생」으로 보고, 그 평균(1인 반영은 중간 점수의 3배까지, 최소 5명으로 나눔).
   // 인원이 많은 기숙사가 합계로 앞서지 않게 한다. cups = 그 기숙사 학생들의 이번 주 점수 목록
   R.CUP_ACTIVE = 100; R.CUP_MIN_DIV = 5; R.CUP_CAP_X = 3;
@@ -1136,6 +1161,7 @@
 
   /* ───────── 전투 시뮬레이션 (보스 · 대련 · 월드 보스) ─────────
      enemy: {hp, atk, boss, name}. 30초 제한. 로그는 재생용으로 압축. */
+  R.CROSS_COUNTER = 0.005;   // 남은 체력이 이 비율 이하(화면 0%)면 동시에 쓰러진 것으로 보고 학생 승리
   function fight(P, c, enemy, limit, untilDead) {
     var dt = 0.1, t = 0, mh = enemy.hp, ph = c.hp, sh = 0, pT = 0, mT = 0, fT = 0, cd = {}, stun = 0, haste = 0, amp = 0, dealt = 0, evs = [];
     var ns = R.spellSlots(P), fam = P.fam.act && P.fam.own[P.fam.act] ? c.atk * famAtkMult(P) : 0;
@@ -1175,6 +1201,8 @@
         }
       }
       ph = Math.min(c.hp, ph + c.hp * c.regen * dt);
+      // 크로스카운터: 쓰러지는 순간 적도 (화면에 0%로 보일 만큼) 거의 쓰러졌다면 학생의 승리로 본다
+      if (ph <= 0 && untilDead && mh <= enemy.hp * R.CROSS_COUNTER) return { win: true, cc: true, t: t, dealt: dealt, ev: evs, pHp: 0, mHp: 0 };
       if (ph <= 0) return { win: false, dead: true, t: t, dealt: dealt, ev: evs, pHp: 0, mHp: Math.max(0, mh / enemy.hp) };
     }
     return { win: !untilDead, t: t, dealt: dealt, ev: evs, pHp: ph / c.hp, mHp: Math.max(0, mh / enemy.hp), timeout: true };
@@ -1252,7 +1280,7 @@
     // 중간 점검: 그때까지 쌓인 피해
     [0.45, 0.8].forEach(function (q) { var at = end * q, sum = 0; ev.forEach(function (e) { if (e[1] === 'h' && e[0] <= at) sum += e[2]; }); if (sum > 0 && sum < foe.hp) add(at, '지금까지 입힌 피해 ' + R.fmt(sum) + ' / ' + R.fmt(foe.hp), 'h'); });
     mates.slice(0, 5).forEach(function (m, i) { var j = Math.floor(Math.random() * pool.length), line = pool.splice(j, 1)[0] || TW_HELP[0]; if (!pool.length) pool = TW_HELP.slice(); var nm = m.name; add(end * (i + 1) / (mates.length + 1.4), line.replace('{n}{이}', jo(nm, '이', '가')).replace('{n}', nm), 't'); });
-    if (r.win) add(end, '✦ ' + jo(foe.name, '이', '가') + ' 무너진다! ' + o.f + '층 돌파 (' + end.toFixed(1) + '초)', 's');
+    if (r.win) add(end, (r.cc ? '✦ 마지막 순간, 일격이 교차한다. 크로스카운터 — ' : '✦ ') + jo(foe.name, '이', '가') + ' 먼저 무너진다! ' + o.f + '층 돌파 (' + end.toFixed(1) + '초)', 's');
     else if (r.dead) add(end, '파티가 버티지 못하고 물러난다. ' + foe.name + ' 체력 ' + Math.round(r.mHp * 100) + '% 남음', 's');
     else add(end, '시간이 다 되었다. ' + foe.name + ' 체력 ' + Math.round(r.mHp * 100) + '% 남음 — 다음에 다시', 's');
     L.sort(function (a, b) { return a[0] - b[0]; });
@@ -1357,6 +1385,7 @@
   R.rivalPreview = function (P, W) { var r = R.rival(P); return r ? R.duelPreview(P, W, r.stage, 4, 1.3) : null; };
 
   /* ───────── 교수님의 과제 ───────── */
+  R.taskShard = function (i) { return 5 + i * 8; };   // 과제 보상 별조각 (i: 0부터)
   R.taskOf = function (P, sid) { var i = P.tasks[sid] || 0, t = D.TASKS[sid] && D.TASKS[sid][i]; return t ? { i: i, t: t } : null; };
   R.taskProg = function (P, sid, t) { return t.k === 'subj' ? P.subj[sid].lv : t.k === 'stage' ? P.st.maxStageAll : (P.st[t.s] || 0); };
 
@@ -1519,7 +1548,7 @@
     P.res.gold -= fee;
     var old = P.cls; P.cls = id; var c = calc(P, W, now), e = R.clsExamFoe(P, W), f = fight(P, c, e, 40, true); P.cls = old;
     if (f.win) clsSet(P, id, now, '전과시험 합격'); else { P.clsCd = now + R.CLS_EXAM_CD; log(P, now, R.CLS[id].name + ' 전과시험 불합격', 'bad'); }
-    return { win: !!f.win, ev: f.ev, maxHp: e.hp, mHp: f.mHp, cls: id, fee: fee };
+    return { win: !!f.win, cc: !!f.cc, ev: f.ev, maxHp: e.hp, mHp: f.mHp, cls: id, fee: fee };
   };
   A.expStart = function (P, W, now, a) {
     if (R.dreaming(P, now)) err('꿈길 중에는 출정할 수 없습니다 (연구를 시작할 수 있습니다)');
@@ -1587,7 +1616,7 @@
   A.ctower = function (P, W, now) {
     var cls = R.ctCls(P), key = R.ctKey(cls), c = calc(P, W, now), f = R.ctBest(P, cls) + 1, foe = R.ctFoe(f, cls);
     var r = fight(P, c, { hp: foe.hp, atk: foe.atk, boss: true }, R.CT_TIME, true);
-    var out = { cls: cls, f: f, foe: foe, win: !!r.win, ev: r.ev, t: r.t, dead: !!r.dead, pct: Math.round((1 - r.mHp) * 100), rw: {}, titles: [] };
+    var out = { cls: cls, f: f, foe: foe, win: !!r.win, cc: !!r.cc, ev: r.ev, t: r.t, dead: !!r.dead, pct: Math.round((1 - r.mHp) * 100), rw: {}, titles: [] };
     badgeGain(P, R.BADGE_XP.fight, now);
     if (!r.win) return out;
     P.st[key] = f; var g = R.ctReward(f), rw = out.rw;
@@ -1604,7 +1633,7 @@
     var e = { hp: R.monHp(b) * K.BOSS_HP, atk: R.monAtk(b) * K.BOSS_ATK, boss: true };
     var f = fight(P, c, e, K.BOSS_TIME, true);
     P.st.bossTries++;
-    var out = { win: f.win, stage: b, boss: def.id, name: def.name, ev: f.ev, t: f.t, mHp: f.mHp, pHp: f.pHp, dead: !!f.dead, maxHp: e.hp };
+    var out = { win: f.win, cc: !!f.cc, stage: b, boss: def.id, name: def.name, ev: f.ev, t: f.t, mHp: f.mHp, pHp: f.pHp, dead: !!f.dead, maxHp: e.hp };
     badgeGain(P, R.BADGE_XP.fight * (f.win ? 2 : 1), now);
     if (f.win) {
       P.maxStage = b + 9; if (P.maxStage > P.st.maxStageAll) P.st.maxStageAll = P.maxStage;
@@ -1755,7 +1784,7 @@
     P.opt.allocW = o; if (P.opt.autoAlloc) R.autoAlloc(P); return { ok: true };
   };
   A.opt = function (P, W, now, a) {
-    var k = str(a.k); if (['autoEquip', 'autoAlloc', 'sound', 'reduceFx', 'hideMyTitle', 'hideOtherTitle', 'dockClosed', 'bulkAsk'].indexOf(k) < 0) err('잘못된 설정');
+    var k = str(a.k); if (['autoEquip', 'autoAlloc', 'sound', 'reduceFx', 'hideMyTitle', 'hideOtherTitle', 'dockClosed', 'bulkAsk', 'showFam'].indexOf(k) < 0) err('잘못된 설정');
     P.opt[k] = !!a.v; if (k === 'autoAlloc' && P.opt[k]) R.autoAlloc(P); return { ok: true };
   };
   A.spell = function (P, W, now, a) {
@@ -1764,15 +1793,35 @@
     var j = id ? P.spells.indexOf(id) : -1; if (j >= 0) P.spells[j] = P.spells[i];
     P.spells[i] = id; return { ok: true };
   };
+  // 마나로 바로 깨우기: 품고 있는 알이 있으면 그 알을 남은 진행도만큼의 마나로, 없으면 보관 중인 알 하나를 전액으로
+  R.eggManaCost = function (P, W, now) { var full = R.eggPrice(P, W, now), inc = P.fam.inc; return inc ? Math.ceil(full * Math.max(0, 1 - inc.prog / inc.need)) : full; };
   A.egg = function (P, W, now) {
-    if (!R.famOpen(P)) err(R.FAM_OPEN_TEXT + '부터 할 수 있습니다'); if (P.fam.egg) err('이미 부화 중입니다'); if (P.fam.eggs <= 0) err('알이 없습니다');
-    var cost = R.eggPrice(P, W, now); if (P.res.mana < cost) err('마나가 부족합니다');
-    P.res.mana -= cost; P.fam.eggs--;
+    if (!R.famOpen(P)) err(R.FAM_OPEN_TEXT + '부터 할 수 있습니다'); if (P.fam.egg) err('이미 부화 중입니다'); if (!P.fam.inc && P.fam.eggs <= 0) err('알이 없습니다');
+    var cost = R.eggManaCost(P, W, now); if (P.res.mana < cost) err('마나가 부족합니다');
+    P.res.mana -= cost; if (P.fam.inc) P.fam.inc = null; else P.fam.eggs--;
     var o = hatch(P, now); o.mana = cost; return o;
+  };
+  A.eggInc = function (P, W, now) {
+    if (!R.famOpen(P)) err(R.FAM_OPEN_TEXT + '부터 할 수 있습니다'); if (P.fam.inc) err('이미 품고 있는 알이 있습니다'); if (P.fam.eggs <= 0) err('알이 없습니다');
+    P.fam.eggs--; P.fam.inc = { need: R.eggNeed(P), prog: 0, start: now }; return { need: P.fam.inc.need };
+  };
+  A.eggHatch = function (P, W, now) {
+    var inc = P.fam.inc; if (!inc) err('품고 있는 알이 없습니다'); if (inc.prog < inc.need) err('아직 깨어날 준비가 되지 않았습니다');
+    P.fam.inc = null; return hatch(P, now);
   };
   A.feed = function (P, W, now, a) {
     var id = str(a.id), o = P.fam.own[id]; if (!o) err('없는 사역마입니다'); if (o.lv >= 20) err('최대 레벨입니다');
     var cost = R.feedCost(P, id); if (P.res.gold < cost) err(CUR + '가 부족합니다'); P.res.gold -= cost; o.lv++; return { lv: o.lv };
+  };
+  // 사역마 이름: 학생이 지어 준 이름(o.nm). 비우면 원래 종 이름으로
+  R.FAM_NAME_MAX = 10;
+  R.famLabel = function (P, id) { var o = P && P.fam && P.fam.own[id], f = FAM[id]; return o && o.nm ? o.nm : f ? f.name : ''; };
+  A.famName = function (P, W, now, a) {
+    var id = str(a.id), o = P.fam.own[id]; if (!o) err('없는 사역마입니다');
+    var nm = String(a.name == null ? '' : a.name).slice(0, 100).replace(/[\u0000-\u001F\u007F\u200B-\u200F\u202A-\u202E\u2066-\u2069]/g, '').replace(/\s+/g, ' ').trim();
+    if (Array.from(nm).length > R.FAM_NAME_MAX) err('이름은 ' + R.FAM_NAME_MAX + '자까지 입력할 수 있습니다');
+    if (nm && nm !== FAM[id].name) o.nm = nm; else delete o.nm;
+    return { ok: true, nm: o.nm || '' };
   };
   A.famAct = function (P, W, now, a) { var id = str(a.id); if (!P.fam.own[id]) err('없는 사역마입니다'); if (P.fam.disp[id]) err('파견 중입니다'); P.fam.act = id; return { ok: true }; };
   /* ── 정보 카드 꾸미기 (아르크로 산다) ── */
@@ -1830,6 +1879,12 @@
     log(P, t, '꿈에서 깼습니다: ' + DREAM[j.kind].name + (j.lucid ? ' (자각몽!)' : ''), 'good');
     return out;
   }
+  // 쉬고 있는 사역마(동행 · 파견 중이 아닌) 모두를 같은 시간으로 파견
+  A.dispatchAll = function (P, W, now, a) {
+    if (!R.famOpen(P)) err(R.FAM_OPEN_TEXT + '부터 할 수 있습니다');
+    var ids = Object.keys(P.fam.own).filter(function (id) { return FAM[id] && !P.fam.disp[id] && P.fam.act !== id; }); if (!ids.length) err('파견을 보낼 수 있는 사역마가 없습니다');
+    ids.forEach(function (id) { A.dispatch(P, W, now, { id: id, d: a.d }); }); return { n: ids.length };
+  };
   A.dispatch = function (P, W, now, a) {
     var id = str(a.id), d = DDUR[str(a.d)];
     if (!R.famOpen(P)) err(R.FAM_OPEN_TEXT + '부터 할 수 있습니다'); if (!P.fam.own[id]) err('없는 사역마입니다'); if (!d) err('잘못된 시간입니다');
@@ -1848,7 +1903,7 @@
     var c = calc(P, W, now), e = R.duelEnemy(ex.duel), f = fight(P, c, e, 45, true);
     var duelPts = f.win ? 30 : 30 * (1 - f.mHp) * 0.85;
     var total = Math.round(written + practical + duelPts + c.examBonus), L = R.letter(total);
-    var res = { grade: run.grade, written: written, practical: practical, duel: duelPts, duelWin: f.win, bonus: c.examBonus, total: total, letter: L,
+    var res = { grade: run.grade, written: written, practical: practical, duel: duelPts, duelWin: f.win, cc: !!f.cc, bonus: c.examBonus, total: total, letter: L,
       pass: total >= 60, ev: f.ev, maxHp: e.hp, examiner: ex.examiner };
     P.px = null;
     if (res.pass) {
@@ -1873,7 +1928,7 @@
     var r = R.rival(P); if (!r) err('결투제를 모두 마쳤습니다'); if (P.duel.cd > now) err('아직 도전할 수 없습니다');
     var c = calc(P, W, now), f = fight(P, c, R.duelEnemy(r.stage, 4, 1.3), 45, true), k = P.duel.rank + 1;
     P.st.bossTries++;
-    var res = { win: f.win, k: k, rival: r.name, hello: r.hello, lose: r.lose, ev: f.ev, mHp: f.mHp, maxHp: R.duelEnemy(r.stage, 4, 1.3).hp };
+    var res = { win: f.win, cc: !!f.cc, k: k, rival: r.name, hello: r.hello, lose: r.lose, ev: f.ev, mHp: f.mHp, maxHp: R.duelEnemy(r.stage, 4, 1.3).hp };
     badgeGain(P, R.BADGE_XP.fight * (f.win ? 2 : 1), now);
     if (f.win) {
       P.duel.rank++; P.st.duelWins++; var first = P.duel.rank > P.st.duelBest; if (first) P.st.duelBest = P.duel.rank;
@@ -1887,7 +1942,7 @@
   A.task = function (P, W, now, a) {
     var sid = str(a.s), o = R.taskOf(P, sid); if (!o) err('남은 과제가 없습니다');
     if (R.taskProg(P, sid, o.t) < o.t.n) err('아직 과제를 마치지 못했습니다');
-    P.tasks[sid] = o.i + 1; var shard = 5 + o.i * 8; P.res.shard += shard; P.st.tasksDone++; cupAdd(P, 15, 'task');
+    P.tasks[sid] = o.i + 1; var shard = R.taskShard(o.i); P.res.shard += shard; P.st.tasksDone++; cupAdd(P, 15, 'task');
     var out = { shard: shard, prof: SUBJ[sid].prof };
     if (o.t.item) { var it = makeItem(P, o.t.item, Math.max(P.maxStage, 10), 3, 3); it.name = SUBJ[sid].prof.split(' ')[0] + '의 ' + R.baseName(it); out.item = { name: it.name, r: it.r, res: gainItem(P, it, now) }; }
     log(P, now, SUBJ[sid].prof + '의 과제 완료', 'good'); return out;
