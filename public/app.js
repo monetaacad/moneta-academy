@@ -60,7 +60,7 @@
     return '<div class="gnotice" style="margin-top:10px"><b class="tiny gold">대항전 규칙이 바뀌었습니다</b><ul class="tiny" style="margin:4px 0 0 16px;line-height:1.7">' +
       '<li><b>인원 보정</b> · 기숙사 점수는 이번 주 ' + R.CUP_ACTIVE + '점 이상 활동한 학생의 <b>평균</b>입니다. 인원이 많은 기숙사가 유리하지 않습니다. (한 학생의 점수는 활동 학생 중간 점수의 ' + R.CUP_CAP_X + '배까지만 반영, 활동 학생이 ' + R.CUP_MIN_DIV + '명보다 적으면 ' + R.CUP_MIN_DIV + '명으로 나눕니다)</li>' +
       '<li><b>기숙사 특기</b> · 자기 기숙사 특기 활동은 점수 ×' + R.CUP_SPEC_MULT + '. ' + D.HOUSES.map(function (h) { return '<span style="color:' + h.color + '">' + h.name + '</span> ' + R.CUP_SPEC[h.id].text; }).join(' · ') + '</li>' +
-      '<li><b>보상</b> · 순위 별조각 ' + R.CUP_PLACE_SHARD.slice(1).join(' · ') + '. 순위와 별개로 내 점수 ' + R.CUP_TIERS.slice().reverse().map(function (x) { return fmt(x[0]) + '점 이상 +' + x[1]; }).join(' · ') + ' 별조각.</li></ul>' +
+      '<li><b>보상</b> · 순위 별조각 ' + R.CUP_PLACE_SHARD.slice(1).join(' · ') + ', 1위 기숙사에서 내 점수 ' + fmt(R.CUP_EPIC_MIN) + '점 이상이면 영웅 장비. 순위와 별개로 내 점수 ' + R.CUP_TIERS.slice().reverse().map(function (x) { return fmt(x[0]) + '점 이상 +' + x[1]; }).join(' · ') + ' 별조각.</li></ul>' +
       '<p class="tiny faint" style="margin-top:4px">내 이번 주 점수 <b class="num">' + fmt(P.wk.cup) + '</b>' + (sp ? ' · 내 기숙사 특기: ' + sp.text : '') + (tier ? ' · 개인 보상 구간 ' + fmt(tier[0]) + '점 달성' : '') + '. 수업 시간, 처치, 보스, 시험, 결투, 정령, 양조, 파견, 연구, 강화, 과제가 모두 점수가 됩니다.</p></div>';
   }
   function houseGrow(hid, Wl) {
@@ -4270,7 +4270,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102040;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102041;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
