@@ -1556,7 +1556,7 @@ routes['POST /api/guild'] = async (req, res) => {
     if (gCount(g.id) >= R.guildCap(g.lv)) return fail(req, res, 400, '정원(' + R.guildCap(g.lv) + '명)이 가득 찼습니다');
     if (g.mode === 'apply') {
       dbx.q.gAppPut.run(me, g.id, now, sec.enc(cleanText(b.msg, 120)));
-      const ranks = gRanksOf(g); guildOf.forEach((gid, pid) => { if (gid === g.id && R.guildCan(ranks, guildRole.get(pid), (dbx.q.gMember.get(pid) || {}).rank, 'invite')) chat.ping(pid, 'gapp', { name: P.name }); });
+      const ranks = gRanksOf(g); guildOf.forEach((gid, pid) => { if (gid === g.id && R.guildCan(ranks, guildRole.get(pid), (dbx.q.gMember.get(pid) || {}).rank, 'invite')) { chat.ping(pid, 'gapp', { name: P.name }); addNote(pid, 'guild', P.name + ' 님이 동아리 「' + g.name + '」에 가입을 신청했습니다', { view: 'guild', gtab: 'admin' }); } });
       return send(req, res, 200, { ok: true, applied: true });
     }
     gJoin(me, g.id, 'member'); gSys(g.id, P.name + ' 님이 동아리에 들어왔습니다.'); gLog(g.id, P.name + ' 님 가입');
@@ -1602,6 +1602,11 @@ routes['POST /api/guild'] = async (req, res) => {
       if (guildOf.get(target)) return fail(req, res, 400, '이미 다른 동아리에 들어간 학생입니다');
       if (gCount(mine) >= R.guildCap(g.lv)) return fail(req, res, 400, '정원이 가득 찼습니다');
       gJoin(target, mine, 'member'); gSys(mine, nameOf(target) + ' 님이 동아리에 들어왔습니다.'); gLog(mine, nameOf(target) + ' 님 가입 (' + P.name + ' 님이 승인)');
+      addNote(target, 'guild', '동아리 「' + g.name + '」 가입이 승인되었습니다', { view: 'guild' });
+    } else {   // 거절: 사유는 선택 (적으면 알림에 함께 보낸다)
+      const why = cleanText(b.reason, 100).replace(/\s+/g, ' ');
+      addNote(target, 'guild', '동아리 「' + g.name + '」 가입 신청이 거절되었습니다' + (why ? ' · 사유: ' + why : ''), { view: 'guild' });
+      gLog(mine, nameOf(target) + ' 님 가입 신청 거절 (' + P.name + ')');
     }
     return ok();
   }

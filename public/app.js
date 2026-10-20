@@ -726,6 +726,7 @@
     if (L.grade) { promoModal(+L.grade); return; }
     if (L.me) { ACT.me(L.me); return; }
     if (L.view === 'board' && L.post) { ACT.nav('board'); setTimeout(function () { openPost(+L.post); }, 0); return; }
+    if (L.gtab) S.gtab2 = L.gtab;   // 동아리: 관리 탭(가입 신청)으로
     if (L.view) ACT.goto(L.view, L.anchor || '');
   };
   function updateMailBadge() { var b = $('#mailbadge'); if (b) { var n = S.mailN || 0; b.hidden = !n; b.textContent = n > 9 ? '9+' : n; } var mb = $('.mailbtn'); if (mb) mb.classList.toggle('has', !!S.mailN); }
@@ -2416,7 +2417,7 @@
     var owner = g.myRole === 'owner', staff = owner || g.myRole === 'officer', p = g.perms || {}, h = '<div class="grid g2"><div class="stack">';
     if (p.invite) {
       h += '<div class="card"><h3>초대하기</h3><div class="row" style="margin-top:8px"><input id="g-inv" maxlength="12" placeholder="학생 이름" style="flex:1;min-width:0"><button class="btn sm primary" data-act="ginvite">초대</button></div><p class="tiny faint" style="margin-top:6px">채팅에서 이름을 눌러 정보창의 「동아리 초대」로도 부를 수 있습니다.</p></div>';
-      h += '<div class="card"><h3>가입 신청' + (g.apps && g.apps.length ? ' <span class="tag br num">' + g.apps.length + '</span>' : '') + '</h3>' + (g.apps && g.apps.length ? g.apps.map(function (a) { return '<div class="frow"><button class="avbtn" data-act="prof" data-a="' + esc(a.id) + '">' + avatarHtml(a, 36) + '</button><div style="flex:1;min-width:0"><b>' + esc(a.name) + '</b> <span class="tiny faint">' + a.grade + '학년 · Lv ' + a.lvl + '</span>' + (a.msg ? '<div class="tiny muted ell">' + esc(a.msg) + '</div>' : '') + '</div><button class="btn sm primary" data-act="gop" data-a="accept" data-b="' + esc(a.id) + '">받기</button><button class="btn sm ghost" data-act="gop" data-a="reject" data-b="' + esc(a.id) + '">거절</button></div>'; }).join('') : '<p class="small muted" style="margin-top:4px">들어온 신청이 없습니다.</p>') + '</div>';
+      h += '<div class="card"><h3>가입 신청' + (g.apps && g.apps.length ? ' <span class="tag br num">' + g.apps.length + '</span>' : '') + '</h3>' + (g.apps && g.apps.length ? g.apps.map(function (a) { return '<div class="frow"><button class="avbtn" data-act="prof" data-a="' + esc(a.id) + '">' + avatarHtml(a, 36) + '</button><div style="flex:1;min-width:0"><b>' + esc(a.name) + '</b> <span class="tiny faint">' + a.grade + '학년 · Lv ' + a.lvl + '</span>' + (a.msg ? '<div class="tiny muted ell">' + esc(a.msg) + '</div>' : '') + '</div><button class="btn sm primary" data-act="gop" data-a="accept" data-b="' + esc(a.id) + '">받기</button><button class="btn sm ghost" data-act="greject" data-a="' + esc(a.id) + '" data-b="' + esc(a.name) + '">거절</button></div>'; }).join('') : '<p class="small muted" style="margin-top:4px">들어온 신청이 없습니다.</p>') + '</div>';
     }
     if (p.notice) h += '<div class="card"><h3>공지 · 소개</h3><div class="field" style="margin-top:6px"><label class="small muted" for="gd-notice">공지 <span class="faint">(바꾸면 동아리 채팅에 알림)</span></label><input id="gd-notice" maxlength="300" value="' + esc(g.notice || '') + '"></div>' +
       '<div class="field" style="margin-top:8px"><label class="small muted" for="gd-intro">소개</label><textarea id="gd-intro" maxlength="300" rows="3" style="font-family:var(--f-body);font-size:13.5px">' + esc(g.intro || '') + '</textarea></div>' +
@@ -2612,6 +2613,12 @@
   ACT.gquitgo2 = function () { closeModal(); S.gtab2 = 'members'; render(); };
   ACT.grit = function () { API.guildOp({ op: 'ritual' }).then(function (j) { gDone(j, '동아리 의식에 봉헌했습니다'); }); };
   ACT.gwq = function (id) { API.guildOp({ op: 'wqClaim', id: id }).then(function (j) { gDone(j, j.got ? '주간 과제 보상 · 별조각 +' + j.got.shard : ''); }); };
+  // 가입 신청 거절: 사유는 선택 (적으면 신청한 학생의 알림에 함께 표시)
+  ACT.greject = function (id, name) {
+    modal(mhead('가입 신청 거절', esc(name || '')) + '<div class="field"><label class="small muted" for="g-rjwhy">거절 사유 <span class="faint">(선택 · 100자 · 신청한 학생의 알림에 함께 표시됩니다)</span></label><textarea id="g-rjwhy" maxlength="100" rows="2" placeholder="입력하지 않으면 「가입 신청이 거절되었습니다」만 전달됩니다"></textarea></div>' +
+      '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:12px"><button class="btn ghost" data-act="modal-close">취소</button><button class="btn danger" data-act="greject-go" data-a="' + esc(id) + '">거절하기</button></div>');
+  };
+  ACT['greject-go'] = function (id) { var why = (($('#g-rjwhy') || {}).value || '').trim(); closeModal(); API.guildOp({ op: 'reject', pid: id, reason: why }).then(function (j) { gDone(j, '가입 신청을 거절했습니다'); }); };
   ACT.gop = function (op, b, el) {
     var o = { op: op };
     if (op === 'accept' || op === 'reject' || op === 'kick' || op === 'transfer') o.pid = b;
@@ -4466,7 +4473,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102055;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102056;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
