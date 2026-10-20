@@ -1802,6 +1802,17 @@ routes['POST /api/admin/lookup'] = async (req, res) => {
   oplog('admin', '관리자', 'lookup', (row.name || '') + ' 아이디 확인');
   send(req, res, 200, { name: row.name, login: login || null, match, rank: row.role === 'chief' ? '학생회장' : row.role === 'admin' ? '학생회' : '', banned: !!row.banned });
 };
+// 운영실: 학생 활동 기록 (게임 안 기록 최근 50줄 · 같은 일이 이어지면 횟수로 묶임) 과 영웅 · 전설 장비 보유 현황
+routes['POST /api/admin/plog'] = async (req, res) => {
+  if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
+  const b = await readJson(req, 1024), nm = String(b.name || '').trim(), row = nm ? dbx.q.playerByKey.get(nameKey(nm)) : null;
+  if (!row) return fail(req, res, 404, nm ? '없는 학생 이름입니다' : '학생 이름 입력 필요');
+  const P = store.get(row.id); if (!P) return fail(req, res, 404, '학생 정보를 찾을 수 없습니다');
+  const items = (P.inv || []).map((it) => ({ it, at: '가방' })).concat(Object.keys(P.eq || {}).filter((k) => P.eq[k]).map((k) => ({ it: P.eq[k], at: '장착' })));
+  const high = items.filter((x) => x.it.r >= 3).map((x) => ({ name: x.it.name + (x.it.enh ? ' +' + x.it.enh : ''), r: x.it.r, ilvl: x.it.ilvl, at: x.at }));
+  oplog('admin', '관리자', 'plog', row.name + ' 활동 기록 확인');
+  send(req, res, 200, { name: row.name, log: (P.log || []).slice(0, 50).map((l) => ({ t: l.t, m: l.m, k: l.k, n: l.n || 1 })), high, st: { expJobs: P.st.expJobs || 0, epicFound: P.st.epicFound || 0, legendFound: P.st.legendFound || 0 } });
+};
 // 운영실: 비밀번호를 잃어버린 학생에게 임시 비밀번호를 발급한다. 모든 기기에서 로그아웃되고, 로그인하면 비밀번호를 바꾸라고 안내한다
 routes['POST /api/admin/resetpw'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
