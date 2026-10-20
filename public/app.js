@@ -43,6 +43,7 @@
     party: '<circle cx="9" cy="9" r="3"/><circle cx="16.5" cy="10" r="2.5"/><path d="M3.5 19c.6-3 2.8-4.6 5.5-4.6s4.9 1.6 5.5 4.6M14.5 15c2.6-.3 5 1 5.8 4"/>',
     market: '<path d="M12 4v16M5 8h14M7 8l-3 6a3 3 0 0 0 6 0zM17 8l-3 6a3 3 0 0 0 6 0zM8 20h8"/>',
     guild: '<path d="M6 4h12v9c0 4-3 6.5-6 7.5-3-1-6-3.5-6-7.5z"/><path d="M12 8l1.2 2.4 2.6.4-1.9 1.8.5 2.6-2.4-1.3-2.4 1.3.5-2.6-1.9-1.8 2.6-.4z"/>',
+    patch: '<path d="M7 3h8l4 4v14H7zM15 3v4h4"/><path d="M10 12h6M10 16h4"/><path d="M4 6v13"/>',
     guide: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.5v.5M12 17h.01"/>',
     user: '<circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/>',
     mail: '<rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="M3.6 7l8.4 6.4L20.4 7"/>',
@@ -233,7 +234,7 @@
       '<div class="memenu" id="memenu" role="menu" hidden><button role="menuitem" data-act="me" data-a="view">' + icon('user') + '내 정보</button><button role="menuitem" data-act="me" data-a="friends">' + icon('chat') + '친구<span class="tag br num" id="mm-fr" hidden></span></button><button role="menuitem" data-act="nav" data-a="party">' + icon('party') + '파티<span class="tag br num" id="mm-pt" hidden></span></button><button role="menuitem" data-act="nav" data-a="guild">' + icon('guild') + '동아리</button><button role="menuitem" data-act="goto" data-a="rec" data-b="titles">' + icon('rec') + '칭호 도감</button></div></div>' +
       '<div class="topmeta"><span class="seg cal" data-l="cal" data-html="1"></span><span class="seg" data-l="buffs" data-html="1"></span><span class="seg conn" id="conn" hidden>서버 연결이 끊겼습니다 · 다시 연결 중</span></div>' +
       '<div class="resbar">' + chip('mana', '마나', '#7fb8ff') + chip('gold', CUR, '#f0cf8a') + chip('know', '지식', '#a6e3cf') + chip('stone', '마석', '#c4a5ff') + chip('shard', '별조각', '#fff0a0') + '</div>' +
-      '<div class="topbtns"><button class="icon-btn notebtn" data-act="notes" aria-label="알림" title="알림">' + icon('bell') + '<span class="ibadge" id="notebadge" hidden></span></button><button class="icon-btn mailbtn" data-act="mailbox" aria-label="우편함" title="우편함">' + icon('mail') + '<span class="ibadge" id="mailbadge" hidden></span></button><button class="icon-btn guidebtn" data-act="guide" aria-label="플레이 가이드" title="플레이 가이드">' + icon('guide') + '</button><button class="icon-btn" data-act="settings" aria-label="설정" title="설정">' + icon('cog') + '</button></div>' +
+      '<div class="topbtns"><button class="icon-btn notebtn" data-act="notes" aria-label="알림" title="알림">' + icon('bell') + '<span class="ibadge" id="notebadge" hidden></span></button><button class="icon-btn mailbtn" data-act="mailbox" aria-label="우편함" title="우편함">' + icon('mail') + '<span class="ibadge" id="mailbadge" hidden></span></button><button class="icon-btn patchbtn" data-act="patch" aria-label="업데이트 노트" title="업데이트 노트">' + icon('patch') + '<span class="ibadge dot" id="patchbadge"' + (patchNew() ? '' : ' hidden') + '></span></button><button class="icon-btn guidebtn" data-act="guide" aria-label="플레이 가이드" title="플레이 가이드">' + icon('guide') + '</button><button class="icon-btn" data-act="settings" aria-label="설정" title="설정">' + icon('cog') + '</button></div>' +
       '</div></header>' +
       '<div class="body"><nav class="nav" id="nav" aria-label="아카데미 안내도"></nav><main id="view"></main><aside id="chatdock" class="dock" aria-label="실시간 채팅"></aside></div>';
     updateMeBadge();
@@ -2885,6 +2886,20 @@
   });
   setInterval(function () { if (tipFor && tipEl && !tipEl.hidden && document.body.contains(tipFor)) showTip(tipFor); else if (tipFor) hideTip(); }, 1000);
 
+  /* ── 업데이트 노트: 새 노트가 있으면 점, 열면 읽음 (기기마다) ── */
+  function patchSeen() { try { return +localStorage.getItem('arc_patchseen') || 0; } catch (e) { return S.patchSeen || 0; } }
+  function patchNew() { var p = D.PATCH && D.PATCH[0]; return !!p && p.id > patchSeen(); }
+  ACT.patch = function () {
+    var L = D.PATCH || [], top = L[0];
+    if (top) { S.patchSeen = top.id; try { localStorage.setItem('arc_patchseen', String(top.id)); } catch (e) { } var b = $('#patchbadge'); if (b) b.hidden = true; }
+    modal(mhead('업데이트 노트', '아카데미에 새로 추가되거나 변경된 내용입니다') +
+      (L.length ? '<div class="glist">' + L.map(function (n) {
+        return '<div class="pitem"><h4>' + esc(n.title) + ' <span class="tiny faint num">' + esc(n.date) + '</span></h4>' + (n.groups || [{ items: n.items || [] }]).map(function (g) {
+          return (g.h ? '<h5 class="ph">' + esc(g.h) + '</h5>' : '') + '<ul class="pnote">' + g.items.map(function (t) { var o = typeof t === 'string' ? { t: t } : t; return '<li class="small">' + esc(o.t) + (o.sub ? '<ul class="pnote sub">' + o.sub.map(function (x) { return '<li class="small">' + esc(x) + '</li>'; }).join('') + '</ul>' : '') + '</li>'; }).join('') + '</ul>';
+        }).join('') + '</div>';
+      }).join('') + '</div>' : '<p class="small muted">아직 게시된 업데이트 노트가 없습니다.</p>'), true);
+  };
+
   /* ── 플레이 가이드 (검색) ── */
   S.gcat = '';
   /* 가이드 안의 다른 안내 이름에 밑줄 · 툴팁 · 이동. 이름은 제목을 「 · 」로 나눈 조각(괄호 빼고) + 항목의 k(덧붙일 말).
@@ -3633,6 +3648,7 @@
     ['#chatdock', '채팅', '공지 · RP · 월드 · 기숙사 · 학과 · 1:1 채팅입니다. RP 채널에서는 *별표 사이*에 작성한 글이 행동 묘사로 표시됩니다. 탭을 눌러 열고 닫습니다.'],
     ['.mebtn', '내 이름', '누르면 내 정보(두상 · 소개 · 꾸미기), 친구, 파티, 동아리, 칭호 도감으로 이동합니다.'],
     ['.mailbtn', '우편함', '보상과 운영진 답장을 받는 곳입니다. 숫자가 표시되면 확인합니다.'],
+    ['.patchbtn', '업데이트 노트', '아카데미에 새로 추가되거나 변경된 내용을 확인할 수 있습니다. 새 노트가 게시되면 점이 표시됩니다.'],
     ['.guidebtn', '가이드', '궁금한 내용을 검색할 수 있습니다. 「처음」을 선택하면 처음 안내와 화면 둘러보기를 다시 볼 수 있습니다.'],
     ['[data-act="settings"]', '설정', '테마 · 종이 질감 · 글씨 크기 · 소리 · 알림 · 채팅 탭을 설정합니다. 화면 둘러보기는 여기까지입니다.']
   ];
@@ -4554,7 +4570,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102071;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102072;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

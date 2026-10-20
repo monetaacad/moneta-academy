@@ -566,6 +566,12 @@ details[open] > summary .chev { transform: rotate(-135deg) translate(-2px, -2px)
 .flash { animation: flash 1.6s ease-out 1; }
 
 /* ───────── 가이드 ───────── */
+.ibadge.dot { min-width: 9px; width: 9px; height: 9px; padding: 0; top: -3px; right: -3px; }
+.pitem { background: var(--sunk); border: 1px solid var(--line2); border-radius: 10px; padding: 10px 12px; }   /* .gitem은 길드 목록과 이름이 겹친다 */
+.pitem h4 { color: var(--brass2); font-size: 14.5px; }
+.pnote { margin: 6px 0 0 18px; display: flex; flex-direction: column; gap: 3px; }
+.pnote.sub { margin-top: 3px; list-style: circle; }
+.pitem .ph { margin: 10px 0 0; font-size: 13.5px; color: var(--ink); }
 .icon-btn.guidebtn { color: inherit; }   /* 다른 아이콘 버튼과 같은 정사각형 (글자 없이) */
 .guidebtn svg { width: 18px; height: 18px; }
 .glist { display: flex; flex-direction: column; gap: 10px; max-height: 58vh; overflow-y: auto; padding-right: 4px; }
@@ -573,6 +579,7 @@ details[open] > summary .chev { transform: rotate(-135deg) translate(-2px, -2px)
 .gitem h4 { color: var(--brass2); font-size: 14.5px; }
 .gitem p { margin-top: 6px; line-height: 1.7; }
 mark { background: rgba(240, 207, 138, .28); color: var(--ink); border-radius: 3px; padding: 0 1px; }
+@media (max-width: 480px) { .top-row .topbtns { gap: 4px; } .top-row .topbtns .icon-btn { width: 30px; height: 30px; } }   /* 버튼 5개라 이름 칸이 좁아지지 않게 */
 @media (max-width: 480px) { .guidebtn span { display: none; } .guidebtn { padding: 6px 8px; } }
 
 /* ───────── 거래소 ───────── */
