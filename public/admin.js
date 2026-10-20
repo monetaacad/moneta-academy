@@ -4,6 +4,26 @@
   var tok = ''; try { tok = sessionStorage.getItem('arc_admin') || ''; } catch (e) { }
   function $(s) { return document.querySelector(s); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  // 운영실 학생 기록: 장비 · 능력치 전체 (학생의 공개 범위 설정과 관계없음)
+  var SLOTN = { staff: '무기', robe: '로브', hat: '모자', charm: '장신구', tome: '마도서' }, STN = { int: '지력', wil: '의지', agi: '민첩', vit: '체력', luk: '행운' };
+  function fx(v) { v = Number(v) || 0; return Math.abs(v) >= 1000 ? Math.round(v).toLocaleString() : String(Math.round(v * 1000) / 1000); }
+  function cardHtml(c, RN) {
+    if (!c) return '<p class="small" style="margin-top:8px">장비 · 능력치를 불러오지 못했습니다.</p>';
+    var f = c.fight, row = function (k, v) { return '<tr><th style="text-align:left;white-space:nowrap">' + k + '</th><td>' + v + '</td></tr>'; };
+    var h = '<div class="row between" style="margin-top:10px"><b>장비 · 능력치</b><button class="btn sm ghost" data-a="plogcopy">분석용 복사</button></div>';
+    h += '<p class="small">' + esc((c.cls === 'knight' ? '기사' : '마법사') + ' · Lv ' + c.lvl + ' · ' + c.grade + '학년 · 최고 ' + c.maxStage + '단계 · 전투력 ' + fx(c.power)) + '</p>';
+    h += '<div class="scroll" style="margin-top:6px"><table><tbody>' +
+      row('공격력', fx(f.atk) + ' (물리 ' + fx(f.patk) + ' · 주문 ' + fx(f.matk) + ')') + row('생명력 · 방어력', fx(f.hp) + ' · ' + fx(f.def)) +
+      row('공격 속도 · 치명타', fx(f.aps) + ' · ' + Math.round(f.critC * 1000) / 10 + '% × ' + fx(f.critD)) + row('주문 위력 · 기술 위력', fx(f.spell) + ' · ' + fx(f.skill)) +
+      row('초당 피해', fx(f.totalDps) + ' (평타 ' + fx(f.dps) + ' · 주문 ' + fx(f.spellDps) + ' · 사역마 ' + fx(f.famDps) + ')') +
+      row('능력치', Object.keys(STN).map(function (k) { return STN[k] + ' ' + fx(c.st[k]) + (c.sg[k] ? ' (장비 ' + fx(c.sg[k]) + ')' : ''); }).join(' · ')) +
+      row('보너스', esc(Object.keys(c.bon).map(function (k) { return k + ' ' + fx(c.bon[k]); }).join(' · ') || '없음')) +
+      row('과목', esc(c.subj)) + row('연구', esc(c.rs || '없음')) + row('주문', esc(c.spells || '없음')) + row('사역마', esc(c.fam || '없음')) + '</tbody></table></div>';
+    h += '<div class="scroll" style="margin-top:6px"><table><thead><tr><th>칸</th><th>장비</th><th>등급</th><th>Lv</th><th>강화</th><th>품질</th><th>옵션 · 수치</th></tr></thead><tbody>' + c.eq.map(function (e) {
+      return '<tr><td>' + esc(SLOTN[e.slot] || e.slot) + '</td><td>' + esc(e.name) + '</td><td>' + esc(RN[e.r] || e.r) + '</td><td>' + e.ilvl + '</td><td>+' + e.enh + '</td><td>' + fx(e.q) + '</td><td>' +
+        esc(Object.keys(e.stats).map(function (k) { return k + ' ' + fx(e.stats[k]); }).join(' · ') + (e.eng ? ' · 각인 ' + e.eng.id + ' ' + fx(e.eng.v) : '')) + '</td></tr>'; }).join('') + '</tbody></table></div>';
+    return h;
+  }
   function when(t) { if (!t) return '—'; var d = new Date(t * 1000); return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
   function api(method, path, body) {
     return fetch(path, { method: method, headers: { 'Content-Type': 'application/json', 'X-Admin-Token': tok }, body: body ? JSON.stringify(body) : undefined }).then(function (r) { return r.json().then(function (j) { j._s = r.status; return j; }); });
@@ -150,13 +170,15 @@
       });
     },
     // 학생 활동 기록: 게임 안 기록 최근 50줄(같은 일이 이어지면 ×횟수)과 영웅 · 전설 장비 보유 현황
+    plogcopy: function () { var t = window.__plogJson || ''; if (!t) return; (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () { $('#umsg').textContent = '분석용 기록을 복사했습니다'; }, function () { prompt('아래 내용을 복사하십시오', t); }); },
     plog: function () {
       var n = $('#un').value.trim(); if (!n) { $('#umsg').textContent = '학생 이름 입력 필요'; return; }
       api('POST', '/api/admin/plog', { name: n }).then(function (j) {
         if (j.error) { $('#umsg').textContent = j.error; $('#plog').innerHTML = ''; return; }
+        window.__plogJson = JSON.stringify({ name: j.name, card: j.card, high: j.high, st: j.st, log: j.log });
         $('#umsg').textContent = '「' + j.name + '」 활동 기록 · 원정 완료 ' + j.st.expJobs + '회 · 지금까지 얻은 영웅 ' + j.st.epicFound + '개 · 전설 ' + j.st.legendFound + '개';
         var RN = ['일반', '고급', '희귀', '영웅', '전설'];
-        $('#plog').innerHTML = '<p class="small" style="margin-top:8px"><b>보유 영웅 · 전설</b> ' + (j.high.length ? j.high.map(function (x) { return esc(RN[x.r] + ' · ' + x.name + ' (Lv ' + x.ilvl + ', ' + x.at + ')'); }).join(' / ') : '없음') + '</p>' +
+        $('#plog').innerHTML = cardHtml(j.card, RN) + '<p class="small" style="margin-top:8px"><b>보유 영웅 · 전설</b> ' + (j.high.length ? j.high.map(function (x) { return esc(RN[x.r] + ' · ' + x.name + ' (Lv ' + x.ilvl + ', ' + x.at + ')'); }).join(' / ') : '없음') + '</p>' +
           '<div class="scroll" style="margin-top:8px;max-height:320px"><table><thead><tr><th>때</th><th>기록</th></tr></thead><tbody>' + j.log.map(function (l) { return '<tr><td>' + when(l.t) + '</td><td>' + esc(l.m) + (l.n > 1 ? ' <b>×' + l.n + '</b>' : '') + '</td></tr>'; }).join('') + '</tbody></table></div>' +
           '<p class="tiny faint" style="margin-top:4px">같은 기록이 이어지면 한 줄로 묶고 횟수(×)를 표시합니다. 시각은 마지막으로 일어난 때입니다.</p>';
       });
