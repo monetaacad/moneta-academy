@@ -1780,3 +1780,8 @@ mark.hl { color: inherit; background: linear-gradient(transparent 38%, color-mix
 .fssrc b { color: var(--ink2); }
 [data-st][hidden] { display: none !important; }   /* 설정 탭: 고른 탭만 */
 .settabs { flex-wrap: wrap; }
+
+/* 꾸미기 배경: 어두운 배경이면 카드 글씨를 밝게, 밝은 배경이면 어둡게 (테마와 상관없이 읽히도록) */
+.pcard.bgdark { color: #f4ecd8; --ink: #f4ecd8; --ink2: #e6dcc4; --muted: #d6ccb4; --faint: #b8ae98; }
+.pcard.bglight { color: #2a2418; --ink: #2a2418; --ink2: #3a3222; --muted: #5a5040; --faint: #786c58; }
+.pcard.bgdark h2, .pcard.bglight h2 { color: var(--ink); }

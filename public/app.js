@@ -849,7 +849,7 @@
   function profileCard(p, m) {
     if (p.deleted) return '<div class="pcard"><p class="small muted" style="padding:18px 4px;text-align:center">삭제된 사용자입니다.</p></div>';
     var hh = R.HOUSE[p.house], dc = p.deco || {}, fr = decoFrame(dc.frame), bgs = decoBg(dc.bg), dk = dc.frame || dc.bg;
-    var h = (p.preview ? '<p class="tiny gold" style="margin-bottom:10px">미리보기 · 저장하지 않은 내용이 들어 있습니다</p>' : '') + '<div class="pcard' + (dk ? ' deco ' + fr.cls : '') + '"' + (dk ? ' style="' + fr.style + bgs + '"' : '') + '>' + (dc.stamp && R.DECO[dc.stamp] ? '<span class="pstamp" title="' + R.DECO[dc.stamp].name + '" aria-hidden="true">' + R.DECO[dc.stamp].glyph + '</span>' : '') + '<div class="pav">' + avatarHtml(p, 100) + (p.avcredit && (p.av || p.avData) ? '<span class="avcredit" title="두상 출처">' + esc(p.avcredit) + '</span>' : '') + '</div>' + '<div style="min-width:0">' + (p.title ? '<div class="pttl">' + (R.OP_TITLES[p.title] ? '<span class="ttl' + R.opTitleCls(p.title) + '">' + esc(p.title) + '</span>' : esc(p.title)) + '</div>' : '') + '<h2 class="pname">' + inkName(p.name, dc.ink) + (p.badge && R.GEM[p.badge.gem] ? ' <span class="pbdg" title="' + esc((p.badge.name || '') + ' · Lv ' + p.badge.lv) + '">' + badgeSvg(p.badge, 26) + '</span>' : '') + (p.online ? ' <span class="odot" title="접속 중"></span>' : '') + '</h2>' +
+    var h = (p.preview ? '<p class="tiny gold" style="margin-bottom:10px">미리보기 · 저장하지 않은 내용이 들어 있습니다</p>' : '') + '<div class="pcard' + (dk ? ' deco ' + fr.cls : '') + (dc.bg ? (decoDark(dc.bg) ? ' bgdark' : ' bglight') : '') + '"' + (dk ? ' style="' + fr.style + bgs + '"' : '') + '>' + (dc.stamp && R.DECO[dc.stamp] ? '<span class="pstamp" title="' + R.DECO[dc.stamp].name + '" aria-hidden="true">' + R.DECO[dc.stamp].glyph + '</span>' : '') + '<div class="pav">' + avatarHtml(p, 100) + (p.avcredit && (p.av || p.avData) ? '<span class="avcredit" title="두상 출처">' + esc(p.avcredit) + '</span>' : '') + '</div>' + '<div style="min-width:0">' + (p.title ? '<div class="pttl">' + (R.OP_TITLES[p.title] ? '<span class="ttl' + R.opTitleCls(p.title) + '">' + esc(p.title) + '</span>' : esc(p.title)) + '</div>' : '') + '<h2 class="pname">' + inkName(p.name, dc.ink) + (p.badge && R.GEM[p.badge.gem] ? ' <span class="pbdg" title="' + esc((p.badge.name || '') + ' · Lv ' + p.badge.lv) + '">' + badgeSvg(p.badge, 26) + '</span>' : '') + (p.online ? ' <span class="odot" title="접속 중"></span>' : '') + '</h2>' +
       '<div class="small">' + (hh ? houseDot(p.house, 16) + ' ' : '') + '<span style="color:' + (hh ? hh.color : 'inherit') + '">' + (hh ? hh.name : '') + '</span> · ' + (p.grade >= 8 ? '마스터 과정' : p.grade + '학년') + (p.lvl ? ' · Lv ' + p.lvl : '') + (R.CLS[p.cls] ? ' · <span class="pcls">' + clsDot(p.cls, 14) + ' ' + R.CLS[p.cls].name + '</span>' : '') + '</div>' +
       (p.guild ? '<div class="pguild">' + gEmblem(p.guild.color, p.guild.name, 20, p.guild.icon) + '<span class="pgt"><b class="pgn">' + esc(p.guild.name) + '</b><span class="pgm"><span class="tiny faint">Lv ' + (p.guild.lv || 1) + '</span>' + (p.guild.rank ? '<span class="tag' + (p.guild.role === 'owner' ? ' br' : p.guild.role === 'officer' ? ' ok' : '') + '">' + esc(p.guild.rank) + '</span>' : '') + '</span></span></div>' : '') +
       (p.fam && R.FAM[p.fam.id] ? '<div class="tiny pfam">동행 사역마 <b>' + esc(p.fam.nm || R.FAM[p.fam.id].name) + '</b>' + (p.fam.nm ? ' <span class="faint">' + R.FAM[p.fam.id].name + '</span>' : '') + ' <span class="num gold">Lv ' + p.fam.lv + '</span></div>' : '') +
@@ -4158,10 +4158,12 @@
     if (x.st === 'double') return { cls: '', style: 'border:' + (small ? 4 : 5) + 'px double ' + c + ';' };
     return { cls: '', style: 'border:' + w + 'px ' + (x.st === 'dashed' ? 'dashed' : 'solid') + ' ' + c + ';' + (x.st === 'glow' ? 'box-shadow:0 0 ' + (small ? 6 : 14) + 'px ' + hexA(x.c, 0.5) + ';' : 'box-shadow:inset 0 0 0 1px ' + hexA(x.c, 0.3) + ';') };
   }
+  function decoDark(id) { var x = id && R.DECO[id]; if (!x || x.slot !== 'bg') return false; var L = x.g.reduce(function (t, c) { var n = parseInt(c.slice(1), 16); return t + (0.299 * (n >> 16) + 0.587 * (n >> 8 & 255) + 0.114 * (n & 255)) / 255; }, 0) / x.g.length; return L < 0.5; }
   function decoBg(id, small) {
     var x = id && R.DECO[id]; if (!x || x.slot !== 'bg') return '';
-    var a = small ? 1 : lightUi() ? 0.24 : 0.5, g = 'linear-gradient(160deg,' + x.g.map(function (c) { return hexA(c, a); }).join(',') + ')', p = '';
-    var dot = lightUi() && !small ? 'rgba(40,40,80,.18)' : 'rgba(255,255,255,.35)';
+    // 카드에도 고른 색 그대로 (예전에는 옅게 깔아 미리보기와 달라 보였다). 어두운 배경이면 카드 글씨를 밝게(decoDark)
+    var a = small ? 1 : 0.95, g = 'linear-gradient(160deg,' + x.g.map(function (c) { return hexA(c, a); }).join(',') + ')', p = '';
+    var dot = !decoDark(id) && !small ? 'rgba(40,40,80,.18)' : 'rgba(255,255,255,.35)';
     if (x.pat === 'stars') p = 'radial-gradient(1.5px 1.5px at 20% 30%,' + dot + ',transparent),radial-gradient(1px 1px at 70% 20%,' + dot + ',transparent),radial-gradient(1.2px 1.2px at 85% 70%,' + dot + ',transparent),radial-gradient(1px 1px at 40% 80%,' + dot + ',transparent),';
     else if (x.pat === 'dots') p = 'radial-gradient(' + dot + ' 1px,transparent 1.6px) 0 0/' + (small ? 8 : 14) + 'px ' + (small ? 8 : 14) + 'px,';
     else if (x.pat === 'snow') p = 'radial-gradient(' + dot + ' 1.4px,transparent 2px) 0 0/' + (small ? 9 : 18) + 'px ' + (small ? 9 : 18) + 'px,radial-gradient(' + dot + ' 1px,transparent 1.5px) 7px 9px/' + (small ? 9 : 18) + 'px ' + (small ? 9 : 18) + 'px,';
@@ -4688,7 +4690,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102101;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102102;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
