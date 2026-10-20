@@ -1938,8 +1938,23 @@ routes['POST /api/admin/plog'] = async (req, res) => {
   const P = store.get(row.id); if (!P) return fail(req, res, 404, '학생 정보를 찾을 수 없습니다');
   const items = (P.inv || []).map((it) => ({ it, at: '가방' })).concat(Object.keys(P.eq || {}).filter((k) => P.eq[k]).map((k) => ({ it: P.eq[k], at: '장착' })));
   const high = items.filter((x) => x.it.r >= 3).map((x) => ({ name: x.it.name + (x.it.enh ? ' +' + x.it.enh : ''), r: x.it.r, ilvl: x.it.ilvl, at: x.at }));
+  // 장비 · 능력치 전체 (운영실은 학생의 공개 범위 설정과 관계없이 확인)
+  const n2 = (v, d) => Math.round((Number(v) || 0) * Math.pow(10, d || 0)) / Math.pow(10, d || 0);
+  let card = null; try {
+    const now = nowSec(), c = R.calc(P, world.ctx(now), Math.min(now, P.at)), st = {}, sg = {};
+    R.STATS.forEach((k) => { st[k] = n2(c.stat[k], 1); sg[k] = n2(c.statGear[k], 1); });
+    const bon = {}; for (const k in c.b) if (typeof c.b[k] === 'number' && c.b[k]) bon[k] = n2(c.b[k], 4);
+    const eq = Object.keys(P.eq || {}).filter((k) => P.eq[k]).map((k) => { const it = P.eq[k], is = R.itemStats(it), ist = {}; for (const x in is) ist[x] = n2(is[x], 4);
+      return { slot: k, name: it.name, r: it.r, ilvl: it.ilvl, enh: it.enh || 0, q: it.q, wk: it.wk || '', aff: it.aff || [], eng: it.eng || null, stats: ist }; });
+    card = { cls: P.cls, lvl: P.lvl, grade: P.grade, maxStage: P.maxStage, power: c.power, st, sg, bon,
+      fight: { atk: n2(c.atk), patk: n2(c.patk), matk: n2(c.matk), hp: n2(c.hp), def: n2(c.def), aps: n2(c.aps, 2), critC: n2(c.critC, 3), critD: n2(c.critD, 2), spell: n2(c.spell, 3), skill: n2(c.skill, 3), dps: n2(c.dps), spellDps: n2(c.spellDps), famDps: n2(c.famDps), totalDps: n2(c.totalDps) },
+      eq, subj: Object.keys(P.subj || {}).map((k) => (R.SUBJ[k] ? R.SUBJ[k].name : k) + ' ' + P.subj[k].lv).join(' · '),
+      rs: Object.keys(P.rs || {}).filter((k) => P.rs[k] && R.RES[k]).map((k) => R.RES[k].name + ' ' + P.rs[k]).join(' · '),
+      spells: (P.spells || []).filter(Boolean).map((k) => (R.SPELL[k] ? R.SPELL[k].name : k)).join(' · '),
+      fam: P.fam && P.fam.act && P.fam.own[P.fam.act] ? (R.FAM[P.fam.act] ? R.FAM[P.fam.act].name : P.fam.act) + ' Lv ' + (P.fam.own[P.fam.act].lv || 1) : '' };
+  } catch (e) { log('운영실 학생 카드 계산 실패', e); }
   oplog('admin', '관리자', 'plog', row.name + ' 활동 기록 확인');
-  send(req, res, 200, { name: row.name, log: (P.log || []).slice(0, 50).map((l) => ({ t: l.t, m: l.m, k: l.k, n: l.n || 1 })), high, st: { expJobs: P.st.expJobs || 0, epicFound: P.st.epicFound || 0, legendFound: P.st.legendFound || 0 } });
+  send(req, res, 200, { name: row.name, card, log: (P.log || []).slice(0, 50).map((l) => ({ t: l.t, m: l.m, k: l.k, n: l.n || 1 })), high, st: { expJobs: P.st.expJobs || 0, epicFound: P.st.epicFound || 0, legendFound: P.st.legendFound || 0 } });
 };
 // 운영실: 비밀번호를 잃어버린 학생에게 임시 비밀번호를 발급한다. 모든 기기에서 로그아웃되고, 로그인하면 비밀번호를 바꾸라고 안내한다
 routes['POST /api/admin/resetpw'] = async (req, res) => {
