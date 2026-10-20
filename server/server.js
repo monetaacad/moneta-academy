@@ -1441,6 +1441,27 @@ routes['POST /api/admin/mail'] = async (req, res) => {
   names.forEach((n) => { const row = dbx.q.playerByKey.get(nameKey(n)); if (row) ids.push(sendMail(row.id, '운영진', title, b.body, rw, exp, true)); else missing.push(n); });
   log('우편(' + ids.length + '명) ' + title); send(req, res, 200, { ok: true, ids, missing });
 };
+// 운영실: 학생마다 1회용 초대코드를 새로 발급해 우편으로 한 장씩 보낸다 (dry = 받을 학생 수만 미리 세기)
+// 받는 학생: 정지 · 게스트 제외, activeDays > 0이면 그 기간 안에 접속한 학생만. 본문의 {코드}를 그 학생의 코드로 바꾼다 (없으면 끝에 붙인다)
+routes['POST /api/admin/invitemail'] = async (req, res) => {
+  if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
+  const b = await readJson(req, 8192), now = Math.floor(Date.now() / 1000), act = Math.max(0, Math.min(3650, Number(b.activeDays) || 0));
+  const rows = dbx.db.prepare('SELECT id FROM players WHERE banned = 0 AND guest = 0' + (act ? ' AND last_seen >= ?' : '')).all(...(act ? [now - act * 86400] : []));
+  if (b.dry) return send(req, res, 200, { n: rows.length });
+  const title = String(b.title || '').trim(); if (!title) return fail(req, res, 400, '제목 입력 필요');
+  if (Number(b.expect) !== rows.length) return fail(req, res, 409, '받을 학생 수가 바뀌었습니다. 다시 확인 필요 (지금 ' + rows.length + '명)');
+  const codeDays = Math.max(0, Math.min(3650, Number(b.codeDays) || 0)), mailExp = now + Math.max(1, Math.min(3650, Number(b.mailDays) || 30)) * 86400;
+  const body = String(b.body || ''), note = '우편 배포 ' + new Date(now * 1000 + 9 * 3600000).toISOString().slice(0, 10);
+  let n = 0;
+  dbx.tx(() => { rows.forEach((r) => {
+    let c; do { c = newCode(); } while (dbx.q.getInvite.get(c));
+    dbx.q.insertInvite.run(c, 1, now, codeDays ? now + codeDays * 86400 : 0, note, 0);
+    sendMail(r.id, '운영진', title, body.indexOf('{코드}') >= 0 ? body.split('{코드}').join(c) : body + (body ? '\n\n' : '') + '초대코드: ' + c, {}, mailExp, false); n++;
+  }); });
+  oplog('admin', '관리자', 'invitemail', title + ' · ' + n + '명');
+  log('초대코드 우편 ' + n + '명 · ' + title);
+  send(req, res, 200, { ok: true, n });
+};
 routes['GET /api/admin/mail'] = (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
   const names = new Map();
