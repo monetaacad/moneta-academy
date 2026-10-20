@@ -1033,7 +1033,9 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 .fr-pulse { animation: decoPulse 3.2s ease-in-out infinite; }   /* 숨 쉬는 별빛: 빛이 천천히 커졌다 작아진다 */
 @keyframes decoPulse { 0%, 100% { box-shadow: 0 0 4px var(--fc); } 50% { box-shadow: 0 0 18px var(--fc), 0 0 2px var(--fc) inset; } }
 .fr-gild { border-radius: 16px; }
-@media (prefers-reduced-motion: reduce) { .fr-aurora, .fr-spring, .fr-pulse, .ink.anim { animation: none; } }
+.fr-neon { box-shadow: 0 0 4px var(--fc), 0 0 14px var(--fc2), inset 0 0 8px var(--fc2); animation: decoNeon 6s linear infinite; }   /* 네온관: 가끔 살짝 깜빡인다 */
+@keyframes decoNeon { 0%, 91%, 95%, 100% { box-shadow: 0 0 4px var(--fc), 0 0 14px var(--fc2), inset 0 0 8px var(--fc2); } 93% { box-shadow: 0 0 1px var(--fc), 0 0 4px var(--fc2); } }
+@media (prefers-reduced-motion: reduce) { .fr-aurora, .fr-spring, .fr-pulse, .fr-neon, .ink.anim { animation: none; } }
 /* 꾸미기 탭: 위에 미리보기와 할 일, 아래에 칸마다 작은 칩 */
 .decoprev { position: sticky; top: -18px; z-index: 2; background: var(--panel); padding: 6px 0 8px; }
 .decobar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; min-height: 30px; }

@@ -4159,6 +4159,7 @@
     if (x.st === 'dotted') return { cls: '', style: 'border:' + (small ? 2 : 3) + 'px dotted ' + c + ';' };
     if (x.st === 'framed') return { cls: '', style: 'border:' + (small ? 3 : 5) + 'px solid ' + c + ';box-shadow:inset 0 0 0 1px ' + hexA(x.c, 0.9) + ',inset 0 0 0 ' + (small ? 3 : 4) + 'px ' + hexA('#f6e7c4', 0.35) + ',0 2px 6px rgba(0,0,0,.25);' };   // 나무 액자: 두꺼운 테 + 안쪽 밝은 띠
     if (x.st === 'twin') return { cls: '', style: 'border:2px solid ' + c + ';box-shadow:0 0 0 ' + (small ? 2 : 3) + 'px ' + forTone(x.c2) + ',0 0 0 ' + (small ? 3 : 4) + 'px ' + hexA(x.c, 0.6) + ';' };   // 기숙사 문장: 두 빛깔 겹테
+    if (x.st === 'neon') return { cls: 'fr-neon', style: 'border:2px solid ' + x.c + ';--fc:' + x.c + ';--fc2:' + hexA(x.c, 0.45) + ';' };   // 분홍 네온: 테마와 상관없이 같은 빛
     if (x.st === 'pulse') return { cls: 'fr-pulse', style: 'border:2px solid ' + c + ';--fc:' + hexA(x.c, 0.55) + ';' };
     if (x.st === 'gild') return { cls: 'fr-gild', style: 'border:' + (small ? 4 : 5) + 'px double ' + c + ';box-shadow:0 0 ' + (small ? 5 : 12) + 'px ' + hexA(x.c, 0.45) + ',inset 0 0 ' + (small ? 4 : 10) + 'px ' + hexA(x.c, 0.3) + ';' };
     return { cls: '', style: 'border:' + w + 'px ' + (x.st === 'dashed' ? 'dashed' : 'solid') + ' ' + c + ';' + (x.st === 'glow' ? 'box-shadow:0 0 ' + (small ? 6 : 14) + 'px ' + hexA(x.c, 0.5) + ';' : 'box-shadow:inset 0 0 0 1px ' + hexA(x.c, 0.3) + ';') };
@@ -4202,7 +4203,7 @@
     h += '<span class="spacer"></span><span class="tiny muted">가진 ' + CUR + ' <b class="num gold">' + fmt(P.res.gold) + '</b></span></div></div>';
     h += '<div class="decotabs filters">' + D.DECO_SLOTS.map(function (sl) { var all = D.DECO.filter(function (x) { return x.slot === sl.id; }), own = all.filter(function (x) { return d.own[x.id]; }).length; return '<button class="btn sm ghost' + (slot === sl.id ? ' on' : '') + '" data-act="decoslot" data-a="' + sl.id + '">' + sl.name + ' <span class="tiny faint num">' + own + '/' + all.length + '</span></button>'; }).join('') + '</div>';
     h += '<div class="dchips"><button class="dchip' + (!tr[slot] ? ' on' : '') + '" data-act="decotry" data-a="' + slot + '" data-b=""><span class="dsw none">없음</span><span class="dn">없음</span><span class="dp">&nbsp;</span></button>' +
-      D.DECO.filter(function (x) { return x.slot === slot; }).map(function (x) {
+      D.DECO.filter(function (x) { return x.slot === slot && (!x.house || x.house === P.house || d.own[x.id]); }).map(function (x) {   // 기숙사 문장은 자기 기숙사 것만
         var own = !!d.own[x.id], on = worn[slot] === x.id;
         return '<button class="dchip' + (tr[slot] === x.id ? ' on' : '') + '" data-act="decotry" data-a="' + slot + '" data-b="' + x.id + '" title="' + esc(x.name) + (own ? '' : ' · ' + MONEY(x.price)) + '">' + decoSwatch(x) + '<span class="dn">' + esc(x.name) + '</span><span class="dp' + (on ? ' worn' : own ? ' own' : '') + '">' + (on ? '다는 중' : own ? '가짐' : fmt(x.price)) + '</span></button>';
       }).join('') + '</div>';

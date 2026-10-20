@@ -1942,6 +1942,7 @@
   R.decoView = function (P) { var d = P && P.deco, o = {}; if (!d) return o; D.DECO_SLOTS.forEach(function (s) { var id = d.on[s.id]; if (id && DECO[id] && d.own[id]) o[s.id] = id; }); return o; };
   A.decoBuy = function (P, W, now, a) {
     var id = str(a.id), x = DECO[id]; if (!x) err('없는 꾸미기입니다'); var d = decoOf(P); if (d.own[id]) err('이미 가지고 있습니다');
+    if (x.house && x.house !== P.house) err(HOUSE[x.house].name + ' 학생만 살 수 있습니다');   // 기숙사 문장 테두리
     if (P.res.gold < x.price) err(CUR + '가 부족합니다');
     P.res.gold -= x.price; d.own[id] = 1; d.on[x.slot] = id; log(P, now, R.josa('꾸미기 「' + x.name + '」', '을', '를') + ' 샀습니다 (' + R.fmt(x.price) + ' ' + CUR + ')', 'news');
     return { ok: true, id: id };
