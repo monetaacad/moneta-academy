@@ -54,8 +54,14 @@ with sync_playwright() as p:
     # 신고 · 가리기 (G가 A를)
     G.click('[data-act=chattab][data-a=world]'); G.wait_for_timeout(300)
     G.locator('#chatlog .cm .cn', has_text='에이' + sfx).last.click(); G.wait_for_timeout(300); G.screenshot(path=f'{OUT}/chat-G-menu.png')
+    G.click('[data-act=creportform]'); G.wait_for_timeout(300); G.fill('#crp-reason', '도배 시험 사유'); G.screenshot(path=f'{OUT}/chat-G-report.png')
     G.click('[data-act=creport]'); G.wait_for_timeout(500)
-    if not admin('/api/admin/reports')['reports']: errs.append('report not recorded')
+    reps = admin('/api/admin/reports')['reports']
+    if not reps: errs.append('report not recorded')
+    elif reps[0].get('reason') != '도배 시험 사유': errs.append('report reason not saved: ' + repr(reps[0].get('reason')))
+    else:
+        ctx = admin('/api/admin/reports/ctx?id=' + str(reps[0]['msg_id']))
+        if not any(m['me'] for m in ctx['list']) or len(ctx['list']) < 3: errs.append('report ctx wrong: ' + str(ctx)[:200])
     G.locator('#chatlog .cm .cn', has_text='에이' + sfx).last.click(); G.wait_for_timeout(300); G.click('[data-act=cblock]'); G.wait_for_timeout(300)
     if any(('에이' + sfx) in x for x in texts(G)): errs.append('blocked user still visible')
     # 새로고침 후 기록 유지
