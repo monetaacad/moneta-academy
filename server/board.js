@@ -52,7 +52,7 @@ function create(dbx, sec, opts) {
   }
   /* 건의 처리 상태(적용 중 · 해결 완료): 건의 말머리나 관리자만 보기 글에, 학생회장만 붙인다. 바뀌면 쓴 학생에게 알림 */
   const ST = { '': '', wip: '적용 중', done: '해결 완료' };
-  const stOk = (me, p) => !!(opts.isChief && opts.isChief(me)) && (p.tag === 'idea' || p.priv);
+  const stOk = (me, p) => (me === 'staff' || !!(opts.isChief && opts.isChief(me))) && (p.tag === 'idea' || p.priv);   // staff = 운영실(관리자 토큰)
   function setStatus(me, id, st) {
     const p = posts.get(Number(id) | 0); if (!p || !stOk(me, p)) fail('상태를 바꿀 수 없는 글입니다');
     st = String(st || ''); if (!(st in ST)) fail('알 수 없는 상태입니다'); if (p.st === st) return p.id;

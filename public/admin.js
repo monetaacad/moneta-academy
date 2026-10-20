@@ -43,16 +43,29 @@
     });
   }
   // 게시판 문의함
+  var BDJ = null;
+  try { if (localStorage.getItem('arc_admin_bdhide') === '1') $('#bdhide').checked = true; } catch (e) { }
+  $('#bdhide').addEventListener('change', function () { try { localStorage.setItem('arc_admin_bdhide', $('#bdhide').checked ? '1' : '0'); } catch (e) { } bdshow(BDJ); });
   function bdload() { api('GET', '/api/admin/board').then(bdshow); }
+  // 문의 상태: 답변 여부 · 답변 뒤 새 댓글 · 게시판 처리 상태(적용 중 / 해결 완료)와 연동. 숨기기를 켜면 답변함 · 해결 완료는 숨기되 새 댓글이 있으면 보인다
+  var ST = { wip: '적용 중', done: '해결 완료' };
+  function bdstate(p) {
+    var lastOp = -1; p.comments.forEach(function (c, i) { if (c.op) lastOp = i; });
+    var answered = lastOp >= 0, fresh = answered && p.comments.slice(lastOp + 1).some(function (c) { return !c.op; });
+    return { answered: answered, fresh: fresh, hide: !fresh && (answered || p.st === 'done') };
+  }
   function bdshow(j) {
-    var list = (j && j.posts) || [];
-    $('#bdbox').innerHTML = list.length ? list.map(function (p) {
-      var answered = p.comments.some(function (c) { return c.op; });
-      return '<details class="bdq"' + (answered ? '' : ' open') + '><summary><b>' + esc(p.title) + '</b> <span class="small faint">' + esc(p.author) + ' · ' + when(p.created) + ' · 댓글 ' + p.comments.length + '</span> ' + (answered ? '<span class="small" style="color:#74bfa9">답변함</span>' : '<span class="small gold">새 문의</span>') + '</summary>' +
+    BDJ = j; var all = (j && j.posts) || [], hide = $('#bdhide').checked, list = hide ? all.filter(function (p) { return !bdstate(p).hide; }) : all;
+    $('#bdbox').innerHTML = (hide && list.length < all.length ? '<p class="tiny faint">숨긴 글 ' + (all.length - list.length) + '개</p>' : '') + (list.length ? list.map(function (p) {
+      var s = bdstate(p), tag = s.fresh ? '<span class="small gold">새 댓글</span>' : !s.answered ? '<span class="small gold">새 문의</span>' : '<span class="small" style="color:#74bfa9">답변함</span>';
+      var stTag = ST[p.st] ? ' <span class="small" style="color:' + (p.st === 'done' ? '#6fcf97' : '#6aa8ff') + '">' + ST[p.st] + '</span>' : '';
+      var stBtns = [['wip', '적용 중'], ['done', '해결 완료'], ['', '표시 없음']].map(function (o) { return '<button class="btn sm' + ((p.st || '') === o[0] ? ' primary' : ' ghost') + '" data-a="bdst" data-c="' + p.id + '" data-s="' + o[0] + '">' + o[1] + '</button>'; }).join('');
+      return '<details class="bdq"' + (s.answered && !s.fresh ? '' : ' open') + '><summary><b>' + esc(p.title) + '</b> <span class="small faint">' + esc(p.author) + ' · ' + when(p.created) + ' · 댓글 ' + p.comments.length + '</span> ' + tag + stTag + '</summary>' +
+        '<div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap"><span class="tiny faint">처리 상태 (게시판과 연동)</span>' + stBtns + '</div>' +
         '<div class="msgtext" style="white-space:pre-wrap;margin:8px 0">' + esc(p.body) + '</div>' +
-        p.comments.map(function (c) { return '<div class="small" style="margin:4px 0;padding:6px 8px;border-radius:6px;background:rgba(255,255,255,.04)"><b>' + esc(c.author) + '</b>' + (c.op ? ' <span class="gold">운영진</span>' : '') + ' <span class="faint">' + when(c.created) + '</span> <button class="btn sm ghost" data-a="bdcdel" data-c="' + c.id + '">지우기</button><div style="white-space:pre-wrap">' + esc(c.body) + '</div></div>'; }).join('') +
+        p.comments.map(function (c) { return '<div class="small" style="margin:4px 0;padding:6px 8px;border-radius:6px;background:rgba(255,255,255,.04)"><b>' + esc(c.author) + '</b>' + (c.op ? ' <span class="gold">운영진</span>' : '') + ' <span class="faint">' + when(c.created) + '</span> <button class="btn sm ghost" data-a="bdcdel" data-c="' + c.id + '">지우기</button><div style="white-space:pre-wrap;margin-top:2px">' + esc(c.body) + '</div></div>'; }).join('') +
         '<div class="form" style="margin-top:6px"><textarea id="bdr-' + p.id + '" rows="2" maxlength="500" placeholder="운영진 답변 (500자)" style="flex:1;min-width:220px"></textarea><button class="btn sm primary" data-a="bdreply" data-c="' + p.id + '">답변</button><button class="btn sm danger" data-a="bddel" data-c="' + p.id + '">글 지우기</button></div></details>';
-    }).join('') : '<p class="faint small">문의가 없습니다.</p>';
+    }).join('') : '<p class="faint small">' + (all.length ? '보일 문의가 없습니다 (숨긴 글은 위 체크를 풀면 보입니다).' : '문의가 없습니다.') + '</p>');
   }
   function reports() {
     api('GET', '/api/admin/reports' + ($('#showres').checked ? '?resolved=1' : '')).then(function (j) {
@@ -131,6 +144,7 @@
     del: function (el) { api('POST', '/api/admin/chat/delete', { id: +el.dataset.c }).then(function () { return api('POST', '/api/admin/reports/resolve', { id: +el.dataset.r }); }).then(function () { toast('삭제했습니다'); reports(); }); },
     rmute: function (el) { api('POST', '/api/admin/mute', { pid: el.dataset.p, minutes: +el.dataset.m }).then(function () { return api('POST', '/api/admin/reports/resolve', { id: +el.dataset.r }); }).then(function () { toast('하루 동안 채팅 금지'); reports(); }); },
     bdload: function () { bdload(); },
+    bdst: function (el) { api('POST', '/api/admin/board', { op: 'status', id: +el.dataset.c, st: el.dataset.s || '' }).then(function (j) { if (j.error) { toast(j.error); return; } bdshow(j); toast(el.dataset.s ? '「' + ST[el.dataset.s] + '」 표시를 붙였습니다' : '상태 표시를 뗐습니다'); }); },
     ideacopy: function () {
       api('GET', '/api/admin/ideas').then(function (j) {
         if (j.error) { toast(j.error); return; } if (!j.text) { toast('복사할 글이 없습니다'); return; }
