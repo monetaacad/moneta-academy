@@ -116,6 +116,8 @@ const exprooms = ExpRoom.create({ loadPlayer: (pid, now) => loadPlayer(pid, now)
   partyInfo: (pid) => { const id = partyOf.get(pid); if (!id) return null; const pa = dbx.q.partyGet.get(id); if (!pa) return null; return { id, leader: pa.leader, allgo: !!pa.allgo, members: dbx.q.partyMembers.all(id).map((m) => m.id) }; },
   canInvite: (a, b) => friendState(a, b) === 'ok' || (guildOf.get(a) && guildOf.get(a) === guildOf.get(b)),
   nameOf: (pid) => { const r = dbx.q.getProfile.get(pid); return r ? r.name : ''; } });
+// 새 업데이트 노트가 배포되면 공지 채널에 한 번 알린다
+{ const pn = R.D.PATCH && R.D.PATCH[0]; if (pn && dbx.kvGet('patchPosted', 0) < pn.id) { chat.system('notice', '새 업데이트 노트가 게시되었습니다: 「' + pn.title + '」. 상단의 업데이트 노트 버튼에서 확인할 수 있습니다.', Date.now() / 1000); dbx.kvSet('patchPosted', pn.id); } }
 world.onKill = (name) => { const t = name + ' 토벌 성공! 이번 주에 도전한 모든 학생에게 토벌 보상 우편을 보냈습니다.'; chat.system('world', t, Date.now() / 1000); chat.system('notice', t, Date.now() / 1000); };
 
 // 월드 보스 토벌 보상: 이번 주에 한 번이라도 도전한 학생 모두에게 우편 (막 잡은 학생은 아직 저장 전일 수 있어 따로 넣는다)
