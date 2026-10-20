@@ -309,11 +309,24 @@
   R.clsExamPreview = function (P, W, id, t) { var old = P.cls; P.cls = id; try { return R.duelPreview(P, W, R.clsExamStage(P, W), 4, 1.3, t); } finally { P.cls = old; } };
   R.clsExamFoe = function (P, W) { return R.duelEnemy(R.clsExamStage(P, W), 4, 1.3); };
   // 학과가 바뀌면 그 학과로 못 쓰는 전용 주문은 슬롯에서 뺀다
+  // 학과별 주문 구성은 P.spellsBy에 기억해 두었다가, 그 학과로 돌아오면 되살린다 (돌아와도 빠진 전용 주문이 그대로 비어 있던 문제)
   function clsSet(P, id, now, how) {
-    P.cls = id; P.spells = P.spells.map(function (s) { return s && R.spellUnlocked(P, s) ? s : null; });
+    var by = P.spellsBy || (P.spellsBy = {}); if (P.cls) by[P.cls] = P.spells.slice();
+    var before = P.spells.filter(Boolean); P.cls = id;
+    var ok = function (s) { return s && R.spellUnlocked(P, s); }, saved = by[id], restored = false;
+    if (saved && saved.some(ok)) {   // 이 학과로 지낼 때의 구성을 먼저, 남는 칸에는 지금 쓸 수 있는 주문을
+      var keep = P.spells.filter(function (s) { return ok(s) && saved.indexOf(s) < 0; });
+      P.spells = P.spells.map(function (s, i) { return ok(saved[i]) ? saved[i] : null; });
+      for (var i = 0; i < P.spells.length && keep.length; i++) if (!P.spells[i]) P.spells[i] = keep.shift();
+      restored = true;
+    } else P.spells = P.spells.map(function (s) { return ok(s) ? s : null; });
     if (!P.spells.some(Boolean)) P.spells[0] = 'bolt';
-    if (allocReset(P, id)) log(P, now, '학과를 옮겨 능력치 포인트를 모두 돌려받았습니다. 새 학과에 맞게 다시 분배할 수 있습니다.', 'news');
+    var off = before.filter(function (s) { return P.spells.indexOf(s) < 0; }).map(function (s) { return SPELL[s] ? SPELL[s].name : s; });
+    var pts = allocReset(P, id); if (pts) log(P, now, '학과를 옮겨 능력치 포인트를 모두 돌려받았습니다. 새 학과에 맞게 다시 분배할 수 있습니다.', 'news');
     log(P, now, R.CLS[id].name + ' 학과로 옮겼습니다' + (how ? ' (' + how + ')' : '') + '.', 'story');
+    if (restored) log(P, now, '이전에 ' + R.CLS[id].name + ' 학과에서 사용하던 주문 구성을 다시 장착했습니다.', 'news');
+    if (off.length) log(P, now, '주문 칸에서 해제된 주문: ' + off.join(', ') + '. 장착 주문을 확인하십시오.', 'news');
+    return { off: off, restored: restored, pts: pts };
   }
   R.newPlayer = function (id, name, house, now, seed) {
     var P = {
@@ -1659,8 +1672,8 @@
     var fee = R.clsExamFee(P); if (P.res.gold < fee) err('응시료가 모자랍니다 (' + fee + ' ' + R.CUR + ')');
     P.res.gold -= fee;
     var old = P.cls; P.cls = id; var c = calc(P, W, now), e = R.clsExamFoe(P, W), f = fight(P, c, e, 40, true); P.cls = old;
-    if (f.win) clsSet(P, id, now, '전과시험 합격'); else { P.clsCd = now + R.CLS_EXAM_CD; log(P, now, R.CLS[id].name + ' 전과시험 불합격', 'bad'); }
-    return { win: !!f.win, cc: !!f.cc, ev: f.ev, maxHp: e.hp, mHp: f.mHp, cls: id, fee: fee };
+    var cs = null; if (f.win) cs = clsSet(P, id, now, '전과시험 합격'); else { P.clsCd = now + R.CLS_EXAM_CD; log(P, now, R.CLS[id].name + ' 전과시험 불합격', 'bad'); }
+    return { win: !!f.win, cc: !!f.cc, ev: f.ev, maxHp: e.hp, mHp: f.mHp, cls: id, fee: fee, off: cs ? cs.off : [], restored: cs ? cs.restored : false, pts: cs ? cs.pts : 0 };
   };
   A.expStart = function (P, W, now, a) {
     if (R.dreaming(P, now)) err('꿈길 중에는 출정할 수 없습니다 (연구를 시작할 수 있습니다)');
