@@ -1970,7 +1970,7 @@
   function famXpBar(f, o, act2, disp) {
     if (o.lv >= R.FAM_MAX_LV) return '<div class="tiny gold" style="margin-top:4px">최대 레벨</div>';
     var need = R.famXpNeed(f, o.lv), xp = Math.floor(o.xp || 0);
-    return '<div class="famxp"><div class="row tiny"><span class="faint">경험치' + (act2 ? ' · 동행 중 활동할 때마다' : disp ? ' · 파견에서 돌아오면' : '') + '</span><span class="spacer"></span><span class="num">' + fmt(xp) + ' / ' + fmt(need) + '</span></div><div class="bar" style="height:5px;margin-top:2px"><b style="width:' + Math.min(100, xp / need * 100).toFixed(1) + '%"></b></div></div>';
+    return '<div class="famxp"><div class="row tiny"><span class="faint">경험치' + (act2 ? ' · 동행 중 활동할 때마다' : disp ? ' · 귀환 시 파견 1시간당 +' + R.FAM_DISP_XP + ' 지급' : '') + '</span><span class="spacer"></span><span class="num">' + fmt(xp) + ' / ' + fmt(need) + '</span></div><div class="bar" style="height:5px;margin-top:2px"><b style="width:' + Math.min(100, xp / need * 100).toFixed(1) + '%"></b></div></div>';
   }
   function famView() {
     var P = S.P, eh = R.eggHold(P), hold = '<p class="small" style="margin-top:8px">알 품기: 지니고 있는 알 <b class="num">' + P.fam.eggs + '</b>개' + (eh ? ' · <span class="good">경험치 +' + Math.round(eh * R.EGG_HOLD_EACH * 100) + '%</span>' : '') + ' <span class="tiny faint">(부화시키지 않은 알 하나마다 경험치 +' + Math.round(R.EGG_HOLD_EACH * 100) + '%, ' + R.EGG_HOLD_MAX + '개까지)</span></p>' + (P.subj.beast.lv ? '<p class="small" style="margin-top:4px">환수생태학 ' + P.subj.beast.lv + '레벨: 사역마 동행 보너스 +' + Math.round(P.subj.beast.lv * R.BEAST_FAM * 100) + '% · 파견 보상 +' + Math.round(P.subj.beast.lv * R.BEAST_DISP * 100) + '% · 부화 속도 +' + P.subj.beast.lv + '%</p>' : '<p class="tiny faint" style="margin-top:4px">환수생태학을 들으면 레벨마다 사역마 동행 보너스 +' + Math.round(R.BEAST_FAM * 100) + '%, 파견 보상 +' + Math.round(R.BEAST_DISP * 100) + '%, 부화 속도 +1%</p>');
@@ -4541,7 +4541,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102063;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102064;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
