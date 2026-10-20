@@ -443,7 +443,7 @@
     if (ch === 'dm') return S.dm.threads.filter(function (t) { return t.from !== S.P.id && t.last > (S.read.dm[t.peer] || 0); }).length;
     if (lazyCh(ch)) return Math.max(0, (S.chat.seq[ch] || 0) - (S.read['s_' + ch] || 0));
     var r = S.read[ch] || 0, me = S.P && S.P.id;
-    return S.chat.msgs[ch].filter(function (m) { return (isNum(m.id) ? m.id > r : !S.read['l_' + ch] || m.t > S.read['l_' + ch]) && m.pid !== me && S.chat.blocked.indexOf(m.pid) < 0; }).length;
+    return S.chat.msgs[ch].filter(function (m) { return (isNum(m.id) ? m.id > r : !S.read['l_' + ch] || m.t > S.read['l_' + ch]) && m.pid !== me && S.chat.blocked.indexOf(m.pid) < 0 && !headHidden(m); }).length;
   }
   function recount() { chans().forEach(function (k) { S.chat.unread[k] = countUnread(k); }); }
   function markRead(ch) {
@@ -531,7 +531,7 @@
   }
   // 접힌 채팅창: 지금 고른 탭의 최근 글 한 줄 (글이 없으면 우측에 「채팅 열기」)
   function peekText() {
-    var arr = (S.chat.msgs[S.chat.ch === 'dm' ? 'world' : S.chat.ch] || []).filter(function (m) { return S.chat.blocked.indexOf(m.pid) < 0; }), m = arr[arr.length - 1];
+    var arr = (S.chat.msgs[S.chat.ch === 'dm' ? 'world' : S.chat.ch] || []).filter(function (m) { return S.chat.blocked.indexOf(m.pid) < 0 && !headHidden(m); }), m = arr[arr.length - 1];
     if (!m) return '<span class="faint">채팅 열기</span>';
     var tx = m.text; if (m.kind === 'recruit') { try { var rc = JSON.parse(m.text); tx = (rc.type === 'guild' ? '동아리 모집 · ' + rc.name : rc.type === 'party' ? '파티원 모집 · ' + rc.name : '함께 원정 모집 · ' + rc.s + '단계') + ' ' + rc.n + '/' + rc.max + (rc.note ? ' · ' + rc.note : ''); } catch (e) { tx = '모집 알림'; } }
     return '<span class="pkmsg"><b style="color:' + (R.HOUSE[m.house] ? R.HOUSE[m.house].color : 'var(--brass2)') + '">' + esc(m.name) + '</b> <span class="muted">' + chatText(String(tx).replace(/\s+/g, ' ').slice(0, 90)) + '</span></span>';
@@ -550,7 +550,11 @@
   function chatText(t) { return esc(t).replace(/\*([^*\n]{1,300})\*/g, '<i class="act">$1</i>').replace(/\n/g, '<br>'); }
   // 모집 카드 아랫줄: 한마디(있으면) + 버튼을 한 줄로
   function rcFoot(note, btn) { return note || btn ? '<span class="rcfoot">' + (note ? '<span class="rcnote">“' + esc(note) + '”</span>' : '') + btn + '</span>' : ''; }
+  // 사감 한마디 숨기기 (설정 › 채팅, 이 브라우저에만): 신입생 환영 인사만 · 모두
+  function headWelcome(m) { if (m.w) return true; var L = D.HOUSE_LORE[m.house], t = L && L.say && L.say.welcome; if (!t) return false; var p = t.split('{n}'); return p.length === 2 && m.text.indexOf(p[0]) === 0 && m.text.slice(-p[1].length) === p[1]; }
+  function headHidden(m) { return m.kind === 'head' && (PREF.headOff === 'all' || (PREF.headOff === 'welcome' && headWelcome(m))); }
   function msgHtml(m) {
+    if (headHidden(m)) return '';
     if (S.chat.blocked.indexOf(m.pid) >= 0) return '';
     var t = new Date(m.t * 1000), hh = t.getHours(), mm = t.getMinutes(), time = (hh < 10 ? '0' : '') + hh + ':' + (mm < 10 ? '0' : '') + mm;
     var hc = R.HOUSE[m.house] ? R.HOUSE[m.house].color : 'var(--brass2)', me = S.P && m.pid === S.P.id;
@@ -3490,6 +3494,7 @@
     setTimeout(function () { var i = $('#fam-nm'); if (i) { i.focus(); i.select(); } }, 30);
   };
   ACT.famnamesave = function (id) { var i = $('#fam-nm'); act('famName', { id: id, name: i ? i.value : '' }).then(function (r) { if (!r) return; closeModal(); toast('사역마 이름', r.nm ? R.josa('「' + r.nm + '」', '으로', '로') + ' 지었습니다' : '원래 이름으로 돌아갔습니다'); render(); }); };
+  ACT.headoff = function (k, b, el) { PREF.headOff = el.checked ? k : (k === 'all' ? 'welcome' : ''); savePref(); recount(); updateUnread(); renderDock(); ACT.settings(); };
   ACT.opt = function (k, v, el) { act('opt', { k: k, v: el.checked }).then(function () { if (k === 'sound') { Snd.set(S.P.opt.sound); if ($('#setbox')) ACT.settings(); } if (/Title$/.test(k)) renderDock(); render(); }); };
   ACT.autosell = function () { act('autoSell', { r: +$('#autosell').value }).then(render); };
   ACT.automode = function () { act('autoMode', { dis: $('#automode').value === 'dis' }).then(render); };
@@ -3947,17 +3952,20 @@
   };
   ACT.pwainstall = function () { var e = PWA.evt; if (!e) return; e.prompt(); (e.userChoice || Promise.resolve()).then(function () { PWA.evt = null; ACT.settings(); }); };
   var FONTS = [[0.9, '작게'], [1, '보통'], [1.12, '크게'], [1.25, '더 크게'], [1.4, '아주 크게']];
+  // 설정 탭: 화면 · 소리 · 알림 · 채팅 · 게임 · 계정 (고른 탭만 보인다)
+  var SET_TABS = ['화면', '소리', '알림', '채팅', '게임', '계정'];
   function settingsBody() {
-    var P = S.P, h = '';
-    h += installRow();
-    h += chatTabRow();
-    h += '<div class="setsec"><div class="section-t">화면</div>' +
-      '<div class="row small"><span class="muted" style="width:72px">테마</span><div class="filters">' + [{ id: 'auto', name: '기기 설정 따라', desc: '어두우면 밤하늘 · 밝으면 한낮의 서고' }].concat(THEMES).map(function (t) { return '<button class="btn sm ghost' + (PREF.theme === t.id ? ' on' : '') + '" data-act="settheme" data-a="' + t.id + '" title="' + t.desc + '">' + t.name + '</button>'; }).join('') + '</div></div><div class="row small"><span class="muted" style="width:72px">종이 질감</span><label class="tog"><input type="checkbox" data-act="paper"' + (PREF.paper !== false ? ' checked' : '') + '> 카드·버튼을 양피지처럼 (가장자리가 살짝 찢긴 종이)</label></div><div class="row small"><span class="muted" style="width:72px"></span><span class="tiny faint">선택한 테마는 이 기기에 저장됩니다. 「기기 설정 따라」를 선택하면 기기의 밝기 설정에 맞춰 바뀝니다.</span>' + '</div></div>' +
+    var P = S.P, h = '', T = SET_TABS.indexOf(S.setTab) >= 0 ? S.setTab : '화면', st = function (n) { return ' data-st="' + n + '"' + (T === n ? '' : ' hidden'); };
+    h += '<div class="tabs settabs" role="tablist" style="margin-bottom:4px">' + SET_TABS.map(function (n) { return '<button role="tab" aria-selected="' + (T === n) + '" class="' + (T === n ? 'on' : '') + '" data-act="settab" data-a="' + n + '">' + n + '</button>'; }).join('') + '</div>';
+    h += '<div' + st('화면') + '>' + installRow() + '</div>';
+    h += '<div' + st('채팅') + '>' + chatTabRow() + '</div>';
+    h += '<div class="setsec"' + st('화면') + '><div class="section-t">화면</div>' +
+      '<div class="row small"><span class="muted" style="width:72px">테마</span><div class="filters">' + [{ id: 'auto', name: '기기 설정 따라', desc: '어두우면 밤하늘 · 밝으면 한낮의 서고' }].concat(THEMES).map(function (t) { return '<button class="btn sm ghost' + (PREF.theme === t.id ? ' on' : '') + '" data-act="settheme" data-a="' + t.id + '" title="' + t.desc + '">' + t.name + '</button>'; }).join('') + '</div></div><div class="row small"><span class="muted" style="width:72px">종이 질감</span><label class="tog"><input type="checkbox" data-act="paper"' + (PREF.paper !== false ? ' checked' : '') + '> 카드·버튼을 양피지처럼 (가장자리가 살짝 찢긴 종이)</label></div><div class="row small"><span class="muted" style="width:72px"></span><span class="tiny faint">선택한 테마는 이 기기에 저장됩니다. 「기기 설정 따라」를 선택하면 기기의 밝기 설정에 맞춰 바뀝니다.</span>' + '</div>' +
       '<div class="row small"><span class="muted" style="width:72px">글씨 크기</span><div class="filters">' + FONTS.map(function (f) { return '<button class="btn sm ghost' + (PREF.font === f[0] ? ' on' : '') + '" data-act="setfont" data-a="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '</div></div>' +
       '<div class="row small"><span class="muted">채팅창 크기는 가장자리를 끌어서 바꿉니다</span><span class="spacer"></span><button class="btn sm ghost" data-act="dock-reset">처음 크기로</button></div>' +
       '<label class="tog"><input type="checkbox" id="opt-rf" data-act="opt" data-a="reduceFx"' + (P.opt.reduceFx ? ' checked' : '') + '> 전투 효과 줄이기 (배터리 절약)</label>' +
       '<label class="tog"><input type="checkbox" data-act="opt" data-a="bulkAsk"' + (P.opt.bulkAsk !== false ? ' checked' : '') + '> 장비 일괄 판매 · 분해 전에 확인 창 띄우기</label></div>';
-    h += '<div class="setsec"><div class="section-t">소리</div>' +
+    h += '<div class="setsec"' + st('소리') + '><div class="section-t">소리</div>' +
       '<label class="tog"><input type="checkbox" id="opt-snd" data-act="opt" data-a="sound"' + (P.opt.sound ? ' checked' : '') + '> 효과음</label>' +
       '<div class="row small slider"><span class="muted">효과음 크기</span><input type="range" id="opt-sfxvol" min="0" max="100" step="1" value="' + Math.round(PREF.sfxVol * 100) + '" aria-label="효과음 크기"><span class="num tiny faint" id="opt-sfxvol-v">' + Math.round(PREF.sfxVol * 100) + '%</span><button class="btn sm ghost" data-act="sfxtest">들어 보기</button></div>' +
       '<div class="sfxlist' + (P.opt.sound ? '' : ' off') + '">' + Snd.KEYS.map(function (k) { return '<label class="tog"><input type="checkbox" data-act="sfxone" data-a="' + k[0] + '"' + (PREF.sfxOff[k[0]] ? '' : ' checked') + '> ' + k[1] + '</label>'; }).join('') + '</div>' +
@@ -3966,18 +3974,18 @@
       '<div class="row small slider"><span class="muted">배경음악 크기</span><input type="range" id="opt-bgmvol" min="0" max="100" step="1" value="' + Math.round(Bgm.vol * 100) + '" aria-label="배경음악 크기"><span class="num tiny faint" id="opt-bgmvol-v">' + Math.round(Bgm.vol * 100) + '%</span></div>' +
       '<label class="tog"><input type="checkbox" id="opt-bgmbg" data-act="bgmbg"' + (Bgm.bg ? ' checked' : '') + '> 창을 내리거나 다른 탭을 볼 때도 배경음악 틀기</label></div>';
     var perm = typeof Notification === 'undefined' ? 'none' : Notification.permission;
-    h += '<div class="setsec"><div class="section-t">알림</div>' +
+    h += '<div class="setsec"' + st('알림') + '><div class="section-t">알림</div>' +
       '<label class="tog"><input type="checkbox" id="opt-notify" data-act="notify"' + (PREF.notify && perm === 'granted' ? ' checked' : '') + (perm === 'none' ? ' disabled' : '') + '> 창을 내려 두었거나 다른 탭을 보고 있을 때 작업이 끝나면 알림</label>' +
       (perm === 'none' ? '<p class="tiny faint">이 브라우저(또는 이 화면)에서는 알림을 사용할 수 없습니다.</p>' : perm === 'denied' ? '<p class="tiny bad">브라우저에서 알림이 막혀 있습니다. 주소창 좌측의 사이트 설정에서 알림을 허용해야 합니다.</p>' : '') +
       pushRow() + '<div class="sfxlist' + (PREF.notify || PREF.push ? '' : ' off') + '">' + [['lec', '수업'], ['exp', '원정'], ['res', '연구'], ['disp', '사역마 파견'], ['jar', '정령 병이 가득 참'], ['sky', '하늘 이벤트 시작'], ['auc', '떠돌이 상인 도착'], ['aucbid', '경매 입찰 (밀림 · 마감 5분 전)']].map(function (t) { return '<label class="tog"><input type="checkbox" data-act="ntone" data-a="' + t[0] + '"' + (ntOn(t[0]) ? ' checked' : '') + '> ' + t[1] + '</label>'; }).join('') + '</div></div>';
-    h += '<div class="setsec"><div class="section-t">채팅</div><p class="tiny faint">새 메시지 알림: 효과음, 다른 탭을 보고 있을 때 브라우저 알림(위 알림을 켠 경우), 게임을 닫아 두었을 때 푸시(푸시를 켠 기기). 알림에는 메시지 내용이 표시되지 않습니다.</p>' + [['chexr', '원정 채팅'], ['chparty', '파티 채팅'], ['chdm', '1:1 채팅']].map(function (t) { return '<label class="tog"><input type="checkbox" data-act="ntone" data-a="' + t[0] + '"' + (ntOn(t[0]) ? ' checked' : '') + '> ' + t[1] + ' 새 메시지 알림</label>'; }).join('') + '<label class="tog"><input type="checkbox" id="opt-hmt" data-act="opt" data-a="hideMyTitle"' + (P.opt.hideMyTitle ? ' checked' : '') + '> 채팅에서 내 칭호 숨기기</label>' +
-      '<label class="tog"><input type="checkbox" id="opt-hot" data-act="opt" data-a="hideOtherTitle"' + (P.opt.hideOtherTitle ? ' checked' : '') + '> 채팅에서 다른 학생 칭호 숨기기</label><p class="tiny faint">정보창에는 칭호가 그대로 보입니다.</p></div>';
-    h += '<div class="setsec"><div class="section-t">게임</div><label class="tog"><input type="checkbox" id="opt-ae2" data-act="opt" data-a="autoEquip"' + (P.opt.autoEquip ? ' checked' : '') + '> 더 좋은 장비 자동 장착</label>' +
+    h += '<div class="setsec"' + st('채팅') + '><div class="section-t">채팅</div><p class="tiny faint">새 메시지 알림: 효과음, 다른 탭을 보고 있을 때 브라우저 알림(위 알림을 켠 경우), 게임을 닫아 두었을 때 푸시(푸시를 켠 기기). 알림에는 메시지 내용이 표시되지 않습니다.</p>' + [['chexr', '원정 채팅'], ['chparty', '파티 채팅'], ['chdm', '1:1 채팅']].map(function (t) { return '<label class="tog"><input type="checkbox" data-act="ntone" data-a="' + t[0] + '"' + (ntOn(t[0]) ? ' checked' : '') + '> ' + t[1] + ' 새 메시지 알림</label>'; }).join('') + '<label class="tog"><input type="checkbox" id="opt-hmt" data-act="opt" data-a="hideMyTitle"' + (P.opt.hideMyTitle ? ' checked' : '') + '> 채팅에서 내 칭호 숨기기</label>' +
+      '<label class="tog"><input type="checkbox" id="opt-hot" data-act="opt" data-a="hideOtherTitle"' + (P.opt.hideOtherTitle ? ' checked' : '') + '> 채팅에서 다른 학생 칭호 숨기기</label>' + '<label class="tog"><input type="checkbox" data-act="headoff" data-a="welcome"' + (PREF.headOff ? ' checked' : '') + (PREF.headOff === 'all' ? ' disabled' : '') + '> 기숙사 RP 채팅에서 사감의 신입생 환영 인사 숨기기</label><label class="tog"><input type="checkbox" data-act="headoff" data-a="all"' + (PREF.headOff === 'all' ? ' checked' : '') + '> 사감 한마디 모두 숨기기 (대항전 결과 · 선두 변화 포함)</label><p class="tiny faint">정보창에는 칭호가 그대로 보입니다.</p></div>';
+    h += '<div class="setsec"' + st('게임') + '><div class="section-t">게임</div><label class="tog"><input type="checkbox" id="opt-ae2" data-act="opt" data-a="autoEquip"' + (P.opt.autoEquip ? ' checked' : '') + '> 더 좋은 장비 자동 장착</label>' +
       '<label class="tog"><input type="checkbox" id="opt-aa2" data-act="opt" data-a="autoAlloc"' + (P.opt.autoAlloc ? ' checked' : '') + '> 능력치 자동 분배</label>' +
       '<label class="tog"><input type="checkbox" id="opt-sf2" data-act="opt" data-a="showFam"' + (P.opt.showFam ? ' checked' : '') + '> 동행 중인 사역마를 내 정보에 공개</label></div>';
-    if (API.mode === 'local' && API.cheat) h += '<div class="setsec cheat"><div class="section-t">테스트 도구 <span class="tag br">데모에서만</span></div><p class="tiny faint">기능을 둘러보기 위한 버튼입니다. 서버판에는 없습니다.</p><div class="filters">' +
+    if (API.mode === 'local' && API.cheat) h += '<div class="setsec cheat"' + st('계정') + '><div class="section-t">테스트 도구 <span class="tag br">데모에서만</span></div><p class="tiny faint">기능을 둘러보기 위한 버튼입니다. 서버판에는 없습니다.</p><div class="filters">' +
       [['grade', '한 학년 올리기'], ['subj', '과목 +5레벨'], ['lvl', '레벨 +10'], ['res', '자원 듬뿍'], ['stage', '원정 단계 모두 열기'], ['finish', '작업 즉시 끝내기'], ['spirit', '정령·도전권 채우기']].map(function (c) { return '<button class="btn sm" data-act="cheat" data-a="' + c[0] + '">' + c[1] + '</button>'; }).join('') + '</div></div>';
-    h += '<div class="setsec"><div class="section-t">계정</div><p class="small muted">' + (API.mode === 'local' ? '미리보기: 진행 상황은 이 브라우저에만 저장됩니다.' : '진행 상황은 아카데미 서버에 저장됩니다. 글씨 크기·소리·알림 설정은 이 브라우저에만 기억합니다.') + '</p><p class="tiny faint">화면 버전 ' + BUILD + '</p>';
+    h += '<div class="setsec"' + st('계정') + '><div class="section-t">계정</div><p class="small muted">' + (API.mode === 'local' ? '미리보기: 진행 상황은 이 브라우저에만 저장됩니다.' : '진행 상황은 아카데미 서버에 저장됩니다. 글씨 크기·소리·알림 설정은 이 브라우저에만 기억합니다.') + '</p><p class="tiny faint">화면 버전 ' + BUILD + '</p>';
     if (API.mode === 'server') { h += '<hr class="sep"><div class="row small" style="gap:8px"><span class="muted">로그인 아이디</span><b class="num" id="my-login">' + esc(S.myLogin || '…') + '</b></div>'; if (!S.myLogin && API.myLogin) setTimeout(function () { API.myLogin().then(function (j) { if (j.login) S.myLogin = j.login; var el = $('#my-login'); if (el) el.textContent = j.login || (j.error ? '불러오지 못했습니다' : '확인 불가'); }); }, 0); }
     if (API.mode === 'server') h += '<div class="field" style="margin-top:10px"><label class="small muted" for="pw-old">비밀번호 바꾸기</label><input id="pw-old" type="password" placeholder="현재 비밀번호" autocomplete="current-password"><input id="pw-new" type="password" placeholder="새 비밀번호 (8자 이상)" autocomplete="new-password"><div class="row"><button class="btn sm" data-act="pw">변경</button><span class="tiny faint" id="pw-msg"></span></div></div>' +
       '<div class="row"><button class="btn danger sm" data-act="logout">로그아웃</button></div>';
@@ -3985,6 +3993,7 @@
     return h + '</div>';
   }
   ACT.settings = function () { S.meModal = false; var y = $('.mbox') ? $('.mbox').scrollTop : 0, keep = S.modal && $('#setbox'); modal(mhead('설정', '') + '<div id="setbox" class="stack" style="gap:14px">' + settingsBody() + '</div>'); if (keep) $('.mbox').scrollTop = y; };
+  ACT.settab = function (t) { S.setTab = t; ACT.settings(); var b = $('.mbox'); if (b) b.scrollTop = 0; };
   ACT.setfont = function (v) { PREF.font = +v; savePref(); applyPref(); ACT.settings(); };
   ACT.sfxtest = function () { Snd.preview(); };
   ACT.sfxone = function (k, b, el) { if (el.checked) delete PREF.sfxOff[k]; else PREF.sfxOff[k] = true; savePref(); applyPref(); if (el.checked && S.P.opt.sound) Snd.play(k); };
@@ -4665,7 +4674,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102097;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102098;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
