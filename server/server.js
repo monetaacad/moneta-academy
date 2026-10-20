@@ -635,7 +635,8 @@ routes['GET /api/profile'] = (req, res) => {
   if (LP) { const s = R.summary(LP, world.W, Math.min(nowSec(), LP.at)); lvl = s.lvl; grade = s.grade; power = s.power; }
   const out = { id, op: isChatOp(id) || undefined, name: row.name, house: row.house, grade, guest: !!row.guest, created: row.created, av: row.avatar_v && dbx.q.getAvatar.get(id).avatar ? row.avatar_v : 0,
     status: pr.status, bio: pr.bio, fav: pr.fav, avcredit: pr.avcredit || '', online: self || isOnline(id), self, title: LP ? R.titleName(LP, LP.title) : row.title };
-  { const DP = LP || store.get(id); out.deco = R.decoView(DP); if (DP && R.CLS[DP.cls]) out.cls = DP.cls; const bw = DP && R.badgeWorn(DP); if (bw) out.badge = { gem: bw.gem, lv: bw.lv, name: bw.name }; }   // 정보 카드 꾸미기
+  { const DP = LP || store.get(id); out.deco = R.decoView(DP); if (DP && R.CLS[DP.cls]) out.cls = DP.cls; const bw = DP && R.badgeWorn(DP); if (bw) out.badge = { gem: bw.gem, lv: bw.lv, name: bw.name };
+    const fa = DP && DP.opt && DP.opt.showFam && DP.fam && DP.fam.act, fo = fa && DP.fam.own[fa]; if (fo && R.FAM[fa]) out.fam = { id: fa, lv: fo.lv, nm: fo.nm || '' }; }   // 동행 사역마 (학생이 공개를 켰을 때만)   // 정보 카드 꾸미기
   const fs = self ? null : friendState(me, id), can = (v) => self || v === 'all' || (v === 'friend' && fs === 'ok');
   if (can(pr.visLv)) Object.assign(out, { lvl, power, rank: world.rankOf(power) });
   if (can(pr.visStat) || can(pr.visEq)) {
@@ -799,7 +800,7 @@ routes['POST /api/friends'] = async (req, res) => {
 
 
 /* ───────── 파티 (최대 4명) ─────────
-   파티원 한 명당 원정 아르크·경험치 +3% (최대 +9%). 파티 전용 채팅 채널. */
+   파티원 한 명당 원정 아르크 +3% (최대 +9%) · 경험치 +1% (최대 +3%). 파티 전용 채팅 채널. */
 const PARTY_MAX = 4, PARTY_NAME_RE = /^[가-힣A-Za-z0-9_ ]{2,12}$/;
 const partySize = new Map();
 dbx.q.partyAllMembers.all().forEach((r) => { partyOf.set(r.pid, r.party); partySize.set(r.party, (partySize.get(r.party) || 0) + 1); });
@@ -826,7 +827,7 @@ function partyCount(id) { const pa = dbx.q.partyGet.get(id); return (partySize.g
 function partyView(me) {
   const id = partyOf.get(me); if (!id) return null;
   const pa = dbx.q.partyGet.get(id); if (!pa) return null;
-  return { id, name: pa.name, leader: pa.leader, allgo: !!pa.allgo, max: PARTY_MAX, bonus: 0.03 * ((partySize.get(id) || 1) - 1),
+  return { id, name: pa.name, leader: pa.leader, allgo: !!pa.allgo, max: PARTY_MAX, bonus: R.PARTY_GOLD * (Math.min(partySize.get(id) || 1, 4) - 1), bonusXp: R.PARTY_XP * (Math.min(partySize.get(id) || 1, 4) - 1),
     members: dbx.q.partyMembers.all(id).map((m) => ({ id: m.id, name: m.name, house: m.house, grade: m.grade, lvl: m.lvl, av: m.avatar_v, title: m.title, online: m.id === me || isOnline(m.id), seen: m.last_seen, leader: m.id === pa.leader }))
       .concat(partyNpcs(pa).map((k) => { const n = NPCS[k]; return { id: 'npc:' + k, npc: true, online: true, name: n.name, who: n.who, house: n.house, grade: n.grade, title: 'NPC' }; })),
     npcPool: NPCS.map((n) => ({ k: n.k, name: n.name, who: n.who })) };
@@ -2055,8 +2056,24 @@ routes['GET /api/admin/dist'] = (req, res) => {
     const c = rows.filter((r) => r.cup > 0), o = by(c, 'house', 'cup'); for (const h in o) if (h !== 'all') o[h].a100 = c.filter((r) => r.house === h && r.cup >= (R.CUP_ACTIVE || 100)).length;
     cup[week] = { now: week === wk, cup: o, wbDmg: pct(rows.filter((r) => r.dmg > 0).map((r) => r.dmg)), wbAttacks: pct(rows.filter((r) => r.att > 0).map((r) => r.att)) };
   });
+  // 최근 7일 활동 학생의 세부 전투 능력 (저장된 상태로 다시 계산): 학과별 · 학년별 딜 · 딜 구성 · 생존 · 탑
+  const detail = [];
+  db.prepare('SELECT id, house, grade, state FROM players WHERE banned = 0 AND guest = 0 AND last_seen >= ? LIMIT 5000').all(now - 7 * 86400).forEach((r) => {
+    try {
+      const P = store.peek(r.id) || (() => { const x = JSON.parse(r.state); R.fixState(x); return x; })();
+      const c = R.calc(P, world.ctx(nowSec()), Math.min(nowSec(), P.at || nowSec())), st = P.st || {};
+      detail.push({ cls: P.cls === 'knight' ? 'knight' : 'mage', grade: P.grade, house: r.house, dps: c.totalDps, basic: c.dps, spell: c.spellDps, fam: c.famDps, spellShare: c.totalDps > 0 ? c.spellDps / c.totalDps : 0,
+        patk: c.patk, matk: c.matk, hp: c.hp, def: c.def, critC: c.critC, aps: c.aps, power: c.power, lvl: P.lvl, twK: st.twK || 0, twM: st.twM || 0 });
+    } catch (e) { }
+  });
+  const KEYS = ['dps', 'basic', 'spell', 'fam', 'spellShare', 'patk', 'matk', 'hp', 'def', 'critC', 'aps', 'power', 'lvl'];
+  const group = (key) => { const g = {}; detail.forEach((d) => { (g[d[key]] = g[d[key]] || []).push(d); }); const o = {}; for (const k in g) { o[k] = { n: g[k].length }; KEYS.forEach((f) => { o[k][f] = pct(g[k].map((d) => d[f])); }); } return o; };
+  const all = { n: detail.length }; KEYS.forEach((f) => { all[f] = pct(detail.map((d) => d[f])); });
+  const clsGrade = {}; detail.forEach((d) => { const k = d.cls + ':' + d.grade; (clsGrade[k] = clsGrade[k] || []).push(d); }); const cg = {}; for (const k in clsGrade) cg[k] = { n: clsGrade[k].length, dps: pct(clsGrade[k].map((d) => d.dps)), hp: pct(clsGrade[k].map((d) => d.hp)), power: pct(clsGrade[k].map((d) => d.power)) };
+  const towers = { infKnight: pct(detail.filter((d) => d.twK > 0).map((d) => d.twK)), infMage: pct(detail.filter((d) => d.twM > 0).map((d) => d.twM)), starTowerWeek: pct(db.prepare('SELECT floor FROM tower WHERE week = ? AND floor > 0').all(wk).map((r) => r.floor)) };
   oplog('admin', '관리자', 'dist', '분포 통계 복사');
-  send(req, res, 200, { at: now, week: wk, students: { all: players.length, active7d: act.length, gradeActive7d: grades }, fightActive7d: fight(act), fightAll: fight(players), weekly: cup });
+  send(req, res, 200, { at: now, week: wk, students: { all: players.length, active7d: act.length, gradeActive7d: grades }, fightActive7d: fight(act), fightAll: fight(players), weekly: cup,
+    detailActive7d: { note: 'dps=초당 피해 합계(basic 평타 + spell 주문 + fam 사역마), spellShare=주문 비중, patk/matk=물리/주문 공격력, critC=치명타 확률, aps=초당 공격 횟수', all, byCls: group('cls'), byGrade: group('grade'), byClsGrade: cg }, towers });
 };
 routes['GET /api/admin/ideas'] = (req, res) => { if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다'); send(req, res, 200, { text: board.exportIdeas() }); };
 routes['GET /api/admin/sys'] = (req, res) => { if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다'); send(req, res, 200, { build: BUILD, maint: MAINT, pin: dbx.kvGet('pinNotice', null), epoch: world.W.epoch, cal: R.calendar(world.W, nowSec()) }); };

@@ -821,6 +821,7 @@
     var h = (p.preview ? '<p class="tiny gold" style="margin-bottom:10px">미리보기 · 저장하지 않은 내용이 들어 있습니다</p>' : '') + '<div class="pcard' + (dk ? ' deco ' + fr.cls : '') + '"' + (dk ? ' style="' + fr.style + bgs + '"' : '') + '>' + (dc.stamp && R.DECO[dc.stamp] ? '<span class="pstamp" title="' + R.DECO[dc.stamp].name + '" aria-hidden="true">' + R.DECO[dc.stamp].glyph + '</span>' : '') + '<div class="pav">' + avatarHtml(p, 100) + (p.avcredit && (p.av || p.avData) ? '<span class="avcredit" title="두상 출처">' + esc(p.avcredit) + '</span>' : '') + '</div>' + '<div style="min-width:0">' + (p.title ? '<div class="pttl">' + (R.OP_TITLES[p.title] ? '<span class="ttl' + R.opTitleCls(p.title) + '">' + esc(p.title) + '</span>' : esc(p.title)) + '</div>' : '') + '<h2 class="pname">' + inkName(p.name, dc.ink) + (p.badge && R.GEM[p.badge.gem] ? ' <span class="pbdg" title="' + esc((p.badge.name || '') + ' · Lv ' + p.badge.lv) + '">' + badgeSvg(p.badge, 26) + '</span>' : '') + (p.online ? ' <span class="odot" title="접속 중"></span>' : '') + '</h2>' +
       '<div class="small">' + (hh ? houseDot(p.house, 16) + ' ' : '') + '<span style="color:' + (hh ? hh.color : 'inherit') + '">' + (hh ? hh.name : '') + '</span> · ' + (p.grade >= 8 ? '마스터 과정' : p.grade + '학년') + (p.lvl ? ' · Lv ' + p.lvl : '') + (R.CLS[p.cls] ? ' · <span class="pcls">' + clsDot(p.cls, 14) + ' ' + R.CLS[p.cls].name + '</span>' : '') + '</div>' +
       (p.guild ? '<div class="pguild">' + gEmblem(p.guild.color, p.guild.name, 20, p.guild.icon) + '<b>' + esc(p.guild.name) + '</b><span class="tiny faint">Lv ' + (p.guild.lv || 1) + '</span>' + (p.guild.rank ? '<span class="tag' + (p.guild.role === 'owner' ? ' br' : p.guild.role === 'officer' ? ' ok' : '') + '">' + esc(p.guild.rank) + '</span>' : '') + '</div>' : '') +
+      (p.fam && R.FAM[p.fam.id] ? '<div class="tiny pfam">동행 사역마 <b>' + esc(p.fam.nm || R.FAM[p.fam.id].name) + '</b>' + (p.fam.nm ? ' <span class="faint">' + R.FAM[p.fam.id].name + '</span>' : '') + ' <span class="num gold">Lv ' + p.fam.lv + '</span></div>' : '') +
       (p.status ? '<div class="pstatus">' + esc(p.status) + '</div>' : '') + '</div></div>';
     var ih = '';
     if (p.bio) { var long = p.bio.length > 120 || (p.bio.match(/\n/g) || []).length > 3; ih += '<div class="pbiow' + (long ? ' clamp' : '') + '"><p class="pbio">' + esc(p.bio) + '</p>' + (long ? '<button class="btn sm ghost biomore" data-act="biomore">더보기</button>' : '') + '</div>'; } else if (p.bioHidden) h += '<p class="tiny faint" style="margin-top:10px">자기소개는 친구에게만 공개되어 있습니다.</p>';
@@ -1379,9 +1380,10 @@
   }
   function taskBox(sid) {
     var P = S.P, o = R.taskOf(P, sid), done = P.tasks[sid] || 0;
-    if (!o) return '<div class="tiny faint">교수님의 과제 3/3 완료</div>';
-    var p = R.taskProg(P, sid, o.t), ok = p >= o.t.n;
-    return '<div class="card inset" style="padding:9px 11px"><div class="row between tiny"><span class="gold">과제 ' + (done + 1) + '/3</span><span class="num faint">' + fmt(Math.min(p, o.t.n)) + ' / ' + fmt(o.t.n) + '</span></div><p class="small" style="margin:4px 0 6px">' + o.t.t + '</p>' +
+    var tn = (D.TASKS[sid] || []).length; if (!o) return '<div class="tiny faint">교수님의 과제 ' + tn + '/' + tn + ' 완료</div>';
+    var p = R.taskProg(P, sid, o.t), ok = p >= o.t.n, sl = o.t.item && D.SLOTS.find(function (x) { return x.id === o.t.item; });
+    var rw = '보상: 별조각 ' + R.taskShard(o.i) + (sl ? ' · <span style="color:' + rcol(3) + '">영웅 ' + sl.name + '</span>' : '');
+    return '<div class="card inset" style="padding:9px 11px"><div class="row between tiny"><span class="gold">과제 ' + (done + 1) + '/' + tn + '</span><span class="num faint">' + fmt(Math.min(p, o.t.n)) + ' / ' + fmt(o.t.n) + '</span></div><p class="small" style="margin:4px 0 6px">' + o.t.t + '</p><div class="tiny faint" style="margin:-2px 0 6px">' + rw + '</div>' +
       (ok ? '<button class="btn sm primary" data-act="do" data-a="task" data-b="' + sid + '">과제 제출</button>' : '<div class="bar brass" style="height:5px"><b style="width:' + Math.min(100, p / o.t.n * 100) + '%"></b></div>') + '</div>';
   }
 
@@ -1741,8 +1743,8 @@
       var up = R.powerWith(P, it) - c.power;
       return '<button class="itm rb' + it.r + (S.sel === it.u ? ' sel' : '') + '" data-act="sel" data-a="' + it.u + '"><span class="in" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</span><span class="il">' + R.slotName(it) + ' · Lv ' + it.ilvl + '</span>' + (up > 0 ? '<span class="up">▲</span>' : '') + (it.lock ? '<span class="lk">잠금</span>' : '') + '</button>' + (S.sel === it.u ? '<div class="invdetail">' + detailCard() + '</div>' : '');
     }).join('') + '</div>';
-    h += '<hr class="sep"><div class="row small"><span class="muted">일괄 판매(잠금 제외)</span>' + D.RARITY.slice(0, 4).map(function (r) { return '<button class="btn sm ghost" data-act="bulkask" data-a="sellBelow" data-b="' + r.id + '">' + r.name + ' 이하</button>'; }).join('') + '</div>' +
-      '<div class="row small" style="margin-top:6px"><span class="muted">일괄 분해(잠금 제외)</span>' + D.RARITY.slice(0, 4).map(function (r) { return '<button class="btn sm ghost" data-act="bulkask" data-a="dismantleBelow" data-b="' + r.id + '">' + r.name + ' 이하</button>'; }).join('') + '</div><p class="tiny faint" style="margin-top:4px">마석 <b class="num">' + fmt(P.res.stone) + '</b> · ' + dotImg('dust', 14) + ' 마석가루 <b class="num">' + fmt(P.res.dust || 0) + '</b> — 분해하면 ' + CUR + ' 대신 마석과 마석가루를 얻고, 가루는 재련에 사용합니다.</p>';
+    h += '<hr class="sep"><div class="row small"><span class="muted">일괄 판매(잠금 제외)</span>' + D.RARITY.slice(0, 4).map(function (r) { return '<button class="btn sm ghost rk rk' + r.id + '" data-act="bulkask" data-a="sellBelow" data-b="' + r.id + '">' + r.name + ' 이하</button>'; }).join('') + '</div>' +
+      '<div class="row small" style="margin-top:6px"><span class="muted">일괄 분해(잠금 제외)</span>' + D.RARITY.slice(0, 4).map(function (r) { return '<button class="btn sm ghost rk rk' + r.id + '" data-act="bulkask" data-a="dismantleBelow" data-b="' + r.id + '">' + r.name + ' 이하</button>'; }).join('') + '</div><p class="tiny faint" style="margin-top:4px">마석 <b class="num">' + fmt(P.res.stone) + '</b> · ' + dotImg('dust', 14) + ' 마석가루 <b class="num">' + fmt(P.res.dust || 0) + '</b> — 분해하면 ' + CUR + ' 대신 마석과 마석가루를 얻고, 가루는 재련에 사용합니다.</p>';
     if (P.rs.sorter) h += '<div class="row small" style="margin-top:8px"><label class="muted" for="autosell">자동 판매</label><select id="autosell" data-act="autosell" style="width:auto">' + [[-1, '사용 안 함']].concat(D.RARITY.slice(0, 4).map(function (r) { return [r.id, r.name + ' 이하']; })).map(function (o) { return '<option value="' + o[0] + '"' + (P.autoSell === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select><select id="automode" data-act="automode" style="width:auto" aria-label="자동 처리 방식"><option value="sell"' + (P.autoDis ? '' : ' selected') + '>판매 (' + CUR + ')</option><option value="dis"' + (P.autoDis ? ' selected' : '') + '>분해 (마석·가루)</option></select></div>';
     else h += '<p class="tiny faint" style="margin-top:8px">서고의 「분류 마법」을 연구하면 자동 판매를 사용할 수 있습니다.</p>';
     h += '<label class="tog" style="margin-top:8px"><input type="checkbox" id="opt-ae" data-act="opt" data-a="autoEquip"' + (P.opt.autoEquip ? ' checked' : '') + '> 더 좋은 장비 자동 장착</label></div></div>';
@@ -1923,14 +1925,15 @@
     mage: { balance: '주문 공격력을 올리는 지력을 중심으로, 의지 · 체력으로 버티는 힘을 보탭니다.', attack: '지력과 민첩을 높여 주문 · 평타 화력을 최대로 끌어올립니다. 생존력은 낮은 편입니다.', guard: '체력을 높여 쉽게 쓰러지지 않게 하면서 지력도 챙깁니다. 높은 단계나 보스에 적합합니다.', scholar: '의지로 마나 재생을, 지력으로 수업 효율을 올려 성장 속도에 집중합니다.' },
     knight: { balance: '물리 공격력과 생존을 함께 올리는 체력을 중심으로, 민첩 · 의지를 보탭니다.', attack: '체력 · 민첩 · 행운으로 평타 화력과 치명타를 끌어올립니다.', guard: '체력과 의지를 높여 선봉에서 오래 버팁니다. 함께 원정의 선봉에 적합합니다.', scholar: '의지로 마나 재생을, 지력으로 수업 효율을 올려 성장 속도에 집중합니다.' }
   };
-  var SDESC = { int: '주문 공격력 +1%, 수업 효율', wil: '마나 재생, 생명력', agi: '공격 속도 +1%', vit: '물리 공격력 +1%, 생명력 +1.2%, 방어력', luk: '치명타, 전리품' };
+  // 능력치 효과: 지금 수치(나눠 보는 중이면 그만큼 더해서)로 얻는 합계
+  function sdesc(k, v) { return (R.STAT_FX[k] || []).map(function (x) { return x[0] + ' +' + R.fmtPct(x[1] * v, 1); }).join(', '); }
   function allocCard() {
     var P = S.P, c = C(), PRESETS = PRESETS_(), cur = Object.keys(PRESETS).find(function (k) { return JSON.stringify(PRESETS[k]) === JSON.stringify(P.opt.allocW); });
     var rsn = (P.tok && P.tok.respec) || 0, rsArm = S.confirm.rsp > Date.now();
     var dr = S.allocDraft || {}, dsum = R.STATS.reduce(function (a, k) { return a + (dr[k] || 0); }, 0), left = P.pts - dsum;   // 나눠 보는 중 (저장 전)
     if (left < 0) { S.allocDraft = null; dr = {}; dsum = 0; left = P.pts; }   // 그사이 포인트가 줄었으면 나눠 보던 것은 버린다
     var h = '<div class="card" data-anchor="alloc"><div class="row between"><h3>능력치</h3><span class="small">남은 포인트 <b class="num gold">' + left + '</b>' + (dsum ? ' <span class="tiny faint">(저장 전 ' + dsum + ')</span>' : '') + '</span></div>' + (rsn ? '<div class="row" style="margin-top:6px;gap:8px;flex-wrap:wrap"><span class="small">망각의 차 <b class="num">' + rsn + '</b>개</span><span class="tiny faint">마시면 분배한 포인트를 모두 돌려받고 자동 분배가 꺼집니다</span><span class="spacer"></span><button class="btn sm' + (rsArm ? ' primary' : '') + '" data-act="respecuse">' + (rsArm ? '한 번 더 누르면 마십니다' : '망각의 차 마시기') + '</button></div>' : '') + '<div class="alloc" style="margin-top:8px">';
-    R.STATS.forEach(function (k) { var d = dr[k] || 0; h += '<span>' + D.STAT_NAMES[k] + '</span><span class="tiny faint">' + SDESC[k] + '<br><span class="num">기본 ' + fmt(c.stat[k] - (c.statGear[k] || 0)) + ' · 장비 ' + ((c.statGear[k] || 0) ? '<span class="good">+' + fmt(c.statGear[k]) + '</span>' : '+0') + '</span></span><span class="allocv"><button class="btn sm ghost" data-act="alloc" data-a="' + k + '" data-b="-1" aria-label="' + D.STAT_NAMES[k] + ' 하나 빼기"' + (d ? '' : ' style="visibility:hidden" tabindex="-1"') + '>−1</button><b class="num">' + fmt(c.stat[k]) + '</b><span class="good num allocd">' + (d ? '+' + d : '') + '</span></span><span class="row" style="gap:4px;flex-wrap:nowrap"><button class="btn sm" data-act="alloc" data-a="' + k + '" data-b="1"' + (left ? '' : ' disabled') + '>+1</button><button class="btn sm ghost" data-act="alloc" data-a="' + k + '" data-b="10"' + (left >= 2 ? '' : ' disabled') + '>+10</button></span>'; });
+    R.STATS.forEach(function (k) { var d = dr[k] || 0; h += '<span>' + D.STAT_NAMES[k] + '</span><span class="tiny faint">' + sdesc(k, c.stat[k] + d) + '<br><span class="num">기본 ' + fmt(c.stat[k] - (c.statGear[k] || 0)) + ' · 장비 ' + ((c.statGear[k] || 0) ? '<span class="good">+' + fmt(c.statGear[k]) + '</span>' : '+0') + '</span></span><span class="allocv"><button class="btn sm ghost" data-act="alloc" data-a="' + k + '" data-b="-1" aria-label="' + D.STAT_NAMES[k] + ' 하나 빼기"' + (d ? '' : ' style="visibility:hidden" tabindex="-1"') + '>−1</button><b class="num">' + fmt(c.stat[k]) + '</b><span class="good num allocd">' + (d ? '+' + d : '') + '</span></span><span class="row" style="gap:4px;flex-wrap:nowrap"><button class="btn sm" data-act="alloc" data-a="' + k + '" data-b="1"' + (left ? '' : ' disabled') + '>+1</button><button class="btn sm ghost" data-act="alloc" data-a="' + k + '" data-b="10"' + (left >= 2 ? '' : ' disabled') + '>+10</button></span>'; });
     if (dsum) h += '</div><div class="row allocsave" style="margin-top:8px;gap:6px"><span class="small gold">' + R.STATS.filter(function (k) { return dr[k]; }).map(function (k) { return D.STAT_NAMES[k] + ' +' + dr[k]; }).join(' · ') + '</span><span class="spacer"></span><button class="btn sm ghost" data-act="alloc-reset">되돌리기</button><button class="btn sm primary" data-act="alloc-save">저장</button><div class="alloc" style="display:none">';
     var why = PWHY[P.cls === 'knight' ? 'knight' : 'mage'], tot = 0, W0 = cur ? PRESETS[cur] : null; if (W0) R.STATS.forEach(function (k) { tot += W0[k] || 0; });
     var info = W0 ? '<p class="tiny muted" style="margin-top:6px"><b>' + PNAMES[cur] + '</b> · ' + R.STATS.filter(function (k) { return W0[k]; }).sort(function (a, b) { return W0[b] - W0[a]; }).map(function (k) { return D.STAT_NAMES[k] + ' ' + Math.round(W0[k] / tot * 100) + '%'; }).join(' · ') + '<br>' + why[cur] + '</p>' : '<p class="tiny faint" style="margin-top:6px">직접 정한 비율입니다. 프리셋을 누르면 해당 비율로 바뀝니다.</p>';
@@ -1970,7 +1973,7 @@
   function famXpBar(f, o, act2, disp) {
     if (o.lv >= R.FAM_MAX_LV) return '<div class="tiny gold" style="margin-top:4px">최대 레벨</div>';
     var need = R.famXpNeed(f, o.lv), xp = Math.floor(o.xp || 0);
-    return '<div class="famxp"><div class="row tiny"><span class="faint">경험치' + (act2 ? ' · 동행 중 활동할 때마다' : disp ? ' · 파견에서 돌아오면' : '') + '</span><span class="spacer"></span><span class="num">' + fmt(xp) + ' / ' + fmt(need) + '</span></div><div class="bar" style="height:5px;margin-top:2px"><b style="width:' + Math.min(100, xp / need * 100).toFixed(1) + '%"></b></div></div>';
+    return '<div class="famxp"><div class="row tiny"><span class="faint">경험치' + (act2 ? ' · 동행 중 활동할 때마다' : disp ? ' · 귀환 시 파견 1시간당 +' + R.FAM_DISP_XP + ' 지급' : '') + '</span><span class="spacer"></span><span class="num">' + fmt(xp) + ' / ' + fmt(need) + '</span></div><div class="bar" style="height:5px;margin-top:2px"><b style="width:' + Math.min(100, xp / need * 100).toFixed(1) + '%"></b></div></div>';
   }
   function famView() {
     var P = S.P, eh = R.eggHold(P), hold = '<p class="small" style="margin-top:8px">알 품기: 지니고 있는 알 <b class="num">' + P.fam.eggs + '</b>개' + (eh ? ' · <span class="good">경험치 +' + Math.round(eh * R.EGG_HOLD_EACH * 100) + '%</span>' : '') + ' <span class="tiny faint">(부화시키지 않은 알 하나마다 경험치 +' + Math.round(R.EGG_HOLD_EACH * 100) + '%, ' + R.EGG_HOLD_MAX + '개까지)</span></p>' + (P.subj.beast.lv ? '<p class="small" style="margin-top:4px">환수생태학 ' + P.subj.beast.lv + '레벨: 사역마 동행 보너스 +' + Math.round(P.subj.beast.lv * R.BEAST_FAM * 100) + '% · 파견 보상 +' + Math.round(P.subj.beast.lv * R.BEAST_DISP * 100) + '% · 부화 속도 +' + P.subj.beast.lv + '%</p>' : '<p class="tiny faint" style="margin-top:4px">환수생태학을 들으면 레벨마다 사역마 동행 보너스 +' + Math.round(R.BEAST_FAM * 100) + '%, 파견 보상 +' + Math.round(R.BEAST_DISP * 100) + '%, 부화 속도 +1%</p>');
@@ -1980,13 +1983,13 @@
     if (inc) { var ip = Math.min(1, inc.prog / inc.need); h += '<div class="incbox"><div class="row small"><b>품고 있는 알</b><span class="spacer"></span><span class="num">필요 기여도 ' + fmt(Math.floor(inc.prog)) + ' / ' + fmt(inc.need) + ' (' + Math.floor(ip * 100) + '%)</span></div><div class="bar brass" style="height:8px;margin-top:4px"><b style="width:' + (ip * 100).toFixed(1) + '%"></b></div><div class="tiny faint" style="margin-top:2px">부화 효율 ×' + C().hatchSpd.toFixed(2) + ' · 활동으로 얻는 기여도 × 부화 효율만큼 오릅니다</div></div>'; }
     h += '<div class="row" style="margin-top:10px;gap:6px">' + (inc ? (inc.prog >= inc.need ? '<button class="btn primary" data-act="do" data-a="eggHatch">부화시키기</button>' : '<button class="btn" data-act="do" data-a="egg"' + (predMana() >= price ? '' : ' disabled') + '>마나로 바로 깨우기 <span class="cost">마나 ' + fmt(price) + '</span></button>') :
       '<button class="btn primary" data-act="do" data-a="eggInc"' + (P.fam.eggs > 0 ? '' : ' disabled') + '>알 품기</button><button class="btn" data-act="do" data-a="egg"' + (P.fam.eggs > 0 && predMana() >= price ? '' : ' disabled') + '>마나로 바로 깨우기 <span class="cost">마나 ' + fmt(price) + '</span></button>') + '</div>';
-    h += '</div><div class="card inset"><h4>파견</h4><p class="small muted" style="margin-top:4px">동행하지 않는 사역마를 정해진 시간 동안 내보내면 재료, 마석, ' + CUR + ', 가끔 알과 별조각을 물어 옵니다. 8·12시간 파견은 잠들기 전에 시작해 두는 장시간 방치용입니다.</p>' + durPicker('dd', D.DISPATCH_DUR, '8h') + (function () { var idle = Object.keys(P.fam.own).filter(function (id) { return R.FAM[id] && !P.fam.disp[id] && P.fam.act !== id; }).length; return idle ? '<div class="row" style="margin-top:8px"><button class="btn sm primary" data-act="dispall">쉬고 있는 사역마 모두 파견 <span class="cost">' + idle + '마리 · ' + R.DDUR[S.pick.dd || '8h'].label + '</span></button></div>' : ''; })() + '<p class="tiny faint" style="margin-top:6px">파견에서 돌아온 사역마는 따로 받지 않아도 됩니다. 돌아오면 저절로 받아지고, 「끝난 작업 보고」에 한꺼번에 표시됩니다.</p></div></div><div class="grid gauto">';
+    h += '</div><div class="card inset"><h4>파견</h4><p class="small muted" style="margin-top:4px">동행하지 않는 사역마를 정해진 시간 동안 내보내면 재료, 마석, ' + CUR + ', 가끔 알과 별조각을 물어 옵니다. 8·12시간 파견은 잠들기 전에 시작해 두는 장시간 방치용입니다.</p>' + durPicker('dd', D.DISPATCH_DUR, '8h') + (function () { var idle = Object.keys(P.fam.own).filter(function (id) { return R.FAM[id] && !P.fam.disp[id] && P.fam.act !== id; }).length; return idle ? '<div class="row" style="margin-top:8px"><button class="btn sm primary" data-act="dispall">쉬고 있는 사역마 모두 파견 <span class="cost">' + idle + '마리 · ' + R.DDUR[S.pick.dd || '8h'].label + '</span></button></div>' : ''; })() + '<p class="tiny faint" style="margin-top:6px">파견에서 돌아온 사역마는 따로 받지 않아도 됩니다. 돌아오면 저절로 받아지고, 「끝난 작업 보고」에 한꺼번에 표시됩니다.</p></div></div><label class="tog small" style="margin:0 0 10px"><input type="checkbox" data-act="opt" data-a="showFam"' + (P.opt.showFam ? ' checked' : '') + '> 동행 중인 사역마를 내 정보에 공개 (다른 학생이 정보창에서 볼 수 있습니다)</label><div class="grid gauto">';
     var dk = S.pick.dd || '8h';
     D.FAMILIARS.forEach(function (f) {
       var o = P.fam.own[f.id], fr = D.FAM_RARITY[f.r];
       if (!o) { h += '<div class="card famcard unk"><div><div class="small">???</div><div class="tiny" style="color:' + fr.color + '">' + fr.name + '</div><div class="tiny faint">' + D.BONUS_NAMES[f.bonus] + '</div></div></div>'; return; }
       var act2 = P.fam.act === f.id, disp = P.fam.disp[f.id], cost = o.lv < 20 ? R.feedCost(P, f.id) : 0;
-      h += '<div class="card famcard' + (act2 ? ' act' : '') + '"><div style="flex:1;min-width:0"><div class="row" style="gap:6px"><b>' + f.name + '</b><span class="num tiny gold">Lv ' + o.lv + '</span></div><div class="tiny" style="color:' + fr.color + '">' + fr.name + '</div>' +
+      h += '<div class="card famcard' + (act2 ? ' act' : '') + '"><div style="flex:1;min-width:0"><div class="row" style="gap:6px;flex-wrap:wrap"><b>' + esc(o.nm || f.name) + '</b>' + (o.nm ? '<span class="tiny faint">' + f.name + '</span>' : '') + '<span class="num tiny gold">Lv ' + o.lv + '</span><button class="btn ghost sm famnm" data-act="famname" data-a="' + f.id + '">이름 짓기</button></div><div class="tiny" style="color:' + fr.color + '">' + fr.name + '</div>' +
         '<div class="small">' + D.BONUS_NAMES[f.bonus] + ' +' + pct(R.famBonus(f, o.lv, P)) + '</div>' + famXpBar(f, o, act2, disp) + (disp ? '<div class="tiny gold">파견 중 · ' + clock(disp.end) + ' 귀환</div>' : '<div class="tiny faint">' + f.desc + '</div>') +
         '<div class="row" style="margin-top:6px;gap:6px">' + (o.lv < 20 ? '<button class="btn sm primary" data-act="do" data-a="feed" data-b="' + f.id + '"' + (P.res.gold >= cost ? '' : ' disabled') + '>먹이 <span class="cost">' + fmt(cost) + ' ' + CUR + '</span></button>' : '<span class="tag br">최대 레벨</span>') +
         (act2 ? '<span class="tag ok">동행 중</span>' : disp ? '' : '<button class="btn sm primary" data-act="do" data-a="famAct" data-b="' + f.id + '">동행</button><button class="btn sm primary" data-act="dispatch" data-a="' + f.id + '">' + R.DDUR[dk].label + ' 파견</button>') + '</div></div></div>';
@@ -2087,14 +2090,14 @@
   V.party = function () {
     var d = S.partyD;
     if (!d || Date.now() - S.partyAt > 20000) { if (Date.now() - S.partyAt > 1500) loadParty(); }
-    var h = pageHead('함께 다니는 학생들', '파티', '최대 4명 · 파티원 1명당 원정 ' + CUR + '·경험치 +3%');
+    var h = pageHead('함께 다니는 학생들', '파티', '최대 4명 · 파티원 1명당 원정 ' + CUR + ' +3% · 경험치 +1%');
     if (!d) return h + '<div class="card"><p class="small muted">불러오는 중…</p></div>';
     if (d.demo) h += '<div class="card inset" style="margin-bottom:14px"><p class="small">데모: 혼자서도 파티를 만들고, 빈자리에 NPC 학생을 불러 파티 채팅을 시험해 볼 수 있습니다. 기록은 이 브라우저에만 남습니다.</p></div>';
     h += '<div class="grid g2"><div class="stack">';
     var pa = d.party;
     if (pa) {
       var lead = pa.leader === S.P.id;
-      h += '<div class="card hl"><div class="row between"><h3>' + esc(pa.name) + '</h3><span class="tag ok">원정 ' + CUR + '·경험치 +' + Math.round(pa.bonus * 100) + '%</span></div><p class="tiny faint" style="margin-top:2px">' + pa.members.length + ' / ' + pa.max + '명</p><div style="margin-top:8px">' +
+      h += '<div class="card hl"><div class="row between"><h3>' + esc(pa.name) + '</h3><span class="tag ok">원정 ' + CUR + ' +' + Math.round(pa.bonus * 100) + '% · 경험치 +' + Math.round((pa.bonusXp || 0) * 100) + '%</span></div><p class="tiny faint" style="margin-top:2px">' + pa.members.length + ' / ' + pa.max + '명</p><div style="margin-top:8px">' +
         pa.members.map(function (m) {
           if (m.npc) return '<div class="frow"><span class="av av0" style="width:40px;height:40px;font-size:17px;--hc:' + (R.HOUSE[m.house] ? R.HOUSE[m.house].color : '#d6ad5f') + '">' + esc(m.name.slice(0, 1)) + '</span><div style="flex:1;min-width:0"><b>' + esc(m.name) + '</b> <span class="tag npc">NPC</span><div class="tiny faint">' + esc(m.who) + ' · 파티 보너스에는 포함되지 않습니다</div></div>' + (lead ? '<button class="btn sm ghost" data-act="pop" data-a="npcRemove" data-b="' + String(m.id).slice(4) + '">돌려보내기</button>' : '') + '</div>';
           var btns = m.id === S.P.id ? '<span class="tag">나</span>' : lead ? '<button class="btn sm ghost" data-act="pop" data-a="lead" data-b="' + esc(m.id) + '">파티장 넘기기</button><button class="btn sm danger" data-act="pop" data-a="kick" data-b="' + esc(m.id) + '">내보내기</button>' : '';
@@ -2107,7 +2110,7 @@
       if (lead && pa.members.length < pa.max) h += '<div class="card"><h3>파티원 모집</h3><p class="tiny faint" style="margin-top:2px">채팅 「모집」 탭에 알림을 올립니다. 알림을 본 학생은 30분 동안 초대 없이 바로 들어올 수 있습니다. 별의 탑을 함께 오를 사람을 찾아 보세요.</p><div class="row" style="margin-top:8px;gap:6px"><input id="pt-rec" maxlength="60" placeholder="한 줄 덧붙이기 (선택 · 60자)" style="flex:1;min-width:0" value="' + esc(S.ptRec || '') + '"><button class="btn sm primary" data-act="ptrec">모집 알림</button></div></div>';
       if (pa.members.length < pa.max) h += '<div class="card"><h3>초대하기</h3><div class="row" style="margin-top:8px"><input id="pt-inv" maxlength="12" placeholder="학생 이름" style="flex:1;min-width:0"><button class="btn sm primary" data-act="pop" data-a="invite">초대</button></div><p class="tiny faint" style="margin-top:6px">채팅에서 이름을 눌러 정보창의 「파티 초대」로도 부를 수 있습니다.</p></div>';
     } else {
-      h += '<div class="card hl"><h3>파티 만들기</h3><p class="small muted" style="margin-top:4px">혼자서도 만들 수 있습니다. 마음 맞는 학생들과 최대 4명까지 파티를 맺으세요. 파티원 한 명당 원정 ' + CUR + '·경험치가 3%씩(최대 9%) 오르고, 파티원끼리만 보이는 채팅 채널이 생깁니다.</p>' +
+      h += '<div class="card hl"><h3>파티 만들기</h3><p class="small muted" style="margin-top:4px">혼자서도 만들 수 있습니다. 마음 맞는 학생들과 최대 4명까지 파티를 맺으세요. 파티원 한 명당 원정 ' + CUR + '가 3%씩(최대 9%), 경험치가 1%씩(최대 3%) 오르고, 파티원끼리만 보이는 채팅 채널이 생깁니다.</p>' +
         '<div class="row" style="margin-top:10px"><input id="pt-name" maxlength="12" placeholder="파티 이름 (2~12자)" style="flex:1;min-width:0"><button class="btn sm primary" data-act="pop" data-a="create">만들기</button></div></div>';
     }
     h += '</div><div class="stack">';
@@ -3166,7 +3169,7 @@
   var BT_VERB = ['지팡이를 휘둘렀다', '마력탄을 연달아 쏘았다', '빈틈을 파고들었다', '몸을 낮추고 한 번 더 찔렀다', '숨을 고르고 다시 겨눴다', '발밑의 마법진을 밟고 몰아쳤다'];
   function battleScript(opts) {
     var ev = opts.ev || [], total = ev.length ? ev[ev.length - 1][0] : 1, en = opts.enemy.name, me = S.P.name;
-    var pHpMax = C().hp, mhp = opts.maxHp || 0, fam = S.P.fam.act && R.FAM[S.P.fam.act] ? R.FAM[S.P.fam.act].name : '';
+    var pHpMax = C().hp, mhp = opts.maxHp || 0, fam = S.P.fam.act && R.FAM[S.P.fam.act] ? R.famLabel(S.P, S.P.fam.act) : '';
     var lines = [[0, josa(en, '과', '와') + ' 마주 섰다. ' + (opts.infinite ? '30초 동안 할 수 있는 만큼 퍼붓는다.' : '주문서를 펼친다.'), 's']];
     var N = 14, win = total / N, dealt = 0, php = 1, k = 0, marks = opts.infinite ? [0.25, 0.5, 0.75] : [0.25, 0.5, 0.75], mk = 0, lowSaid = false, dead = false, best = 0;
     for (var w = 0; w < N && k < ev.length; w++) {
@@ -3349,7 +3352,7 @@
   ACT.sel = function (u) { S.sel = u || null; render(); var d = $('.invdetail') || $('.eqdetail'); if (d && d.offsetParent) d.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); };   // 한 칸일 때 가방 안에 펼친 살펴보기가 보이게
   ACT.invf = function (f) { S.invF = f; render(); };
   /* ── 소지품: 장비가 아닌 것(알 · 도전권 · 물약 · 망각의 차 등)을 한곳에. 칸 제한 없음, 바로 쓰기 · 바로가기 ── */
-  function bagTabs(c) { var nn = invNew().length; return '<div class="tabs bagtabs" role="tablist" style="margin-bottom:8px"><button role="tab" class="' + (S.bagTab !== 'inv' ? 'on' : '') + '" data-act="bagtab" data-a="eq">장비 가방 <span class="num tiny">' + S.P.inv.length + ' / ' + c.bag + '</span></button><button role="tab" class="' + (S.bagTab === 'inv' ? 'on' : '') + '" data-act="bagtab" data-a="inv">소지품' + (nn ? ' <span class="tag br">새 ' + nn + '</span>' : '') + '</button></div>'; }
+  function bagTabs(c) { var nn = invNew().length; return '<div class="tabs bagtabs" role="tablist" style="margin-bottom:8px"><button role="tab" class="' + (S.bagTab !== 'inv' ? 'on' : '') + '" data-act="bagtab" data-a="eq">장비 가방 <span class="num tiny">' + S.P.inv.length + ' / ' + c.bag + '</span></button><button role="tab" class="' + (S.bagTab === 'inv' ? 'on' : '') + '" data-act="bagtab" data-a="inv">소지품' + (nn ? ' <span class="tag br">NEW ' + nn + '</span>' : '') + '</button></div>'; }
   function invItems() {
     var P = S.P, tk = P.tok || {}, out = [], g3 = R.famOpen(P);
     function B(act, a, b, label, primary) { return '<button class="btn sm' + (primary ? ' primary' : ' ghost') + '" data-act="' + act + '"' + (a != null ? ' data-a="' + a + '"' : '') + (b != null ? ' data-b="' + b + '"' : '') + '>' + label + '</button>'; }
@@ -3369,7 +3372,7 @@
     setTimeout(function () { invMarkSeen(); updateBadges(); }, 1500);   // 보고 나면 「새」 표시를 거둔다
     if (!items.length) return '<div class="empty">소지품이 없습니다. 환수의 알 · 토벌 도전권 · 물약 · 망각의 차 같은 것을 받으면 여기에 모입니다.</div><p class="tiny faint" style="margin-top:8px">재료는 공방의 재료 보관함, 아카데미 휘장은 휘장 보관함에서 봅니다.</p>';
     return '<div class="invlist">' + items.map(function (x) {
-      return '<div class="invrow' + (nw[x.k] ? ' new' : '') + '"><div class="invh">' + (x.dot ? '<span class="pot-ic" style="background:' + x.dot + '"></span>' : '') + '<b>' + esc(x.name) + '</b> <span class="num gold">×' + x.n + '</span>' + (nw[x.k] ? ' <span class="tag br">새</span>' : '') + '</div><div class="tiny muted">' + esc(x.desc) + '</div><div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap">' + x.acts + '</div></div>';
+      return '<div class="invrow' + (nw[x.k] ? ' new' : '') + '"><div class="invh">' + (x.dot ? '<span class="pot-ic" style="background:' + x.dot + '"></span>' : '') + '<b>' + esc(x.name) + '</b> <span class="num gold">×' + x.n + '</span>' + (nw[x.k] ? ' <span class="tag br">NEW</span>' : '') + '</div><div class="tiny muted">' + esc(x.desc) + '</div><div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap">' + x.acts + '</div></div>';
     }).join('') + '</div><p class="tiny faint" style="margin-top:8px">장비 상자 · 휘장 원석 · 재료 상자는 받는 순간 열립니다. 재료는 공방의 재료 보관함, 아카데미 휘장은 휘장 보관함에서 봅니다.</p>';
   }
   ACT.bagtab = function (t) { S.bagTab = t === 'inv' ? 'inv' : 'eq'; render(); };
@@ -3385,6 +3388,15 @@
   };
   ACT['alloc-go'] = function () { var d = S.allocDraft || {}; act('allocMany', { add: d }).then(function (r) { closeModal(); if (r) { S.allocDraft = null; Snd.play('click'); toast('능력치를 나눴습니다', r.n + '포인트', 1800); } render(); }); };
   ACT.preset = function (k) { act('allocW', { w: PRESETS_()[k] }).then(render); };
+  // 사역마 이름 짓기: 비우고 저장하면 원래 이름으로
+  ACT.famname = function (id) {
+    var o = S.P.fam.own[id], f = R.FAM[id]; if (!o || !f) return;
+    modal(mhead('사역마 이름 짓기', f.name + ' · Lv ' + o.lv) + '<input id="fam-nm" type="text" name="fam-nm" maxlength="' + R.FAM_NAME_MAX + '" autocomplete="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-form-type="other" placeholder="' + esc(f.name) + '" value="' + esc(o.nm || '') + '">' +
+      '<p class="tiny faint" style="margin-top:6px">' + R.FAM_NAME_MAX + '자까지 입력할 수 있습니다. 비워 두고 저장하면 원래 이름(' + esc(f.name) + ')으로 돌아갑니다.</p>' +
+      '<div class="row" style="justify-content:flex-end;margin-top:12px;gap:6px"><button class="btn ghost" data-act="modal-close">취소</button><button class="btn primary" data-act="famnamesave" data-a="' + id + '">저장</button></div>');
+    setTimeout(function () { var i = $('#fam-nm'); if (i) { i.focus(); i.select(); } }, 30);
+  };
+  ACT.famnamesave = function (id) { var i = $('#fam-nm'); act('famName', { id: id, name: i ? i.value : '' }).then(function (r) { if (!r) return; closeModal(); toast('사역마 이름', r.nm ? R.josa('「' + r.nm + '」', '으로', '로') + ' 지었습니다' : '원래 이름으로 돌아갔습니다'); render(); }); };
   ACT.opt = function (k, v, el) { act('opt', { k: k, v: el.checked }).then(function () { if (k === 'sound') { Snd.set(S.P.opt.sound); if ($('#setbox')) ACT.settings(); } if (/Title$/.test(k)) renderDock(); render(); }); };
   ACT.autosell = function () { act('autoSell', { r: +$('#autosell').value }).then(render); };
   ACT.automode = function () { act('autoMode', { dis: $('#automode').value === 'dis' }).then(render); };
@@ -3539,12 +3551,15 @@
   function promoItems(g) {
     var P = S.P, out = [];
     D.SUBJECTS.forEach(function (x) { if (x.unlock === g && R.subjVisible(P, x)) out.push(['새 과목 「' + x.name + '」', x.prof + ' · ' + x.desc, 'lecture', '']); });
-    if (g === 2) { out.push(['공방 · 연금술', '재료와 마나로 물약을 만들고, 거래소에 내다 팔 수도 있습니다.', 'work', 'alch']); out.push(['거래소 사고팔기', '장비 · 재료 · 물약 · 휘장을 다른 학생과 ' + CUR + '로 거래합니다.', 'market', '']); }
-    if (g === 3) { out.push(['아카데미 휘장', '2학년을 마친 기념으로 브로치를 수여합니다. 달고 있으면 별빛을 모아 성장합니다.', 'gear', 'badge']); }
+    if (g === 2) { out.push(['공방 · 연금술', '재료와 마나로 물약을 만들고, 거래소에 내다 팔 수도 있습니다.', 'work', 'alch']); }
+    // 거래소는 서버에서 정한 학년(기본 1학년)부터 — 그 학년일 때만 새로 열린 것으로 보인다
+    if (g === ((S.mk && S.mk.data && S.mk.data.grade) || 1)) out.push(['거래소 사고팔기', '장비 · 재료 · 물약 · 휘장을 다른 학생과 ' + CUR + '로 거래합니다.', 'market', '']);
+    if (g === 3) { out.push(['아카데미 휘장 수여', '2학년을 마친 기념으로 브로치를 수여합니다. 달고 있으면 별빛을 모아 성장합니다.', 'gear', 'badge']); }
     var s0 = R.spellSlots({ grade: g - 1 }), s1 = R.spellSlots({ grade: g });
     if (s1 > s0) out.push(['주문 슬롯 ' + s1 + '칸', '보스 · 결투 · 월드 보스에서 자동으로 사용하는 주문을 하나 더 장착합니다.', 'explore', '']);
     if (g >= 8) out.push(['심연', '81단계부터 끝없이 이어지는 원정 지역과 심연 연구가 열립니다.', 'explore', '']);
-    else out.push(['원정 ' + R.gradeCap({ grade: g }) + '단계까지', '보스를 이기면 다음 10단계가 열립니다. 레벨이 높으면 조금 더 깊이 갈 수 있습니다.', 'explore', 'boss']);
+    // 원정 단계: 레벨로 이미 그 단계까지 갈 수 있었으면 새로 열린 것이 아니다
+    else if (R.stageCap({ grade: g - 1, lvl: P.lvl }) < R.gradeCap({ grade: g })) out.push(['원정 ' + R.gradeCap({ grade: g }) + '단계까지', '보스를 이기면 다음 10단계가 열립니다. 레벨이 높으면 조금 더 깊이 갈 수 있습니다.', 'explore', 'boss']);
     D.RESEARCH.forEach(function (r) { if (r.grade === g && !r.gone) out.push(['연구 「' + r.name + '」', r.desc, 'lib', '']); });
     D.SHOP.forEach(function (x) { if (x.grade === g) out.push(['매점 「' + x.name + '」', x.desc, 'shop', '']); });
     var ex = D.EXAMS[g - 1]; if (ex && g < 8) out.push(['다음 목표: ' + ex.title, '시험 과목 ' + ex.subj.map(function (s) { return R.SUBJ[s].name; }).join(' · ') + ' 모두 Lv ' + ex.req, 'exam', '']);
@@ -3860,7 +3875,8 @@
     h += '<div class="setsec"><div class="section-t">채팅</div><label class="tog"><input type="checkbox" id="opt-hmt" data-act="opt" data-a="hideMyTitle"' + (P.opt.hideMyTitle ? ' checked' : '') + '> 채팅에서 내 칭호 숨기기</label>' +
       '<label class="tog"><input type="checkbox" id="opt-hot" data-act="opt" data-a="hideOtherTitle"' + (P.opt.hideOtherTitle ? ' checked' : '') + '> 채팅에서 다른 학생 칭호 숨기기</label><p class="tiny faint">정보창에는 칭호가 그대로 보입니다.</p></div>';
     h += '<div class="setsec"><div class="section-t">게임</div><label class="tog"><input type="checkbox" id="opt-ae2" data-act="opt" data-a="autoEquip"' + (P.opt.autoEquip ? ' checked' : '') + '> 더 좋은 장비 자동 장착</label>' +
-      '<label class="tog"><input type="checkbox" id="opt-aa2" data-act="opt" data-a="autoAlloc"' + (P.opt.autoAlloc ? ' checked' : '') + '> 능력치 자동 분배</label></div>';
+      '<label class="tog"><input type="checkbox" id="opt-aa2" data-act="opt" data-a="autoAlloc"' + (P.opt.autoAlloc ? ' checked' : '') + '> 능력치 자동 분배</label>' +
+      '<label class="tog"><input type="checkbox" id="opt-sf2" data-act="opt" data-a="showFam"' + (P.opt.showFam ? ' checked' : '') + '> 동행 중인 사역마를 내 정보에 공개</label></div>';
     if (API.mode === 'local' && API.cheat) h += '<div class="setsec cheat"><div class="section-t">테스트 도구 <span class="tag br">데모에서만</span></div><p class="tiny faint">기능을 둘러보기 위한 버튼입니다. 서버판에는 없습니다.</p><div class="filters">' +
       [['grade', '한 학년 올리기'], ['subj', '과목 +5레벨'], ['lvl', '레벨 +10'], ['res', '자원 듬뿍'], ['stage', '원정 단계 모두 열기'], ['finish', '작업 즉시 끝내기'], ['spirit', '정령·도전권 채우기']].map(function (c) { return '<button class="btn sm" data-act="cheat" data-a="' + c[0] + '">' + c[1] + '</button>'; }).join('') + '</div></div>';
     h += '<div class="setsec"><div class="section-t">계정</div><p class="small muted">' + (API.mode === 'local' ? '미리보기: 진행 상황은 이 브라우저에만 저장됩니다.' : '진행 상황은 아카데미 서버에 저장됩니다. 글씨 크기·소리·알림 설정은 이 브라우저에만 기억합니다.') + '</p><p class="tiny faint">화면 버전 ' + BUILD + '</p>';
@@ -4538,7 +4554,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102063;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102070;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
