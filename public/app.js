@@ -114,7 +114,7 @@
   function modal(html, wide, locked) {
     var m = $('#modal'); m.innerHTML = '<div class="mbox' + (wide ? ' wide' : '') + '" role="dialog" aria-modal="true">' + html + '</div>';
     m.hidden = false; S.modal = true; S.modalLocked = !!locked; scrollHints();
-    var f = m.querySelector('[autofocus]') || m.querySelector('button'); if (f) setTimeout(function () { f.focus(); }, 30);
+    var f = m.querySelector('[autofocus]') || m.querySelector('button'); if (f) setTimeout(function () { f.focus({ preventScroll: true }); }, 30);   // 포커스가 창을 맨 위로 끌어올리지 않게 (같은 창을 다시 그릴 때 보던 자리 유지)
   }
   function closeModal() { var m = $('#modal'); m.hidden = true; m.innerHTML = ''; S.modal = false; S.modalLocked = false; S.replay = null; S.mbox = null; S.meModal = false; S.notesOpen = false; render(); var f = S.afterClose; S.afterClose = null; if (f) setTimeout(f, 60); }
   function mhead(title, sub, noClose) { return '<div class="mhead"><div><h2>' + title + '</h2>' + (sub ? '<p class="muted small">' + sub + '</p>' : '') + '</div>' + (noClose ? '' : '<button class="btn ghost sm x" data-act="modal-close" aria-label="닫기">닫기</button>') + '</div>'; }
@@ -802,7 +802,7 @@
   function fullStatsHtml(groups) {
     return '<div class="fullst">' + groups.map(function (g) {
       return '<details class="fold fsg" open><summary><h4>' + esc(g.g) + '</h4><span class="tiny faint">' + g.rows.filter(function (r) { return !r.z; }).length + '개 적용</span><span class="chev"></span></summary><div class="fsrows">' + g.rows.map(function (r) {
-        var head = '<span class="fsn">' + esc(r.n) + (r.s.some(function (x) { return x[2]; }) ? ' <span class="tag br fsnow">지금만 포함</span>' : '') + '</span><b class="num fsv">' + esc(r.v) + '</b>';
+        var head = '<span class="fsn">' + statTerm(r.n) + (r.s.some(function (x) { return x[2]; }) ? ' <span class="tag br fsnow">지금만 포함</span>' : '') + '</span><b class="num fsv">' + esc(r.v) + '</b>';
         if (!r.s.length) return '<div class="fsr' + (r.z ? ' z' : '') + '">' + head + '</div>';
         return '<details class="fsr fold' + (r.z ? ' z' : '') + '"><summary>' + head + '<span class="chev"></span></summary><div class="fssrc">' + r.s.map(function (x) { return '<span>' + esc(x[0]) + (x[2] ? ' <span class="tiny gold">지금만</span>' : '') + '</span><b class="num">' + esc(x[1]) + '</b>'; }).join('') + '</div></details>';
       }).join('') + '</div></details>';
@@ -852,7 +852,7 @@
   function profileCard(p, m) {
     if (p.deleted) return '<div class="pcard"><p class="small muted" style="padding:18px 4px;text-align:center">삭제된 사용자입니다.</p></div>';
     var hh = R.HOUSE[p.house], dc = p.deco || {}, fr = decoFrame(dc.frame), bgs = decoBg(dc.bg), dk = dc.frame || dc.bg;
-    var h = (p.preview ? '<p class="tiny gold" style="margin-bottom:10px">미리보기 · 저장하지 않은 내용이 들어 있습니다</p>' : '') + '<div class="pcard' + (dk ? ' deco ' + fr.cls : '') + (dc.bg ? (decoDark(dc.bg) ? ' bgdark' : ' bglight') : '') + '"' + (dk ? ' style="' + fr.style + bgs + '"' : '') + '>' + (dc.stamp && R.DECO[dc.stamp] ? '<span class="pstamp" title="' + R.DECO[dc.stamp].name + '" aria-hidden="true">' + R.DECO[dc.stamp].glyph + '</span>' : '') + '<div class="pav">' + avatarHtml(p, 100) + (p.avcredit && (p.av || p.avData) ? '<span class="avcredit" title="두상 출처">' + esc(p.avcredit) + '</span>' : '') + '</div>' + '<div style="min-width:0">' + (p.title ? '<div class="pttl">' + (R.OP_TITLES[p.title] ? '<span class="ttl' + R.opTitleCls(p.title) + '">' + esc(p.title) + '</span>' : esc(p.title)) + '</div>' : '') + '<h2 class="pname">' + inkName(p.name, dc.ink) + (p.badge && R.GEM[p.badge.gem] ? ' <span class="pbdg" title="' + esc((p.badge.name || '') + ' · Lv ' + p.badge.lv) + '">' + badgeSvg(p.badge, 26) + '</span>' : '') + (p.online ? ' <span class="odot" title="접속 중"></span>' : '') + '</h2>' +
+    var h = (p.preview ? '<p class="tiny gold" style="margin-bottom:10px">미리보기 · 저장하지 않은 내용이 들어 있습니다</p>' : '') + '<div class="pcard' + (dk ? ' deco ' + fr.cls : '') + (dc.bg ? (decoDark(dc.bg) ? ' bgdark' : ' bglight') : '') + '"' + (dk ? ' style="' + fr.style + bgs + '"' : '') + '>' + (dc.stamp && R.DECO[dc.stamp] ? '<span class="pstamp" title="' + R.DECO[dc.stamp].name + '" aria-hidden="true">' + R.DECO[dc.stamp].glyph + '</span>' : '') + '<div class="pav">' + avatarHtml(p, 100) + (p.avcredit && (p.av || p.avData) ? '<span class="avcredit" title="두상 출처">' + esc(p.avcredit) + '</span>' : '') + '</div>' + '<div style="min-width:0">' + (p.title ? '<div class="pttl">' + (R.OP_TITLES[p.title] ? '<span class="ttl' + R.opTitleCls(p.title) + '">' + esc(p.title) + '</span>' : esc(p.title)) + '</div>' : '') + '<h2 class="pname">' + inkName(p.name, dc.ink, decoBgRef(dc.bg)) + (p.badge && R.GEM[p.badge.gem] ? ' <span class="pbdg" title="' + esc((p.badge.name || '') + ' · Lv ' + p.badge.lv) + '">' + badgeSvg(p.badge, 26) + '</span>' : '') + (p.online ? ' <span class="odot" title="접속 중"></span>' : '') + '</h2>' +
       '<div class="small">' + (hh ? houseDot(p.house, 16) + ' ' : '') + '<span style="color:' + (hh ? hh.color : 'inherit') + '">' + (hh ? hh.name : '') + '</span> · ' + (p.grade >= 8 ? '마스터 과정' : p.grade + '학년') + (p.lvl ? ' · Lv ' + p.lvl : '') + (R.CLS[p.cls] ? ' · <span class="pcls">' + clsDot(p.cls, 14) + ' ' + R.CLS[p.cls].name + '</span>' : '') + '</div>' +
       (p.guild ? '<div class="pguild">' + gEmblem(p.guild.color, p.guild.name, 20, p.guild.icon) + '<span class="pgt"><b class="pgn">' + esc(p.guild.name) + '</b><span class="pgm"><span class="tiny faint">Lv ' + (p.guild.lv || 1) + '</span>' + (p.guild.rank ? '<span class="tag' + (p.guild.role === 'owner' ? ' br' : p.guild.role === 'officer' ? ' ok' : '') + '">' + esc(p.guild.rank) + '</span>' : '') + '</span></span></div>' : '') +
       (p.fam && R.FAM[p.fam.id] ? '<div class="tiny pfam">동행 사역마 <b>' + esc(p.fam.nm || R.FAM[p.fam.id].name) + '</b>' + (p.fam.nm ? ' <span class="faint">' + R.FAM[p.fam.id].name + '</span>' : '') + ' <span class="num gold">Lv ' + p.fam.lv + '</span></div>' : '') +
@@ -1642,7 +1642,7 @@
     h += '</div><div class="grid g2" style="margin-top:16px"><div class="card"><h3>지역</h3><div class="zonelist" style="margin-top:8px">' + D.ZONES.map(function (zz, zi) {
       var to = zz.abyss ? '∞' : D.ZONES[zi + 1].from - 1, un = P.maxStage >= zz.from;
       return '<div class="zone' + (un ? '' : ' lockz') + '"><div style="min-width:0"><div class="small">' + zz.name + '</div><div class="tiny faint">재료: ' + D.MATS[zz.mat].name + '</div></div><span class="zr">' + zz.from + '–' + to + '</span></div>';
-    }).join('') + '</div></div><div class="card"><div class="row between"><h3>전투 능력</h3><button class="btn sm ghost" data-act="fullstat">전체 능력치</button></div><dl class="kv" style="margin-top:6px"><dt>초당 피해</dt><dd>' + fmt(c.totalDps) + '</dd><dt>물리 공격력</dt><dd>' + fmt(c.patk) + (S.P.cls === 'knight' ? ' <span class="tiny faint">평타</span>' : '') + '</dd><dt>주문 공격력</dt><dd>' + fmt(c.matk) + (S.P.cls !== 'knight' ? ' <span class="tiny faint">평타</span>' : '') + '</dd><dt>주문 · 기술 위력</dt><dd title="주문 위력은 마법 주문, 기술 위력은 물리 주문(검술 · 전투체술 등)의 피해에 곱해집니다">×' + c.spell.toFixed(2) + ' · ×' + c.skill.toFixed(2) + '</dd><dt>공격 속도</dt><dd>' + c.aps.toFixed(2) + '/초</dd><dt>치명타</dt><dd>' + pct(c.critC) + ' · ×' + c.critD.toFixed(2) + '</dd><dt>생명력 · 방어력</dt><dd>' + fmt(c.hp) + ' · ' + fmt(c.def) + '</dd><dt>사역마</dt><dd>' + (P.fam.act ? R.FAM[P.fam.act].name : '없음') + '</dd></dl><p class="tiny faint" style="margin-top:8px">원정은 출정 시점의 능력치로 결과가 정해집니다. 장비를 바꾸면 다음 원정부터 반영됩니다.</p></div></div>';
+    }).join('') + '</div></div><div class="card"><div class="row between"><h3>전투 능력</h3><button class="btn sm ghost" data-act="fullstat">전체 능력치</button></div><dl class="kv" style="margin-top:6px"><dt>초당 피해</dt><dd>' + fmt(c.totalDps) + '</dd><dt>' + statTerm('물리 공격력') + '</dt><dd>' + fmt(c.patk) + (S.P.cls === 'knight' ? ' <span class="tiny faint">평타</span>' : '') + '</dd><dt' + (c.skill === 1 ? ' class="kvz"' : '') + '>' + statTerm('기술 위력') + '</dt><dd' + (c.skill === 1 ? ' class="kvz"' : '') + '>×' + c.skill.toFixed(2) + '</dd><dt>' + statTerm('주문 공격력') + '</dt><dd>' + fmt(c.matk) + (S.P.cls !== 'knight' ? ' <span class="tiny faint">평타</span>' : '') + '</dd><dt' + (c.spell === 1 ? ' class="kvz"' : '') + '>' + statTerm('주문 위력') + '</dt><dd' + (c.spell === 1 ? ' class="kvz"' : '') + '>×' + c.spell.toFixed(2) + '</dd><dt>' + statTerm('공격 속도') + '</dt><dd>' + c.aps.toFixed(2) + '/초</dd><dt>치명타</dt><dd>' + pct(c.critC) + ' · ×' + c.critD.toFixed(2) + '</dd><dt>생명력 · 방어력</dt><dd>' + fmt(c.hp) + ' · ' + fmt(c.def) + '</dd><dt>사역마</dt><dd>' + (P.fam.act ? R.FAM[P.fam.act].name : '없음') + '</dd></dl><p class="tiny faint" style="margin-top:8px">원정은 출정 시점의 능력치로 결과가 정해집니다. 장비를 바꾸면 다음 원정부터 반영됩니다.</p></div></div>';
     return h;
   };
 
@@ -3023,7 +3023,10 @@
     // 하늘 이벤트: 효과는 진행 중인 작업에 자동으로 적용되고, 올려다보면 선물을 받는다
     sky: function () { var ev = R.skyAt(now()); if (!ev) return ''; var seen = S.P && S.P.skyLook === ev.key; return '<b>' + ev.name + '</b><p>' + ev.text + '</p><p class="tiny">하늘 이벤트가 이어지는 동안 올려다보지 않아도 자동으로 적용됩니다(진행 중인 수업 · 원정 · 마나 재생 등).</p><p class="tiny gold" style="margin-top:4px">' + (seen ? '이번 하늘은 이미 올려다보았습니다.' : '「올려다보기」를 누르면 별조각과 마나를 선물로 받습니다.') + '</p>'; },
     gi: function (i) { var g = D.GUIDE[+i]; if (!g) return ''; var sn = g.b.slice(0, 150); return '<b>' + esc(g.t) + '</b><p>' + esc(sn) + (g.b.length > 150 ? '…' : '') + '</p><p class="tiny gold" style="margin-top:4px">' + (matchMedia('(hover: none)').matches ? '한 번 더 누르면 이 안내로 이동합니다' : '누르면 이 안내로 이동합니다') + '</p>'; },
-    g: function (q) { var g = guideFind(q); if (!g) return ''; var b = g.b, k = b.indexOf(q), st = k > 60 ? b.lastIndexOf('. ', k) + 2 : 0, sn = b.slice(Math.max(0, st), Math.max(0, st) + 150); return '<b>' + esc(q) + '</b><p>' + esc(sn) + (b.length > st + 150 ? '…' : '') + '</p><p class="tiny gold" style="margin-top:4px">' + (matchMedia('(hover: none)').matches ? '한 번 더 누르면 가이드로 이동합니다' : '클릭하면 가이드에서 보기') + '</p>'; },
+    g: function (q) { var g = guideFind(q); if (!g) return ''; var sq = Object.keys(STAT_Q).some(function (n) { return STAT_Q[n] === q; }), b = g.b, k = b.indexOf(q), p0 = b.lastIndexOf('. ', k), st = k > 60 || (sq && k > 0) ? (p0 >= 0 ? p0 + 2 : 0) : 0, sn = b.slice(Math.max(0, st), Math.max(0, st) + 150);
+      // 능력치는 그 문장만 (위력은 「평타에는…」까지)
+      if (sq) { var e1 = b.indexOf('. ', k), e2 = e1 >= 0 && b.slice(e1 + 2, e1 + 6) === '평타에는' ? b.indexOf('. ', e1 + 2) : e1; sn = b.slice(st, e2 >= 0 ? e2 + 1 : b.length); var pt = b.indexOf('평타에는'); if (/위력은$/.test(q) && pt >= 0 && sn.indexOf('평타에는') < 0) sn += ' ' + b.slice(pt, b.indexOf('. ', pt) + 1); }
+      return '<b>' + esc(sq ? q.replace(/[은는]$/, '') : q) + '</b><p>' + esc(sn) + (!sq && b.length > st + 150 ? '…' : '') + '</p><p class="tiny gold" style="margin-top:4px">' + (matchMedia('(hover: none)').matches ? '한 번 더 누르면 가이드로 이동합니다' : '클릭하면 가이드에서 보기') + '</p>'; },
     house: function () { var hh = house(); return '<b>' + houseDot(S.P.house, 18) + ' ' + hh.name + ' <span class="faint">' + hh.latin + '</span></b><p class="muted">“' + hh.motto + '”</p><p>기숙사 혜택 (현재 / 최대)</p>' + houseGrow(S.P.house, wctx()) + '<p class="tt-src">처음에는 적힌 효과의 1/10만 받습니다. 기숙사 학생들의 활동이 대항전 점수로 쌓일수록 커져, 기숙사 성장 100%가 되면 적힌 효과(최대)를 그대로 받습니다.</p>'; },
     mana: function () {
       var c = C(), cur = predMana(), full = cur >= c.manaCap ? 0 : (c.manaCap - cur) / Math.max(1e-9, c.mana);
@@ -3064,6 +3067,7 @@
   document.addEventListener('click', function (e) {
     var t = e.target.closest && e.target.closest('.gterm');
     var touch = matchMedia('(hover: none)').matches;
+    if (t && touch && t.closest('summary') && !(tipFor === t && Date.now() - tipAt > 400)) e.preventDefault();   // 접는 줄 안의 용어: 첫 탭은 요약만 (줄은 접거나 펴지 않는다)
     if (t && (!touch || (tipFor === t && Date.now() - tipAt > 400))) { e.preventDefault(); e.stopPropagation(); hideTip(); if (t.dataset.gi) ACT.gjump(t.dataset.gi); else ACT.guide(t.dataset.gq); return; }   // 모바일: 한 번 누르면 요약, 한 번 더 누르면(용어나 요약) 이동
     if (tipEl && !tipEl.hidden && tipEl.contains(e.target) && tipFor && (tipFor.dataset.gq || tipFor.dataset.gi)) { var gf = tipFor; hideTip(); if (gf.dataset.gi) ACT.gjump(gf.dataset.gi); else ACT.guide(gf.dataset.gq); }
   });
@@ -3792,12 +3796,13 @@
       '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>', true);
   }
   ACT.promo = function (g) { promoModal(+g); };
-  // 시험 합격 창: 「새로 열린 것」 · 「다음 이야기」를 보고 닫으면 합격 창으로 돌아온다 (다른 쪽도 볼 수 있게).
-  // 합격 창을 닫을 때 새로 열린 것을 아직 안 봤으면 한 번 보여 준다
+  // 시험 합격 창: 「새로 열린 것」만 보고 닫으면 합격 창으로 돌아와 이야기를 볼 수 있다.
+  // 이야기를 본 뒤에는 합격 창으로 돌아가지 않고(같은 자리를 계속 누르면 이야기가 반복되던 문제) 새로 열린 것을 아직 안 봤으면 한 번 보여 주고 끝낸다
   function examResBack() { if (!S.examRes) return; modal(S.examRes.h); S.afterClose = examResClose; }
   function examResClose() { var x = S.examRes; S.examRes = null; if (x && !x.seenP) promoModal(x.g); }
-  ACT.exampromo = function () { var x = S.examRes; if (!x) return; x.seenP = true; promoModal(x.g); S.afterClose = examResBack; };
-  ACT.examstory = function (i) { if (!S.examRes) { ACT.story(i); return; } ACT.story(i); S.afterClose = examResBack; };
+  function examResNext() { var x = S.examRes; if (!x) return; if (!x.seenS) return examResBack(); examResClose(); }
+  ACT.exampromo = function () { var x = S.examRes; if (!x) return; x.seenP = true; promoModal(x.g); S.afterClose = examResNext; };
+  ACT.examstory = function (i) { var x = S.examRes; ACT.story(i); if (!x) return; x.seenS = true; S.afterClose = examResNext; };
   ACT.story = function (i) { var s = D.STORY[+i]; modal(mhead(s.title, '') + '<p style="white-space:pre-line;color:var(--ink2)">' + esc(s.text) + '</p><div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn primary" data-act="modal-close" autofocus>계속</button></div>'); act('storySeen', { n: +i + 1 }); };
   /* ── 기숙사: 배정 거울 연출(가입 직후) · 기숙사 정보 카드(기숙사 RP 채팅 상단 · 사감 이름) ── */
   // 기숙사 설정 항목: 촘촘한 2열(이름 | 내용). short = 배정 거울용 (위치 · 휴게실 · 사감 · 인사만)
@@ -3863,6 +3868,9 @@
     ['[data-act="settings"]', '설정', '테마 · 종이 질감 · 글씨 크기 · 소리 · 알림 · 채팅 탭을 설정합니다. 화면 둘러보기는 여기까지입니다.']
   ];
   // 이 게임에서만 쓰는 말: 밑줄 · 마우스를 올리면 가이드 요약 · 누르면 가이드 검색 (모바일은 누르면 요약, 요약을 한 번 더 누르면 가이드)
+  // 능력치 이름 → 가이드 「공격 능력치」의 그 문장 (툴팁으로 설명, 누르면 가이드로)
+  var STAT_Q = { '공격력': '공격력은', '물리 공격력': '물리 공격력은', '주문 공격력': '주문 공격력은', '주문 위력': '주문 위력은', '기술 위력': '기술 위력은', '공격 속도': '공격 속도는', '치명타 확률': '치명타 확률은', '치명타 피해': '치명타 피해는', '생명력': '생명력은', '방어력': '방어력은' };
+  function statTerm(n) { return STAT_Q[n] ? gterm(esc(n), STAT_Q[n]) : esc(n); }
   function gterm(label, q) { q = q || label; return '<span class="gterm" data-tip="g:' + esc(q) + '" data-gq="' + esc(q) + '" tabindex="0">' + label + '</span>'; }
   function guideFind(q) { var a = D.GUIDE.filter(function (g) { return g.t.indexOf(q) >= 0; }); if (!a.length) a = D.GUIDE.filter(function (g) { return g.b.indexOf(q) >= 0; }); return a[0]; }
   ACT.subjgo = function (id) { var el = $('[data-anchor="subj-' + id + '"]'); if (!el) return; el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); };
@@ -4257,11 +4265,23 @@
   function hexA(h, a) { var c = parseInt(h.slice(1), 16); return 'rgba(' + ((c >> 16) & 255) + ',' + ((c >> 8) & 255) + ',' + (c & 255) + ',' + a + ')'; }
   function lum(h) { var c = parseInt(h.slice(1), 16); return (0.299 * ((c >> 16) & 255) + 0.587 * ((c >> 8) & 255) + 0.114 * (c & 255)) / 255; }
   function forTone(c) { return lightUi() ? mixDark(c, lum(c) > 0.82 ? 0.6 : 0.4) : c; }
-  function inkAttr(id) {
-    var x = id && R.DECO[id]; if (!x || x.slot !== 'ink') return null; var c = x.c.map(forTone);
-    return c.length === 1 ? { cls: '', style: 'color:' + c[0] } : { cls: 'ink' + (x.anim ? ' anim' : ''), style: 'background-image:linear-gradient(90deg,' + c.join(',') + ')' };
+  // 학생 카드 배경 꾸미기 위: 잉크 색은 그대로 두고, 배경(첫 색 · 평균 색)과 대비가 낮을 때(3 미만)만 배경과 반대되는 그림자를 붙인다
+  function rgbOf(h) { var c = parseInt(h.slice(1), 16); return [(c >> 16) & 255, (c >> 8) & 255, c & 255]; }
+  function hexOf(a) { return '#' + a.map(function (v) { v = Math.round(v); return (v < 16 ? '0' : '') + v.toString(16); }).join(''); }
+  function relL(h) { var a = rgbOf(h).map(function (v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); return 0.2126 * a[0] + 0.7152 * a[1] + 0.0722 * a[2]; }
+  function contrast(a, b) { var x = relL(a), y = relL(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
+  function inkOutline(c, bg) {
+    var low = c.some(function (v) { return Math.min(contrast(v, bg.refs[0]), contrast(v, bg.refs[1])) < 3; }); if (!low) return '';
+    var o = bg.dark ? 'rgba(255,255,255,.5)' : 'rgba(20,16,30,.5)';   // 어두운 배경은 밝은 그림자, 밝은 배경은 어두운 그림자 (부드럽게 번지는 drop-shadow 하나)
+    return 'filter:drop-shadow(0 0 2px ' + o + ');';
   }
-  function inkName(name, id) { var k = inkAttr(id); return k ? '<span class="' + k.cls + '" style="' + k.style + '">' + esc(name) + '</span>' : esc(name); }
+  function decoBgRef(id) { var x = id && R.DECO[id]; if (!x || x.slot !== 'bg') return null; var avg = hexOf([0, 1, 2].map(function (i) { return x.g.reduce(function (t, c) { return t + rgbOf(c)[i]; }, 0) / x.g.length; })); return { dark: decoDark(id), refs: [x.g[0], avg] }; }
+  // bg: 이름이 놓인 학생 카드의 배경 꾸미기 (없으면 화면 테마를 따른다)
+  function inkAttr(id, bg) {
+    var x = id && R.DECO[id]; if (!x || x.slot !== 'ink') return null; var c = bg ? x.c.slice() : x.c.map(forTone), ol = bg ? inkOutline(c, bg) : '';   // 배경 꾸미기가 있으면 바탕이 고정이라 테마와 상관없이 원래 잉크 색
+    return c.length === 1 ? { cls: '', style: 'color:' + c[0] + ';' + ol } : { cls: 'ink' + (x.anim ? ' anim' : ''), style: 'background-image:linear-gradient(90deg,' + c.join(',') + ');' + ol };
+  }
+  function inkName(name, id, bg) { var k = inkAttr(id, bg); return k ? '<span class="' + k.cls + '" style="' + k.style + '">' + esc(name) + '</span>' : esc(name); }
   function decoFrame(id, small) {
     var x = id && R.DECO[id]; if (!x || x.slot !== 'frame') return { cls: '', style: '' };
     if (x.st === 'aurora' || x.st === 'spring') return { cls: 'fr-' + x.st, style: '' };
@@ -4545,7 +4565,15 @@
     modal(mhead('다른 학생에게 보이는 모습', '') + '<div id="pbox">' + profileCard(me, null) + '</div>');
   };
   ACT['pe-save-preview'] = function () { if (!S.peDraft && S.peAv === undefined) { ACT.me('profile'); return; } peSave(S.peDraft || peFromMe(), function (e) { if (e) toast('저장하지 못했습니다', e); else { toast('저장되었습니다', '', 1500); ACT.me('profile'); } }); };
-  ACT.pewide = function () { var d = peRead(); if (d) S.peDraft = d; S.peWide = !S.peWide; ACT.me('profile'); var b = $('#pe-bio'); if (b) b.focus(); };
+  // 자기소개 「더보기 · 좁게」: 창을 다시 그려도 보던 자리 그대로 (누른 버튼이 화면의 같은 높이에 남게, 포커스로 스크롤이 튀지 않게)
+  ACT.pewide = function () {
+    var d = peRead(); if (d) S.peDraft = d; S.peWide = !S.peWide;
+    var box = $('#modal .mbox'), btn = $('[data-act="pewide"]'), rel0 = box && btn ? btn.getBoundingClientRect().top - box.getBoundingClientRect().top : null, st = box ? box.scrollTop : 0, sy = window.scrollY;
+    ACT.me('profile');
+    var box2 = $('#modal .mbox'), btn2 = $('[data-act="pewide"]'); if (box2) box2.scrollTop = st; window.scrollTo(0, sy);
+    if (box2 && btn2 && rel0 != null) box2.scrollTop += btn2.getBoundingClientRect().top - box2.getBoundingClientRect().top - rel0;   // 창 기준 위치로 맞춘다 (창이 나타나는 움직임과 무관하게)
+    var b = $('#pe-bio'); if (b) b.focus({ preventScroll: true });
+  };
   ACT.biomore = function (a, b, el) { var w = el.closest('.pbiow'); if (!w) return; var c = w.classList.toggle('clamp'); el.textContent = c ? '더보기' : '접기'; };
   ACT.titlelist = function () {
     var d = peRead(); if (d) S.peDraft = d;
@@ -4819,7 +4847,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102119;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102120;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

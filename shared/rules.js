@@ -441,9 +441,9 @@
       { g: '전투', rows: [
         row('초당 피해', R.fmt(Math.round(c.totalDps))),
         row('물리 공격력', R.fmt(Math.round(c.patk)), add(add(from('atkPct').concat(from('physPct')), sn.vit + ' ' + Math.round(st.vit), st.vit * 0.01), '', 0)),
-        row('주문 공격력', R.fmt(Math.round(c.matk)), add(from('atkPct'), sn.int + ' ' + Math.round(st.int), st.int * 0.01)),
-        row('주문 위력', '×' + c.spell.toFixed(2), add(from('spellPct'), SUBJ.syntax.name + ' Lv ' + sj('syntax'), sj('syntax') * 0.02), c.spell === 1),
         row('기술 위력', '×' + c.skill.toFixed(2), from('skillPct'), c.skill === 1),
+        row('주문 공격력', R.fmt(Math.round(c.matk)), add(from('atkPct').concat(from('matkPct')), sn.int + ' ' + Math.round(st.int), st.int * 0.01)),
+        row('주문 위력', '×' + c.spell.toFixed(2), add(from('spellPct'), SUBJ.syntax.name + ' Lv ' + sj('syntax'), sj('syntax') * 0.02), c.spell === 1),
         row('공격 속도', c.aps.toFixed(2) + '/초', add(from('aps'), sn.agi + ' ' + Math.round(st.agi), st.agi * 0.01)),
         row('치명타 확률', R.fmtPct(c.critC, 1), add([['기본', '5%', 0]].concat(from('critC')), sn.luk + ' ' + Math.round(st.luk), st.luk * 0.0015)),
         row('치명타 피해', '×' + c.critD.toFixed(2), [['기본', '×1.5', 0]].concat(from('critD'))),
