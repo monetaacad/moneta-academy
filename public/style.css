@@ -1030,7 +1030,10 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 .ink { -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
 .ink.anim { background-size: 220% 100%; animation: inkFlow 5s linear infinite; }
 @keyframes inkFlow { from { background-position: 0% 50%; } to { background-position: 220% 50%; } }
-@media (prefers-reduced-motion: reduce) { .fr-aurora, .fr-spring, .ink.anim { animation: none; } }
+.fr-pulse { animation: decoPulse 3.2s ease-in-out infinite; }   /* 숨 쉬는 별빛: 빛이 천천히 커졌다 작아진다 */
+@keyframes decoPulse { 0%, 100% { box-shadow: 0 0 4px var(--fc); } 50% { box-shadow: 0 0 18px var(--fc), 0 0 2px var(--fc) inset; } }
+.fr-gild { border-radius: 16px; }
+@media (prefers-reduced-motion: reduce) { .fr-aurora, .fr-spring, .fr-pulse, .ink.anim { animation: none; } }
 /* 꾸미기 탭: 위에 미리보기와 할 일, 아래에 칸마다 작은 칩 */
 .decoprev { position: sticky; top: -18px; z-index: 2; background: var(--panel); padding: 6px 0 8px; }
 .decobar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; min-height: 30px; }

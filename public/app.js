@@ -4156,6 +4156,11 @@
     if (x.st === 'aurora' || x.st === 'spring') return { cls: 'fr-' + x.st, style: '' };
     var c = forTone(x.c), w = small ? 2 : 2;
     if (x.st === 'double') return { cls: '', style: 'border:' + (small ? 4 : 5) + 'px double ' + c + ';' };
+    if (x.st === 'dotted') return { cls: '', style: 'border:' + (small ? 2 : 3) + 'px dotted ' + c + ';' };
+    if (x.st === 'framed') return { cls: '', style: 'border:' + (small ? 3 : 5) + 'px solid ' + c + ';box-shadow:inset 0 0 0 1px ' + hexA(x.c, 0.9) + ',inset 0 0 0 ' + (small ? 3 : 4) + 'px ' + hexA('#f6e7c4', 0.35) + ',0 2px 6px rgba(0,0,0,.25);' };   // 나무 액자: 두꺼운 테 + 안쪽 밝은 띠
+    if (x.st === 'twin') return { cls: '', style: 'border:2px solid ' + c + ';box-shadow:0 0 0 ' + (small ? 2 : 3) + 'px ' + forTone(x.c2) + ',0 0 0 ' + (small ? 3 : 4) + 'px ' + hexA(x.c, 0.6) + ';' };   // 기숙사 문장: 두 빛깔 겹테
+    if (x.st === 'pulse') return { cls: 'fr-pulse', style: 'border:2px solid ' + c + ';--fc:' + hexA(x.c, 0.55) + ';' };
+    if (x.st === 'gild') return { cls: 'fr-gild', style: 'border:' + (small ? 4 : 5) + 'px double ' + c + ';box-shadow:0 0 ' + (small ? 5 : 12) + 'px ' + hexA(x.c, 0.45) + ',inset 0 0 ' + (small ? 4 : 10) + 'px ' + hexA(x.c, 0.3) + ';' };
     return { cls: '', style: 'border:' + w + 'px ' + (x.st === 'dashed' ? 'dashed' : 'solid') + ' ' + c + ';' + (x.st === 'glow' ? 'box-shadow:0 0 ' + (small ? 6 : 14) + 'px ' + hexA(x.c, 0.5) + ';' : 'box-shadow:inset 0 0 0 1px ' + hexA(x.c, 0.3) + ';') };
   }
   function decoDark(id) { var x = id && R.DECO[id]; if (!x || x.slot !== 'bg') return false; var L = x.g.reduce(function (t, c) { var n = parseInt(c.slice(1), 16); return t + (0.299 * (n >> 16) + 0.587 * (n >> 8 & 255) + 0.114 * (n & 255)) / 255; }, 0) / x.g.length; return L < 0.5; }
@@ -4690,7 +4695,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102102;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102103;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
