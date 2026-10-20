@@ -114,7 +114,7 @@
   function modal(html, wide, locked) {
     var m = $('#modal'); m.innerHTML = '<div class="mbox' + (wide ? ' wide' : '') + '" role="dialog" aria-modal="true">' + html + '</div>';
     m.hidden = false; S.modal = true; S.modalLocked = !!locked; scrollHints();
-    var f = m.querySelector('[autofocus]') || m.querySelector('button'); if (f) setTimeout(function () { f.focus(); }, 30);
+    var f = m.querySelector('[autofocus]') || m.querySelector('button'); if (f) setTimeout(function () { f.focus({ preventScroll: true }); }, 30);   // 포커스가 창을 맨 위로 끌어올리지 않게 (같은 창을 다시 그릴 때 보던 자리 유지)
   }
   function closeModal() { var m = $('#modal'); m.hidden = true; m.innerHTML = ''; S.modal = false; S.modalLocked = false; S.replay = null; S.mbox = null; S.meModal = false; S.notesOpen = false; render(); var f = S.afterClose; S.afterClose = null; if (f) setTimeout(f, 60); }
   function mhead(title, sub, noClose) { return '<div class="mhead"><div><h2>' + title + '</h2>' + (sub ? '<p class="muted small">' + sub + '</p>' : '') + '</div>' + (noClose ? '' : '<button class="btn ghost sm x" data-act="modal-close" aria-label="닫기">닫기</button>') + '</div>'; }
@@ -4558,7 +4558,15 @@
     modal(mhead('다른 학생에게 보이는 모습', '') + '<div id="pbox">' + profileCard(me, null) + '</div>');
   };
   ACT['pe-save-preview'] = function () { if (!S.peDraft && S.peAv === undefined) { ACT.me('profile'); return; } peSave(S.peDraft || peFromMe(), function (e) { if (e) toast('저장하지 못했습니다', e); else { toast('저장되었습니다', '', 1500); ACT.me('profile'); } }); };
-  ACT.pewide = function () { var d = peRead(); if (d) S.peDraft = d; S.peWide = !S.peWide; ACT.me('profile'); var b = $('#pe-bio'); if (b) b.focus(); };
+  // 자기소개 「더보기 · 좁게」: 창을 다시 그려도 보던 자리 그대로 (누른 버튼이 화면의 같은 높이에 남게, 포커스로 스크롤이 튀지 않게)
+  ACT.pewide = function () {
+    var d = peRead(); if (d) S.peDraft = d; S.peWide = !S.peWide;
+    var box = $('#modal .mbox'), btn = $('[data-act="pewide"]'), rel0 = box && btn ? btn.getBoundingClientRect().top - box.getBoundingClientRect().top : null, st = box ? box.scrollTop : 0, sy = window.scrollY;
+    ACT.me('profile');
+    var box2 = $('#modal .mbox'), btn2 = $('[data-act="pewide"]'); if (box2) box2.scrollTop = st; window.scrollTo(0, sy);
+    if (box2 && btn2 && rel0 != null) box2.scrollTop += btn2.getBoundingClientRect().top - box2.getBoundingClientRect().top - rel0;   // 창 기준 위치로 맞춘다 (창이 나타나는 움직임과 무관하게)
+    var b = $('#pe-bio'); if (b) b.focus({ preventScroll: true });
+  };
   ACT.biomore = function (a, b, el) { var w = el.closest('.pbiow'); if (!w) return; var c = w.classList.toggle('clamp'); el.textContent = c ? '더보기' : '접기'; };
   ACT.titlelist = function () {
     var d = peRead(); if (d) S.peDraft = d;
