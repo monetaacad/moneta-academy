@@ -4304,7 +4304,7 @@
     API.board({ tag: b.tag, q: b.q, qt: b.q ? b.qt : '', page: b.page, hd: bdHideDone() ? 1 : '' }).then(function (j) { if (j.error) { b.err = j.error; } else { b.err = ''; b.data = j; } if (S.view === 'board' && !S.modal && b.mode === 'list') render(); });
   }
   // 건의 처리 상태 (학생회장이 붙인다) · 해결 완료 숨기기(이 기기에 기억)
-  var BD_ST = { review: '검토 중', wip: '적용 중', done: '해결 완료', no: '반영 안 함', norepro: '재현 안 됨' };
+  var BD_ST = { review: '검토 중', wip: '확인 중', done: '해결 완료', no: '반영 안 함', norepro: '재현 안 됨' };
   function bdSt(st) { return BD_ST[st] ? '<span class="btag st-' + st + '">' + BD_ST[st] + '</span>' : ''; }
   function bdHideDone() { try { return localStorage.getItem('arc_bdhd') === '1'; } catch (e) { return !!S.bdHd; } }
   ACT.bdhd = function () { var v = !bdHideDone(); S.bdHd = v; try { localStorage.setItem('arc_bdhd', v ? '1' : '0'); } catch (e) { } S.bd.page = 1; loadBoard(); };
@@ -4734,7 +4734,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102107;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102108;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
