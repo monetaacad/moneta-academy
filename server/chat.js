@@ -235,6 +235,10 @@ function create(dbx, log, opts) {
   function system(ch, text, now, party) {
     return store(ch, party, { ch, t: now, pid: 'system', name: '아카데미', house: 'system', grade: 0, guest: false, kind: 'sys', text });
   }
+  // 사감 한마디: 기숙사 RP 채널에 사감(교수)이 말한다. kind 'head'는 서버만 쓴다 (학생이 보내는 글은 say · me로만 저장)
+  function headSay(house, name, text, now) {
+    return store('hrp', house, { ch: 'hrp', t: now, pid: 'head:' + house, name, house, grade: 0, guest: false, kind: 'head', text, title: '' });
+  }
   // NPC(가상의 학생)가 말하기: 파티 채널에서만
   function npcSay(party, npc, text, now) {
     return store('party', party, { ch: 'party', t: now, pid: 'npc:' + npc.k, name: npc.name, house: npc.house || 'system', grade: npc.grade || 1, guest: false, kind: 'say', text, title: 'NPC', npc: true });
@@ -280,6 +284,6 @@ function create(dbx, log, opts) {
   ];
   timers.forEach((t) => t.unref());
 
-  return { CHANNELS, stream, send, sendDm, dmHistory, dmThreads, npcSay, system, staffNotice, recruit, history, historyAfter, watch, saveSeq, remove, removeBy, kick, isOnline, online, partyChanged, exrChanged, guildChanged, clsChanged, ping, pingAll, pingEach(event, fn) { clients.forEach((c) => write(c, event, fn(c.pid))); }, dropParty: (party) => partyRecent.delete('p:' + party), dropGuild: (g) => { partyRecent.delete('g:' + g + ':rp'); partyRecent.delete('g:' + g + ':oc'); }, connections: () => clients.size, getSlow: () => slow.world, setSlow(sec) { slow.world = Math.max(0, Math.min(600, Math.floor(+sec || 0))); pingAll('slow', { ch: 'world', sec: slow.world }); return slow.world; }, opChanged(pid) { clients.forEach((c) => { if (c.pid === pid) write(c, 'op', { op: !!isOp(pid) }); }); }, flush, closeAll() { flush(); saveSeq(); clients.forEach(drop); } };
+  return { CHANNELS, stream, send, sendDm, dmHistory, dmThreads, npcSay, headSay, system, staffNotice, recruit, history, historyAfter, watch, saveSeq, remove, removeBy, kick, isOnline, online, partyChanged, exrChanged, guildChanged, clsChanged, ping, pingAll, pingEach(event, fn) { clients.forEach((c) => write(c, event, fn(c.pid))); }, dropParty: (party) => partyRecent.delete('p:' + party), dropGuild: (g) => { partyRecent.delete('g:' + g + ':rp'); partyRecent.delete('g:' + g + ':oc'); }, connections: () => clients.size, getSlow: () => slow.world, setSlow(sec) { slow.world = Math.max(0, Math.min(600, Math.floor(+sec || 0))); pingAll('slow', { ch: 'world', sec: slow.world }); return slow.world; }, opChanged(pid) { clients.forEach((c) => { if (c.pid === pid) write(c, 'op', { op: !!isOp(pid) }); }); }, flush, closeAll() { flush(); saveSeq(); clients.forEach(drop); } };
 }
 module.exports = { create, CHANNELS };

@@ -83,9 +83,18 @@ function create(store, cfg, log) {
     }).sort((a, b) => b.score - a.score);
   }
 
+  // 대항전 선두가 바뀌면 새 선두 기숙사의 사감이 한마디 (주 시작 12시간 뒤부터, 6시간에 한 번까지 · 서버를 켠 뒤 처음 본 선두는 조용히 기억만)
+  const LEAD_QUIET = 12 * 3600, LEAD_GAP = 6 * 3600;
+  let lead = null;
   function refreshHouses(now, cup) {
     D.HOUSES.forEach((h) => { const c = cup.find((x) => x.id === h.id); W.hpts[h.id] = Math.floor((W.hbase[h.id] || 0) + (c ? c.sum : 0)); });
     W.hAt = now;
+    const week = R.weekId(now), top = cup[0] && cup[0].score > 0 ? cup[0].id : null;
+    if (!lead || lead.week !== week) { lead = { week, id: top, at: lead ? lead.at : 0 }; return; }
+    if (top && top !== lead.id) {
+      lead.id = top;
+      if (now - R.weekStart(week) >= LEAD_QUIET && now - lead.at >= LEAD_GAP && api.onLead) { lead.at = now; try { api.onLead(top); } catch (e) { } }
+    }
   }
   const houseView = () => ({ pts: W.hpts, full: W.hfull });
 
@@ -104,6 +113,7 @@ function create(store, cfg, log) {
     keys.slice(10).forEach((k) => delete W.results[k]);
     kvSet('results', W.results);
     q.purgeWeekly.run(week - 10);
+    if (api.onWeek) try { api.onWeek(week, cup.map((c) => c.id)); } catch (e) { }
     log(`${week}주차 정산: 대항전 1위 ${cup[0] && cup[0].id}, 월드 보스 ${killed ? '토벌 성공' + (kills > 1 ? ' ×' + kills : '') : '토벌 실패'}, 참여 ${dmgs.length}명`);
   }
 

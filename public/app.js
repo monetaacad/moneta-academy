@@ -507,7 +507,7 @@
     h += '<div id="chatlog" class="chatlog ch-' + ch + '" aria-live="polite">' +
       (c.more[ch] && API.mode === 'server' && c.msgs[ch].length >= 80 ? '<button class="btn sm ghost chatmore" data-act="chatmore">이전 대화 더 보기</button>' : '') +
       '<div class="chatdesc"><div class="chatmeta tiny"><span class="ondot" aria-hidden="true"></span><span class="gold" data-l="chatonline"></span>' + (c.loading === ch ? '<span class="faint">새 글 불러오는 중…</span>' : '') + (ch === 'world' && c.slow.world ? '<span class="tag br">슬로우 모드 ' + c.slow.world + '초</span>' : '') + (ch === 'world' && isOp() ? '<button class="btn sm ghost" data-act="slowset" style="padding:0 7px">슬로우 모드 설정</button>' : '') + '</div>' +
-      '<p class="tiny faint">' + info.desc + (API.mode === 'local' && ch !== 'notice' ? '<br><span class="gold">데모: 같은 페이지를 연 사람끼리만 보이고, 기록은 이 브라우저에만 남습니다.</span>' : '') + '</p></div>' +
+      (ch === 'hrp' ? houseRoom(S.chHouse) : '') + '<p class="tiny faint">' + info.desc + (API.mode === 'local' && ch !== 'notice' ? '<br><span class="gold">데모: 같은 페이지를 연 사람끼리만 보이고, 기록은 이 브라우저에만 남습니다.</span>' : '') + '</p></div>' +
       (c.msgs[ch].length ? list : '<div class="empty">' + (ch === 'notice' ? '아직 공지가 없습니다.' : ch === 'recruit' ? '아직 모집 알림이 없습니다. 함께 원정 방 · 동아리 · 파티 화면에서 모집 알림을 보낼 수 있습니다.' : '아직 대화가 없습니다. 첫 인사를 건넬 차례.') + '</div>') + '<button class="chatnew" data-act="chatbottom" hidden></button></div>';
     if (ch !== 'notice') h += chatInput(ch);
     d.innerHTML = h; d.classList.remove('closed'); scrollHints();
@@ -558,6 +558,7 @@
         '<span class="rcpos">' + (rc.pos || []).map(function (k) { return R.EXP_POS[k] ? '<span class="postag p-' + k + '">' + R.EXP_POS[k].name + '</span>' : ''; }).join('') + (free.length ? '<span class="tiny faint">빈자리 ' + free.map(function (k) { return R.EXP_POS[k].name; }).join(' · ') + '</span>' : '') + '</span></span>' +
         rcFoot(rc.note, me ? '' : '<button class="btn sm" data-act="erpeek" data-a="' + esc(String(rc.room || '')) + '">살펴보기</button>') + '</span></div>';
     }
+    if (m.kind === 'head') return '<div class="cm head" data-id="' + m.id + '"><span class="ct num">' + time + '</span><span class="cx"><span class="tag hd">사감</span><button class="cn" data-act="houseinfo" data-a="' + esc(m.house) + '" style="color:' + hc + '">' + esc(m.name) + '</button> <span class="cb">' + chatText(m.text) + '</span></span></div>';   // 사감 한마디 (서버만 보낼 수 있다)
     var npc = String(m.pid).indexOf('npc:') === 0;
     var name = titleHtml(m.title, me) + '<button class="cn" data-act="' + (npc ? 'npcinfo' : 'cprof') + '" data-a="' + m.id + '">' + inkName(m.name, m.ink) + '</button>' + '<span class="tiny faint">' + (m.grade >= 8 ? '마스터' : m.grade + '학년') + '</span>';
     if (m.kind === 'me') return '<div class="cm' + (me ? ' mine' : '') + '" data-id="' + m.id + '"><span class="ct num">' + time + '</span><span class="cx">' + name + ' <i class="act">' + esc(m.text).replace(/\n/g, '<br>') + '</i></span></div>';
@@ -3499,6 +3500,31 @@
   }
   ACT.promo = function (g) { promoModal(+g); };
   ACT.story = function (i) { var s = D.STORY[+i]; modal(mhead(s.title, '') + '<p style="white-space:pre-line;color:var(--ink2)">' + esc(s.text) + '</p><div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn primary" data-act="modal-close" autofocus>계속</button></div>'); act('storySeen', { n: +i + 1 }); };
+  /* ── 기숙사: 배정 거울 연출(가입 직후) · 기숙사 정보 카드(기숙사 RP 채팅 상단 · 사감 이름) ── */
+  function houseCard(id, short) {
+    var h = R.HOUSE[id], L = D.HOUSE_LORE[id]; if (!h || !L) return '';
+    function row(k, v) { return '<div class="hlrow"><b>' + k + '</b><p>' + esc(v) + '</p></div>'; }
+    var rows = row('위치', L.loc + '. ' + L.look) + row('휴게실 · ' + esc(L.room), L.roomDesc) + row('사감', L.head + ' (' + L.headOf + ')') + row('인사', '「' + L.greet + '」');
+    if (!short) rows += row('상징', L.crest) + row('성향', L.trait) + row('전통', L.trad) + row('속설', L.myth) + row('손님 출입', L.guest);
+    return '<div class="hlcard" style="--hc:' + h.color + '">' + (short ? '' : '<div class="hlhead">' + dotImg(id, 44) + '<div><h3>' + esc(h.name) + ' <span class="tiny faint">' + esc(h.latin) + '</span></h3><p class="small hlmotto">「' + esc(h.motto) + '」</p></div></div>') + rows + '</div>';   // 짧은 카드(배정 거울)는 위에 이름 · 교훈이 이미 있다
+  }
+  function houseReveal(cb) {
+    var id = S.P && S.P.house, h = R.HOUSE[id], L = D.HOUSE_LORE[id]; if (!h || !L) { cb(); return; }
+    S.afterClose = cb;   // 닫기(Esc 포함)를 눌러도 다음 안내로 이어진다
+    modal(mhead('배정 거울', '모네타 아카데미 기숙사 배정', true) +
+      '<div class="hmirror" data-act="hmskip" style="--hc:' + h.color + '"><div class="hmglass"><i class="hmglow"></i>' + dotImg(id, 64, '', 'hmcrest') + '</div>' +
+      '<div class="hmlines"><p>기숙사 문 앞, 키보다 큰 거울에 손을 댑니다.</p><p>차가운 거울 속에서 ' + esc(L.light) + ' 빛이 번집니다.</p><p class="hmname">' + esc(h.name) + '</p><p class="small muted">「' + esc(h.motto) + '」</p></div></div>' +
+      '<div class="hmcard">' + houseCard(id, true) + '<p class="tiny faint" style="margin-top:8px">기숙사 이야기는 기숙사 RP 채팅 상단의 「기숙사 정보」에서 다시 볼 수 있습니다.</p></div>' +
+      '<div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn primary" data-act="modal-close" autofocus>기숙사로 들어가기</button></div>');
+  }
+  ACT.hmskip = function () { var m = $('.hmirror'); if (m) m.parentNode.classList.add('hmdone'); };
+  ACT.houseinfo = function (id) { var k = R.HOUSE[id] ? id : S.P.house; modal(mhead('기숙사 정보', R.HOUSE[k] ? R.HOUSE[k].name : '') + houseCard(k)); };
+  // 기숙사 RP 채팅 상단: 휴게실 이름 · 오늘의 장면(날마다 하나) · RP 키워드
+  function houseRoom(id) {
+    var h = R.HOUSE[id], L = D.HOUSE_LORE[id]; if (!h || !L) return '';
+    return '<div class="hroom" style="--hc:' + h.color + '"><div class="row" style="gap:6px;align-items:baseline"><b>' + esc(L.room) + '</b><span class="tiny faint">' + esc(h.name) + ' 휴게실</span><span class="spacer"></span><button class="btn sm ghost" data-act="houseinfo" data-a="' + id + '">기숙사 정보</button></div>' +
+      '<p class="small hrsc">' + esc(L.scenes[R.dayKST(now()) % L.scenes.length]) + '</p><p class="tiny faint">인사 「' + esc(L.greet) + '」 · 소품 ' + L.props.map(esc).join(' · ') + '</p></div>';
+  }
   /* ── 처음 온 학생: 이야기 → 「처음」 안내 몇 장 → 화면 둘러보기(튜토리얼) ── */
   function onbGuide(i, thenTour) {
     var list = D.GUIDE.filter(function (g) { return g.c === '처음'; }), n = list.length; i = Math.max(0, Math.min(n - 1, +i || 0)); var g = list[i];
@@ -4293,7 +4319,7 @@
   ACT['auth-go'] = function (tab) {
     var name = $('#a-name') ? $('#a-name').value.trim() : '', id = $('#a-id') ? $('#a-id').value.trim() : '', pw = $('#a-pw') ? $('#a-pw').value : '', msg = $('#a-msg');
     if ($('#a-name')) S.authName = name; if ($('#a-id')) S.authId = id;
-    function done(j) { if (j.error) { msg.textContent = j.error; return; } absorb(j); if (S.P && S.P.needCreate) { S.authName = ''; authScreen(); return; } start(); if (tab === 'login') { afterSync(); if (j.pwTemp) setTimeout(function () { ACT.settings(); setTimeout(function () { var o = $('#pw-old'); if (o) { o.scrollIntoView({ block: 'center' }); o.focus({ preventScroll: true }); } var m = $('#pw-msg'); if (m) m.textContent = '임시 비밀번호로 로그인했습니다. 새 비밀번호로 바꿔 주세요'; }, 300); }, 400); } else if (!PREF.tutDone) { S.onbChain = true; onbGuide(0, true); } else { S.afterClose = function () { if (S.view !== 'home') ACT.nav('home'); ACT.mqscene('intro'); }; ACT.story(0); } }
+    function done(j) { if (j.error) { msg.textContent = j.error; return; } absorb(j); if (S.P && S.P.needCreate) { S.authName = ''; authScreen(); return; } start(); if (tab === 'login') { afterSync(); if (j.pwTemp) setTimeout(function () { ACT.settings(); setTimeout(function () { var o = $('#pw-old'); if (o) { o.scrollIntoView({ block: 'center' }); o.focus({ preventScroll: true }); } var m = $('#pw-msg'); if (m) m.textContent = '임시 비밀번호로 로그인했습니다. 새 비밀번호로 바꿔 주세요'; }, 300); }, 400); } else houseReveal(function () { if (!PREF.tutDone) { S.onbChain = true; onbGuide(0, true); } else { S.afterClose = function () { if (S.view !== 'home') ACT.nav('home'); ACT.mqscene('intro'); }; ACT.story(0); } }); }
     if (tab === 'login') { if (!id) { msg.textContent = '아이디 입력 필요'; return; } msg.textContent = '확인 중…'; return API.login(id, pw).then(done); }
     if (tab === 'findid') {
       var nid = $('#a-nid') ? $('#a-nid').value.trim() : '';
@@ -4397,7 +4423,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102050;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102051;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

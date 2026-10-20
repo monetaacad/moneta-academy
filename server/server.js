@@ -116,6 +116,11 @@ const exprooms = ExpRoom.create({ loadPlayer: (pid, now) => loadPlayer(pid, now)
   partyInfo: (pid) => { const id = partyOf.get(pid); if (!id) return null; const pa = dbx.q.partyGet.get(id); if (!pa) return null; return { id, leader: pa.leader, allgo: !!pa.allgo, members: dbx.q.partyMembers.all(id).map((m) => m.id) }; },
   canInvite: (a, b) => friendState(a, b) === 'ok' || (guildOf.get(a) && guildOf.get(a) === guildOf.get(b)),
   nameOf: (pid) => { const r = dbx.q.getProfile.get(pid); return r ? r.name : ''; } });
+// 사감 한마디: 기숙사 RP 채널에 (신입생 환영 · 주간 대항전 결과 · 대항전 선두가 바뀔 때). 채팅 시각은 다른 알림처럼 실제 시각
+function headSay(house, text) { const L = D.HOUSE_LORE[house]; if (L && text) chat.headSay(house, L.head, text, Date.now() / 1000); }
+function headWelcome(P) { const L = D.HOUSE_LORE[P.house]; if (L) headSay(P.house, L.say.welcome.replace('{n}', P.name)); }
+world.onWeek = (week, order) => order.forEach((id, i) => { const L = D.HOUSE_LORE[id]; if (L) headSay(id, L.say.rank[i]); });
+world.onLead = (id) => { const L = D.HOUSE_LORE[id]; if (L) headSay(id, L.say.lead); };
 world.onKill = (name) => { const t = name + ' 토벌 성공! 이번 주에 도전한 모든 학생에게 토벌 보상 우편을 보냈습니다.'; chat.system('world', t, Date.now() / 1000); chat.system('notice', t, Date.now() / 1000); };
 
 // 월드 보스 토벌 보상: 이번 주에 한 번이라도 도전한 학생 모두에게 우편 (막 잡은 학생은 아직 저장 전일 수 있어 따로 넣는다)
@@ -394,6 +399,7 @@ routes['POST /api/register'] = async (req, res) => {
   const token = newSession(id);
   log(`입학: ${name} (${house})${code ? ' 초대코드 ' + code : ''}${opInv ? ' · 운영자' : ''}`);
   world.addNews(P.name + ' 학생이 ' + (R.HOUSE[P.house] ? R.HOUSE[P.house].name : '아카데미') + '에 입학했습니다', now);
+  headWelcome(P);
   send(req, res, 200, Object.assign({ token }, statePayload(P, now)), { 'Set-Cookie': cookie(token, cfg.sessionDays * 86400) });
 };
 // 이름 바꾸기: 처음 정한 이름은 한 번 언제든, 바꾼 뒤에는 30일(R.NAME_CD)이 지나야 다시. 같은 이름(대소문자 무시)은 쓸 수 없다.
@@ -1925,6 +1931,7 @@ routes['POST /api/recreate'] = async (req, res) => {
   store.drop(pid); store.put(P); store.markDirty(pid);
   log(`다시 입학: ${name} (${house})`);
   world.addNews(P.name + ' 학생이 ' + (R.HOUSE[P.house] ? R.HOUSE[P.house].name : '아카데미') + '에 입학했습니다', now);
+  headWelcome(P);
   send(req, res, 200, statePayload(P, now));
 };
 routes['POST /api/admin/ban'] = async (req, res) => {
