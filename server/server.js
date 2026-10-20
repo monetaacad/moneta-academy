@@ -494,8 +494,8 @@ routes['GET /api/myranks'] = (req, res) => {
   send(req, res, 200, { ranks: world.myRanks(P, R.summary(P, world.W, now).power, now) });
 };
 routes['GET /api/world'] = (req, res) => {
-  if (!authed(req)) return fail(req, res, 401, '로그인이 필요합니다');
-  if (limited('w:' + clientIp(req), 2, 10)) return fail(req, res, 429, '요청이 너무 잦습니다');
+  const pid = authed(req); if (!pid) return fail(req, res, 401, '로그인이 필요합니다');
+  if (limited('w:' + pid, 2, 10)) return fail(req, res, 429, '요청이 너무 잦습니다');   // 학생별로 센다: 학교 와이파이처럼 한 IP에 여럿이 모여도 막히지 않게
   const now = nowSec(); world.tick(now);
   const v = world.publicView(now, store.online(120000)), tag = JSON.stringify(Object.assign({}, v, { now: 0 }));   // 시각(now)은 해시에서 뺀다
   const body = JSON.stringify(v), etag = '"w' + crypto.createHash('sha1').update(tag).digest('base64url').slice(0, 20) + '"';
