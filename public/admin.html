@@ -25,10 +25,10 @@
 /* 초대코드 표: 칸 폭이 내용에 따라 출렁이지 않게 (좁은 화면은 가로 스크롤) */
 .adm .scroll > table { min-width: 680px; }
 .adm table:has(#invites) { table-layout: fixed; }
-.adm table:has(#invites) th:nth-child(1) { width: 150px; } .adm table:has(#invites) th:nth-child(2) { width: 64px; } .adm table:has(#invites) th:nth-child(3) { width: 92px; }
-.adm table:has(#invites) th:nth-child(4) { width: var(--imw, 180px); position: relative; } .adm table:has(#invites) th:nth-child(6) { width: 92px; }
+.adm table:has(#invites) th:nth-child(1) { width: 150px; } .adm table:has(#invites) th:nth-child(2) { width: 64px; } .adm table:has(#invites) th:nth-child(3) { width: 96px; } .adm table:has(#invites) th:nth-child(4) { width: 92px; }
+.adm table:has(#invites) th:nth-child(5) { width: var(--imw, 180px); position: relative; } .adm table:has(#invites) th:nth-child(7) { width: 92px; }
 .adm #invites td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.adm #invites td:nth-child(4) { white-space: normal; overflow-wrap: anywhere; }
+.adm #invites td:nth-child(5) { white-space: normal; overflow-wrap: anywhere; }
 .adm #invites td.iub.open { white-space: normal; overflow-wrap: anywhere; }   /* 사용한 학생 펼침 */
 .adm #invites .ubm { margin-left: 4px; padding: 0 4px; border: 0; background: none; color: var(--gold, #d8b45a); font: inherit; font-size: 12px; cursor: pointer; }
 .adm .colgrip { position: absolute; top: 0; right: -4px; width: 9px; height: 100%; cursor: col-resize; touch-action: none; z-index: 1; }   /* 메모 칸 너비 조절 */
@@ -66,7 +66,7 @@
       <div class="form" style="margin-top:8px"><label>개수<input id="ic" type="number" value="10" min="1" max="500" style="width:80px"></label><label>코드당 사용 횟수<input id="iu" type="number" value="1" min="1" style="width:90px"></label><label>유효 기간(일, 0=무기한)<input id="id" type="number" value="0" min="0" style="width:110px"></label><label>메모<input id="in" placeholder="예: 1차 모집 디스코드" style="width:220px"></label><label style="flex-direction:row;align-items:center;gap:6px"><input id="iop" type="checkbox"> 운영자 초대코드</label><button class="btn primary" data-a="issue">발급</button></div>
       <p class="tiny faint" style="margin-top:6px">운영자 초대코드로 가입한 학생은 바로 학생회(운영진)가 되어 칭호 「학생회」(운영진 배지)를 낄 수 있습니다. 안전을 위해 한 장 · 1회 · 최대 7일로만 발급됩니다. 이미 가입한 학생은 아래 「학생 관리」의 운영자 지정으로 바꿉니다.</p>
       <div id="newcodes" hidden style="margin-top:10px"><div class="row between"><span class="small gold">새 코드 (복사해서 나눠 주세요)</span><button class="btn sm" data-a="copy">모두 복사</button></div><div class="codes" id="codesbox" style="margin-top:6px"></div></div>
-      <div class="row between" style="margin-top:14px"><label class="tog small"><input type="checkbox" id="ihide"> 다 쓴 · 막은 · 기한 지난 코드 숨기기</label><span class="tiny faint" id="icount"></span></div><div class="scroll" style="margin-top:6px"><table><thead><tr><th>코드</th><th>사용</th><th>기한</th><th>메모<span class="colgrip" id="imgrip" title="끌어서 메모 칸 너비 조절 (두 번 누르면 기본값)"></span></th><th>사용한 학생</th><th></th></tr></thead><tbody id="invites"></tbody></table></div><div id="imore" class="row" style="justify-content:center;margin-top:8px"></div></div>
+      <div class="row between" style="margin-top:14px"><label class="tog small"><input type="checkbox" id="ihide"> 다 쓴 · 막은 · 기한 지난 코드 숨기기</label><span class="tiny faint" id="icount"></span></div><div class="scroll" style="margin-top:6px"><table><thead><tr><th>코드</th><th>사용</th><th title="코드를 만든 때부터 마지막 사용까지 (다 쓰기 전이면 첫 사용까지)">마감</th><th>기한</th><th>메모<span class="colgrip" id="imgrip" title="끌어서 메모 칸 너비 조절 (두 번 누르면 기본값)"></span></th><th>사용한 학생</th><th></th></tr></thead><tbody id="invites"></tbody></table></div><div id="imore" class="row" style="justify-content:center;margin-top:8px"></div></div>
     <div class="card"><div class="row between"><h3>게시판 문의함 <span class="small faint">관리자만 보기 글</span></h3><span class="row" style="gap:6px"><button class="btn sm ghost" data-a="ideacopy" title="건의 말머리 · 관리자만 보기 글 중 해결 완료가 아닌 것을 이름 없이 복사합니다">건의 · 문의 전체 복사</button><button class="btn sm ghost" data-a="bdload">새로고침</button></span></div>
       <label class="tog small" style="margin-top:6px"><input type="checkbox" id="bdhide"> 답변함 · 해결 완료 숨기기 <span class="tiny faint">(답변 뒤 새 댓글이 달리면 다시 보임)</span></label>
       <p class="small faint" style="margin-top:4px">학생이 「관리자만 보기」로 남긴 문의·건의입니다. 여기서 「운영진」 이름으로 답하면 학생에게 우편 알림이 갑니다. 게임 안에서는 운영자 계정이 게시판 › 관리자만 보기에서 같은 글을 봅니다.</p>
