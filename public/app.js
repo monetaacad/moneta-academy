@@ -3494,7 +3494,7 @@
     do { i += dir; } while (i >= 0 && i < ST.length && !tutFind(ST[i][0]));
     if (i < 0) return; if (i >= ST.length) return tutEnd();
     t.i = i; var el = tutFind(ST[i][0]), op = ST[i][3] || {};
-    var r0 = el.getBoundingClientRect(); if (r0.top < 0 || r0.bottom > innerHeight) el.scrollIntoView({ block: r0.height > innerHeight * .7 ? 'start' : 'center' });
+    tutScrollTo(el);
     var shown = ST.map(function (x, k) { return k; }).filter(function (k) { return tutFind(ST[k][0]); }), pos = shown.indexOf(i) + 1, last = pos === shown.length;
     var box = $('#tut');
     if (!box) { box = document.createElement('div'); box.id = 'tut'; box.innerHTML = '<div class="tut-hole"></div><div class="tut-tip" role="dialog" aria-modal="true" aria-live="polite"></div>'; document.body.appendChild(box); }
@@ -3504,6 +3504,20 @@
       '<div class="row" style="margin-top:10px;justify-content:flex-end;flex-wrap:nowrap">' + (pos > 1 ? '<button class="btn sm ghost" data-act="tut-prev">이전</button>' : '') + '<button class="btn sm ' + (op.wait ? 'ghost' : 'primary') + '" data-act="tut-next">' + (last ? '끝' : op.wait ? '넘기기' : '다음') + '</button></div>';
     tutPlace(); var nb = box.querySelector('[data-act=tut-next]'); if (nb && !op.wait) setTimeout(function () { nb.focus({ preventScroll: true }); }, 30);
     if (!t.timer) { t.timer = setInterval(tutPlace, 400); addEventListener('resize', tutPlace); addEventListener('scroll', tutPlace, true); }
+  }
+  // 둘러보기가 가리키는 칸이 상단 고정 헤더 · 하단 안내도에 가려지지 않게 화면을 옮긴다 (최소한 윗부분은 보이게)
+  function tutBounds() {
+    var top = 0, bot = innerHeight;
+    ['.top', '#sysbar'].forEach(function (sel) { var e = $(sel); if (!e) return; var cs = getComputedStyle(e); if (cs.position !== 'sticky' && cs.position !== 'fixed') return; var r = e.getBoundingClientRect(); if (r.height && r.top < innerHeight / 2) top = Math.max(top, r.bottom); });
+    var nv = $('.nav'); if (nv) { var cn = getComputedStyle(nv), rn = nv.getBoundingClientRect(); if (cn.position === 'fixed' && rn.top > innerHeight / 2) bot = Math.min(bot, rn.top); }
+    return { top: top, bot: bot };
+  }
+  function tutScrollTo(el) {
+    var B = tutBounds(), r0 = el.getBoundingClientRect(), room = B.bot - B.top;
+    if (r0.top >= B.top + 8 && r0.bottom <= B.bot - 8) return;
+    el.scrollIntoView({ block: r0.height > room * .7 ? 'start' : 'center' });   // 안쪽 스크롤 칸(채팅창 등)까지 맞춘 뒤
+    var r = el.getBoundingClientRect(), want = r.height > room * .7 ? B.top + 12 : B.top + Math.max(12, (room - r.height) / 2);
+    if (Math.abs(r.top - want) > 2) window.scrollBy(0, r.top - want);   // 고정 헤더 아래로 다시 맞춘다
   }
   function tutPlace() {
     var t = S.tut, box = $('#tut'); if (!t || !box || t.i < 0) return; var ST = tutSteps(), op = ST[t.i][3] || {};
@@ -4282,7 +4296,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102044;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102045;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
