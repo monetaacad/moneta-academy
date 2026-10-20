@@ -416,7 +416,7 @@ function open(dir) {
     deleteChat: db.prepare(`UPDATE chat SET deleted = 1 WHERE id = ?`),
     pruneChat: db.prepare(`DELETE FROM chat WHERE ch = ? AND id < (SELECT COALESCE(MIN(id), 0) FROM (SELECT id FROM chat WHERE ch = ? ORDER BY id DESC LIMIT ?))`),
     insertReport: db.prepare(`INSERT INTO reports (t, msg_id, reporter, reason) VALUES (?, ?, ?, ?)`),
-    listReports: db.prepare(`SELECT r.id, r.t, r.msg_id, r.reason, r.resolved, p.name AS reporter, c.ch, c.name AS author, c.pid AS author_id, c.text, c.kind, c.deleted FROM reports r LEFT JOIN players p ON p.id = r.reporter LEFT JOIN chat c ON c.id = r.msg_id WHERE r.resolved = ? ORDER BY r.id DESC LIMIT ?`),
+    listReports: db.prepare(`SELECT r.id, r.t, r.msg_id, r.reason, r.resolved, r.reporter AS reporter_id, p.name AS reporter, c.ch, c.name AS author, c.pid AS author_id, c.text, c.kind, c.deleted FROM reports r LEFT JOIN players p ON p.id = r.reporter LEFT JOIN chat c ON c.id = r.msg_id WHERE r.resolved = ? ORDER BY r.id DESC LIMIT ?`),
     resolveReport: db.prepare(`UPDATE reports SET resolved = 1 WHERE id = ?`),
     reportExists: db.prepare(`SELECT id FROM reports WHERE msg_id = ? AND reporter = ?`),
     // 프로필 · 두상
