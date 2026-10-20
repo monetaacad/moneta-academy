@@ -3219,14 +3219,22 @@
   function ro(w) { var c = w.charCodeAt(w.length - 1), j = (c >= 0xAC00 && c <= 0xD7A3) ? (c - 0xAC00) % 28 : 0; return w + (j && j !== 8 ? '으로' : '로'); }
   function josa(w, a, b) { return R.josa(w, a, b); }   // a = 받침 있을 때
   var EXP_TICK = 25;   // 게임 시간으로 25초마다 한 줄
+  // 원정 전투 수치: 출발할 때 저장한 값, 예전 원정이면 지금 수치로
+  function expCb(j) { if (j.cb) return j.cb; var c = C(); return { a: Math.round(c.atk), cc: c.critC, cd: c.critD, df: Math.round(c.def), sp: [] }; }
+  var EXP_SUM = 24;   // 24줄(10분)마다 요약 한 줄
   function expLine(j, k, slot) {
     var z = R.zoneOf(j.s), x = (Math.sin((j.start + k * 7919 + slot * 104729) * 12.9898) * 43758.5453) % 1; x = Math.abs(x);
     var y = Math.abs((Math.sin((j.start + k * 3571) * 78.233) * 12345.678) % 1), m = z.mons[Math.floor(y * z.mons.length)];
     // 한 줄(25초)에 처치가 일어날 확률 = 그 사이 처치 수. 처치 줄의 보상은 처치 1회 몫
     var per = j.kps * EXP_TICK * j.eff, pk = Math.min(0.55, per), g = fmt(Math.max(1, Math.round(j.gEach)));
-    if (x < pk * 0.85) return [josa(m.name, '을', '를') + ' 쓰러뜨렸다', CUR + ' +' + g];
-    if (x < pk) return ['치명타! ' + josa(m.name, '이', '가') + ' 단번에 쓰러졌다', CUR + ' +' + g];
+    // 피해 숫자: 출발할 때의 전투 수치(j.cb)와 그 단계 몬스터 체력 · 공격력으로 (같은 줄은 언제 봐도 같은 숫자)
+    var cb = expCb(j), mh = R.monHp(j.s), r3 = Math.abs((Math.sin((j.start + k * 2131 + slot * 7) * 45.164) * 9871.31) % 1), r4 = Math.abs((Math.sin((j.start + k * 613) * 3.7) * 4421.7) % 1);
+    var spl = cb.sp.length && r3 < 0.4 ? cb.sp[Math.floor(r4 * cb.sp.length)] : null, base = spl ? spl[1] : cb.a, dmg = Math.max(1, Math.round(base * (0.9 + r4 * 0.2))), hits = Math.max(1, Math.ceil(mh / Math.max(1, dmg)));
+    var who = spl && R.SPELL[spl[0]] ? '「' + R.SPELL[spl[0]].name + '」! ' : '';
+    if (x < pk * 0.85) return [who + josa(m.name, '에게', '에게') + ' ' + fmt(dmg) + ' 피해 — 쓰러뜨렸다' + (hits > 1 ? ' (' + hits + '번째 공격)' : ''), CUR + ' +' + g, { kill: 1 }];
+    if (x < pk) { var cd = Math.round(dmg * cb.cd); return ['치명타 ' + fmt(cd) + '! ' + josa(m.name, '이', '가') + (cd >= mh ? ' 단번에 쓰러졌다' : ' 쓰러졌다'), CUR + ' +' + g, { kill: 1 }]; }
     var x2 = (x - pk) / (1 - pk);
+    if (x2 < 0.1) { var tk = Math.max(1, Math.round(R.dmgTaken(R.monAtk(j.s), cb.df) * (0.8 + r4 * 0.4))); return [josa(m.name, '의', '의') + ' 반격 — 생명력 −' + fmt(tk), '', { taken: tk }]; }
     if (j.pt && x2 >= 0.5 && x2 < 0.75) return ptLine(j, m, y, x2);
     if (x2 < 0.18) return [josa(m.name, '과', '와') + ' 마주쳤다. 거리를 재며 틈을 노린다.', ''];
     if (x2 < 0.3) return [josa(D.MATS[z.mat].name, '을', '를') + ' 주웠다', '재료'];
@@ -3255,12 +3263,16 @@
     var t = Math.min(now(), j.end), n = Math.floor((t - j.start) / EXP_TICK), from = Math.max(0, n - 30), out = [];
     out.push('<div class="el start"><span class="et num">' + clock(j.start).replace(/^(오전|오후) /, '') + '</span><span>' + j.s + '단계 ' + ro(R.zoneOf(j.s).name) + ' ' + (j.pt && j.pt.with && j.pt.with.length ? josa(j.pt.with.map(function (w) { return esc(w.name); }).join(' · '), '과', '와') + ' 함께 ' : '') + '출발했다.</span></div>');
     if (from > 0) { var early = (j.loot || []).filter(function (x) { return x.it && x.at <= j.start + from * EXP_TICK; }); out.push('<div class="el faint"><span class="et"></span><span>… ' + from + '줄 생략' + (early.length ? ' · 그동안 주운 장비 ' + early.map(function (x) { return '<b style="color:' + rcol(x.it.r) + '">' + esc(x.it.name) + '</b>'; }).join(', ') : '') + ' …</span></div>'); }
+    var sk = 0, sd = 0, st = 0, mh = R.monHp(j.s), sumAt = function (k2) { return '<div class="el ksum" data-k="' + k2 + 's"><span class="et num">' + clock(j.start + k2 * EXP_TICK).replace(/^(오전|오후) /, '') + '</span><span>지난 10분 · 처치 <b class="num">' + sk + '</b>마리 · 입힌 피해 <b class="num">' + fmt(Math.round(sd)) + '</b> · 받은 피해 <b class="num">' + fmt(Math.round(st)) + '</b></span></div>'; };
+    for (var k0 = Math.floor(from / EXP_SUM) * EXP_SUM + 1; k0 <= from; k0++) { var L0 = expLine(j, k0, i); if (L0[2] && L0[2].kill) { sk++; sd += mh; } if (L0[2] && L0[2].taken) st += L0[2].taken; }   // 생략한 줄도 요약에는 센다
     for (var k = from + 1; k <= n; k++) {
       var L = expLine(j, k, i), at = j.start + k * EXP_TICK;
+      if (L[2] && L[2].kill) { sk++; sd += mh; } if (L[2] && L[2].taken) st += L[2].taken;
+      if (k % EXP_SUM === 0) { var sumH = sumAt(k); sk = 0; sd = 0; st = 0; } else sumH = '';
       // 이 줄 사이에 실제로 주운 전리품이 있으면 그것을 적는다
       var got = (j.loot || []).filter(function (x) { return x.it && x.at > at - EXP_TICK && x.at <= at; });   // 아직 받아 오지 않은 전리품(시각만 있음)은 다음 상태 받기 뒤에
-      if (got.length) { out.push('<div class="el kloot" data-k="' + k + 'l"><span class="et num">' + clock(at).replace(/^(오전|오후) /, '') + '</span><span>' + got.map(function (x) { return '<b style="color:' + rcol(x.it.r) + '">' + esc(x.it.name) + '</b>'; }).join(', ') + josa(got[got.length - 1].it.name, '을', '를').slice(-1) + ' 주웠다. <span class="eg">' + got.map(function (x) { return (D.RARITY[x.it.r] ? D.RARITY[x.it.r].name : '') + ' ' + R.slotName(x.it); }).join(', ') + '</span></span></div>'); continue; }
-      out.push('<div class="el" data-k="' + k + '"><span class="et num">' + clock(at).replace(/^(오전|오후) /, '') + '</span><span>' + logDot(L[0]) + (L[1] ? ' <span class="eg">' + L[1] + '</span>' : '') + '</span></div>'); }
+      if (got.length) { out.push('<div class="el kloot" data-k="' + k + 'l"><span class="et num">' + clock(at).replace(/^(오전|오후) /, '') + '</span><span>' + got.map(function (x) { return '<b style="color:' + rcol(x.it.r) + '">' + esc(x.it.name) + '</b>'; }).join(', ') + josa(got[got.length - 1].it.name, '을', '를').slice(-1) + ' 주웠다. <span class="eg">' + got.map(function (x) { return (D.RARITY[x.it.r] ? D.RARITY[x.it.r].name : '') + ' ' + R.slotName(x.it); }).join(', ') + '</span></span></div>'); if (sumH) out.push(sumH); continue; }
+      out.push('<div class="el" data-k="' + k + '"><span class="et num">' + clock(at).replace(/^(오전|오후) /, '') + '</span><span>' + logDot(L[0]) + (L[1] ? ' <span class="eg">' + L[1] + '</span>' : '') + '</span></div>'); if (sumH) out.push(sumH); }
     if (now() >= j.end) out.push('<div class="el start"><span class="et num">' + clock(j.end).replace(/^(오전|오후) /, '') + '</span><span>원정을 마치고 아카데미로 돌아간다.</span></div>');
     return out.join('');
   }
@@ -4722,7 +4734,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102106;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102107;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
