@@ -3,7 +3,7 @@
 const R = require('../shared/rules.js');
 const D = require('../shared/data.js');
 
-const CUP_TOP = 30;            // 기숙사 점수 = 상위 30명 합계
+const CUP_TOP = 30;            // 기숙사 성장(hbase)은 그대로 상위 30명 합계. 대항전 순위는 R.cupScore(활동 학생 평균)
 const WB_PARTICIPATION = 0.45; // 활동 학생 중 도전권을 쓰는 비율 추정
 const WB_DAYS_TO_KILL = 4.5;   // 이 정도 날짜에 쓰러지도록 체력 설정
 
@@ -78,13 +78,13 @@ function create(store, cfg, log) {
   function cupStandings(week) {
     return D.HOUSES.map((h) => {
       const r = q.houseCup.get(week, h.id, CUP_TOP);
-      const m = q.houseMembers.get(week, h.id);
-      return { id: h.id, score: Math.floor(Number(r.s) || 0), members: Number(m.n) || 0 };
+      const m = q.houseMembers.get(week, h.id), cs = R.cupScore(q.houseCups.all(week, h.id).map((x) => Number(x.cup) || 0));
+      return { id: h.id, score: cs.score, active: cs.active, sum: Math.floor(Number(r.s) || 0), members: Number(m.n) || 0 };
     }).sort((a, b) => b.score - a.score);
   }
 
   function refreshHouses(now, cup) {
-    D.HOUSES.forEach((h) => { const c = cup.find((x) => x.id === h.id); W.hpts[h.id] = Math.floor((W.hbase[h.id] || 0) + (c ? c.score : 0)); });
+    D.HOUSES.forEach((h) => { const c = cup.find((x) => x.id === h.id); W.hpts[h.id] = Math.floor((W.hbase[h.id] || 0) + (c ? c.sum : 0)); });
     W.hAt = now;
   }
   const houseView = () => ({ pts: W.hpts, full: W.hfull });
@@ -95,8 +95,11 @@ function create(store, cfg, log) {
     const dmgs = q.dmgList.all(week).map((r) => Number(r.dmg));
     const at = (p) => dmgs.length ? dmgs[Math.min(dmgs.length - 1, Math.max(0, Math.ceil(dmgs.length * p) - 1))] : Infinity;
     const same = W.boss && W.boss.week === week, paidKills = same ? W.boss.paidKills || 0 : 0, kills = same ? (W.boss.kills || 0) + (W.boss.killedAt ? 1 : 0) : 0, killed = kills > 0;   // 추가 보스까지 잡은 수
-    cup.forEach((c) => { W.hbase[c.id] = (W.hbase[c.id] || 0) + c.score; }); kvSet('hbase', W.hbase); W.hAt = 0;
-    W.results[week] = { cup: cup.map((c) => c.id), cupScores: cup, killed, kills, paidKills, tiers: [at(0.01), at(0.10), at(0.50)], bossName: W.boss && W.boss.week === week ? W.boss.name : '', participants: dmgs.length };
+    cup.forEach((c) => { W.hbase[c.id] = (W.hbase[c.id] || 0) + c.sum; }); kvSet('hbase', W.hbase); W.hAt = 0;
+    // 기숙사마다 개인 1위: 1위 기숙사는 전설 장비, 2~4위 기숙사는 영웅 장비
+    const mvps = {}; cup.forEach((c) => { const t = q.houseTop.get(week, c.id); if (t && t.cup >= R.CUP_ACTIVE) mvps[c.id] = t.pid; });
+    const mvp = cup[0] ? mvps[cup[0].id] || '' : '';
+    W.results[week] = { v2: 1, mvp, mvps, cup: cup.map((c) => c.id), cupScores: cup, killed, kills, paidKills, tiers: [at(0.01), at(0.10), at(0.50)], bossName: W.boss && W.boss.week === week ? W.boss.name : '', participants: dmgs.length };
     const keys = Object.keys(W.results).map(Number).sort((a, b) => b - a);
     keys.slice(10).forEach((k) => delete W.results[k]);
     kvSet('results', W.results);
