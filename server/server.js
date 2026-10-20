@@ -116,8 +116,8 @@ const exprooms = ExpRoom.create({ loadPlayer: (pid, now) => loadPlayer(pid, now)
   partyInfo: (pid) => { const id = partyOf.get(pid); if (!id) return null; const pa = dbx.q.partyGet.get(id); if (!pa) return null; return { id, leader: pa.leader, allgo: !!pa.allgo, members: dbx.q.partyMembers.all(id).map((m) => m.id) }; },
   canInvite: (a, b) => friendState(a, b) === 'ok' || (guildOf.get(a) && guildOf.get(a) === guildOf.get(b)),
   nameOf: (pid) => { const r = dbx.q.getProfile.get(pid); return r ? r.name : ''; } });
-// 새 업데이트 노트가 배포되면 공지 채널에 한 번 알린다
-{ const pn = R.D.PATCH && R.D.PATCH[0]; if (pn && dbx.kvGet('patchPosted', 0) < pn.id) { chat.system('notice', '새 업데이트 노트가 게시되었습니다: 「' + pn.title + '」. 상단의 업데이트 노트 버튼에서 확인할 수 있습니다.', Date.now() / 1000); dbx.kvSet('patchPosted', pn.id); } }
+// 새 업데이트 노트가 배포되면 공지 · 월드 채널에 한 번 알린다
+{ const pn = R.D.PATCH && R.D.PATCH[0]; if (pn && dbx.kvGet('patchPosted', 0) < pn.id) { const t = '새 업데이트 노트가 게시되었습니다: 「' + pn.title + '」. 상단의 업데이트 노트 버튼에서 확인할 수 있습니다.'; chat.system('notice', t, Date.now() / 1000); chat.system('world', t, Date.now() / 1000); dbx.kvSet('patchPosted', pn.id); } }
 // 사감 한마디: 기숙사 RP 채널에 (신입생 환영 · 주간 대항전 결과 · 대항전 선두가 바뀔 때). 채팅 시각은 다른 알림처럼 실제 시각
 function headSay(house, text) { const L = D.HOUSE_LORE[house]; if (L && text) chat.headSay(house, L.head, text, Date.now() / 1000); }
 function headWelcome(P) { const L = D.HOUSE_LORE[P.house]; if (L) headSay(P.house, L.say.welcome.replace('{n}', P.name)); }
