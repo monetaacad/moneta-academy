@@ -39,7 +39,7 @@
     BAG_BASE: 40,
     EXAM_CD: 3600, BOSS_CD: 600, DUEL_CD: 1800, DUEL_LOSE_CD: 3600,
     WB_TICKET_REGEN: 28800, WB_TICKET_MAX: 3, WB_BUY_MAX: 2, WB_EXTRA_USE: 2,   // 매점 구매 · 추가 도전권 사용: 주마다(월요일 KST 0시) 2번씩
-    SPIRIT_EVERY: 2400, SPIRIT_JAR: 4,   // 정령은 40분마다 병에 한 마리, 최대 4마리
+    SPIRIT_EVERY: 2400, SPIRIT_JAR: 4,   // 정령은 40분마다 병에 한 마리, 기본 4마리 (연구 「정령 병 확장」 한 단계마다 +1)
     EGG_TIME: 21600,
     TZ: 9 * 3600
   };
@@ -239,8 +239,8 @@
     (P.rsq || []).forEach(function (q, i) { if (q && RES[q.id]) add('res' + i + ':' + q.end, 'res', q.end, '연구가 끝났습니다', RES[q.id].name + ' ' + (((P.rs || {})[q.id] || 0) + 1) + '단계'); });
     var disp = (P.fam && P.fam.disp) || {}; for (var f in disp) if (FAM[f]) add('disp' + f + ':' + disp[f].end, 'disp', disp[f].end, R.josa(FAM[f].name, '이', '가') + ' 돌아왔습니다', '사역마 파견 완료');
     var sp = P.spirit || { n: 0, at: now }, n = sp.n || 0, at = sp.at || now, k = Math.floor((now - at) / K.SPIRIT_EVERY);
-    if (k > 0) { n = Math.min(K.SPIRIT_JAR, n + k); at += k * K.SPIRIT_EVERY; }
-    if (n < K.SPIRIT_JAR) { var full = at + (K.SPIRIT_JAR - n) * K.SPIRIT_EVERY; add('jar:' + Math.round(full), 'jar', full, '반딧불 정령 병이 가득 찼습니다', '접속해 풀어 줄 수 있습니다'); }
+    var jm = R.jarMax(P); if (k > 0) { n = Math.min(jm, n + k); at += k * K.SPIRIT_EVERY; }
+    if (n < jm) { var full = at + (jm - n) * K.SPIRIT_EVERY; add('jar:' + Math.round(full), 'jar', full, '반딧불 정령 병이 가득 찼습니다', '접속해 풀어 줄 수 있습니다'); }
     var sk = R.skyNext(now); if (sk) add('sky:' + sk.key, 'sky', sk.start, '하늘에 ' + sk.name + '!', sk.text + ' · 올려다보면 작은 선물');
     var av = R.auctionVisit(now); if (av && !av.active) add('auc:' + av.start, 'auc', av.start, '떠돌이 상인이 왔습니다', '귀한 장비 세 점이 2시간 동안 경매에 오릅니다');
     return out;
@@ -1028,12 +1028,13 @@
   R.spiritJar = function (P, now) {
     var sp = P.spirit;
     if (!sp || sp.n == null) sp = P.spirit = { n: 1, at: now };
-    var add = Math.floor((now - sp.at) / K.SPIRIT_EVERY);
-    if (add > 0) { sp.n = Math.min(K.SPIRIT_JAR, sp.n + add); sp.at += add * K.SPIRIT_EVERY; }
-    if (sp.n >= K.SPIRIT_JAR) sp.at = Math.max(sp.at, now);
+    var add = Math.floor((now - sp.at) / K.SPIRIT_EVERY), jm = R.jarMax(P);
+    if (add > 0) { sp.n = Math.min(jm, sp.n + add); sp.at += add * K.SPIRIT_EVERY; }
+    if (sp.n >= jm) sp.at = Math.max(sp.at, now);
     return sp;
   };
-  R.spiritNext = function (P) { return P.spirit.n >= K.SPIRIT_JAR ? null : P.spirit.at + K.SPIRIT_EVERY; };
+  R.jarMax = function (P) { return K.SPIRIT_JAR + Math.max(0, Math.floor((P && P.rs && P.rs.jarcap) || 0)); };
+  R.spiritNext = function (P) { return P.spirit.n >= R.jarMax(P) ? null : P.spirit.at + K.SPIRIT_EVERY; };
   // 양조·부화는 즉시. 효율 보너스는 비용을 줄인다.
   R.brewMana = function (P, W, now, id) { return Math.ceil(POT[id].mana / calc(P, W, now).brewSpd); };
   R.eggPrice = function (P, W, now) { return Math.ceil(R.eggCost(P) / calc(P, W, now).hatchSpd); };
@@ -1664,6 +1665,22 @@
     var u = str(a.u), i = P.inv.findIndex(function (x) { return x.u === u; }); if (i < 0) err('가방에 없는 장비입니다');
     var it = P.inv.splice(i, 1)[0], cur = P.eq[it.slot]; P.eq[it.slot] = it; if (cur) P.inv.push(cur); return { ok: true };
   };
+  // 장비 프리셋 3칸: 지금 장착한 장비를 저장해 두었다가 한 번에 바꿔 낀다 (가방에 없으면 그 칸은 그대로)
+  R.GEARSET_N = 3;
+  A.gearSet = function (P, W, now, a) {
+    var i = int(a.i, 0, R.GEARSET_N - 1), op = str(a.op), sets = P.gearSets || (P.gearSets = []);
+    if (op === 'save') { var eq = {}; for (var s in P.eq) if (P.eq[s]) eq[s] = P.eq[s].u; if (!Object.keys(eq).length) err('장착한 장비가 없습니다'); sets[i] = { eq: eq, at: now }; return { saved: i }; }
+    if (op === 'clear') { sets[i] = null; return { cleared: i }; }
+    if (op !== 'load') err('잘못된 요청');
+    var st = sets[i]; if (!st) err('저장된 프리셋이 없습니다');
+    var moved = 0, miss = 0;
+    D.SLOTS.forEach(function (sl) {
+      var u = st.eq[sl.id]; if (!u || (P.eq[sl.id] && P.eq[sl.id].u === u)) return;
+      var k = P.inv.findIndex(function (x) { return x.u === u; }); if (k < 0) { miss++; return; }
+      var it = P.inv.splice(k, 1)[0], cur = P.eq[sl.id]; P.eq[sl.id] = it; if (cur) P.inv.push(cur); moved++;
+    });
+    return { moved: moved, miss: miss };
+  };
   A.unequip = function (P, W, now, a) {
     var s = str(a.slot); if (!SLOT[s] || !P.eq[s]) err('장착한 장비가 없습니다');
     if (P.inv.length >= calc(P, W, now).bag) err('가방이 가득 찼습니다');
@@ -1738,7 +1755,7 @@
     P.opt.allocW = o; if (P.opt.autoAlloc) R.autoAlloc(P); return { ok: true };
   };
   A.opt = function (P, W, now, a) {
-    var k = str(a.k); if (['autoEquip', 'autoAlloc', 'sound', 'reduceFx', 'hideMyTitle', 'hideOtherTitle', 'dockClosed'].indexOf(k) < 0) err('잘못된 설정');
+    var k = str(a.k); if (['autoEquip', 'autoAlloc', 'sound', 'reduceFx', 'hideMyTitle', 'hideOtherTitle', 'dockClosed', 'bulkAsk'].indexOf(k) < 0) err('잘못된 설정');
     P.opt[k] = !!a.v; if (k === 'autoAlloc' && P.opt[k]) R.autoAlloc(P); return { ok: true };
   };
   A.spell = function (P, W, now, a) {
@@ -1910,7 +1927,7 @@
   };
   A.spirit = function (P, W, now) {
     var sp = R.spiritJar(P, now), n = sp.n; if (n <= 0) err('병이 비어 있습니다');
-    if (n >= K.SPIRIT_JAR) sp.at = now; sp.n = 0;
+    if (n >= R.jarMax(P)) sp.at = now; sp.n = 0;
     P.st.spirits += n; cupAdd(P, 15 * n, 'spirit');
     var c = calc(P, W, now), out = { n: n, mana: 0, gold: 0, shard: 0, stone: 0 };
     for (var i = 0; i < n; i++) {
