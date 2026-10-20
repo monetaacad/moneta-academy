@@ -638,6 +638,12 @@
     return ups;
   }
   // 주문 한 번의 기준 피해: 물리 기술(phys)은 물리 공격력, 나머지는 주문 공격력 × 주문 위력
+  // 원정 일지용 전투 수치: 평타 · 장착한 공격 주문 한 방 · 치명타 · 방어력 (보상과는 상관없는 표시용)
+  R.expCombat = function (P, W, now) {
+    var c = calc(P, W, now), sp = [];
+    for (var i = 0; i < R.spellSlots(P); i++) { var x = SPELL[P.spells[i]]; if (x && R.spellUnlocked(P, x.id) && (x.type === 'dmg' || x.type === 'stun')) sp.push([x.id, Math.round(R.spellHit(c, x) * x.mult * spellLvMult(P, x))]); }
+    return { a: Math.round(c.atk), cc: Math.round(c.critC * 1000) / 1000, cd: Math.round(c.critD * 100) / 100, df: Math.round(c.def), sp: sp };
+  };
   R.spellHit = function (c, sp) { return sp.phys ? (c.patk || c.atk) * (c.skill || 1) : (c.matk || c.atk) * c.spell; };
   // 자동 분배 프리셋 (학과마다 공격 능력치가 다르다)
   R.ALLOC_PRESETS = {
@@ -783,6 +789,7 @@
   R.expPartyApply = function (P, now, slot, s, durK, pv, info) {
     var d = DUR[durK] || DUR['1h'];
     var j = P.exp[slot] = { s: s, start: now, end: now + d.s, dur: d.s, eff: d.eff, kps: pv.kps, gEach: pv.gEach, xEach: pv.xEach, drop: pv.drop, rarity: pv.rarity, killMana: pv.killMana, risk: pv.risk, pt: info };
+    j.cb = R.expCombat(P, null, now);   // 원정 일지에 보일 전투 수치 (출발할 때 그대로)
     var fa = fallAt(P, now, d.s, pv.risk); if (fa) j.fallAt = fa;
     var kills = Math.floor(j.kps * j.dur * j.eff + 0.5), n = Math.floor(kills * K.ITEM_RATE * j.drop + rnd(P)), made = Math.min(n, 12);
     j.nItems = n; j.loot = [];
@@ -1671,6 +1678,7 @@
     if (R.isBoss(s)) err('보스 단계는 보스 도전으로만 갈 수 있습니다');
     var pv = R.expPreview(P, W, s, d.k, now);
     var j = P.exp[i] = { s: s, start: now, end: now + d.s, dur: d.s, eff: d.eff, kps: pv.kps, gEach: pv.gEach, xEach: pv.xEach, drop: pv.drop, rarity: pv.rarity, killMana: pv.killMana, risk: pv.risk };
+    j.cb = R.expCombat(P, W, now);   // 원정 일지에 보일 전투 수치 (출발할 때 그대로)
     var fa = fallAt(P, now, d.s, pv.risk); if (fa) j.fallAt = fa;
     // 전리품은 떠날 때 미리 정해 둔다 (원정 일지에 언제 무엇을 주웠는지 그대로 보여 주려고). 실제로 받는 건 돌아올 때.
     var kills = Math.floor(j.kps * j.dur * j.eff + 0.5), n = Math.floor(kills * K.ITEM_RATE * j.drop + rnd(P)), made = Math.min(n, 12);
