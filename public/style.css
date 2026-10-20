@@ -428,6 +428,7 @@ body { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area
 .rank { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
 .rank li { display: flex; gap: 10px; align-items: baseline; padding: 4px 6px; border-radius: 6px; font-size: 13px; }
 .rank li.me { background: rgba(214, 173, 95, .12); }
+.rank li.sep { justify-content: center; color: var(--faint); padding: 0; line-height: 1; }
 .rank .rk { width: 22px; color: var(--faint); text-align: right; flex: none; }
 .rank .rn { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rank .rv { flex: none; }
