@@ -3,7 +3,7 @@
 const R = require('../shared/rules.js');
 const D = require('../shared/data.js');
 
-const CUP_TOP = 30;            // 기숙사 점수 = 상위 30명 합계
+const CUP_TOP = 30;            // 기숙사 성장(hbase)은 그대로 상위 30명 합계. 대항전 순위는 R.cupScore(활동 학생 평균)
 const WB_PARTICIPATION = 0.45; // 활동 학생 중 도전권을 쓰는 비율 추정
 const WB_DAYS_TO_KILL = 4.5;   // 이 정도 날짜에 쓰러지도록 체력 설정
 
@@ -64,7 +64,7 @@ function create(store, cfg, log) {
     W.boss = { week, id: def.id, name: def.name, maxHp, hp: maxHp, killedAt: 0, actives: b.actives, round, kills: (b.kills || 0) + 1, paidKills: b.paidKills || 0, dead: (b.dead || 0) + Math.max(0, now - b.killedAt) };
     W.wbAlive = true; kvSet('boss', W.boss); cache.at = 0;
     log(`추가 월드 보스: ${def.name} (${round}번째, 체력 ${R.fmt(maxHp)})`);
-    addNotice(`추가 월드 보스 ${R.josa(def.name, '이', '가')} 나타났습니다! 잡으면 도전한 학생 모두에게 토벌 보상이 또 우편으로 갑니다.`, now, true);
+    addNotice(`추가 월드 보스 ${R.josa(def.name, '이', '가')} 등장했습니다! 토벌에 성공하면 도전한 학생 모두에게 보상이 우편으로 전달됩니다.`, now, true);
     return W.boss;
   }
 
@@ -78,13 +78,13 @@ function create(store, cfg, log) {
   function cupStandings(week) {
     return D.HOUSES.map((h) => {
       const r = q.houseCup.get(week, h.id, CUP_TOP);
-      const m = q.houseMembers.get(week, h.id);
-      return { id: h.id, score: Math.floor(Number(r.s) || 0), members: Number(m.n) || 0 };
+      const m = q.houseMembers.get(week, h.id), cs = R.cupScore(q.houseCups.all(week, h.id).map((x) => Number(x.cup) || 0));
+      return { id: h.id, score: cs.score, active: cs.active, sum: Math.floor(Number(r.s) || 0), members: Number(m.n) || 0 };
     }).sort((a, b) => b.score - a.score);
   }
 
   function refreshHouses(now, cup) {
-    D.HOUSES.forEach((h) => { const c = cup.find((x) => x.id === h.id); W.hpts[h.id] = Math.floor((W.hbase[h.id] || 0) + (c ? c.score : 0)); });
+    D.HOUSES.forEach((h) => { const c = cup.find((x) => x.id === h.id); W.hpts[h.id] = Math.floor((W.hbase[h.id] || 0) + (c ? c.sum : 0)); });
     W.hAt = now;
   }
   const houseView = () => ({ pts: W.hpts, full: W.hfull });
@@ -95,8 +95,11 @@ function create(store, cfg, log) {
     const dmgs = q.dmgList.all(week).map((r) => Number(r.dmg));
     const at = (p) => dmgs.length ? dmgs[Math.min(dmgs.length - 1, Math.max(0, Math.ceil(dmgs.length * p) - 1))] : Infinity;
     const same = W.boss && W.boss.week === week, paidKills = same ? W.boss.paidKills || 0 : 0, kills = same ? (W.boss.kills || 0) + (W.boss.killedAt ? 1 : 0) : 0, killed = kills > 0;   // 추가 보스까지 잡은 수
-    cup.forEach((c) => { W.hbase[c.id] = (W.hbase[c.id] || 0) + c.score; }); kvSet('hbase', W.hbase); W.hAt = 0;
-    W.results[week] = { cup: cup.map((c) => c.id), cupScores: cup, killed, kills, paidKills, tiers: [at(0.01), at(0.10), at(0.50)], bossName: W.boss && W.boss.week === week ? W.boss.name : '', participants: dmgs.length };
+    cup.forEach((c) => { W.hbase[c.id] = (W.hbase[c.id] || 0) + c.sum; }); kvSet('hbase', W.hbase); W.hAt = 0;
+    // 기숙사마다 개인 1위: 1위 기숙사는 전설 장비, 2~4위 기숙사는 영웅 장비
+    const mvps = {}; cup.forEach((c) => { const t = q.houseTop.get(week, c.id); if (t && t.cup >= R.CUP_ACTIVE) mvps[c.id] = t.pid; });
+    const mvp = cup[0] ? mvps[cup[0].id] || '' : '';
+    W.results[week] = { v2: 1, mvp, mvps, cup: cup.map((c) => c.id), cupScores: cup, killed, kills, paidKills, tiers: [at(0.01), at(0.10), at(0.50)], bossName: W.boss && W.boss.week === week ? W.boss.name : '', participants: dmgs.length };
     const keys = Object.keys(W.results).map(Number).sort((a, b) => b - a);
     keys.slice(10).forEach((k) => delete W.results[k]);
     kvSet('results', W.results);
@@ -152,9 +155,11 @@ function create(store, cfg, log) {
       cache = {
         at: now,
         cup: cupStandings(week),
-        topPower: q.topPower.all(20).map(pub),
-        topStage: q.topStage.all(20).map(pub),
-        topDmg: q.topDmg.all(week, 20).map((r) => ({ id: r.pid, name: r.name, house: r.house, dmg: Math.floor(r.dmg) })),
+        topPower: q.topPower.all(50).map(pub),
+        topStage: q.topStage.all(50).map(pub), topLvl: q.topLvl.all(50).map(pub),
+        topTwK: q.topCt.all('$.st.twK', '$.st.twK', 50).map((r) => ({ id: r.id, name: r.name, house: r.house, f: r.f })),
+        topTwM: q.topCt.all('$.st.twM', '$.st.twM', 50).map((r) => ({ id: r.id, name: r.name, house: r.house, f: r.f })),
+        topDmg: q.topDmg.all(week, 50).map((r) => ({ id: r.pid, name: r.name, house: r.house, dmg: Math.floor(r.dmg) })),
         wbStats: q.sumDmg.get(week),
         players: Number(q.countPlayers.get().n)
       };
@@ -163,20 +168,26 @@ function create(store, cfg, log) {
     return {
       epoch: W.epoch, now, week: R.weekId(now), weekEnd: R.weekStart(R.weekId(now) + 1),
       boss: b ? { id: b.id, name: b.name, maxHp: b.maxHp, hp: b.hp, killedAt: b.killedAt, round: b.round || 1, kills: (b.kills || 0) + (b.killedAt ? 1 : 0), participants: Number(cache.wbStats.n) || 0 } : null,
-      cup: cache.cup, hpts: W.hpts, hfull: W.hfull, topPower: cache.topPower, topStage: cache.topStage, topDmg: cache.topDmg,
+      cup: cache.cup, hpts: W.hpts, hfull: W.hfull, topPower: cache.topPower, topStage: cache.topStage, topLvl: cache.topLvl, topTwK: cache.topTwK, topTwM: cache.topTwM, topDmg: cache.topDmg,
       notices: W.notices.slice(0, 8), news: W.news.slice(0, 20), players: cache.players, online: online || 0,
       lastWeek: W.results[R.weekId(now) - 1] || null
     };
   }
   function pub(r) { return { id: r.id, name: r.name, house: r.house, power: Math.floor(r.power), lvl: r.lvl, grade: r.grade, stage: r.max_stage }; }
   function rankOf(power) { return Number(q.rankPower.get(power).r); }
+  // 내 순위들 (랭킹 화면에서만 부른다): 기록이 없으면 null
+  function myRanks(P, power, now) {
+    const st = P.st || {}, dmg = (P.wk && P.wk.id === R.weekId(now) && P.wk.dmg) || 0;
+    return { power: rankOf(power), stage: Number(q.rankStage.get(P.maxStage, P.maxStage, power).r), lvl: Number(q.rankLvl.get(P.lvl, P.lvl, P.maxStage, P.maxStage, power).r), dmg: dmg > 0 ? Number(q.rankDmg.get(R.weekId(now), dmg).r) : null,
+      twK: st.twK > 0 ? Number(q.rankCt.get('$.st.twK', st.twK).r) : null, twM: st.twM > 0 ? Number(q.rankCt.get('$.st.twM', st.twM).r) : null };
+  }
 
   // 규칙 엔진에 넘기는 세계 (W.results로 주간 보상 판정)
   function ctx(now) { W.now = now; return W; }
 
   // 종료 직전: 미뤄 둔 저장까지 모두 (월드 보스 체력 · 소식 · 공지 · 결과)
   function saveAll() { if (newsT) { clearTimeout(newsT); newsT = null; } kvSet('boss', W.boss); kvSet('news', W.news); kvSet('notices', W.notices); kvSet('results', W.results); bossDirty = false; }
-  const api = { W, houseView, tick, summonBoss, wbForecast, WB_SUMMON_FILL, saveAll, applyDamage, addNotice, addNews, publicView, ctx, rankOf, finalizeWeek, cupStandings, invalidate() { cache.at = 0; } };
+  const api = { W, houseView, tick, summonBoss, wbForecast, WB_SUMMON_FILL, saveAll, applyDamage, addNotice, addNews, publicView, ctx, rankOf, myRanks, finalizeWeek, cupStandings, invalidate() { cache.at = 0; } };
   return api;
 }
 module.exports = { create };

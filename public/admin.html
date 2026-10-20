@@ -22,6 +22,29 @@
 .adm .form label.tog { flex-direction: row; align-items: center; font-size: 13px; }
 .adm .msgtext { max-width: 360px; overflow-wrap: anywhere; }
 .adm .dis td { opacity: .45; }
+/* 초대코드 표: 칸 폭이 내용에 따라 출렁이지 않게 (좁은 화면은 가로 스크롤) */
+.adm .scroll > table { min-width: 680px; }
+.adm table:has(#invites) { table-layout: fixed; }
+.adm table:has(#invites) th:nth-child(1) { width: 150px; } .adm table:has(#invites) th:nth-child(2) { width: 64px; } .adm table:has(#invites) th:nth-child(3) { width: 92px; }
+.adm table:has(#invites) th:nth-child(4) { width: var(--imw, 180px); position: relative; } .adm table:has(#invites) th:nth-child(6) { width: 92px; }
+.adm #invites td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.adm #invites td:nth-child(4) { white-space: normal; overflow-wrap: anywhere; }
+.adm #invites td.iub.open { white-space: normal; overflow-wrap: anywhere; }   /* 사용한 학생 펼침 */
+.adm #invites .ubm { margin-left: 4px; padding: 0 4px; border: 0; background: none; color: var(--gold, #d8b45a); font: inherit; font-size: 12px; cursor: pointer; }
+.adm .colgrip { position: absolute; top: 0; right: -4px; width: 9px; height: 100%; cursor: col-resize; touch-action: none; z-index: 1; }   /* 메모 칸 너비 조절 */
+.adm .colgrip::after { content: ''; position: absolute; left: 4px; top: 25%; height: 50%; border-left: 1px solid var(--line2); }
+.adm .colgrip:hover::after, .adm .colgrip.drag::after { border-left: 2px solid var(--brass2, #d8b45a); }
+/* 게시판 문의함: 글마다 상자, 본문은 상자 폭 전체 */
+.adm .bdq { border: 1px solid var(--line2); border-radius: 10px; padding: 10px 12px; margin-top: 8px; background: var(--sunk); }
+.adm .bdq > summary { cursor: pointer; list-style-position: inside; }
+.adm .bdq .msgtext { max-width: none; }
+.adm .bdq .form textarea { flex: 1 1 260px; }
+/* 항목 접기: 제목을 누르면 접고 펼친다 (이 브라우저에 기억) */
+.adm .card > h3.fh, .adm .card > .row > h3.fh { cursor: pointer; user-select: none; }
+.adm h3.fh::before { content: '▾ '; color: var(--muted); font-size: .8em; }
+.adm .card.fold h3.fh::before { content: '▸ '; }
+.adm .card.fold > :not(:first-child) { display: none; }
+.adm .card.fold > .row:first-child > :not(:first-child) { display: none; }
 </style>
 </head>
 <body>
@@ -30,14 +53,15 @@
   <div class="card" id="login"><div class="form"><label>관리자 토큰<input id="tok" type="password" autocomplete="off" style="min-width:280px"></label><button class="btn primary" id="go">들어가기</button><span class="small bad" id="lmsg"></span></div>
     <p class="tiny faint" style="margin-top:8px">서버의 ADMIN_TOKEN 값입니다. 이 브라우저 탭을 닫으면 잊습니다.</p></div>
   <div id="main" hidden class="stack">
-    <div class="card"><div class="row between"><h3>현황</h3><button class="btn sm ghost" data-a="refresh">새로고침</button></div><dl class="kv" id="stats" style="margin-top:8px"></dl></div>
+    <div class="card"><div class="row between"><h3>현황</h3><span class="row" style="gap:6px"><button class="btn sm ghost" data-a="distcopy" title="전투력 · 레벨 · 단계 · 대항전 · 월드 보스 점수 분포를 이름 없이 복사합니다">분포 통계 복사</button><button class="btn sm ghost" data-a="refresh">새로고침</button></span></div><dl class="kv" id="stats" style="margin-top:8px"></dl></div>
     <div class="card"><h3>추가 월드 보스</h3><p class="small faint" style="margin-top:4px">이번 주 보스가 쓰러졌을 때만 부를 수 있습니다. 잡는 순간 도전한 학생 모두에게 토벌 보상 우편이 갑니다. 체력은 「인원 × 1회 피해 × 주 끝까지 칠 수 있는 횟수」로, 모두가 끝까지 다 쳐야 쓰러지는 크기입니다. 체력을 직접 넣으면 그 값을 씁니다.</p><div class="form" style="margin-top:8px"><label>인원<input id="wbn" type="number" min="1" value="200"></label><label>1회 피해<input id="wbper" type="number" min="1" value="20000"></label><label>체력 (직접 입력 · 선택)<input id="wbhp" type="number" min="0" placeholder="자동"></label><button class="btn primary" data-a="wbsummon">추가 보스 부르기</button></div><p class="tiny faint" id="wbest" style="margin-top:6px"></p><p class="small" id="wbmsg" style="margin-top:6px"></p></div>
     <div class="card"><h3>초대코드 발급</h3>
       <div class="form" style="margin-top:8px"><label>개수<input id="ic" type="number" value="10" min="1" max="500" style="width:80px"></label><label>코드당 사용 횟수<input id="iu" type="number" value="1" min="1" style="width:90px"></label><label>유효 기간(일, 0=무기한)<input id="id" type="number" value="0" min="0" style="width:110px"></label><label>메모<input id="in" placeholder="예: 1차 모집 디스코드" style="width:220px"></label><label style="flex-direction:row;align-items:center;gap:6px"><input id="iop" type="checkbox"> 운영자 초대코드</label><button class="btn primary" data-a="issue">발급</button></div>
       <p class="tiny faint" style="margin-top:6px">운영자 초대코드로 가입한 학생은 바로 학생회(운영진)가 되어 칭호 「학생회」(운영진 배지)를 낄 수 있습니다. 안전을 위해 한 장 · 1회 · 최대 7일로만 발급됩니다. 이미 가입한 학생은 아래 「학생 관리」의 운영자 지정으로 바꿉니다.</p>
       <div id="newcodes" hidden style="margin-top:10px"><div class="row between"><span class="small gold">새 코드 (복사해서 나눠 주세요)</span><button class="btn sm" data-a="copy">모두 복사</button></div><div class="codes" id="codesbox" style="margin-top:6px"></div></div>
-      <div class="row between" style="margin-top:14px"><label class="tog small"><input type="checkbox" id="ihide"> 다 쓴 · 막은 · 기한 지난 코드 숨기기</label><span class="tiny faint" id="icount"></span></div><div class="scroll" style="margin-top:6px"><table><thead><tr><th>코드</th><th>사용</th><th>기한</th><th>메모</th><th>사용한 학생</th><th></th></tr></thead><tbody id="invites"></tbody></table></div></div>
+      <div class="row between" style="margin-top:14px"><label class="tog small"><input type="checkbox" id="ihide"> 다 쓴 · 막은 · 기한 지난 코드 숨기기</label><span class="tiny faint" id="icount"></span></div><div class="scroll" style="margin-top:6px"><table><thead><tr><th>코드</th><th>사용</th><th>기한</th><th>메모<span class="colgrip" id="imgrip" title="끌어서 메모 칸 너비 조절 (두 번 누르면 기본값)"></span></th><th>사용한 학생</th><th></th></tr></thead><tbody id="invites"></tbody></table></div><div id="imore" class="row" style="justify-content:center;margin-top:8px"></div></div>
     <div class="card"><div class="row between"><h3>게시판 문의함 <span class="small faint">관리자만 보기 글</span></h3><span class="row" style="gap:6px"><button class="btn sm ghost" data-a="ideacopy" title="건의 말머리 · 관리자만 보기 글 중 해결 완료가 아닌 것을 이름 없이 복사합니다">건의 · 문의 전체 복사</button><button class="btn sm ghost" data-a="bdload">새로고침</button></span></div>
+      <label class="tog small" style="margin-top:6px"><input type="checkbox" id="bdhide"> 답변함 · 해결 완료 숨기기 <span class="tiny faint">(답변 뒤 새 댓글이 달리면 다시 보임)</span></label>
       <p class="small faint" style="margin-top:4px">학생이 「관리자만 보기」로 남긴 문의·건의입니다. 여기서 「운영진」 이름으로 답하면 학생에게 우편 알림이 갑니다. 게임 안에서는 운영자 계정이 게시판 › 관리자만 보기에서 같은 글을 봅니다.</p>
       <div id="bdbox" style="margin-top:8px"></div></div>
     <div class="card"><div class="row between"><h3>채팅 신고</h3><label class="tog"><input type="checkbox" id="showres"> 처리한 것도 보기</label></div>
@@ -64,8 +88,8 @@
         <label>채팅 금지<select id="um"><option value="10">10분</option><option value="60">1시간</option><option value="1440">1일</option><option value="10080">7일</option><option value="0">해제</option></select></label><button class="btn" data-a="mute">적용</button></div>
         <div class="form" style="margin-top:10px"><label>별조각<input id="ug" type="number" value="10" style="width:90px"></label><label>사유<input id="ur" placeholder="점검 보상" style="width:160px"></label><button class="btn" data-a="grant">지급</button></div>
         <div class="form" style="margin-top:10px"><button class="btn" data-a="opon">학생회로 지정</button><button class="btn" data-a="opchief">학생회장으로 지정</button><button class="btn ghost" data-a="opoff">운영자 해제</button><span class="tiny faint">운영자는 월드 채팅 슬로우 모드를 걸 수 있습니다</span></div>
-        <div class="form" style="margin-top:10px"><label>아이디 <span class="tiny faint">(초기화 · 조회)</span><input id="ulogin" style="width:140px" autocomplete="off"></label><button class="btn ghost" data-a="lookup">이름 ↔ 아이디 조회</button><button class="btn danger" data-a="reset">캐릭터 초기화</button><button class="btn danger" data-a="ban">이용 정지</button><button class="btn ghost" data-a="unban">정지 해제</button><button class="btn ghost" data-a="backup">지금 백업</button></div>
-        <p class="small" id="umsg" style="margin-top:8px"></p></div>
+        <div class="form" style="margin-top:10px"><label>아이디 <span class="tiny faint">(조회 · 새로 정하기 · 초기화)</span><input id="ulogin" style="width:140px" autocomplete="off"></label><button class="btn ghost" data-a="lookup">이름 ↔ 아이디 조회</button><button class="btn ghost" data-a="plog">활동 기록</button><button class="btn ghost" data-a="resetpw">임시 비밀번호 발급</button><button class="btn ghost" data-a="setlogin">아이디 새로 정하기</button><button class="btn danger" data-a="reset">캐릭터 초기화</button><button class="btn danger" data-a="ban">이용 정지</button><button class="btn ghost" data-a="unban">정지 해제</button><button class="btn ghost" data-a="backup">지금 백업</button></div>
+        <p class="small" id="umsg" style="margin-top:8px"></p><div id="plog"></div></div>
       <div class="card"><div class="row between"><h3>월드 채팅 슬로우 모드 · 운영 로그</h3><button class="btn sm ghost" data-a="oplog">새로고침</button></div>
         <div class="form" style="margin-top:8px"><label>초<input id="slowsec" type="number" min="0" max="600" value="0" style="width:90px"></label><button class="btn" data-a="slow">적용 (0 = 끄기)</button></div>
         <div class="scroll" style="margin-top:10px;max-height:260px"><table><thead><tr><th>때</th><th>누가</th><th>무엇</th><th>내용</th></tr></thead><tbody id="oplog"></tbody></table></div></div>

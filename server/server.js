@@ -325,7 +325,14 @@ function lecStarted(P, sid, now) {
 }
 // 예전에 공지 채널에 올라간 교수 한마디(「[과목] 교수: “…”」)를 한 번 지운다
 if (!dbx.kvGet('profNoticeClean', 0)) { dbx.q.recentChat.all('notice', 500).forEach((r) => { if (r.pid === 'system' || !r.pid) { const tx = sec.dec(r.text); if (/^\[[^\]]+\] [^:]+: “/.test(tx)) chat.remove(r.id); } }); dbx.kvSet('profNoticeClean', 1); }
-function aucBrief(now) { const v = R.auctionVisit(now); return v ? { start: v.start, end: v.end, active: v.active } : null; }
+// 지금 경매: 정해진 2시간이 지나도 막판 입찰로 늘어난 물건이 남아 있으면 그 방문을 계속 연다 (늘어나는 데 끝이 없다)
+function aucVisitNow(now) {
+  const v = R.auctionVisit(now); if (!v) return v;
+  const open = (id) => dbx.q.aucByVisit.all(id).filter((r) => !r.done && r.ends > now);
+  if (!v.active) { const pid = v.id - 1, pv = open(pid); if (pv.length) return { id: pid, start: Math.floor(pid / 2) * 86400 - R.K.TZ + R.AUCTION_HOURS[pid % 2] * 3600, end: Math.max.apply(null, pv.map((r) => r.ends)), active: true, extended: true }; return v; }
+  const cur = open(v.id); return cur.length ? Object.assign({}, v, { end: Math.max(v.end, Math.max.apply(null, cur.map((r) => r.ends))) }) : v;
+}
+function aucBrief(now) { const v = aucVisitNow(now); return v ? { start: v.start, end: v.end, active: v.active } : null; }
 function classView(now) { return { n: lecCounts(now), prof: profLines(now) }; }
 
 // 가방이 가득 차서 넘친 장비(P.mailQ)를 우편으로 보낸다 (10개씩, 30일). 응답을 보낼 때와 저장할 때
@@ -346,7 +353,10 @@ function statePayload(P, now) {
 const routes = {};
 routes['GET /api/health'] = (req, res) => { const mv = MAINT.on ? maintView(authed(req)) : null; if (mv && !mv.bypass) return send(req, res, 503, { ok: false, maint: mv }); send(req, res, 200, { ok: true, now: nowSec() }); };
 // 로그인하지 않은 방문자에게는 학생 이름·랭킹 같은 정보를 보내지 않는다
-routes['GET /api/meta'] = (req, res) => { const me = authed(req), mv = maintView(me); if (mv && mv.on && !mv.bypass) return send(req, res, 503, { error: '점검 중입니다', maint: mv }); send(req, res, 200, Object.assign({ build: BUILD.build, minBuild: BUILD.minBuild, maint: mv, now: nowSec(), scale: cfg.timeScale, registerOpen: cfg.registerOpen, inviteRequired: cfg.inviteRequired, houses: world.houseView() }, me ? { world: world.publicView(nowSec(), store.online(120000)) } : {})); };
+// 기숙사별 학생 수 (가입 화면에 표시, 1분마다 다시 센다)
+let houseN = { at: 0, n: {} };
+function houseCounts() { if (Date.now() - houseN.at > 60000) { const n = {}; dbx.q.houseCount.all().forEach((r) => { n[r.house] = Number(r.n) || 0; }); houseN = { at: Date.now(), n }; } return houseN.n; }
+routes['GET /api/meta'] = (req, res) => { const me = authed(req), mv = maintView(me); if (mv && mv.on && !mv.bypass) return send(req, res, 503, { error: '점검 중입니다', maint: mv }); send(req, res, 200, Object.assign({ build: BUILD.build, minBuild: BUILD.minBuild, maint: mv, now: nowSec(), scale: cfg.timeScale, registerOpen: cfg.registerOpen, inviteRequired: cfg.inviteRequired, houses: world.houseView(), houseN: houseCounts() }, me ? { world: world.publicView(nowSec(), store.online(120000)) } : {})); };
 
 routes['POST /api/register'] = async (req, res) => {
   if (!cfg.registerOpen) return fail(req, res, 403, '지금은 입학 신청을 받지 않습니다');
@@ -356,19 +366,19 @@ routes['POST /api/register'] = async (req, res) => {
   if (!LOGIN_RE.test(login)) return fail(req, res, 400, LOGIN_RULE);
   if (!NAME_RE.test(name)) return fail(req, res, 400, R.NAME_RULE);
   if (login === nameKey(name)) return fail(req, res, 400, '아이디는 학생 이름과 다르게 정해 주세요');   // 이름은 모두에게 보이므로
-  if (R.badName(name) && !ADMIN_NAMES.has(nameKey(name))) return fail(req, res, 400, '쓸 수 없는 말이 들어 있는 이름입니다');   // 운영자로 지정한 이름만 예외
+  if (R.badName(name) && !ADMIN_NAMES.has(nameKey(name))) return fail(req, res, 400, '사용할 수 없는 단어가 포함된 이름입니다');   // 운영자로 지정한 이름만 예외
   { const why = pwProblem(pw, name, login); if (why) return fail(req, res, 400, why); }
   if (!R.HOUSE[house]) return fail(req, res, 400, '기숙사 선택 필요');
   const cls = String(b.cls || ''); if (!R.CLS[cls]) return fail(req, res, 400, '학과 선택 필요');
   if (Number(dbx.q.countPlayers.get().n) >= cfg.maxPlayers) return fail(req, res, 403, '정원이 가득 찼습니다');
-  if (dbx.q.playerByKey.get(nameKey(name))) return fail(req, res, 409, '이미 쓰는 이름입니다');
-  const lkey = loginKey(login); if (dbx.q.playerByLogin.get(lkey)) return fail(req, res, 409, '이미 쓰는 아이디입니다');
+  if (dbx.q.playerByKey.get(nameKey(name))) return fail(req, res, 409, '이미 사용 중인 이름입니다');
+  const lkey = loginKey(login); if (dbx.q.playerByLogin.get(lkey)) return fail(req, res, 409, '이미 사용 중인 아이디입니다');
   const code = cfg.inviteRequired ? normCode(b.invite) : '';
   if (cfg.inviteRequired) { const why = checkInvite(code); if (why) return fail(req, res, 403, why); }
   const opInv = !!(code && (dbx.q.getInvite.get(code) || {}).op);
   const hashed = await hashPass(pw);
-  if (dbx.q.playerByKey.get(nameKey(name))) return fail(req, res, 409, '이미 쓰는 이름입니다');
-  if (dbx.q.playerByLogin.get(lkey)) return fail(req, res, 409, '이미 쓰는 아이디입니다');
+  if (dbx.q.playerByKey.get(nameKey(name))) return fail(req, res, 409, '이미 사용 중인 이름입니다');
+  if (dbx.q.playerByLogin.get(lkey)) return fail(req, res, 409, '이미 사용 중인 아이디입니다');
   const id = crypto.randomUUID(), now = nowSec();
   const P = R.newPlayer(id, name, house, now, crypto.randomInt(1, 2147483647)); R.clsStart(P, cls);
   R.advance(P, world.ctx(now), now);
@@ -377,7 +387,7 @@ routes['POST /api/register'] = async (req, res) => {
       if (code && !dbx.q.useInvite.run(code).changes) throw Object.assign(new Error('이미 다 쓴 초대코드입니다'), { status: 403 });
       dbx.q.insertPlayerFull.run(id, name, nameKey(name), house, hashed, Math.floor(now), Math.floor(now), JSON.stringify(P), 0, code, lkey);
     });
-  } catch (e) { return fail(req, res, e.status || 409, e.status ? e.message : '이미 쓰는 이름이나 아이디입니다'); }
+  } catch (e) { return fail(req, res, e.status || 409, e.status ? e.message : '이미 사용 중인 이름이나 아이디입니다'); }
   try { dbx.db.prepare('UPDATE players SET login_enc = ? WHERE id = ?').run(sec.enc(login), id); } catch (e) { }   // 운영실 확인용 (암호화)
   store.put(P);
   if (opInv) { dbx.q.setRole.run('admin', id); adminIds.add(id); P.op = 1; oplog('admin', '관리자', 'role', `${name} → admin (운영자 초대코드)`); }
@@ -394,14 +404,39 @@ routes['POST /api/rename'] = async (req, res) => {
   const b = await readJson(req, 1024), now = nowSec(), P = loadPlayer(pid, now); if (!P) return fail(req, res, 401, '학생 정보를 찾을 수 없습니다');
   const name = R.cleanName(b.name);
   if (!NAME_RE.test(name)) return fail(req, res, 400, R.NAME_RULE);
-  if (R.badName(name)) return fail(req, res, 400, '쓸 수 없는 말이 들어 있는 이름입니다');
+  if (R.badName(name)) return fail(req, res, 400, '사용할 수 없는 단어가 포함된 이름입니다');
   if (name === P.name) return fail(req, res, 400, '지금 이름과 같습니다');
   const real = Date.now() / 1000, lf = R.renameLeft(P, real); if (lf > 0) return fail(req, res, 400, R.fmtTime(lf) + ' 뒤에 바꿀 수 있습니다');
-  const other = dbx.q.playerByKey.get(nameKey(name)); if (other && other.id !== pid) return fail(req, res, 409, '이미 쓰는 이름입니다');
-  try { dbx.q.renamePlayer.run(name, nameKey(name), pid); } catch (e) { return fail(req, res, 409, '이미 쓰는 이름입니다'); }
+  const other = dbx.q.playerByKey.get(nameKey(name)); if (other && other.id !== pid) return fail(req, res, 409, '이미 사용 중인 이름입니다');
+  try { dbx.q.renamePlayer.run(name, nameKey(name), pid); } catch (e) { return fail(req, res, 409, '이미 사용 중인 이름입니다'); }
   const old = P.name; P.name = name; P.nameAt = Math.floor(real); R.log(P, now, '이름을 ' + R.josa('「' + name + '」', '으로', '로') + ' 바꿨습니다', 'news');
   store.markDirty(pid); board.forgetName(pid); log(`이름 변경: ${old} → ${name}`);
   send(req, res, 200, Object.assign({ ok: true }, statePayload(P, now)));
+};
+// 아이디 찾기: 학생 이름 + 비밀번호가 맞으면 아이디를 알려 준다. 기록이 없는 예전 학생은 여기서 새 아이디를 정한다 (로그인과 같은 횟수 제한)
+routes['POST /api/findid'] = async (req, res) => {
+  const ip = clientIp(req);
+  if (!cfg.testMode && limited('login:' + ip, 10 / 60, 10)) return fail(req, res, 429, '시도가 너무 많습니다. 1분 뒤 다시 시도');
+  const b = await readJson(req, 2048);
+  const nk = nameKey(String(b.name || '').slice(0, 24)), pw = String(b.password || '').slice(0, 72), nl = String(b.newLogin || '').trim().toLowerCase();
+  if (!cfg.testMode && limited('findN:' + nk, 10 / 600, 10)) return fail(req, res, 429, '이 학생 이름으로 시도가 너무 많습니다. 10분 뒤 다시 시도');
+  const row = nk ? dbx.q.playerByKey.get(nk) : null;
+  if (!row) { await hashPass(pw); return fail(req, res, 401, '학생 이름이나 비밀번호가 맞지 않습니다'); }
+  if (!(await checkPass(pw, row.pass))) return fail(req, res, 401, '학생 이름이나 비밀번호가 맞지 않습니다');
+  if (row.banned) return fail(req, res, 403, '이용이 정지된 계정입니다');
+  const r = dbx.db.prepare('SELECT login_key, login_enc FROM players WHERE id = ?').get(row.id) || {};
+  let login = ''; try { login = r.login_enc ? sec.dec(r.login_enc) : ''; } catch (e) { }
+  if (!login && r.login_key && r.login_key === sec.index('login:' + nk)) login = row.name;   // 아이디 이전에 가입 → 이름이 아이디
+  if (login) return send(req, res, 200, { login });
+  if (!nl) return send(req, res, 200, { needNew: true });
+  if (!LOGIN_RE.test(nl)) return fail(req, res, 400, LOGIN_RULE);
+  if (nl === nk) return fail(req, res, 400, '아이디는 학생 이름과 다르게 정해 주세요');
+  const lkey = loginKey(nl), other = dbx.q.playerByLogin.get(lkey);
+  if (other && other.id !== row.id) return fail(req, res, 409, '이미 사용 중인 아이디입니다');
+  dbx.q.setLoginKey.run(lkey, row.id);
+  try { dbx.db.prepare('UPDATE players SET login_enc = ? WHERE id = ?').run(sec.enc(nl), row.id); } catch (e) { }
+  oplog('admin', row.name, 'setlogin', row.name + ' 아이디 찾기로 새 아이디 정함');
+  send(req, res, 200, { login: nl, set: true });
 };
 routes['POST /api/login'] = async (req, res) => {
   const ip = clientIp(req);
@@ -415,10 +450,11 @@ routes['POST /api/login'] = async (req, res) => {
   if (!(await checkPass(pw, row.pass))) return fail(req, res, 401, '아이디나 비밀번호가 맞지 않습니다');
   if (row.banned) return fail(req, res, 403, '이용이 정지된 계정입니다');
   if (needsRehash(row.pass)) dbx.q.setPass.run(await hashPass(pw), row.id);
-  try { const le = dbx.db.prepare('SELECT login_enc FROM players WHERE id = ?').get(row.id); if (le && !le.login_enc && LOGIN_RE.test(login.toLowerCase())) dbx.db.prepare('UPDATE players SET login_enc = ? WHERE id = ?').run(sec.enc(login.toLowerCase()), row.id); } catch (e) { }   // 예전 학생은 로그인할 때 아이디를 기록
+  let pwTemp = false;
+  try { const le = dbx.db.prepare('SELECT login_enc, pw_temp FROM players WHERE id = ?').get(row.id); pwTemp = !!(le && le.pw_temp); if (le && !le.login_enc) dbx.db.prepare('UPDATE players SET login_enc = ? WHERE id = ?').run(sec.enc(LOGIN_RE.test(login.toLowerCase()) ? login.toLowerCase() : login.trim()), row.id); } catch (e) { }   // 예전 학생은 로그인할 때 아이디를 기록 (이름이 아이디인 학생은 이름 그대로)
   const token = newSession(row.id), now = nowSec();
   const P = loadPlayer(row.id, now);
-  send(req, res, 200, Object.assign({ token }, statePayload(P, now)), { 'Set-Cookie': cookie(token, cfg.sessionDays * 86400) });
+  send(req, res, 200, Object.assign({ token }, statePayload(P, now), pwTemp ? { pwTemp: true } : {}), { 'Set-Cookie': cookie(token, cfg.sessionDays * 86400) });
 };
 routes['POST /api/logout'] = (req, res) => {
   const tok = getToken(req); if (tok) { dbx.q.delSession.run(tokKey(tok)); sessionCache.delete(tokKey(tok)); }
@@ -432,6 +468,7 @@ routes['POST /api/password'] = async (req, res) => {
   if (!row || !(await checkPass(String(b.old || ''), row.pass))) return fail(req, res, 401, '현재 비밀번호가 맞지 않습니다');
   const pw = String(b.password || ''); { const why = pwProblem(pw, P.name); if (why) return fail(req, res, 400, why); }
   dbx.q.setPass.run(await hashPass(pw), pid);
+  try { dbx.db.prepare('UPDATE players SET pw_temp = 0 WHERE id = ?').run(pid); } catch (e) { }
   send(req, res, 200, { ok: true });
 };
 routes['GET /api/state'] = (req, res) => {
@@ -442,6 +479,12 @@ routes['GET /api/state'] = (req, res) => {
   send(req, res, 200, statePayload(P, now));
 };
 // 세계: 내용이 같으면 304 (ETag는 본문 해시). 접속자 수가 바뀌면 본문도 바뀐다.
+routes['GET /api/myranks'] = (req, res) => {
+  const pid = authed(req); if (!pid) return fail(req, res, 401, '로그인이 필요합니다');
+  if (limited('mr:' + pid, 2, 10)) return fail(req, res, 429, '요청이 너무 잦습니다');
+  const now = nowSec(), P = loadPlayer(pid, now); if (!P) return fail(req, res, 401, '학생 정보를 찾을 수 없습니다');
+  send(req, res, 200, { ranks: world.myRanks(P, R.summary(P, world.W, now).power, now) });
+};
 routes['GET /api/world'] = (req, res) => {
   if (!authed(req)) return fail(req, res, 401, '로그인이 필요합니다');
   if (limited('w:' + clientIp(req), 2, 10)) return fail(req, res, 429, '요청이 너무 잦습니다');
@@ -559,8 +602,11 @@ routes['POST /api/chat/ticket'] = (req, res) => {
 };
 
 /* ───────── 내 정보 · 두상 · 친구 ───────── */
+// 공개 범위: 레벨·전투력(visLv) · 능력치(visStat) · 장비(visEq) — 전체 · 친구만 · 비공개
+const VIS = new Set(['all', 'friend', 'none']);
 const PROFILE_DEF = { status: '', bio: '', fav: '', avcredit: '', showStats: true, allowFriend: true, bioFriends: false };   // avcredit: 두상 그림 출처 (선택)
-function profileOf(json) { let p = {}; try { p = JSON.parse(sec.dec(json) || '{}') || {}; } catch (e) { } return Object.assign({}, PROFILE_DEF, p); }
+function profileOf(json) { let p = {}; try { p = JSON.parse(sec.dec(json) || '{}') || {}; } catch (e) { } const o = Object.assign({}, PROFILE_DEF, p); if (!VIS.has(o.visLv)) o.visLv = o.showStats ? 'all' : 'none'; if (!VIS.has(o.visStat)) o.visStat = 'none'; if (!VIS.has(o.visEq)) o.visEq = 'none'; return o; }
+const pubItem = (it) => it && { slot: it.slot, wk: it.wk, name: it.name, ilvl: it.ilvl, r: it.r, enh: it.enh, q: it.q, aff: it.aff, eng: it.eng };
 function cleanText(v, max) { return String(v == null ? '' : v).replace(/\r\n?/g, '\n').replace(/[\u0000-\u0009\u000B-\u001F\u007F​-‏‪-‮⁦-⁩]/g, '').replace(/\n{3,}/g, '\n\n').trim().slice(0, max); }
 function isOnline(pid) { return chat.isOnline(pid) || Date.now() - store.seen(pid) < 180000; }
 function friendState(me, other) {
@@ -584,18 +630,24 @@ routes['GET /api/profile'] = (req, res) => {
   const out = { id, op: isChatOp(id) || undefined, name: row.name, house: row.house, grade, guest: !!row.guest, created: row.created, av: row.avatar_v && dbx.q.getAvatar.get(id).avatar ? row.avatar_v : 0,
     status: pr.status, bio: pr.bio, fav: pr.fav, avcredit: pr.avcredit || '', online: self || isOnline(id), self, title: LP ? R.titleName(LP, LP.title) : row.title };
   { const DP = LP || store.get(id); out.deco = R.decoView(DP); if (DP && R.CLS[DP.cls]) out.cls = DP.cls; const bw = DP && R.badgeWorn(DP); if (bw) out.badge = { gem: bw.gem, lv: bw.lv, name: bw.name }; }   // 정보 카드 꾸미기
-  if (pr.showStats || self) Object.assign(out, { lvl, power, rank: world.rankOf(power) });
+  const fs = self ? null : friendState(me, id), can = (v) => self || v === 'all' || (v === 'friend' && fs === 'ok');
+  if (can(pr.visLv)) Object.assign(out, { lvl, power, rank: world.rankOf(power) });
+  if (can(pr.visStat) || can(pr.visEq)) {
+    const DP = LP || store.get(id);
+    if (DP && can(pr.visStat)) { const c = R.calc(DP, world.ctx(nowSec()), Math.min(nowSec(), DP.at)), st = {}; R.STATS.forEach((k) => { st[k] = Math.round(c.stat[k]); }); out.stats = { st, dps: Math.round(c.totalDps), hp: Math.round(c.hp), def: Math.round(c.def) }; }
+    if (DP && can(pr.visEq)) { out.eq = {}; for (const s in DP.eq) if (DP.eq[s]) out.eq[s] = pubItem(DP.eq[s]); }
+  }
   // 동아리 이름 · 직책
   const tg = guildOf.get(id), tgr = tg && dbx.q.gGet.get(tg);
-  if (tgr) { const mr = dbx.q.gMember.get(id) || {}; out.guild = { id: tg, name: tgr.name, color: tgr.color, lv: tgr.lv || 1, role: mr.role, rank: R.guildRankName(gRanksOf(tgr), mr.role, mr.rank) }; }
+  if (tgr) { const mr = dbx.q.gMember.get(id) || {}; out.guild = { id: tg, name: tgr.name, color: tgr.color, icon: tgr.icon || '', lv: tgr.lv || 1, role: mr.role, rank: R.guildRankName(gRanksOf(tgr), mr.role, mr.rank) }; }
   if (!self) {
     const mg = guildOf.get(me), mgr = mg && dbx.q.gGet.get(mg);
     out.canGuildInvite = !!(mgr && !tg && R.guildCan(gRanksOf(mgr), guildRole.get(me), (dbx.q.gMember.get(me) || {}).rank, 'invite'));
     out.sameParty = !!(partyOf.get(me) && partyOf.get(me) === partyOf.get(id));
   }
-  if (self) Object.assign(out, { showStats: pr.showStats, allowFriend: pr.allowFriend, bioFriends: pr.bioFriends });
+  if (self) Object.assign(out, { showStats: pr.showStats, visLv: pr.visLv, visStat: pr.visStat, visEq: pr.visEq, allowFriend: pr.allowFriend, bioFriends: pr.bioFriends });
   else {
-    out.friend = friendState(me, id); out.allowFriend = pr.allowFriend;
+    out.friend = fs; out.allowFriend = pr.allowFriend;
     if (pr.bioFriends && out.friend !== 'ok') { out.bio = ''; out.bioHidden = true; }   // 자기소개는 친구에게만
     delete out.created;
   }
@@ -610,7 +662,9 @@ routes['POST /api/profile'] = async (req, res) => {
   if (b.bio !== undefined) pr.bio = cleanText(b.bio, 300);
   if (b.avcredit !== undefined) pr.avcredit = cleanText(b.avcredit, 60).replace(/\n/g, ' ');
   if (b.fav !== undefined) pr.fav = R.SUBJ[b.fav] ? b.fav : '';
-  if (b.showStats !== undefined) pr.showStats = !!b.showStats;
+  if (b.showStats !== undefined) { pr.showStats = !!b.showStats; pr.visLv = pr.showStats ? 'all' : 'none'; }   // 예전 화면 호환
+  ['visLv', 'visStat', 'visEq'].forEach((k) => { if (VIS.has(b[k])) pr[k] = b[k]; });
+  pr.showStats = pr.visLv !== 'none';
   if (b.allowFriend !== undefined) pr.allowFriend = !!b.allowFriend;
   if (b.bioFriends !== undefined) pr.bioFriends = !!b.bioFriends;
   dbx.q.setProfile.run(sec.enc(JSON.stringify(pr)), me);
@@ -674,10 +728,19 @@ routes['POST /api/push/unsub'] = async (req, res) => {
   const pid = authed(req); if (!pid) return fail(req, res, 401, '로그인이 필요합니다');
   const b = await readJson(req, 4096); push.unsubscribe(pid, b.endpoint); send(req, res, 200, { ok: true });
 };
+// 친구 개인 메모: 쓴 학생에게만 내려 준다 (상대에게는 보이지 않는다)
+const memoOf = (m) => { if (!m) return ''; try { return sec.dec(m); } catch (e) { return ''; } };
+// 설정 화면: 지금 로그인한 아이디 (본인에게만)
+routes['GET /api/me/login'] = (req, res) => {
+  const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
+  if (limited('ml:' + me, 1, 5)) return fail(req, res, 429, '요청이 너무 잦습니다');
+  let login = ''; try { const r = dbx.db.prepare('SELECT login_enc FROM players WHERE id = ?').get(me); login = r && r.login_enc ? sec.dec(r.login_enc) : ''; } catch (e) { }
+  send(req, res, 200, { login });
+};
 routes['GET /api/friends'] = (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
   if (limited('fl:' + me, 1, 10)) return fail(req, res, 429, '요청이 너무 잦습니다');
-  const mine = dbx.q.friendList.all(me).map((r) => ({ id: r.id, state: r.state === 'ok' ? 'ok' : 'out', name: r.name, house: r.house, grade: r.grade, lvl: r.lvl, av: r.avatar_v, title: r.title, status: profileOf(r.profile).status, online: r.state === 'ok' && isOnline(r.id), seen: r.last_seen }));
+  const mine = dbx.q.friendList.all(me).map((r) => ({ id: r.id, state: r.state === 'ok' ? 'ok' : 'out', name: r.name, house: r.house, grade: r.grade, lvl: r.lvl, av: r.avatar_v, title: r.title, status: profileOf(r.profile).status, online: r.state === 'ok' && isOnline(r.id), seen: r.last_seen, memo: memoOf(r.memo) }));
   const inc = dbx.q.friendIncoming.all(me).map((r) => ({ id: r.id, name: r.name, house: r.house, grade: r.grade, lvl: r.lvl, av: r.avatar_v, t: r.t }));
   send(req, res, 200, { friends: mine.filter((f) => f.state === 'ok').sort((a, b) => (b.online - a.online) || (b.seen - a.seen)), out: mine.filter((f) => f.state === 'out'), inc });
 };
@@ -717,6 +780,12 @@ routes['POST /api/friends'] = async (req, res) => {
     dbx.tx(() => { dbx.q.friendPut.run(me, id, 'ok', t); dbx.q.friendPut.run(id, me, 'ok', t); });
     addNote(id, 'friend', pname(me) + ' 님이 친구 신청을 받았습니다', { me: 'friends' });
     return send(req, res, 200, { ok: true, state: 'ok' });
+  }
+  if (op === 'memo') {
+    if (st !== 'ok' && st !== 'out') return fail(req, res, 400, '친구에게만 메모를 남길 수 있습니다');
+    const memo = String(b.memo || '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 60);
+    dbx.q.friendMemo.run(memo ? sec.enc(memo) : '', me, id);
+    return send(req, res, 200, { ok: true, memo });
   }
   if (op === 'remove' || op === 'decline' || op === 'cancel') { dbx.q.friendDel.run(me, id, id, me); return send(req, res, 200, { ok: true, state: null }); }
   fail(req, res, 400, '알 수 없는 요청입니다');
@@ -774,7 +843,7 @@ routes['POST /api/party'] = async (req, res) => {
     if (mine) return fail(req, res, 400, '이미 파티에 들어가 있습니다');
     const name = String(b.name || '').replace(/\s+/g, ' ').trim();
     if (!PARTY_NAME_RE.test(name)) return fail(req, res, 400, '파티 이름은 한글·영문·숫자 2~12자만 가능');
-    if (R.badName(name)) return fail(req, res, 400, '쓸 수 없는 말이 들어 있는 이름입니다');
+    if (R.badName(name)) return fail(req, res, 400, '사용할 수 없는 단어가 포함된 이름입니다');
     const id = crypto.randomBytes(9).toString('base64url');
     dbx.tx(() => { dbx.q.partyInsert.run(id, name, me, Math.floor(now)); });
     joinParty(me, id); setPartyN(P); store.markDirty(me);
@@ -865,42 +934,55 @@ const NPCS = R.D.RIVALS.map((r, k) => { const h = Object.keys(NPC_HOUSE).find((x
 
 /* ───────── 거래소 ─────────
    장비와 재료를 아르크로 사고판다. 올린 물건은 맡겨 두고(가방에서 빠짐), 팔리면 판매자에게 아르크(수수료 5% 뺀 값)가 바로 들어간다.
-   3일 안에 안 팔리면 돌아온다. 2학년부터, 정식 학생만(게스트로 부계정을 만들어 몰아주는 것을 막기 위함). */
-const MK = { FEE: 0.05, DAYS: 3, MAX_OPEN: 10, GRADE: +(process.env.MARKET_GRADE || 2), MAX_PRICE: 1e15 };
+   3일 안에 안 팔리면 돌아온다. 1학년부터, 정식 학생만(게스트로 부계정을 만들어 몰아주는 것을 막기 위함).
+   판매 등록은 입학 24시간 뒤부터 (새 캐릭터로 시작 보상을 넘기는 것을 막기 위함). */
+const MK = { FEE: 0.05, DAYS: 3, MAX_OPEN: 10, GRADE: +(process.env.MARKET_GRADE || 1), SELL_AFTER: 86400, MAX_PRICE: 1e15 };
+// 소지품도 거래 가능: 환수의 알 · 토벌 도전권 · 망각의 차 (별조각으로 산 것을 아르크로 바꾸는 길)
+const MK_TOK = {
+  egg: { name: '환수의 알', have: (P) => P.fam.eggs || 0, add: (P, n) => { P.fam.eggs = (P.fam.eggs || 0) + n; } },
+  ticket: { name: '토벌 도전권', have: (P) => P.wb.extra || 0, add: (P, n) => { P.wb.extra = (P.wb.extra || 0) + n; } },
+  respec: { name: '망각의 차', have: (P) => (P.tok && P.tok.respec) || 0, add: (P, n) => { const tk = P.tok || (P.tok = {}); tk.respec = (tk.respec || 0) + n; } }
+};
 const MAT_NAMES = Object.assign({ stone: { name: '마석' } }, R.D.MATS);
 // 맡긴 물건을 학생에게 넣어 준다 (산 사람 · 돌려받는 판매자 공통). pot = 연금술로 만든 물약(선반으로)
 function mkGive(P, r) {
   if (r.kind === 'item') { try { P.inv.push(JSON.parse(r.data)); } catch (e) { } }
   else if (r.kind === 'badge') { try { (P.badges || (P.badges = [])).push(JSON.parse(r.data)); } catch (e) { } }   // 아카데미 휘장 (slot=보석, ilvl=레벨)
   else if (r.kind === 'pot') P.shelf[r.data] = (P.shelf[r.data] || 0) + r.qty;
+  else if (r.kind === 'tok') { if (MK_TOK[r.data]) MK_TOK[r.data].add(P, r.qty); }
   else if (r.data === 'stone') P.res.stone += r.qty; else P.mats[r.data] = (P.mats[r.data] || 0) + r.qty;
 }
-function mkAllowed(P, meta) {
-  if (!meta || meta.guest) return '게스트는 거래소를 쓸 수 없습니다. 설정에서 정식 학생 등록 필요';
-  if (P.grade < MK.GRADE) return MK.GRADE + '학년부터 거래소를 쓸 수 있습니다';
+function mkAllowed(P, meta, sell) {
+  if (!meta || meta.guest) return '게스트는 거래소를 이용할 수 없습니다. 설정에서 정식 학생 등록 필요';
+  if (P.grade < MK.GRADE) return MK.GRADE + '학년부터 거래소를 이용할 수 있습니다';
+  const wait = sell ? (meta.created || 0) + MK.SELL_AFTER - nowSec() : 0;
+  if (wait > 0) return '판매 등록은 입학 24시간 뒤부터 가능합니다 (남은 시간 ' + R.fmtTime(wait) + ')';
   return null;
 }
 const mkQueries = new Map();
 function mkSearch(f, now) {
   const where = [`m.status = 'open'`, `m.expires > ?`], args = [Math.floor(now)];
-  if (f.kind === 'item' || f.kind === 'mat' || f.kind === 'pot' || f.kind === 'badge') { where.push('m.kind = ?'); args.push(f.kind); }
+  if (f.kind === 'item' || f.kind === 'mat' || f.kind === 'pot' || f.kind === 'badge' || f.kind === 'tok') { where.push('m.kind = ?'); args.push(f.kind); }
   if (f.kind === 'badge' && f.gem && R.GEM[f.gem]) { where.push('m.slot = ?'); args.push(f.gem); }
   if (f.kind !== 'badge' && f.slot === 'sword') { where.push(`m.slot = 'staff' AND m.data LIKE '%"wk":"sword"%'`); }   // 무기 중 검
   else if (f.kind !== 'badge' && f.slot === 'staff') { where.push(`m.slot = 'staff' AND m.data NOT LIKE '%"wk":"sword"%'`); }   // 무기 중 지팡이
+  else if (f.kind !== 'badge' && f.slot === 'manual') { where.push(`m.slot = 'tome' AND m.data LIKE '%"wk":"manual"%'`); }   // 마도서 칸 중 전술서
+  else if (f.kind !== 'badge' && f.slot === 'tome') { where.push(`m.slot = 'tome' AND m.data NOT LIKE '%"wk":"manual"%'`); }   // 마도서 칸 중 마도서
   else if (f.kind !== 'badge' && f.slot && R.SLOT[f.slot]) { where.push('m.slot = ?'); args.push(f.slot); }
   if (f.r >= 0 && f.r <= 4) { where.push('m.rarity = ?'); args.push(f.r); }
   if (f.mat && MAT_NAMES[f.mat]) { where.push('m.data = ?'); args.push(f.mat); }
   if (f.pot && R.POT[f.pot]) { where.push('m.data = ?'); args.push(f.pot); }
+  if (f.kind === 'tok' && f.tok && MK_TOK[f.tok]) { where.push('m.data = ?'); args.push(f.tok); }
   if (f.q) { where.push(`m.name LIKE ? ESCAPE '\\'`); args.push('%' + f.q.replace(/[\\%_]/g, (c) => '\\' + c) + '%'); }
   const dir = f.sort === 'high' ? 'DESC' : 'ASC';
-  const order = f.sort === 'new' ? 'm.id DESC' : f.sort === 'lvl' ? 'm.ilvl DESC, m.price ASC' : f.kind === 'mat' || f.kind === 'pot' ? 'm.price / m.qty ' + dir : 'm.price ' + dir;
+  const order = f.sort === 'new' ? 'm.id DESC' : f.sort === 'lvl' ? 'm.ilvl DESC, m.price ASC' : f.kind === 'mat' || f.kind === 'pot' || f.kind === 'tok' ? 'm.price / m.qty ' + dir : 'm.price ' + dir;
   const sql = `SELECT m.id, m.kind, m.data, m.name, m.slot, m.rarity, m.ilvl, m.qty, m.price, m.created, m.expires, m.seller, COALESCE(p.name, m.seller_name) AS seller_name FROM market m LEFT JOIN players p ON p.id = m.seller WHERE ${where.join(' AND ')} ORDER BY ${order} LIMIT 60`;
   let st = mkQueries.get(sql); if (!st) { st = dbx.db.prepare(sql); mkQueries.set(sql, st); }
   return st.all(...args);
 }
 function mkOut(r, me) {
   const o = { id: r.id, kind: r.kind, name: r.name, slot: r.slot, r: r.rarity, ilvl: r.ilvl, qty: r.qty, price: r.price, created: r.created, expires: r.expires, seller: r.seller_name, npc: String(r.seller).startsWith('npc:'), mine: r.seller === me, status: r.status };
-  if (r.kind === 'item') { try { const it = JSON.parse(r.data); delete it.lock; delete it.u; o.item = it; } catch (e) { } } else if (r.kind === 'badge') { try { const bd = JSON.parse(r.data); delete bd.u; o.badge = bd; o.gem = bd.gem; o.lv = bd.lv; } catch (e) { } } else if (r.kind === 'pot') o.pot = r.data; else o.mat = r.data;
+  if (r.kind === 'item') { try { const it = JSON.parse(r.data); delete it.lock; delete it.u; o.item = it; } catch (e) { } } else if (r.kind === 'badge') { try { const bd = JSON.parse(r.data); delete bd.u; o.badge = bd; o.gem = bd.gem; o.lv = bd.lv; } catch (e) { } } else if (r.kind === 'pot') o.pot = r.data; else if (r.kind === 'tok') o.tok = r.data; else o.mat = r.data;
   return o;
 }
 function mkReturn(r, why, now) {   // 맡긴 물건을 판매자에게 돌려준다
@@ -915,7 +997,7 @@ routes['GET /api/market'] = (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
   if (limited('mk:' + me, 2, 15)) return fail(req, res, 429, '요청이 너무 잦습니다');
   const u = new URL(req.url, 'http://x'), g = (k) => u.searchParams.get(k) || '', now = Date.now() / 1000;
-  const f = { kind: g('kind'), slot: g('slot'), r: g('r') === '' ? -1 : Number(g('r')), mat: g('mat'), pot: g('pot'), gem: g('gem'), q: g('q').slice(0, 20), sort: g('sort') };
+  const f = { kind: g('kind'), slot: g('slot'), r: g('r') === '' ? -1 : Number(g('r')), mat: g('mat'), pot: g('pot'), tok: g('tok'), gem: g('gem'), q: g('q').slice(0, 20), sort: g('sort') };
   send(req, res, 200, { list: mkSearch(f, now).map((r) => mkOut(r, me)), mine: dbx.q.mkMine.all(me, Math.floor(now) - 3 * 86400).map((r) => mkOut(Object.assign({ seller_name: '' }, r, { seller: me }), me)), fee: MK.FEE, days: MK.DAYS, maxOpen: MK.MAX_OPEN, grade: MK.GRADE });
 };
 // 시세: 최근 30일 팔린 기록의 평균과 최근 5건. 장비는 같은 부위·등급·레벨 ±5, 재료는 개당 가격.
@@ -926,6 +1008,7 @@ function mkPrice(key, real) {
   if (p[0] === 'item' && R.SLOT[p[1]] && /^[0-4]$/.test(p[2]) && /^\d{1,6}$/.test(p[3])) { const lv = +p[3]; rows = dbx.q.mkSoldItem.all(p[1], +p[2], lv - 5, lv + 5, since); }
   else if (p[0] === 'mat' && MAT_NAMES[p[1]]) rows = dbx.q.mkSoldMat.all(p[1], since);
   else if (p[0] === 'pot' && R.POT[p[1]]) rows = dbx.q.mkSoldPot.all(p[1], since);
+  else if (p[0] === 'tok' && MK_TOK[p[1]]) rows = dbx.q.mkSoldTok.all(p[1], since);
   else if (p[0] === 'badge' && R.GEM[p[1]] && /^\d{1,3}$/.test(p[2])) { const lv = +p[2]; rows = dbx.q.mkSoldBadge.all(p[1], lv - 2, lv + 2, since); }
   else return null;
   if (rows.length) { const unit = rows.map((r) => r.price / Math.max(1, r.qty)); v = { avg: Math.round(unit.reduce((a, b) => a + b, 0) / unit.length), n: rows.length, recent: rows.slice(0, 5).map((r) => ({ t: r.done_at, price: r.price, qty: r.qty, ilvl: r.ilvl || 0, name: r.name })) }; }
@@ -953,7 +1036,7 @@ routes['POST /api/market'] = async (req, res) => {
   if (limited('mkp:' + me, 1, 10)) return fail(req, res, 429, '잠시 후 다시 시도');
   const b = await readJson(req, 2048), op = String(b.op || ''), now = nowSec(), meta = dbx.q.playerMeta.get(me);
   const P = loadPlayer(me, now); if (!P) return fail(req, res, 401, '학생 정보를 찾을 수 없습니다');
-  const no = mkAllowed(P, meta); if (no) return fail(req, res, 403, no);
+  const no = mkAllowed(P, meta, op === 'list'); if (no) return fail(req, res, 403, no);
   const real = Date.now() / 1000;
   if (op === 'list') {
     if (Number(dbx.q.mkMineOpen.get(me).n) >= MK.MAX_OPEN) return fail(req, res, 400, '한 번에 ' + MK.MAX_OPEN + '개까지 올릴 수 있습니다');
@@ -975,6 +1058,11 @@ routes['POST /api/market'] = async (req, res) => {
       if (!(qty >= 1 && qty <= (P.shelf[id] || 0))) return fail(req, res, 400, '수량 확인 필요');
       P.shelf[id] -= qty;
       row = ['pot', id, R.POT[id].name, '', 0, 0, qty];
+    } else if (b.tok) {   // 소지품: 환수의 알 · 토벌 도전권 · 망각의 차
+      const id = String(b.tok), T = MK_TOK[id], qty = Math.floor(Number(b.qty)); if (!T) return fail(req, res, 400, '거래할 수 없는 소지품입니다');
+      if (!(qty >= 1 && qty <= T.have(P))) return fail(req, res, 400, '수량 확인 필요');
+      T.add(P, -qty);
+      row = ['tok', id, T.name, '', 0, 0, qty];
     } else {
       const m = String(b.mat || ''), qty = Math.floor(Number(b.qty)); if (!MAT_NAMES[m]) return fail(req, res, 400, '없는 재료입니다');
       const have = m === 'stone' ? P.res.stone : (P.mats[m] || 0);
@@ -1118,7 +1206,7 @@ routes['POST /api/tower'] = async (req, res) => {
         if (skipped.length) chat.system('party', skipped.join(', ') + ' 님은 이번 주에 다른 파티에서 이미 ' + f + '층 이상의 보상을 받아 이번 보상은 건너뜁니다.', Date.now() / 1000, party);
         chat.system('party', '✦ ' + P.name + ' 님이 별의 탑 ' + f + '층을 넘었습니다! 파티원 모두에게 보상 우편이 갔습니다.', Date.now() / 1000, party);
       });
-      R.log(P, now, '별의 탑 ' + f + '층 돌파', 'good');
+      later(() => { const Q = store.get(me); if (Q) { R.log(Q, nowSec(), '별의 탑 ' + f + '층 돌파', 'good'); store.markDirty(me); } });   // 활동 기록도 대본이 끝난 뒤에
     } else {
       later(() => chat.system('party', P.name + ' 님이 별의 탑 ' + f + '층에 도전했지만 물러났습니다 (' + Math.round((1 - r.mHp) * 100) + '%)', Date.now() / 1000, party));
     }
@@ -1158,7 +1246,7 @@ routes['POST /api/ritual'] = async (req, res) => {
 
 /* ───────── 떠돌이 상인 경매 ─────────
    하루 두 번(12시·20시, 2시간) 귀한 장비 세 점을 경매에 붙인다. 부른 값은 바로 맡겨 두고, 더 높은 값이 나오면 돌려준다.
-   끝나기 2분 안에 부르면 2분 늘어난다. 낙찰품은 우편으로. 값은 학생만 부른다(NPC는 부르지 않는다). */
+   끝나기 2분 안에 부르면 2분 늘어난다 (몇 번이든, 정해진 2시간이 지나도). 낙찰품은 우편으로. 값은 학생만 부른다(NPC는 부르지 않는다). */
 function aucOut(r, me) { let item = null; try { item = JSON.parse(r.item); } catch (e) { } return { id: r.id, name: r.name, r: r.rarity, ilvl: r.ilvl, slot: r.slot, item, ends: r.ends, min: r.min, price: r.price, need: R.auctionStep(r.price, r.min), bidder: r.bidder_name, mine: !!me && r.bidder === me, npc: String(r.bidder).startsWith('npc:'), bids: r.bids, done: !!r.done }; }
 function aucRefund(pid, amount, name, why) {
   if (!pid || String(pid).startsWith('npc:') || !amount) return;
@@ -1190,6 +1278,7 @@ function aucTick(now) {
     if (!dbx.q.aucDone.run(r.id).changes) return;
     if (r.bidder && !String(r.bidder).startsWith('npc:')) {
       let it = null; try { it = JSON.parse(r.item); } catch (e) { }
+      try { const Q = loadPlayer(r.bidder, nowSec()); if (Q) { R.cupAdd(Q, R.CUP_AUC, 'auc'); store.markDirty(r.bidder); } } catch (e) { log('낙찰 대항전 점수 실패', e); }   // 대항전 점수 (거울관 특기)
       if (it) sendMail(r.bidder, '떠돌이 상인', '낙찰: ' + r.name, r.bidder_name + ' 님, ' + R.fmt(r.price) + ' ' + CUR + '에 낙찰되었습니다. 좋은 주인을 만나 다행이군요.\n— 떠돌이 상인', { items: [it] }, Math.floor(Date.now() / 1000) + 14 * 86400, true);
       chat.system('notice', '떠돌이 상인: ' + r.bidder_name + ' 님이 ' + R.josa('「' + r.name + '」', '을', '를') + ' ' + R.fmt(r.price) + ' ' + CUR + '에 낙찰받았습니다.', Date.now() / 1000);
     }
@@ -1199,7 +1288,7 @@ function aucTick(now) {
 routes['GET /api/auction'] = (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
   if (limited('aug:' + me, 1, 10)) return fail(req, res, 429, '요청이 너무 잦습니다');
-  const now = nowSec(); aucTick(now); const v = R.auctionVisit(now);
+  const now = nowSec(); aucTick(now); const v = aucVisitNow(now);
   send(req, res, 200, { now, visit: v, lots: v ? dbx.q.aucByVisit.all(v.id).map((r) => aucOut(r, me)) : [], recent: dbx.q.aucRecent.all().map((r) => ({ name: r.name, r: r.rarity, price: r.price, bidder: r.bidder_name })) });
 };
 routes['POST /api/auction'] = async (req, res) => {
@@ -1280,9 +1369,9 @@ routes['POST /api/board'] = async (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
   if (store.isBanned(me)) return fail(req, res, 403, '이용이 정지된 계정입니다');
   const b = await readJson(req, 16384), op = String(b.op || ''), now = Math.floor(Date.now() / 1000), meta = dbx.q.playerMeta.get(me);
-  if (!meta || meta.banned) return fail(req, res, 403, '쓸 수 없습니다');
+  if (!meta || meta.banned) return fail(req, res, 403, '사용할 수 없습니다');
   if ((op === 'write' || op === 'edit' || op === 'comment') && meta.muted_until && meta.muted_until > now) return fail(req, res, 403, '채팅·글쓰기가 금지된 상태입니다 (' + Math.ceil((meta.muted_until - now) / 60) + '분 남음)');
-  if (op === 'write' && limited('bdw:' + me, 1 / 30, 1)) return fail(req, res, 429, '글은 30초에 하나씩 쓸 수 있습니다');
+  if (op === 'write' && limited('bdw:' + me, 1 / 30, 1)) return fail(req, res, 429, '글은 30초에 하나씩 작성할 수 있습니다');
   if (op === 'comment' && limited('bdc:' + me, 1 / 4, 3)) return fail(req, res, 429, '댓글을 너무 빨리 달고 있습니다');
   if (limited('bdp:' + me, 1, 10)) return fail(req, res, 429, '잠시 후 다시 시도');
   try {
@@ -1351,6 +1440,7 @@ routes['POST /api/admin/mail/delete'] = async (req, res) => {
 
 /* ───────── 동아리 (학생이 직접 만드는 길드) ─────────
    회장·부회장·부원. 바로 가입 또는 신청 후 승인. 동아리 채팅은 RP와 오너(캐릭터 밖) 두 갈래. */
+const GUILD_ICONS = new Set(D.GUILD_ICONS.map((x) => x.id));
 const GUILD_NAME_RE = /^[가-힣A-Za-z0-9_ ]{2,12}$/, GUILD_COLORS = ['#d6ad5f', '#e8c36a', '#6fb5c9', '#d9736b', '#b99be6', '#74bfa9', '#e07c72', '#8fa8ff', '#c9a26b'], GUILD_OFFICERS = 2;
 const guildRole = new Map(), guildLv = new Map();
 dbx.q.gAllMembers.all().forEach((r) => { guildOf.set(r.pid, r.guild); guildRole.set(r.pid, r.role); guildLv.set(r.guild, r.lv || 1); });
@@ -1363,7 +1453,7 @@ function gView(me, id, full) {
   const g = dbx.q.gGet.get(id); if (!g) return null;
   const inG = guildOf.get(me) === id, role = inG ? guildRole.get(me) : null, members = dbx.q.gMembers.all(id), ranks = gRanksOf(g), lv = g.lv || 1;
   const mine = inG ? members.find((m) => m.id === me) : null, day = R.dayKST(nowSec());
-  const o = { id, name: g.name, intro: sec.dec(g.intro), notice: sec.dec(g.notice), color: g.color, mode: g.mode, created: g.created, n: members.length, max: R.guildCap(lv), myRole: role,
+  const o = { id, name: g.name, intro: sec.dec(g.intro), notice: sec.dec(g.notice), color: g.color, icon: g.icon || '', mode: g.mode, created: g.created, n: members.length, max: R.guildCap(lv), myRole: role,
     lv, xp: g.xp || 0, need: R.guildXpNeed(lv), maxLv: R.GUILD_MAX_LV, bonus: R.guildBonus(lv), ranks };
   if (full || role) o.members = members.map((m) => ({ id: m.id, role: m.role, rank: m.rank || '', rankName: R.guildRankName(ranks, m.role, m.rank), contrib: m.contrib || 0, name: m.name, house: m.house, grade: m.grade, lvl: m.lvl, av: m.avatar_v, title: m.title, online: m.id === me || isOnline(m.id), seen: m.last_seen }));
   if (mine) {
@@ -1408,9 +1498,9 @@ routes['GET /api/guilds'] = (req, res) => {
   if (limited('gl:' + me, 1, 10)) return fail(req, res, 429, '요청이 너무 잦습니다');
   const q = (new URL(req.url, 'http://x').searchParams.get('q') || '').trim().toLowerCase().slice(0, 12);
   const mine = guildOf.get(me), apps = dbx.q.gMyApps.all(me).map((r) => r.guild);
-  const list = dbx.q.gList.all().map((g) => ({ id: g.id, name: g.name, intro: sec.dec(g.intro).slice(0, 120), color: g.color, mode: g.mode, n: Number(g.n), max: R.guildCap(g.lv || 1), lv: g.lv || 1, owner: g.owner_name, mine: g.id === mine, applied: apps.indexOf(g.id) >= 0 }))
+  const list = dbx.q.gList.all().map((g) => ({ id: g.id, name: g.name, intro: sec.dec(g.intro).slice(0, 120), color: g.color, icon: g.icon || '', mode: g.mode, n: Number(g.n), max: R.guildCap(g.lv || 1), lv: g.lv || 1, owner: g.owner_name, mine: g.id === mine, applied: apps.indexOf(g.id) >= 0 }))
     .filter((g) => !q || g.name.toLowerCase().indexOf(q) >= 0 || g.intro.toLowerCase().indexOf(q) >= 0);
-  send(req, res, 200, { list, mine: mine || null, invites: mine ? [] : dbx.q.ginvMine.all(me).map((r) => { const by = dbx.q.getProfile.get(r.by); return { id: r.guild, name: r.name, color: r.color, lv: r.lv, n: Number(r.n), by: by ? by.name : '', t: r.t }; }) });
+  send(req, res, 200, { list, mine: mine || null, invites: mine ? [] : dbx.q.ginvMine.all(me).map((r) => { const by = dbx.q.getProfile.get(r.by); return { id: r.guild, name: r.name, color: r.color, icon: r.icon || '', lv: r.lv, n: Number(r.n), by: by ? by.name : '', t: r.t }; }) });
 };
 // 동아리 순위: 레벨(경험치) 또는 부원 전투력 합. 1분마다 다시 센다.
 let gRankCache = { at: 0, rows: [] };
@@ -1418,7 +1508,7 @@ routes['GET /api/guilds/rank'] = (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
   if (limited('grk:' + me, 1, 10)) return fail(req, res, 429, '요청이 너무 잦습니다');
   const sort = new URL(req.url, 'http://x').searchParams.get('sort') === 'power' ? 'power' : 'lv';
-  if (Date.now() - gRankCache.at > 60000) gRankCache = { at: Date.now(), rows: dbx.q.gRank.all().map((g) => ({ id: g.id, name: g.name, intro: sec.dec(g.intro).slice(0, 200), created: g.created, color: g.color, mode: g.mode, lv: g.lv || 1, xp: Number(g.xp) || 0, n: Number(g.n), max: R.guildCap(g.lv || 1), power: Math.round(Number(g.pw) || 0), owner: g.owner_name || '' })) };
+  if (Date.now() - gRankCache.at > 60000) gRankCache = { at: Date.now(), rows: dbx.q.gRank.all().map((g) => ({ id: g.id, name: g.name, intro: sec.dec(g.intro).slice(0, 200), created: g.created, color: g.color, icon: g.icon || '', mode: g.mode, lv: g.lv || 1, xp: Number(g.xp) || 0, n: Number(g.n), max: R.guildCap(g.lv || 1), power: Math.round(Number(g.pw) || 0), owner: g.owner_name || '' })) };
   const rows = gRankCache.rows.slice().sort(sort === 'power' ? (a, b) => b.power - a.power || b.lv - a.lv : (a, b) => b.lv - a.lv || b.xp - a.xp || b.power - a.power);
   rows.forEach((r, i) => { r.rank = i + 1; });
   const mine = guildOf.get(me), mr = mine ? rows.find((r) => r.id === mine) : null;
@@ -1447,10 +1537,10 @@ routes['POST /api/guild'] = async (req, res) => {
     if (mine) return fail(req, res, 400, '이미 동아리에 들어가 있습니다');
     const name = String(b.name || '').replace(/\s+/g, ' ').trim();
     if (!GUILD_NAME_RE.test(name)) return fail(req, res, 400, '동아리 이름은 한글·영문·숫자 2~12자만 가능');
-    if (R.badName(name)) return fail(req, res, 400, '쓸 수 없는 말이 들어 있는 이름입니다');
+    if (R.badName(name)) return fail(req, res, 400, '사용할 수 없는 단어가 포함된 이름입니다');
     if (dbx.q.gByKey.get(name.toLowerCase().replace(/\s/g, ''))) return fail(req, res, 409, '이미 있는 동아리 이름입니다');
-    const id = crypto.randomBytes(9).toString('base64url'), color = GUILD_COLORS.indexOf(b.color) >= 0 ? b.color : GUILD_COLORS[0];
-    gRankCache.at = 0; dbx.q.gInsert.run(id, name, name.toLowerCase().replace(/\s/g, ''), sec.enc(cleanText(b.intro, 300)), color, me, b.mode === 'apply' ? 'apply' : 'open', now);
+    const id = crypto.randomBytes(9).toString('base64url'), color = GUILD_COLORS.indexOf(b.color) >= 0 ? b.color : GUILD_COLORS[0], icon = GUILD_ICONS.has(b.icon) ? b.icon : '';
+    gRankCache.at = 0; dbx.q.gInsert.run(id, name, name.toLowerCase().replace(/\s/g, ''), sec.enc(cleanText(b.intro, 300)), color, me, b.mode === 'apply' ? 'apply' : 'open', now, icon);
     guildLv.set(id, 1); gJoin(me, id, 'owner'); gSys(id, P.name + ' 님이 동아리 「' + name + '」를 열었습니다.'); gLog(id, P.name + ' 님이 동아리를 열었습니다');
     return ok();
   }
@@ -1484,7 +1574,7 @@ routes['POST /api/guild'] = async (req, res) => {
     if (gCount(mine) >= R.guildCap(g.lv)) return fail(req, res, 400, '정원이 가득 찼습니다');
     const real = Date.now() / 1000, last = gRecAt.get(mine) || 0; if (real - last < 600) return fail(req, res, 400, Math.ceil((600 - (real - last)) / 60) + '분 뒤에 다시 홍보할 수 있습니다');
     gRecAt.set(mine, real);
-    chat.recruit(P, { type: 'guild', g: mine, name: g.name, color: g.color, lv: g.lv || 1, n: gCount(mine), max: R.guildCap(g.lv || 1), mode: g.mode, note: recNote(b.note) }, real);
+    chat.recruit(P, { type: 'guild', g: mine, name: g.name, color: g.color, icon: g.icon || '', lv: g.lv || 1, n: gCount(mine), max: R.guildCap(g.lv || 1), mode: g.mode, note: recNote(b.note) }, real);
     return send(req, res, 200, { ok: true });
   }
   if (op === 'invite') {
@@ -1552,12 +1642,13 @@ routes['POST /api/guild'] = async (req, res) => {
     return ok();
   }
   if (op === 'edit') {
-    const wantsStyle = (b.color && b.color !== g.color) || (b.mode && b.mode !== g.mode);
+    const wantsStyle = (b.color && b.color !== g.color) || (b.mode && b.mode !== g.mode) || (b.icon !== undefined && b.icon !== (g.icon || ''));
     if (!can('notice')) return fail(req, res, 403, '공지·소개를 고칠 권한이 없습니다');
-    if (wantsStyle && !staff) return fail(req, res, 403, '색과 가입 방식은 회장·부회장만 바꿀 수 있습니다');
+    if (wantsStyle && !staff) return fail(req, res, 403, '색 · 아이콘 · 가입 방식은 회장 · 부회장만 변경할 수 있습니다');
     const intro = b.intro !== undefined ? cleanText(b.intro, 300) : sec.dec(g.intro), notice = b.notice !== undefined ? cleanText(b.notice, 300) : sec.dec(g.notice);
     const color = staff && GUILD_COLORS.indexOf(b.color) >= 0 ? b.color : g.color, mode = staff && (b.mode === 'apply' || b.mode === 'open') ? b.mode : g.mode;
-    dbx.q.gUpdate.run(sec.enc(intro), sec.enc(notice), color, mode, mine);
+    const icon = staff && b.icon !== undefined && (b.icon === '' || GUILD_ICONS.has(b.icon)) ? b.icon : (g.icon || '');
+    dbx.q.gUpdate.run(sec.enc(intro), sec.enc(notice), color, mode, icon, mine); gRankCache.at = 0;
     if (b.notice !== undefined && notice && notice !== sec.dec(g.notice)) gSys(mine, '동아리 공지: ' + notice);
     return ok();
   }
@@ -1672,7 +1763,7 @@ routes['POST /api/admin/wbsummon'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
   const b = await readJson(req, 256); let boss;
   try { boss = world.summonBoss(nowSec(), b.hp, b.n, b.per); } catch (e) { return fail(req, res, 400, e.message); }
-  world.invalidate(); const t = '추가 월드 보스 ' + R.josa(boss.name, '이', '가') + ' 나타났습니다! 잡으면 도전한 학생 모두에게 토벌 보상이 또 우편으로 갑니다.';
+  world.invalidate(); const t = '추가 월드 보스 ' + R.josa(boss.name, '이', '가') + ' 등장했습니다! 토벌에 성공하면 도전한 학생 모두에게 보상이 우편으로 전달됩니다.';
   chat.system('world', t, Date.now() / 1000); chat.system('notice', t, Date.now() / 1000);
   oplog('admin', '관리자', 'wbsummon', `${boss.name} (${boss.round}번째, 체력 ${R.fmt(boss.maxHp)})`); send(req, res, 200, { ok: true, boss });
 };
@@ -1750,15 +1841,61 @@ function resetCharacter(oldId) {
   return { name: row.name, id: newId };
 }
 // 운영실: 학생 이름 ↔ 아이디 확인 (크로스체크용). 아이디는 암호화해 두었다가 여기서만 풀어 보여 준다
+// 기록이 없으면 ① 이름이 곧 아이디인 예전 학생인지 색인으로 확인하고 ② 이름 · 아이디를 함께 넣으면 그 아이디가 맞는지 색인으로 대조한다 (맞으면 기록)
 routes['POST /api/admin/lookup'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
   const b = await readJson(req, 1024), lg = String(b.login || '').trim(), nm = String(b.name || '').trim();
-  const sel = 'SELECT id, name, role, login_enc, banned, deleted FROM players WHERE ';
+  const sel = 'SELECT id, name, name_key, role, login_key, login_enc, banned, deleted FROM players WHERE ';
   const row = nm ? dbx.db.prepare(sel + 'name_key = ?').get(nameKey(nm)) : lg ? dbx.db.prepare(sel + 'login_key = ?').get(loginKey(lg)) : null;
   if (!row) return fail(req, res, 404, nm ? '없는 학생 이름입니다' : lg ? '없는 아이디입니다' : '이름이나 아이디 입력 필요');
   let login = ''; try { login = row.login_enc ? sec.dec(row.login_enc) : ''; } catch (e) { }
+  const save = (v) => { try { dbx.db.prepare('UPDATE players SET login_enc = ? WHERE id = ?').run(sec.enc(v), row.id); } catch (e) { } };
+  let match = null;
+  if (nm && lg) { match = !!row.login_key && loginKey(lg) === row.login_key; if (match && !login) { login = LOGIN_RE.test(lg.toLowerCase()) ? lg.toLowerCase() : lg; save(login); } }
+  if (!login && row.login_key && row.login_key === sec.index('login:' + row.name_key)) { login = row.name; save(login); }   // 아이디 이전에 가입 → 이름이 아이디
   oplog('admin', '관리자', 'lookup', (row.name || '') + ' 아이디 확인');
-  send(req, res, 200, { name: row.name, login: login || null, rank: row.role === 'chief' ? '학생회장' : row.role === 'admin' ? '학생회' : '', banned: !!row.banned });
+  send(req, res, 200, { name: row.name, login: login || null, match, rank: row.role === 'chief' ? '학생회장' : row.role === 'admin' ? '학생회' : '', banned: !!row.banned });
+};
+// 운영실: 학생 활동 기록 (게임 안 기록 최근 50줄 · 같은 일이 이어지면 횟수로 묶임) 과 영웅 · 전설 장비 보유 현황
+routes['POST /api/admin/plog'] = async (req, res) => {
+  if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
+  const b = await readJson(req, 1024), nm = String(b.name || '').trim(), row = nm ? dbx.q.playerByKey.get(nameKey(nm)) : null;
+  if (!row) return fail(req, res, 404, nm ? '없는 학생 이름입니다' : '학생 이름 입력 필요');
+  const P = store.get(row.id); if (!P) return fail(req, res, 404, '학생 정보를 찾을 수 없습니다');
+  const items = (P.inv || []).map((it) => ({ it, at: '가방' })).concat(Object.keys(P.eq || {}).filter((k) => P.eq[k]).map((k) => ({ it: P.eq[k], at: '장착' })));
+  const high = items.filter((x) => x.it.r >= 3).map((x) => ({ name: x.it.name + (x.it.enh ? ' +' + x.it.enh : ''), r: x.it.r, ilvl: x.it.ilvl, at: x.at }));
+  oplog('admin', '관리자', 'plog', row.name + ' 활동 기록 확인');
+  send(req, res, 200, { name: row.name, log: (P.log || []).slice(0, 50).map((l) => ({ t: l.t, m: l.m, k: l.k, n: l.n || 1 })), high, st: { expJobs: P.st.expJobs || 0, epicFound: P.st.epicFound || 0, legendFound: P.st.legendFound || 0 } });
+};
+// 운영실: 비밀번호를 잃어버린 학생에게 임시 비밀번호를 발급한다. 모든 기기에서 로그아웃되고, 로그인하면 비밀번호를 바꾸라고 안내한다
+routes['POST /api/admin/resetpw'] = async (req, res) => {
+  if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
+  const b = await readJson(req, 1024), row = dbx.q.playerByKey.get(nameKey(String(b.name || '')));
+  if (!row) return fail(req, res, 404, '없는 학생입니다');
+  const abc = 'abcdefghjkmnpqrstuvwxyz', num = '23456789', pick = (s) => s[crypto.randomInt(s.length)];
+  let temp = ''; for (let i = 0; i < 6; i++) temp += pick(abc); for (let i = 0; i < 4; i++) temp += pick(num);   // 글자 6 + 숫자 4 (헷갈리는 l · o · 0 · 1 제외)
+  dbx.q.setPass.run(await hashPass(temp), row.id);
+  dbx.db.prepare('UPDATE players SET pw_temp = 1 WHERE id = ?').run(row.id);
+  dbx.q.delSessionsFor.run(row.id);
+  for (const [k, v] of sessionCache) if (v.pid === row.id) sessionCache.delete(k);
+  chat.kick(row.id);
+  let login = ''; try { const r = dbx.db.prepare('SELECT login_enc FROM players WHERE id = ?').get(row.id); login = r && r.login_enc ? sec.dec(r.login_enc) : ''; } catch (e) { }
+  oplog('admin', '관리자', 'resetpw', row.name + ' 임시 비밀번호 발급');
+  send(req, res, 200, { name: row.name, login: login || null, temp });
+};
+// 운영실: 아이디를 잃어버린 학생에게 새 아이디를 정해 준다 (비밀번호는 그대로 → 새 아이디 + 원래 비밀번호로 로그인)
+routes['POST /api/admin/setlogin'] = async (req, res) => {
+  if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
+  const b = await readJson(req, 1024), row = dbx.q.playerByKey.get(nameKey(String(b.name || ''))), login = String(b.login || '').trim().toLowerCase();
+  if (!row) return fail(req, res, 404, '없는 학생입니다');
+  if (!LOGIN_RE.test(login)) return fail(req, res, 400, LOGIN_RULE);
+  if (login === nameKey(row.name)) return fail(req, res, 400, '아이디는 학생 이름과 다르게 정해 주세요');
+  const lkey = loginKey(login), other = dbx.q.playerByLogin.get(lkey);
+  if (other && other.id !== row.id) return fail(req, res, 409, '이미 사용 중인 아이디입니다');
+  dbx.q.setLoginKey.run(lkey, row.id);
+  try { dbx.db.prepare('UPDATE players SET login_enc = ? WHERE id = ?').run(sec.enc(login), row.id); } catch (e) { }
+  oplog('admin', '관리자', 'setlogin', row.name + ' 아이디 새로 정함');
+  send(req, res, 200, { name: row.name, login });
 };
 routes['POST /api/admin/reset'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
@@ -1777,14 +1914,14 @@ routes['POST /api/recreate'] = async (req, res) => {
   const P0 = store.get(pid); if (!P0 || !P0.needCreate) return fail(req, res, 400, '이미 입학한 학생입니다');
   const b = await readJson(req, 1024), name = R.cleanName(b.name), house = String(b.house || ''), cls = String(b.cls || '');
   if (!NAME_RE.test(name)) return fail(req, res, 400, R.NAME_RULE);
-  if (R.badName(name)) return fail(req, res, 400, '쓸 수 없는 말이 들어 있는 이름입니다');
+  if (R.badName(name)) return fail(req, res, 400, '사용할 수 없는 단어가 포함된 이름입니다');
   if (!R.HOUSE[house]) return fail(req, res, 400, '기숙사 선택 필요');
   if (!R.CLS[cls]) return fail(req, res, 400, '학과 선택 필요');
-  if (dbx.q.playerByKey.get(nameKey(name))) return fail(req, res, 409, '이미 쓰는 이름입니다');
+  if (dbx.q.playerByKey.get(nameKey(name))) return fail(req, res, 409, '이미 사용 중인 이름입니다');
   const now = nowSec(), P = R.newPlayer(pid, name, house, now, crypto.randomInt(1, 2147483647)); R.clsStart(P, cls);
   R.advance(P, world.ctx(now), now); syncOp(P);
   try { dbx.db.prepare('UPDATE players SET name = ?, name_key = ?, house = ?, created = ?, state = ? WHERE id = ?').run(name, nameKey(name), house, Math.floor(now), JSON.stringify(P), pid); }
-  catch (e) { return fail(req, res, 409, '이미 쓰는 이름입니다'); }
+  catch (e) { return fail(req, res, 409, '이미 사용 중인 이름입니다'); }
   store.drop(pid); store.put(P); store.markDirty(pid);
   log(`다시 입학: ${name} (${house})`);
   world.addNews(P.name + ' 학생이 ' + (R.HOUSE[P.house] ? R.HOUSE[P.house].name : '아카데미') + '에 입학했습니다', now);
@@ -1844,6 +1981,7 @@ routes['POST /api/admin/board'] = async (req, res) => {
     if (b.op === 'reply') board.comment('staff', b.id, b.text, now);
     else if (b.op === 'del') board.del('staff', b.id);
     else if (b.op === 'cdel') board.cdel('staff', b.cid);
+    else if (b.op === 'status') board.setStatus('staff', b.id, b.st);
     else return fail(req, res, 400, '알 수 없는 요청입니다');
     oplog('admin', '관리자', 'board', b.op + ' #' + (b.id || b.cid)); send(req, res, 200, { ok: true, posts: board.adminList() });
   } catch (e) { if (e.status) return fail(req, res, e.status, e.message); throw e; }
@@ -1861,6 +1999,24 @@ routes['POST /api/admin/chat/system'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
   const b = await readJson(req, 2048); if (!chat.CHANNELS[b.ch] || !b.text) return fail(req, res, 400, 'ch, text가 필요합니다');
   chat.system(b.ch, String(b.text).slice(0, 300), Date.now() / 1000); send(req, res, 200, { ok: true });
+};
+// 운영실: 분포 통계 (이름 · 아이디 없이 숫자 분위만). 밸런스 조정용으로 Claude에게 붙여 넣는다
+routes['GET /api/admin/dist'] = (req, res) => {
+  if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
+  const db = dbx.db, now = Math.floor(Date.now() / 1000), wk = R.weekId(nowSec());
+  const pct = (a) => { a = a.filter((v) => v != null && isFinite(v)).sort((x, y) => x - y); if (!a.length) return { n: 0 }; const q = (p) => Math.round(a[Math.min(a.length - 1, Math.floor(a.length * p))] * 100) / 100; return { n: a.length, p10: q(0.1), p25: q(0.25), p50: q(0.5), p75: q(0.75), p90: q(0.9), p99: q(0.99), max: q(1) }; };
+  const by = (rows, key, val) => { const m = { all: [] }; rows.forEach((r) => { const v = Number(r[val]); m.all.push(v); (m[r[key]] = m[r[key]] || []).push(v); }); const o = {}; for (const k in m) o[k] = pct(m[k]); return o; };
+  const players = db.prepare('SELECT house, power, lvl, grade, max_stage, wb_dps, last_seen FROM players WHERE banned = 0 AND guest = 0').all();
+  const act = players.filter((p) => p.last_seen >= now - 7 * 86400);
+  const grades = {}; act.forEach((p) => { grades[p.grade] = (grades[p.grade] || 0) + 1; });
+  const fight = (rows) => ({ power: by(rows, 'house', 'power'), lvl: by(rows, 'house', 'lvl'), maxStage: by(rows, 'house', 'max_stage'), wbDps: by(rows, 'house', 'wb_dps') });
+  const cup = {}; db.prepare('SELECT DISTINCT week FROM weekly WHERE week <= ? ORDER BY week DESC LIMIT 4').all(wk).forEach(({ week }) => {
+    const rows = db.prepare('SELECT house, cup, dmg, att FROM weekly WHERE week = ?').all(week);
+    const c = rows.filter((r) => r.cup > 0), o = by(c, 'house', 'cup'); for (const h in o) if (h !== 'all') o[h].a100 = c.filter((r) => r.house === h && r.cup >= (R.CUP_ACTIVE || 100)).length;
+    cup[week] = { now: week === wk, cup: o, wbDmg: pct(rows.filter((r) => r.dmg > 0).map((r) => r.dmg)), wbAttacks: pct(rows.filter((r) => r.att > 0).map((r) => r.att)) };
+  });
+  oplog('admin', '관리자', 'dist', '분포 통계 복사');
+  send(req, res, 200, { at: now, week: wk, students: { all: players.length, active7d: act.length, gradeActive7d: grades }, fightActive7d: fight(act), fightAll: fight(players), weekly: cup });
 };
 routes['GET /api/admin/ideas'] = (req, res) => { if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다'); send(req, res, 200, { text: board.exportIdeas() }); };
 routes['GET /api/admin/sys'] = (req, res) => { if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다'); send(req, res, 200, { build: BUILD, maint: MAINT, pin: dbx.kvGet('pinNotice', null) }); };

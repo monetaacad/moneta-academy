@@ -45,7 +45,7 @@
     var me = P ? [{ id: P.id, name: P.name, house: P.house, power: Rules.summary(P, W, now).power, lvl: P.lvl, grade: P.grade, stage: P.maxStage }] : [];
     return { demo: true, epoch: W.epoch, now: now, week: Rules.weekId(now), weekEnd: Rules.weekStart(Rules.weekId(now) + 1),
       boss: { id: b.id, name: b.name, maxHp: b.maxHp, hp: b.hp, killedAt: b.killedAt, participants: P && P.wk.att ? 1 : 0 },
-      cup: cup, hpts: W.hpts, hfull: W.hfull, topPower: me, topStage: me, topDmg: P && P.wk.dmg ? [{ id: P.id, name: P.name, house: P.house, dmg: P.wk.dmg }] : [],
+      cup: cup, hpts: W.hpts, hfull: W.hfull, topPower: me, topStage: me, topLvl: me, topTwK: P && P.st.twK ? [{ id: P.id, name: P.name, house: P.house, f: P.st.twK }] : [], topTwM: P && P.st.twM ? [{ id: P.id, name: P.name, house: P.house, f: P.st.twM }] : [], topDmg: P && P.wk.dmg ? [{ id: P.id, name: P.name, house: P.house, dmg: P.wk.dmg }] : [],
       notices: [{ t: W.epoch, text: '데모 모드입니다. 진행 상황은 이 브라우저에만 저장되며, 월드 보스와 대항전의 다른 학생은 가상입니다.' }], news: (this.d.news || []).slice(0, 20),
       players: 1, online: 1, lastWeek: W.results[Rules.weekId(now) - 1] || null };
   };
@@ -74,6 +74,7 @@
     var now = this._now(); if (!this.d || !this.d.P) return Promise.resolve({ error: '로그인이 필요합니다', _status: 401 });
     var W = this._world(now); Rules.advance(this.d.P, W, now); return this._ok(now);
   };
+  LocalApi.prototype.myRanks = function () { var P = this.d && this.d.P; if (!P) return Promise.resolve({ error: '로그인이 필요합니다' }); return Promise.resolve({ ranks: { power: 1, stage: 1, lvl: 1, dmg: P.wk.dmg > 0 ? 1 : null, twK: P.st.twK > 0 ? 1 : null, twM: P.st.twM > 0 ? 1 : null } }); };
   LocalApi.prototype.world = function () { var now = this._now(); this._world(now); return Promise.resolve(this._view(now)); };
   LocalApi.prototype.register = function (name, pw, house, code, cls) {
     var now = this._now(); if (!this.d) this.d = { W: { epoch: now, results: {}, cup: {} }, P: null };
@@ -149,7 +150,8 @@
     if (!id || id === 'local' || id === P.id) {
       var pr = this.d.prof || {}, now = this._now(), s = Rules.summary(P, this.d.W, now);
       return Promise.resolve({ id: P.id, name: P.name, house: P.house, cls: P.cls, grade: P.grade, lvl: s.lvl, power: s.power, rank: 1, deco: Rules.decoView(P), badge: (function (b) { return b ? { gem: b.gem, lv: b.lv, name: b.name } : null; })(Rules.badgeWorn(P)), created: P.created, av: this.d.av ? 1 : 0,
-        status: pr.status || '', bio: pr.bio || '', fav: pr.fav || '', avcredit: pr.avcredit || '', showStats: pr.showStats !== false, allowFriend: pr.allowFriend !== false, online: true, self: true });
+        status: pr.status || '', bio: pr.bio || '', fav: pr.fav || '', avcredit: pr.avcredit || '', showStats: pr.showStats !== false, visLv: pr.visLv, visStat: pr.visStat, visEq: pr.visEq, allowFriend: pr.allowFriend !== false, online: true, self: true,
+        stats: (function (c) { var st = {}; Rules.STATS.forEach(function (k) { st[k] = Math.round(c.stat[k]); }); return { st: st, dps: Math.round(c.totalDps), hp: Math.round(c.hp), def: Math.round(c.def) }; })(Rules.calc(P, this.d.W, now)), eq: P.eq });
     }
     var nk = /^npc:(\d+)$/.exec(id || ''), nn = nk ? npcs()[+nk[1]] : null;   // 아카데미 친구(NPC): 검색 결과에서 정보창을 열 때
     if (nn) return Promise.resolve({ id: id, name: nn.name, house: nn.house, grade: nn.grade, lvl: nn.lvl, status: nn.who, bio: nn.hello || '', online: true, self: false, friend: null, allowFriend: false, npc: true, av: 0 });
@@ -162,6 +164,7 @@
     if (o.bio !== undefined) pr.bio = String(o.bio).trim().slice(0, 300);
     if (o.avcredit !== undefined) pr.avcredit = String(o.avcredit).replace(/\s+/g, ' ').trim().slice(0, 60);
     if (o.fav !== undefined) pr.fav = o.fav;
+    ['visLv', 'visStat', 'visEq'].forEach(function (k) { if (o[k]) pr[k] = o[k]; }); if (o.visLv) pr.showStats = o.visLv !== 'none';
     if (o.showStats !== undefined) pr.showStats = !!o.showStats;
     if (o.allowFriend !== undefined) pr.allowFriend = !!o.allowFriend;
     this._save(); this._announce(); return Promise.resolve({ ok: true });
@@ -245,7 +248,7 @@
     else if (op === 'subj') { Rules.availableSubjects(P).forEach(function (s) { P.subj[s.id].lv += 5; }); msg = '들을 수 있는 과목 모두 +5레벨'; }
     else if (op === 'stage') { P.maxStage = Math.max(P.maxStage, Rules.stageCap(P)); if (P.maxStage > P.st.maxStageAll) P.st.maxStageAll = P.maxStage; msg = P.maxStage + '단계까지 열었습니다'; }
     else if (op === 'finish') { var t = now - 1; if (P.dream) P.dream.end = Math.min(P.dream.end, t); P.lec.forEach(function (j) { if (j) j.end = Math.min(j.end, t); }); P.exp.forEach(function (j) { if (j) j.end = Math.min(j.end, t); }); P.rsq.forEach(function (q) { if (q) q.end = Math.min(q.end, t); }); for (var k in P.fam.disp) P.fam.disp[k].end = Math.min(P.fam.disp[k].end, t); P.examCd = 0; P.bossCd = 0; P.duel.cd = 0; Rules.advance(P, W, now + 0.5); msg = '진행 중인 작업을 모두 끝냈습니다'; }
-    else if (op === 'spirit') { P.spirit = { n: Rules.K.SPIRIT_JAR, at: now }; P.wb.tickets = Rules.K.WB_TICKET_MAX; if (P.tw) P.tw.used = 0; P.daily.rr = 0; msg = '정령 병·도전권·탑 도전 횟수를 채웠습니다'; }
+    else if (op === 'spirit') { P.spirit = { n: Rules.jarMax(P), at: now }; P.wb.tickets = Rules.K.WB_TICKET_MAX; if (P.tw) P.tw.used = 0; P.daily.rr = 0; msg = '정령 병·도전권·탑 도전 횟수를 채웠습니다'; }
     else return Promise.resolve({ error: '알 수 없는 도구' });
     Rules.log(P, now, '[테스트 도구] ' + msg, 'news');
     return this._ok(now, { ok: true, msg: msg });
@@ -359,7 +362,7 @@
     function fail(m) { return Promise.resolve({ error: m }); }
     if (o.op === 'recruit') { var g0 = so.guild; if (!g0) return fail('동아리에 들어가 있지 않습니다'); var t1 = Date.now() / 1000; if (g0.recAt && t1 - g0.recAt < 600) return fail(Math.ceil((600 - (t1 - g0.recAt)) / 60) + '분 뒤에 다시 홍보할 수 있습니다'); g0.recAt = t1; var gv = this._guildView(); this._recruitRaw({ type: 'guild', g: g0.id, name: g0.name, color: g0.color, lv: gv.lv, n: gv.n, max: gv.max, mode: g0.mode, note: String(o.note || '').replace(/\s+/g, ' ').trim().slice(0, 60) }); this._save(); return Promise.resolve({ ok: true }); }
     if (o.op === 'create') { if (so.guild) return fail('이미 동아리에 들어가 있습니다'); var nm = String(o.name || '').replace(/\s+/g, ' ').trim(); if (!/^[가-힣A-Za-z0-9_ ]{2,12}$/.test(nm)) return fail('동아리 이름은 한글·영문·숫자 2~12자만 가능');
-      so.guild = gFix({ id: 'demo-g', own: true, name: nm, intro: String(o.intro || '').slice(0, 300), color: o.color || '#d6ad5f', mode: o.mode === 'apply' ? 'apply' : 'open', role: 'owner', npcs: [], notice: '' }); so.chat.grp = []; so.chat.gooc = []; this._emitGroup('guild'); this._sys('grp', P.name + ' 님이 동아리 「' + nm + '」를 열었습니다.'); this._gLog(P.name + ' 님이 동아리를 열었습니다'); }
+      so.guild = gFix({ id: 'demo-g', own: true, name: nm, intro: String(o.intro || '').slice(0, 300), color: o.color || '#d6ad5f', icon: o.icon || '', mode: o.mode === 'apply' ? 'apply' : 'open', role: 'owner', npcs: [], notice: '' }); so.chat.grp = []; so.chat.gooc = []; this._emitGroup('guild'); this._sys('grp', P.name + ' 님이 동아리 「' + nm + '」를 열었습니다.'); this._gLog(P.name + ' 님이 동아리를 열었습니다'); }
     else if (o.op === 'join') { if (so.guild) return fail('현재 동아리 탈퇴 필요'); var g0 = DEMO_GUILDS.filter(function (x) { return x.id === o.id; })[0]; if (!g0) return fail('없는 동아리입니다');
       so.guild = gFix({ id: g0.id, name: g0.name, intro: g0.intro, color: g0.color, mode: g0.mode, role: 'member', npcs: g0.npcs.slice(), notice: '', lv: g0.lv, xp: g0.xp, gold: 12000 * g0.lv }); so.chat.grp = []; so.chat.gooc = []; this._emitGroup('guild'); this._sys('grp', P.name + ' 님이 동아리에 들어왔습니다.'); this._gLog(P.name + ' 님 가입'); setTimeout(function () { self._npcSay('grp', g0.npcs[0], '어서 와! *반갑게 손을 흔든다*'); }, 1500); }
     else if (o.op === 'cancelApp' || o.op === 'inviteDecline') return Promise.resolve({ ok: true });
@@ -374,7 +377,7 @@
         var its = g.items.map(function (x) { return x.item; }); for (var i = 0; i < Math.max(its.length, g.gold > 0 ? 1 : 0); i += 10) this._sendMail('동아리', '「' + g.name + '」 창고 정리', '동아리를 해체해 창고에 남아 있던 것을 돌려드립니다.', { gold: i === 0 ? Math.floor(g.gold) : 0, items: its.slice(i, i + 10) }, 30);
         so.guild = null; so.chat.grp = []; so.chat.gooc = []; P.guildLv = 0; this._emitGroup('guild'); this._save(); return Promise.resolve({ ok: true, guild: null });
       }
-      if (o.op === 'edit') { if (!can('notice')) return fail('공지·소개를 고칠 권한이 없습니다'); if (o.intro !== undefined) g.intro = String(o.intro).slice(0, 300); if (o.notice !== undefined) { var nn = String(o.notice).slice(0, 300); if (nn && nn !== g.notice) this._sys('grp', '동아리 공지: ' + nn); g.notice = nn; } if (staff && o.color) g.color = o.color; if (staff && o.mode) g.mode = o.mode; }
+      if (o.op === 'edit') { if (!can('notice')) return fail('공지·소개를 고칠 권한이 없습니다'); if (o.intro !== undefined) g.intro = String(o.intro).slice(0, 300); if (o.notice !== undefined) { var nn = String(o.notice).slice(0, 300); if (nn && nn !== g.notice) this._sys('grp', '동아리 공지: ' + nn); g.notice = nn; } if (staff && o.color) g.color = o.color; if (staff && o.icon !== undefined) g.icon = o.icon; if (staff && o.mode) g.mode = o.mode; }
       else if (o.op === 'npcAdd') { if (!staff) return fail('회장·부회장만 부를 수 있습니다'); if (1 + g.npcs.length >= Rules.guildCap(g.lv)) return fail('정원이 가득 찼습니다'); if (g.npcs.indexOf(o.k) < 0) g.npcs.push(o.k); this._npcSay('grp', o.k, N[o.k].hello); this._gLog(N[o.k].name + ' 님 가입'); }
       else if (o.op === 'kick') { var okk = role === 'owner' ? tRole !== 'owner' : (staff || can('kick')) && tRole === 'member'; if (!okk) return fail('내보낼 권한이 없습니다'); g.npcs = g.npcs.filter(function (x) { return x !== k; }); delete g.nr[k]; this._sys('grp', N[k].name + ' 님이 동아리에서 나갔습니다.'); this._gLog(P.name + ' 님이 ' + N[k].name + ' 님을 내보냈습니다'); }
       else if (o.op === 'role') { if (role !== 'owner') return fail('회장만 부회장을 정할 수 있습니다'); var nr = o.role === 'officer' ? 'officer' : 'member'; if (nr === 'officer' && tRole !== 'officer' && g.npcs.filter(function (x) { return (g.nr[x] || {}).role === 'officer'; }).length >= 2) return fail('부회장은 2명까지입니다'); tr.role = nr; tr.rank = ''; this._gLog(N[k].name + ' 님 → ' + (nr === 'officer' ? '부회장' : g.ranks.base.name)); if (nr === 'officer') this._sys('grp', N[k].name + ' 님이 부회장이 되었습니다.'); }
@@ -498,7 +501,7 @@
     var mk = this._mk(), now = Date.now() / 1000; f = f || {}; this._save();
     var list = mk.list.filter(function (x) {
       if (x.status !== 'open' || x.mineL) return false; if ((f.kind || 'item') !== x.kind) return false;
-      if (x.kind === 'item') { if (f.slot === 'sword' ? !(x.slot === 'staff' && x.item && x.item.wk === 'sword') : f.slot === 'staff' ? !(x.slot === 'staff' && !(x.item && x.item.wk === 'sword')) : f.slot && x.slot !== f.slot) return false; if (f.r !== '' && f.r != null && +f.r !== x.r) return false; if (f.q && x.name.indexOf(f.q) < 0) return false; }
+      if (x.kind === 'item') { if (f.slot === 'sword' ? !(x.slot === 'staff' && x.item && x.item.wk === 'sword') : f.slot === 'staff' ? !(x.slot === 'staff' && !(x.item && x.item.wk === 'sword')) : f.slot === 'manual' ? !(x.slot === 'tome' && x.item && x.item.wk === 'manual') : f.slot === 'tome' ? !(x.slot === 'tome' && !(x.item && x.item.wk === 'manual')) : f.slot && x.slot !== f.slot) return false; if (f.r !== '' && f.r != null && +f.r !== x.r) return false; if (f.q && x.name.indexOf(f.q) < 0) return false; }
       else if (x.kind === 'pot') { if (f.pot && x.pot !== f.pot) return false; }
       else if (x.kind === 'badge') { if (f.gem && x.gem !== f.gem) return false; }
       else if (f.mat && x.mat !== f.mat) return false;
@@ -559,8 +562,8 @@
       if (q) { var a = (p.pid === me ? P.name : p.author).toLowerCase(), hay = f.qt === 'author' ? a : f.qt === 'title' ? p.title.toLowerCase() : (p.title + '\n' + p.body).toLowerCase(); if (hay.indexOf(q) < 0) return false; }
       return true;
     }).sort(function (x, y) { return y.id - x.id; });
-    var pages = Math.max(1, Math.ceil(list.length / 20)), page = Math.min(pages, Math.max(1, +f.page || 1));
-    return Promise.resolve({ list: list.slice((page - 1) * 20, page * 20).map(function (p) { return out(p); }), total: list.length, page: page, pages: pages, op: false, privN: 0 });
+    var pages = Math.max(1, Math.ceil(list.length / 10)), page = Math.min(pages, Math.max(1, +f.page || 1));
+    return Promise.resolve({ list: list.slice((page - 1) * 10, page * 10).map(function (p) { return out(p); }), total: list.length, page: page, pages: pages, op: false, privN: 0 });
   };
   LocalApi.prototype.boardOp = function (o) {
     var b = this._bd(), P = this.d.P, me = P.id, now = Date.now() / 1000, self = this, tags = D2().BOARD_TAGS.map(function (t) { return t.id; });

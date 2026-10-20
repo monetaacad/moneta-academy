@@ -31,28 +31,65 @@
   }
   try { if (localStorage.getItem('arc_admin_ihide') !== '0') $('#ihide').checked = true; } catch (e) { $('#ihide').checked = true; }
   $('#ihide').addEventListener('change', function () { try { localStorage.setItem('arc_admin_ihide', $('#ihide').checked ? '1' : '0'); } catch (e) { } invites(); });
+  var ISHOW = 10, UBOPEN = {};
+  // 사용한 학생: 여러 명이면 앞 2명만 보이고 「외 N명」으로 펼친다
+  function ubCell(i) {
+    var names = String(i.used_by || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+    if (names.length <= 2) return '<td class="iub" title="' + esc(names.join(', ')) + '">' + esc(names.join(', ')) + '</td>';
+    var open = UBOPEN[i.code];
+    return '<td class="iub' + (open ? ' open' : '') + '">' + esc((open ? names : names.slice(0, 2)).join(', ')) + '<button class="ubm" data-a="ubmore" data-c="' + esc(i.code) + '">' + (open ? '접기' : '외 ' + (names.length - 2) + '명') + '</button></td>';
+  }
+  // 메모 칸 너비: 경계를 끌어서 조절 (이 브라우저에 기억)
+  (function () {
+    var tb = $('#invites').closest('table'), g = $('#imgrip'), W0 = 180;
+    function setW(w) { w = Math.max(80, Math.min(600, Math.round(w))); tb.style.setProperty('--imw', w + 'px'); return w; }
+    try { var sw = +localStorage.getItem('arc_admin_imw'); if (sw) setW(sw); } catch (e) { }
+    g.addEventListener('pointerdown', function (e) {
+      e.preventDefault(); var x0 = e.clientX, w0 = g.parentNode.getBoundingClientRect().width, w = w0;
+      g.setPointerCapture(e.pointerId); g.classList.add('drag');
+      function mv(ev) { w = setW(w0 + ev.clientX - x0); }
+      function up() { g.classList.remove('drag'); g.removeEventListener('pointermove', mv); g.removeEventListener('pointerup', up); g.removeEventListener('pointercancel', up); try { localStorage.setItem('arc_admin_imw', String(w)); } catch (e2) { } }
+      g.addEventListener('pointermove', mv); g.addEventListener('pointerup', up); g.addEventListener('pointercancel', up);
+    });
+    g.addEventListener('dblclick', function () { setW(W0); try { localStorage.removeItem('arc_admin_imw'); } catch (e) { } });
+  })();
   function invites() {
     api('GET', '/api/admin/invites').then(function (j) {
       // 다 쓴 · 막은 · 기한 지난 코드는 숨길 수 있다 (이 브라우저에 기억)
       var all = j.invites || [], nowS = Date.now() / 1000, hide = $('#ihide').checked, done = function (i) { return i.disabled || i.uses >= i.max_uses || (i.expires && i.expires < nowS); };
       var list = hide ? all.filter(function (i) { return !done(i); }) : all;
+      var full = list.length; list = list.slice(0, ISHOW);   // 10개씩 보이고 「더보기」로 20개씩 더
       $('#icount').textContent = hide && list.length < all.length ? '숨긴 코드 ' + (all.length - list.length) + '개' : '';
       $('#invites').innerHTML = list.map(function (i) {
-        return '<tr class="' + (i.disabled ? 'dis' : '') + '"><td class="num">' + esc(i.code) + (i.op ? ' <b style="color:#e07c72">운영자</b>' : '') + '</td><td class="num">' + i.uses + ' / ' + i.max_uses + '</td><td>' + (i.expires ? when(i.expires) : '무기한') + '</td><td>' + esc(i.note) + '</td><td>' + esc(i.used_by || '') + '</td><td><button class="btn sm ghost" data-a="' + (i.disabled ? 'enable' : 'disable') + '" data-c="' + esc(i.code) + '">' + (i.disabled ? '다시 쓰기' : '중지') + '</button></td></tr>';
+        return '<tr class="' + (i.disabled ? 'dis' : '') + '"><td class="num">' + esc(i.code) + (i.op ? ' <b style="color:#e07c72">운영자</b>' : '') + '</td><td class="num">' + i.uses + ' / ' + i.max_uses + '</td><td>' + (i.expires ? when(i.expires) : '무기한') + '</td><td>' + esc(i.note) + '</td>' + ubCell(i) + '<td><button class="btn sm ghost" data-a="' + (i.disabled ? 'enable' : 'disable') + '" data-c="' + esc(i.code) + '">' + (i.disabled ? '다시 쓰기' : '중지') + '</button></td></tr>';
       }).join('') || '<tr><td colspan="6" class="faint">' + (all.length ? '쓸 수 있는 코드가 없습니다 (숨긴 코드는 위 체크를 풀면 보입니다)' : '아직 발급한 코드가 없습니다') + '</td></tr>';
+      $('#imore').innerHTML = full > list.length ? '<button class="btn sm ghost" data-a="imore">더보기 (' + list.length + ' / ' + full + ')</button>' : (ISHOW > 10 && full > 10 ? '<button class="btn sm ghost" data-a="iless">접기</button>' : '');
     });
   }
   // 게시판 문의함
+  var BDJ = null;
+  try { if (localStorage.getItem('arc_admin_bdhide') === '1') $('#bdhide').checked = true; } catch (e) { }
+  $('#bdhide').addEventListener('change', function () { try { localStorage.setItem('arc_admin_bdhide', $('#bdhide').checked ? '1' : '0'); } catch (e) { } bdshow(BDJ); });
   function bdload() { api('GET', '/api/admin/board').then(bdshow); }
+  // 문의 상태: 답변 여부 · 답변 뒤 새 댓글 · 게시판 처리 상태(적용 중 / 해결 완료)와 연동. 숨기기를 켜면 답변함 · 해결 완료는 숨기되 새 댓글이 있으면 보인다
+  var ST = { wip: '적용 중', done: '해결 완료' };
+  function bdstate(p) {
+    var lastOp = -1; p.comments.forEach(function (c, i) { if (c.op) lastOp = i; });
+    var answered = lastOp >= 0, fresh = answered && p.comments.slice(lastOp + 1).some(function (c) { return !c.op; });
+    return { answered: answered, fresh: fresh, hide: !fresh && (answered || p.st === 'done') };
+  }
   function bdshow(j) {
-    var list = (j && j.posts) || [];
-    $('#bdbox').innerHTML = list.length ? list.map(function (p) {
-      var answered = p.comments.some(function (c) { return c.op; });
-      return '<details class="bdq"' + (answered ? '' : ' open') + '><summary><b>' + esc(p.title) + '</b> <span class="small faint">' + esc(p.author) + ' · ' + when(p.created) + ' · 댓글 ' + p.comments.length + '</span> ' + (answered ? '<span class="small" style="color:#74bfa9">답변함</span>' : '<span class="small gold">새 문의</span>') + '</summary>' +
+    BDJ = j; var all = (j && j.posts) || [], hide = $('#bdhide').checked, list = hide ? all.filter(function (p) { return !bdstate(p).hide; }) : all;
+    $('#bdbox').innerHTML = (hide && list.length < all.length ? '<p class="tiny faint">숨긴 글 ' + (all.length - list.length) + '개</p>' : '') + (list.length ? list.map(function (p) {
+      var s = bdstate(p), tag = s.fresh ? '<span class="small gold">새 댓글</span>' : !s.answered ? '<span class="small gold">새 문의</span>' : '<span class="small" style="color:#74bfa9">답변함</span>';
+      var stTag = ST[p.st] ? ' <span class="small" style="color:' + (p.st === 'done' ? '#6fcf97' : '#6aa8ff') + '">' + ST[p.st] + '</span>' : '';
+      var stBtns = [['wip', '적용 중'], ['done', '해결 완료'], ['', '표시 없음']].map(function (o) { return '<button class="btn sm' + ((p.st || '') === o[0] ? ' primary' : ' ghost') + '" data-a="bdst" data-c="' + p.id + '" data-s="' + o[0] + '">' + o[1] + '</button>'; }).join('');
+      return '<details class="bdq"' + (s.answered && !s.fresh ? '' : ' open') + '><summary><b>' + esc(p.title) + '</b> <span class="small faint">' + esc(p.author) + ' · ' + when(p.created) + ' · 댓글 ' + p.comments.length + '</span> ' + tag + stTag + '</summary>' +
+        '<div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap"><span class="tiny faint">처리 상태 (게시판과 연동)</span>' + stBtns + '</div>' +
         '<div class="msgtext" style="white-space:pre-wrap;margin:8px 0">' + esc(p.body) + '</div>' +
-        p.comments.map(function (c) { return '<div class="small" style="margin:4px 0;padding:6px 8px;border-radius:6px;background:rgba(255,255,255,.04)"><b>' + esc(c.author) + '</b>' + (c.op ? ' <span class="gold">운영진</span>' : '') + ' <span class="faint">' + when(c.created) + '</span> <button class="btn sm ghost" data-a="bdcdel" data-c="' + c.id + '">지우기</button><div style="white-space:pre-wrap">' + esc(c.body) + '</div></div>'; }).join('') +
+        p.comments.map(function (c) { return '<div class="small" style="margin:4px 0;padding:6px 8px;border-radius:6px;background:rgba(255,255,255,.04)"><b>' + esc(c.author) + '</b>' + (c.op ? ' <span class="gold">운영진</span>' : '') + ' <span class="faint">' + when(c.created) + '</span> <button class="btn sm ghost" data-a="bdcdel" data-c="' + c.id + '">지우기</button><div style="white-space:pre-wrap;margin-top:2px">' + esc(c.body) + '</div></div>'; }).join('') +
         '<div class="form" style="margin-top:6px"><textarea id="bdr-' + p.id + '" rows="2" maxlength="500" placeholder="운영진 답변 (500자)" style="flex:1;min-width:220px"></textarea><button class="btn sm primary" data-a="bdreply" data-c="' + p.id + '">답변</button><button class="btn sm danger" data-a="bddel" data-c="' + p.id + '">글 지우기</button></div></details>';
-    }).join('') : '<p class="faint small">문의가 없습니다.</p>';
+    }).join('') : '<p class="faint small">' + (all.length ? '보일 문의가 없습니다 (숨긴 글은 위 체크를 풀면 보입니다).' : '문의가 없습니다.') + '</p>');
   }
   function reports() {
     api('GET', '/api/admin/reports' + ($('#showres').checked ? '?resolved=1' : '')).then(function (j) {
@@ -91,12 +128,25 @@
     build: function () { api('POST', '/api/admin/build', { build: +$('#bdbuild').value || 0, minBuild: +$('#bdmin').value || 0 }).then(function (j) { toast(j.error || '새 버전을 알렸습니다'); sys(); oplog(); }); },
     opon: function () { var n = $('#un').value.trim(); if (!n) return; api('POST', '/api/admin/ops', { name: n, rank: 'admin' }).then(function (j) { $('#umsg').textContent = j.error || n + ' 님을 학생회(운영진)로 지정했습니다 · 칭호 「학생회」를 낄 수 있습니다'; oplog(); }); },
     opchief: function () { var n = $('#un').value.trim(); if (!n) return; if (!confirm(n + ' 님을 학생회장으로 지정합니다.')) return; api('POST', '/api/admin/ops', { name: n, rank: 'chief' }).then(function (j) { $('#umsg').textContent = j.error || n + ' 님을 학생회장으로 지정했습니다 · 칭호 「학생회장」 · 「학생회」를 낄 수 있습니다'; oplog(); }); },
-    // 이름 ↔ 아이디 확인: 이름 칸이 차 있으면 이름으로, 비어 있으면 아이디로 찾는다
+    // 이름 ↔ 아이디 확인: 이름 칸이 차 있으면 이름으로, 비어 있으면 아이디로 찾는다. 둘 다 넣으면 그 아이디가 맞는지도 대조
     lookup: function () {
       var n = $('#un').value.trim(), lg = $('#ulogin').value.trim(); if (!n && !lg) { $('#umsg').textContent = '학생 이름이나 아이디 입력 필요'; return; }
-      api('POST', '/api/admin/lookup', n ? { name: n } : { login: lg }).then(function (j) {
+      api('POST', '/api/admin/lookup', { name: n, login: lg }).then(function (j) {
         if (j.error) { $('#umsg').textContent = j.error; return; }
-        $('#umsg').textContent = '학생 이름 「' + j.name + '」 · 아이디 ' + (j.login ? '「' + j.login + '」' : '(아직 기록 없음 · 이 학생이 다음에 로그인하면 기록됩니다)') + (j.rank ? ' · ' + j.rank : '') + (j.banned ? ' · 이용 정지' : '');
+        var chk = j.match === true ? ' · 입력한 아이디 「' + lg + '」 일치' : j.match === false ? ' · 입력한 아이디 「' + lg + '」는 이 학생의 아이디가 아닙니다' : '';
+        $('#umsg').textContent = '학생 이름 「' + j.name + '」 · 아이디 ' + (j.login ? '「' + j.login + '」' : '(아직 기록 없음 · 다음 로그인 때 기록 · 아이디 칸에 짐작 아이디를 넣고 조회하면 맞는지 확인 가능)') + chk + (j.rank ? ' · ' + j.rank : '') + (j.banned ? ' · 이용 정지' : '');
+      });
+    },
+    // 학생 활동 기록: 게임 안 기록 최근 50줄(같은 일이 이어지면 ×횟수)과 영웅 · 전설 장비 보유 현황
+    plog: function () {
+      var n = $('#un').value.trim(); if (!n) { $('#umsg').textContent = '학생 이름 입력 필요'; return; }
+      api('POST', '/api/admin/plog', { name: n }).then(function (j) {
+        if (j.error) { $('#umsg').textContent = j.error; $('#plog').innerHTML = ''; return; }
+        $('#umsg').textContent = '「' + j.name + '」 활동 기록 · 원정 완료 ' + j.st.expJobs + '회 · 지금까지 얻은 영웅 ' + j.st.epicFound + '개 · 전설 ' + j.st.legendFound + '개';
+        var RN = ['일반', '고급', '희귀', '영웅', '전설'];
+        $('#plog').innerHTML = '<p class="small" style="margin-top:8px"><b>보유 영웅 · 전설</b> ' + (j.high.length ? j.high.map(function (x) { return esc(RN[x.r] + ' · ' + x.name + ' (Lv ' + x.ilvl + ', ' + x.at + ')'); }).join(' / ') : '없음') + '</p>' +
+          '<div class="scroll" style="margin-top:8px;max-height:320px"><table><thead><tr><th>때</th><th>기록</th></tr></thead><tbody>' + j.log.map(function (l) { return '<tr><td>' + when(l.t) + '</td><td>' + esc(l.m) + (l.n > 1 ? ' <b>×' + l.n + '</b>' : '') + '</td></tr>'; }).join('') + '</tbody></table></div>' +
+          '<p class="tiny faint" style="margin-top:4px">같은 기록이 이어지면 한 줄로 묶고 횟수(×)를 표시합니다. 시각은 마지막으로 일어난 때입니다.</p>';
       });
     },
     opoff: function () { var n = $('#un').value.trim(); if (!n) return; api('POST', '/api/admin/ops', { name: n, op: false }).then(function (j) { $('#umsg').textContent = j.error || n + ' 님의 운영자 권한을 뗐습니다'; oplog(); }); },
@@ -130,6 +180,20 @@
     del: function (el) { api('POST', '/api/admin/chat/delete', { id: +el.dataset.c }).then(function () { return api('POST', '/api/admin/reports/resolve', { id: +el.dataset.r }); }).then(function () { toast('삭제했습니다'); reports(); }); },
     rmute: function (el) { api('POST', '/api/admin/mute', { pid: el.dataset.p, minutes: +el.dataset.m }).then(function () { return api('POST', '/api/admin/reports/resolve', { id: +el.dataset.r }); }).then(function () { toast('하루 동안 채팅 금지'); reports(); }); },
     bdload: function () { bdload(); },
+    imore: function () { ISHOW += 20; invites(); },
+    iless: function () { ISHOW = 10; invites(); },
+    ubmore: function (el) { var c = el.dataset.c; UBOPEN[c] = !UBOPEN[c]; invites(); },
+    bdst: function (el) { api('POST', '/api/admin/board', { op: 'status', id: +el.dataset.c, st: el.dataset.s || '' }).then(function (j) { if (j.error) { toast(j.error); return; } bdshow(j); toast(el.dataset.s ? '「' + ST[el.dataset.s] + '」 표시를 붙였습니다' : '상태 표시를 뗐습니다'); }); },
+    // 분포 통계: 이름 · 아이디 없이 숫자 분위만 (밸런스 조정용으로 Claude에게 붙여 넣는다)
+    distcopy: function () {
+      api('GET', '/api/admin/dist').then(function (j) {
+        if (j.error) { toast(j.error); return; }
+        var t = '[모네타 분포 통계 ' + when(j.at) + ']\n' + JSON.stringify(j);
+        var done = function () { toast('복사했습니다 (학생 ' + j.students.all + '명 · 최근 7일 ' + j.students.active7d + '명) · Claude에게 붙여 넣으세요'); };
+        if (navigator.clipboard) navigator.clipboard.writeText(t).then(done, function () { window.prompt('아래 내용을 복사하세요', t); });
+        else window.prompt('아래 내용을 복사하세요', t);
+      });
+    },
     ideacopy: function () {
       api('GET', '/api/admin/ideas').then(function (j) {
         if (j.error) { toast(j.error); return; } if (!j.text) { toast('복사할 글이 없습니다'); return; }
@@ -149,6 +213,18 @@
     },
     mute: function () { api('POST', '/api/admin/mute', { name: $('#un').value.trim(), minutes: +$('#um').value }).then(function (j) { $('#umsg').textContent = j.error || '적용했습니다'; }); },
     grant: function () { api('POST', '/api/admin/grant', { name: $('#un').value.trim(), shard: +$('#ug').value, reason: $('#ur').value }).then(function (j) { $('#umsg').textContent = j.error || '지급했습니다 (보유 ' + j.shard + ')'; }); },
+    // 비밀번호를 잃어버린 학생: 임시 비밀번호 발급 (모든 기기에서 로그아웃 · 로그인하면 바꾸라고 안내)
+    resetpw: function () {
+      var n = $('#un').value.trim(); if (!n) { $('#umsg').textContent = '학생 이름 입력 필요'; return; }
+      if (!confirm('「' + n + '」에게 임시 비밀번호를 발급합니다.\n지금 비밀번호로는 더 이상 로그인할 수 없고, 모든 기기에서 로그아웃됩니다.\n본인이 맞는지 먼저 확인하세요.')) return;
+      api('POST', '/api/admin/resetpw', { name: n }).then(function (j) { $('#umsg').textContent = j.error || '「' + j.name + '」 임시 비밀번호: ' + j.temp + (j.login ? ' · 아이디 「' + j.login + '」' : ' · 아이디 기록 없음 (로그인 화면 「아이디 찾기」에서 이름 + 임시 비밀번호로 새 아이디를 정할 수 있습니다)') + ' · 학생에게만 따로 전해 주세요'; oplog(); });
+    },
+    // 아이디를 잃어버린 학생: 아이디 칸에 넣은 값으로 새로 정한다 (비밀번호는 그대로)
+    setlogin: function () {
+      var n = $('#un').value.trim(), lg = $('#ulogin').value.trim(); if (!n || !lg) { $('#umsg').textContent = '학생 이름과 새 아이디 입력 필요'; return; }
+      if (!confirm('「' + n + '」의 아이디를 「' + lg + '」(으)로 새로 정합니다.\n예전 아이디로는 더 이상 로그인할 수 없고, 비밀번호는 그대로입니다.')) return;
+      api('POST', '/api/admin/setlogin', { name: n, login: lg }).then(function (j) { $('#umsg').textContent = j.error || '「' + j.name + '」의 아이디를 「' + j.login + '」(으)로 정했습니다 · 새 아이디와 원래 비밀번호로 로그인'; oplog(); });
+    },
     reset: function () {
       var n = $('#un').value.trim(), lg = $('#ulogin').value.trim(); if (!n) { $('#umsg').textContent = '학생 이름 입력 필요'; return; }
       if (!lg) { $('#umsg').textContent = '초기화할 학생의 아이디 입력 필요 (이름과 아이디가 모두 맞아야 합니다)'; return; }
@@ -160,6 +236,16 @@
     unban: function () { api('POST', '/api/admin/ban', { name: $('#un').value.trim(), ban: false }).then(function (j) { $('#umsg').textContent = j.error || '해제했습니다'; }); },
     backup: function () { api('POST', '/api/admin/backup', {}).then(function (j) { $('#umsg').textContent = j.error || '백업했습니다: ' + j.file; }); }
   };
+  // 운영실 항목 접기: 각 카드의 제목(h3)을 누르면 접고 펼친다. 접은 항목은 이 브라우저에 기억
+  (function () {
+    var KEY = 'arc_admin_fold', folded = {}; try { folded = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { }
+    function name(h) { return (h.childNodes[0] && h.childNodes[0].textContent || h.textContent).trim(); }
+    Array.prototype.forEach.call(document.querySelectorAll('#main .card'), function (c) {
+      var h = c.querySelector(':scope > h3, :scope > .row:first-child > h3'); if (!h) return;
+      h.classList.add('fh'); h.title = '눌러서 접기 · 펼치기'; if (folded[name(h)]) c.classList.add('fold');
+      h.addEventListener('click', function () { var on = c.classList.toggle('fold'); if (on) folded[name(h)] = 1; else delete folded[name(h)]; try { localStorage.setItem(KEY, JSON.stringify(folded)); } catch (e) { } });
+    });
+  })();
   document.addEventListener('click', function (e) { var el = e.target.closest('[data-a]'); if (el && A[el.dataset.a]) { e.preventDefault(); A[el.dataset.a](el); } });
   $('#go').addEventListener('click', function () { tok = $('#tok').value.trim(); enter(); });
   $('#tok').addEventListener('keydown', function (e) { if (e.key === 'Enter') { tok = $('#tok').value.trim(); enter(); } });

@@ -92,6 +92,7 @@ function open(dir) {
       fid TEXT NOT NULL,
       state TEXT NOT NULL,          -- 'req' 보낸 신청, 'ok' 친구
       t INTEGER NOT NULL,
+      memo TEXT NOT NULL DEFAULT '',   -- pid만 보는 개인 메모 (암호화)
       PRIMARY KEY (pid, fid)
     );
     CREATE INDEX IF NOT EXISTS friends_fid ON friends(fid, state);
@@ -149,9 +150,11 @@ function open(dir) {
   if (cols.indexOf('role') < 0) db.exec(`ALTER TABLE players ADD COLUMN role TEXT NOT NULL DEFAULT 'user'`);   // 'admin' 운영자 | 'user'
   if (cols.indexOf('avatar_v') < 0) db.exec(`ALTER TABLE players ADD COLUMN avatar_v INTEGER NOT NULL DEFAULT 0`);
   // 로그인 아이디: 평문 대신 HMAC 색인(sec.index)만 둔다. 게임 안에는 나오지 않는다. 빈 값은 server.js가 시작할 때 채운다
+  { const fc = db.prepare(`PRAGMA table_info(friends)`).all().map((c) => c.name); if (fc.indexOf('memo') < 0) db.exec(`ALTER TABLE friends ADD COLUMN memo TEXT NOT NULL DEFAULT ''`); }   // 친구 개인 메모
   { const ic = db.prepare(`PRAGMA table_info(invites)`).all().map((c) => c.name); if (ic.indexOf('op') < 0) db.exec(`ALTER TABLE invites ADD COLUMN op INTEGER NOT NULL DEFAULT 0`); }   // 운영자 초대코드
   if (cols.indexOf('login_key') < 0) db.exec(`ALTER TABLE players ADD COLUMN login_key TEXT NOT NULL DEFAULT ''`);
   if (cols.indexOf('login_enc') < 0) db.exec(`ALTER TABLE players ADD COLUMN login_enc TEXT NOT NULL DEFAULT ''`);   // 아이디 (암호화 · 운영실 확인용)
+  if (cols.indexOf('pw_temp') < 0) db.exec(`ALTER TABLE players ADD COLUMN pw_temp INTEGER NOT NULL DEFAULT 0`);   // 운영실이 발급한 임시 비밀번호 (바꾸면 0)
   if (cols.indexOf('deleted') < 0) db.exec(`ALTER TABLE players ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0`);   // 캐릭터 초기화로 남은 예전 캐릭터
   db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS players_login ON players(login_key) WHERE login_key <> ''`);
   const ccols = db.prepare(`PRAGMA table_info(chat)`).all().map((c) => c.name);
@@ -200,6 +203,7 @@ function open(dir) {
     );
     CREATE INDEX IF NOT EXISTS board_com ON board_comments(post, id);
   `);
+  { const gc = db.prepare(`PRAGMA table_info(guilds)`).all().map((c) => c.name); if (gc.length && gc.indexOf('icon') < 0) db.exec(`ALTER TABLE guilds ADD COLUMN icon TEXT NOT NULL DEFAULT ''`); }   // 동아리 아이콘 (D.GUILD_ICONS id)
   { const bp = db.prepare(`PRAGMA table_info(board_posts)`).all().map((c) => c.name); if (bp.indexOf('st') < 0) db.exec(`ALTER TABLE board_posts ADD COLUMN st TEXT NOT NULL DEFAULT ''`); }   // 건의 처리 상태: '' · wip(적용 중) · done(해결 완료)
   db.exec(`
     CREATE TABLE IF NOT EXISTS oplog (
@@ -229,7 +233,8 @@ function open(dir) {
       color TEXT NOT NULL DEFAULT '#d6ad5f',
       owner TEXT NOT NULL,
       mode TEXT NOT NULL DEFAULT 'open',   -- open 바로 가입 | apply 신청 후 승인
-      created INTEGER NOT NULL
+      created INTEGER NOT NULL,
+      icon TEXT NOT NULL DEFAULT ''        -- 동아리 아이콘 (D.GUILD_ICONS id)
     );
     CREATE TABLE IF NOT EXISTS guild_members (
       pid TEXT PRIMARY KEY,
@@ -345,8 +350,15 @@ function open(dir) {
     countActive: db.prepare(`SELECT COUNT(*) AS n FROM players WHERE last_seen >= ?`),
     sumActiveDps: db.prepare(`SELECT COALESCE(SUM(wb_dps), 0) AS s, COUNT(*) AS n FROM players WHERE last_seen >= ? AND banned = 0`),
     topPower: db.prepare(`SELECT id, name, house, power, lvl, grade, max_stage FROM players WHERE banned = 0 ORDER BY power DESC LIMIT ?`),
+    // 학과의 탑 순위: 저장된 학생 상태(JSON)의 st.twK / st.twM
+    topCt: db.prepare(`SELECT id, name, house, grade, CAST(json_extract(state, ?) AS INTEGER) AS f FROM players WHERE banned = 0 AND CAST(json_extract(state, ?) AS INTEGER) > 0 ORDER BY f DESC, power DESC LIMIT ?`),
     topStage: db.prepare(`SELECT id, name, house, power, lvl, grade, max_stage FROM players WHERE banned = 0 ORDER BY max_stage DESC, power DESC LIMIT ?`),
     rankPower: db.prepare(`SELECT COUNT(*) + 1 AS r FROM players WHERE banned = 0 AND power > ?`),
+    topLvl: db.prepare(`SELECT id, name, house, power, lvl, grade, max_stage FROM players WHERE banned = 0 ORDER BY lvl DESC, max_stage DESC, power DESC LIMIT ?`),
+    rankLvl: db.prepare(`SELECT COUNT(*) + 1 AS r FROM players WHERE banned = 0 AND (lvl > ? OR (lvl = ? AND (max_stage > ? OR (max_stage = ? AND power > ?))))`),
+    rankStage: db.prepare(`SELECT COUNT(*) + 1 AS r FROM players WHERE banned = 0 AND (max_stage > ? OR (max_stage = ? AND power > ?))`),
+    rankDmg: db.prepare(`SELECT COUNT(*) + 1 AS r FROM weekly w JOIN players p ON p.id = w.pid WHERE w.week = ? AND w.dmg > ? AND p.banned = 0`),
+    rankCt: db.prepare(`SELECT COUNT(*) + 1 AS r FROM players WHERE banned = 0 AND CAST(json_extract(state, ?) AS INTEGER) > ?`),
     insertSession: db.prepare(`INSERT INTO sessions (token, pid, created, expires) VALUES (?, ?, ?, ?)`),
     getSession: db.prepare(`SELECT pid, expires FROM sessions WHERE token = ?`),
     touchSession: db.prepare(`UPDATE sessions SET expires = ? WHERE token = ?`),
@@ -356,6 +368,9 @@ function open(dir) {
     upsertWeekly: db.prepare(`INSERT INTO weekly (week, pid, house, cup, dmg, att) VALUES (?, ?, ?, ?, ?, ?)
       ON CONFLICT(week, pid) DO UPDATE SET house = excluded.house, cup = excluded.cup, dmg = excluded.dmg, att = excluded.att`),
     houseCup: db.prepare(`SELECT COALESCE(SUM(cup), 0) AS s, COUNT(*) AS n FROM (SELECT cup FROM weekly WHERE week = ? AND house = ? AND cup > 0 ORDER BY cup DESC LIMIT ?)`),
+    houseCount: db.prepare(`SELECT house, COUNT(*) AS n FROM players WHERE banned = 0 AND guest = 0 GROUP BY house`),
+    houseTop: db.prepare(`SELECT w.pid, w.cup FROM weekly w JOIN players p ON p.id = w.pid WHERE w.week = ? AND w.house = ? AND p.banned = 0 ORDER BY w.cup DESC LIMIT 1`),
+    houseCups: db.prepare(`SELECT cup FROM weekly WHERE week = ? AND house = ? AND cup > 0`),
     houseMembers: db.prepare(`SELECT COUNT(*) AS n FROM weekly WHERE week = ? AND house = ? AND cup > 0`),
     topDmg: db.prepare(`SELECT w.pid, p.name, p.house, w.dmg FROM weekly w JOIN players p ON p.id = w.pid WHERE w.week = ? AND w.dmg > 0 AND p.banned = 0 ORDER BY w.dmg DESC LIMIT ?`),
     dmgList: db.prepare(`SELECT dmg FROM weekly WHERE week = ? AND dmg > 0 ORDER BY dmg DESC`),
@@ -366,7 +381,7 @@ function open(dir) {
     passById: db.prepare(`SELECT pass FROM players WHERE id = ?`),
     noLoginKey: db.prepare(`SELECT id, name_key FROM players WHERE login_key = ''`),
     setLoginKey: db.prepare(`UPDATE players SET login_key = ? WHERE id = ?`),
-    playerMeta: db.prepare(`SELECT id, name, guest, muted_until, banned, invite, role FROM players WHERE id = ?`),
+    playerMeta: db.prepare(`SELECT id, name, guest, muted_until, banned, invite, role, created FROM players WHERE id = ?`),
     admins: db.prepare(`SELECT id, role FROM players WHERE role IN ('admin', 'chief')`),   // admin 학생회 · chief 학생회장
     setRole: db.prepare(`UPDATE players SET role = ? WHERE id = ?`),
     oplogAdd: db.prepare(`INSERT INTO oplog (t, actor, name, action, detail) VALUES (?, ?, ?, ?, ?)`),
@@ -402,7 +417,8 @@ function open(dir) {
     friendPut: db.prepare(`INSERT INTO friends (pid, fid, state, t) VALUES (?, ?, ?, ?) ON CONFLICT(pid, fid) DO UPDATE SET state = excluded.state, t = excluded.t`),
     friendDel: db.prepare(`DELETE FROM friends WHERE (pid = ? AND fid = ?) OR (pid = ? AND fid = ?)`),
     friendCount: db.prepare(`SELECT COUNT(*) AS n FROM friends WHERE pid = ? AND state = 'ok'`),
-    friendList: db.prepare(`SELECT f.fid AS id, f.state, f.t, p.name, p.house, p.grade, p.lvl, p.last_seen, p.avatar_v, p.profile, p.title FROM friends f JOIN players p ON p.id = f.fid WHERE f.pid = ? AND p.banned = 0 ORDER BY p.last_seen DESC LIMIT 300`),
+    friendMemo: db.prepare(`UPDATE friends SET memo = ? WHERE pid = ? AND fid = ?`),
+    friendList: db.prepare(`SELECT f.fid AS id, f.state, f.t, f.memo, p.name, p.house, p.grade, p.lvl, p.last_seen, p.avatar_v, p.profile, p.title FROM friends f JOIN players p ON p.id = f.fid WHERE f.pid = ? AND p.banned = 0 ORDER BY p.last_seen DESC LIMIT 300`),
     friendIncoming: db.prepare(`SELECT f.pid AS id, f.t, p.name, p.house, p.grade, p.lvl, p.avatar_v FROM friends f JOIN players p ON p.id = f.pid WHERE f.fid = ? AND f.state = 'req' AND p.banned = 0 ORDER BY f.t DESC LIMIT 100`),
     friendIncomingCount: db.prepare(`SELECT COUNT(*) AS n FROM friends WHERE fid = ? AND state = 'req'`),
     // 파티
@@ -433,6 +449,7 @@ function open(dir) {
     mkSoldItem: db.prepare(`SELECT name, rarity, ilvl, qty, price, done_at FROM market WHERE kind = 'item' AND status = 'sold' AND slot = ? AND rarity = ? AND ilvl BETWEEN ? AND ? AND done_at > ? ORDER BY done_at DESC LIMIT 50`),
     mkSoldMat: db.prepare(`SELECT name, qty, price, done_at FROM market WHERE kind = 'mat' AND status = 'sold' AND data = ? AND done_at > ? ORDER BY done_at DESC LIMIT 50`),
     mkSoldBadge: db.prepare(`SELECT name, ilvl, qty, price, done_at FROM market WHERE kind = 'badge' AND status = 'sold' AND slot = ? AND ilvl BETWEEN ? AND ? AND done_at > ? ORDER BY done_at DESC LIMIT 50`),
+    mkSoldTok: db.prepare(`SELECT name, qty, price, done_at FROM market WHERE kind = 'tok' AND status = 'sold' AND data = ? AND done_at > ? ORDER BY done_at DESC LIMIT 50`),
     mkSoldPot: db.prepare(`SELECT name, qty, price, done_at FROM market WHERE kind = 'pot' AND status = 'sold' AND data = ? AND done_at > ? ORDER BY done_at DESC LIMIT 50`),
     mkTrades: db.prepare(`SELECT id, kind, name, slot, rarity, ilvl, qty, price, done_at FROM market WHERE status = 'sold' ORDER BY done_at DESC, id DESC LIMIT ?`),
     mkSetStatus: db.prepare(`UPDATE market SET status = ?, buyer = ?, done_at = ? WHERE id = ? AND status = 'open'`),
@@ -443,13 +460,13 @@ function open(dir) {
     // 동아리
     gGet: db.prepare(`SELECT * FROM guilds WHERE id = ?`),
     gByKey: db.prepare(`SELECT id FROM guilds WHERE name_key = ?`),
-    gInsert: db.prepare(`INSERT INTO guilds (id, name, name_key, intro, color, owner, mode, created) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`),
-    gUpdate: db.prepare(`UPDATE guilds SET intro = ?, notice = ?, color = ?, mode = ? WHERE id = ?`),
+    gInsert: db.prepare(`INSERT INTO guilds (id, name, name_key, intro, color, owner, mode, created, icon) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`),
+    gUpdate: db.prepare(`UPDATE guilds SET intro = ?, notice = ?, color = ?, mode = ?, icon = ? WHERE id = ?`),
     gOwner: db.prepare(`UPDATE guilds SET owner = ? WHERE id = ?`),
     gDelete: db.prepare(`DELETE FROM guilds WHERE id = ?`),
-    gList: db.prepare(`SELECT g.id, g.name, g.intro, g.color, g.mode, g.created, g.lv, (SELECT COUNT(*) FROM guild_members m WHERE m.guild = g.id) AS n, p.name AS owner_name FROM guilds g LEFT JOIN players p ON p.id = g.owner ORDER BY n DESC, g.created ASC LIMIT 100`),
+    gList: db.prepare(`SELECT g.id, g.name, g.intro, g.color, g.icon, g.mode, g.created, g.lv, (SELECT COUNT(*) FROM guild_members m WHERE m.guild = g.id) AS n, p.name AS owner_name FROM guilds g LEFT JOIN players p ON p.id = g.owner ORDER BY n DESC, g.created ASC LIMIT 100`),
     gMembers: db.prepare(`SELECT m.pid AS id, m.role, m.rank, m.contrib, m.cday, m.dday, m.dpts, m.joined, p.name, p.house, p.grade, p.lvl, p.avatar_v, p.last_seen, p.title FROM guild_members m JOIN players p ON p.id = m.pid WHERE m.guild = ? ORDER BY CASE m.role WHEN 'owner' THEN 0 WHEN 'officer' THEN 1 ELSE 2 END, m.joined`),
-    gRank: db.prepare(`SELECT g.id, g.name, g.intro, g.created, g.color, g.mode, g.lv, g.xp, COUNT(m.pid) AS n, COALESCE(SUM(p.power), 0) AS pw, o.name AS owner_name FROM guilds g LEFT JOIN guild_members m ON m.guild = g.id LEFT JOIN players p ON p.id = m.pid LEFT JOIN players o ON o.id = g.owner GROUP BY g.id`),
+    gRank: db.prepare(`SELECT g.id, g.name, g.intro, g.created, g.color, g.icon, g.mode, g.lv, g.xp, COUNT(m.pid) AS n, COALESCE(SUM(p.power), 0) AS pw, o.name AS owner_name FROM guilds g LEFT JOIN guild_members m ON m.guild = g.id LEFT JOIN players p ON p.id = m.pid LEFT JOIN players o ON o.id = g.owner GROUP BY g.id`),
     gAllMembers: db.prepare(`SELECT m.pid, m.guild, m.role, g.lv FROM guild_members m JOIN guilds g ON g.id = m.guild`),
     gMember: db.prepare(`SELECT * FROM guild_members WHERE pid = ?`),
     gSetRank: db.prepare(`UPDATE guild_members SET rank = ? WHERE pid = ?`),
@@ -471,7 +488,7 @@ function open(dir) {
     glPrune: db.prepare(`DELETE FROM guild_log WHERE guild = ? AND id <= (SELECT id FROM guild_log WHERE guild = ? ORDER BY id DESC LIMIT 1 OFFSET 200)`),
     glDelGuild: db.prepare(`DELETE FROM guild_log WHERE guild = ?`),
     ginvPut: db.prepare(`INSERT INTO guild_invites (pid, guild, by, t) VALUES (?, ?, ?, ?) ON CONFLICT(pid, guild) DO UPDATE SET by = excluded.by, t = excluded.t`),
-    ginvMine: db.prepare(`SELECT i.guild, i.by, i.t, g.name, g.color, g.lv, (SELECT COUNT(*) FROM guild_members m WHERE m.guild = g.id) AS n FROM guild_invites i JOIN guilds g ON g.id = i.guild WHERE i.pid = ? ORDER BY i.t DESC LIMIT 20`),
+    ginvMine: db.prepare(`SELECT i.guild, i.by, i.t, g.name, g.color, g.icon, g.lv, (SELECT COUNT(*) FROM guild_members m WHERE m.guild = g.id) AS n FROM guild_invites i JOIN guilds g ON g.id = i.guild WHERE i.pid = ? ORDER BY i.t DESC LIMIT 20`),
     ginvGet: db.prepare(`SELECT * FROM guild_invites WHERE pid = ? AND guild = ?`),
     ginvDel: db.prepare(`DELETE FROM guild_invites WHERE pid = ? AND guild = ?`),
     ginvDelPid: db.prepare(`DELETE FROM guild_invites WHERE pid = ?`),

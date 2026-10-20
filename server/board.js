@@ -4,7 +4,7 @@
 const R = require('../shared/rules.js');
 
 const TAGS = R.D.BOARD_TAGS.map((t) => t.id);
-const LIM = { TITLE: 40, BODY: 3000, COM: 500, PAGE: 20, DAY: 30 };
+const LIM = { TITLE: 40, BODY: 3000, COM: 500, PAGE: 10, DAY: 30 };
 
 function create(dbx, sec, opts) {
   const isOp = opts.isOp, sendMail = opts.sendMail || (() => {}), log = opts.log || (() => {});
@@ -52,7 +52,7 @@ function create(dbx, sec, opts) {
   }
   /* 건의 처리 상태(적용 중 · 해결 완료): 건의 말머리나 관리자만 보기 글에, 학생회장만 붙인다. 바뀌면 쓴 학생에게 알림 */
   const ST = { '': '', wip: '적용 중', done: '해결 완료' };
-  const stOk = (me, p) => !!(opts.isChief && opts.isChief(me)) && (p.tag === 'idea' || p.priv);
+  const stOk = (me, p) => (me === 'staff' || !!(opts.isChief && opts.isChief(me))) && (p.tag === 'idea' || p.priv);   // staff = 운영실(관리자 토큰)
   function setStatus(me, id, st) {
     const p = posts.get(Number(id) | 0); if (!p || !stOk(me, p)) fail('상태를 바꿀 수 없는 글입니다');
     st = String(st || ''); if (!(st in ST)) fail('알 수 없는 상태입니다'); if (p.st === st) return p.id;
@@ -69,7 +69,7 @@ function create(dbx, sec, opts) {
     return { tag, title, body, priv: !!b.priv };
   }
   function write(me, b, now) {
-    if (Number(dbx.q.bdTodayBy.get(me, now - 86400).n) >= LIM.DAY) fail('하루에 ' + LIM.DAY + '개까지 쓸 수 있습니다');
+    if (Number(dbx.q.bdTodayBy.get(me, now - 86400).n) >= LIM.DAY) fail('하루에 ' + LIM.DAY + '개까지 작성할 수 있습니다');
     const x = check(b), info = dbx.q.bdInsert.run(me, x.tag, x.priv ? 1 : 0, sec.enc(x.title), sec.enc(x.body), now, now, now);
     const id = Number(info.lastInsertRowid);
     posts.set(id, { id, pid: me, tag: x.tag, priv: x.priv, title: x.title, body: x.body, created: now, updated: now, last: now, ncom: 0 });
