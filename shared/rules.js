@@ -1243,7 +1243,8 @@
       P.daily.q.forEach(function (q, i) { var k = i + ':' + q.type; if (q && !q.done && R.dailyProg(P, q) >= q.goal && told.d.indexOf(k) < 0) { told.d.push(k); out.push(['일일 목표 「' + q.name + '」를 달성했습니다. 광장에서 보상을 받을 수 있습니다', { view: 'home', anchor: 'daily' }]); } });
     }
     var tt = told.t || (told.t = {});
-    for (var sid in D.TASKS) { var o = R.taskOf(P, sid); if (o && tt[sid] !== o.i && R.taskProg(P, sid, o.t) >= o.t.n) { tt[sid] = o.i; out.push([SUBJ[sid].prof + '의 과제(' + SUBJ[sid].name + ')를 마쳤습니다. 강의실에서 제출할 수 있습니다', { view: 'lecture' }]); } }
+    var av = {}; R.availableSubjects(P).forEach(function (sj) { av[sj.id] = 1; }); for (var k0 in tt) if (!av[k0]) delete tt[k0];   // 잘못 알린 것(아직 안 열린 과목)은 지워 두어, 열린 뒤 다시 알린다
+    R.availableSubjects(P).forEach(function (sj) { var sid = sj.id; if (!D.TASKS[sid]) return; var o = R.taskOf(P, sid); if (o && tt[sid] !== o.i && R.taskProg(P, sid, o.t) >= o.t.n) { tt[sid] = o.i; out.push([SUBJ[sid].prof + '의 과제(' + SUBJ[sid].name + ')를 마쳤습니다. 강의실에서 제출할 수 있습니다', { view: 'lecture' }]); } });   // 아직 열리지 않은 과목(학년 · 학과)의 과제는 알리지 않는다
     if (!out.length) return;
     var q2 = P.noteQ || (P.noteQ = []);
     out.forEach(function (x) { log(P, now, x[0], 'good'); q2.push(x); });
