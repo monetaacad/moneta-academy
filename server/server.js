@@ -403,6 +403,31 @@ routes['POST /api/rename'] = async (req, res) => {
   store.markDirty(pid); board.forgetName(pid); log(`이름 변경: ${old} → ${name}`);
   send(req, res, 200, Object.assign({ ok: true }, statePayload(P, now)));
 };
+// 아이디 찾기: 학생 이름 + 비밀번호가 맞으면 아이디를 알려 준다. 기록이 없는 예전 학생은 여기서 새 아이디를 정한다 (로그인과 같은 횟수 제한)
+routes['POST /api/findid'] = async (req, res) => {
+  const ip = clientIp(req);
+  if (!cfg.testMode && limited('login:' + ip, 10 / 60, 10)) return fail(req, res, 429, '시도가 너무 많습니다. 1분 뒤 다시 시도');
+  const b = await readJson(req, 2048);
+  const nk = nameKey(String(b.name || '').slice(0, 24)), pw = String(b.password || '').slice(0, 72), nl = String(b.newLogin || '').trim().toLowerCase();
+  if (!cfg.testMode && limited('findN:' + nk, 10 / 600, 10)) return fail(req, res, 429, '이 학생 이름으로 시도가 너무 많습니다. 10분 뒤 다시 시도');
+  const row = nk ? dbx.q.playerByKey.get(nk) : null;
+  if (!row) { await hashPass(pw); return fail(req, res, 401, '학생 이름이나 비밀번호가 맞지 않습니다'); }
+  if (!(await checkPass(pw, row.pass))) return fail(req, res, 401, '학생 이름이나 비밀번호가 맞지 않습니다');
+  if (row.banned) return fail(req, res, 403, '이용이 정지된 계정입니다');
+  const r = dbx.db.prepare('SELECT login_key, login_enc FROM players WHERE id = ?').get(row.id) || {};
+  let login = ''; try { login = r.login_enc ? sec.dec(r.login_enc) : ''; } catch (e) { }
+  if (!login && r.login_key && r.login_key === sec.index('login:' + nk)) login = row.name;   // 아이디 이전에 가입 → 이름이 아이디
+  if (login) return send(req, res, 200, { login });
+  if (!nl) return send(req, res, 200, { needNew: true });
+  if (!LOGIN_RE.test(nl)) return fail(req, res, 400, LOGIN_RULE);
+  if (nl === nk) return fail(req, res, 400, '아이디는 학생 이름과 다르게 정해 주세요');
+  const lkey = loginKey(nl), other = dbx.q.playerByLogin.get(lkey);
+  if (other && other.id !== row.id) return fail(req, res, 409, '이미 쓰는 아이디입니다');
+  dbx.q.setLoginKey.run(lkey, row.id);
+  try { dbx.db.prepare('UPDATE players SET login_enc = ? WHERE id = ?').run(sec.enc(nl), row.id); } catch (e) { }
+  oplog('admin', row.name, 'setlogin', row.name + ' 아이디 찾기로 새 아이디 정함');
+  send(req, res, 200, { login: nl, set: true });
+};
 routes['POST /api/login'] = async (req, res) => {
   const ip = clientIp(req);
   if (!cfg.testMode && limited('login:' + ip, 10 / 60, 10)) return fail(req, res, 429, '로그인 시도가 너무 많습니다. 1분 뒤 다시 시도');

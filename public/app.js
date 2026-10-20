@@ -3908,7 +3908,7 @@
     stopLoop(); chatDisconnect();
     var server = API.mode === 'server', M = S.meta || {};
     var redo = !!(S.P && S.P.needCreate);   // 운영진이 캐릭터를 초기화한 계정: 이름 · 기숙사 · 학과만 새로 정한다
-    var tabs = redo ? [['recreate', '새 학생 만들기']] : server ? [['login', '로그인'], ['signup', '가입']] : [['guest', '바로 입학']];   // 서버판에는 게스트가 없다. '바로 입학'은 아티팩트 미리보기에서만
+    var tabs = redo ? [['recreate', '새 학생 만들기']] : server ? [['login', '로그인'], ['signup', '가입'], ['findid', '아이디 찾기']] : [['guest', '바로 입학']];   // 서버판에는 게스트가 없다. '바로 입학'은 아티팩트 미리보기에서만
     var tab = S.authTab && tabs.some(function (t) { return t[0] === S.authTab; }) ? S.authTab : tabs[0][0];
     var h = '<div class="body" style="grid-template-columns:minmax(0,1fr)"><main><div class="intro"><img class="crestbig" src="' + LOGO_URL + '" width="96" height="96" alt=""><h1>모네타 아카데미</h1>' +
       '<p class="lede">별의 종의 울림을 듣는 아이에게만 초대장이 날아드는 곳. 입학 열차 칼리오페호를 타고 구름섬 라디아로, 모든 학생이 같은 시간을 살아가는 아카데미에 오신 것을 환영합니다.</p>';
@@ -3926,15 +3926,21 @@
       if (M.inviteRequired !== false) h += '<div class="field"><label for="a-code">초대코드</label><input id="a-code" maxlength="20" placeholder="ARC-XXXX-XXXX" autocapitalize="characters" spellcheck="false" style="font-family:var(--f-num);letter-spacing:.06em"><span class="tiny faint">초대코드는 아카데미 운영진에게 받을 수 있습니다.</span></div>';
     }
     if (tab === 'guest') h += nameField();
+    if (tab === 'findid') {   // 학생 이름 + 비밀번호로 아이디 확인. 기록이 없는 예전 학생은 새 아이디를 정한다
+      h += '<p class="small muted">학생 이름과 비밀번호를 넣으면 아이디를 알려 드립니다.</p>' +
+        '<div class="field"><label for="a-name">학생 이름</label><input id="a-name" maxlength="12" autocomplete="off" value="' + esc(S.authName || '') + '"></div>' +
+        '<div class="field"><label for="a-pw">비밀번호</label><input id="a-pw" type="password" maxlength="72" autocomplete="current-password"></div>';
+      if (S.findNew) h += '<div class="field"><label for="a-nid">새 아이디</label><input id="a-nid" maxlength="20" placeholder="영문·숫자·밑줄(_) 4~20자" autocomplete="username" autocapitalize="none" spellcheck="false"><span class="tiny faint">이 학생은 아이디 기록이 없습니다. 새 아이디를 정하면 앞으로 새 아이디와 지금 비밀번호로 로그인합니다.</span></div>';
+    }
     h += '</form>';
     var HW = M.houses ? { hpts: M.houses.pts, hfull: M.houses.full } : M.world || null;
-    if (tab !== 'login') h += '<div><div class="section-t">기숙사 선택</div><p class="small muted" style="margin-bottom:10px">기숙사는 바꿀 수 없습니다. 매주 기숙사 대항전에서 함께 겨룹니다. 기숙사 혜택은 처음에 1/10만 받고, 기숙사 학생들이 활동할수록 최대 값까지 커집니다. 혜택은 지금 받는 값 / 최대 값입니다.</p>' + glossCard() + '<div class="housepick">' + D.HOUSES.map(function (hh) {
+    if (tab !== 'login' && tab !== 'findid') h += '<div><div class="section-t">기숙사 선택</div><p class="small muted" style="margin-bottom:10px">기숙사는 바꿀 수 없습니다. 매주 기숙사 대항전에서 함께 겨룹니다. 기숙사 혜택은 처음에 1/10만 받고, 기숙사 학생들이 활동할수록 최대 값까지 커집니다. 혜택은 지금 받는 값 / 최대 값입니다.</p>' + glossCard() + '<div class="housepick">' + D.HOUSES.map(function (hh) {
       return '<button data-act="ihouse" data-a="' + hh.id + '" class="' + (S.ihouse === hh.id ? 'on' : '') + '"><span class="hhead">' + dotImg(hh.id + '_big', 72, hh.name + ' 문장', 'hdot hbig') + '<span class="hn" style="color:' + hh.color + '">' + hh.name + ' <span class="faint small">' + hh.latin + '</span></span></span><span class="hm">“' + hh.motto + '”</span><span class="small muted">' + hh.desc + '</span>' + houseGrow(hh.id, HW) + '</button>';
     }).join('') + '</div></div>';
-    if (tab !== 'login') h += '<div><div class="section-t">학과 선택</div><p class="small muted" style="margin-bottom:10px">싸우는 방식입니다. 입학한 뒤에는 전과시험을 봐서 바꿀 수 있습니다.</p><div class="housepick clspick">' + D.CLASSES.map(function (x) {
+    if (tab !== 'login' && tab !== 'findid') h += '<div><div class="section-t">학과 선택</div><p class="small muted" style="margin-bottom:10px">싸우는 방식입니다. 입학한 뒤에는 전과시험을 봐서 바꿀 수 있습니다.</p><div class="housepick clspick">' + D.CLASSES.map(function (x) {
       return '<button data-act="icls" data-a="' + x.id + '" class="' + (S.icls === x.id ? 'on' : '') + '"><span class="hhead">' + clsDot(x.id, 40) + '<span class="hn">' + x.name + '</span></span><span class="small muted">' + x.desc + '</span><span class="hb gold">' + x.bonusText + '</span><span class="tiny faint">잘 맞는 자리: ' + x.pos + ' · 전용 수업: ' + x.subj + ' · 전용 주문: ' + x.spells + '</span></button>';
     }).join('') + '</div></div>';
-    var btn = { login: '로그인', signup: '가입하고 입학하기', guest: '입학하기', recreate: '새 학생으로 입학하기' }[tab];
+    var btn = { login: '로그인', signup: '가입하고 입학하기', guest: '입학하기', recreate: '새 학생으로 입학하기', findid: S.findNew ? '새 아이디 정하기' : '아이디 찾기' }[tab];
     h += '<div class="row" style="justify-content:center"><button class="btn primary" data-act="auth-go" data-a="' + tab + '">' + btn + '</button></div><p class="small" id="a-msg" style="text-align:center;min-height:1.4em;color:var(--rose)"></p>';
     h += '</div></main></div>';
     $('#app').innerHTML = h; afterRender();
@@ -3943,7 +3949,7 @@
     $('#authform').addEventListener('submit', function (e) { e.preventDefault(); go(); });
     $$('#authform input').forEach(function (i) { i.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); go(); } }); });
   }
-  ACT.authtab = function (t) { var n = $('#a-name'), i = $('#a-id'); if (n) S.authName = n.value; if (i) S.authId = i.value; S.authTab = t; authScreen(); };
+  ACT.authtab = function (t) { var n = $('#a-name'), i = $('#a-id'); if (n) S.authName = n.value; if (i) S.authId = i.value; S.authTab = t; S.findNew = false; authScreen(); };
   ACT.ihouse = function (id) { S.ihouse = id; $$('.housepick:not(.clspick) button').forEach(function (b) { b.classList.toggle('on', b.dataset.a === id); }); };
   ACT.icls = function (id) { S.icls = id; $$('.clspick button').forEach(function (b) { b.classList.toggle('on', b.dataset.a === id); }); };
   ACT['auth-go'] = function (tab) {
@@ -3951,6 +3957,18 @@
     if ($('#a-name')) S.authName = name; if ($('#a-id')) S.authId = id;
     function done(j) { if (j.error) { msg.textContent = j.error; return; } absorb(j); if (S.P && S.P.needCreate) { S.authName = ''; authScreen(); return; } start(); if (tab === 'login') afterSync(); else if (!PREF.tutDone) { S.onbChain = true; onbGuide(0, true); } else { S.afterClose = function () { if (S.view !== 'home') ACT.nav('home'); ACT.mqscene('intro'); }; ACT.story(0); } }
     if (tab === 'login') { if (!id) { msg.textContent = '아이디 입력 필요'; return; } msg.textContent = '확인 중…'; return API.login(id, pw).then(done); }
+    if (tab === 'findid') {
+      var nid = $('#a-nid') ? $('#a-nid').value.trim() : '';
+      if (!name || !pw) { msg.textContent = '학생 이름과 비밀번호 입력 필요'; return; }
+      if (S.findNew && !/^[A-Za-z0-9_]{4,20}$/.test(nid)) { msg.textContent = '아이디는 영문·숫자·밑줄(_) 4~20자'; return; }
+      msg.textContent = '확인 중…';
+      return API.findId(name, pw, S.findNew ? nid : '').then(function (j) {
+        if (j.error) { msg.textContent = j.error; return; }
+        if (j.needNew) { S.findNew = true; authScreen(); $('#a-pw').value = pw; $('#a-msg').textContent = '아이디 기록이 없습니다. 새 아이디를 정해 주세요'; return; }
+        S.findNew = false; S.authId = j.login; S.authTab = 'login'; authScreen();
+        $('#a-pw').value = pw; var m = $('#a-msg'); m.style.color = 'var(--ink)'; m.textContent = (j.set ? '새 아이디를 정했습니다: ' : '아이디: ') + j.login + ' · 로그인을 누르면 들어갑니다';
+      });
+    }
     if (!S.ihouse) { msg.textContent = '기숙사 선택 필요'; return; }
     if (!S.icls) { msg.textContent = '학과 선택 필요'; return; }
     if (tab === 'signup') {
@@ -4041,7 +4059,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102007;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102008;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
