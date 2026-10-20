@@ -1563,6 +1563,7 @@
       return '<button class="eqslot' + (it ? '' : ' empty') + (it && S.sel === it.u ? ' sel' : '') + '" data-act="sel" data-a="' + (it ? it.u : '') + '"><span class="sl">' + s.name + '</span>' +
         (it ? '<span class="in" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</span><span class="tiny faint">Lv ' + it.ilvl + ' · ' + D.RARITY[it.r].name + '</span>' : '<span class="in">비어 있음</span>') + '</button>';
     }).join('') + '</div>';
+    if (S.sel && R.findItem(P, S.sel) && P.eq[R.findItem(P, S.sel).slot] && P.eq[R.findItem(P, S.sel).slot].u === S.sel) h += '<div class="eqdetail">' + detailCard() + '</div>';   // 한 칸일 때: 장착 칸 바로 아래에
     h += badgeCard();
     h += '<div class="grid g2 gearcols" style="margin-top:14px"><div class="stack">' + detailCard() + allocCard() + '</div>';
     if (S.bagTab === 'inv') return h + '<div class="card" data-anchor="bag">' + bagTabs(c) + invBody() + '</div></div>';   // 소지품 (장비 아닌 것)
@@ -1651,6 +1652,18 @@
     if (it.eng) { var en = D.ENGRAVES.find(function (x) { return x.id === it.eng.id; }); out.push('<hr class="sep"><div class="small" style="color:var(--r4)">' + en.name + '</div><div class="statline"><span class="small muted">' + en.desc + '</span><span class="d" style="color:var(--r4)">' + (en.pct ? (en.id === 'cdr' ? '-' : '+') + pct(it.eng.v) : (it.eng.id === 'killMana' ? it.eng.v * R.K.KILL_PACK : it.eng.v).toFixed(1) + '초') + '</span></div>'); }
     return out.join('');
   }
+  // 지금 장착한 같은 칸 장비와 능력치 비교: 능력치 · 지금 · 이 장비 · 차이
+  function cmpTable(it, cur) {
+    if (!cur) return '<p class="tiny faint" style="margin-top:4px">이 칸에 장착한 장비가 없습니다.</p>';
+    var a = R.itemStats(cur), b = R.itemStats(it), keys = [], Sx = R.SLOT[it.slot];
+    [Sx.main, Sx.sub].concat(Object.keys(a), Object.keys(b)).forEach(function (k) { if (k && keys.indexOf(k) < 0) keys.push(k); });
+    var isFlat = function (k) { return k === 'atk' || k === 'hp' || k === 'def' || !!D.STAT_NAMES[k]; }, show = function (k, v) { return v ? (isFlat(k) ? fmt(v) : pct(v)) : '—'; };
+    var rows = keys.map(function (k) {
+      var x = a[k] || 0, y = b[k] || 0, d = y - x, dd = Math.abs(d) < 1e-9 ? '' : (d > 0 ? '+' : '−') + (isFlat(k) ? fmt(Math.abs(d)) : pct(Math.abs(d)));
+      return '<tr><th>' + (D.STAT_NAMES[k] || D.BONUS_NAMES[k] || k) + '</th><td class="num">' + show(k, x) + '</td><td class="num">' + show(k, y) + '</td><td class="num ' + (d > 0 ? 'good' : d < 0 ? 'bad' : 'faint') + '">' + (dd || '·') + '</td></tr>';
+    }).join('');
+    return '<table class="cmptbl"><thead><tr><th></th><th>지금 장착</th><th>이 장비</th><th>차이</th></tr></thead><tbody>' + rows + '</tbody></table><p class="tiny faint">지금 장착: ' + esc(cur.name) + (cur.enh ? ' +' + cur.enh : '') + '</p>';
+  }
   // 강화하면 오르는 능력치: 「생명력 19 → 24 (+5)」 · 장착 중이면 전투력 변화도
   function enhPreview(it, eqd) {
     if (it.enh >= R.ENH_MAX) return '';
@@ -1666,8 +1679,8 @@
     var P = S.P, it = S.sel && R.findItem(P, S.sel);
     if (!it) return '<div class="card detail"><h3>장비 살펴보기</h3><p class="small muted">장착 칸이나 가방의 장비를 누르면 능력치와 강화 정보를 볼 수 있습니다. 초록 ▲는 지금보다 전투력이 오르는 장비입니다.</p></div>';
     var eqd = P.eq[it.slot] && P.eq[it.slot].u === it.u, c = C(), cost = R.enhCost(P, it), ch = R.enhChance(P, it), delta = eqd ? 0 : R.powerWith(P, it) - c.power;
-    var h = '<div class="card detail hl' + (eqd ? '' : ' bagsel') + '"><div class="tiny" style="color:' + rcol(it.r) + '">' + D.RARITY[it.r].name + ' ' + R.slotName(it) + ' · Lv ' + it.ilvl + (eqd ? ' · 장착 중' : '') + '</div><div class="nm" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</div><div style="margin-top:8px">' + statLines(it) + '</div>';
-    if (!eqd) h += '<div class="small" style="margin-top:8px">장착 시 전투력 <b class="num ' + (delta >= 0 ? 'good' : 'bad') + '">' + (delta >= 0 ? '+' : '') + fmt(delta) + '</b></div>';
+    var h = '<div class="card detail hl ' + (eqd ? 'eqsel' : 'bagsel') + '"><div class="tiny" style="color:' + rcol(it.r) + '">' + D.RARITY[it.r].name + ' ' + R.slotName(it) + ' · Lv ' + it.ilvl + (eqd ? ' · 장착 중' : '') + '</div><div class="nm" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</div><div style="margin-top:8px">' + statLines(it) + '</div>';
+    if (!eqd) h += '<div class="small" style="margin-top:8px">장착 시 전투력 <b class="num ' + (delta >= 0 ? 'good' : 'bad') + '">' + (delta >= 0 ? '+' : '') + fmt(delta) + '</b></div>' + cmpTable(it, P.eq[it.slot]);
     h += '<hr class="sep"><div class="row small"><span class="muted">강화 +' + it.enh + ' → +' + (it.enh + 1) + '</span><span class="spacer"></span>' + (it.enh >= R.ENH_MAX ? '<span class="tag br">최대 강화</span>' : '<span>성공 확률 <b class="num">' + Math.round(ch * 100) + '%</b></span>') + '</div>' + enhPreview(it, eqd) + '<div class="row" style="margin-top:10px">';
     h += eqd ? '<button class="btn sm" data-act="do" data-a="unequip" data-b="' + it.slot + '">해제</button>' : '<button class="btn sm primary" data-act="do" data-a="equip" data-b="' + it.u + '">장착</button>';
     if (it.enh < R.ENH_MAX && !it.lock) {
@@ -2993,7 +3006,7 @@
   };
   ACT.dailyall = function () { var P = S.P, list = P.daily.q.map(function (q, i) { return !q.done && R.dailyProg(P, q) >= q.goal ? i : -1; }).filter(function (i) { return i >= 0; }); (function next() { var i = list.shift(); if (i == null) return render(); act('daily', { i: i }).then(next); })(); };
   ACT.enh = function (u, until) { act('enhance', { u: u, until: until === 'until' }).then(function (r) { if (!r) return; Snd.play(r.success ? 'enh' : 'fail'); toast(r.success ? '강화 성공! +' + r.enh : '강화 실패', r.tries + '회 시도 · ' + MONEY(r.gold), 1800); render(); }); };
-  ACT.sel = function (u) { S.sel = u || null; render(); var d = $('.invdetail'); if (d && d.offsetParent) d.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); };   // 한 칸일 때 가방 안에 펼친 살펴보기가 보이게
+  ACT.sel = function (u) { S.sel = u || null; render(); var d = $('.invdetail') || $('.eqdetail'); if (d && d.offsetParent) d.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); };   // 한 칸일 때 가방 안에 펼친 살펴보기가 보이게
   ACT.invf = function (f) { S.invF = f; render(); };
   /* ── 소지품: 장비가 아닌 것(알 · 도전권 · 물약 · 망각의 차 등)을 한곳에. 칸 제한 없음, 바로 쓰기 · 바로가기 ── */
   function bagTabs(c) { var nn = invNew().length; return '<div class="tabs bagtabs" role="tablist" style="margin-bottom:8px"><button role="tab" class="' + (S.bagTab !== 'inv' ? 'on' : '') + '" data-act="bagtab" data-a="eq">장비 가방 <span class="num tiny">' + S.P.inv.length + ' / ' + c.bag + '</span></button><button role="tab" class="' + (S.bagTab === 'inv' ? 'on' : '') + '" data-act="bagtab" data-a="inv">소지품' + (nn ? ' <span class="tag br">새 ' + nn + '</span>' : '') + '</button></div>'; }
@@ -3074,7 +3087,7 @@
     if (!dockOpen()) { S.chat.open = true; try { localStorage.setItem('arc_dock', '1'); } catch (e) { } document.body.classList.add('dock-open'); }
     renderDock(); var i = $('#chatinput'); if (i && window.innerWidth > 900) i.focus();
   };
-  ACT['dock-toggle'] = function () { S.chat.open = !dockOpen(); S.chat.stick = true; S.divider[S.chat.ch] = null; S.chat.stuckOnce = false; try { localStorage.setItem('arc_dock', S.chat.open ? '1' : '0'); } catch (e) { } renderDock(); document.body.classList.toggle('dock-open', S.chat.open); };
+  ACT['dock-toggle'] = function () { S.chat.open = !dockOpen(); if (S.P && API.act && S.P.opt && !!S.P.opt.dockClosed === S.chat.open) { S.P.opt.dockClosed = !S.chat.open; API.act('opt', { k: 'dockClosed', v: !S.chat.open }); } S.chat.stick = true; S.divider[S.chat.ch] = null; S.chat.stuckOnce = false; try { localStorage.setItem('arc_dock', S.chat.open ? '1' : '0'); } catch (e) { } renderDock(); document.body.classList.toggle('dock-open', S.chat.open); };
   // 고른 글자를 *행동*으로 감싸거나, 커서 자리에 ** 를 넣는다
   ACT.chatact = function () {
     var i = $('#chatinput'); if (!i) return; var a = i.selectionStart, b = i.selectionEnd, v = i.value;
@@ -4071,7 +4084,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102015;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102016;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
@@ -4161,7 +4174,10 @@
 
   /* ───────── 시작 · 반복 ───────── */
   var loopT = 0, liveT = 0;
-  function start() { if (S.P && S.P.needCreate) { authScreen(); return; } shell(); renderNav(); watchNav(); render(); renderDock(); document.body.classList.toggle('dock-open', dockOpen()); updateMeBadge(); setTimeout(pushSync, 3000); Snd.on = !!(S.P.opt && S.P.opt.sound); if (!loopT) loopT = setInterval(loop, 250); chatConnect(); loadMe(); }
+  // 이 기기에 채팅창 기록이 없으면 서버에 저장한 접힘 상태로
+  function start() { if (S.P && S.P.needCreate) { authScreen(); return; }
+    try { if (localStorage.getItem('arc_dock') == null && S.P && S.P.opt && S.P.opt.dockClosed != null) S.chat.open = !S.P.opt.dockClosed; } catch (e) { if (S.P && S.P.opt && S.P.opt.dockClosed != null) S.chat.open = !S.P.opt.dockClosed; }
+    shell(); renderNav(); watchNav(); render(); renderDock(); document.body.classList.toggle('dock-open', dockOpen()); updateMeBadge(); setTimeout(pushSync, 3000); Snd.on = !!(S.P.opt && S.P.opt.sound); if (!loopT) loopT = setInterval(loop, 250); chatConnect(); loadMe(); }
   function stopLoop() { if (loopT) { clearInterval(loopT); loopT = 0; } Bgm.want(null, now()); }
   // 원정·시험·토벌 화면은 전투곡, 나머지는 광장곡
   var BATTLE_VIEWS = { explore: 1, exam: 1, world: 1 };
