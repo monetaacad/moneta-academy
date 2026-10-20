@@ -72,7 +72,7 @@
   var VIEWS = [
     { id: 'home', name: '아카데미 광장' }, { id: 'lecture', name: '강의실' }, { id: 'explore', name: '원정' }, { id: 'tower', name: '별의 탑' }, { id: 'ctower', name: '무한의 탑' }, { id: 'exam', name: '시험·결투' },
     { id: 'world', name: '월드 보스' }, { id: 'party', name: '파티' }, { id: 'guild', name: '동아리' }, { id: 'friends', name: '친구' }, { id: 'board', name: '게시판' }, { id: 'auction', name: '떠돌이 상인' }, { id: 'market', name: '거래소' }, { id: 'gear', name: '장비·능력' }, { id: 'work', name: '공방', grade: 2 }, { id: 'lib', name: '서고' },
-    { id: 'shop', name: '매점' }, { id: 'lore', name: '세계관' }, { id: 'rec', name: '기록실' }, { id: 'rank', name: '랭킹' }
+    { id: 'shop', name: '매점' }, { id: 'lore', name: '세계관' }, { id: 'rec', name: '기록실' }, { id: 'rank', name: '랭킹' }, { id: 'hcup', name: '기숙사' }
   ];
   function viewOpen(v) { return !v.grade || S.P.grade >= v.grade || (v.id === 'work' && R.famOpen(S.P)); }   // 공방은 사역마가 열리면(레벨) 2학년 전에도
   // 안내도: 비슷한 곳끼리 묶고, 안에서 탭으로 옮겨 다닌다
@@ -82,9 +82,9 @@
     { id: 'adv', name: '원정·전투', icon: 'explore', tabs: ['explore', 'tower', 'ctower', 'exam', 'world'] },
     { id: 'craft', name: '장비·공방', icon: 'gear', tabs: ['gear', 'work'] },
     { id: 'social', name: '교류·상점', icon: 'party', tabs: ['party', 'guild', 'friends', 'board', 'market', 'auction', 'shop'] },
-    { id: 'book', name: '기록·랭킹', icon: 'lore', tabs: ['lore', 'rec', 'rank'] }
+    { id: 'book', name: '기록·랭킹', icon: 'lore', tabs: ['lore', 'rec', 'rank', 'hcup'] }
   ];
-  var TAB_NAMES = { auction: '떠돌이 상인', home: '광장', lecture: '강의실', lib: '서고 · 연구', explore: '원정', tower: '별의 탑', ctower: '무한의 탑', exam: '시험 · 결투제', world: '월드 보스 · 대항전', rank: '랭킹', gear: '장비 · 능력치', work: '공방', party: '파티', guild: '동아리', friends: '친구', board: '게시판', market: '거래소', shop: '매점', lore: '세계관', rec: '업적 · 도감' };
+  var TAB_NAMES = { auction: '떠돌이 상인', home: '광장', lecture: '강의실', lib: '서고 · 연구', explore: '원정', tower: '별의 탑', ctower: '무한의 탑', exam: '시험 · 결투제', world: '월드 보스', rank: '랭킹', hcup: '기숙사', gear: '장비 · 능력치', work: '공방', party: '파티', guild: '동아리', friends: '친구', board: '게시판', market: '거래소', shop: '매점', lore: '세계관', rec: '업적 · 도감' };
   S.gtab = {};
   function groupOf(v) { return GROUPS.find(function (g) { return g.tabs.indexOf(v) >= 0; }) || GROUPS[0]; }
 
@@ -901,7 +901,7 @@
     lecJobs: ['lecture'], lecHours: ['lecture'], tasksDone: ['lecture'], int: ['gear'], wil: ['gear'], agi: ['gear'], vit: ['gear'], luk: ['gear'],
     expJobs: ['explore'], kills: ['explore'], maxStageAll: ['explore'], maxLevel: ['explore'], bosses: ['explore', 'boss'], bossTries: ['explore', 'boss'], legendFound: ['explore'], epicFound: ['explore'],
     brews: ['work', 'alch'], dispatches: ['work', 'fam'], famKinds: ['work', 'fam'], spirits: ['home', 'care'], streak: ['home'],
-    enh: ['gear'], maxEnh: ['gear'], wbAttacks: ['world', 'wb'], wbKills: ['world', 'wb'], cupWins: ['world'], duelBest: ['exam'], maxGrade: ['exam'], sGrades: ['exam'], aGrades: ['exam'],
+    enh: ['gear'], maxEnh: ['gear'], wbAttacks: ['world', 'wb'], wbKills: ['world', 'wb'], cupWins: ['hcup'], duelBest: ['exam'], maxGrade: ['exam'], sGrades: ['exam'], aGrades: ['exam'],
     researchDone: ['lib'], nightJobs: ['lib']
   };
   function goBtn(k) { var g = GO[k]; if (!g) return ''; var v = VIEWS.find(function (x) { return x.id === g[0]; }); if (v && !viewOpen(v)) return ''; return '<button class="btn sm ghost" data-act="goto" data-a="' + g[0] + '" data-b="' + (g[1] || '') + '">이동</button>'; }
@@ -1178,7 +1178,7 @@
     if (!dz) { for (var i = 0; i < c.lecSlots; i++) if (!P.lec[i]) idleL++; for (var k = 0; k < c.expSlots; k++) if (!P.exp[k]) idleE++; }
     if (idleL) out.push({ t: '비어 있는 수업 슬롯 ' + idleL + '개', s: '다시 접속할 시간에 맞춰 수업 길이 선택.', go: 'lecture' });
     if (idleE) out.push({ t: '비어 있는 원정 슬롯 ' + idleE + '개', s: '원정에서 ' + CUR + '·경험치·장비를 얻습니다.', go: 'explore' });
-    if (P.wkPrev && !P.wkPrev.claimed) out.push({ t: '지난주 월드 보스·대항전 보상', s: '', go: 'world' });
+    if (P.wkPrev && !P.wkPrev.claimed) out.push({ t: '지난주 월드 보스·대항전 보상', s: '', go: 'hcup' });
     if (P.pts > 0) out.push({ t: '능력치 포인트 ' + P.pts + '점 분배', s: '', go: 'gear' });
     if (ex && P.grade < 8) {
       var miss = ex.subj.filter(function (s) { return P.subj[s].lv < ex.req; });
@@ -1582,13 +1582,15 @@
   function wbKey() { var B = S.W && S.W.boss; return B ? B.week + ':' + B.id : ''; }
   function wbSeen() { if (S.wbSeen == null || S.wbSeenFor !== S.P.id) { S.wbSeenFor = S.P.id; try { S.wbSeen = localStorage.getItem('arc_wbseen_' + S.P.id) || ''; } catch (e) { S.wbSeen = ''; } } return S.wbSeen; }
   function wbMarkSeen() { var k = wbKey(); if (!k || wbSeen() === k) return; S.wbSeen = k; try { localStorage.setItem('arc_wbseen_' + S.P.id, k); } catch (e) { } setTimeout(updateBadges, 0); }
+  // 지난주 보상 (월드 보스 · 기숙사 탭 공통)
+  function wkPrevCard(P) { return '<div class="card hl row" style="margin-bottom:14px"><div style="flex:1;min-width:200px"><h3>지난주 보상이 도착했습니다</h3><p class="small muted">대항전 점수 ' + fmt(P.wkPrev.cup) + ' · 월드 보스 피해 ' + fmt(P.wkPrev.dmg) + ' (' + P.wkPrev.att + '회)</p></div><button class="btn primary" data-act="weekclaim">보상 받기</button></div>'; }
   V.world = function () {
     wbMarkSeen();
     var P = S.P, W = S.W || {}, b = W.boss;
     var h = pageHead('모두가 같은 하늘 아래', '월드', (W.demo ? '<span class="tag br">데모</span> ' : '') + '학생 ' + fmt(W.players || 0) + '명 · 지금 접속 ' + fmt(W.online || 0) + '명');
     // 지난주 보상
-    if (P.wkPrev && !P.wkPrev.claimed) h += '<div class="card hl row" style="margin-bottom:14px"><div style="flex:1;min-width:200px"><h3>지난주 보상이 도착했습니다</h3><p class="small muted">대항전 점수 ' + fmt(P.wkPrev.cup) + ' · 월드 보스 피해 ' + fmt(P.wkPrev.dmg) + ' (' + P.wkPrev.att + '회)</p></div><button class="btn primary" data-act="weekclaim">보상 받기</button></div>';
-    h += '<div class="grid g2"><div class="stack">';
+    if (P.wkPrev && !P.wkPrev.claimed) h += wkPrevCard(P);
+    h += '<div class="stack">';
     if (b) {
       var wbDef = D.WORLD_BOSSES.find(function (x) { return x.id === b.id; }) || D.WORLD_BOSSES[0];
       h += '<div class="card hl" data-anchor="wb"><div class="row" style="gap:14px;align-items:center"><canvas data-mon="' + b.id + '" width="96" height="96" style="width:96px;height:96px;flex:none"></canvas><div style="flex:1;min-width:0"><div class="tiny gold">이번 주 월드 보스' + (b.round > 1 ? ' · 추가 보스 ' + b.round + '번째' : '') + ' · ' + left(W.weekEnd) + ' 남음</div><h3>' + esc(b.name) + '</h3><p class="small muted">' + wbDef.lore + '</p></div></div>' +
@@ -1599,7 +1601,16 @@
     }
     var MR = myRanks();
     h += '<div class="card">' + rkHead('이번 주 월드 보스 피해 순위', '이번 주(월요일 KST 0시~) 월드 보스에 입힌 피해 합계입니다.', MR.dmg, P.wk.dmg > 0 ? '' : '이번 주 기록 없음') + rankList((W.topDmg || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: fmt(r.dmg) }; }), 'dmg', { rank: MR.dmg, v: fmt(P.wk.dmg) }) + '</div>';
-    h += '</div><div class="stack">';
+    h += '</div>';
+    return h;
+  };
+  /* ── 기숙사 (기록 그룹): 기숙사 대항전 · 기숙사 성장 ── */
+  V.hcup = function () {
+    var P = S.P, W = S.W || {};
+    if (!S.lastWorld || Date.now() - S.lastWorld > 30000) refreshWorld();
+    var h = pageHead('네 기숙사의 한 주', '기숙사', houseDot(P.house, 18) + ' ' + R.HOUSE[P.house].name);
+    if (P.wkPrev && !P.wkPrev.claimed) h += wkPrevCard(P);
+    h += '<div class="grid g2">';
     // 대항전
     var cup = W.cup || [], top = Math.max(1, cup[0] ? cup[0].score : 1);
     h += '<div class="card"><div class="row between"><h3>기숙사 대항전</h3><span class="small muted">' + left(W.weekEnd) + ' 남음</span></div><div class="stack" style="gap:8px;margin-top:8px">' + cup.map(function (r, i) {
@@ -1610,7 +1621,7 @@
     h += '<div class="card"><h3>기숙사 성장</h3><p class="tiny faint" style="margin:2px 0 8px">대항전 점수가 쌓일수록 기숙사 혜택이 1/10에서 최대 값까지 커집니다. 혜택은 현재 / 최대.</p><div class="stack" style="gap:10px">' + D.HOUSES.map(function (hh) {
       return '<div><div class="row small">' + houseDot(hh.id, 18) + '<span style="color:' + hh.color + '">' + hh.name + '</span>' + (hh.id === P.house ? '<span class="tag br">내 기숙사</span>' : '') + '</div><div class="hgrowrow">' + houseGrow(hh.id, W) + '</div></div>';
     }).join('') + '</div></div>';
-    h += '</div></div>';
+    h += '</div>';
     return h;
   };
   /* ── 랭킹 (기록 그룹): 전투력 · 레벨 · 월드 보스 피해 · 무한의 탑 · 동아리 ── */
@@ -3443,7 +3454,8 @@
     ],
     lib: [['.page-head', '서고', '마나와 지식으로 연구를 진행합니다. 연구는 한 번에 하나만 진행되며 단계가 오를수록 오래 걸리므로, 잠들기 전에 긴 연구를 시작해 두면 좋습니다.']],
     exam: [['#view .card', '기말시험', '시험 과목이 모두 기준 레벨에 도달하면 응시할 수 있습니다. 「예상 성적」을 확인한 뒤 응시합니다. 합격하면 다음 학년으로 진급합니다.'], ['h:성적표', '성적표', '학년별 성적이 기록됩니다. 「안내」를 누르면 진급 때 열린 콘텐츠를 다시 볼 수 있습니다.'], ['h:대진표', '결투제', '라이벌과 차례로 겨뤄 별조각과 ' + CUR + '를 받습니다. 지면 1시간 뒤 다시 도전할 수 있습니다.']],
-    world: [['[data-anchor="wb"]', '월드 보스', '서버의 모든 학생이 함께 체력을 깎는 보스입니다. 도전권은 8시간마다 충전됩니다.'], ['h:기숙사 대항전', '기숙사 대항전', '모든 활동이 기숙사 점수로 쌓이며, 매주 순위에 따라 보상이 지급됩니다.']],
+    world: [['[data-anchor="wb"]', '월드 보스', '서버의 모든 학생이 함께 체력을 깎는 보스입니다. 도전권은 8시간마다 충전됩니다.']],
+    hcup: [['h:기숙사 대항전', '기숙사 대항전', '모든 활동이 기숙사 점수로 쌓이며, 매주 활동 학생 평균 점수 순위에 따라 보상이 지급됩니다.'], ['h:기숙사 성장', '기숙사 성장', '대항전 점수가 쌓일수록 기숙사 혜택이 커집니다.']],
     rank: [['h:전투력 순위', '랭킹', '전투력 · 레벨 · 월드 보스 피해 · 무한의 탑 · 동아리 순위를 확인합니다. 순위는 10위까지 보이며 「더보기」로 50위까지 펼칠 수 있습니다.']],
     party: [['#view .card', '파티', '최대 4명이 함께하며 파티원 한 명당 원정 ' + CUR + ' · 경험치가 오릅니다. 파티를 만든 뒤 친구를 초대하거나 아카데미 친구(NPC)를 부를 수 있습니다. 파티와 함께 오르는 별의 탑은 「원정·전투 → 별의 탑」에 있습니다.']],
     tower: [['.page-head', '별의 탑', '파티원 모두의 능력을 합쳐 한 층씩 오릅니다. 층을 처음 넘으면 파티원 모두에게 보상 우편이 발송됩니다. 파티가 없으면 먼저 파티를 만드세요(혼자서도 만들 수 있습니다).']],
@@ -4122,7 +4134,7 @@
     var tabs = redo ? [['recreate', '새 학생 만들기']] : server ? [['login', '로그인'], ['signup', '가입'], ['findid', '아이디 찾기']] : [['guest', '바로 입학']];   // 서버판에는 게스트가 없다. '바로 입학'은 아티팩트 미리보기에서만
     var tab = S.authTab && tabs.some(function (t) { return t[0] === S.authTab; }) ? S.authTab : tabs[0][0];
     var h = '<div class="body" style="grid-template-columns:minmax(0,1fr)"><main><div class="intro"><img class="crestbig" src="' + LOGO_URL + '" width="96" height="96" alt=""><h1>모네타 아카데미</h1>' +
-      '<p class="lede">별의 종의 울림을 듣는 아이에게만 초대장이 날아드는 곳. 입학 열차 칼리오페호를 타고 구름섬 라디아로, 모든 학생이 같은 시간을 살아가는 아카데미에 오신 것을 환영합니다.</p>';
+      '<p class="lede">별의 종의 울림을 듣는 이들에게만 초대장이 날아드는 곳. 오선의 열차를 타고 구름섬 라디아로.<br>모네타 아카데미에 오신 것을 환영합니다.</p>';
     if (!server) h += '<div class="card inset"><p class="small">이 페이지는 <b>미리보기</b>입니다. 진행 상황은 이 브라우저에만 저장되고, 다른 학생과 월드 보스·대항전은 가상입니다. 실제 게임은 아카데미 서버에서 열립니다.</p></div>';
     if (tabs.length > 1) h += '<div class="tabs" role="tablist">' + tabs.map(function (t) { return '<button role="tab" class="' + (tab === t[0] ? 'on' : '') + '" data-act="authtab" data-a="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
     h += '<form id="authform" class="card stack" style="gap:12px" autocomplete="on">';
@@ -4270,7 +4282,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102041;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102042;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
