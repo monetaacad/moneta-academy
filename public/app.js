@@ -2202,6 +2202,7 @@
         '<div class="mkp"><span class="tiny faint">' + (l.price ? '지금 가장 높은 값' : '시작가') + '</span><b class="num gold">' + fmt(l.price || l.min) + '</b><span class="tiny ' + (l.mine ? 'good' : 'faint') + '">' + (l.price ? (l.mine ? '내가 가장 높음' : esc(l.bidder) + (l.npc ? ' (NPC)' : '')) + ' · ' + l.bids + '번' : '아직 아무도 안 부름') + '</span>' +
         (live ? '<span class="tiny faint"><span data-l="left:' + l.ends + '"></span> 남음</span>' + (l.mine ? '' : no ? '<span class="tag">원정 최고 단계 ' + l.cap + '단계 이하만 입찰</span>' : '<div class="row" style="gap:4px;flex-wrap:nowrap"><input type="number" class="aucamt" id="auc-' + l.id + '" min="' + l.need + '" value="' + l.need + '" data-fmt="1" style="width:110px"><button class="btn sm primary" data-act="bid" data-a="' + l.id + '"' + (P.res.gold >= l.need ? '' : ' disabled title="' + CUR + '가 모자랍니다"') + '>부르기</button></div><span class="tiny faint mkfmt"></span>') : '<span class="tag">끝남</span>') + '</div></div>';
     }
+    if (d.ext && d.ext.length) h += '<div class="auchd open auchx"><b>연장 중인 경매</b><span class="tiny faint">앞 방문에서 막판 입찰로 늘어난 물건 · 끝날 때까지 값을 부를 수 있습니다</span></div><div class="mklist">' + d.ext.map(lotHtml).join('') + '</div>';
     if (v && v.active && d.lots.length) {
       var tiers = [0, 1, 2].map(function (t) { return d.lots.filter(function (l) { return (l.tier == null ? 2 : l.tier) === t; }); });
       tiers.forEach(function (ls, t) {
@@ -4601,7 +4602,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102082;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102083;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
