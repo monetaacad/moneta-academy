@@ -969,6 +969,22 @@
   };
   // 달마다 잎 빛깔 (서사달 → 침묵달)
   var LEAF = ['#6fae6a', '#7cc27a', '#5aa860', '#4f8f55', '#c9a24a', '#d1773f', '#a85a3a', '#9fb3c4', '#c7d6e2'];
+  /* 별자리 별고래: 반투명한 몸 + 별을 잇는 별자리 선 + 바깥 빛번짐(glow 필터 id) + 반짝이는 별 · 물줄기 별가루. 머리가 우측, 폭 110 */
+  function whaleArt(glow) {
+    var body = 'M112 21 C112 10 98 3 76 4 C52 5 32 12 18 20 C12 16 6 10 0 8 C3 14 4 18 8 22 C4 26 3 30 0 36 C6 34 12 28 18 25 C32 33 54 38 76 37 C98 36 112 31 112 21 Z', fin = 'M66 33 C62 39 55 43 48 44 C53 39 56 35 58 32 Z';
+    var pts = [[0, 8], [8, 22], [0, 36], [18, 20], [42, 9], [72, 4], [102, 9], [112, 22], [90, 28], [74, 37], [48, 44], [42, 33], [18, 25]];
+    var lines = [[0, 1], [1, 2], [1, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 9], [9, 10], [9, 11], [11, 12], [12, 1]];
+    var g = '<path d="' + body + '" fill="#a9c8ff" opacity=".55" filter="url(#' + glow + ')"/>' +
+      '<path d="' + body + '" fill="url(#' + glow + 'B)" stroke="#e4eeff" stroke-width=".6" stroke-opacity=".55"/><path d="' + fin + '" fill="url(#' + glow + 'B)" stroke="#e4eeff" stroke-width=".5" stroke-opacity=".5"/>' +
+      '<path d="M111 25 C104 29 94 31 84 31 M104 31 C94 34 82 35 70 35 M102 28 C92 32 80 33 68 33" stroke="#dbe7ff" stroke-width=".6" fill="none" opacity=".45"/><circle cx="100" cy="19" r="1.2" fill="#ffffff"/>' +
+      [[30, 20], [52, 14], [60, 26], [84, 12], [92, 20], [66, 18], [36, 27], [78, 25]].map(function (q, i) { return '<circle class="wst w' + (i % 3) + '" cx="' + q[0] + '" cy="' + q[1] + '" r=".55" fill="#f4f8ff" opacity=".85"/>'; }).join('') +
+      '<g stroke="#f2f7ff" stroke-width=".7" stroke-opacity=".75" stroke-linecap="round">' + lines.map(function (l) { var a = pts[l[0]], b = pts[l[1]]; return '<line x1="' + a[0] + '" y1="' + a[1] + '" x2="' + b[0] + '" y2="' + b[1] + '"/>'; }).join('') + '</g>' +
+      pts.map(function (q, i) { var big = i === 5 || i === 6 || i === 0 || i === 2; return '<circle class="wst w' + (i % 3) + '" cx="' + q[0] + '" cy="' + q[1] + '" r="' + (big ? 1.9 : 1.2) + '" fill="#ffffff"/>' + (big ? '<circle class="wst w' + (i % 3) + '" cx="' + q[0] + '" cy="' + q[1] + '" r="4.5" fill="#cfe2ff" opacity=".35" filter="url(#' + glow + ')"/>' : ''); }).join('') +
+      '<g class="wsp"><path d="M100 0 l1 -2.4 l1 2.4 l2.4 1 l-2.4 1 l-1 2.4 l-1 -2.4 l-2.4 -1Z" fill="#ffffff"/><circle cx="106" cy="-4" r="1" fill="#e9f2ff"/><circle cx="95" cy="-3" r=".8" fill="#e9f2ff"/></g>' +
+      '<g class="wtr"><circle cx="-6" cy="20" r=".9" fill="#dfeaff"/><circle cx="-13" cy="25" r=".7" fill="#dfeaff"/><circle cx="-20" cy="18" r=".6" fill="#dfeaff"/></g>';
+    return g;
+  }
+  function whaleDefs(id) { return '<filter id="' + id + '" x="-40%" y="-80%" width="180%" height="260%"><feGaussianBlur stdDeviation="3.2"/></filter><linearGradient id="' + id + 'B" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b9d0ff" stop-opacity=".55"/><stop offset="1" stop-color="#5a6fc8" stop-opacity=".35"/></linearGradient>'; }
   function sceneJar(n, max) {
     var o = '', spots = [[38, 156], [48, 148], [42, 138], [53, 160]];
     for (var i = 0; i < Math.min(n, max); i++) { var p = spots[i % spots.length]; o += '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="5.5" fill="url(#scGlow)" class="ffl f' + i + '"/><circle cx="' + p[0] + '" cy="' + p[1] + '" r="2" fill="#fff6c0" class="ffl f' + i + '"/>'; }
@@ -1021,7 +1037,7 @@
     var wx = R.weatherAt(wctx(), t), wid = wx.id, gloomy = wid !== 'clear' && wid !== 'fog';   // 날씨: 흐리거나 비 · 눈이면 해 · 흰 구름을 그리지 않는다
     var defs = '<defs><linearGradient id="scSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + sp[0] + '"/><stop offset=".6" stop-color="' + sp[1] + '"/><stop offset="1" stop-color="' + sp[2] + '"/></linearGradient>' +
       '<radialGradient id="scGlow"><stop offset="0" stop-color="#fff3a0" stop-opacity=".9"/><stop offset="1" stop-color="#fff3a0" stop-opacity="0"/></radialGradient>' +
-      '<radialGradient id="scSun"><stop offset="0" stop-color="#fff8d8"/><stop offset=".45" stop-color="#ffe9a0" stop-opacity=".9"/><stop offset="1" stop-color="#ffe9a0" stop-opacity="0"/></radialGradient>' +
+      whaleDefs('scWg') + '<radialGradient id="scSun"><stop offset="0" stop-color="#fff8d8"/><stop offset=".45" stop-color="#ffe9a0" stop-opacity=".9"/><stop offset="1" stop-color="#ffe9a0" stop-opacity="0"/></radialGradient>' +
       '<linearGradient id="scAur" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#6ff0be" stop-opacity="0"/><stop offset=".3" stop-color="#6ff0be" stop-opacity=".55"/><stop offset=".7" stop-color="#8fb8ff" stop-opacity=".45"/><stop offset="1" stop-color="#b090ff" stop-opacity="0"/></linearGradient>' +
       '<linearGradient id="scTail" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#ffffff" stop-opacity=".9"/><stop offset="1" stop-color="#bcd8ff" stop-opacity="0"/></linearGradient>' +
       '<linearGradient id="scWater" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + (dark ? '#5aa6d6' : '#9fdcf2') + '"/><stop offset="1" stop-color="' + (dark ? '#2a5f8a' : '#4f9fc4') + '"/></linearGradient>' +
@@ -1042,7 +1058,7 @@
       if (ev.id === 'meteor') for (var m = 0; m < 5; m++) e += '<line class="met m' + m + '" x1="' + (140 + m * 80) + '" y1="' + (12 + (m % 3) * 16) + '" x2="' + (110 + m * 80) + '" y2="' + (-4 + (m % 3) * 16) + '" stroke="url(#scTail)" stroke-width="1.6" stroke-linecap="round"/>';
       else if (ev.id === 'aurora') e += '<g class="aur"><path d="M0 40 C120 10 220 70 340 30 S520 20 600 44 L600 62 C500 40 420 76 320 50 S120 36 0 64Z" fill="url(#scAur)"/><path d="M40 70 C160 48 260 92 380 60 S540 56 600 76 L600 86 C520 72 420 100 320 80 S160 70 40 90Z" fill="url(#scAur)" opacity=".6"/></g>';
       else if (ev.id === 'comet') e += '<path d="M430 34 L330 58 L332 62 Z" fill="url(#scTail)"/><circle cx="431" cy="34" r="4" fill="#ffffff"/><circle cx="431" cy="34" r="10" fill="url(#scSun)" opacity=".7"/>';
-      else if (ev.id === 'whale') e += '<g class="whale"><g transform="translate(96 0) scale(-1 1)"><path d="M0 20 C10 4 54 2 72 14 C80 8 88 4 94 2 C92 10 92 16 96 24 C88 22 82 20 76 22 C62 36 18 38 0 20Z" fill="#7d96d6" opacity=".9"/><path d="M8 24 C24 32 54 32 70 22" stroke="#cfdcf7" stroke-width="2" fill="none" opacity=".8"/><circle cx="14" cy="16" r="1.6" fill="#ffffff"/><path d="M30 4 C30 -4 26 -8 22 -10 M30 4 C32 -4 36 -8 40 -10" stroke="#cfe6ff" stroke-width="1.2" fill="none" opacity=".7"/></g></g>';
+      else if (ev.id === 'whale') e += '<g class="whale"><g transform="scale(.95)">' + whaleArt('scWg') + '</g></g>';
       o += '<g class="sc-ev' + (P.skyLook === ev.key ? '' : ' hot') + '"' + (P.skyLook === ev.key ? '' : ' data-act="skylook" role="button" aria-label="' + ev.name + ' 올려다보기"') + '>' + e + '<rect width="600" height="100" fill="transparent"/></g>';
     }
     // 능선 (멀리 → 가까이). 하늘과 능선 그라데이션만으로 채운다
@@ -2181,7 +2197,7 @@
     if (document.body.dataset.sky === id) return; document.body.dataset.sky = id;
     var fx = $('#skyfx'); if (!fx) { fx = document.createElement('div'); fx.id = 'skyfx'; fx.setAttribute('aria-hidden', 'true'); var skyc = $('#sky'); if (skyc) skyc.parentNode.insertBefore(fx, skyc.nextSibling); else document.body.appendChild(fx); }
     var inner = ''; if (id === 'meteor') for (var i = 0; i < 9; i++) inner += '<i style="left:' + (i * 10 - 6) + '%;top:' + (5 + (i * 37) % 30) + '%;animation-delay:' + (i * 1.3) + 's"></i>';
-    else if (id === 'aurora') inner = '<b></b><b></b>'; else if (id === 'comet') inner = '<i class="comet"></i>'; else if (id === 'whale') inner = '<i class="whale"></i>';
+    else if (id === 'aurora') inner = '<b></b><b></b>'; else if (id === 'comet') inner = '<i class="comet"></i>'; else if (id === 'whale') inner = '<svg class="whale" viewBox="-26 -12 142 64"><defs>' + whaleDefs('fxWg') + '</defs>' + whaleArt('fxWg') + '</svg>';
     fx.className = id ? 'fx-' + id : ''; fx.innerHTML = inner;
     if (ev && S.view === 'home' && !S.modal) render();
   }
@@ -4601,7 +4617,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102082;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102083;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

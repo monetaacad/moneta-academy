@@ -841,7 +841,7 @@ body.dock-open .top-row { max-width: 1640px; }
 @keyframes aurora { from { transform: translateX(-6%) skewY(-3deg); } to { transform: translateX(6%) skewY(3deg); } }
 #skyfx .comet { position: absolute; top: 14%; left: 110%; width: 10px; height: 10px; border-radius: 50%; background: #fff6d0; box-shadow: 0 0 14px 4px rgba(255, 240, 180, .6), 40px -10px 30px 6px rgba(255, 240, 180, .18); animation: comet 40s linear infinite; }
 @keyframes comet { to { left: -10%; top: 30%; } }
-#skyfx .whale { position: absolute; top: 18%; left: -20%; width: 180px; height: 56px; border-radius: 50% 45% 40% 55%; background: radial-gradient(ellipse at 70% 40%, rgba(170, 200, 255, .28), rgba(120, 150, 230, .12) 60%, transparent 70%); animation: whale 60s linear infinite; }
+#skyfx .whale { position: absolute; top: 18%; left: -20%; width: 230px; height: 104px; opacity: .42; overflow: visible; filter: drop-shadow(0 0 10px rgba(150, 190, 255, .55)); animation: whale 60s linear infinite; }
 @keyframes whale { to { left: 110%; top: 12%; } }
 :root[data-skintone="light"] #skyfx.fx-meteor i { background: linear-gradient(90deg, rgba(200, 150, 60, 0), rgba(200, 150, 60, .7)); }
 :root[data-skintone="light"] #skyfx.fx-aurora b { background: linear-gradient(90deg, rgba(60, 180, 140, 0), rgba(60, 180, 140, .14), rgba(110, 120, 220, .12), rgba(60, 180, 140, 0)); }
@@ -1479,6 +1479,15 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 .scene .met { animation: scmet 2.6s linear infinite; } .scene .met.m1 { animation-delay: .7s; } .scene .met.m2 { animation-delay: 1.5s; } .scene .met.m3 { animation-delay: 2s; } .scene .met.m4 { animation-delay: 1.1s; }
 .scene .aur { animation: scaur 6s ease-in-out infinite alternate; }
 .scene .whale { animation: scwh 70s linear -28s infinite; }
+/* 별자리 별고래: 별이 번갈아 반짝이고, 물줄기 별가루가 오르고, 꼬리 뒤로 별가루가 흩어진다 */
+.scene .wst, #skyfx .wst { animation: wstw 2.6s ease-in-out infinite; }
+.scene .wst.w1, #skyfx .wst.w1 { animation-delay: .9s; } .scene .wst.w2, #skyfx .wst.w2 { animation-delay: 1.7s; }
+.scene .wsp, #skyfx .wsp { animation: wsp 3.2s ease-out infinite; }
+.scene .wtr, #skyfx .wtr { animation: wtr 2.4s ease-in-out infinite; }
+@keyframes wstw { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+@keyframes wsp { 0% { transform: translateY(4px); opacity: 0; } 30% { opacity: 1; } 100% { transform: translateY(-6px); opacity: 0; } }
+@keyframes wtr { 0%, 100% { opacity: .2; } 50% { opacity: .9; } }
+@media (prefers-reduced-motion: reduce) { .scene .wst, .scene .wsp, .scene .wtr { animation: none; } }
 .scene .sc-fam { animation: scfam 26s ease-in-out infinite alternate; }
 @keyframes sctw { 50% { opacity: .45; } }
 @keyframes scff { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
