@@ -348,6 +348,8 @@ function open(dir) {
     countActive: db.prepare(`SELECT COUNT(*) AS n FROM players WHERE last_seen >= ?`),
     sumActiveDps: db.prepare(`SELECT COALESCE(SUM(wb_dps), 0) AS s, COUNT(*) AS n FROM players WHERE last_seen >= ? AND banned = 0`),
     topPower: db.prepare(`SELECT id, name, house, power, lvl, grade, max_stage FROM players WHERE banned = 0 ORDER BY power DESC LIMIT ?`),
+    // 학과의 탑 순위: 저장된 학생 상태(JSON)의 st.twK / st.twM
+    topCt: db.prepare(`SELECT id, name, house, grade, CAST(json_extract(state, ?) AS INTEGER) AS f FROM players WHERE banned = 0 AND CAST(json_extract(state, ?) AS INTEGER) > 0 ORDER BY f DESC, power DESC LIMIT ?`),
     topStage: db.prepare(`SELECT id, name, house, power, lvl, grade, max_stage FROM players WHERE banned = 0 ORDER BY max_stage DESC, power DESC LIMIT ?`),
     rankPower: db.prepare(`SELECT COUNT(*) + 1 AS r FROM players WHERE banned = 0 AND power > ?`),
     insertSession: db.prepare(`INSERT INTO sessions (token, pid, created, expires) VALUES (?, ?, ?, ?)`),

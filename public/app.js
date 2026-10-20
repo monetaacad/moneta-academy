@@ -61,7 +61,7 @@
   function clsDot(id, size) { var c = R.CLS[id]; return dotImg(id, size, c ? c.name : '', 'cdot'); }
   function icon(k) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IC[k] + '</svg>'; }
   var VIEWS = [
-    { id: 'home', name: '아카데미 광장' }, { id: 'lecture', name: '강의실' }, { id: 'explore', name: '원정' }, { id: 'tower', name: '별의 탑' }, { id: 'exam', name: '시험·결투' },
+    { id: 'home', name: '아카데미 광장' }, { id: 'lecture', name: '강의실' }, { id: 'explore', name: '원정' }, { id: 'tower', name: '별의 탑' }, { id: 'ctower', name: '학과의 탑' }, { id: 'exam', name: '시험·결투' },
     { id: 'world', name: '토벌·랭킹' }, { id: 'party', name: '파티' }, { id: 'guild', name: '동아리' }, { id: 'friends', name: '친구' }, { id: 'board', name: '게시판' }, { id: 'auction', name: '떠돌이 상인' }, { id: 'market', name: '거래소' }, { id: 'gear', name: '장비·능력' }, { id: 'work', name: '공방', grade: 2 }, { id: 'lib', name: '서고' },
     { id: 'shop', name: '매점' }, { id: 'lore', name: '세계관' }, { id: 'rec', name: '기록실' }
   ];
@@ -70,12 +70,12 @@
   var GROUPS = [
     { id: 'home', name: '아카데미 광장', icon: 'home', tabs: ['home'] },
     { id: 'study', name: '수업·연구', icon: 'lecture', tabs: ['lecture', 'lib'] },
-    { id: 'adv', name: '원정·전투', icon: 'explore', tabs: ['explore', 'tower', 'exam', 'world'] },
+    { id: 'adv', name: '원정·전투', icon: 'explore', tabs: ['explore', 'tower', 'ctower', 'exam', 'world'] },
     { id: 'craft', name: '장비·공방', icon: 'gear', tabs: ['gear', 'work'] },
     { id: 'social', name: '교류·상점', icon: 'party', tabs: ['party', 'guild', 'friends', 'board', 'market', 'auction', 'shop'] },
     { id: 'book', name: '기록', icon: 'lore', tabs: ['lore', 'rec'] }
   ];
-  var TAB_NAMES = { auction: '떠돌이 상인', home: '광장', lecture: '강의실', lib: '서고 · 연구', explore: '원정', tower: '별의 탑', exam: '시험 · 결투제', world: '월드 보스 · 랭킹', gear: '장비 · 능력치', work: '공방', party: '파티', guild: '동아리', friends: '친구', board: '게시판', market: '거래소', shop: '매점', lore: '세계관', rec: '업적 · 도감' };
+  var TAB_NAMES = { auction: '떠돌이 상인', home: '광장', lecture: '강의실', lib: '서고 · 연구', explore: '원정', tower: '별의 탑', ctower: '학과의 탑', exam: '시험 · 결투제', world: '월드 보스 · 랭킹', gear: '장비 · 능력치', work: '공방', party: '파티', guild: '동아리', friends: '친구', board: '게시판', market: '거래소', shop: '매점', lore: '세계관', rec: '업적 · 도감' };
   S.gtab = {};
   function groupOf(v) { return GROUPS.find(function (g) { return g.tabs.indexOf(v) >= 0; }) || GROUPS[0]; }
 
@@ -1121,6 +1121,7 @@
     var skv = R.skyAt(now()); if (skv && P.skyLook !== skv.key) out.push({ t: dotImg('sky_' + skv.id, 16, '', 'skyic') + '하늘에 ' + skv.name + '! 올려다보기', s: skv.text, act: 'skylook', btn: '올려다보기' });
     if (S.rit && !S.rit.mine) out.push({ t: '별샘 의식에 마나 봉헌', s: '모두 함께 ' + S.rit.n + ' / ' + S.rit.goal + '명 · 채우면 ' + R.RITUAL_BUFF.text, act: 'ritual', btn: '봉헌' });
     if (S.auc && S.auc.active) out.push({ t: '떠돌이 상인이 와 있습니다', s: '귀한 장비 세 점 경매 · ' + left(S.auc.end) + ' 남음', go: 'auction' });
+    if (R.ctLeft(P, now()) > 0) out.push({ t: R.CT_NAME[R.ctCls(P)] + ' 도전 ' + R.ctLeft(P, now()) + '번 남음', s: '혼자 오르는 개인 탑 · 현재 ' + R.ctBest(P) + '층', go: 'ctower' });
     if (S.party && R.towerLeft(P, now()) > 0) out.push({ t: '별의 탑 도전 ' + R.towerLeft(P, now()) + '번 남음 (내 횟수)', s: '파티의 힘을 모아 한 층씩 · 돌파하면 파티원 모두에게 보상 우편', go: 'tower' });
     var idleR = 0; for (var r = 0; r < c.resSlots; r++) if (!P.rsq[r]) idleR++;
     if (idleR) out.push({ t: '비어 있는 연구 자리 ' + idleR + '개', s: '', go: 'lib' });
@@ -1541,6 +1542,7 @@
     }).join('') + '</div></div>';
     h += '<div class="card"><div class="row between"><h3>전투력 순위</h3><span class="small">내 순위 <b class="num gold">' + S.rank + '</b></span></div>' + rankList((W.topPower || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: fmt(r.power), sub: R.gradeLabel({ grade: r.grade }) + ' · Lv ' + r.lvl }; })) + '</div>';
     h += '<div class="card"><h3>최고 단계 순위</h3>' + rankList((W.topStage || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: r.stage + '단계' }; })) + '</div>';
+    ['knight', 'mage'].forEach(function (cl) { var L = cl === 'knight' ? W.topTwK : W.topTwM; h += '<div class="card"><div class="row between"><h3>' + R.CT_NAME[cl] + ' 순위</h3>' + (R.ctCls(P) === cl ? '<span class="small">내 기록 <b class="num gold">' + R.ctBest(P, cl) + '층</b></span>' : '') + '</div>' + rankList((L || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: r.f + '층' }; })) + '</div>'; });
     var gr = gRankData('lv');
     h += '<div class="card"><div class="row between"><h3>동아리 순위</h3><button class="btn sm ghost" data-act="grall">전체 보기</button></div>' + (!gr ? '<div class="empty">불러오는 중…</div>' : gr.list.length ? (gr.mine ? '<p class="small" style="margin-top:4px">우리 동아리 <b class="num gold">' + gr.mine.rank + '위</b></p>' : '') + gRankRows(gr.list.slice(0, 10), true, gr.mine && gr.mine.id, 'lv') : '<div class="empty" style="margin-top:8px">아직 동아리가 없습니다.</div>') + '</div>';
     h += '</div></div>';
@@ -2005,6 +2007,34 @@
       '<div class="row" style="justify-content:flex-end;margin-top:14px">' + (r.win ? '<button class="btn" data-act="mailbox">우편함 열기</button>' : '') + '<button class="btn primary" data-act="modal-close" autofocus>확인</button></div>');
   }
   // 별의 탑 화면 (원정·전투): 파티가 있으면 일지 · 도전 칸, 없으면 파티와 함께 오른다는 안내
+  /* ── 학과의 탑 (개인): 기사의 탑 · 마법사의 탑 ── */
+  V.ctower = function () {
+    var P = S.P, cl = R.ctCls(P), nm = R.CT_NAME[cl], best = R.ctBest(P, cl), f = best + 1, foe = R.ctFoe(f, cl), left = R.ctLeft(P, now());
+    var pv = R.duelPreview(P, wctx(), foe.stage, R.K.BOSS_HP * 1.5, R.K.BOSS_ATK), nextMile = Math.ceil(f / R.CT_MILE) * R.CT_MILE, mt = R.ctTitle(cl, nextMile), rw = R.ctReward(f);
+    var h = pageHead('혼자 오르는 ' + R.CLS[cl].name + ' 전용 탑', '<span class="phimg">' + clsDot(cl, 36) + nm + '</span>', '오늘 도전 <b class="num gold">' + left + '</b> / ' + R.CT_TRIES);
+    h += '<div class="card hl"><div class="row between"><h3>' + nm + ' <span class="tag br">최고 ' + best + '층</span></h3><span class="tiny faint">KST 자정에 도전 횟수 초기화</span></div>' +
+      '<p class="tiny faint" style="margin-top:2px">혼자 한 층씩 오르는 ' + R.CLS[cl].name + ' 전용 탑입니다. 한 번 도전하면 패배할 때까지 최대 ' + R.CT_RUN + '층을 연달아 오르며, 오른 층은 줄어들지 않습니다.</p>' +
+      '<div class="twnext" style="margin-top:10px"><div class="twf num">' + f + '<span>층</span></div><div style="flex:1;min-width:0"><b>' + esc(foe.name) + '</b><div class="tiny faint">' + foe.stage + '단계 수준 · 체력 ' + fmt(foe.hp) + '</div>' +
+      '<div class="small" style="margin-top:4px">' + (pv.win && pv.ttk < R.K.BOSS_TIME ? '<span class="good">승산 있음</span> — 약 ' + pv.ttk.toFixed(1) + '초' : '<span class="bad">아직 버겁습니다</span> — ' + R.K.BOSS_TIME + '초 안에 체력의 약 ' + Math.round(Math.min(1, R.K.BOSS_TIME / pv.ttk) * 100) + '%') + '</div>' +
+      '<div class="tiny" style="margin-top:4px">이 층 보상 <span class="rwd">' + esc(R.rewardText(rw)) + '</span></div></div></div>' +
+      '<div class="row" style="margin-top:12px"><span class="tiny faint">' + (mt ? nextMile + '층 돌파 시 칭호 「' + esc(mt.name) + '」 · 별조각 30 · 희귀 장비 상자 · 환수의 알' : nextMile + '층 돌파 시 별조각 30 · 희귀 장비 상자 · 환수의 알') + '</span><span class="spacer"></span><button class="btn primary" data-act="ctower"' + (left > 0 ? '' : why('오늘의 도전 횟수를 모두 사용했습니다 (KST 자정 초기화)')) + '>도전하기</button></div></div>';
+    var got = D.TITLES.filter(function (t) { return t.stat === R.ctKey(cl); });
+    h += '<div class="card" style="margin-top:14px"><h3>' + nm + ' 칭호</h3><div class="stack" style="gap:6px;margin-top:8px">' + got.map(function (t) { var ok = best >= t.n; return '<div class="row small"><span class="' + (ok ? 'gold' : 'faint') + '">' + (ok ? '✦ ' : '· ') + esc(t.name) + '</span><span class="spacer"></span><span class="tiny ' + (ok ? 'good' : 'faint') + '">' + t.n + '층' + (ok ? ' · 획득' : '') + '</span></div>'; }).join('') + '</div>' +
+      '<p class="tiny faint" style="margin-top:8px">보상: 층마다 ' + CUR + ', 2층마다 마석 1, 10층마다 별조각 3, ' + R.CT_MILE + '층마다 칭호와 추가 보상. 학과를 바꾸면 그 학과의 탑을 따로 오릅니다. 순위는 「토벌·랭킹」에서 볼 수 있습니다.</p></div>';
+    return h;
+  };
+  ACT.ctower = function () {
+    act('ctower').then(function (r) {
+      if (!r) return; var nm = R.CT_NAME[r.cls], last = r.floors[r.floors.length - 1], rwT = R.rewardText(r.rw);
+      Snd.play(r.to > r.from ? 'pass' : 'fail');
+      modal(mhead(nm, r.to > r.from ? (r.from + 1) + '~' + r.to + '층 돌파' : '이번에는 오르지 못했습니다') + '<ul class="report">' + r.floors.map(function (x) { return '<li>' + x.f + '층 · ' + esc(x.name) + ' — ' + (x.win ? '<span class="good">돌파</span> (' + x.t + '초)' : '<span class="bad">패배</span> (체력 ' + x.pct + '% 깎음)') + '</li>'; }).join('') + '</ul>' +
+        (r.titles.length ? '<p class="gold" style="margin-top:8px">새 칭호: ' + r.titles.map(function (t) { return '「' + esc(t) + '」'; }).join(' ') + '</p>' : '') +
+        (rwT ? '<p class="small" style="margin-top:8px">보상: ' + esc(rwT) + '</p>' : '') + ((r.items || []).length ? '<p class="small">' + r.items.map(function (it) { return '<span style="color:' + rcol(it.r) + '">' + esc(it.name) + '</span>'; }).join(', ') + '</p>' : '') +
+        (r.floors.length >= R.CT_RUN && last.win ? '<p class="tiny faint" style="margin-top:6px">한 번에 오를 수 있는 ' + R.CT_RUN + '층을 모두 올랐습니다.</p>' : '') +
+        '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>');
+      render();
+    });
+  };
   V.tower = function () {
     var h = pageHead('파티와 함께 오르는 탑', '<span class="phimg">' + dotImg('tower', 40, '', 'twimg') + '별의 탑</span>', '한 주 동안 · 월요일에 0층부터');
     if (!S.partyD || Date.now() - S.partyAt > 20000) { if (Date.now() - S.partyAt > 1500) loadParty(); }
@@ -4096,7 +4126,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102021;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102022;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
