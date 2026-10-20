@@ -1091,7 +1091,8 @@ function mkPrice(key, real) {
   else if (p[0] === 'tok' && MK_TOK[p[1]]) rows = dbx.q.mkSoldTok.all(p[1], since);
   else if (p[0] === 'badge' && R.GEM[p[1]] && /^\d{1,3}$/.test(p[2])) { const lv = +p[2]; rows = dbx.q.mkSoldBadge.all(p[1], lv - 2, lv + 2, since); }
   else return null;
-  if (rows.length) { const unit = rows.map((r) => r.price / Math.max(1, r.qty)); v = { avg: Math.round(unit.reduce((a, b) => a + b, 0) / unit.length), n: rows.length, recent: rows.slice(0, 5).map((r) => ({ t: r.done_at, price: r.price, qty: r.qty, ilvl: r.ilvl || 0, name: r.name })) }; }
+  if (rows.length) { const unit = rows.map((r) => r.price / Math.max(1, r.qty)).sort((a, b) => a - b), mid = unit.length >> 1; v = { avg: Math.round(unit.length % 2 ? unit[mid] : (unit[mid - 1] + unit[mid]) / 2),   // 시세 = 중간값 (헐값 · 바가지 한두 건에 흔들리지 않게)
+     n: rows.length, recent: rows.slice(0, 5).map((r) => ({ t: r.done_at, price: r.price, qty: r.qty, ilvl: r.ilvl || 0, name: r.name })) }; }
   else v = { avg: 0, n: 0, recent: [] };
   mkPriceCache.set(key, { at: real, v }); if (mkPriceCache.size > 3000) mkPriceCache.delete(mkPriceCache.keys().next().value);
   return v;
