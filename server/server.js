@@ -2106,11 +2106,16 @@ routes['GET /api/admin/dist'] = (req, res) => {
     cup[week] = { now: week === wk, cup: o, wbDmg: pct(rows.filter((r) => r.dmg > 0).map((r) => r.dmg)), wbAttacks: pct(rows.filter((r) => r.att > 0).map((r) => r.att)) };
   });
   // 최근 7일 활동 학생의 세부 전투 능력 (저장된 상태로 다시 계산): 학과별 · 학년별 딜 · 딜 구성 · 생존 · 탑
-  const detail = [];
+  const detail = [], cupCat = {}, curWk = R.weekId(nowSec());   // cupCat: 기숙사별 이번 주 점수 출처 (활동별 합계 · 특기 1.3배로 더 받은 몫)
   db.prepare('SELECT id, house, grade, state FROM players WHERE banned = 0 AND guest = 0 AND last_seen >= ? LIMIT 5000').all(now - 7 * 86400).forEach((r) => {
     try {
       const P = store.peek(r.id) || (() => { const x = JSON.parse(r.state); R.fixState(x); return x; })();
       const c = R.calc(P, world.ctx(nowSec()), Math.min(nowSec(), P.at || nowSec())), st = P.st || {};
+      if (P.wk && P.wk.id === curWk && P.wk.cup > 0) {
+        const h = cupCat[r.house] || (cupCat[r.house] = { n: 0, sum: {}, specExtra: 0 }), sp = R.CUP_SPEC[r.house], cat = P.wk.cat || {}; h.n++;
+        const pre = P.wk.cup - Object.keys(cat).reduce((a, k) => a + cat[k], 0); if (pre > 0.5) h.sum.before = Math.round((h.sum.before || 0) + pre);   // 나눠 적기 전에 쌓인 몫
+        for (const k in cat) { const v = cat[k]; h.sum[k] = Math.round((h.sum[k] || 0) + v); if (sp && sp.cats.indexOf(k) >= 0) h.specExtra = Math.round(h.specExtra + v * (1 - 1 / R.CUP_SPEC_MULT)); }
+      }
       detail.push({ cls: P.cls === 'knight' ? 'knight' : 'mage', grade: P.grade, house: r.house, dps: c.totalDps, basic: c.dps, spell: c.spellDps, fam: c.famDps, spellShare: c.totalDps > 0 ? c.spellDps / c.totalDps : 0,
         patk: c.patk, matk: c.matk, hp: c.hp, def: c.def, critC: c.critC, aps: c.aps, power: c.power, lvl: P.lvl, twK: st.twK || 0, twM: st.twM || 0 });
     } catch (e) { }
@@ -2121,7 +2126,7 @@ routes['GET /api/admin/dist'] = (req, res) => {
   const clsGrade = {}; detail.forEach((d) => { const k = d.cls + ':' + d.grade; (clsGrade[k] = clsGrade[k] || []).push(d); }); const cg = {}; for (const k in clsGrade) cg[k] = { n: clsGrade[k].length, dps: pct(clsGrade[k].map((d) => d.dps)), hp: pct(clsGrade[k].map((d) => d.hp)), power: pct(clsGrade[k].map((d) => d.power)) };
   const towers = { infKnight: pct(detail.filter((d) => d.twK > 0).map((d) => d.twK)), infMage: pct(detail.filter((d) => d.twM > 0).map((d) => d.twM)), starTowerWeek: pct(db.prepare('SELECT floor FROM tower WHERE week = ? AND floor > 0').all(wk).map((r) => r.floor)) };
   oplog('admin', '관리자', 'dist', '분포 통계 복사');
-  send(req, res, 200, { at: now, week: wk, students: { all: players.length, active7d: act.length, gradeActive7d: grades }, fightActive7d: fight(act), fightAll: fight(players), weekly: cup,
+  send(req, res, 200, { at: now, week: wk, students: { all: players.length, active7d: act.length, gradeActive7d: grades }, fightActive7d: fight(act), fightAll: fight(players), weekly: cup, cupSource: { note: '이번 주 점수 출처(특기 1.3배 포함 합계). before=나눠 적기 전(배포 전)에 쌓인 몫, kill=원정 처치, exam=진급 시험, etc=그 밖', byHouse: cupCat },
     detailActive7d: { note: 'dps=초당 피해 합계(basic 평타 + spell 주문 + fam 사역마), spellShare=주문 비중, patk/matk=물리/주문 공격력, critC=치명타 확률, aps=초당 공격 횟수', all, byCls: group('cls'), byGrade: group('grade'), byClsGrade: cg }, towers });
 };
 routes['GET /api/admin/ideas'] = (req, res) => { if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다'); send(req, res, 200, { text: board.exportIdeas() }); };

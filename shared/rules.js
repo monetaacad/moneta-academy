@@ -745,7 +745,7 @@
     var g = kills * j.gEach, x = kills * j.xEach;
     addGold(P, g); out.gold = Math.floor(g); out.xp = x; out.levels = addXp(P, x, t);
     if (j.killMana) addMana(P, kills * j.killMana);
-    P.st.kills += kills; cupAdd(P, kills * K.KILL_PACK / 40);
+    P.st.kills += kills; cupAdd(P, kills * K.KILL_PACK / 40, 'kill');
     var mons = z.mons; for (var mk = 0; mk < Math.min(kills, 5000); mk++) { var mm = mons[Math.floor(rnd(P) * mons.length)]; P.codex[mm.id] = (P.codex[mm.id] || 0) + 1; }
     var mats = Math.floor(kills * K.MAT_RATE * j.drop + rnd(P)); if (mats) { P.mats[z.mat] = (P.mats[z.mat] || 0) + mats; out.mats = mats; out.mat = z.mat; }
     var prev = D.ZONES.filter(function (zz) { return zz.from < z.from; });
@@ -977,7 +977,12 @@
   };
   R.CUP_SHOP_WEEK = 200;   // 매점 구매 점수는 한 주에 이만큼까지 (아르크로 마석을 거듭 사서 점수를 올리지 못하게)
   R.CUP_AUC = 50;          // 떠돌이 상인 경매 낙찰 1회 (학생끼리 거래인 거래소에는 점수가 없다) · 구간 3개 · 9점이 되며 100 → 50 (방문당 총점 300 → 450)
-  function cupAdd(P, v, cat) { if (cat !== 'shop' && cat !== 'auc') famActivity(P, v); if (!P.wk) return; var sp = R.CUP_SPEC[P.house]; P.wk.cup += cat && sp && sp.cats.indexOf(cat) >= 0 ? v * R.CUP_SPEC_MULT : v; }
+  // 이번 주 점수는 활동별로도 나눠 둔다 (P.wk.cat: 운영실 분포 통계에서 기숙사별 점수 출처를 보려고)
+  function cupAdd(P, v, cat) {
+    if (cat !== 'shop' && cat !== 'auc') famActivity(P, v); if (!P.wk) return;
+    var sp = R.CUP_SPEC[P.house], add = cat && sp && sp.cats.indexOf(cat) >= 0 ? v * R.CUP_SPEC_MULT : v, c = P.wk.cat || (P.wk.cat = {}), k = cat || 'etc';
+    P.wk.cup += add; c[k] = Math.round(((c[k] || 0) + add) * 100) / 100;
+  }
   // 대항전 순위 점수: 이번 주 점수가 CUP_ACTIVE 이상인 학생을 「활동 학생」으로 보고, 그 평균(1인 반영은 중간 점수의 3배까지, 최소 5명으로 나눔).
   // 인원이 많은 기숙사가 합계로 앞서지 않게 한다. cups = 그 기숙사 학생들의 이번 주 점수 목록
   R.CUP_ACTIVE = 100; R.CUP_MIN_DIV = 5; R.CUP_CAP_X = 3;
@@ -1924,7 +1929,7 @@
       if (rw.egg) P.fam.eggs += rw.egg;
       res.reward = { shard: shard, gold: gold, egg: rw.egg, item: { name: it.name, r: it.r, res: gainItem(P, it, now) } };
       P.grade = run.grade + 1; if (P.grade > P.st.maxGrade) P.st.maxGrade = P.grade;
-      cupAdd(P, 300);
+      cupAdd(P, 300, 'exam');
       log(P, now, ex.title + ' 합격! ' + L + ' (' + total + '점)', 'story');
       R.famGift(P, now);
       if (P.grade >= 3 && !P.badgeGot) { P.badgeGot = 1; var b0 = makeBadge(P); if (gainBadge(P, b0, now, '2학년을 마친 기념') === 'got') res.badge = b0.name; }
