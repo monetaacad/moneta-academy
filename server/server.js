@@ -1025,6 +1025,13 @@ routes['GET /api/market/prices'] = (req, res) => {
 };
 // 실시간 거래: 막 팔린 물건 (누가 샀는지는 보이지 않는다)
 const mkTradeOut = (r) => ({ id: r.id, kind: r.kind, name: r.name, slot: r.slot, r: r.rarity, ilvl: r.ilvl, qty: r.qty, price: r.price, t: r.done_at });
+// 나의 거래 내역: 최근 30일 판 것 · 산 것 (산 사람 이름은 판매자에게도 보이지 않는다)
+routes['GET /api/market/history'] = (req, res) => {
+  const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
+  if (limited('mkh:' + me, 1, 6)) return fail(req, res, 429, '요청이 너무 잦습니다');
+  const since = Math.floor(Date.now() / 1000) - 30 * 86400;
+  send(req, res, 200, { fee: MK.FEE, list: dbx.q.mkHistory.all(me, me, since).map((r) => ({ id: r.id, side: r.seller === me ? 'sell' : 'buy', kind: r.kind, name: r.name, slot: r.slot, r: r.rarity, ilvl: r.ilvl, qty: r.qty, price: r.price, got: r.seller === me ? Math.floor(r.price * (1 - MK.FEE)) : 0, t: r.done_at, seller: r.seller === me ? '' : r.seller_name, npc: String(r.seller).startsWith('npc:') })) });
+};
 routes['GET /api/market/trades'] = (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
   if (limited('mktr:' + me, 1, 6)) return fail(req, res, 429, '요청이 너무 잦습니다');
