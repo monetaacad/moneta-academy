@@ -2913,9 +2913,13 @@
          return '<div class="card"><h3>' + l.title + '</h3><p class="small" style="margin-top:4px;color:var(--ink2);white-space:pre-line">' + l.text + '</p></div>'; }).join('') + '</div>' +
         '<div class="section-t" style="margin-top:16px">교수진</div><div class="grid g2">' + D.SUBJECTS.filter(function (x) { return R.subjVisible(S.P, x); }).map(function (s2) { return '<div class="card"><h4>' + s2.prof + '</h4><div class="tiny gold">' + s2.name + '</div><p class="small muted" style="margin-top:4px">' + s2.desc + '</p><p class="small" style="margin-top:4px;font-style:italic">“' + s2.line + '”</p></div>'; }).join('') + '</div>';
     } else if (S.loreTab === 'house') {
-      var mine = P.house, order = D.HOUSES.filter(function (x) { return x.id === mine; }).concat(D.HOUSES.filter(function (x) { return x.id !== mine; }));
-      h += '<div class="grid g2">' + D.HOUSE_COMMON.map(function (c) { return '<div class="card"><h3>' + c.t + '</h3><p class="small" style="margin-top:4px;color:var(--ink2)">' + c.b + '</p></div>'; }).join('') + '</div>' +
-        '<div class="section-t" style="margin-top:16px">네 기숙사</div><div class="stack">' + order.map(function (hh) { return '<div class="card">' + (hh.id === mine ? '<span class="tag br" style="float:right">내 기숙사</span>' : '') + houseCard(hh.id) + '<p class="tiny gold" style="margin-top:6px">기숙사 효과 · ' + hh.bonusText + '</p></div>'; }).join('') + '</div>';
+      var mine = P.house, op = S.hOpen || (S.hOpen = {}), anyOpen = D.HOUSES.some(function (x) { return op[x.id]; });
+      h += '<div class="card hcommon">' + D.HOUSE_COMMON.map(function (c) { return '<div><b>' + c.t + '</b><p class="small">' + c.b + '</p></div>'; }).join('') + '</div>' +
+        '<div class="row" style="margin-top:16px;align-items:baseline"><div class="section-t" style="margin:0">네 기숙사</div><span class="tiny faint">카드를 누르면 펼쳐집니다</span><span class="spacer"></span><button class="btn sm ghost" data-act="hfoldall">' + (anyOpen ? '모두 접기' : '모두 펼치기') + '</button></div>' +
+        '<div class="grid g2" style="margin-top:8px">' + D.HOUSES.map(function (hh) {
+          var on = !!op[hh.id];
+          return '<div class="card hfold' + (on ? ' open' : '') + '"><button class="hcard hsum" data-act="hfold" data-a="' + hh.id + '" aria-expanded="' + on + '">' + houseDot(hh.id, 56) + '<div style="min-width:0;flex:1"><h4 style="color:' + hh.color + '">' + hh.name + ' <span class="faint small">' + hh.latin + '</span>' + (hh.id === mine ? ' <span class="tag br">내 기숙사</span>' : '') + '</h4><p class="small muted">“' + hh.motto + '”</p><p class="small" style="margin-top:4px">' + hh.desc + '</p></div><span class="hchev" aria-hidden="true">▾</span></button>' + (on ? houseRows(hh.id) : '') + '</div>';
+        }).join('') + '</div>';
     }
     return h + '<p class="small muted" style="margin-top:16px">게임 방법은 상단의 <button class="btn sm ghost" data-act="guide">가이드</button>에서 검색할 수 있습니다.</p>';
   };
@@ -3505,12 +3509,18 @@
   ACT.promo = function (g) { promoModal(+g); };
   ACT.story = function (i) { var s = D.STORY[+i]; modal(mhead(s.title, '') + '<p style="white-space:pre-line;color:var(--ink2)">' + esc(s.text) + '</p><div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn primary" data-act="modal-close" autofocus>계속</button></div>'); act('storySeen', { n: +i + 1 }); };
   /* ── 기숙사: 배정 거울 연출(가입 직후) · 기숙사 정보 카드(기숙사 RP 채팅 상단 · 사감 이름) ── */
-  function houseCard(id, short) {
+  // 기숙사 설정 항목: 촘촘한 2열(이름 | 내용). short = 배정 거울용 (위치 · 휴게실 · 사감 · 인사만)
+  function houseRows(id, short) {
     var h = R.HOUSE[id], L = D.HOUSE_LORE[id]; if (!h || !L) return '';
-    function row(k, v) { return '<div class="hlrow"><b>' + k + '</b><p>' + esc(v) + '</p></div>'; }
-    var rows = row('위치', L.loc + '. ' + L.look) + row('휴게실 · ' + esc(L.room), L.roomDesc) + row('사감', L.head + ' (' + L.headOf + ')') + row('인사', '「' + L.greet + '」');
+    function row(k, v) { return '<dt>' + k + '</dt><dd>' + esc(v) + '</dd>'; }
+    var rows = row('위치', L.loc + '. ' + L.look) + row('휴게실', L.room + ' — ' + L.roomDesc) + row('사감', L.head + ' (' + L.headOf + ')');
     if (!short) rows += row('상징', L.crest) + row('성향', L.trait) + row('전통', L.trad) + row('속설', L.myth) + row('손님 출입', L.guest);
-    return '<div class="hlcard" style="--hc:' + h.color + '">' + (short ? '' : '<div class="hlhead">' + dotImg(id, 44) + '<div><h3>' + esc(h.name) + ' <span class="tiny faint">' + esc(h.latin) + '</span></h3><p class="small hlmotto">「' + esc(h.motto) + '」</p><p class="small muted">' + esc(h.desc) + '</p></div></div>') + rows + '</div>';   // 짧은 카드(배정 거울)는 위에 이름 · 교훈이 이미 있다
+    rows += row('인사', '「' + L.greet + '」'); if (!short) rows += row('기숙사 효과', h.bonusText);
+    return '<dl class="hdl" style="--hc:' + h.color + '">' + rows + '</dl>';
+  }
+  function houseCard(id, short) {
+    var h = R.HOUSE[id]; if (!h) return '';
+    return '<div class="hlcard" style="--hc:' + h.color + '">' + (short ? '' : '<div class="hlhead">' + dotImg(id, 44) + '<div><h3>' + esc(h.name) + ' <span class="tiny faint">' + esc(h.latin) + '</span></h3><p class="small hlmotto">「' + esc(h.motto) + '」</p><p class="small muted">' + esc(h.desc) + '</p></div></div>') + houseRows(id, short) + '</div>';   // 짧은 카드(배정 거울)는 위에 이름 · 교훈이 이미 있다
   }
   function houseReveal(cb) {
     var id = S.P && S.P.house, h = R.HOUSE[id], L = D.HOUSE_LORE[id]; if (!h || !L) { cb(); return; }
@@ -3521,6 +3531,8 @@
       '<div class="hmcard">' + houseCard(id, true) + '<p class="tiny faint" style="margin-top:8px">기숙사 이야기는 세계관 › 기숙사 탭이나 기숙사 RP 채팅 상단의 「기숙사 정보」에서 다시 볼 수 있습니다.</p></div>' +
       '<div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn primary" data-act="modal-close" autofocus>기숙사로 들어가기</button></div>');
   }
+  ACT.hfold = function (id) { S.hOpen = S.hOpen || {}; S.hOpen[id] = !S.hOpen[id]; render(); };
+  ACT.hfoldall = function () { var op = S.hOpen || {}, any = D.HOUSES.some(function (x) { return op[x.id]; }); S.hOpen = {}; if (!any) D.HOUSES.forEach(function (x) { S.hOpen[x.id] = true; }); render(); };
   ACT.hmskip = function () { var m = $('.hmirror'); if (m) m.parentNode.classList.add('hmdone'); };
   ACT.houseinfo = function (id) { var k = R.HOUSE[id] ? id : S.P.house; modal(mhead('기숙사 정보', R.HOUSE[k] ? R.HOUSE[k].name : '') + houseCard(k)); };
   // 기숙사 RP 채팅 상단: 휴게실 이름 · 오늘의 장면(날마다 하나) · RP 키워드

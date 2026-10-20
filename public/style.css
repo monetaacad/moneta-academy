@@ -1672,9 +1672,17 @@ mark.hl { color: inherit; background: linear-gradient(transparent 38%, color-mix
 .hlhead { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
 .hlhead h3 { color: var(--hc); }
 .hlmotto { color: var(--ink2); font-style: italic; }
-.hlrow { margin: 7px 0; }
-.hlrow b { font-size: 12px; color: var(--brass2); }
-.hlrow p { color: var(--ink2); line-height: 1.6; margin-top: 1px; }
+.hdl { display: grid; grid-template-columns: max-content 1fr; gap: 5px 12px; margin: 8px 0 0; font-size: 13px; line-height: 1.55; }
+.hdl dt { color: var(--hc, var(--brass2)); font-size: 12px; font-weight: 600; padding-top: 1px; white-space: nowrap; }
+.hdl dd { margin: 0; color: var(--ink2); }
+.hcommon { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 18px; }
+.hcommon p { color: var(--ink2); margin-top: 2px; line-height: 1.55; }
+.hsum { width: 100%; text-align: left; background: none; border: 0; padding: 0; color: inherit; font: inherit; cursor: pointer; }
+.hchev { flex: none; color: var(--faint); transition: transform .15s; align-self: center; }
+.hfold.open { grid-column: 1 / -1; }
+.hfold.open .hchev { transform: rotate(180deg); }
+.hfold.open .hdl { border-top: 1px dashed var(--line2); padding-top: 10px; margin-top: 10px; }
+@media (max-width: 640px) { .hcommon { grid-template-columns: 1fr; } .hdl { grid-template-columns: 1fr; gap: 1px; } .hdl dd { margin-bottom: 6px; } }
 .hroom { border-left: 3px solid var(--hc); background: color-mix(in srgb, var(--hc) 8%, transparent); border-radius: 6px; padding: 6px 9px; margin: 4px 0 6px; }
 .hroom > .row b { color: var(--hc); }
 .hroom .hrsc { color: var(--ink2); font-style: italic; margin: 3px 0 2px; line-height: 1.5; }
