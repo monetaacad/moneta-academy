@@ -132,6 +132,84 @@
     return out;
   };
 
+  /* ───────── 날씨 (모두에게 같은 날씨) ─────────
+     실제 3시간마다 바뀐다. 시각으로만 정해지므로 서버와 데모가 같은 날씨를 본다. 아카데미력 마지막 두 달은 겨울(함박눈은 겨울에만).
+     비 · 눈은 앞뒤에 맑음이 붙으면 흐림으로 바꿔서 「맑음 → 흐림 → 비 → 흐림 → 맑음」처럼 이어지게 한다.
+     하늘 이벤트가 떠 있는 동안은 맑음 (이벤트를 가리지 않게). 맡긴 작업에는 겹친 시간만큼 효과가 들어간다. */
+  R.WX_BLOCK = 3 * 3600;
+  R.WEATHER = [
+    { id: 'clear', name: '맑음', eff: {}, text: '효과 없음', desc: '구름 한 점 없는 하늘입니다.' },
+    { id: 'cloud', name: '흐림', eff: { manaPct: 0.05 }, text: '마나 재생 +5%', desc: '두꺼운 구름이 햇빛을 가려, 마나가 조용히 고입니다.' },
+    { id: 'fog', name: '안개', eff: { dispPct: 0.05 }, text: '사역마 파견 보상 +5%', desc: '안개 속에서 사역마들이 평소보다 많은 것을 찾아옵니다.' },
+    { id: 'rain', name: '비', eff: { brewSpd: 0.1 }, text: '조제 속도 +10%', desc: '빗소리를 들으며 솥을 젓는 날입니다.' },
+    { id: 'storm', name: '뇌우', eff: { goldPct: 0.05 }, text: CUR + ' +5%', desc: '천둥이 칠 때마다 몬스터들이 놀라 주머니를 떨어뜨립니다.' },
+    { id: 'snow', name: '눈', eff: { lectureSpd: 0.05 }, text: '수업 효율 +5%', desc: '밖에 나가기 어려워 강의실이 붐빕니다.' },
+    { id: 'blizzard', name: '함박눈', eff: { lectureSpd: 0.1 }, text: '수업 효율 +10%', desc: '겨울에만 내리는 굵은 눈입니다. 모두가 강의실에 모입니다.' }
+  ];
+  var WX = R.WX = {}; R.WEATHER.forEach(function (w) { WX[w.id] = w; });
+  // 다음 블록 날씨 확률 (지금 날씨 → 다음). 비 · 눈은 흐림이나 같은 계열에서만 오고, 그친 뒤에는 흐림을 거쳐 맑아진다.
+  var WX_NEXT = {
+    norm: {
+      clear: { clear: 60, cloud: 24, fog: 16 },
+      fog: { fog: 30, clear: 40, cloud: 30 },
+      cloud: { cloud: 28, clear: 36, rain: 22, snow: 9, fog: 5 },
+      rain: { rain: 44, storm: 14, cloud: 42 },
+      storm: { rain: 50, cloud: 50 },
+      snow: { snow: 45, cloud: 55 },
+      blizzard: { snow: 60, cloud: 40 }
+    },
+    winter: {
+      clear: { clear: 52, cloud: 34, fog: 14 },
+      fog: { fog: 30, clear: 35, cloud: 35 },
+      cloud: { cloud: 30, clear: 22, snow: 36, rain: 7, fog: 5 },
+      rain: { rain: 40, cloud: 50, snow: 10 },
+      storm: { rain: 50, cloud: 50 },
+      snow: { snow: 40, blizzard: 30, cloud: 30 },
+      blizzard: { blizzard: 45, snow: 40, cloud: 15 }
+    }
+  };
+  var WX_WET = { rain: 1, storm: 1, snow: 1, blizzard: 1 }, WX_RUN = 56;   // 일주일(56블록)마다 맑음에서 다시 시작
+  function wxStep(W, prev, b, last) {
+    var t = b * R.WX_BLOCK, winter = R.calendar(W, t + 1).mi >= D.WORLD.calendarMonths.length - 2;
+    var tb = Object.assign({}, (winter ? WX_NEXT.winter : WX_NEXT.norm)[prev]), hr = Math.floor(((t + K.TZ) % 86400) / 3600);
+    if (hr < 3 || hr >= 9) { tb.clear = (tb.clear || 0) + (tb.fog || 0); delete tb.fog; }   // 안개는 새벽 · 아침(3~9시)에만
+    if (last) { for (var k in tb) if (WX_WET[k]) { tb.cloud = (tb.cloud || 0) + tb[k]; delete tb[k]; } }   // 다음 블록이 맑음에서 다시 시작하니 비 · 눈은 미리 그친다
+    var tot = 0; for (var k1 in tb) tot += tb[k1];
+    var r = hash32(b * 2654435 + 97) % tot;
+    for (var k2 in tb) { if (r < tb[k2]) return k2; r -= tb[k2]; }
+    return 'clear';
+  }
+  R.wxBlock = function (t) { return Math.floor(t / R.WX_BLOCK); };   // 블록 경계는 한국 시간 0 · 3 · 6 … 시 (K.TZ가 3의 배수 시간)
+  var wxCache = {};
+  R.weatherOf = function (W, b) {   // 블록 b의 날씨 id (하늘 이벤트 무시)
+    var a = Math.floor(b / WX_RUN) * WX_RUN, k = W.epoch + ':' + a, run = wxCache[k];
+    if (!run) {
+      run = ['clear']; for (var i = 1; i < WX_RUN; i++) run.push(wxStep(W, run[i - 1], a + i, i === WX_RUN - 1));
+      var keys = Object.keys(wxCache); if (keys.length > 16) delete wxCache[keys[0]];
+      wxCache[k] = run;
+    }
+    return run[b - a];
+  };
+  R.weatherAt = function (W, t) { if (!W || W.epoch == null) return WX.clear; return R.skyAt(t) ? WX.clear : WX[R.weatherOf(W, R.wxBlock(t))]; };
+  R.weatherNext = function (W, t) {   // 다음에 바뀌는 날씨와 그 시각 (하루 안에서)
+    var b = R.wxBlock(t), cur = R.weatherOf(W, b);
+    for (var i = 1; i <= 8; i++) { var id = R.weatherOf(W, b + i); if (id !== cur) return { w: WX[id], at: (b + i) * R.WX_BLOCK }; }
+    return null;
+  };
+  R.weatherOverlap = function (W, t0, t1) {   // [{w, f}] — 겹친 비율. 하늘 이벤트가 떠 있던 시간은 맑음(효과 없음)
+    var out = [], span = t1 - t0; if (!W || W.epoch == null || !(span >= 0)) return out;
+    if (span <= 0) { var w0 = R.weatherAt(W, t0); if (w0.id !== 'clear') out.push({ w: w0, f: 1 }); return out; }
+    var acc = {}, b0 = R.wxBlock(t0), b1 = Math.min(R.wxBlock(t1), b0 + 400), evs = span < 4 * 86400 ? R.skyOverlap(t0, t1).map(function (o) { return o.ev; }) : [];
+    for (var b = b0; b <= b1; b++) {
+      var id = R.weatherOf(W, b); if (id === 'clear') continue;
+      var s = Math.max(b * R.WX_BLOCK, t0), e = Math.min((b + 1) * R.WX_BLOCK, t1), len = Math.max(0, e - s);
+      evs.forEach(function (ev) { len -= Math.max(0, Math.min(ev.end, e) - Math.max(ev.start, s)); });
+      if (len > 0) acc[id] = (acc[id] || 0) + len / span;
+    }
+    for (var id2 in acc) out.push({ w: WX[id2], f: acc[id2] });
+    return out;
+  };
+
   /* ───────── 별샘 의식 (서버 전체가 함께 채우는 하루 목표) ───────── */
   R.RITUAL_BUFF = { name: '별샘의 축복', eff: { xpPct: 0.15, knowPct: 0.15, goldPct: 0.1 }, dur: 4 * 3600, color: '#9fd8ff', text: '4시간 동안 경험치·지식 +15%, ' + CUR + ' +10%' };
   R.ritualGoal = function (active) { return Math.max(5, Math.ceil((active || 0) * 0.35)); };
@@ -317,6 +395,7 @@
       if (R.scholarship(P, W, t0)) addEff(b, R.SCHOLAR_EFF);
       var wf = weekendFrac(t0, t1); if (wf > 0) addEff(b, D.WEEKEND.eff, wf);
       R.skyOverlap(t0, t1).forEach(function (o) { addEff(b, o.ev.eff, o.f); });
+      R.weatherOverlap(W, t0, t1).forEach(function (o) { addEff(b, o.w.eff, o.f); });   // 날씨
     }
     for (var s in P.eq) {
       var it = P.eq[s]; if (!it) continue;
