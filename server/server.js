@@ -1206,7 +1206,7 @@ routes['POST /api/tower'] = async (req, res) => {
         if (skipped.length) chat.system('party', skipped.join(', ') + ' 님은 이번 주에 다른 파티에서 이미 ' + f + '층 이상의 보상을 받아 이번 보상은 건너뜁니다.', Date.now() / 1000, party);
         chat.system('party', '✦ ' + P.name + ' 님이 별의 탑 ' + f + '층을 넘었습니다! 파티원 모두에게 보상 우편이 갔습니다.', Date.now() / 1000, party);
       });
-      R.log(P, now, '별의 탑 ' + f + '층 돌파', 'good');
+      later(() => { const Q = store.get(me); if (Q) { R.log(Q, nowSec(), '별의 탑 ' + f + '층 돌파', 'good'); store.markDirty(me); } });   // 활동 기록도 대본이 끝난 뒤에
     } else {
       later(() => chat.system('party', P.name + ' 님이 별의 탑 ' + f + '층에 도전했지만 물러났습니다 (' + Math.round((1 - r.mHp) * 100) + '%)', Date.now() / 1000, party));
     }
