@@ -1731,3 +1731,23 @@ mark.hl { color: inherit; background: linear-gradient(transparent 38%, color-mix
 .auchd:hover { border-color: var(--line); }
 .auchd .chev { margin-left: 0; }
 .auchd .chev.up { transform: rotate(-135deg) translate(-2px, -2px); }
+/* 거래소 팔기: 고른 종류만 */
+.mksells:not([data-sel="all"]) > .card { display: none; }
+.mksells[data-sel="item"] > .card[data-sk="item"], .mksells[data-sel="mat"] > .card[data-sk="mat"], .mksells[data-sel="pot"] > .card[data-sk="pot"], .mksells[data-sel="tok"] > .card[data-sk="tok"], .mksells[data-sel="badge"] > .card[data-sk="badge"] { display: block; }
+.mksells:not(.grid) > .card + .card { margin-top: 12px; }
+/* 거래소 팔기 줄: 좌측 이름 · 요약 · 시세 한 줄, 우측 수량 · 가격 · 올리기 (좁으면 아래로 한 줄) */
+.mksell { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 14px; align-items: center; padding: 10px 0; }
+.mksl { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.mksl > .small, .mksl > .tiny { min-width: 0; }
+.mksr { display: flex; gap: 6px; align-items: center; flex-wrap: nowrap; justify-content: flex-end; }
+.mksell input.mkprice { width: 120px; } .mksell input.mkqty { width: 72px; }
+.mkpl { display: block; margin-top: 2px; line-height: 1.6; color: var(--muted); }
+.mkpl .num { color: var(--ink2); }
+.mkfill { margin-left: 8px; padding: 0 7px; border: 1px solid var(--line2); border-radius: 6px; background: none; font: inherit; font-size: 11px; color: var(--brass2); cursor: pointer; vertical-align: 1px; }
+.mkfill:hover { border-color: var(--brass); }
+.mksell .mkst { grid-column: 1 / -1; }
+@media (max-width: 640px) {
+  .mksell { grid-template-columns: minmax(0, 1fr); }
+  .mksr { justify-content: stretch; }
+  .mksr input.mkprice { flex: 1; width: auto; min-width: 0; }
+}
