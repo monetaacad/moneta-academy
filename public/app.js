@@ -1421,15 +1421,15 @@
     if (mine) {
       var e = mine.est;
       h += '<div class="erroom mine"><div class="row between"><b>' + mine.s + '단계 <span class="small muted">' + esc(mine.zone) + ' · ' + R.DUR[mine.d].label + '</span></b><span class="small"><b class="num gold" data-erleft="' + mine.id + '">' + erLeftTxt(mine) + '</b></span></div>' +
-        '<div class="ermembers">' + mine.members.map(function (m) { return '<span class="erm' + (m.me ? ' me' : '') + (m.npc ? ' npc' : '') + '"><span class="postag p-' + m.pos + '">' + R.EXP_POS[m.pos].name + '</span>' + erName(m) + (m.host ? ' <span class="tiny faint">방장</span>' : '') + (m.npc ? ' <span class="tiny faint">동행</span>' + (mine.isHost ? '<button class="erx" data-act="ernpcdel" data-a="' + m.k + '" aria-label="돌려보내기">×</button>' : '') : '') + '</span>'; }).join('') +
+        '<div class="ermembers">' + mine.members.map(function (m) { return '<span class="erm' + (m.me ? ' me' : '') + (m.npc ? ' npc' : '') + '"><span class="postag p-' + m.pos + '">' + R.EXP_POS[m.pos].name + '</span>' + erName(m) + (m.host ? ' <span class="tiny faint">방장</span>' : '') + (m.npc ? ' <span class="tiny faint">동행</span>' + (m.mineNpc ? '<button class="erx" data-act="ernpcdel" data-a="' + m.k + '" aria-label="돌려보내기">×</button>' : '') : '') + '</span>'; }).join('') +
         Array(Math.max(0, mine.max - mine.n) + 1).join('<span class="erm empty">빈자리</span>') + '</div>' +
         (e ? '<div class="small" style="margin-top:6px">지금 출정하면 내 몫: 약 ' + fmt(Math.round(e.kills)) + '마리 · <b class="num">' + MONEY(e.gold, '+') + '</b> · 경험치 +' + fmt(e.xp) + ' · <span class="tag ' + (e.risk <= 0.25 ? 'ok' : e.risk <= 0.5 ? 'br' : 'no') + '">' + e.label + '</span>' + '<div class="tiny muted" style="margin-top:2px">몬스터가 나를 노릴 확률 약 ' + Math.round((e.frac || 0) * 100) + '%' + (e.red ? ' · 지원 덕에 받는 피해 −' + Math.round(e.red * 100) + '%' : '') + '</div></div>' : '') +
-        '<p class="tiny faint" style="margin-top:4px">방장이 「지금 출발」을 누르면 출정하며, 4명이 모이면 15초 뒤 자동으로 출정합니다. 인원이 모이지 않으면 아카데미 친구(방장 힘의 60%)를 동행시킬 수 있습니다. 한 명 늘 때마다 각자 몫 +' + Math.round(R.EXP_PARTY_BONUS * 100) + '%.</p>' +
+        '<p class="tiny faint" style="margin-top:4px">방장이 「지금 출발」을 누르면 출정하며, 4명이 모이면 15초 뒤 자동으로 출정합니다. 인원이 모이지 않으면 방에 있는 학생 누구나 아카데미 친구(부른 학생 힘의 60%)를 동행시킬 수 있습니다. 한 명 늘 때마다 각자 몫 +' + Math.round(R.EXP_PARTY_BONUS * 100) + '%.</p>' +
         (mine.n < mine.max && !mine.party ? '<div class="row errec" style="margin-top:8px;gap:6px"><input id="er-note" type="text" name="note-er-note" autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-form-type="other" maxlength="60" placeholder="모집 알림에 한 줄 덧붙이기 (선택 · 60자)" style="flex:1;min-width:140px" value="' + esc(S.erNote || '') + '"><button class="btn sm" data-act="errecruit">모집 알림</button></div>' : '') +
         (mine.n < mine.max ? '<div class="tiny gold" style="margin-top:10px">빈자리 채우기</div><div class="erfill">' +
           (er.party && er.party.can && er.party.n > 1 ? erTile('erbring', 'party', '파티원 함께 참가', '파티원을 이 방에 함께 들입니다') : '') +
           erTile('erinvite', 'mail', '친구 · 동아리원 초대', '초대장을 보내 부릅니다') +
-          (mine.isHost ? erTile('ernpc', 'user', '아카데미 친구 동행', '방장 힘의 60%로 함께 싸웁니다') : '') + '</div>' : '') +
+          erTile('ernpc', 'user', '아카데미 친구 동행', '부른 학생 힘의 60%로 함께 싸웁니다') + '</div>' : '') +
         '<div class="row" style="margin-top:10px;justify-content:flex-end;flex-wrap:wrap"><button class="btn ghost sm" data-act="erleave">나가기</button>' + (mine.isHost ? '<button class="btn primary sm" data-act="ergo">지금 출발</button>' : '<span class="tiny faint">방장이 출발시키면 떠납니다</span>') + '</div></div>';
     } else if (!free) {
       h += '<p class="small muted" style="margin-top:10px">비어 있는 원정 슬롯이 있어야 함께 원정에 참가할 수 있습니다.</p>';
@@ -1454,7 +1454,7 @@
   function erTile(act, ic, name, desc) { return '<button class="ertile" data-act="' + act + '">' + icon(ic) + '<span><b>' + name + '</b><span class="tiny muted">' + desc + '</span></span></button>'; }
   // 함께 원정 이름: 누르면 정보 카드 (동행 NPC는 NPC 카드)
   function erName(m) { return m.npc ? '<button class="cn" data-act="npccard" data-a="' + (+m.k || 0) + '">' + esc(m.name) + '</button>' : m.id ? '<button class="cn" data-act="prof" data-a="' + esc(m.id) + '">' + esc(m.name) + '</button>' : esc(m.name); }
-  ACT.npccard = function (k) { var r = D.RIVALS[+k]; if (!r) return; modal(mhead(esc(r.name), esc(r.who) + ' · 아카데미 친구 (NPC)') + '<p class="small muted">아카데미에 사는 가상의 학생입니다. 함께 원정에 동행하면 방장 힘의 60%로 싸웁니다.</p><p style="margin-top:10px;font-style:italic;color:var(--ink2)">“' + esc(r.hello) + '”</p>'); };
+  ACT.npccard = function (k) { var r = D.RIVALS[+k]; if (!r) return; modal(mhead(esc(r.name), esc(r.who) + ' · 아카데미 친구 (NPC)') + '<p class="small muted">아카데미에 사는 가상의 학생입니다. 함께 원정에 동행하면 부른 학생 힘의 60%로 싸웁니다.</p><p style="margin-top:10px;font-style:italic;color:var(--ink2)">“' + esc(r.hello) + '”</p>'); };
   function erOp(o, msg) {
     if (S.erBusy2) return; S.erBusy2 = true;
     return API.expRoom(o).then(function (j) { S.erBusy2 = false; if (j.error) { toast('함께 원정', j.error); return; } if (msg) toast('함께 원정', msg); erPartyToast(j); erAbsorb(j); render(); }, function () { S.erBusy2 = false; });
@@ -3026,7 +3026,7 @@
   function ptTeam(j, i) {
     var st = ptState(j);
     return '<div class="ptteam" data-pt="' + i + '" style="height:' + (j.pt.team.length * PT_ROW) + 'px">' + j.pt.team.map(function (m, k) {
-      var me = k === j.pt.me, x = st[k], meta = m.npc ? '동행 · 방장 힘의 60%' : [(m.grade >= 8 ? '마스터' : (m.grade || 1) + '학년'), 'Lv ' + (m.lvl || 1), R.CLS[m.cls] ? R.CLS[m.cls].name : ''].filter(Boolean).join(' · '), pw = !m.npc && m.power ? '전투력 ' + fmt(m.power) : '';
+      var me = k === j.pt.me, x = st[k], meta = m.npc ? '동행 · 부른 학생 힘의 60%' : [(m.grade >= 8 ? '마스터' : (m.grade || 1) + '학년'), 'Lv ' + (m.lvl || 1), R.CLS[m.cls] ? R.CLS[m.cls].name : ''].filter(Boolean).join(' · '), pw = !m.npc && m.power ? '전투력 ' + fmt(m.power) : '';
       var nm = m.npc ? '<button class="cn" data-act="npccard" data-a="' + (+m.k || 0) + '">' + esc(m.name) + '</button>' : m.id ? '<button class="cn" data-act="prof" data-a="' + esc(m.id) + '">' + esc(m.name) + '</button>' : esc(m.name);
       return '<div class="ptm' + (me ? ' me' : '') + '" data-k="' + k + '" style="transform:translateY(' + (x.rank * PT_ROW) + 'px)"><span class="ptr num">' + (x.rank + 1) + '</span><span class="postag p-' + m.pos + '">' + R.EXP_POS[m.pos].name + '</span>' +
         '<span class="ptn">' + nm + ' <span class="tiny faint ptmeta">' + esc(meta) + (pw ? '<span class="ptpw"><span class="ptsep"> · </span>' + pw + '</span>' : '') + '</span></span>' +
@@ -4554,7 +4554,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102070;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102071;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

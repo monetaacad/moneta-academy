@@ -1,7 +1,7 @@
 'use strict';
 // 함께 원정 방: 서버 메모리에 두고 10초마다(바뀌었을 때만) · 끌 때 DB에 적어 둔다. 서버를 다시 켜도(새 버전 배포) 방이 그대로 이어진다.
 // 방장이 「지금 출발」을 누르면 떠난다(혼자여도 됨). 4명이 차면 15초 뒤 저절로 떠난다.
-// 사람이 안 모이면 방장이 아카데미 친구(NPC)를 동행시킬 수 있다. 방 사람이 모두 접속을 끊은 채 2시간이 지나면 방이 닫힌다.
+// 사람이 안 모이면 방 사람 누구나 아카데미 친구(NPC)를 동행시킬 수 있다(부른 학생 힘의 60%, 부른 학생이 나가면 방장 기준). 방 사람이 모두 접속을 끊은 채 2시간이 지나면 방이 닫힌다.
 const R = require('../shared/rules.js');
 
 const FULL_WAIT = 15, IDLE = 7200, MAX_ROOMS = 80, NPC_F = R.NPC_FRAC.exp;
@@ -39,11 +39,14 @@ function create(o) {
     const ps = people(r);
     if (!ps.length) rooms.delete(id); else if (r.host === me) r.host = ps[0].id;
   }
-  // 사람마다 계산값: NPC는 방장 힘의 60%
+  // NPC를 부른 학생: 방에 남아 있으면 그 학생, 나갔으면 방장
+  const npcBy = (r, m) => (m.by && r.members.some((x) => !x.npc && x.id === m.by) ? m.by : r.host);
+  // 사람마다 계산값: NPC는 부른 학생 힘의 60%
   function stats(r) {
-    const now = gameNow(), W = ctx(), host = loadPlayer(r.host, now), hc = host ? R.calc(host, W, now) : null;
+    const now = gameNow(), W = ctx(), cs = {};
+    const base = (id) => { if (!(id in cs)) { const Q = loadPlayer(id, now); cs[id] = Q ? R.calc(Q, W, now) : null; } return cs[id]; };
     return r.members.map((m) => {
-      if (m.npc) { if (!hc) return null; const c = Object.assign({}, hc, { totalDps: hc.totalDps * NPC_F, hp: hc.hp * NPC_F, def: hc.def * NPC_F }); return { c, pos: m.pos, aggro: R.EXP_AGGRO }; }
+      if (m.npc) { const hc = base(npcBy(r, m)); if (!hc) return null; const c = Object.assign({}, hc, { totalDps: hc.totalDps * NPC_F, hp: hc.hp * NPC_F, def: hc.def * NPC_F }); return { c, pos: m.pos, aggro: R.EXP_AGGRO }; }
       const P = loadPlayer(m.id, now); if (!P) return null;
       return { c: R.calc(P, W, now), pos: m.pos, aggro: R.expAggro(P), P };
     });
@@ -52,7 +55,7 @@ function create(o) {
   function view(r, me) {
     const t = real(), mine = r.members.some((m) => m.id === me), hostM = r.members.find((m) => m.id === r.host) || r.members[0];
     const v = { id: r.id, s: r.s, zone: R.zoneOf(r.s).name, d: r.d, party: !!r.party, host: hostM.name, isHost: r.host === me, mine,
-      members: r.members.map((m) => ({ id: m.npc ? undefined : m.id, name: m.name, pos: m.pos, me: m.id === me, host: m.id === r.host, npc: !!m.npc, k: m.npc ? m.k : undefined, cls: m.cls, lvl: m.lvl, grade: m.grade, power: m.npc ? Math.round((hostM.power || 0) * NPC_F) : m.power })), n: r.members.length, max: R.EXP_PARTY_MAX,
+      members: r.members.map((m) => ({ id: m.npc ? undefined : m.id, name: m.name, pos: m.pos, me: m.id === me, host: m.id === r.host, npc: !!m.npc, k: m.npc ? m.k : undefined, cls: m.cls, lvl: m.lvl, grade: m.grade, power: m.npc ? Math.round(((r.members.find((x) => !x.npc && x.id === npcBy(r, m)) || hostM).power || 0) * NPC_F) : m.power, mineNpc: m.npc ? (r.host === me || npcBy(r, m) === me) : undefined })), n: r.members.length, max: R.EXP_PARTY_MAX,
       departIn: r.fullAt ? Math.max(0, Math.ceil(r.fullAt + FULL_WAIT - t)) : null };
     if (mine) {   // 내 방이면 지금 이대로 떠날 때 내 예상
       const st = stats(r), mi = r.members.findIndex((m) => m.id === me);
@@ -148,19 +151,19 @@ function create(o) {
       if (o.note) o.note(to, 'exp', P.name + ' 님이 함께 원정(' + r.s + '단계 · ' + R.zoneOf(r.s).name + ')에 초대했습니다', { view: 'explore', anchor: 'exproom' });
       return { ok: true, invited: nameOf(to) };
     }
-    if (k === 'npc') {   // 방장: 아카데미 친구 동행 (빈 포지션부터 채운다)
-      if (r.host !== me) fail('방장만 동행을 부를 수 있습니다');
+    if (k === 'npc') {   // 방 사람 누구나: 아카데미 친구 동행 (빈 포지션부터 채운다, 부른 학생 힘의 60%)
       if (r.members.length >= R.EXP_PARTY_MAX) fail('방이 가득 찼습니다');
       const used = new Set(); rooms.forEach((x) => x.members.forEach((m) => { if (m.npc && x === r) used.add(m.k); }));
       const n = NPCS.filter((x) => !used.has(x.k)); if (!n.length) fail('부를 수 있는 아카데미 친구가 없습니다');
       const pick = n[(r.members.length * 7 + seq) % n.length], have = new Set(r.members.map((m) => m.pos));
       const pos = R.EXP_POS[b.pos] ? String(b.pos) : !have.has('van') ? 'van' : !have.has('sup') ? 'sup' : 'rear';
-      r.members.push({ id: 'npc:' + pick.k, npc: true, k: pick.k, name: pick.name, pos }); full(r); r.touched = real();
+      r.members.push({ id: 'npc:' + pick.k, npc: true, k: pick.k, name: pick.name, pos, by: me }); full(r); r.touched = real();
       return { ok: true };
     }
     if (k === 'npcdel') {
-      if (r.host !== me) fail('방장만 동행을 돌려보낼 수 있습니다');
-      r.members = r.members.filter((m) => !(m.npc && m.k === Number(b.k))); full(r); r.touched = real(); return { ok: true };
+      const nm = r.members.find((m) => m.npc && m.k === Number(b.k)); if (!nm) return { ok: true };
+      if (r.host !== me && npcBy(r, nm) !== me) fail('방장이나 동행을 부른 학생만 돌려보낼 수 있습니다');
+      r.members = r.members.filter((m) => m !== nm); full(r); r.touched = real(); return { ok: true };
     }
     if (k === 'go') { if (r.host !== me) fail('방장만 출발시킬 수 있습니다'); const res = depart(r); return Object.assign({ ok: true }, res); }
     fail('알 수 없는 요청입니다');
