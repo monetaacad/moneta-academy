@@ -1974,9 +1974,11 @@
     if (id === 'bagslot' && P.bagExtra >= 60) err('더 늘릴 수 없습니다');
     if (id === 'badgebox' && (P.badges || []).length >= R.BADGE_HOLD) err('휘장 보관함이 가득 찼습니다 (' + R.BADGE_HOLD + '개)');
     if (id === 'ticket' && R.wbBuyLeft(P, now) <= 0) err('이번 주에는 더 살 수 없습니다 (월요일 KST 0시 초기화)');
-    var price = R.shopPrice(P, id), cur = s.cur === 'gold' ? 'gold' : 'shard'; if (P.res[cur] < price) err((cur === 'gold' ? CUR : '별조각') + '가 부족합니다');
-    P.res[cur] -= price; var out = { id: id };
+    var n = s.multi ? (a.n == null ? 1 : int(a.n, 1, s.multi)) : 1;   // 여러 번 한꺼번에 (마석가루 교환 ×100 = 10회)
+    var price = R.shopPrice(P, id) * n, cur = s.cur === 'gold' ? 'gold' : s.cur === 'stone' ? 'stone' : 'shard'; if (P.res[cur] < price) err((cur === 'gold' ? CUR + '가' : cur === 'stone' ? '마석이' : '별조각이') + ' 부족합니다');
+    P.res[cur] -= price; var out = { id: id, n: n };
     if (id === 'stone10') P.res.stone += 10;
+    else if (id === 'dust10') { var dg = s.give.dust * n; P.res.dust = (P.res.dust || 0) + dg; out.dust = dg; }
     else if (id === 'gearbox') { var it = makeItem(P, pick(P, D.SLOTS).id, R.rewardIlvl(P), Math.max(1, rollRarity(P, calc(P, W, now).rarity + 0.4)), 1); out.item = { name: it.name, r: it.r, res: gainItem(P, it, now) }; }
     else if (id === 'egg') P.fam.eggs++;
     else if (id === 'badgebox') { var nb = makeBadge(P); gainBadge(P, nb, now, '매점 휘장 원석'); out.badge = { name: nb.name, gem: nb.gem }; }
@@ -1985,8 +1987,8 @@
     else if (id === 'bagslot') P.bagExtra += 5;
     else if (id === 'matbox') { var zs = D.ZONES.filter(function (z) { return z.from <= P.maxStage; }); out.mats = {}; for (var i = 0; i < 12; i++) { var z = pick(P, zs); P.mats[z.mat] = (P.mats[z.mat] || 0) + 1; out.mats[z.mat] = (out.mats[z.mat] || 0) + 1; } }
     else if (id === 'respec') { var tk = P.tok || (P.tok = {}); tk.respec = (tk.respec || 0) + 1; out.tok = 'respec'; }   // 소지품으로 (마실 때 「소지품」에서 사용)
-    // 대항전 점수: 별조각 물건은 쓴 별조각만큼, 아르크 물건은 5점. 한 주 CUP_SHOP_WEEK점까지
-    var sc = Math.min(cur === 'shard' ? price : 5, Math.max(0, R.CUP_SHOP_WEEK - (P.wk.shop || 0))); if (sc > 0) { P.wk.shop = (P.wk.shop || 0) + sc; cupAdd(P, sc, 'shop'); }
+    // 대항전 점수: 별조각 물건은 쓴 별조각만큼, 아르크 · 마석 물건은 1회 5점. 한 주 CUP_SHOP_WEEK점까지
+    var sc = Math.min(cur === 'shard' ? price : 5 * n, Math.max(0, R.CUP_SHOP_WEEK - (P.wk.shop || 0))); if (sc > 0) { P.wk.shop = (P.wk.shop || 0) + sc; cupAdd(P, sc, 'shop'); }
     return out;
   };
   // 망각의 차: 분배한 능력치 포인트를 모두 돌려받는다. 다시 직접 나눌 수 있게 자동 분배는 끈다 (켜 두면 곧바로 같은 대로 다시 나뉘므로)
