@@ -139,8 +139,12 @@ function create(dbx, sec, opts) {
       });
     });
   }
+  // 바로 보내는 알림 (경매 밀림 · 마감 임박 등): 그 종류를 켠 기기에만, 방해 금지 시간에는 보내지 않는다
+  function direct(pid, kind, title, body, tag) {
+    subs().filter((s) => s.pid === pid && s.opts.kinds && s.opts.kinds[kind] && !quietNow(s.opts)).forEach((d) => send(d, d.sub, { title, body, tag: tag || kind + '-' + Math.round(nowSec()), url: '/' }));
+  }
   const timer = setInterval(() => { try { tick(); } catch (e) { log('푸시 확인 실패', e); } }, 30000); timer.unref();
 
-  return { publicKey: pub, subscribe, unsubscribe, tick, encrypt, vapidAuth, validEndpoint, count: () => subs().length, stop() { clearInterval(timer); } };
+  return { publicKey: pub, subscribe, unsubscribe, tick, direct, encrypt, vapidAuth, validEndpoint, count: () => subs().length, stop() { clearInterval(timer); } };
 }
 module.exports = { create };
