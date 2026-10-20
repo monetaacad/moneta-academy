@@ -568,7 +568,8 @@ details[open] > summary .chev { transform: rotate(-135deg) translate(-2px, -2px)
 /* ───────── 가이드 ───────── */
 .ibadge.dot { min-width: 9px; width: 9px; height: 9px; padding: 0; top: -3px; right: -3px; }
 .pitem { background: var(--sunk); border: 1px solid var(--line2); border-radius: 10px; padding: 10px 12px; }   /* .gitem은 길드 목록과 이름이 겹친다 */
-.pitem h4 { color: var(--brass2); font-size: 14.5px; }
+.pitem h4 { color: var(--brass2); font-size: 14.5px; margin: 0; }
+.pitem > summary { padding: 2px 0; }
 .pnote { margin: 6px 0 0 18px; display: flex; flex-direction: column; gap: 3px; }
 .pnote.sub { margin-top: 3px; list-style: circle; }
 .pitem .ph { margin: 10px 0 0; font-size: 13.5px; color: var(--ink); }

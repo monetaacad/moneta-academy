@@ -2900,10 +2900,11 @@
     var L = D.PATCH || [], top = L[0];
     if (top) { S.patchSeen = top.id; try { localStorage.setItem('arc_patchseen', String(top.id)); } catch (e) { } var b = $('#patchbadge'); if (b) b.hidden = true; }
     modal(mhead('업데이트 노트', '아카데미에 새로 추가되거나 변경된 내용입니다') +
-      (L.length ? '<div class="glist">' + L.map(function (n) {
-        return '<div class="pitem"><h4>' + esc(n.title) + ' <span class="tiny faint num">' + esc(n.date) + '</span></h4>' + (n.groups || [{ items: n.items || [] }]).map(function (g) {
+      (L.length ? '<div class="glist">' + L.map(function (n, i) {
+        var fk = 'patch' + n.id, open = FOLD[fk] != null ? FOLD[fk] : i === 0;   // 처음에는 최신 노트만 펼친다 · 접은 상태는 기억
+        return '<details class="fold pitem" data-fold="' + fk + '"' + (open ? ' open' : '') + '><summary><h4>' + esc(n.title) + ' <span class="tiny faint num">' + esc(n.date) + '</span></h4><span class="chev"></span></summary>' + (n.groups || [{ items: n.items || [] }]).map(function (g) {
           return (g.h ? '<h5 class="ph">' + esc(g.h) + '</h5>' : '') + '<ul class="pnote">' + g.items.map(function (t) { var o = typeof t === 'string' ? { t: t } : t; return '<li class="small">' + esc(o.t) + (o.sub ? '<ul class="pnote sub">' + o.sub.map(function (x) { return '<li class="small">' + esc(x) + '</li>'; }).join('') + '</ul>' : '') + '</li>'; }).join('') + '</ul>';
-        }).join('') + '</div>';
+        }).join('') + '</details>';
       }).join('') + '</div>' : '<p class="small muted">아직 게시된 업데이트 노트가 없습니다.</p>'), true);
   };
 
@@ -4577,7 +4578,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102076;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102077;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
