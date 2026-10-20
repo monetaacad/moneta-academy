@@ -45,7 +45,7 @@
     var me = P ? [{ id: P.id, name: P.name, house: P.house, power: Rules.summary(P, W, now).power, lvl: P.lvl, grade: P.grade, stage: P.maxStage }] : [];
     return { demo: true, epoch: W.epoch, now: now, week: Rules.weekId(now), weekEnd: Rules.weekStart(Rules.weekId(now) + 1),
       boss: { id: b.id, name: b.name, maxHp: b.maxHp, hp: b.hp, killedAt: b.killedAt, participants: P && P.wk.att ? 1 : 0 },
-      cup: cup, hpts: W.hpts, hfull: W.hfull, topPower: me, topStage: me, topTwK: P && P.st.twK ? [{ id: P.id, name: P.name, house: P.house, f: P.st.twK }] : [], topTwM: P && P.st.twM ? [{ id: P.id, name: P.name, house: P.house, f: P.st.twM }] : [], topDmg: P && P.wk.dmg ? [{ id: P.id, name: P.name, house: P.house, dmg: P.wk.dmg }] : [],
+      cup: cup, hpts: W.hpts, hfull: W.hfull, topPower: me, topStage: me, topLvl: me, topTwK: P && P.st.twK ? [{ id: P.id, name: P.name, house: P.house, f: P.st.twK }] : [], topTwM: P && P.st.twM ? [{ id: P.id, name: P.name, house: P.house, f: P.st.twM }] : [], topDmg: P && P.wk.dmg ? [{ id: P.id, name: P.name, house: P.house, dmg: P.wk.dmg }] : [],
       notices: [{ t: W.epoch, text: '데모 모드입니다. 진행 상황은 이 브라우저에만 저장되며, 월드 보스와 대항전의 다른 학생은 가상입니다.' }], news: (this.d.news || []).slice(0, 20),
       players: 1, online: 1, lastWeek: W.results[Rules.weekId(now) - 1] || null };
   };
@@ -74,7 +74,7 @@
     var now = this._now(); if (!this.d || !this.d.P) return Promise.resolve({ error: '로그인이 필요합니다', _status: 401 });
     var W = this._world(now); Rules.advance(this.d.P, W, now); return this._ok(now);
   };
-  LocalApi.prototype.myRanks = function () { var P = this.d && this.d.P; if (!P) return Promise.resolve({ error: '로그인이 필요합니다' }); return Promise.resolve({ ranks: { power: 1, stage: 1, dmg: P.wk.dmg > 0 ? 1 : null, twK: P.st.twK > 0 ? 1 : null, twM: P.st.twM > 0 ? 1 : null } }); };
+  LocalApi.prototype.myRanks = function () { var P = this.d && this.d.P; if (!P) return Promise.resolve({ error: '로그인이 필요합니다' }); return Promise.resolve({ ranks: { power: 1, stage: 1, lvl: 1, dmg: P.wk.dmg > 0 ? 1 : null, twK: P.st.twK > 0 ? 1 : null, twM: P.st.twM > 0 ? 1 : null } }); };
   LocalApi.prototype.world = function () { var now = this._now(); this._world(now); return Promise.resolve(this._view(now)); };
   LocalApi.prototype.register = function (name, pw, house, code, cls) {
     var now = this._now(); if (!this.d) this.d = { W: { epoch: now, results: {}, cup: {} }, P: null };
