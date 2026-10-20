@@ -241,13 +241,13 @@
     }).join('') + '<div id="sidep" class="sidep"></div>';
     updateBadges(); updateSide();
   }
-  /* ── 왼쪽 안내도 아래: 내 정보 요약 (넓은 화면에서만, 접어 두면 제목 줄만) ── */
+  /* ── 왼쪽 안내도 아래: 내 정보 요약 (접어 두면 제목 줄만). 모바일은 안내도가 하단 바라서 광장 맨 위(#sidep-m)에 같은 내용 ── */
   var SIDE_OPEN = true; try { SIDE_OPEN = localStorage.getItem('arc_side') !== '0'; } catch (e) { }
   function updateSide() {
-    var box = $('#sidep'); if (!box || !S.P) return;
+    var boxes = $$('#sidep, #sidep-m'); if (!boxes.length || !S.P) return;
     var P = S.P, c = C(), h = '<div class="sph"><span class="navtitle">내 정보</span><button class="spt" data-act="sidetog" aria-expanded="' + SIDE_OPEN + '" title="' + (SIDE_OPEN ? '접기' : '펼치기') + '">' + (SIDE_OPEN ? '접기' : '펼치기') + '<span class="chev' + (SIDE_OPEN ? ' up' : '') + '" aria-hidden="true"></span></button></div>';
     if (SIDE_OPEN) {
-      h += '<div class="spb"><div class="spn"><b>' + inkName(P.name, R.decoView(P).ink) + '</b><span class="tiny faint">' + (P.grade >= 8 ? '마스터' : P.grade + '학년') + ' · Lv ' + P.lvl + ' · ' + clsDot(R.clsOf(P).id, 14) + ' ' + R.clsOf(P).name + '</span></div>' +
+      h += '<div class="spb"><div class="spn"><b>' + inkName(P.name, R.decoView(P).ink) + '</b><span class="tiny faint">' + (P.grade >= 8 ? '마스터' : P.grade + '학년') + ' · Lv ' + P.lvl + ' · ' + clsDot(R.clsOf(P).id, 14) + ' ' + R.clsOf(P).name + '</span>' + xpBar(P, 4) + '</div>' +
         '<button class="sphouse" data-tip="house" tabindex="0" aria-label="기숙사 혜택 보기">' + houseDot(P.house, 16) + '<span>' + house().name + '</span><span class="tiny faint">' + house().latin + '</span></button>' +
         '<dl class="spk"><dt>전투력</dt><dd class="gold">' + fmt(c.power) + (S.rank ? ' <span class="tiny faint">· ' + S.rank + '위</span>' : '') + '</dd><dt>초당 피해</dt><dd>' + fmt(c.totalDps) + '</dd><dt>생명력</dt><dd>' + fmt(c.hp) + '</dd><dt>방어력</dt><dd>' + fmt(c.def) + '</dd></dl>' +
         '<div class="spstat">' + R.STATS.map(function (k) { return '<span><i>' + D.STAT_NAMES[k] + '</i><b class="num">' + fmt(c.stat[k]) + '</b></span>'; }).join('') + '</div>' +
@@ -256,7 +256,7 @@
         (R.badgeWorn(P) ? (function (b) { return '<div class="tiny muted spfam">휘장 · <span style="color:' + R.GEM[b.gem].color + '">' + esc(b.name) + '</span> Lv ' + b.lv + '</div>'; })(R.badgeWorn(P)) : '') +
         (P.fam.act && R.FAM[P.fam.act] ? '<div class="tiny muted spfam">동행 · ' + R.FAM[P.fam.act].name + ' Lv ' + P.fam.own[P.fam.act].lv + '</div>' : '') + '</div>';
     }
-    if (box.__h !== h) { box.__h = h; box.innerHTML = h; }
+    boxes.forEach(function (box) { if (box.__h !== h) { box.__h = h; box.innerHTML = h; } });
   }
   function groupTabs() {
     var g = groupOf(S.view); if (g.tabs.length < 2) return '';
@@ -742,7 +742,7 @@
       var WHERE = { equip: '바로 장착했습니다', bag: '장비 가방에 넣었습니다', sold: '가방이 가득 차 판매했습니다', dis: '자동 분해했습니다', mail: '가방이 가득 차 우편함으로 보냈습니다' };
       setTimeout(function () {
         modal(mhead('받은 보상', '우편') + (its.length ? '<div class="section-t">장비 <span class="tiny faint">(장비 상자는 받는 순간 열립니다)</span></div><ul class="report" style="margin-top:4px">' + its.map(function (x) { return '<li><b style="color:' + rcol(x.r || 0) + '">' + esc(x.name) + '</b> — ' + (WHERE[x.res] || '받았습니다') + '</li>'; }).join('') + '</ul>' : '') +
-          (egg ? '<p class="small" style="margin-top:10px">환수의 알 · 토벌 도전권 · 망각의 차는 「장비 → 소지품」에 들어갔습니다. 소지품에서 바로 쓰거나 해당 화면으로 갈 수 있습니다.</p>' : '') +
+          (egg ? '<p class="small" style="margin-top:10px">환수의 알 · 토벌 도전권 · 망각의 차는 「장비 → 소지품」에 들어갔습니다. 소지품에서 바로 사용하거나 해당 화면으로 이동할 수 있습니다.</p>' : '') +
           '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px">' + (egg ? '<button class="btn" data-act="invgo">소지품에서 보기</button>' : '') + (its.length ? '<button class="btn" data-act="goto" data-a="gear">장비 화면으로</button>' : '') + '<button class="btn primary" data-act="modal-close">확인</button></div>');
       }, 200);
     }
@@ -942,13 +942,19 @@
   /* ── 아카데미 광장 ── */
   var ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
   function storyUnread() { var P = S.P; return P.story < Math.min(P.grade, 8); }
+  // 경험치 바 + 그 아래 현재 / 다음 레벨까지 필요한 경험치
+  function xpBar(P, mt) {
+    var need = R.xpNeed(P.lvl), pct = Math.min(100, P.xp / need * 100);
+    return '<div class="bar brass" style="margin-top:' + mt + 'px;height:5px" role="progressbar" aria-label="경험치" aria-valuenow="' + Math.floor(P.xp) + '" aria-valuemax="' + need + '"><b style="width:' + pct.toFixed(1) + '%"></b></div>' +
+      '<div class="tiny muted xpnum"><span>경험치</span><span class="num">' + fmt(Math.floor(P.xp)) + ' / ' + fmt(need) + ' (' + pct.toFixed(1) + '%)</span></div>';
+  }
   function meCard() {
     var P = S.P, me = S.me || { id: P.id, name: P.name, house: P.house, av: 0 };
     var h = '<div class="card mecard"><div class="row" style="gap:12px;flex-wrap:nowrap"><button class="avbtn" id="mecard-av" data-act="me" data-a="view" aria-label="내 정보 편집">' + avatarHtml(me, 64) + '</button>' +
       '<div style="flex:1;min-width:0">' + (P.title ? '<div class="pttl">' + esc(R.titleName(P, P.title)) + '</div>' : '') + '<div class="row" style="gap:6px"><h3 style="margin:0">' + esc(P.name) + '</h3><span class="tiny faint">' + R.gradeLabel(P) + ' · Lv ' + P.lvl + '</span></div>' +
       '<div class="small mestatus">' + (me.status ? esc(me.status) : '<span class="faint">한 줄 소개 없음</span>') + '</div>' +
       '<div class="tiny muted" style="margin-top:2px"><span data-tip="power" tabindex="0" class="tipline">전투력 <b class="num gold" data-l="power"></b></span> · ' + S.rank + '위</div></div></div>' +
-      '<div class="bar brass" style="margin-top:10px;height:5px"><b style="width:' + (P.xp / R.xpNeed(P.lvl) * 100).toFixed(1) + '%"></b></div>' +
+      xpBar(P, 10) +
       (P.pts > 0 ? '<div class="row" style="margin-top:10px"><span class="small gold">분배할 능력치 ' + P.pts + '점</span><span class="spacer"></span><button class="btn sm primary" data-act="nav" data-a="gear">분배하기</button></div>' : '') + '</div>';
     return h;
   }
@@ -1045,6 +1051,7 @@
   V.home = function () {
     var P = S.P, cal = R.calendar(wctx(), now());
     var h = pageHead('아카데미력 ' + cal.year + '년 ' + cal.month + ' ' + cal.d + '일' + (cal.weekend ? ' · 주말' : ''), '<span class="phimg">' + dotImg('plaza', 40, '', 'twimg') + '아카데미 광장</span>', house().name + ' · ' + R.gradeLabel(P));
+    h += '<div id="sidep-m" class="sidep sidep-m card"></div>';   // 모바일만: 좌측 「내 정보」 요약과 같은 내용
     h += mqCard() + plazaScene() + noticeTicker();
     var storyH = '';
     if (storyUnread()) { var ch = D.STORY[P.story]; storyH = '<div class="card chapter hl"><div class="roman">' + ROMAN[P.story + 1] + '</div><div class="eyebrow tiny gold">새 이야기</div><h3>' + ch.title + '</h3><p class="small muted">읽고 나면 「세계관」에서 언제든 다시 볼 수 있습니다.</p><div class="row" style="margin-top:8px"><button class="btn primary sm" data-act="story" data-a="' + P.story + '">읽기</button></div></div>'; }
@@ -3251,7 +3258,7 @@
     board: [['.page-head', '게시판', '말머리를 골라 글을 씁니다. 「관리자만 보기」로 쓰면 운영진에게 문의 · 건의 · 신고를 보낼 수 있습니다.']],
     auction: [['.page-head', '떠돌이 상인', '매일 낮 12시와 밤 8시에 2시간 동안 귀한 장비 세 점을 경매합니다. 더 높은 입찰이 나오면 입찰한 ' + CUR + '를 즉시 돌려받습니다.']],
     market: [['#view .tabs', '거래소', '「사기」에서 다른 학생의 물건을 사고, 「팔기」에서 내 물건을 올립니다. 「팔기」에는 최근 시세가 표시됩니다.']],
-    gear: [['h:장비 살펴보기', '장비', '장착 칸이나 가방의 장비를 누르면 능력치와 강화 · 재련 · 분해 · 잠금 메뉴가 표시됩니다.'], ['[data-anchor="bag"]', '가방 · 소지품', '초록 ▲ 표시는 현재보다 전투력이 오르는 장비입니다. 「소지품」 탭에는 환수의 알 · 토벌 도전권 · 물약 · 망각의 차가 모이며, 바로 쓰거나 해당 화면으로 갈 수 있습니다.'], ['h:능력치', '능력치', '레벨업 포인트를 직접 분배하거나, 자동 분배를 켜고 프리셋을 고를 수 있습니다.'], ['[data-anchor="badge"]', '아카데미 휘장', '달고 있는 휘장 하나만 효과가 있으며, 원정 · 수업 · 전투에서 별빛을 모아 성장합니다.']],
+    gear: [['h:장비 살펴보기', '장비', '장착 칸이나 가방의 장비를 누르면 능력치와 강화 · 재련 · 분해 · 잠금 메뉴가 표시됩니다.'], ['[data-anchor="bag"]', '가방 · 소지품', '초록 ▲ 표시는 현재보다 전투력이 오르는 장비입니다. 「소지품」 탭에는 환수의 알 · 토벌 도전권 · 물약 · 망각의 차가 모이며, 바로 사용하거나 해당 화면으로 이동할 수 있습니다.'], ['h:능력치', '능력치', '레벨업 포인트를 직접 분배하거나, 자동 분배를 활성화하고 프리셋을 선택할 수 있습니다.'], ['[data-anchor="badge"]', '아카데미 휘장', '달고 있는 휘장 하나만 효과가 있으며, 원정 · 수업 · 전투에서 별빛을 모아 성장합니다.']],
     work: [['h:연금술', '연금술', '재료와 마나로 물약을 즉시 만듭니다. 물약 효과는 마신 뒤 현실 시간으로 흐릅니다.'], ['h:사역마', '사역마', '환수의 알을 부화시켜 동행하거나 파견을 보냅니다. 동행 중인 사역마는 능력치를 올려 줍니다.']],
     shop: [['.page-head', '매점', '별조각과 ' + CUR + '로 환수의 알 · 가방 확장 · 휘장 원석 등을 구입합니다.']],
     rec: [['h:업적', '기록실', '업적 · 칭호 도감 · 몬스터 도감 · 통계를 확인합니다. 업적을 달성하면 별조각을 받습니다.']]
@@ -3908,7 +3915,7 @@
     stopLoop(); chatDisconnect();
     var server = API.mode === 'server', M = S.meta || {};
     var redo = !!(S.P && S.P.needCreate);   // 운영진이 캐릭터를 초기화한 계정: 이름 · 기숙사 · 학과만 새로 정한다
-    var tabs = redo ? [['recreate', '새 학생 만들기']] : server ? [['login', '로그인'], ['signup', '가입']] : [['guest', '바로 입학']];   // 서버판에는 게스트가 없다. '바로 입학'은 아티팩트 미리보기에서만
+    var tabs = redo ? [['recreate', '새 학생 만들기']] : server ? [['login', '로그인'], ['signup', '가입'], ['findid', '아이디 찾기']] : [['guest', '바로 입학']];   // 서버판에는 게스트가 없다. '바로 입학'은 아티팩트 미리보기에서만
     var tab = S.authTab && tabs.some(function (t) { return t[0] === S.authTab; }) ? S.authTab : tabs[0][0];
     var h = '<div class="body" style="grid-template-columns:minmax(0,1fr)"><main><div class="intro"><img class="crestbig" src="' + LOGO_URL + '" width="96" height="96" alt=""><h1>모네타 아카데미</h1>' +
       '<p class="lede">별의 종의 울림을 듣는 아이에게만 초대장이 날아드는 곳. 입학 열차 칼리오페호를 타고 구름섬 라디아로, 모든 학생이 같은 시간을 살아가는 아카데미에 오신 것을 환영합니다.</p>';
@@ -3926,15 +3933,21 @@
       if (M.inviteRequired !== false) h += '<div class="field"><label for="a-code">초대코드</label><input id="a-code" maxlength="20" placeholder="ARC-XXXX-XXXX" autocapitalize="characters" spellcheck="false" style="font-family:var(--f-num);letter-spacing:.06em"><span class="tiny faint">초대코드는 아카데미 운영진에게 받을 수 있습니다.</span></div>';
     }
     if (tab === 'guest') h += nameField();
+    if (tab === 'findid') {   // 학생 이름 + 비밀번호로 아이디 확인. 기록이 없는 예전 학생은 새 아이디를 정한다
+      h += '<p class="small muted">학생 이름과 비밀번호를 넣으면 아이디를 알려 드립니다.</p>' +
+        '<div class="field"><label for="a-name">학생 이름</label><input id="a-name" maxlength="12" autocomplete="off" value="' + esc(S.authName || '') + '"></div>' +
+        '<div class="field"><label for="a-pw">비밀번호</label><input id="a-pw" type="password" maxlength="72" autocomplete="current-password"></div>';
+      if (S.findNew) h += '<div class="field"><label for="a-nid">새 아이디</label><input id="a-nid" maxlength="20" placeholder="영문·숫자·밑줄(_) 4~20자" autocomplete="username" autocapitalize="none" spellcheck="false"><span class="tiny faint">이 학생은 아이디 기록이 없습니다. 새 아이디를 정하면 앞으로 새 아이디와 지금 비밀번호로 로그인합니다.</span></div>';
+    }
     h += '</form>';
     var HW = M.houses ? { hpts: M.houses.pts, hfull: M.houses.full } : M.world || null;
-    if (tab !== 'login') h += '<div><div class="section-t">기숙사 선택</div><p class="small muted" style="margin-bottom:10px">기숙사는 바꿀 수 없습니다. 매주 기숙사 대항전에서 함께 겨룹니다. 기숙사 혜택은 처음에 1/10만 받고, 기숙사 학생들이 활동할수록 최대 값까지 커집니다. 혜택은 지금 받는 값 / 최대 값입니다.</p>' + glossCard() + '<div class="housepick">' + D.HOUSES.map(function (hh) {
+    if (tab !== 'login' && tab !== 'findid') h += '<div><div class="section-t">기숙사 선택</div><p class="small muted" style="margin-bottom:10px">기숙사는 바꿀 수 없습니다. 매주 기숙사 대항전에서 함께 겨룹니다. 기숙사 혜택은 처음에 1/10만 받고, 기숙사 학생들이 활동할수록 최대 값까지 커집니다. 혜택은 지금 받는 값 / 최대 값입니다.</p>' + glossCard() + '<div class="housepick">' + D.HOUSES.map(function (hh) {
       return '<button data-act="ihouse" data-a="' + hh.id + '" class="' + (S.ihouse === hh.id ? 'on' : '') + '"><span class="hhead">' + dotImg(hh.id + '_big', 72, hh.name + ' 문장', 'hdot hbig') + '<span class="hn" style="color:' + hh.color + '">' + hh.name + ' <span class="faint small">' + hh.latin + '</span></span></span><span class="hm">“' + hh.motto + '”</span><span class="small muted">' + hh.desc + '</span>' + houseGrow(hh.id, HW) + '</button>';
     }).join('') + '</div></div>';
-    if (tab !== 'login') h += '<div><div class="section-t">학과 선택</div><p class="small muted" style="margin-bottom:10px">싸우는 방식입니다. 입학한 뒤에는 전과시험을 봐서 바꿀 수 있습니다.</p><div class="housepick clspick">' + D.CLASSES.map(function (x) {
+    if (tab !== 'login' && tab !== 'findid') h += '<div><div class="section-t">학과 선택</div><p class="small muted" style="margin-bottom:10px">싸우는 방식입니다. 입학한 뒤에는 전과시험을 봐서 바꿀 수 있습니다.</p><div class="housepick clspick">' + D.CLASSES.map(function (x) {
       return '<button data-act="icls" data-a="' + x.id + '" class="' + (S.icls === x.id ? 'on' : '') + '"><span class="hhead">' + clsDot(x.id, 40) + '<span class="hn">' + x.name + '</span></span><span class="small muted">' + x.desc + '</span><span class="hb gold">' + x.bonusText + '</span><span class="tiny faint">잘 맞는 자리: ' + x.pos + ' · 전용 수업: ' + x.subj + ' · 전용 주문: ' + x.spells + '</span></button>';
     }).join('') + '</div></div>';
-    var btn = { login: '로그인', signup: '가입하고 입학하기', guest: '입학하기', recreate: '새 학생으로 입학하기' }[tab];
+    var btn = { login: '로그인', signup: '가입하고 입학하기', guest: '입학하기', recreate: '새 학생으로 입학하기', findid: S.findNew ? '새 아이디 정하기' : '아이디 찾기' }[tab];
     h += '<div class="row" style="justify-content:center"><button class="btn primary" data-act="auth-go" data-a="' + tab + '">' + btn + '</button></div><p class="small" id="a-msg" style="text-align:center;min-height:1.4em;color:var(--rose)"></p>';
     h += '</div></main></div>';
     $('#app').innerHTML = h; afterRender();
@@ -3943,14 +3956,26 @@
     $('#authform').addEventListener('submit', function (e) { e.preventDefault(); go(); });
     $$('#authform input').forEach(function (i) { i.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); go(); } }); });
   }
-  ACT.authtab = function (t) { var n = $('#a-name'), i = $('#a-id'); if (n) S.authName = n.value; if (i) S.authId = i.value; S.authTab = t; authScreen(); };
+  ACT.authtab = function (t) { var n = $('#a-name'), i = $('#a-id'); if (n) S.authName = n.value; if (i) S.authId = i.value; S.authTab = t; S.findNew = false; authScreen(); };
   ACT.ihouse = function (id) { S.ihouse = id; $$('.housepick:not(.clspick) button').forEach(function (b) { b.classList.toggle('on', b.dataset.a === id); }); };
   ACT.icls = function (id) { S.icls = id; $$('.clspick button').forEach(function (b) { b.classList.toggle('on', b.dataset.a === id); }); };
   ACT['auth-go'] = function (tab) {
     var name = $('#a-name') ? $('#a-name').value.trim() : '', id = $('#a-id') ? $('#a-id').value.trim() : '', pw = $('#a-pw') ? $('#a-pw').value : '', msg = $('#a-msg');
     if ($('#a-name')) S.authName = name; if ($('#a-id')) S.authId = id;
-    function done(j) { if (j.error) { msg.textContent = j.error; return; } absorb(j); if (S.P && S.P.needCreate) { S.authName = ''; authScreen(); return; } start(); if (tab === 'login') afterSync(); else if (!PREF.tutDone) { S.onbChain = true; onbGuide(0, true); } else { S.afterClose = function () { if (S.view !== 'home') ACT.nav('home'); ACT.mqscene('intro'); }; ACT.story(0); } }
+    function done(j) { if (j.error) { msg.textContent = j.error; return; } absorb(j); if (S.P && S.P.needCreate) { S.authName = ''; authScreen(); return; } start(); if (tab === 'login') { afterSync(); if (j.pwTemp) setTimeout(function () { ACT.settings(); setTimeout(function () { var o = $('#pw-old'); if (o) { o.scrollIntoView({ block: 'center' }); o.focus({ preventScroll: true }); } var m = $('#pw-msg'); if (m) m.textContent = '임시 비밀번호로 로그인했습니다. 새 비밀번호로 바꿔 주세요'; }, 300); }, 400); } else if (!PREF.tutDone) { S.onbChain = true; onbGuide(0, true); } else { S.afterClose = function () { if (S.view !== 'home') ACT.nav('home'); ACT.mqscene('intro'); }; ACT.story(0); } }
     if (tab === 'login') { if (!id) { msg.textContent = '아이디 입력 필요'; return; } msg.textContent = '확인 중…'; return API.login(id, pw).then(done); }
+    if (tab === 'findid') {
+      var nid = $('#a-nid') ? $('#a-nid').value.trim() : '';
+      if (!name || !pw) { msg.textContent = '학생 이름과 비밀번호 입력 필요'; return; }
+      if (S.findNew && !/^[A-Za-z0-9_]{4,20}$/.test(nid)) { msg.textContent = '아이디는 영문·숫자·밑줄(_) 4~20자'; return; }
+      msg.textContent = '확인 중…';
+      return API.findId(name, pw, S.findNew ? nid : '').then(function (j) {
+        if (j.error) { msg.textContent = j.error; return; }
+        if (j.needNew) { S.findNew = true; authScreen(); $('#a-pw').value = pw; $('#a-msg').textContent = '아이디 기록이 없습니다. 새 아이디를 정해 주세요'; return; }
+        S.findNew = false; S.authId = j.login; S.authTab = 'login'; authScreen();
+        $('#a-pw').value = pw; var m = $('#a-msg'); m.style.color = 'var(--ink)'; m.textContent = (j.set ? '새 아이디를 정했습니다: ' : '아이디: ') + j.login + ' · 로그인을 누르면 들어갑니다';
+      });
+    }
     if (!S.ihouse) { msg.textContent = '기숙사 선택 필요'; return; }
     if (!S.icls) { msg.textContent = '학과 선택 필요'; return; }
     if (tab === 'signup') {
@@ -4041,7 +4066,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102007;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102012;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

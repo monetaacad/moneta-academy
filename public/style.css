@@ -998,6 +998,7 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 .spb { padding: 8px 8px 4px; display: flex; flex-direction: column; gap: 8px; font-size: 12.5px; }
 .spn { display: flex; flex-direction: column; gap: 1px; }
 .spn b { font-size: 14px; }
+.xpnum { display: flex; justify-content: space-between; gap: 8px; margin-top: 3px; }
 .spk { display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; margin: 0; }
 .spk dt { color: var(--faint); } .spk dd { margin: 0; text-align: right; font-family: var(--f-num); }
 .spstat { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 8px; }
@@ -1008,6 +1009,15 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 .spbtn { background: none; border: 1px dashed var(--line); border-radius: 8px; padding: 5px 6px !important; font-size: 12px; justify-content: center !important; }
 .spfam { padding: 0 4px; }
 @media (max-width: 900px) { .sidep { display: none; } .nav { max-height: none; overflow-y: visible; } }
+/* 모바일: 광장 맨 위 카드. 이름 · 경험치 · 기숙사 · 전투력은 좌측, 능력치 · 장비는 우측 */
+.sidep-m { display: none; }
+@media (max-width: 900px) {
+  .sidep.sidep-m { display: block; margin: 0 0 14px; padding: 10px 12px; border-top: 0; }
+  .sidep-m .spb { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px 14px; padding: 8px 0 2px; }
+  .sidep-m .spn, .sidep-m .sphouse, .sidep-m .spbtn, .sidep-m .spfam { grid-column: 1 / -1; }
+  .sidep-m .speq { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 14px; border-top: 1px solid var(--line2); padding-top: 6px; }
+  .sidep-m .speq button { background: none !important; border: 0 !important; box-shadow: none !important; min-height: 0 !important; padding: 3px 0 !important; text-align: left; }
+}
 
 /* ── 게시판 ── */
 .bdtop { margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px; }
@@ -1430,7 +1440,7 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 .sc-sub { color: #cfd6ee; opacity: .85; }
 @media (max-width: 600px) { .sc-tl { max-width: calc(100% - 16px); } .sc-tr { top: 36px; right: auto; left: 8px; max-width: calc(100% - 16px); } }
 /* 왼쪽 내 정보: 기숙사 (마우스를 올리거나 누르면 혜택) */
-.sphouse { display: flex; align-items: center; gap: 6px; margin: 4px 0 8px; padding: 0; border: 0; background: none; color: inherit; font: inherit; font-size: 13px; cursor: help; }
+.sphouse { display: flex; align-items: center; gap: 6px; margin: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; font-size: 13px; cursor: help; }
 .sphouse .tiny { font-family: var(--f-display); font-style: italic; }
 .sphouse { white-space: nowrap; min-width: 0; max-width: 100%; }
 .sphouse .tiny { overflow: hidden; text-overflow: ellipsis; }

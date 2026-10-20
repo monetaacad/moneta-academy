@@ -64,7 +64,7 @@ function create(store, cfg, log) {
     W.boss = { week, id: def.id, name: def.name, maxHp, hp: maxHp, killedAt: 0, actives: b.actives, round, kills: (b.kills || 0) + 1, paidKills: b.paidKills || 0, dead: (b.dead || 0) + Math.max(0, now - b.killedAt) };
     W.wbAlive = true; kvSet('boss', W.boss); cache.at = 0;
     log(`추가 월드 보스: ${def.name} (${round}번째, 체력 ${R.fmt(maxHp)})`);
-    addNotice(`추가 월드 보스 ${R.josa(def.name, '이', '가')} 나타났습니다! 잡으면 도전한 학생 모두에게 토벌 보상이 또 우편으로 갑니다.`, now, true);
+    addNotice(`추가 월드 보스 ${R.josa(def.name, '이', '가')} 등장했습니다! 토벌에 성공하면 도전한 학생 모두에게 보상이 우편으로 전달됩니다.`, now, true);
     return W.boss;
   }
 

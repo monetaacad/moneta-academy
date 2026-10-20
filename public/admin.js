@@ -91,12 +91,13 @@
     build: function () { api('POST', '/api/admin/build', { build: +$('#bdbuild').value || 0, minBuild: +$('#bdmin').value || 0 }).then(function (j) { toast(j.error || '새 버전을 알렸습니다'); sys(); oplog(); }); },
     opon: function () { var n = $('#un').value.trim(); if (!n) return; api('POST', '/api/admin/ops', { name: n, rank: 'admin' }).then(function (j) { $('#umsg').textContent = j.error || n + ' 님을 학생회(운영진)로 지정했습니다 · 칭호 「학생회」를 낄 수 있습니다'; oplog(); }); },
     opchief: function () { var n = $('#un').value.trim(); if (!n) return; if (!confirm(n + ' 님을 학생회장으로 지정합니다.')) return; api('POST', '/api/admin/ops', { name: n, rank: 'chief' }).then(function (j) { $('#umsg').textContent = j.error || n + ' 님을 학생회장으로 지정했습니다 · 칭호 「학생회장」 · 「학생회」를 낄 수 있습니다'; oplog(); }); },
-    // 이름 ↔ 아이디 확인: 이름 칸이 차 있으면 이름으로, 비어 있으면 아이디로 찾는다
+    // 이름 ↔ 아이디 확인: 이름 칸이 차 있으면 이름으로, 비어 있으면 아이디로 찾는다. 둘 다 넣으면 그 아이디가 맞는지도 대조
     lookup: function () {
       var n = $('#un').value.trim(), lg = $('#ulogin').value.trim(); if (!n && !lg) { $('#umsg').textContent = '학생 이름이나 아이디 입력 필요'; return; }
-      api('POST', '/api/admin/lookup', n ? { name: n } : { login: lg }).then(function (j) {
+      api('POST', '/api/admin/lookup', { name: n, login: lg }).then(function (j) {
         if (j.error) { $('#umsg').textContent = j.error; return; }
-        $('#umsg').textContent = '학생 이름 「' + j.name + '」 · 아이디 ' + (j.login ? '「' + j.login + '」' : '(아직 기록 없음 · 이 학생이 다음에 로그인하면 기록됩니다)') + (j.rank ? ' · ' + j.rank : '') + (j.banned ? ' · 이용 정지' : '');
+        var chk = j.match === true ? ' · 입력한 아이디 「' + lg + '」 일치' : j.match === false ? ' · 입력한 아이디 「' + lg + '」는 이 학생의 아이디가 아닙니다' : '';
+        $('#umsg').textContent = '학생 이름 「' + j.name + '」 · 아이디 ' + (j.login ? '「' + j.login + '」' : '(아직 기록 없음 · 다음 로그인 때 기록 · 아이디 칸에 짐작 아이디를 넣고 조회하면 맞는지 확인 가능)') + chk + (j.rank ? ' · ' + j.rank : '') + (j.banned ? ' · 이용 정지' : '');
       });
     },
     opoff: function () { var n = $('#un').value.trim(); if (!n) return; api('POST', '/api/admin/ops', { name: n, op: false }).then(function (j) { $('#umsg').textContent = j.error || n + ' 님의 운영자 권한을 뗐습니다'; oplog(); }); },
@@ -149,6 +150,18 @@
     },
     mute: function () { api('POST', '/api/admin/mute', { name: $('#un').value.trim(), minutes: +$('#um').value }).then(function (j) { $('#umsg').textContent = j.error || '적용했습니다'; }); },
     grant: function () { api('POST', '/api/admin/grant', { name: $('#un').value.trim(), shard: +$('#ug').value, reason: $('#ur').value }).then(function (j) { $('#umsg').textContent = j.error || '지급했습니다 (보유 ' + j.shard + ')'; }); },
+    // 비밀번호를 잃어버린 학생: 임시 비밀번호 발급 (모든 기기에서 로그아웃 · 로그인하면 바꾸라고 안내)
+    resetpw: function () {
+      var n = $('#un').value.trim(); if (!n) { $('#umsg').textContent = '학생 이름 입력 필요'; return; }
+      if (!confirm('「' + n + '」에게 임시 비밀번호를 발급합니다.\n지금 비밀번호로는 더 이상 로그인할 수 없고, 모든 기기에서 로그아웃됩니다.\n본인이 맞는지 먼저 확인하세요.')) return;
+      api('POST', '/api/admin/resetpw', { name: n }).then(function (j) { $('#umsg').textContent = j.error || '「' + j.name + '」 임시 비밀번호: ' + j.temp + (j.login ? ' · 아이디 「' + j.login + '」' : ' · 아이디 기록 없음 (로그인 화면 「아이디 찾기」에서 이름 + 임시 비밀번호로 새 아이디를 정할 수 있습니다)') + ' · 학생에게만 따로 전해 주세요'; oplog(); });
+    },
+    // 아이디를 잃어버린 학생: 아이디 칸에 넣은 값으로 새로 정한다 (비밀번호는 그대로)
+    setlogin: function () {
+      var n = $('#un').value.trim(), lg = $('#ulogin').value.trim(); if (!n || !lg) { $('#umsg').textContent = '학생 이름과 새 아이디 입력 필요'; return; }
+      if (!confirm('「' + n + '」의 아이디를 「' + lg + '」(으)로 새로 정합니다.\n예전 아이디로는 더 이상 로그인할 수 없고, 비밀번호는 그대로입니다.')) return;
+      api('POST', '/api/admin/setlogin', { name: n, login: lg }).then(function (j) { $('#umsg').textContent = j.error || '「' + j.name + '」의 아이디를 「' + j.login + '」(으)로 정했습니다 · 새 아이디와 원래 비밀번호로 로그인'; oplog(); });
+    },
     reset: function () {
       var n = $('#un').value.trim(), lg = $('#ulogin').value.trim(); if (!n) { $('#umsg').textContent = '학생 이름 입력 필요'; return; }
       if (!lg) { $('#umsg').textContent = '초기화할 학생의 아이디 입력 필요 (이름과 아이디가 모두 맞아야 합니다)'; return; }
