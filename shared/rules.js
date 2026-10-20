@@ -493,6 +493,8 @@
   R.isBoss = function (s) { return s % 10 === 0; };
   R.monHp = function (s) { return K.MON_HP * Math.pow(K.G_HP, s - 1) * Math.min(1, 0.55 + s * 0.045); };
   R.monAtk = function (s) { return K.MON_ATK * Math.pow(K.G_ATK, s - 1); };
+  // 원정 몬스터는 30단계부터 더 세게 친다 (40단계쯤이면 지원 포지션이 필요할 만큼): 31단계부터 단계마다 +8%, 최대 2.2배
+  R.expAtkMul = function (s) { return 1 + Math.min(1.2, Math.max(0, s - 30) * 0.08); };
   // 갈 수 있는 단계: 학년 상한(학년×10+9), 레벨이 높으면 레벨만큼 (학년 상한 +10까지)
   R.STAGE_OVER = 10;
   R.gradeCap = function (P) { return P.grade >= 8 ? 1e9 : P.grade * 10 + 9; };
@@ -517,7 +519,7 @@
   R.expPreview = function (P, W, s, durK, t0) {
     var d = DUR[durK] || DUR['1h']; t0 = t0 || P.at;
     var c = calc(P, W, t0, t0 + d.s);
-    var hp = R.monHp(s), atk = R.monAtk(s);
+    var hp = R.monHp(s), atk = R.monAtk(s) * R.expAtkMul(s);
     var ttk = hp / Math.max(1e-9, c.totalDps);
     var perKill = Math.max(0, dmgTaken(atk, c.def) - c.hp * c.regen) * ttk;
     var risk = perKill / c.hp;
@@ -574,7 +576,7 @@
   };
   // ms: [{c: calc 결과, pos, aggro}] → 사람마다 원정 값(kps 등)과 파티 전체 예상
   R.expPartyPreview = function (ms, s, durK) {
-    var d = DUR[durK] || DUR['1h'], n = ms.length, hp = R.monHp(s), atk = R.monAtk(s) * Math.sqrt(n);   // 사람이 많으면 몬스터도 여럿이 덤빈다
+    var d = DUR[durK] || DUR['1h'], n = ms.length, hp = R.monHp(s), atk = R.monAtk(s) * R.expAtkMul(s) * Math.sqrt(n);   // 사람이 많으면 몬스터도 여럿이 덤빈다
     var POS1 = { dps: 1, def: 1, take: 1, red: 0 }, posOf = function (m) { return n === 1 ? POS1 : R.EXP_POS[m.pos] || R.EXP_POS.van; };   // 혼자 떠나면 혼자 원정과 같다
     var dps = 0, red = 0, vans = [], aggro = 0;
     ms.forEach(function (m, i) { var x = posOf(m); dps += m.c.totalDps * x.dps; red += x.red; if (n > 1 && m.pos === 'van') { vans.push(i); aggro = Math.max(aggro, m.aggro || R.EXP_AGGRO); } });
