@@ -1433,20 +1433,33 @@
     var o = expFinish(P, j, now, clamp((now - j.start) / j.dur, 0, 1), 'recall'); P.exp[i] = null; log(P, now, j.s + '단계 원정에서 직접 귀환했습니다', 'news'); return o;
   };
   /* ───────── 학과의 탑 (개인): 기사의 탑 · 마법사의 탑 ─────────
-     혼자 오르는 탑. 학과마다 따로 층을 쌓으며 줄어들지 않는다(주간 초기화 없음). 하루 3번 도전(KST 자정 초기화, 별의 탑과 따로 셈).
-     한 번 도전하면 진 층까지 최대 10층을 연달아 오른다. 보상은 별의 탑보다 작고, 50층마다 칭호와 조금 큰 보상. */
-  R.CT_TRIES = 3; R.CT_RUN = 10; R.CT_MILE = 50;
+     혼자 오르는 탑. 학과마다 따로 층을 쌓으며 줄어들지 않는다(주간 초기화 없음). 하루 3번 도전(KST 자정 초기화, 별의 탑과 따로 셈), 한 번에 한 층.
+     난이도: 적의 공격이 아주 세고(보스 공격 ×3) 체력은 낮으며(×0.6) 60초 안에 쓰러뜨려야 한다 → 화력만으로 밀기 어렵고 생명력 · 회복도 필요.
+     층 곡선: 전투력 약 4천은 15층, 약 1.6만은 40층 언저리에서 막힌다. 칭호 층(50층마다)은 갑자기 어려운 벽(체력 ×1.8 · 공격 ×1.4),
+     넘고 나면 3~4층은 쉬워졌다가 금세 다시 따라잡힌다. */
+  R.CT_TRIES = 3; R.CT_MILE = 50; R.CT_TIME = 60;
   R.CT_NAME = { knight: '기사의 탑', mage: '마법사의 탑' };
   R.CT_FOES = {
-    knight: ['녹슨 훈련 인형', '방패를 든 망령', '첨탑의 창기병', '철갑 수호상', '맹세를 잊은 기사', '쌍검의 그림자', '탑의 결투 교관'],
-    mage: ['떠도는 주문서', '불꽃 정령', '얼음 거울', '번개 구체', '금서의 수호자', '별빛 환영', '탑의 대마도사 망령']
+    knight: [['녹슨 훈련 인형', 'construct', '#b8a98a', '#4a4236'], ['방패를 든 망령', 'wisp', '#cfd8ff', '#3a4470'], ['첨탑의 창기병', 'construct', '#d8c08a', '#4a3a1a'], ['철갑 수호상', 'golem', '#a8b0c0', '#30384a'], ['맹세를 잊은 기사', 'construct', '#c8a8a8', '#4a2a2a'], ['쌍검의 그림자', 'wisp', '#8a8aa8', '#1a1a3a'], ['탑의 결투 교관', 'golem', '#e0c890', '#5a4420']],
+    mage: [['떠도는 주문서', 'book', '#d8c8a0', '#4a3a20'], ['불꽃 정령', 'wisp', '#ff9a6a', '#5a1a08'], ['얼음 거울', 'eye', '#a8e0ff', '#1a3a5a'], ['번개 구체', 'blob', '#f0e48a', '#4a4410'], ['금서의 수호자', 'book', '#a86a8a', '#2a0a1a'], ['별빛 환영', 'wisp', '#d8c8ff', '#3a2a6a'], ['탑의 대마도사 망령', 'eye', '#c8a0ff', '#2a1050']]
   };
+  var CT_PTS = [[1, 3], [5, 10], [10, 18], [15, 24], [40, 32]];
   R.ctCls = function (P) { return P.cls === 'knight' ? 'knight' : 'mage'; };
   R.ctKey = function (cls) { return cls === 'knight' ? 'twK' : 'twM'; };
   R.ctBest = function (P, cls) { return (P.st && P.st[R.ctKey(cls || R.ctCls(P))]) || 0; };
   R.ctLeft = function (P, now) { var d = R.dayKST(now), t = P.ctd; return !t || t.day !== d ? R.CT_TRIES : Math.max(0, R.CT_TRIES - t.used); };
-  R.ctStage = function (f) { return 3 + Math.floor(f * 0.6); };
-  R.ctFoe = function (f, cls) { var L = R.CT_FOES[cls] || R.CT_FOES.mage, s = R.ctStage(f), k = Math.ceil(f / L.length); return { name: L[(f - 1) % L.length] + (k > 1 ? ' ' + toRoman(Math.min(k, 10)) + (k > 10 ? '+' : '') : ''), stage: s, hp: R.monHp(s) * K.BOSS_HP * 1.5, atk: R.monAtk(s) * K.BOSS_ATK, boss: true }; };
+  R.ctStage = function (f) {
+    var s; if (f >= 40) s = 32 + (f - 40) * 0.3;
+    else for (var i = 1; i < CT_PTS.length; i++) if (f <= CT_PTS[i][0]) { var a = CT_PTS[i - 1], b = CT_PTS[i]; s = a[1] + (b[1] - a[1]) * (f - a[0]) / (b[0] - a[0]); break; }
+    var m = f % R.CT_MILE; if (f > R.CT_MILE && m >= 1 && m <= 4) s -= 5 - m;   // 칭호 층을 넘은 직후 3~4층은 쉬워진다
+    return Math.max(1, Math.round(s));
+  };
+  R.ctWall = function (f) { return f % R.CT_MILE === 0; };
+  R.ctFoe = function (f, cls) {
+    var L = R.CT_FOES[cls] || R.CT_FOES.mage, s = R.ctStage(f), k = Math.ceil(f / L.length), d = L[(f - 1) % L.length], w = R.ctWall(f);
+    return { name: (w ? '칭호의 문지기 · ' : '') + d[0] + (k > 1 ? ' ' + toRoman(Math.min(k, 10)) + (k > 10 ? '+' : '') : ''), arch: d[1], c1: d[2], c2: d[3], stage: s, wall: w,
+      hp: R.monHp(s) * K.BOSS_HP * 0.6 * (w ? 1.8 : 1), atk: R.monAtk(s) * K.BOSS_ATK * 3 * (w ? 1.4 : 1), boss: true };
+  };
   R.ctReward = function (f) {
     var s = R.ctStage(f), r = { gold: Math.floor(40 * K.KILL_GOLD * Math.pow(K.G_GOLD, s - 1)) };
     if (f % 2 === 0) r.stone = 1; if (f % 10 === 0) r.shard = 3;
@@ -1457,18 +1470,16 @@
   A.ctower = function (P, W, now) {
     if (R.ctLeft(P, now) <= 0) err('오늘의 도전 횟수를 모두 사용했습니다 (KST 자정 초기화)');
     var d = R.dayKST(now); if (!P.ctd || P.ctd.day !== d) P.ctd = { day: d, used: 0 }; P.ctd.used++;
-    var cls = R.ctCls(P), key = R.ctKey(cls), c = calc(P, W, now), out = { cls: cls, from: R.ctBest(P, cls), floors: [], rw: {}, titles: [] }, rw = out.rw;
-    for (var i = 0; i < R.CT_RUN; i++) {
-      var f = R.ctBest(P, cls) + 1, foe = R.ctFoe(f, cls), r = fight(P, c, { hp: foe.hp, atk: foe.atk, boss: true }, K.BOSS_TIME, true);
-      out.floors.push({ f: f, name: foe.name, win: !!r.win, t: Math.round(r.t * 10) / 10, pct: Math.round((1 - r.mHp) * 100) });
-      if (!r.win) break;
-      P.st[key] = f; var g = R.ctReward(f);
-      if (g.gold) { addGold(P, g.gold); rw.gold = (rw.gold || 0) + g.gold; } if (g.stone) { P.res.stone += g.stone; rw.stone = (rw.stone || 0) + g.stone; } if (g.shard) { P.res.shard += g.shard; rw.shard = (rw.shard || 0) + g.shard; }
-      if (g.gear || g.egg) { var gm = R.grantMail(P, W, now, { gear: g.gear, egg: g.egg }); rw.egg = (rw.egg || 0) + (g.egg || 0); out.items = (out.items || []).concat(gm.items); }
-      if (f % R.CT_MILE === 0) { var tt = R.ctTitle(cls, f); if (tt) { out.titles.push(tt.name); log(P, now, R.CT_NAME[cls] + ' ' + f + '층 돌파! 칭호 「' + tt.name + '」를 얻었습니다', 'legend'); } }
-    }
-    out.to = R.ctBest(P, cls); badgeGain(P, R.BADGE_XP.fight, now);
-    if (out.to > out.from) log(P, now, R.CT_NAME[cls] + ' ' + (out.from + 1) + '~' + out.to + '층 돌파', 'good');
+    var cls = R.ctCls(P), key = R.ctKey(cls), c = calc(P, W, now), f = R.ctBest(P, cls) + 1, foe = R.ctFoe(f, cls);
+    var r = fight(P, c, { hp: foe.hp, atk: foe.atk, boss: true }, R.CT_TIME, true);
+    var out = { cls: cls, f: f, foe: foe, win: !!r.win, ev: r.ev, t: r.t, dead: !!r.dead, pct: Math.round((1 - r.mHp) * 100), rw: {}, titles: [] };
+    badgeGain(P, R.BADGE_XP.fight, now);
+    if (!r.win) return out;
+    P.st[key] = f; var g = R.ctReward(f), rw = out.rw;
+    if (g.gold) { addGold(P, g.gold); rw.gold = g.gold; } if (g.stone) { P.res.stone += g.stone; rw.stone = g.stone; } if (g.shard) { P.res.shard += g.shard; rw.shard = g.shard; }
+    if (g.gear || g.egg) { var gm = R.grantMail(P, W, now, { gear: g.gear, egg: g.egg }); if (g.egg) rw.egg = g.egg; out.items = gm.items; }
+    if (f % R.CT_MILE === 0) { var tt = R.ctTitle(cls, f); if (tt) { out.titles.push(tt.name); log(P, now, R.CT_NAME[cls] + ' ' + f + '층 돌파! 칭호 「' + tt.name + '」를 얻었습니다', 'legend'); } }
+    else log(P, now, R.CT_NAME[cls] + ' ' + f + '층 돌파', 'good');
     return out;
   };
   A.boss = function (P, W, now) {
