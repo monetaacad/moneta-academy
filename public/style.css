@@ -213,7 +213,7 @@ main { min-width: 0; container-type: inline-size; container-name: page; }
 /* 홈 */
 .chapter { position: relative; overflow: hidden; }
 .chapter .roman { font-family: var(--f-display); font-size: 64px; line-height: 1; color: rgba(214, 173, 95, .14); position: absolute; right: 14px; top: 4px; pointer-events: none; }
-.chapter p { white-space: pre-line; max-width: 62ch; color: var(--ink2); }
+.chapter p { white-space: pre-line; color: var(--ink2); }
 .goal { display: flex; gap: 12px; align-items: flex-start; }
 .goal .step { font-family: var(--f-num); color: var(--brass); font-size: 12px; border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; flex: none; margin-top: 2px; }
 .logbox { max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; font-size: 13px; padding-right: 4px; }
