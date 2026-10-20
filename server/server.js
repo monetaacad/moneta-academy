@@ -1261,9 +1261,9 @@ routes['POST /api/ritual'] = async (req, res) => {
 };
 
 /* ───────── 떠돌이 상인 경매 ─────────
-   하루 두 번(12시·20시, 2시간) 귀한 장비 세 점을 경매에 붙인다. 부른 값은 바로 맡겨 두고, 더 높은 값이 나오면 돌려준다.
+   하루 두 번(12시·20시, 2시간) 구간(신입생 · 중급 · 상급)마다 귀한 장비 세 점씩 경매에 붙인다. 부른 값은 바로 맡겨 두고, 더 높은 값이 나오면 돌려준다.
    끝나기 2분 안에 부르면 2분 늘어난다 (몇 번이든, 정해진 2시간이 지나도). 낙찰품은 우편으로. 값은 학생만 부른다(NPC는 부르지 않는다). */
-function aucOut(r, me) { let item = null; try { item = JSON.parse(r.item); } catch (e) { } return { id: r.id, name: r.name, r: r.rarity, ilvl: r.ilvl, slot: r.slot, item, ends: r.ends, min: r.min, price: r.price, need: R.auctionStep(r.price, r.min), bidder: r.bidder_name, mine: !!me && r.bidder === me, npc: String(r.bidder).startsWith('npc:'), bids: r.bids, done: !!r.done }; }
+function aucOut(r, me) { let item = null; try { item = JSON.parse(r.item); } catch (e) { } return { id: r.id, name: r.name, r: r.rarity, ilvl: r.ilvl, slot: r.slot, item, ends: r.ends, min: r.min, price: r.price, need: R.auctionStep(r.price, r.min), bidder: r.bidder_name, mine: !!me && r.bidder === me, npc: String(r.bidder).startsWith('npc:'), bids: r.bids, done: !!r.done, tier: r.tier == null ? 2 : r.tier, cap: R.aucCap(r) }; }
 function aucRefund(pid, amount, name, why) {
   if (!pid || String(pid).startsWith('npc:') || !amount) return;
   const Q = store.get(pid); if (!Q) return;
@@ -1282,12 +1282,16 @@ function aucTick(now) {
   const v = R.auctionVisit(now);
   if (v && v.active && !dbx.q.aucByVisit.all(v.id).length) {
     const stages = dbx.db.prepare(`SELECT max_stage FROM players WHERE last_seen > ? AND banned = 0 ORDER BY max_stage`).all(Math.floor(Date.now() / 1000) - 7 * 86400).map((r) => r.max_stage);
-    const med = stages.length ? stages[Math.floor(stages.length / 2)] : 10, dummy = { rng: crypto.randomInt(1, 2147483647) };
-    [3, 3, Math.random() < 0.5 ? 4 : 3].forEach((r) => {
-      const it = R.makeItem(dummy, R.D.SLOTS[crypto.randomInt(R.D.SLOTS.length)].id, med + 3, r, r), min = Math.max(50, R.sellPrice(it) * 8);
-      dbx.q.aucInsert.run(v.id, JSON.stringify(it), it.name, it.r, it.ilvl, it.slot, Math.floor(v.end), min, Math.floor(min * (1.6 + Math.random() * 1.2)));
+    const at = (p) => stages.length ? stages[Math.min(stages.length - 1, Math.floor(stages.length * p))] : 10, dummy = { rng: crypto.randomInt(1, 2147483647) };
+    // 구간마다 3점: 신입생(하위 25%) · 중급(중간값) · 상급(상위 12%) 단계 + 3. 영웅 2점 + 영웅/전설(50%) 1점
+    R.AUC_TIERS.forEach((tp, tier) => {
+      const lv = Math.max(1, at(tp.p) + 3);
+      [3, 3, Math.random() < 0.5 ? 4 : 3].forEach((r) => {
+        const it = R.makeItem(dummy, R.D.SLOTS[crypto.randomInt(R.D.SLOTS.length)].id, lv, r, r), min = Math.max(50, R.sellPrice(it) * 8);
+        dbx.q.aucInsert.run(v.id, JSON.stringify(it), it.name, it.r, it.ilvl, it.slot, Math.floor(v.end), min, 0, tier);
+      });
     });
-    chat.system('notice', '떠돌이 상인이 아카데미 광장에 짐을 풀었습니다. 귀한 장비 세 점이 경매에 올라왔습니다 (2시간).', Date.now() / 1000);
+    chat.system('notice', '떠돌이 상인이 아카데미 광장에 짐을 풀었습니다. 신입생 · 중급 · 상급 구간마다 귀한 장비 세 점씩 경매에 올라왔습니다 (2시간).', Date.now() / 1000);
     chat.pingAll('auction', { visit: v.id });
   }
   dbx.q.aucOpenEnded.all(Math.floor(now)).forEach((r) => {
@@ -1316,6 +1320,7 @@ routes['POST /api/auction'] = async (req, res) => {
   const P = loadPlayer(me, now); if (!P) return fail(req, res, 401, '학생 정보를 찾을 수 없습니다');
   const row = dbx.q.aucGet.get(Number(b.id)); if (!row || row.done || row.ends <= now) return fail(req, res, 400, '경매가 끝났습니다');
   if (row.bidder === me) return fail(req, res, 400, '이미 가장 높은 값을 부른 상태입니다');
+  const cap = R.aucCap(row); if (cap && P.maxStage > cap) return fail(req, res, 400, '이 구간은 원정 최고 단계 ' + cap + '단계 이하 학생만 입찰할 수 있습니다');
   const amount = Math.floor(Number(b.amount)), need = R.auctionStep(row.price, row.min);
   if (!isFinite(amount) || amount < need) return fail(req, res, 400, R.fmt(need) + ' ' + CUR + ' 이상 불러야 합니다');
   if (amount > 1e15) return fail(req, res, 400, '값 확인 필요');
@@ -1830,6 +1835,17 @@ routes['POST /api/admin/slow'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
   const b = await readJson(req, 256), before = chat.getSlow(), v = chat.setSlow(b.sec); dbx.kvSet('chat_slow', v); oplog('admin', '관리자', 'slow', `월드 ${before}초 → ${v}초`); send(req, res, 200, { ok: true, sec: v });
 };
+// 성장 데이터: 최근 N일 스냅샷을 CSV로. 학생은 이름 대신 해시(익명 번호)로
+routes['GET /api/admin/growth'] = (req, res) => {
+  if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
+  const u = new URL(req.url, 'http://x'), days = Math.max(1, Math.min(400, Number(u.searchParams.get('days')) || 30));
+  if (u.searchParams.get('now') === '1') growthSnap(true);
+  const from = kstDay(Math.floor(Date.now() / 1000) - (days - 1) * 86400), rows = dbx.q.growthFrom.all(from);
+  const cols = ['d', 'house', 'cls', 'lvl', 'power', 'grade', 'stage', 'ctM', 'ctK', 'cup', 'act'].concat(GROWTH_ST), anon = (id) => crypto.createHash('sha256').update('growth:' + id).digest('hex').slice(0, 10);
+  const lines = [['date', 'student'].concat(cols).join(',')];
+  rows.forEach((r) => { let o = {}; try { o = JSON.parse(r.data); } catch (e) { } lines.push([String(r.day).replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3'), anon(r.pid)].concat(cols.map((k) => o[k] == null ? '' : String(o[k]).replace(/[,\n]/g, ' '))).join(',')); });
+  send(req, res, 200, { csv: lines.join('\n'), rows: rows.length, days: dbx.q.growthDays.all().slice(0, days) });
+};
 routes['GET /api/admin/oplog'] = (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
   send(req, res, 200, { log: dbx.q.oplogList.all(200) });
@@ -2129,6 +2145,27 @@ server.headersTimeout = 70000;
 server.requestTimeout = 30000;
 
 /* ───────── 주기 작업 ───────── */
+// 성장 스냅샷: 한국 날짜가 바뀌면(서버를 켤 때 오늘 것이 없어도) 학생마다 한 줄. 정지 · 게스트 · 초기화로 남은 캐릭터는 뺀다
+const kstDay = (t) => { const d = new Date(t * 1000 + 9 * 3600000); return d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate(); };
+const GROWTH_ST = ['kills', 'lecHours', 'lecJobs', 'expJobs', 'bosses', 'bossTries', 'researchDone', 'brews', 'dispatches', 'tasksDone', 'duelWins', 'wbAttacks', 'goldTotal', 'manaTotal', 'famKinds', 'epicFound', 'legendFound', 'maxEnh'];
+function growthSnap(force) {
+  const real = Math.floor(Date.now() / 1000), day = kstDay(real);
+  if (!force && dbx.kvGet('growthDay', 0) === day) return 0;
+  const rows = dbx.db.prepare('SELECT id, house, created, last_seen, state, power, lvl, grade FROM players WHERE banned = 0 AND guest = 0 AND deleted = 0').all();
+  let n = 0;
+  dbx.tx(() => {
+    rows.forEach((r) => {
+      let P = store.peek(r.id); if (!P) { try { P = JSON.parse(r.state); } catch (e) { return; } }
+      const st = P.st || {}, o = { d: Math.floor((real - r.created) / 86400), house: r.house, cls: P.cls || '', lvl: P.lvl || r.lvl, power: Math.round(r.power), grade: P.grade || r.grade, stage: st.maxStageAll || 0,
+        ctM: st.twM || 0, ctK: st.twK || 0, cup: Math.round((P.wk && P.wk.cup) || 0), act: real - r.last_seen < 86400 ? 1 : 0 };
+      GROWTH_ST.forEach((k) => { o[k] = Math.round(st[k] || 0); });
+      dbx.q.growthPut.run(day, r.id, JSON.stringify(o)); n++;
+    });
+    dbx.kvSet('growthDay', day);
+  });
+  log('성장 스냅샷 ' + day + ': ' + n + '명');
+  return n;
+}
 function backup() {
   const dir = path.join(cfg.dataDir, 'backups'); fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
   store.flushAll();
@@ -2163,6 +2200,8 @@ const timers = [
   setInterval(() => { try { npcMarketTick(); } catch (e) { log('NPC 거래 실패', e); } }, 15 * 60000),
   setInterval(() => { try { aucTick(nowSec()); dbx.q.aucPurge.run(Math.floor(nowSec()) - 14 * 86400); } catch (e) { log('경매 처리 실패', e); } }, 20000),
   setInterval(() => { try { dbx.q.mailPurge.run(Math.floor(Date.now() / 1000) - 7 * 86400); dbx.q.mailStatePurge.run(); } catch (e) { log('우편 정리 실패', e); } }, 6 * 3600000),
+  setInterval(() => { try { growthSnap(); } catch (e) { log('성장 스냅샷 실패', e); } }, 10 * 60000),
+  setTimeout(() => { try { growthSnap(); } catch (e) { log('성장 스냅샷 실패', e); } }, 60000),   // 켜고 1분 뒤 오늘 것이 없으면 바로
   setInterval(() => { try { backup(); } catch (e) { log('백업 실패', e); } }, 12 * 3600000)
 ];
 timers.forEach((t) => t.unref());

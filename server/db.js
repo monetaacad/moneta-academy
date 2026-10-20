@@ -152,6 +152,7 @@ function open(dir) {
   if (cols.indexOf('avatar_v') < 0) db.exec(`ALTER TABLE players ADD COLUMN avatar_v INTEGER NOT NULL DEFAULT 0`);
   // 로그인 아이디: 평문 대신 HMAC 색인(sec.index)만 둔다. 게임 안에는 나오지 않는다. 빈 값은 server.js가 시작할 때 채운다
   { const fc = db.prepare(`PRAGMA table_info(friends)`).all().map((c) => c.name); if (fc.indexOf('memo') < 0) db.exec(`ALTER TABLE friends ADD COLUMN memo TEXT NOT NULL DEFAULT ''`); }   // 친구 개인 메모
+  { const ac = db.prepare(`PRAGMA table_info(auction)`).all().map((c) => c.name); if (ac.length && ac.indexOf('tier') < 0) db.exec(`ALTER TABLE auction ADD COLUMN tier INTEGER NOT NULL DEFAULT 2`); }   // 떠돌이 상인 구간 (0 신입생 · 1 중급 · 2 상급)
   { const ic = db.prepare(`PRAGMA table_info(invites)`).all().map((c) => c.name); if (ic.indexOf('op') < 0) db.exec(`ALTER TABLE invites ADD COLUMN op INTEGER NOT NULL DEFAULT 0`); }   // 운영자 초대코드
   if (cols.indexOf('login_key') < 0) db.exec(`ALTER TABLE players ADD COLUMN login_key TEXT NOT NULL DEFAULT ''`);
   if (cols.indexOf('login_enc') < 0) db.exec(`ALTER TABLE players ADD COLUMN login_enc TEXT NOT NULL DEFAULT ''`);   // 아이디 (암호화 · 운영실 확인용)
@@ -313,7 +314,8 @@ function open(dir) {
       bidder_name TEXT NOT NULL DEFAULT '',
       bids INTEGER NOT NULL DEFAULT 0,
       npc_cap INTEGER NOT NULL DEFAULT 0,
-      done INTEGER NOT NULL DEFAULT 0
+      done INTEGER NOT NULL DEFAULT 0,
+      tier INTEGER NOT NULL DEFAULT 2
     );
     CREATE INDEX IF NOT EXISTS auction_visit ON auction(visit);
     CREATE TABLE IF NOT EXISTS tower (
@@ -321,6 +323,13 @@ function open(dir) {
       week INTEGER NOT NULL,
       floor INTEGER NOT NULL DEFAULT 0,
       log TEXT NOT NULL DEFAULT '[]'
+    );
+    -- 성장 스냅샷: 하루(한국 날짜) 한 번, 학생마다 한 줄 (레벨 · 전투력 · 누적 통계). 성장곡선 분석용
+    CREATE TABLE IF NOT EXISTS growth (
+      day INTEGER NOT NULL,
+      pid TEXT NOT NULL,
+      data TEXT NOT NULL,
+      PRIMARY KEY (day, pid)
     );
   `);
   const gcols = db.prepare(`PRAGMA table_info(guilds)`).all().map((c) => c.name);
@@ -340,6 +349,9 @@ function open(dir) {
   ['moneta.db', 'moneta.db-wal', 'moneta.db-shm'].forEach((f) => { try { fs.chmodSync(path.join(dir, f), 0o600); } catch (e) { } });
   try { fs.chmodSync(dir, 0o700); } catch (e) { }
   const q = {
+    growthPut: db.prepare(`INSERT OR REPLACE INTO growth (day, pid, data) VALUES (?, ?, ?)`),
+    growthFrom: db.prepare(`SELECT day, pid, data FROM growth WHERE day >= ? ORDER BY day, pid`),
+    growthDays: db.prepare(`SELECT day, COUNT(*) AS n FROM growth GROUP BY day ORDER BY day DESC LIMIT 400`),
     insertPlayer: db.prepare(`INSERT INTO players (id, name, name_key, house, pass, created, last_seen, state) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`),
     playerByKey: db.prepare(`SELECT id, name, pass, banned FROM players WHERE name_key = ?`),
     playerSearch: db.prepare(`SELECT id, name, house, grade, lvl, avatar_v, title, last_seen FROM players WHERE name_key LIKE ? ESCAPE '\\' AND banned = 0 AND guest = 0 ORDER BY (name_key = ?) DESC, last_seen DESC LIMIT 20`),
@@ -521,7 +533,7 @@ function open(dir) {
     mailStatePurge: db.prepare(`DELETE FROM mail_state WHERE mail NOT IN (SELECT id FROM mail)`),
     aucByVisit: db.prepare(`SELECT * FROM auction WHERE visit = ? ORDER BY id`),
     aucGet: db.prepare(`SELECT * FROM auction WHERE id = ?`),
-    aucInsert: db.prepare(`INSERT INTO auction (visit, item, name, rarity, ilvl, slot, ends, min, npc_cap) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`),
+    aucInsert: db.prepare(`INSERT INTO auction (visit, item, name, rarity, ilvl, slot, ends, min, npc_cap, tier) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
     aucBid: db.prepare(`UPDATE auction SET price = ?, bidder = ?, bidder_name = ?, bids = bids + 1, ends = ? WHERE id = ? AND price = ? AND done = 0`),
     aucOpenEnded: db.prepare(`SELECT * FROM auction WHERE done = 0 AND ends <= ?`),
     aucOpen: db.prepare(`SELECT * FROM auction WHERE done = 0`),

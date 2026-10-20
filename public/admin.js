@@ -218,6 +218,17 @@
         else window.prompt('아래 내용을 복사하세요', t);
       });
     },
+    // 성장 데이터: 날마다 모은 스냅샷을 CSV 파일로 (엑셀 · 구글 시트에서 열기). 학생은 익명 번호
+    growthdl: function () {
+      api('GET', '/api/admin/growth?days=30').then(function (j) {
+        if (j.error) { toast(j.error); return; }
+        if (!j.rows) { toast('아직 모인 성장 기록이 없습니다. 하루 한 번(한국 날짜 기준) 저장됩니다'); return; }
+        var blob = new Blob(['\ufeff' + j.csv], { type: 'text/csv;charset=utf-8' }), a = document.createElement('a');
+        a.href = URL.createObjectURL(blob); a.download = 'moneta-growth-' + new Date().toISOString().slice(0, 10) + '.csv'; document.body.appendChild(a); a.click();
+        setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+        toast('성장 데이터 ' + j.rows + '줄 · ' + j.days.length + '일치를 받았습니다');
+      });
+    },
     ideacopy: function () {
       api('GET', '/api/admin/ideas').then(function (j) {
         if (j.error) { toast(j.error); return; } if (!j.text) { toast('복사할 글이 없습니다'); return; }
