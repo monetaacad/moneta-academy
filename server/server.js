@@ -920,6 +920,8 @@ function mkSearch(f, now) {
   if (f.kind === 'badge' && f.gem && R.GEM[f.gem]) { where.push('m.slot = ?'); args.push(f.gem); }
   if (f.kind !== 'badge' && f.slot === 'sword') { where.push(`m.slot = 'staff' AND m.data LIKE '%"wk":"sword"%'`); }   // 무기 중 검
   else if (f.kind !== 'badge' && f.slot === 'staff') { where.push(`m.slot = 'staff' AND m.data NOT LIKE '%"wk":"sword"%'`); }   // 무기 중 지팡이
+  else if (f.kind !== 'badge' && f.slot === 'manual') { where.push(`m.slot = 'tome' AND m.data LIKE '%"wk":"manual"%'`); }   // 마도서 칸 중 전술서
+  else if (f.kind !== 'badge' && f.slot === 'tome') { where.push(`m.slot = 'tome' AND m.data NOT LIKE '%"wk":"manual"%'`); }   // 마도서 칸 중 마도서
   else if (f.kind !== 'badge' && f.slot && R.SLOT[f.slot]) { where.push('m.slot = ?'); args.push(f.slot); }
   if (f.r >= 0 && f.r <= 4) { where.push('m.rarity = ?'); args.push(f.r); }
   if (f.mat && MAT_NAMES[f.mat]) { where.push('m.data = ?'); args.push(f.mat); }

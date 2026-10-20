@@ -1454,7 +1454,7 @@
     h += '</div><div class="grid g2" style="margin-top:16px"><div class="card"><h3>지역</h3><div class="zonelist" style="margin-top:8px">' + D.ZONES.map(function (zz, zi) {
       var to = zz.abyss ? '∞' : D.ZONES[zi + 1].from - 1, un = P.maxStage >= zz.from;
       return '<div class="zone' + (un ? '' : ' lockz') + '"><div style="min-width:0"><div class="small">' + zz.name + '</div><div class="tiny faint">재료: ' + D.MATS[zz.mat].name + '</div></div><span class="zr">' + zz.from + '–' + to + '</span></div>';
-    }).join('') + '</div></div><div class="card"><h3>전투 능력</h3><dl class="kv" style="margin-top:6px"><dt>초당 피해</dt><dd>' + fmt(c.totalDps) + '</dd><dt>물리 공격력</dt><dd>' + fmt(c.patk) + (S.P.cls === 'knight' ? ' <span class="tiny faint">평타</span>' : '') + '</dd><dt>주문 공격력</dt><dd>' + fmt(c.matk) + (S.P.cls !== 'knight' ? ' <span class="tiny faint">평타</span>' : '') + '</dd><dt>공격 속도</dt><dd>' + c.aps.toFixed(2) + '/초</dd><dt>치명타</dt><dd>' + pct(c.critC) + ' · ×' + c.critD.toFixed(2) + '</dd><dt>생명력 · 방어력</dt><dd>' + fmt(c.hp) + ' · ' + fmt(c.def) + '</dd><dt>사역마</dt><dd>' + (P.fam.act ? R.FAM[P.fam.act].name : '없음') + '</dd></dl><p class="tiny faint" style="margin-top:8px">원정은 출정 시점의 능력치로 결과가 정해집니다. 장비를 바꾸면 다음 원정부터 반영됩니다.</p></div></div>';
+    }).join('') + '</div></div><div class="card"><h3>전투 능력</h3><dl class="kv" style="margin-top:6px"><dt>초당 피해</dt><dd>' + fmt(c.totalDps) + '</dd><dt>물리 공격력</dt><dd>' + fmt(c.patk) + (S.P.cls === 'knight' ? ' <span class="tiny faint">평타</span>' : '') + '</dd><dt>주문 공격력</dt><dd>' + fmt(c.matk) + (S.P.cls !== 'knight' ? ' <span class="tiny faint">평타</span>' : '') + '</dd><dt>주문 · 기술 위력</dt><dd title="주문 위력은 마법 주문, 기술 위력은 물리 주문(검술 · 전투체술 등)의 피해에 곱해집니다">×' + c.spell.toFixed(2) + ' · ×' + c.skill.toFixed(2) + '</dd><dt>공격 속도</dt><dd>' + c.aps.toFixed(2) + '/초</dd><dt>치명타</dt><dd>' + pct(c.critC) + ' · ×' + c.critD.toFixed(2) + '</dd><dt>생명력 · 방어력</dt><dd>' + fmt(c.hp) + ' · ' + fmt(c.def) + '</dd><dt>사역마</dt><dd>' + (P.fam.act ? R.FAM[P.fam.act].name : '없음') + '</dd></dl><p class="tiny faint" style="margin-top:8px">원정은 출정 시점의 능력치로 결과가 정해집니다. 장비를 바꾸면 다음 원정부터 반영됩니다.</p></div></div>';
     return h;
   };
 
@@ -1584,7 +1584,8 @@
   V.gear = function () {
     var P = S.P, c = C();
     var wk = P.eq.staff && P.eq.staff.wk === 'sword' ? '검' : P.cls === 'knight' ? '검' : '지팡이';
-    var h = pageHead(D.SLOTS.map(function (s) { return '<button class="eblink" data-act="invjump" data-a="' + s.id + '" title="가방에서 ' + (s.id === 'staff' ? '무기' : s.name) + '만 보기">' + (s.id === 'staff' ? wk : s.name) + '</button>'; }).join(' · '), '장비·능력', '전투력 <b class="num gold">' + fmt(c.power) + '</b>');
+    var tk = P.eq.tome ? R.slotName(P.eq.tome) : P.cls === 'knight' ? '전술서' : '마도서';
+    var h = pageHead(D.SLOTS.map(function (s) { return '<button class="eblink" data-act="invjump" data-a="' + s.id + '" title="가방에서 ' + (s.id === 'staff' ? '무기' : s.name) + '만 보기">' + (s.id === 'staff' ? wk : s.id === 'tome' ? tk : s.name) + '</button>'; }).join(' · '), '장비·능력', '전투력 <b class="num gold">' + fmt(c.power) + '</b>');
     h += '<div class="doll">' + D.SLOTS.map(function (s) {
       var it = P.eq[s.id];
       return '<button class="eqslot' + (it ? '' : ' empty') + (it && S.sel === it.u ? ' sel' : '') + '" data-act="sel" data-a="' + (it ? it.u : '') + '"><span class="sl">' + s.name + '</span>' +
@@ -1670,7 +1671,7 @@
     S.confirm[k] = 0; act('badgeBreak', { u: u }).then(function (r) { if (r) toast('휘장을 깨뜨렸습니다', '마석가루 +' + r.dust, 2000); render(); });
   };
   function statLines(it) {
-    var st = R.itemStats(it), Sx = R.SLOT[it.slot], out = [];
+    var st = R.itemStats(it), Sx = R.slotDef(it), out = [];
     function line(k, v) { var name = D.STAT_NAMES[k] || D.BONUS_NAMES[k] || k, val = (k === 'atk' || k === 'hp' || k === 'def' || D.STAT_NAMES[k]) ? '+' + fmt(v) : '+' + pct(v); return '<div class="statline"><span>' + name + '</span><span class="d">' + val + '</span></div>'; }
     function own(k) { return it.aff.filter(function (a) { return a.id === k; }).reduce(function (a, b) { return a + b.v; }, 0); }
     out.push(line(Sx.main, st[Sx.main] - own(Sx.main))); if (Sx.sub) out.push(line(Sx.sub, st[Sx.sub] - own(Sx.sub)));
@@ -1682,7 +1683,7 @@
   // 지금 장착한 같은 칸 장비와 능력치 비교: 능력치 · 지금 · 이 장비 · 차이
   function cmpTable(it, cur) {
     if (!cur) return '<p class="tiny faint" style="margin-top:4px">이 칸에 장착한 장비가 없습니다.</p>';
-    var a = R.itemStats(cur), b = R.itemStats(it), keys = [], Sx = R.SLOT[it.slot];
+    var a = R.itemStats(cur), b = R.itemStats(it), keys = [], Sx = R.slotDef(it);
     [Sx.main, Sx.sub].concat(Object.keys(a), Object.keys(b)).forEach(function (k) { if (k && keys.indexOf(k) < 0) keys.push(k); });
     var isFlat = function (k) { return k === 'atk' || k === 'hp' || k === 'def' || !!D.STAT_NAMES[k]; }, show = function (k, v) { return v ? (isFlat(k) ? fmt(v) : pct(v)) : '—'; };
     var rows = keys.map(function (k) {
@@ -1694,7 +1695,7 @@
   // 강화하면 오르는 능력치: 「생명력 19 → 24 (+5)」 · 장착 중이면 전투력 변화도
   function enhPreview(it, eqd) {
     if (it.enh >= R.ENH_MAX) return '';
-    var nx = Object.assign({}, it, { enh: it.enh + 1 }), a = R.itemStats(it), b = R.itemStats(nx), Sx = R.SLOT[it.slot];
+    var nx = Object.assign({}, it, { enh: it.enh + 1 }), a = R.itemStats(it), b = R.itemStats(nx), Sx = R.slotDef(it);
     var rows = [Sx.main].concat(Sx.sub ? [Sx.sub] : []).map(function (k) {
       var rd = function (v) { return v >= 10 ? Math.round(v) : Math.round(v * 10) / 10; }, x = rd(a[k]), y = rd(b[k]), d = Math.round((y - x) * 10) / 10, nm = D.STAT_NAMES[k] || D.BONUS_NAMES[k] || k; if (!(b[k] > a[k])) return '';   // 보이는 숫자끼리 빼서 「16 → 18 (+2)」가 맞게
       return '<div class="statline"><span>' + nm + '</span><span class="d num">' + fmt(x) + ' → <b class="good">' + fmt(y) + '</b>' + (d > 0 ? ' <span class="tiny good">(+' + fmt(d) + ')</span>' : '') + '</span></div>';
@@ -2448,7 +2449,7 @@
   }
   // 장비 한 줄 요약: 대표 능력치 + 옵션 수
   function itemBrief(it) {
-    var st = R.itemStats(it), Sx = R.SLOT[it.slot], k = Sx.main, v = st[k], nm = D.STAT_NAMES[k] || D.BONUS_NAMES[k] || k;
+    var st = R.itemStats(it), Sx = R.slotDef(it), k = Sx.main, v = st[k], nm = D.STAT_NAMES[k] || D.BONUS_NAMES[k] || k;
     var main = nm + ' ' + ((k === 'atk' || k === 'hp' || k === 'def' || D.STAT_NAMES[k]) ? '+' + fmt(v) : '+' + pct(v));
     return main + (it.aff && it.aff.length ? ' · 옵션 ' + it.aff.length : '') + (it.eng ? ' · 각인' : '') + (it.enh ? ' · +' + it.enh : '');
   }
@@ -2466,7 +2467,7 @@
     if (m.tab === 'buy') {
       h += '<div class="card mkfilt" style="margin-bottom:10px"><div class="row"><div class="filters"><button class="btn sm ghost' + (m.kind === 'item' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="item">장비</button><button class="btn sm ghost' + (m.kind === 'mat' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="mat">재료</button><button class="btn sm ghost' + (m.kind === 'pot' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="pot">물약</button><button class="btn sm ghost' + (m.kind === 'badge' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="badge">휘장</button></div><span class="spacer"></span>' +
         '<select id="mk-sort" data-act="mksel" data-a="sort" style="width:auto"><option value="price"' + (m.sort === 'price' ? ' selected' : '') + '>' + (m.kind !== 'item' ? '개당 가격 낮은 순' : '가격 낮은 순') + '</option><option value="high"' + (m.sort === 'high' ? ' selected' : '') + '>' + (m.kind !== 'item' ? '개당 가격 높은 순' : '가격 높은 순') + '</option><option value="new"' + (m.sort === 'new' ? ' selected' : '') + '>새로 올라온 순</option>' + (m.kind === 'item' ? '<option value="lvl"' + (m.sort === 'lvl' ? ' selected' : '') + '>장비 레벨 높은 순</option>' : '') + '</select></div>';
-      if (m.kind === 'item') h += '<div class="filters" style="margin-top:6px">' + [['', '전체'], ['staff', '지팡이'], ['sword', '검']].concat(D.SLOTS.filter(function (x) { return x.id !== 'staff'; }).map(function (x) { return [x.id, x.name]; })).map(function (f) { return '<button class="btn sm ghost' + (m.slot === f[0] ? ' on' : '') + '" data-act="mkf" data-a="slot" data-b="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '<span class="fsep"></span>' +
+      if (m.kind === 'item') h += '<div class="filters" style="margin-top:6px">' + [['', '전체'], ['staff', '지팡이'], ['sword', '검']].concat(D.SLOTS.filter(function (x) { return x.id !== 'staff'; }).map(function (x) { return [x.id, x.name]; }), [['manual', '전술서']]).map(function (f) { return '<button class="btn sm ghost' + (m.slot === f[0] ? ' on' : '') + '" data-act="mkf" data-a="slot" data-b="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '<span class="fsep"></span>' +
         [['', '모든 등급', 'inherit']].concat(D.RARITY.map(function (r) { return [String(r.id), r.name, r.color]; })).map(function (f) { return '<button class="btn sm ghost' + (String(m.r) === f[0] ? ' on' : '') + '" data-act="mkf" data-a="r" data-b="' + f[0] + '" style="color:' + f[2] + '">' + f[1] + '</button>'; }).join('') + '</div>' +
         '<div class="row" style="margin-top:6px"><input id="mk-q" maxlength="20" placeholder="이름 검색" value="' + esc(m.q) + '" style="flex:1;min-width:120px"><button class="btn sm" data-act="mkq">검색</button></div>';
       else if (m.kind === 'pot') h += '<div class="row" style="margin-top:6px"><select id="mk-pot" data-act="mksel" data-a="pot" style="width:auto"><option value="">모든 물약</option>' + D.POTIONS.map(function (p) { return '<option value="' + p.id + '"' + (m.pot === p.id ? ' selected' : '') + '>' + p.name + '</option>'; }).join('') + '</select></div>';
@@ -4155,7 +4156,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102032;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102033;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
