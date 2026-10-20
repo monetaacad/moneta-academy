@@ -66,6 +66,9 @@
       // 다 쓴 · 막은 · 기한 지난 코드는 숨길 수 있다 (이 브라우저에 기억)
       var all = j.invites || [], nowS = Date.now() / 1000, hide = $('#ihide').checked, done = function (i) { return i.disabled || i.uses >= i.max_uses || (i.expires && i.expires < nowS); };
       var list = hide ? all.filter(function (i) { return !done(i); }) : all;
+      // 남은 코드: 아직 쓸 수 있는 코드 수와 그 코드로 더 가입할 수 있는 인원 (운영자 코드는 따로)
+      var left = all.filter(function (i) { return !done(i) && !i.op; }), seats = left.reduce(function (a, i) { return a + i.max_uses - i.uses; }, 0), opl = all.filter(function (i) { return !done(i) && i.op; }).length;
+      $('#ileft').innerHTML = '남은 코드 <b>' + left.length + '</b>개 · 남은 인원 <b>' + seats + '</b>명' + (opl ? ' <span class="tiny faint">(운영자 코드 ' + opl + '개 별도)</span>' : '') + (all.length >= 500 ? ' <span class="tiny faint">· 최근 500개 기준</span>' : '');
       var full = list.length; list = list.slice(0, ISHOW);   // 10개씩 보이고 「더보기」로 20개씩 더
       $('#icount').textContent = hide && list.length < all.length ? '숨긴 코드 ' + (all.length - list.length) + '개' : '';
       $('#invites').innerHTML = list.map(function (i) {
