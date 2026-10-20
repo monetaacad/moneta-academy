@@ -1764,3 +1764,16 @@ mark.hl { color: inherit; background: linear-gradient(transparent 38%, color-mix
 }
 .auchx { cursor: default; border-color: var(--brass); }
 .pst { display: inline-block; margin-left: 4px; padding: 0 5px; border-radius: 8px; font-size: 10px; line-height: 15px; color: var(--brass); border: 1px solid color-mix(in srgb, var(--brass) 55%, transparent); white-space: nowrap; vertical-align: 1px; }   /* 장비 프리셋 번호 */
+
+/* 전체 능력치 창 */
+.fullst { display: flex; flex-direction: column; gap: 10px; }
+.fsg > summary h4 { margin: 0; }
+.fsrows { margin-top: 6px; border-top: 1px dashed var(--line); }
+.fsr { border-bottom: 1px dashed var(--line); }
+.fsr > summary, div.fsr { display: flex; align-items: center; gap: 8px; padding: 6px 2px; font-size: 13px; }
+.fsr .fsn { flex: 1; min-width: 0; }
+.fsr .fsv { text-align: right; }
+.fsr.z { opacity: .5; }
+.fsnow { font-size: 10px; padding: 0 5px; }
+.fssrc { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 2px 6px 8px 14px; font-size: 12px; color: var(--muted); }
+.fssrc b { color: var(--ink2); }

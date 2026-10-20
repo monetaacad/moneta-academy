@@ -378,16 +378,18 @@
     return n;
   };
   // t0~t1 구간의 평균 보너스 (물약·주말은 겹친 시간 비율만큼)
-  function bonuses(P, W, t0, t1) {
-    var b = {};
-    var cn = R.codexTiers(P); if (cn) { b.atkPct = cn * R.CODEX_EACH; b.goldPct = cn * R.CODEX_EACH; }
-    var h = HOUSE[P.house]; if (h) addEff(b, h.bonus, R.housePct(W, P.house));
-    var cl = R.CLS[P.cls || 'mage']; if (cl) addEff(b, cl.bonus);   // 학과
-    if (P.guildLv > 0) { var gb = R.guildBonus(P.guildLv); b.goldPct = (b.goldPct || 0) + gb; b.xpPct = (b.xpPct || 0) + gb; }   // 동아리 레벨 보너스
-    if (P.partyN > 1) { var pn = Math.min(P.partyN, 4) - 1; b.goldPct = (b.goldPct || 0) + R.PARTY_GOLD * pn; b.xpPct = (b.xpPct || 0) + R.PARTY_XP * pn; }   // 파티 보너스 (솔로와 성장 격차를 줄이려 경험치는 작게)
-    for (var id in P.rs) if (RES[id]) addEff(b, RES[id].eff, P.rs[id]);
-    var eh = R.eggHold(P); if (eh) b.xpPct = (b.xpPct || 0) + eh * R.EGG_HOLD_EACH;   // 알 품기
-    for (var fid in P.fam.own) { var f = FAM[fid]; if (f) b[f.bonus] = (b[f.bonus] || 0) + R.famBonus(f, P.fam.own[fid].lv, P); }
+  // src를 주면 출처별 몫도 적는다 (전체 능력치 화면): src[효과] = [[출처, 값, 일시 효과면 1], ...]
+  function bonuses(P, W, t0, t1, src) {
+    var b = {}, prev = {};
+    var mark = !src ? function () { } : function (tag, temp) { for (var k in b) { var d = (b[k] || 0) - (prev[k] || 0); if (Math.abs(d) > 1e-9) (src[k] = src[k] || []).push([tag, d, temp ? 1 : 0]); } prev = {}; for (var k2 in b) prev[k2] = b[k2]; };
+    var cn = R.codexTiers(P); if (cn) { b.atkPct = cn * R.CODEX_EACH; b.goldPct = cn * R.CODEX_EACH; } mark('도감');
+    var h = HOUSE[P.house]; if (h) addEff(b, h.bonus, R.housePct(W, P.house)); mark('기숙사');
+    var cl = R.CLS[P.cls || 'mage']; if (cl) addEff(b, cl.bonus); mark('학과');   // 학과
+    if (P.guildLv > 0) { var gb = R.guildBonus(P.guildLv); b.goldPct = (b.goldPct || 0) + gb; b.xpPct = (b.xpPct || 0) + gb; } mark('동아리');   // 동아리 레벨 보너스
+    if (P.partyN > 1) { var pn = Math.min(P.partyN, 4) - 1; b.goldPct = (b.goldPct || 0) + R.PARTY_GOLD * pn; b.xpPct = (b.xpPct || 0) + R.PARTY_XP * pn; } mark('파티');   // 파티 보너스 (솔로와 성장 격차를 줄이려 경험치는 작게)
+    for (var id in P.rs) if (RES[id]) addEff(b, RES[id].eff, P.rs[id]); mark('연구');
+    var eh = R.eggHold(P); if (eh) b.xpPct = (b.xpPct || 0) + eh * R.EGG_HOLD_EACH; mark('알 품기');   // 알 품기
+    for (var fid in P.fam.own) { var f = FAM[fid]; if (f) b[f.bonus] = (b[f.bonus] || 0) + R.famBonus(f, P.fam.own[fid].lv, P); } mark('사역마');
     var span = Math.max(1e-6, t1 - t0);
     for (var bid in P.buffs) {
       var bf = P.buffs[bid], ov;
@@ -395,12 +397,13 @@
       else ov = Math.max(0, Math.min(bf.end, t1) - Math.max(bf.start, t0)) / span;
       if (ov > 0) addEff(b, bf.eff, ov);
     }
+    mark('물약', 1);
     if (W) {
-      var cal = R.calendar(W, t0); addEff(b, cal.bonus.eff);
-      if (R.scholarship(P, W, t0)) addEff(b, R.SCHOLAR_EFF);
-      var wf = weekendFrac(t0, t1); if (wf > 0) addEff(b, D.WEEKEND.eff, wf);
-      R.skyOverlap(t0, t1).forEach(function (o) { addEff(b, o.ev.eff, o.f); });
-      R.weatherOverlap(W, t0, t1).forEach(function (o) { addEff(b, o.w.eff, o.f); });   // 날씨
+      var cal = R.calendar(W, t0); addEff(b, cal.bonus.eff); mark('달력', 1);
+      if (R.scholarship(P, W, t0)) addEff(b, R.SCHOLAR_EFF); mark('장학금');
+      var wf = weekendFrac(t0, t1); if (wf > 0) addEff(b, D.WEEKEND.eff, wf); mark('주말', 1);
+      R.skyOverlap(t0, t1).forEach(function (o) { addEff(b, o.ev.eff, o.f); }); mark('하늘 이벤트', 1);
+      R.weatherOverlap(W, t0, t1).forEach(function (o) { addEff(b, o.w.eff, o.f); }); mark('날씨', 1);   // 날씨
     }
     for (var s in P.eq) {
       var it = P.eq[s]; if (!it) continue;
@@ -408,10 +411,59 @@
       for (var k in ist) if (STATS.indexOf(k) < 0 && k !== 'atk' && k !== 'hp' && k !== 'def') b[k] = (b[k] || 0) + ist[k];
       if (it.eng) b[it.eng.id] = (b[it.eng.id] || 0) + it.eng.v;
     }
-    var bw = R.badgeWorn(P); if (bw) { var bst = R.badgeStats(bw); for (var bk in bst) b[bk] = (b[bk] || 0) + bst[bk]; }   // 아카데미 휘장
+    mark('장비');
+    var bw = R.badgeWorn(P); if (bw) { var bst = R.badgeStats(bw); for (var bk in bst) b[bk] = (b[bk] || 0) + bst[bk]; } mark('휘장');   // 아카데미 휘장
     return b;
   }
   R.bonuses = bonuses;
+  // 전체 능력치 (장비 · 능력치 화면 「전체 능력치」, 공개를 켠 학생의 정보창): 분류 → 줄(합계 · 출처). 출처 값은 화면 문구로 만들어 보낸다
+  R.fullStats = function (P, W, t) {
+    var c = calc(P, W, t), src = {}; bonuses(P, W, t, t, src);
+    var st = c.stat, sj = function (k) { return (P.subj[k] || {}).lv || 0; }, pc = function (v) { return (v < 0 ? '−' : '+') + R.fmtPct(Math.abs(v), 1); };
+    function from(key) { return (src[key] || []).map(function (x) { return [x[0], pc(x[1]), x[2]]; }); }
+    function add(list, label, v, f) { if (v) list.push([label, f ? f(v) : pc(v), 0]); return list; }
+    function row(n, v, s, zero) { return { n: n, v: v, s: s || [], z: zero ? 1 : 0 }; }
+    var sn = D.STAT_NAMES;
+    return [
+      { g: '전투', rows: [
+        row('초당 피해', R.fmt(Math.round(c.totalDps))),
+        row('물리 공격력', R.fmt(Math.round(c.patk)), add(add(from('atkPct').concat(from('physPct')), sn.vit + ' ' + Math.round(st.vit), st.vit * 0.01), '', 0)),
+        row('주문 공격력', R.fmt(Math.round(c.matk)), add(from('atkPct'), sn.int + ' ' + Math.round(st.int), st.int * 0.01)),
+        row('주문 위력', '×' + c.spell.toFixed(2), add(from('spellPct'), SUBJ.syntax.name + ' Lv ' + sj('syntax'), sj('syntax') * 0.02), c.spell === 1),
+        row('기술 위력', '×' + c.skill.toFixed(2), from('skillPct'), c.skill === 1),
+        row('공격 속도', c.aps.toFixed(2) + '/초', add(from('aps'), sn.agi + ' ' + Math.round(st.agi), st.agi * 0.01)),
+        row('치명타 확률', R.fmtPct(c.critC, 1), add([['기본', '5%', 0]].concat(from('critC')), sn.luk + ' ' + Math.round(st.luk), st.luk * 0.0015)),
+        row('치명타 피해', '×' + c.critD.toFixed(2), [['기본', '×1.5', 0]].concat(from('critD'))),
+        row('생명력', R.fmt(Math.round(c.hp)), add(add(from('hpPct'), sn.vit + ' ' + Math.round(st.vit), st.vit * 0.012), sn.wil + ' ' + Math.round(st.wil), st.wil * 0.004)),
+        row('방어력', R.fmt(Math.round(c.def)), add(from('defPct'), sn.vit + ' ' + Math.round(st.vit), st.vit * 0.006)),
+        row('생명력 흡수', R.fmtPct(c.leech, 1) + (c.leech >= 0.1 ? ' (최대)' : ''), from('leech'), !c.leech),
+        row('보스 피해', '×' + c.bossDmg.toFixed(2), from('bossDmg'), c.bossDmg === 1),
+        row('재사용 대기 감소', R.fmtPct(c.cdr, 1) + (c.cdr >= 0.5 ? ' (최대)' : ''), from('cdr'), !c.cdr)
+      ] },
+      { g: '성장', rows: [
+        row('경험치', pc(c.xp - 1), from('xpPct'), c.xp === 1),
+        row('지식', pc(c.know - 1), from('knowPct'), c.know === 1),
+        row(R.CUR + ' 획득', pc(c.gold - 1), from('goldPct'), c.gold === 1),
+        row('수업 효율', '×' + c.lecSpd.toFixed(2), add(from('lectureSpd'), sn.int + ' ' + Math.round(st.int), st.int * 0.0008)),
+        row('꿈길 보상', pc(src.offlineEff ? (src.offlineEff.reduce(function (a, x) { return a + x[1]; }, 0)) : 0), from('offlineEff'), !src.offlineEff),
+        row('시험 가산점', '+' + (c.examBonus || 0) + '점', (src.examBonus || []).map(function (x) { return [x[0], '+' + Math.round(x[1] * 10) / 10 + '점', x[2]]; }), !c.examBonus)
+      ] },
+      { g: '전리품', rows: [
+        row('전리품 확률', pc(c.drop - 1), add(from('dropPct'), sn.luk + ' ' + Math.round(st.luk), st.luk * 0.001), c.drop === 1),
+        row('장비 등급 상승', pc(c.rarity), add(from('rarity'), sn.luk + ' ' + Math.round(st.luk), st.luk * 0.0008), !c.rarity),
+        row('처치 시 마나', c.killMana ? '+' + Math.round(c.killMana * 10) / 10 + '초분' : '없음', (src.killMana || []).map(function (x) { return [x[0], '+' + Math.round(x[1] * 10) / 10 + '초분', x[2]]; }), !c.killMana)
+      ] },
+      { g: '생활', rows: [
+        row('마나 재생', R.fmt(Math.round(c.mana * 3600)) + '/시간', add(from('manaPct'), sn.wil + ' ' + Math.round(st.wil), st.wil * 0.04)),
+        row('마나 저장 한도', Math.round(c.manaCap / c.mana / 360) / 10 + '시간분', [['기본', K.MANA_CAP_H + '시간분', 0]].concat((src.manaCap || []).map(function (x) { return [x[0], '+' + Math.round(x[1] / 360) / 10 + '시간분', x[2]]; }))),
+        row('양조 효율', '×' + c.brewSpd.toFixed(2), add(from('brewSpd'), SUBJ.alch.name + ' Lv ' + sj('alch'), sj('alch') * 0.01), c.brewSpd === 1),
+        row('부화 효율', '×' + c.hatchSpd.toFixed(2), add(from('hatchSpd'), SUBJ.beast.name + ' Lv ' + sj('beast'), sj('beast') * 0.01), c.hatchSpd === 1),
+        row('파견 보상', pc((src.dispPct || []).reduce(function (a, x) { return a + x[1]; }, 0) + sj('beast') * R.BEAST_DISP), add(from('dispPct'), SUBJ.beast.name + ' Lv ' + sj('beast'), sj('beast') * R.BEAST_DISP), !src.dispPct && !sj('beast')),
+        row('강화 성공률', pc((src.enhBonus || []).reduce(function (a, x) { return a + x[1]; }, 0) + sj('rune') * 0.004), add(from('enhBonus'), SUBJ.rune.name + ' Lv ' + sj('rune'), sj('rune') * 0.004), !src.enhBonus && !sj('rune')),
+        row('가방 칸', c.bag + '칸', [['기본', K.BAG_BASE + '칸', 0]].concat((src.bag || []).map(function (x) { return [x[0], '+' + x[1] + '칸', x[2]]; })).concat(P.bagExtra ? [['가방 확장', '+' + P.bagExtra + '칸', 0]] : []))
+      ] }
+    ];
+  };
 
   /* ───────── 후배 장학금: 서버 진행보다 두 학년 이상 뒤처진 학생 지원 ───────── */
   R.PACE = [1.8, 4.3, 9.9, 16.5, 28.9, 49.9, 91.9]; // 성실한 학생이 각 시험을 통과하는 개교 후 날짜
