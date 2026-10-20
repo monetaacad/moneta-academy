@@ -821,6 +821,7 @@
     var h = (p.preview ? '<p class="tiny gold" style="margin-bottom:10px">미리보기 · 저장하지 않은 내용이 들어 있습니다</p>' : '') + '<div class="pcard' + (dk ? ' deco ' + fr.cls : '') + '"' + (dk ? ' style="' + fr.style + bgs + '"' : '') + '>' + (dc.stamp && R.DECO[dc.stamp] ? '<span class="pstamp" title="' + R.DECO[dc.stamp].name + '" aria-hidden="true">' + R.DECO[dc.stamp].glyph + '</span>' : '') + '<div class="pav">' + avatarHtml(p, 100) + (p.avcredit && (p.av || p.avData) ? '<span class="avcredit" title="두상 출처">' + esc(p.avcredit) + '</span>' : '') + '</div>' + '<div style="min-width:0">' + (p.title ? '<div class="pttl">' + (R.OP_TITLES[p.title] ? '<span class="ttl' + R.opTitleCls(p.title) + '">' + esc(p.title) + '</span>' : esc(p.title)) + '</div>' : '') + '<h2 class="pname">' + inkName(p.name, dc.ink) + (p.badge && R.GEM[p.badge.gem] ? ' <span class="pbdg" title="' + esc((p.badge.name || '') + ' · Lv ' + p.badge.lv) + '">' + badgeSvg(p.badge, 26) + '</span>' : '') + (p.online ? ' <span class="odot" title="접속 중"></span>' : '') + '</h2>' +
       '<div class="small">' + (hh ? houseDot(p.house, 16) + ' ' : '') + '<span style="color:' + (hh ? hh.color : 'inherit') + '">' + (hh ? hh.name : '') + '</span> · ' + (p.grade >= 8 ? '마스터 과정' : p.grade + '학년') + (p.lvl ? ' · Lv ' + p.lvl : '') + (R.CLS[p.cls] ? ' · <span class="pcls">' + clsDot(p.cls, 14) + ' ' + R.CLS[p.cls].name + '</span>' : '') + '</div>' +
       (p.guild ? '<div class="pguild">' + gEmblem(p.guild.color, p.guild.name, 20, p.guild.icon) + '<b>' + esc(p.guild.name) + '</b><span class="tiny faint">Lv ' + (p.guild.lv || 1) + '</span>' + (p.guild.rank ? '<span class="tag' + (p.guild.role === 'owner' ? ' br' : p.guild.role === 'officer' ? ' ok' : '') + '">' + esc(p.guild.rank) + '</span>' : '') + '</div>' : '') +
+      (p.fam && R.FAM[p.fam.id] ? '<div class="tiny pfam">동행 사역마 <b>' + esc(p.fam.nm || R.FAM[p.fam.id].name) + '</b>' + (p.fam.nm ? ' <span class="faint">' + R.FAM[p.fam.id].name + '</span>' : '') + ' <span class="num gold">Lv ' + p.fam.lv + '</span></div>' : '') +
       (p.status ? '<div class="pstatus">' + esc(p.status) + '</div>' : '') + '</div></div>';
     var ih = '';
     if (p.bio) { var long = p.bio.length > 120 || (p.bio.match(/\n/g) || []).length > 3; ih += '<div class="pbiow' + (long ? ' clamp' : '') + '"><p class="pbio">' + esc(p.bio) + '</p>' + (long ? '<button class="btn sm ghost biomore" data-act="biomore">더보기</button>' : '') + '</div>'; } else if (p.bioHidden) h += '<p class="tiny faint" style="margin-top:10px">자기소개는 친구에게만 공개되어 있습니다.</p>';
@@ -1981,13 +1982,13 @@
     if (inc) { var ip = Math.min(1, inc.prog / inc.need); h += '<div class="incbox"><div class="row small"><b>품고 있는 알</b><span class="spacer"></span><span class="num">필요 기여도 ' + fmt(Math.floor(inc.prog)) + ' / ' + fmt(inc.need) + ' (' + Math.floor(ip * 100) + '%)</span></div><div class="bar brass" style="height:8px;margin-top:4px"><b style="width:' + (ip * 100).toFixed(1) + '%"></b></div><div class="tiny faint" style="margin-top:2px">부화 효율 ×' + C().hatchSpd.toFixed(2) + ' · 활동으로 얻는 기여도 × 부화 효율만큼 오릅니다</div></div>'; }
     h += '<div class="row" style="margin-top:10px;gap:6px">' + (inc ? (inc.prog >= inc.need ? '<button class="btn primary" data-act="do" data-a="eggHatch">부화시키기</button>' : '<button class="btn" data-act="do" data-a="egg"' + (predMana() >= price ? '' : ' disabled') + '>마나로 바로 깨우기 <span class="cost">마나 ' + fmt(price) + '</span></button>') :
       '<button class="btn primary" data-act="do" data-a="eggInc"' + (P.fam.eggs > 0 ? '' : ' disabled') + '>알 품기</button><button class="btn" data-act="do" data-a="egg"' + (P.fam.eggs > 0 && predMana() >= price ? '' : ' disabled') + '>마나로 바로 깨우기 <span class="cost">마나 ' + fmt(price) + '</span></button>') + '</div>';
-    h += '</div><div class="card inset"><h4>파견</h4><p class="small muted" style="margin-top:4px">동행하지 않는 사역마를 정해진 시간 동안 내보내면 재료, 마석, ' + CUR + ', 가끔 알과 별조각을 물어 옵니다. 8·12시간 파견은 잠들기 전에 시작해 두는 장시간 방치용입니다.</p>' + durPicker('dd', D.DISPATCH_DUR, '8h') + (function () { var idle = Object.keys(P.fam.own).filter(function (id) { return R.FAM[id] && !P.fam.disp[id] && P.fam.act !== id; }).length; return idle ? '<div class="row" style="margin-top:8px"><button class="btn sm primary" data-act="dispall">쉬고 있는 사역마 모두 파견 <span class="cost">' + idle + '마리 · ' + R.DDUR[S.pick.dd || '8h'].label + '</span></button></div>' : ''; })() + '<p class="tiny faint" style="margin-top:6px">파견에서 돌아온 사역마는 따로 받지 않아도 됩니다. 돌아오면 저절로 받아지고, 「끝난 작업 보고」에 한꺼번에 표시됩니다.</p></div></div><div class="grid gauto">';
+    h += '</div><div class="card inset"><h4>파견</h4><p class="small muted" style="margin-top:4px">동행하지 않는 사역마를 정해진 시간 동안 내보내면 재료, 마석, ' + CUR + ', 가끔 알과 별조각을 물어 옵니다. 8·12시간 파견은 잠들기 전에 시작해 두는 장시간 방치용입니다.</p>' + durPicker('dd', D.DISPATCH_DUR, '8h') + (function () { var idle = Object.keys(P.fam.own).filter(function (id) { return R.FAM[id] && !P.fam.disp[id] && P.fam.act !== id; }).length; return idle ? '<div class="row" style="margin-top:8px"><button class="btn sm primary" data-act="dispall">쉬고 있는 사역마 모두 파견 <span class="cost">' + idle + '마리 · ' + R.DDUR[S.pick.dd || '8h'].label + '</span></button></div>' : ''; })() + '<p class="tiny faint" style="margin-top:6px">파견에서 돌아온 사역마는 따로 받지 않아도 됩니다. 돌아오면 저절로 받아지고, 「끝난 작업 보고」에 한꺼번에 표시됩니다.</p></div></div><label class="tog small" style="margin:0 0 10px"><input type="checkbox" data-act="opt" data-a="showFam"' + (P.opt.showFam ? ' checked' : '') + '> 동행 중인 사역마를 내 정보에 공개 (다른 학생이 정보창에서 볼 수 있습니다)</label><div class="grid gauto">';
     var dk = S.pick.dd || '8h';
     D.FAMILIARS.forEach(function (f) {
       var o = P.fam.own[f.id], fr = D.FAM_RARITY[f.r];
       if (!o) { h += '<div class="card famcard unk"><div><div class="small">???</div><div class="tiny" style="color:' + fr.color + '">' + fr.name + '</div><div class="tiny faint">' + D.BONUS_NAMES[f.bonus] + '</div></div></div>'; return; }
       var act2 = P.fam.act === f.id, disp = P.fam.disp[f.id], cost = o.lv < 20 ? R.feedCost(P, f.id) : 0;
-      h += '<div class="card famcard' + (act2 ? ' act' : '') + '"><div style="flex:1;min-width:0"><div class="row" style="gap:6px"><b>' + f.name + '</b><span class="num tiny gold">Lv ' + o.lv + '</span></div><div class="tiny" style="color:' + fr.color + '">' + fr.name + '</div>' +
+      h += '<div class="card famcard' + (act2 ? ' act' : '') + '"><div style="flex:1;min-width:0"><div class="row" style="gap:6px;flex-wrap:wrap"><b>' + esc(o.nm || f.name) + '</b>' + (o.nm ? '<span class="tiny faint">' + f.name + '</span>' : '') + '<span class="num tiny gold">Lv ' + o.lv + '</span><button class="btn ghost sm famnm" data-act="famname" data-a="' + f.id + '">이름 짓기</button></div><div class="tiny" style="color:' + fr.color + '">' + fr.name + '</div>' +
         '<div class="small">' + D.BONUS_NAMES[f.bonus] + ' +' + pct(R.famBonus(f, o.lv, P)) + '</div>' + famXpBar(f, o, act2, disp) + (disp ? '<div class="tiny gold">파견 중 · ' + clock(disp.end) + ' 귀환</div>' : '<div class="tiny faint">' + f.desc + '</div>') +
         '<div class="row" style="margin-top:6px;gap:6px">' + (o.lv < 20 ? '<button class="btn sm primary" data-act="do" data-a="feed" data-b="' + f.id + '"' + (P.res.gold >= cost ? '' : ' disabled') + '>먹이 <span class="cost">' + fmt(cost) + ' ' + CUR + '</span></button>' : '<span class="tag br">최대 레벨</span>') +
         (act2 ? '<span class="tag ok">동행 중</span>' : disp ? '' : '<button class="btn sm primary" data-act="do" data-a="famAct" data-b="' + f.id + '">동행</button><button class="btn sm primary" data-act="dispatch" data-a="' + f.id + '">' + R.DDUR[dk].label + ' 파견</button>') + '</div></div></div>';
@@ -3167,7 +3168,7 @@
   var BT_VERB = ['지팡이를 휘둘렀다', '마력탄을 연달아 쏘았다', '빈틈을 파고들었다', '몸을 낮추고 한 번 더 찔렀다', '숨을 고르고 다시 겨눴다', '발밑의 마법진을 밟고 몰아쳤다'];
   function battleScript(opts) {
     var ev = opts.ev || [], total = ev.length ? ev[ev.length - 1][0] : 1, en = opts.enemy.name, me = S.P.name;
-    var pHpMax = C().hp, mhp = opts.maxHp || 0, fam = S.P.fam.act && R.FAM[S.P.fam.act] ? R.FAM[S.P.fam.act].name : '';
+    var pHpMax = C().hp, mhp = opts.maxHp || 0, fam = S.P.fam.act && R.FAM[S.P.fam.act] ? R.famLabel(S.P, S.P.fam.act) : '';
     var lines = [[0, josa(en, '과', '와') + ' 마주 섰다. ' + (opts.infinite ? '30초 동안 할 수 있는 만큼 퍼붓는다.' : '주문서를 펼친다.'), 's']];
     var N = 14, win = total / N, dealt = 0, php = 1, k = 0, marks = opts.infinite ? [0.25, 0.5, 0.75] : [0.25, 0.5, 0.75], mk = 0, lowSaid = false, dead = false, best = 0;
     for (var w = 0; w < N && k < ev.length; w++) {
@@ -3386,6 +3387,15 @@
   };
   ACT['alloc-go'] = function () { var d = S.allocDraft || {}; act('allocMany', { add: d }).then(function (r) { closeModal(); if (r) { S.allocDraft = null; Snd.play('click'); toast('능력치를 나눴습니다', r.n + '포인트', 1800); } render(); }); };
   ACT.preset = function (k) { act('allocW', { w: PRESETS_()[k] }).then(render); };
+  // 사역마 이름 짓기: 비우고 저장하면 원래 이름으로
+  ACT.famname = function (id) {
+    var o = S.P.fam.own[id], f = R.FAM[id]; if (!o || !f) return;
+    modal(mhead('사역마 이름 짓기', f.name + ' · Lv ' + o.lv) + '<input id="fam-nm" type="text" name="fam-nm" maxlength="' + R.FAM_NAME_MAX + '" autocomplete="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-form-type="other" placeholder="' + esc(f.name) + '" value="' + esc(o.nm || '') + '">' +
+      '<p class="tiny faint" style="margin-top:6px">' + R.FAM_NAME_MAX + '자까지 입력할 수 있습니다. 비워 두고 저장하면 원래 이름(' + esc(f.name) + ')으로 돌아갑니다.</p>' +
+      '<div class="row" style="justify-content:flex-end;margin-top:12px;gap:6px"><button class="btn ghost" data-act="modal-close">취소</button><button class="btn primary" data-act="famnamesave" data-a="' + id + '">저장</button></div>');
+    setTimeout(function () { var i = $('#fam-nm'); if (i) { i.focus(); i.select(); } }, 30);
+  };
+  ACT.famnamesave = function (id) { var i = $('#fam-nm'); act('famName', { id: id, name: i ? i.value : '' }).then(function (r) { if (!r) return; closeModal(); toast('사역마 이름', r.nm ? R.josa('「' + r.nm + '」', '으로', '로') + ' 지었습니다' : '원래 이름으로 돌아갔습니다'); render(); }); };
   ACT.opt = function (k, v, el) { act('opt', { k: k, v: el.checked }).then(function () { if (k === 'sound') { Snd.set(S.P.opt.sound); if ($('#setbox')) ACT.settings(); } if (/Title$/.test(k)) renderDock(); render(); }); };
   ACT.autosell = function () { act('autoSell', { r: +$('#autosell').value }).then(render); };
   ACT.automode = function () { act('autoMode', { dis: $('#automode').value === 'dis' }).then(render); };
@@ -3864,7 +3874,8 @@
     h += '<div class="setsec"><div class="section-t">채팅</div><label class="tog"><input type="checkbox" id="opt-hmt" data-act="opt" data-a="hideMyTitle"' + (P.opt.hideMyTitle ? ' checked' : '') + '> 채팅에서 내 칭호 숨기기</label>' +
       '<label class="tog"><input type="checkbox" id="opt-hot" data-act="opt" data-a="hideOtherTitle"' + (P.opt.hideOtherTitle ? ' checked' : '') + '> 채팅에서 다른 학생 칭호 숨기기</label><p class="tiny faint">정보창에는 칭호가 그대로 보입니다.</p></div>';
     h += '<div class="setsec"><div class="section-t">게임</div><label class="tog"><input type="checkbox" id="opt-ae2" data-act="opt" data-a="autoEquip"' + (P.opt.autoEquip ? ' checked' : '') + '> 더 좋은 장비 자동 장착</label>' +
-      '<label class="tog"><input type="checkbox" id="opt-aa2" data-act="opt" data-a="autoAlloc"' + (P.opt.autoAlloc ? ' checked' : '') + '> 능력치 자동 분배</label></div>';
+      '<label class="tog"><input type="checkbox" id="opt-aa2" data-act="opt" data-a="autoAlloc"' + (P.opt.autoAlloc ? ' checked' : '') + '> 능력치 자동 분배</label>' +
+      '<label class="tog"><input type="checkbox" id="opt-sf2" data-act="opt" data-a="showFam"' + (P.opt.showFam ? ' checked' : '') + '> 동행 중인 사역마를 내 정보에 공개</label></div>';
     if (API.mode === 'local' && API.cheat) h += '<div class="setsec cheat"><div class="section-t">테스트 도구 <span class="tag br">데모에서만</span></div><p class="tiny faint">기능을 둘러보기 위한 버튼입니다. 서버판에는 없습니다.</p><div class="filters">' +
       [['grade', '한 학년 올리기'], ['subj', '과목 +5레벨'], ['lvl', '레벨 +10'], ['res', '자원 듬뿍'], ['stage', '원정 단계 모두 열기'], ['finish', '작업 즉시 끝내기'], ['spirit', '정령·도전권 채우기']].map(function (c) { return '<button class="btn sm" data-act="cheat" data-a="' + c[0] + '">' + c[1] + '</button>'; }).join('') + '</div></div>';
     h += '<div class="setsec"><div class="section-t">계정</div><p class="small muted">' + (API.mode === 'local' ? '미리보기: 진행 상황은 이 브라우저에만 저장됩니다.' : '진행 상황은 아카데미 서버에 저장됩니다. 글씨 크기·소리·알림 설정은 이 브라우저에만 기억합니다.') + '</p><p class="tiny faint">화면 버전 ' + BUILD + '</p>';
@@ -4542,7 +4553,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102065;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102066;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

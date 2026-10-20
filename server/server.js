@@ -635,7 +635,8 @@ routes['GET /api/profile'] = (req, res) => {
   if (LP) { const s = R.summary(LP, world.W, Math.min(nowSec(), LP.at)); lvl = s.lvl; grade = s.grade; power = s.power; }
   const out = { id, op: isChatOp(id) || undefined, name: row.name, house: row.house, grade, guest: !!row.guest, created: row.created, av: row.avatar_v && dbx.q.getAvatar.get(id).avatar ? row.avatar_v : 0,
     status: pr.status, bio: pr.bio, fav: pr.fav, avcredit: pr.avcredit || '', online: self || isOnline(id), self, title: LP ? R.titleName(LP, LP.title) : row.title };
-  { const DP = LP || store.get(id); out.deco = R.decoView(DP); if (DP && R.CLS[DP.cls]) out.cls = DP.cls; const bw = DP && R.badgeWorn(DP); if (bw) out.badge = { gem: bw.gem, lv: bw.lv, name: bw.name }; }   // 정보 카드 꾸미기
+  { const DP = LP || store.get(id); out.deco = R.decoView(DP); if (DP && R.CLS[DP.cls]) out.cls = DP.cls; const bw = DP && R.badgeWorn(DP); if (bw) out.badge = { gem: bw.gem, lv: bw.lv, name: bw.name };
+    const fa = DP && DP.opt && DP.opt.showFam && DP.fam && DP.fam.act, fo = fa && DP.fam.own[fa]; if (fo && R.FAM[fa]) out.fam = { id: fa, lv: fo.lv, nm: fo.nm || '' }; }   // 동행 사역마 (학생이 공개를 켰을 때만)   // 정보 카드 꾸미기
   const fs = self ? null : friendState(me, id), can = (v) => self || v === 'all' || (v === 'friend' && fs === 'ok');
   if (can(pr.visLv)) Object.assign(out, { lvl, power, rank: world.rankOf(power) });
   if (can(pr.visStat) || can(pr.visEq)) {
