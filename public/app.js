@@ -1951,13 +1951,18 @@
   };
   // 능력치 효과: 지금 수치(나눠 보는 중이면 그만큼 더해서)로 얻는 합계
   function sdesc(k, v) { return (R.STAT_FX[k] || []).map(function (x) { return x[0] + ' +' + R.fmtPct(x[1] * v, 1); }).join(', '); }
+  // 능력치 출처: 기본(시작 5 + 레벨) · 분배(직접 찍은 포인트) · 과목 · 장비
+  function statSplit(c, k) {
+    var al = S.P.alloc[k] || 0, sj = (c.statSubj && c.statSubj[k]) || 0, gr = c.statGear[k] || 0, pl = function (v) { return v ? '<span class="good">+' + fmt(v) + '</span>' : '+0'; };
+    return '기본 ' + fmt(c.stat[k] - al - sj - gr) + ' · 분배 ' + pl(al) + (sj ? ' · 과목 ' + pl(sj) : '') + ' · 장비 ' + pl(gr);
+  }
   function allocCard() {
     var P = S.P, c = C(), PRESETS = PRESETS_(), cur = Object.keys(PRESETS).find(function (k) { return JSON.stringify(PRESETS[k]) === JSON.stringify(P.opt.allocW); });
     var rsn = (P.tok && P.tok.respec) || 0, rsArm = S.confirm.rsp > Date.now();
     var dr = S.allocDraft || {}, dsum = R.STATS.reduce(function (a, k) { return a + (dr[k] || 0); }, 0), left = P.pts - dsum;   // 나눠 보는 중 (저장 전)
     if (left < 0) { S.allocDraft = null; dr = {}; dsum = 0; left = P.pts; }   // 그사이 포인트가 줄었으면 나눠 보던 것은 버린다
     var h = '<div class="card" data-anchor="alloc"><div class="row between"><h3>능력치</h3><span class="small">남은 포인트 <b class="num gold">' + left + '</b>' + (dsum ? ' <span class="tiny faint">(저장 전 ' + dsum + ')</span>' : '') + '</span></div>' + (rsn ? '<div class="row" style="margin-top:6px;gap:8px;flex-wrap:wrap"><span class="small">망각의 차 <b class="num">' + rsn + '</b>개</span><span class="tiny faint">마시면 분배한 포인트를 모두 돌려받고 자동 분배가 꺼집니다</span><span class="spacer"></span><button class="btn sm' + (rsArm ? ' primary' : '') + '" data-act="respecuse">' + (rsArm ? '한 번 더 누르면 마십니다' : '망각의 차 마시기') + '</button></div>' : '') + '<div class="alloc" style="margin-top:8px">';
-    R.STATS.forEach(function (k) { var d = dr[k] || 0; h += '<span>' + D.STAT_NAMES[k] + '</span><span class="tiny faint">' + sdesc(k, c.stat[k] + d) + '<br><span class="num">기본 ' + fmt(c.stat[k] - (c.statGear[k] || 0)) + ' · 장비 ' + ((c.statGear[k] || 0) ? '<span class="good">+' + fmt(c.statGear[k]) + '</span>' : '+0') + '</span></span><span class="allocv"><button class="btn sm ghost" data-act="alloc" data-a="' + k + '" data-b="-1" aria-label="' + D.STAT_NAMES[k] + ' 하나 빼기"' + (d ? '' : ' style="visibility:hidden" tabindex="-1"') + '>−1</button><b class="num">' + fmt(c.stat[k]) + '</b><span class="good num allocd">' + (d ? '+' + d : '') + '</span></span><span class="row" style="gap:4px;flex-wrap:nowrap"><button class="btn sm" data-act="alloc" data-a="' + k + '" data-b="1"' + (left ? '' : ' disabled') + '>+1</button><button class="btn sm ghost" data-act="alloc" data-a="' + k + '" data-b="10"' + (left >= 2 ? '' : ' disabled') + '>+10</button></span>'; });
+    R.STATS.forEach(function (k) { var d = dr[k] || 0; h += '<span>' + D.STAT_NAMES[k] + '</span><span class="tiny faint">' + sdesc(k, c.stat[k] + d) + '<br><span class="num">' + statSplit(c, k) + '</span></span><span class="allocv"><button class="btn sm ghost" data-act="alloc" data-a="' + k + '" data-b="-1" aria-label="' + D.STAT_NAMES[k] + ' 하나 빼기"' + (d ? '' : ' style="visibility:hidden" tabindex="-1"') + '>−1</button><b class="num">' + fmt(c.stat[k]) + '</b><span class="good num allocd">' + (d ? '+' + d : '') + '</span></span><span class="row" style="gap:4px;flex-wrap:nowrap"><button class="btn sm" data-act="alloc" data-a="' + k + '" data-b="1"' + (left ? '' : ' disabled') + '>+1</button><button class="btn sm ghost" data-act="alloc" data-a="' + k + '" data-b="10"' + (left >= 2 ? '' : ' disabled') + '>+10</button></span>'; });
     if (dsum) h += '</div><div class="row allocsave" style="margin-top:8px;gap:6px"><span class="small gold">' + R.STATS.filter(function (k) { return dr[k]; }).map(function (k) { return D.STAT_NAMES[k] + ' +' + dr[k]; }).join(' · ') + '</span><span class="spacer"></span><button class="btn sm ghost" data-act="alloc-reset">되돌리기</button><button class="btn sm primary" data-act="alloc-save">저장</button><div class="alloc" style="display:none">';
     var why = PWHY[P.cls === 'knight' ? 'knight' : 'mage'], tot = 0, W0 = cur ? PRESETS[cur] : null; if (W0) R.STATS.forEach(function (k) { tot += W0[k] || 0; });
     var info = W0 ? '<p class="tiny muted" style="margin-top:6px"><b>' + PNAMES[cur] + '</b> · ' + R.STATS.filter(function (k) { return W0[k]; }).sort(function (a, b) { return W0[b] - W0[a]; }).map(function (k) { return D.STAT_NAMES[k] + ' ' + Math.round(W0[k] / tot * 100) + '%'; }).join(' · ') + '<br>' + why[cur] + '</p>' : '<p class="tiny faint" style="margin-top:6px">직접 정한 비율입니다. 프리셋을 누르면 해당 비율로 바뀝니다.</p>';
@@ -4619,7 +4624,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102088;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102089;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
