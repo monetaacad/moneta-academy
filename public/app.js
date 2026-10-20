@@ -2899,7 +2899,7 @@
 
   /* ── 세계관 ── */
   V.lore = function () {
-    var P = S.P, tabs = [['story', '이야기'], ['world', '세계']]; if (S.loreTab === 'guide') S.loreTab = 'story';
+    var P = S.P, tabs = [['story', '이야기'], ['world', '세계'], ['house', '기숙사']]; if (S.loreTab === 'guide') S.loreTab = 'story';
     var h = pageHead('에테라 대륙 · 구름섬 라디아', '세계관', '');
     h += '<div class="tabs" role="tablist">' + tabs.map(function (t) { return '<button role="tab" class="' + (S.loreTab === t[0] ? 'on' : '') + '" data-act="loretab" data-a="' + t[0] + '">' + t[1] + (t[0] === 'story' && storyUnread() ? ' <span class="tag br">새 글</span>' : '') + '</button>'; }).join('') + '</div>';
     if (S.loreTab === 'story') {
@@ -2909,9 +2909,13 @@
         return '<div class="card chapter' + (unread ? ' hl' : '') + '"><div class="roman">' + ROMAN[i + 1] + '</div><h3>' + s2.title + (unread ? ' <span class="tag br">새 글</span>' : '') + '</h3>' + (unread ? '<div class="row" style="margin-top:8px"><button class="btn sm primary" data-act="story" data-a="' + i + '">읽기</button></div>' : '<p class="small" style="margin-top:6px">' + esc(s2.text) + '</p>') + '</div>';
       }).join('') + '</div>';
     } else if (S.loreTab === 'world') {
-      h += '<div class="grid g2">' + D.LORE.map(function (l) { return '<div class="card"><h3>' + l.title + '</h3><p class="small" style="margin-top:4px;color:var(--ink2);white-space:pre-line">' + l.text + '</p></div>'; }).join('') + '</div>' +
-        '<div class="section-t" style="margin-top:16px">네 기숙사</div><div class="grid g2">' + D.HOUSES.map(function (hh) { return '<div class="card hcard">' + houseDot(hh.id, 56) + '<div style="min-width:0"><h4 style="color:' + hh.color + '">' + hh.name + ' <span class="faint small">' + hh.latin + '</span></h4><p class="small muted">“' + hh.motto + '”</p><p class="small" style="margin-top:4px">' + hh.desc + '</p></div></div>'; }).join('') + '</div>' +
+      h += '<div class="grid g2">' + D.LORE.filter(function (l) { return l.id !== 'houses'; }).map(function (l) {   // 「네 기숙사」는 기숙사 탭 첫머리로 옮김
+         return '<div class="card"><h3>' + l.title + '</h3><p class="small" style="margin-top:4px;color:var(--ink2);white-space:pre-line">' + l.text + '</p></div>'; }).join('') + '</div>' +
         '<div class="section-t" style="margin-top:16px">교수진</div><div class="grid g2">' + D.SUBJECTS.filter(function (x) { return R.subjVisible(S.P, x); }).map(function (s2) { return '<div class="card"><h4>' + s2.prof + '</h4><div class="tiny gold">' + s2.name + '</div><p class="small muted" style="margin-top:4px">' + s2.desc + '</p><p class="small" style="margin-top:4px;font-style:italic">“' + s2.line + '”</p></div>'; }).join('') + '</div>';
+    } else if (S.loreTab === 'house') {
+      var mine = P.house, order = D.HOUSES.filter(function (x) { return x.id === mine; }).concat(D.HOUSES.filter(function (x) { return x.id !== mine; }));
+      h += '<div class="grid g2">' + D.HOUSE_COMMON.map(function (c) { return '<div class="card"><h3>' + c.t + '</h3><p class="small" style="margin-top:4px;color:var(--ink2)">' + c.b + '</p></div>'; }).join('') + '</div>' +
+        '<div class="section-t" style="margin-top:16px">네 기숙사</div><div class="stack">' + order.map(function (hh) { return '<div class="card">' + (hh.id === mine ? '<span class="tag br" style="float:right">내 기숙사</span>' : '') + houseCard(hh.id) + '<p class="tiny gold" style="margin-top:6px">기숙사 효과 · ' + hh.bonusText + '</p></div>'; }).join('') + '</div>';
     }
     return h + '<p class="small muted" style="margin-top:16px">게임 방법은 상단의 <button class="btn sm ghost" data-act="guide">가이드</button>에서 검색할 수 있습니다.</p>';
   };
@@ -3506,7 +3510,7 @@
     function row(k, v) { return '<div class="hlrow"><b>' + k + '</b><p>' + esc(v) + '</p></div>'; }
     var rows = row('위치', L.loc + '. ' + L.look) + row('휴게실 · ' + esc(L.room), L.roomDesc) + row('사감', L.head + ' (' + L.headOf + ')') + row('인사', '「' + L.greet + '」');
     if (!short) rows += row('상징', L.crest) + row('성향', L.trait) + row('전통', L.trad) + row('속설', L.myth) + row('손님 출입', L.guest);
-    return '<div class="hlcard" style="--hc:' + h.color + '">' + (short ? '' : '<div class="hlhead">' + dotImg(id, 44) + '<div><h3>' + esc(h.name) + ' <span class="tiny faint">' + esc(h.latin) + '</span></h3><p class="small hlmotto">「' + esc(h.motto) + '」</p></div></div>') + rows + '</div>';   // 짧은 카드(배정 거울)는 위에 이름 · 교훈이 이미 있다
+    return '<div class="hlcard" style="--hc:' + h.color + '">' + (short ? '' : '<div class="hlhead">' + dotImg(id, 44) + '<div><h3>' + esc(h.name) + ' <span class="tiny faint">' + esc(h.latin) + '</span></h3><p class="small hlmotto">「' + esc(h.motto) + '」</p><p class="small muted">' + esc(h.desc) + '</p></div></div>') + rows + '</div>';   // 짧은 카드(배정 거울)는 위에 이름 · 교훈이 이미 있다
   }
   function houseReveal(cb) {
     var id = S.P && S.P.house, h = R.HOUSE[id], L = D.HOUSE_LORE[id]; if (!h || !L) { cb(); return; }
@@ -3514,7 +3518,7 @@
     modal(mhead('배정 거울', '모네타 아카데미 기숙사 배정', true) +
       '<div class="hmirror" data-act="hmskip" style="--hc:' + h.color + '"><div class="hmglass"><i class="hmglow"></i>' + dotImg(id, 64, '', 'hmcrest') + '</div>' +
       '<div class="hmlines"><p>기숙사 문 앞, 키보다 큰 거울에 손을 댑니다.</p><p>차가운 거울 속에서 ' + esc(L.light) + ' 빛이 번집니다.</p><p class="hmname">' + esc(h.name) + '</p><p class="small muted">「' + esc(h.motto) + '」</p></div></div>' +
-      '<div class="hmcard">' + houseCard(id, true) + '<p class="tiny faint" style="margin-top:8px">기숙사 이야기는 기숙사 RP 채팅 상단의 「기숙사 정보」에서 다시 볼 수 있습니다.</p></div>' +
+      '<div class="hmcard">' + houseCard(id, true) + '<p class="tiny faint" style="margin-top:8px">기숙사 이야기는 세계관 › 기숙사 탭이나 기숙사 RP 채팅 상단의 「기숙사 정보」에서 다시 볼 수 있습니다.</p></div>' +
       '<div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn primary" data-act="modal-close" autofocus>기숙사로 들어가기</button></div>');
   }
   ACT.hmskip = function () { var m = $('.hmirror'); if (m) m.parentNode.classList.add('hmdone'); };
