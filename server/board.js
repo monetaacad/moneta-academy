@@ -4,7 +4,7 @@
 const R = require('../shared/rules.js');
 
 const TAGS = R.D.BOARD_TAGS.map((t) => t.id);
-const LIM = { TITLE: 40, BODY: 3000, COM: 500, PAGE: 20, DAY: 30 };
+const LIM = { TITLE: 40, BODY: 3000, COM: 500, PAGE: 10, DAY: 30 };
 
 function create(dbx, sec, opts) {
   const isOp = opts.isOp, sendMail = opts.sendMail || (() => {}), log = opts.log || (() => {});

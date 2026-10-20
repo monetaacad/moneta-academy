@@ -378,7 +378,7 @@ function open(dir) {
     passById: db.prepare(`SELECT pass FROM players WHERE id = ?`),
     noLoginKey: db.prepare(`SELECT id, name_key FROM players WHERE login_key = ''`),
     setLoginKey: db.prepare(`UPDATE players SET login_key = ? WHERE id = ?`),
-    playerMeta: db.prepare(`SELECT id, name, guest, muted_until, banned, invite, role FROM players WHERE id = ?`),
+    playerMeta: db.prepare(`SELECT id, name, guest, muted_until, banned, invite, role, created FROM players WHERE id = ?`),
     admins: db.prepare(`SELECT id, role FROM players WHERE role IN ('admin', 'chief')`),   // admin 학생회 · chief 학생회장
     setRole: db.prepare(`UPDATE players SET role = ? WHERE id = ?`),
     oplogAdd: db.prepare(`INSERT INTO oplog (t, actor, name, action, detail) VALUES (?, ?, ?, ?, ?)`),
@@ -446,6 +446,7 @@ function open(dir) {
     mkSoldItem: db.prepare(`SELECT name, rarity, ilvl, qty, price, done_at FROM market WHERE kind = 'item' AND status = 'sold' AND slot = ? AND rarity = ? AND ilvl BETWEEN ? AND ? AND done_at > ? ORDER BY done_at DESC LIMIT 50`),
     mkSoldMat: db.prepare(`SELECT name, qty, price, done_at FROM market WHERE kind = 'mat' AND status = 'sold' AND data = ? AND done_at > ? ORDER BY done_at DESC LIMIT 50`),
     mkSoldBadge: db.prepare(`SELECT name, ilvl, qty, price, done_at FROM market WHERE kind = 'badge' AND status = 'sold' AND slot = ? AND ilvl BETWEEN ? AND ? AND done_at > ? ORDER BY done_at DESC LIMIT 50`),
+    mkSoldTok: db.prepare(`SELECT name, qty, price, done_at FROM market WHERE kind = 'tok' AND status = 'sold' AND data = ? AND done_at > ? ORDER BY done_at DESC LIMIT 50`),
     mkSoldPot: db.prepare(`SELECT name, qty, price, done_at FROM market WHERE kind = 'pot' AND status = 'sold' AND data = ? AND done_at > ? ORDER BY done_at DESC LIMIT 50`),
     mkTrades: db.prepare(`SELECT id, kind, name, slot, rarity, ilvl, qty, price, done_at FROM market WHERE status = 'sold' ORDER BY done_at DESC, id DESC LIMIT ?`),
     mkSetStatus: db.prepare(`UPDATE market SET status = ?, buyer = ?, done_at = ? WHERE id = ? AND status = 'open'`),
