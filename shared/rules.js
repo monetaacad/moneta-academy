@@ -877,7 +877,8 @@
   // 개인 점수 구간 보상 (기숙사 순위와 별개): [점수, 별조각]
   R.CUP_TIERS = [[10000, 15], [6000, 10], [2000, 5]];   // 2026-10-20 운영 분포 기준: 한 주 예상 하위 25% ≈ 2,400 · 중간 ≈ 6,300 · 상위 10% ≈ 10,500
   R.CUP_PLACE_SHARD = [0, 18, 15, 12, 10];
-  R.CUP_EPIC_MIN = 6000;   // 1위 기숙사 영웅 장비: 개인 점수가 이만큼 이상인 학생만
+  // 1위 기숙사 장비 보상: 개인 점수 구간에 따라 [점수, 등급] (희귀 · 영웅), 기숙사 안 개인 1위(results.mvp)는 전설
+  R.CUP_GEAR = [[10000, 3], [6000, 2]];
 
   /* ───────── 진행 (advance) ─────────
      P.at부터 now까지 시간을 흘려보낸다. 끝난 작업은 보상을 적용하고 inbox에 보고한다. */
@@ -1868,7 +1869,8 @@
     if (pv.cup > 0 && r.cup) {
       var place = r.cup.indexOf(pv.house) + 1, cs = (r.v2 ? R.CUP_PLACE_SHARD : [0, 25, 15, 10, 6])[place] || 0; out.shard += cs; out.cupPlace = place;
       if (place === 1) P.st.cupWins++;
-      if (place === 1 && (!r.v2 || pv.cup >= R.CUP_EPIC_MIN)) { var it = makeItem(P, pick(P, D.SLOTS).id, Math.min(P.maxStage, R.stageCap(P)), 3, 3); out.items.push({ name: it.name, r: it.r, res: gainItem(P, it, now) }); }
+      var gr = place !== 1 ? 0 : !r.v2 ? 3 : r.mvp && r.mvp === P.id ? 4 : ((R.CUP_GEAR.filter(function (x) { return pv.cup >= x[0]; })[0] || [0, 0])[1]);
+      if (gr) { var it = makeItem(P, pick(P, D.SLOTS).id, Math.min(P.maxStage, R.stageCap(P)), gr, gr); out.items.push({ name: it.name, r: it.r, res: gainItem(P, it, now) }); if (gr === 4) out.mvp = true; }
       if (r.v2) { var ct = R.CUP_TIERS.filter(function (x) { return pv.cup >= x[0]; })[0]; if (ct) { out.shard += ct[1]; out.cupTier = ct[0]; out.cupTierShard = ct[1]; } }   // 개인 점수 구간 보상
     }
     if (pv.att > 0) {
