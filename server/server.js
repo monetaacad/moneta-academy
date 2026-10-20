@@ -614,7 +614,7 @@ routes['GET /api/profile'] = (req, res) => {
   if (pr.showStats || self) Object.assign(out, { lvl, power, rank: world.rankOf(power) });
   // 동아리 이름 · 직책
   const tg = guildOf.get(id), tgr = tg && dbx.q.gGet.get(tg);
-  if (tgr) { const mr = dbx.q.gMember.get(id) || {}; out.guild = { id: tg, name: tgr.name, color: tgr.color, lv: tgr.lv || 1, role: mr.role, rank: R.guildRankName(gRanksOf(tgr), mr.role, mr.rank) }; }
+  if (tgr) { const mr = dbx.q.gMember.get(id) || {}; out.guild = { id: tg, name: tgr.name, color: tgr.color, icon: tgr.icon || '', lv: tgr.lv || 1, role: mr.role, rank: R.guildRankName(gRanksOf(tgr), mr.role, mr.rank) }; }
   if (!self) {
     const mg = guildOf.get(me), mgr = mg && dbx.q.gGet.get(mg);
     out.canGuildInvite = !!(mgr && !tg && R.guildCan(gRanksOf(mgr), guildRole.get(me), (dbx.q.gMember.get(me) || {}).rank, 'invite'));
@@ -1378,6 +1378,7 @@ routes['POST /api/admin/mail/delete'] = async (req, res) => {
 
 /* ───────── 동아리 (학생이 직접 만드는 길드) ─────────
    회장·부회장·부원. 바로 가입 또는 신청 후 승인. 동아리 채팅은 RP와 오너(캐릭터 밖) 두 갈래. */
+const GUILD_ICONS = new Set(D.GUILD_ICONS.map((x) => x.id));
 const GUILD_NAME_RE = /^[가-힣A-Za-z0-9_ ]{2,12}$/, GUILD_COLORS = ['#d6ad5f', '#e8c36a', '#6fb5c9', '#d9736b', '#b99be6', '#74bfa9', '#e07c72', '#8fa8ff', '#c9a26b'], GUILD_OFFICERS = 2;
 const guildRole = new Map(), guildLv = new Map();
 dbx.q.gAllMembers.all().forEach((r) => { guildOf.set(r.pid, r.guild); guildRole.set(r.pid, r.role); guildLv.set(r.guild, r.lv || 1); });
@@ -1390,7 +1391,7 @@ function gView(me, id, full) {
   const g = dbx.q.gGet.get(id); if (!g) return null;
   const inG = guildOf.get(me) === id, role = inG ? guildRole.get(me) : null, members = dbx.q.gMembers.all(id), ranks = gRanksOf(g), lv = g.lv || 1;
   const mine = inG ? members.find((m) => m.id === me) : null, day = R.dayKST(nowSec());
-  const o = { id, name: g.name, intro: sec.dec(g.intro), notice: sec.dec(g.notice), color: g.color, mode: g.mode, created: g.created, n: members.length, max: R.guildCap(lv), myRole: role,
+  const o = { id, name: g.name, intro: sec.dec(g.intro), notice: sec.dec(g.notice), color: g.color, icon: g.icon || '', mode: g.mode, created: g.created, n: members.length, max: R.guildCap(lv), myRole: role,
     lv, xp: g.xp || 0, need: R.guildXpNeed(lv), maxLv: R.GUILD_MAX_LV, bonus: R.guildBonus(lv), ranks };
   if (full || role) o.members = members.map((m) => ({ id: m.id, role: m.role, rank: m.rank || '', rankName: R.guildRankName(ranks, m.role, m.rank), contrib: m.contrib || 0, name: m.name, house: m.house, grade: m.grade, lvl: m.lvl, av: m.avatar_v, title: m.title, online: m.id === me || isOnline(m.id), seen: m.last_seen }));
   if (mine) {
@@ -1435,9 +1436,9 @@ routes['GET /api/guilds'] = (req, res) => {
   if (limited('gl:' + me, 1, 10)) return fail(req, res, 429, '요청이 너무 잦습니다');
   const q = (new URL(req.url, 'http://x').searchParams.get('q') || '').trim().toLowerCase().slice(0, 12);
   const mine = guildOf.get(me), apps = dbx.q.gMyApps.all(me).map((r) => r.guild);
-  const list = dbx.q.gList.all().map((g) => ({ id: g.id, name: g.name, intro: sec.dec(g.intro).slice(0, 120), color: g.color, mode: g.mode, n: Number(g.n), max: R.guildCap(g.lv || 1), lv: g.lv || 1, owner: g.owner_name, mine: g.id === mine, applied: apps.indexOf(g.id) >= 0 }))
+  const list = dbx.q.gList.all().map((g) => ({ id: g.id, name: g.name, intro: sec.dec(g.intro).slice(0, 120), color: g.color, icon: g.icon || '', mode: g.mode, n: Number(g.n), max: R.guildCap(g.lv || 1), lv: g.lv || 1, owner: g.owner_name, mine: g.id === mine, applied: apps.indexOf(g.id) >= 0 }))
     .filter((g) => !q || g.name.toLowerCase().indexOf(q) >= 0 || g.intro.toLowerCase().indexOf(q) >= 0);
-  send(req, res, 200, { list, mine: mine || null, invites: mine ? [] : dbx.q.ginvMine.all(me).map((r) => { const by = dbx.q.getProfile.get(r.by); return { id: r.guild, name: r.name, color: r.color, lv: r.lv, n: Number(r.n), by: by ? by.name : '', t: r.t }; }) });
+  send(req, res, 200, { list, mine: mine || null, invites: mine ? [] : dbx.q.ginvMine.all(me).map((r) => { const by = dbx.q.getProfile.get(r.by); return { id: r.guild, name: r.name, color: r.color, icon: r.icon || '', lv: r.lv, n: Number(r.n), by: by ? by.name : '', t: r.t }; }) });
 };
 // 동아리 순위: 레벨(경험치) 또는 부원 전투력 합. 1분마다 다시 센다.
 let gRankCache = { at: 0, rows: [] };
@@ -1445,7 +1446,7 @@ routes['GET /api/guilds/rank'] = (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
   if (limited('grk:' + me, 1, 10)) return fail(req, res, 429, '요청이 너무 잦습니다');
   const sort = new URL(req.url, 'http://x').searchParams.get('sort') === 'power' ? 'power' : 'lv';
-  if (Date.now() - gRankCache.at > 60000) gRankCache = { at: Date.now(), rows: dbx.q.gRank.all().map((g) => ({ id: g.id, name: g.name, intro: sec.dec(g.intro).slice(0, 200), created: g.created, color: g.color, mode: g.mode, lv: g.lv || 1, xp: Number(g.xp) || 0, n: Number(g.n), max: R.guildCap(g.lv || 1), power: Math.round(Number(g.pw) || 0), owner: g.owner_name || '' })) };
+  if (Date.now() - gRankCache.at > 60000) gRankCache = { at: Date.now(), rows: dbx.q.gRank.all().map((g) => ({ id: g.id, name: g.name, intro: sec.dec(g.intro).slice(0, 200), created: g.created, color: g.color, icon: g.icon || '', mode: g.mode, lv: g.lv || 1, xp: Number(g.xp) || 0, n: Number(g.n), max: R.guildCap(g.lv || 1), power: Math.round(Number(g.pw) || 0), owner: g.owner_name || '' })) };
   const rows = gRankCache.rows.slice().sort(sort === 'power' ? (a, b) => b.power - a.power || b.lv - a.lv : (a, b) => b.lv - a.lv || b.xp - a.xp || b.power - a.power);
   rows.forEach((r, i) => { r.rank = i + 1; });
   const mine = guildOf.get(me), mr = mine ? rows.find((r) => r.id === mine) : null;
@@ -1476,8 +1477,8 @@ routes['POST /api/guild'] = async (req, res) => {
     if (!GUILD_NAME_RE.test(name)) return fail(req, res, 400, '동아리 이름은 한글·영문·숫자 2~12자만 가능');
     if (R.badName(name)) return fail(req, res, 400, '사용할 수 없는 단어가 포함된 이름입니다');
     if (dbx.q.gByKey.get(name.toLowerCase().replace(/\s/g, ''))) return fail(req, res, 409, '이미 있는 동아리 이름입니다');
-    const id = crypto.randomBytes(9).toString('base64url'), color = GUILD_COLORS.indexOf(b.color) >= 0 ? b.color : GUILD_COLORS[0];
-    gRankCache.at = 0; dbx.q.gInsert.run(id, name, name.toLowerCase().replace(/\s/g, ''), sec.enc(cleanText(b.intro, 300)), color, me, b.mode === 'apply' ? 'apply' : 'open', now);
+    const id = crypto.randomBytes(9).toString('base64url'), color = GUILD_COLORS.indexOf(b.color) >= 0 ? b.color : GUILD_COLORS[0], icon = GUILD_ICONS.has(b.icon) ? b.icon : '';
+    gRankCache.at = 0; dbx.q.gInsert.run(id, name, name.toLowerCase().replace(/\s/g, ''), sec.enc(cleanText(b.intro, 300)), color, me, b.mode === 'apply' ? 'apply' : 'open', now, icon);
     guildLv.set(id, 1); gJoin(me, id, 'owner'); gSys(id, P.name + ' 님이 동아리 「' + name + '」를 열었습니다.'); gLog(id, P.name + ' 님이 동아리를 열었습니다');
     return ok();
   }
@@ -1511,7 +1512,7 @@ routes['POST /api/guild'] = async (req, res) => {
     if (gCount(mine) >= R.guildCap(g.lv)) return fail(req, res, 400, '정원이 가득 찼습니다');
     const real = Date.now() / 1000, last = gRecAt.get(mine) || 0; if (real - last < 600) return fail(req, res, 400, Math.ceil((600 - (real - last)) / 60) + '분 뒤에 다시 홍보할 수 있습니다');
     gRecAt.set(mine, real);
-    chat.recruit(P, { type: 'guild', g: mine, name: g.name, color: g.color, lv: g.lv || 1, n: gCount(mine), max: R.guildCap(g.lv || 1), mode: g.mode, note: recNote(b.note) }, real);
+    chat.recruit(P, { type: 'guild', g: mine, name: g.name, color: g.color, icon: g.icon || '', lv: g.lv || 1, n: gCount(mine), max: R.guildCap(g.lv || 1), mode: g.mode, note: recNote(b.note) }, real);
     return send(req, res, 200, { ok: true });
   }
   if (op === 'invite') {
@@ -1579,12 +1580,13 @@ routes['POST /api/guild'] = async (req, res) => {
     return ok();
   }
   if (op === 'edit') {
-    const wantsStyle = (b.color && b.color !== g.color) || (b.mode && b.mode !== g.mode);
+    const wantsStyle = (b.color && b.color !== g.color) || (b.mode && b.mode !== g.mode) || (b.icon !== undefined && b.icon !== (g.icon || ''));
     if (!can('notice')) return fail(req, res, 403, '공지·소개를 고칠 권한이 없습니다');
-    if (wantsStyle && !staff) return fail(req, res, 403, '색과 가입 방식은 회장·부회장만 바꿀 수 있습니다');
+    if (wantsStyle && !staff) return fail(req, res, 403, '색 · 아이콘 · 가입 방식은 회장 · 부회장만 변경할 수 있습니다');
     const intro = b.intro !== undefined ? cleanText(b.intro, 300) : sec.dec(g.intro), notice = b.notice !== undefined ? cleanText(b.notice, 300) : sec.dec(g.notice);
     const color = staff && GUILD_COLORS.indexOf(b.color) >= 0 ? b.color : g.color, mode = staff && (b.mode === 'apply' || b.mode === 'open') ? b.mode : g.mode;
-    dbx.q.gUpdate.run(sec.enc(intro), sec.enc(notice), color, mode, mine);
+    const icon = staff && b.icon !== undefined && (b.icon === '' || GUILD_ICONS.has(b.icon)) ? b.icon : (g.icon || '');
+    dbx.q.gUpdate.run(sec.enc(intro), sec.enc(notice), color, mode, icon, mine); gRankCache.at = 0;
     if (b.notice !== undefined && notice && notice !== sec.dec(g.notice)) gSys(mine, '동아리 공지: ' + notice);
     return ok();
   }
