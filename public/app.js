@@ -791,9 +791,24 @@
   function closeMenu() { var m = $('#memenu'), b = $('.mebtn'); if (m) m.hidden = true; if (b) b.setAttribute('aria-expanded', 'false'); }
   document.addEventListener('click', function (e) { var m = $('#memenu'); if (m && !m.hidden && !e.target.closest('.memenu-wrap')) closeMenu(); else if (m && !m.hidden && e.target.closest('.memenu [data-act]')) setTimeout(closeMenu, 0); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeMenu(); });
+  // 전체 능력치 창: 분류(접기) → 줄(합계, 누르면 출처). 「지금만」은 물약 · 날씨 · 하늘 이벤트 · 주말 · 달력처럼 잠깐만 붙는 효과
+  function fullStatsHtml(groups) {
+    return '<div class="fullst">' + groups.map(function (g) {
+      return '<details class="fold fsg" open><summary><h4>' + esc(g.g) + '</h4><span class="tiny faint">' + g.rows.filter(function (r) { return !r.z; }).length + '개 적용</span><span class="chev"></span></summary><div class="fsrows">' + g.rows.map(function (r) {
+        var head = '<span class="fsn">' + esc(r.n) + (r.s.some(function (x) { return x[2]; }) ? ' <span class="tag br fsnow">지금만 포함</span>' : '') + '</span><b class="num fsv">' + esc(r.v) + '</b>';
+        if (!r.s.length) return '<div class="fsr' + (r.z ? ' z' : '') + '">' + head + '</div>';
+        return '<details class="fsr fold' + (r.z ? ' z' : '') + '"><summary>' + head + '<span class="chev"></span></summary><div class="fssrc">' + r.s.map(function (x) { return '<span>' + esc(x[0]) + (x[2] ? ' <span class="tiny gold">지금만</span>' : '') + '</span><b class="num">' + esc(x[1]) + '</b>'; }).join('') + '</div></details>';
+      }).join('') + '</div></details>';
+    }).join('') + '</div><p class="tiny faint" style="margin-top:8px">줄을 누르면 어디에서 온 수치인지 펼쳐집니다. 「지금만」은 물약 · 날씨 · 하늘 이벤트 · 주말 · 달력처럼 지금 잠깐 붙어 있는 효과입니다.</p>';
+  }
+  ACT.fullstat = function (who) {
+    if (who === 'other' && S.pcFull) { modal(mhead('전체 능력치', esc(S.pcFull.name)) + fullStatsHtml(S.pcFull.full)); return; }
+    modal(mhead('전체 능력치', '장비 · 연구 · 기숙사 · 능력치 등 지금 적용된 모든 효과') + fullStatsHtml(R.fullStats(S.P, wctx(), now())));
+  };
   // 학생 카드 「능력치 · 장비」: 능력치는 가로로, 장비는 칸 타일 → 누르면 상세 · 내 장비와 비교
   function pcGear(p) {
     var h = '';
+    if (p.full) { S.pcFull = { name: p.name, full: p.full }; h += '<div class="row" style="margin-top:10px"><button class="btn sm ghost" data-act="fullstat" data-a="other">전체 능력치 보기</button></div>'; }
     if (p.stats) {
       h += '<div class="section-t" style="margin-top:12px">능력치</div><div class="pstats">' + R.STATS.map(function (k) { return '<span><i>' + D.STAT_NAMES[k] + '</i><b class="num">' + fmt(p.stats.st[k] || 0) + '</b></span>'; }).join('') + '</div>' +
         '<p class="tiny faint" style="margin-top:4px">초당 피해 ' + fmt(p.stats.dps) + ' · 생명력 ' + fmt(p.stats.hp) + ' · 방어력 ' + fmt(p.stats.def) + '</p>';
@@ -1611,7 +1626,7 @@
     h += '</div><div class="grid g2" style="margin-top:16px"><div class="card"><h3>지역</h3><div class="zonelist" style="margin-top:8px">' + D.ZONES.map(function (zz, zi) {
       var to = zz.abyss ? '∞' : D.ZONES[zi + 1].from - 1, un = P.maxStage >= zz.from;
       return '<div class="zone' + (un ? '' : ' lockz') + '"><div style="min-width:0"><div class="small">' + zz.name + '</div><div class="tiny faint">재료: ' + D.MATS[zz.mat].name + '</div></div><span class="zr">' + zz.from + '–' + to + '</span></div>';
-    }).join('') + '</div></div><div class="card"><h3>전투 능력</h3><dl class="kv" style="margin-top:6px"><dt>초당 피해</dt><dd>' + fmt(c.totalDps) + '</dd><dt>물리 공격력</dt><dd>' + fmt(c.patk) + (S.P.cls === 'knight' ? ' <span class="tiny faint">평타</span>' : '') + '</dd><dt>주문 공격력</dt><dd>' + fmt(c.matk) + (S.P.cls !== 'knight' ? ' <span class="tiny faint">평타</span>' : '') + '</dd><dt>주문 · 기술 위력</dt><dd title="주문 위력은 마법 주문, 기술 위력은 물리 주문(검술 · 전투체술 등)의 피해에 곱해집니다">×' + c.spell.toFixed(2) + ' · ×' + c.skill.toFixed(2) + '</dd><dt>공격 속도</dt><dd>' + c.aps.toFixed(2) + '/초</dd><dt>치명타</dt><dd>' + pct(c.critC) + ' · ×' + c.critD.toFixed(2) + '</dd><dt>생명력 · 방어력</dt><dd>' + fmt(c.hp) + ' · ' + fmt(c.def) + '</dd><dt>사역마</dt><dd>' + (P.fam.act ? R.FAM[P.fam.act].name : '없음') + '</dd></dl><p class="tiny faint" style="margin-top:8px">원정은 출정 시점의 능력치로 결과가 정해집니다. 장비를 바꾸면 다음 원정부터 반영됩니다.</p></div></div>';
+    }).join('') + '</div></div><div class="card"><div class="row between"><h3>전투 능력</h3><button class="btn sm ghost" data-act="fullstat">전체 능력치</button></div><dl class="kv" style="margin-top:6px"><dt>초당 피해</dt><dd>' + fmt(c.totalDps) + '</dd><dt>물리 공격력</dt><dd>' + fmt(c.patk) + (S.P.cls === 'knight' ? ' <span class="tiny faint">평타</span>' : '') + '</dd><dt>주문 공격력</dt><dd>' + fmt(c.matk) + (S.P.cls !== 'knight' ? ' <span class="tiny faint">평타</span>' : '') + '</dd><dt>주문 · 기술 위력</dt><dd title="주문 위력은 마법 주문, 기술 위력은 물리 주문(검술 · 전투체술 등)의 피해에 곱해집니다">×' + c.spell.toFixed(2) + ' · ×' + c.skill.toFixed(2) + '</dd><dt>공격 속도</dt><dd>' + c.aps.toFixed(2) + '/초</dd><dt>치명타</dt><dd>' + pct(c.critC) + ' · ×' + c.critD.toFixed(2) + '</dd><dt>생명력 · 방어력</dt><dd>' + fmt(c.hp) + ' · ' + fmt(c.def) + '</dd><dt>사역마</dt><dd>' + (P.fam.act ? R.FAM[P.fam.act].name : '없음') + '</dd></dl><p class="tiny faint" style="margin-top:8px">원정은 출정 시점의 능력치로 결과가 정해집니다. 장비를 바꾸면 다음 원정부터 반영됩니다.</p></div></div>';
     return h;
   };
 
@@ -1966,7 +1981,7 @@
     var rsn = (P.tok && P.tok.respec) || 0, rsArm = S.confirm.rsp > Date.now();
     var dr = S.allocDraft || {}, dsum = R.STATS.reduce(function (a, k) { return a + (dr[k] || 0); }, 0), left = P.pts - dsum;   // 나눠 보는 중 (저장 전)
     if (left < 0) { S.allocDraft = null; dr = {}; dsum = 0; left = P.pts; }   // 그사이 포인트가 줄었으면 나눠 보던 것은 버린다
-    var h = '<div class="card" data-anchor="alloc"><div class="row between"><h3>능력치</h3><span class="small">남은 포인트 <b class="num gold">' + left + '</b>' + (dsum ? ' <span class="tiny faint">(저장 전 ' + dsum + ')</span>' : '') + '</span></div>' + (rsn ? '<div class="row" style="margin-top:6px;gap:8px;flex-wrap:wrap"><span class="small">망각의 차 <b class="num">' + rsn + '</b>개</span><span class="tiny faint">마시면 분배한 포인트를 모두 돌려받고 자동 분배가 꺼집니다</span><span class="spacer"></span><button class="btn sm' + (rsArm ? ' primary' : '') + '" data-act="respecuse">' + (rsArm ? '한 번 더 누르면 마십니다' : '망각의 차 마시기') + '</button></div>' : '') + '<div class="alloc" style="margin-top:8px">';
+    var h = '<div class="card" data-anchor="alloc"><div class="row between"><h3>능력치 <button class="btn sm ghost" data-act="fullstat" style="margin-left:6px;vertical-align:2px">전체 능력치</button></h3><span class="small">남은 포인트 <b class="num gold">' + left + '</b>' + (dsum ? ' <span class="tiny faint">(저장 전 ' + dsum + ')</span>' : '') + '</span></div>' + (rsn ? '<div class="row" style="margin-top:6px;gap:8px;flex-wrap:wrap"><span class="small">망각의 차 <b class="num">' + rsn + '</b>개</span><span class="tiny faint">마시면 분배한 포인트를 모두 돌려받고 자동 분배가 꺼집니다</span><span class="spacer"></span><button class="btn sm' + (rsArm ? ' primary' : '') + '" data-act="respecuse">' + (rsArm ? '한 번 더 누르면 마십니다' : '망각의 차 마시기') + '</button></div>' : '') + '<div class="alloc" style="margin-top:8px">';
     R.STATS.forEach(function (k) { var d = dr[k] || 0; h += '<span>' + D.STAT_NAMES[k] + '</span><span class="tiny faint">' + sdesc(k, c.stat[k] + d) + '<br><span class="num">' + statSplit(c, k) + '</span></span><span class="allocv"><button class="btn sm ghost" data-act="alloc" data-a="' + k + '" data-b="-1" aria-label="' + D.STAT_NAMES[k] + ' 하나 빼기"' + (d ? '' : ' style="visibility:hidden" tabindex="-1"') + '>−1</button><b class="num">' + fmt(c.stat[k]) + '</b><span class="good num allocd">' + (d ? '+' + d : '') + '</span></span><span class="row" style="gap:4px;flex-wrap:nowrap"><button class="btn sm" data-act="alloc" data-a="' + k + '" data-b="1"' + (left ? '' : ' disabled') + '>+1</button><button class="btn sm ghost" data-act="alloc" data-a="' + k + '" data-b="10"' + (left >= 2 ? '' : ' disabled') + '>+10</button></span>'; });
     if (dsum) h += '</div><div class="row allocsave" style="margin-top:8px;gap:6px"><span class="small gold">' + R.STATS.filter(function (k) { return dr[k]; }).map(function (k) { return D.STAT_NAMES[k] + ' +' + dr[k]; }).join(' · ') + '</span><span class="spacer"></span><button class="btn sm ghost" data-act="alloc-reset">되돌리기</button><button class="btn sm primary" data-act="alloc-save">저장</button><div class="alloc" style="display:none">';
     var why = PWHY[P.cls === 'knight' ? 'knight' : 'mage'], tot = 0, W0 = cur ? PRESETS[cur] : null; if (W0) R.STATS.forEach(function (k) { tot += W0[k] || 0; });
@@ -4053,8 +4068,8 @@
   // 공개 범위: 전체 · 친구만 · 비공개 (레벨·전투력은 예전 「보여 주기」 체크를 따른다)
   var VIS_OPT = [['all', '전체'], ['friend', '친구만'], ['none', '비공개']];
   function peVis(me, k) { var v = me[k]; if (v === 'all' || v === 'friend' || v === 'none') return v; return k === 'visLv' ? (me.showStats === false ? 'none' : 'all') : 'none'; }
-  function peRead() { if (!$('#pe-status')) return null; var rv = function (k) { var x = $('input[name="pe-' + k + '"]:checked'); return x ? x.value : 'none'; }; return { visLv: rv('visLv'), visStat: rv('visStat'), visEq: rv('visEq'), status: $('#pe-status').value, bio: $('#pe-bio').value, avcredit: ($('#pe-avc') || {}).value || '', fav: $('#pe-fav').value, title: S.P.title || '', allowFriend: $('#pe-friend').checked, bioFriends: $('#pe-biof').checked }; }
-  function peDirty(d) { var me = S.me || {}; return !!d && (d.status !== (me.status || '') || (d.avcredit || '') !== (me.avcredit || '') || d.bio !== (me.bio || '') || d.fav !== (me.fav || '') || d.title !== (S.P.title || '') || d.visLv !== peVis(me, 'visLv') || d.visStat !== peVis(me, 'visStat') || d.visEq !== peVis(me, 'visEq') || d.allowFriend !== (me.allowFriend !== false) || d.bioFriends !== !!me.bioFriends); }
+  function peRead() { if (!$('#pe-status')) return null; var rv = function (k) { var x = $('input[name="pe-' + k + '"]:checked'); return x ? x.value : 'none'; }; return { visLv: rv('visLv'), visStat: rv('visStat'), visEq: rv('visEq'), visFull: rv('visFull'), status: $('#pe-status').value, bio: $('#pe-bio').value, avcredit: ($('#pe-avc') || {}).value || '', fav: $('#pe-fav').value, title: S.P.title || '', allowFriend: $('#pe-friend').checked, bioFriends: $('#pe-biof').checked }; }
+  function peDirty(d) { var me = S.me || {}; return !!d && (d.status !== (me.status || '') || (d.avcredit || '') !== (me.avcredit || '') || d.bio !== (me.bio || '') || d.fav !== (me.fav || '') || d.title !== (S.P.title || '') || d.visLv !== peVis(me, 'visLv') || d.visStat !== peVis(me, 'visStat') || d.visEq !== peVis(me, 'visEq') || d.visFull !== peVis(me, 'visFull') || d.allowFriend !== (me.allowFriend !== false) || d.bioFriends !== !!me.bioFriends); }
   function profileBody() {
     var me0 = S.me || { id: S.P.id, name: S.P.name, house: S.P.house, av: 0, status: '', bio: '', fav: '', showStats: true, allowFriend: true };
     var me = Object.assign({}, me0, S.peDraft || {}), curT = S.peDraft ? S.peDraft.title : (S.P.title || '');
@@ -4070,7 +4085,7 @@
       '<div class="field" style="margin-top:10px"><label class="small muted" for="pe-status">한 줄 소개 <span class="faint">(40자)</span></label><input id="pe-status" maxlength="40" value="' + esc(me.status || '') + '" placeholder="예: 별샘 관측 동아리 부원"></div>' +
       '<div class="field" style="margin-top:10px"><label class="small muted" for="pe-bio">자기소개 <span class="faint">(300자)</span></label><textarea id="pe-bio" maxlength="300" rows="' + (S.peWide ? 12 : 4) + '" style="font-family:var(--f-body);font-size:14px" placeholder="캐릭터 설정, 좋아하는 것, RP 가능한 시간 등">' + esc(me.bio || '') + '</textarea></div>' +
       '<div class="field" style="margin-top:10px"><label class="small muted" for="pe-fav">좋아하는 과목</label><select id="pe-fav"><option value="">선택 안 함</option>' + D.SUBJECTS.filter(function (x) { return R.subjVisible(S.P, x); }).map(function (x) { return '<option value="' + x.id + '"' + (me.fav === x.id ? ' selected' : '') + '>' + x.name + '</option>'; }).join('') + '</select></div>' +
-      '<div class="section-t" style="margin-top:12px">다른 학생에게 보여 줄 정보</div><div class="visrows">' + [['visLv', '레벨·전투력'], ['visStat', '능력치'], ['visEq', '장비']].map(function (v) { var cur = peVis(me, v[0]); return '<div class="visrow"><span class="small">' + v[1] + '</span><span class="visseg" role="radiogroup" aria-label="' + v[1] + ' 공개 범위">' + VIS_OPT.map(function (o) { return '<label><input type="radio" name="pe-' + v[0] + '" value="' + o[0] + '"' + (cur === o[0] ? ' checked' : '') + '><span>' + o[1] + '</span></label>'; }).join('') + '</span></div>'; }).join('') + '</div>' +
+      '<div class="section-t" style="margin-top:12px">다른 학생에게 보여 줄 정보</div><div class="visrows">' + [['visLv', '레벨·전투력'], ['visStat', '능력치'], ['visEq', '장비'], ['visFull', '전체 능력치']].map(function (v) { var cur = peVis(me, v[0]); return '<div class="visrow"><span class="small">' + v[1] + '</span><span class="visseg" role="radiogroup" aria-label="' + v[1] + ' 공개 범위">' + VIS_OPT.map(function (o) { return '<label><input type="radio" name="pe-' + v[0] + '" value="' + o[0] + '"' + (cur === o[0] ? ' checked' : '') + '><span>' + o[1] + '</span></label>'; }).join('') + '</span></div>'; }).join('') + '</div>' +
       '<div class="stack" style="gap:8px;margin-top:10px"><label class="tog"><input type="checkbox" id="pe-friend"' + (me.allowFriend !== false ? ' checked' : '') + '> 친구 신청 받기</label><label class="tog"><input type="checkbox" id="pe-biof"' + (me.bioFriends ? ' checked' : '') + '> 자기소개는 친구에게만 보이기</label></div>' +
       '<div class="row" style="margin-top:14px"><button class="btn primary" data-act="pe-save">저장</button><button class="btn ghost" data-act="pe-preview">다른 학생에게 보이는 모습</button><span class="tiny" id="pe-msg"></span></div>';
   }
@@ -4079,7 +4094,7 @@
   function publicSelf() {
     var me = Object.assign({ id: S.P.id, name: S.P.name, house: S.P.house, av: 0 }, S.me || {}, { grade: S.P.grade, lvl: S.P.lvl, self: false, mine: true, friend: null, online: true, title: S.P.title ? R.titleName(S.P, S.P.title) : '', deco: R.decoView(S.P), badge: R.badgeWorn(S.P) });
     var src = S.me || {};
-    if (peVis(src, 'visLv') !== 'all') { me.power = null; me.lvl = null; } if (peVis(src, 'visStat') !== 'all') delete me.stats; if (peVis(src, 'visEq') !== 'all') delete me.eq;
+    if (peVis(src, 'visLv') !== 'all') { me.power = null; me.lvl = null; } if (peVis(src, 'visStat') !== 'all') delete me.stats; if (peVis(src, 'visEq') !== 'all') delete me.eq; if (peVis(src, 'visFull') !== 'all') delete me.full;
     if (src.bioFriends) me.bio = '';
     delete me.created; return me;
   }
@@ -4190,6 +4205,7 @@
     if (vl === 'none') { me.power = null; me.lvl = null; hid.push('레벨·전투력'); } else if (vl === 'friend') fo.push('레벨·전투력');
     if (vs === 'none') { delete me.stats; hid.push('능력치'); } else if (vs === 'friend') fo.push('능력치');
     if (ve === 'none') { delete me.eq; hid.push('장비'); } else if (ve === 'friend') fo.push('장비');
+    var vf = peVis(src, 'visFull'); if (vf === 'none') { delete me.full; hid.push('전체 능력치'); } else if (vf === 'friend') fo.push('전체 능력치');
     return '<p class="tiny faint" style="margin-bottom:10px">다른 학생이 채팅이나 친구 목록에서 내 이름을 누르면 이렇게 보입니다.' + (hid.length ? ' ' + hid.join(' · ') + '은(는) 숨겨 두었습니다.' : '') + (fo.length ? ' ' + fo.join(' · ') + '은(는) 친구에게만 보입니다.' : '') + (S.peDraft || S.peAv !== undefined ? ' <span class="gold">편집 탭에 저장하지 않은 변경이 있습니다.</span>' : '') + '</p>' + profileCard(me, null);
   }
   function loadFriends() {
@@ -4649,7 +4665,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102095;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102096;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
