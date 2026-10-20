@@ -1041,7 +1041,7 @@
         cd[sid] = sp.cd * (1 - c.cdr);
         var lm = spellLvMult(P, sp);
         if (evs.length < 400) evs.push([Math.round(t * 10) / 10, 's', sid]);
-        if (sp.type === 'dmg' || sp.type === 'stun') { var cr2 = rnd(P) < c.critC; if (sp.type === 'stun') stun = sp.stun; hit(R.spellHit(c, sp) * sp.mult * lm * (cr2 ? c.critD : 1), 'p', cr2); }
+        if (sp.type === 'dmg' || sp.type === 'stun') { var cr2 = rnd(P) < c.critC; if (sp.type === 'stun' || (sp.stunP && rnd(P) < sp.stunP)) stun = sp.stun; hit(R.spellHit(c, sp) * sp.mult * lm * (cr2 ? c.critD : 1), 'p', cr2); }
         else if (sp.type === 'shield') sh = c.hp * sp.mult * Math.min(2, lm);
         else if (sp.type === 'heal') ph = Math.min(c.hp, ph + c.hp * sp.mult * Math.min(2, lm));
         else if (sp.type === 'haste') haste = sp.dur;
