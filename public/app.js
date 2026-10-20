@@ -1778,7 +1778,7 @@
       if (max) return hh + '<span class="tag br">연구 완료</span></div>';
       if (q) { var rq = P.rsq.filter(function (x) { return x && x.id === r.id; })[0];   // 진행 막대 · 남은 시간 (화면이 저절로 갱신)
         return hh + '<span class="tag ok">연구 중</span>' + (rq ? '<div class="bar" style="margin-top:8px"><b data-b="prog:' + rq.start + ':' + rq.end + '"></b></div><div class="row small muted" style="margin-top:4px"><span data-l="left:' + rq.end + '"></span> 남음 · ' + clock(rq.end) + '</div>' : '') + '</div>'; }
-      return hh + '<div class="row"><button class="btn sm" data-act="do" data-a="resStart" data-b="' + r.id + '"' + (can ? '' : why(rwhy)) + '>' + (lv + 1) + '단계 연구 <span class="cost">' + R.fmtTime(cost.time) + '</span></button></div><div class="tiny faint" style="margin-top:4px">비용 · 마나 ' + fmt(cost.mana) + (cost.know ? ' · 지식 ' + fmt(cost.know) : '') + ' <span class="faint">(시작할 때 냄)</span></div></div>';
+      return hh + '<div class="row"><button class="btn sm primary" data-act="do" data-a="resStart" data-b="' + r.id + '"' + (can ? '' : why(rwhy)) + '>' + (lv + 1) + '단계 연구 <span class="cost">' + R.fmtTime(cost.time) + '</span></button></div><div class="tiny faint" style="margin-top:4px">비용 · 마나 ' + fmt(cost.mana) + (cost.know ? ' · 지식 ' + fmt(cost.know) : '') + ' <span class="faint">(시작할 때 냄)</span></div></div>';
     }).join('') + '</div>';
     return h;
   };
@@ -1791,7 +1791,7 @@
     h += '<div class="grid gauto">' + D.SHOP.map(function (s) {
       var locked = s.grade && P.grade < s.grade, price = R.shopPrice(P, s.id), cur = s.cur === 'gold' ? 'gold' : 'shard';
       return '<div class="card"' + (locked ? ' style="opacity:.55"' : '') + '><h4>' + s.name + '</h4><p class="small muted" style="margin:4px 0 10px">' + s.desc + '</p>' +
-        (locked ? '<span class="tag">' + s.grade + '학년부터</span>' : '<button class="btn sm" data-act="do" data-a="buy" data-b="' + s.id + '"' + (P.res[cur] >= price && (s.id !== 'ticket' || tkLeft > 0) ? '' : ' disabled') + '>구매 <span class="cost">' + fmt(price) + (cur === 'gold' ? ' ' + CUR : ' 별조각') + '</span></button>' + (s.id === 'ticket' ? ' <span class="tiny faint">이번 주 ' + tkLeft + ' / ' + R.K.WB_BUY_MAX + '</span>' : '')) + '</div>';
+        (locked ? '<span class="tag">' + s.grade + '학년부터</span>' : '<button class="btn sm primary" data-act="do" data-a="buy" data-b="' + s.id + '"' + (P.res[cur] >= price && (s.id !== 'ticket' || tkLeft > 0) ? '' : ' disabled') + '>구매 <span class="cost">' + fmt(price) + (cur === 'gold' ? ' ' + CUR : ' 별조각') + '</span></button>' + (s.id === 'ticket' ? ' <span class="tiny faint">이번 주 ' + tkLeft + ' / ' + R.K.WB_BUY_MAX + '</span>' : '')) + '</div>';
     }).join('') + '</div><div class="card inset" style="margin-top:14px"><p class="small muted">별조각은 업적, 일일 목표, 출석, 보스 첫 처치, 시험, 결투제, 과제, 월드 보스, 기숙사 대항전에서 얻습니다.</p></div>';
     return h;
   };
@@ -4084,7 +4084,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102016;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102017;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
