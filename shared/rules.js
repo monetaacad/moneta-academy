@@ -379,7 +379,7 @@
     var h = HOUSE[P.house]; if (h) addEff(b, h.bonus, R.housePct(W, P.house));
     var cl = R.CLS[P.cls || 'mage']; if (cl) addEff(b, cl.bonus);   // 학과
     if (P.guildLv > 0) { var gb = R.guildBonus(P.guildLv); b.goldPct = (b.goldPct || 0) + gb; b.xpPct = (b.xpPct || 0) + gb; }   // 동아리 레벨 보너스
-    if (P.partyN > 1) { var pb = 0.03 * (Math.min(P.partyN, 4) - 1); b.goldPct = (b.goldPct || 0) + pb; b.xpPct = (b.xpPct || 0) + pb; }   // 파티 보너스
+    if (P.partyN > 1) { var pn = Math.min(P.partyN, 4) - 1; b.goldPct = (b.goldPct || 0) + R.PARTY_GOLD * pn; b.xpPct = (b.xpPct || 0) + R.PARTY_XP * pn; }   // 파티 보너스 (솔로와 성장 격차를 줄이려 경험치는 작게)
     for (var id in P.rs) if (RES[id]) addEff(b, RES[id].eff, P.rs[id]);
     var eh = R.eggHold(P); if (eh) b.xpPct = (b.xpPct || 0) + eh * R.EGG_HOLD_EACH;   // 알 품기
     for (var fid in P.fam.own) { var f = FAM[fid]; if (f) b[f.bonus] = (b[f.bonus] || 0) + R.famBonus(f, P.fam.own[fid].lv, P); }
@@ -474,6 +474,9 @@
   R.enhChance = function (P, it) { var b = bonuses(P, null, 0, 0); return clamp(1 - it.enh * 0.065 + (b.enhBonus || 0) + P.subj.rune.lv * 0.004, it.enh >= 15 ? 0.1 : 0.2, 1); };
 
   /* ───────── 능력치 ───────── */
+  // 능력치 1점당 효과 (calc의 식과 같은 값. 능력치 화면에 합계로 보여 준다)
+  R.STAT_FX = { int: [['주문 공격력', 0.01], ['수업 효율', 0.0008]], wil: [['마나 재생', 0.04], ['생명력', 0.004]], agi: [['공격 속도', 0.01]],
+    vit: [['물리 공격력', 0.01], ['생명력', 0.012], ['방어력', 0.006]], luk: [['치명타 확률', 0.0015], ['전리품 확률', 0.001], ['장비 등급 상승', 0.0008]] };
   function calc(P, W, t0, t1) {
     if (t0 == null) t0 = P.at; if (t1 == null) t1 = t0;
     var b = bonuses(P, W, t0, t1), st = {};
@@ -667,6 +670,7 @@
     rear: { id: 'rear', name: '후열', dps: 1.1, def: 1, take: 1.1, red: 0, need: 'dmg', desc: '공격 주문을 장착해야 선택할 수 있습니다 · 공격 +10% · 받는 피해 +10%' },
     sup: { id: 'sup', name: '지원', dps: 0.85, def: 1, take: 1, red: 0.15, need: 'care', desc: '보호막·치유 주문을 장착해야 선택할 수 있습니다 · 파티가 받는 피해 −15% · 공격 −15%' }
   };
+  R.PARTY_GOLD = 0.03; R.PARTY_XP = 0.01;   // 파티 보너스: 사람 파티원 1명당 (최대 3명분)
   R.EXP_PARTY_MAX = 4; R.EXP_PARTY_BONUS = 0.05; R.EXP_AGGRO = 0.8;
   R.expPositions = function (P) {
     var has = { dmg: false, care: false }, ns = R.spellSlots(P);
@@ -1385,6 +1389,7 @@
   R.rivalPreview = function (P, W) { var r = R.rival(P); return r ? R.duelPreview(P, W, r.stage, 4, 1.3) : null; };
 
   /* ───────── 교수님의 과제 ───────── */
+  R.taskShard = function (i) { return 5 + i * 8; };   // 과제 보상 별조각 (i: 0부터)
   R.taskOf = function (P, sid) { var i = P.tasks[sid] || 0, t = D.TASKS[sid] && D.TASKS[sid][i]; return t ? { i: i, t: t } : null; };
   R.taskProg = function (P, sid, t) { return t.k === 'subj' ? P.subj[sid].lv : t.k === 'stage' ? P.st.maxStageAll : (P.st[t.s] || 0); };
 
@@ -1783,7 +1788,7 @@
     P.opt.allocW = o; if (P.opt.autoAlloc) R.autoAlloc(P); return { ok: true };
   };
   A.opt = function (P, W, now, a) {
-    var k = str(a.k); if (['autoEquip', 'autoAlloc', 'sound', 'reduceFx', 'hideMyTitle', 'hideOtherTitle', 'dockClosed', 'bulkAsk'].indexOf(k) < 0) err('잘못된 설정');
+    var k = str(a.k); if (['autoEquip', 'autoAlloc', 'sound', 'reduceFx', 'hideMyTitle', 'hideOtherTitle', 'dockClosed', 'bulkAsk', 'showFam'].indexOf(k) < 0) err('잘못된 설정');
     P.opt[k] = !!a.v; if (k === 'autoAlloc' && P.opt[k]) R.autoAlloc(P); return { ok: true };
   };
   A.spell = function (P, W, now, a) {
@@ -1811,6 +1816,16 @@
   A.feed = function (P, W, now, a) {
     var id = str(a.id), o = P.fam.own[id]; if (!o) err('없는 사역마입니다'); if (o.lv >= 20) err('최대 레벨입니다');
     var cost = R.feedCost(P, id); if (P.res.gold < cost) err(CUR + '가 부족합니다'); P.res.gold -= cost; o.lv++; return { lv: o.lv };
+  };
+  // 사역마 이름: 학생이 지어 준 이름(o.nm). 비우면 원래 종 이름으로
+  R.FAM_NAME_MAX = 10;
+  R.famLabel = function (P, id) { var o = P && P.fam && P.fam.own[id], f = FAM[id]; return o && o.nm ? o.nm : f ? f.name : ''; };
+  A.famName = function (P, W, now, a) {
+    var id = str(a.id), o = P.fam.own[id]; if (!o) err('없는 사역마입니다');
+    var nm = String(a.name == null ? '' : a.name).slice(0, 100).replace(/[\u0000-\u001F\u007F\u200B-\u200F\u202A-\u202E\u2066-\u2069]/g, '').replace(/\s+/g, ' ').trim();
+    if (Array.from(nm).length > R.FAM_NAME_MAX) err('이름은 ' + R.FAM_NAME_MAX + '자까지 입력할 수 있습니다');
+    if (nm && nm !== FAM[id].name) o.nm = nm; else delete o.nm;
+    return { ok: true, nm: o.nm || '' };
   };
   A.famAct = function (P, W, now, a) { var id = str(a.id); if (!P.fam.own[id]) err('없는 사역마입니다'); if (P.fam.disp[id]) err('파견 중입니다'); P.fam.act = id; return { ok: true }; };
   /* ── 정보 카드 꾸미기 (아르크로 산다) ── */
@@ -1931,7 +1946,7 @@
   A.task = function (P, W, now, a) {
     var sid = str(a.s), o = R.taskOf(P, sid); if (!o) err('남은 과제가 없습니다');
     if (R.taskProg(P, sid, o.t) < o.t.n) err('아직 과제를 마치지 못했습니다');
-    P.tasks[sid] = o.i + 1; var shard = 5 + o.i * 8; P.res.shard += shard; P.st.tasksDone++; cupAdd(P, 15, 'task');
+    P.tasks[sid] = o.i + 1; var shard = R.taskShard(o.i); P.res.shard += shard; P.st.tasksDone++; cupAdd(P, 15, 'task');
     var out = { shard: shard, prof: SUBJ[sid].prof };
     if (o.t.item) { var it = makeItem(P, o.t.item, Math.max(P.maxStage, 10), 3, 3); it.name = SUBJ[sid].prof.split(' ')[0] + '의 ' + R.baseName(it); out.item = { name: it.name, r: it.r, res: gainItem(P, it, now) }; }
     log(P, now, SUBJ[sid].prof + '의 과제 완료', 'good'); return out;
