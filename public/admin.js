@@ -31,15 +31,18 @@
   }
   try { if (localStorage.getItem('arc_admin_ihide') !== '0') $('#ihide').checked = true; } catch (e) { $('#ihide').checked = true; }
   $('#ihide').addEventListener('change', function () { try { localStorage.setItem('arc_admin_ihide', $('#ihide').checked ? '1' : '0'); } catch (e) { } invites(); });
+  var ISHOW = 10;
   function invites() {
     api('GET', '/api/admin/invites').then(function (j) {
       // 다 쓴 · 막은 · 기한 지난 코드는 숨길 수 있다 (이 브라우저에 기억)
       var all = j.invites || [], nowS = Date.now() / 1000, hide = $('#ihide').checked, done = function (i) { return i.disabled || i.uses >= i.max_uses || (i.expires && i.expires < nowS); };
       var list = hide ? all.filter(function (i) { return !done(i); }) : all;
+      var full = list.length; list = list.slice(0, ISHOW);   // 10개씩 보이고 「더보기」로 20개씩 더
       $('#icount').textContent = hide && list.length < all.length ? '숨긴 코드 ' + (all.length - list.length) + '개' : '';
       $('#invites').innerHTML = list.map(function (i) {
         return '<tr class="' + (i.disabled ? 'dis' : '') + '"><td class="num">' + esc(i.code) + (i.op ? ' <b style="color:#e07c72">운영자</b>' : '') + '</td><td class="num">' + i.uses + ' / ' + i.max_uses + '</td><td>' + (i.expires ? when(i.expires) : '무기한') + '</td><td>' + esc(i.note) + '</td><td>' + esc(i.used_by || '') + '</td><td><button class="btn sm ghost" data-a="' + (i.disabled ? 'enable' : 'disable') + '" data-c="' + esc(i.code) + '">' + (i.disabled ? '다시 쓰기' : '중지') + '</button></td></tr>';
       }).join('') || '<tr><td colspan="6" class="faint">' + (all.length ? '쓸 수 있는 코드가 없습니다 (숨긴 코드는 위 체크를 풀면 보입니다)' : '아직 발급한 코드가 없습니다') + '</td></tr>';
+      $('#imore').innerHTML = full > list.length ? '<button class="btn sm ghost" data-a="imore">더보기 (' + list.length + ' / ' + full + ')</button>' : (ISHOW > 10 && full > 10 ? '<button class="btn sm ghost" data-a="iless">접기</button>' : '');
     });
   }
   // 게시판 문의함
@@ -144,6 +147,8 @@
     del: function (el) { api('POST', '/api/admin/chat/delete', { id: +el.dataset.c }).then(function () { return api('POST', '/api/admin/reports/resolve', { id: +el.dataset.r }); }).then(function () { toast('삭제했습니다'); reports(); }); },
     rmute: function (el) { api('POST', '/api/admin/mute', { pid: el.dataset.p, minutes: +el.dataset.m }).then(function () { return api('POST', '/api/admin/reports/resolve', { id: +el.dataset.r }); }).then(function () { toast('하루 동안 채팅 금지'); reports(); }); },
     bdload: function () { bdload(); },
+    imore: function () { ISHOW += 20; invites(); },
+    iless: function () { ISHOW = 10; invites(); },
     bdst: function (el) { api('POST', '/api/admin/board', { op: 'status', id: +el.dataset.c, st: el.dataset.s || '' }).then(function (j) { if (j.error) { toast(j.error); return; } bdshow(j); toast(el.dataset.s ? '「' + ST[el.dataset.s] + '」 표시를 붙였습니다' : '상태 표시를 뗐습니다'); }); },
     ideacopy: function () {
       api('GET', '/api/admin/ideas').then(function (j) {
