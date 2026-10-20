@@ -590,7 +590,7 @@ routes['GET /api/dm'] = (req, res) => {
 routes['GET /api/dm/threads'] = (req, res) => {
   const pid = authed(req); if (!pid) return fail(req, res, 401, '로그인이 필요합니다');
   if (limited('dmt:' + pid, 1, 6)) return fail(req, res, 429, '요청이 너무 잦습니다');
-  const th = chat.dmThreads(pid).map((t) => { const p = dbx.q.getProfile.get(t.peer); return p ? Object.assign(t, { name: p.name, house: p.house, av: p.deleted ? 0 : p.avatar_v, online: !p.deleted && isOnline(t.peer), friend: friendState(pid, t.peer) === 'ok', deleted: p.deleted ? true : undefined }) : null; }).filter(Boolean);
+  const th = chat.dmThreads(pid).map((t) => { if (t.peer === 'staff') return Object.assign(t, { name: '운영진', house: 'system', av: 0, online: false, friend: true, staff: true }); const p = dbx.q.getProfile.get(t.peer); return p ? Object.assign(t, { name: p.name, house: p.house, av: p.deleted ? 0 : p.avatar_v, online: !p.deleted && isOnline(t.peer), friend: friendState(pid, t.peer) === 'ok', deleted: p.deleted ? true : undefined }) : null; }).filter(Boolean);
   send(req, res, 200, { threads: th });
 };
 routes['GET /api/chat/history'] = (req, res) => {
@@ -2106,6 +2106,26 @@ routes['GET /api/admin/reports'] = (req, res) => {
   const u = new URL(req.url, 'http://x');
   const chName = (c) => { const k = c && chat.chOf(c), d = k && chat.CHANNELS[k]; return d ? d.name : String(c || ''); };
   send(req, res, 200, { reports: dbx.q.listReports.all(u.searchParams.get('resolved') === '1' ? 1 : 0, 200).map((r) => Object.assign(r, { text: sec.dec(r.text), reason: sec.dec(r.reason), chName: chName(r.ch) })) });
+};
+// 운영실: 운영진 1:1. 학생에게 「운영진」 이름으로 1:1을 보내고, 학생 답장을 확인한다 (학생은 운영진이 먼저 말을 건 뒤에만 답할 수 있다)
+routes['GET /api/admin/dm/threads'] = (req, res) => {
+  if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
+  send(req, res, 200, { threads: chat.dmThreads('staff').map((t) => { const p = dbx.q.getProfile.get(t.peer); return Object.assign(t, { name: p ? p.name : '(없는 학생)' }); }) });
+};
+routes['GET /api/admin/dm'] = (req, res) => {
+  if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
+  const q = new URL(req.url, 'http://x').searchParams, nm = String(q.get('name') || '').trim(), byName = nm ? dbx.q.playerByKey.get(nameKey(nm)) : null;
+  if (nm && !byName) return fail(req, res, 404, '없는 학생 이름입니다');
+  const peer = byName ? byName.id : q.get('peer') || ''; if (!/^[A-Za-z0-9_-]{4,40}$/.test(peer)) return fail(req, res, 400, '대화 상대가 없습니다');
+  const p = dbx.q.getProfile.get(peer); send(req, res, 200, { peer, name: p ? p.name : '', msgs: chat.dmHistory('staff', peer, null, 100) });
+};
+routes['POST /api/admin/dm'] = async (req, res) => {
+  if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
+  const b = await readJson(req, 4096), nm = String(b.name || '').trim();
+  const row = b.pid ? dbx.q.getProfile.get(String(b.pid)) : nm ? dbx.q.playerByKey.get(nameKey(nm)) : null;
+  if (!row || row.deleted) return fail(req, res, 404, '없는 학생입니다');
+  try { const m = chat.staffDm(row.id, b.text, Date.now() / 1000); oplog('admin', '관리자', 'staffdm', row.name + ' 님에게 운영진 1:1'); send(req, res, 200, { ok: true, id: m.id, peer: row.id, name: row.name }); }
+  catch (e) { fail(req, res, 400, e.message); }
 };
 // 운영실: 신고된 메시지의 앞뒤 대화 (같은 채널 · 같은 방, 앞 10건 · 뒤 10건, 지운 메시지 포함)
 routes['GET /api/admin/reports/ctx'] = (req, res) => {

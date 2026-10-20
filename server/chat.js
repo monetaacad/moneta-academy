@@ -208,14 +208,25 @@ function create(dbx, log, opts) {
   function sendDm(P, meta, to, text, now, nonce) {
     nonce = cleanNonce(nonce); const dup = seenNonce(P.id, nonce, now); if (dup) return { id: dup, dup: true };
     gap(P, now);
-    if (meta.muted_until && meta.muted_until > now) throw new Error('채팅이 금지된 상태입니다');
-    if (!canDm(P.id, to)) throw new Error('친구에게만 1:1 대화를 보낼 수 있습니다');
+    const toStaff = to === STAFF && hasDm(P.id, STAFF);   // 운영진 1:1: 운영진이 먼저 말을 건 학생만 답할 수 있다 (채팅 금지 중에도)
+    if (!toStaff && meta.muted_until && meta.muted_until > now) throw new Error('채팅이 금지된 상태입니다');
+    if (!toStaff && !canDm(P.id, to)) throw new Error('친구에게만 1:1 대화를 보낼 수 있습니다');
     const t = clean(text, CHANNELS.dm.max); if (!t) throw new Error('내용 입력 필요');
     rate(P, t, now);
     const [a, b] = pair(P.id, to), info = dbx.q.dmInsert.run(a, b, now, P.id, sec.enc(t));
     const m = { id: Number(info.lastInsertRowid), ch: 'dm', t: now, from: P.id, name: P.name, text: t, nonce: nonce || undefined };
     keepNonce(P.id, nonce, m.id, now);
     clients.forEach((c) => { if (c.pid === P.id || c.pid === to) write(c, 'dm', Object.assign({ peer: c.pid === P.id ? to : P.id }, m)); });
+    return m;
+  }
+  // 운영진 1:1 (운영실에서 보냄). 학생 쪽 대화 상대 id는 'staff'
+  const STAFF = 'staff', hasDmQ = dbx.db.prepare('SELECT 1 FROM dm WHERE a = ? AND b = ? LIMIT 1');
+  function hasDm(x, y) { const [a, b] = pair(x, y); return !!hasDmQ.get(a, b); }
+  function staffDm(to, text, now) {
+    const t = clean(text, CHANNELS.dm.max); if (!t) throw new Error('내용 입력 필요');
+    const [a, b] = pair(STAFF, to), info = dbx.q.dmInsert.run(a, b, now, STAFF, sec.enc(t));
+    const m = { id: Number(info.lastInsertRowid), ch: 'dm', t: now, from: STAFF, name: '운영진', text: t };
+    clients.forEach((c) => { if (c.pid === to) write(c, 'dm', Object.assign({ peer: STAFF }, m)); });
     return m;
   }
   function dmHistory(me, peer, before, n) {
@@ -284,6 +295,6 @@ function create(dbx, log, opts) {
   ];
   timers.forEach((t) => t.unref());
 
-  return { CHANNELS, chOf, stream, send, sendDm, dmHistory, dmThreads, npcSay, headSay, system, staffNotice, recruit, history, historyAfter, watch, saveSeq, remove, removeBy, kick, isOnline, online, partyChanged, exrChanged, guildChanged, clsChanged, ping, pingAll, pingEach(event, fn) { clients.forEach((c) => write(c, event, fn(c.pid))); }, dropParty: (party) => partyRecent.delete('p:' + party), dropGuild: (g) => { partyRecent.delete('g:' + g + ':rp'); partyRecent.delete('g:' + g + ':oc'); }, connections: () => clients.size, getSlow: () => slow.world, setSlow(sec) { slow.world = Math.max(0, Math.min(600, Math.floor(+sec || 0))); pingAll('slow', { ch: 'world', sec: slow.world }); return slow.world; }, opChanged(pid) { clients.forEach((c) => { if (c.pid === pid) write(c, 'op', { op: !!isOp(pid) }); }); }, flush, closeAll() { flush(); saveSeq(); clients.forEach(drop); } };
+  return { CHANNELS, chOf, stream, send, sendDm, staffDm, hasDm, dmHistory, dmThreads, npcSay, headSay, system, staffNotice, recruit, history, historyAfter, watch, saveSeq, remove, removeBy, kick, isOnline, online, partyChanged, exrChanged, guildChanged, clsChanged, ping, pingAll, pingEach(event, fn) { clients.forEach((c) => write(c, event, fn(c.pid))); }, dropParty: (party) => partyRecent.delete('p:' + party), dropGuild: (g) => { partyRecent.delete('g:' + g + ':rp'); partyRecent.delete('g:' + g + ':oc'); }, connections: () => clients.size, getSlow: () => slow.world, setSlow(sec) { slow.world = Math.max(0, Math.min(600, Math.floor(+sec || 0))); pingAll('slow', { ch: 'world', sec: slow.world }); return slow.world; }, opChanged(pid) { clients.forEach((c) => { if (c.pid === pid) write(c, 'op', { op: !!isOp(pid) }); }); }, flush, closeAll() { flush(); saveSeq(); clients.forEach(drop); } };
 }
 module.exports = { create, CHANNELS };

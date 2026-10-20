@@ -64,6 +64,17 @@ with sync_playwright() as p:
         if not any(m['me'] for m in ctx['list']) or len(ctx['list']) < 3: errs.append('report ctx wrong: ' + str(ctx)[:200])
     G.locator('#chatlog .cm .cn', has_text='에이' + sfx).last.click(); G.wait_for_timeout(300); G.click('[data-act=cblock]'); G.wait_for_timeout(300)
     if any(('에이' + sfx) in x for x in texts(G)): errs.append('blocked user still visible')
+    # 운영진 1:1: 운영실이 신고자(G)에게 보냄 → G가 1:1 목록에서 열고 답장 → 운영실에서 답장 확인
+    if reps:
+        rq = urllib.request.Request(B + '/api/admin/dm', data=json.dumps({'pid': reps[0]['reporter_id'], 'text': '신고를 확인했습니다.'}).encode(), headers={'content-type': 'application/json', 'x-admin-token': 'test-admin-token-0123456789abcdef'})
+        json.loads(urllib.request.urlopen(rq).read()); G.wait_for_timeout(800)
+        G.click('[data-act=chattab][data-a=dm]'); G.wait_for_timeout(600)
+        G.locator('[data-act=dmopen][data-a=staff]').first.click(); G.wait_for_timeout(700)
+        if not G.query_selector('.dmm .dmb'): errs.append('staff dm not shown to student')
+        G.fill('#chatinput', '감사합니다'); G.keyboard.press('Enter'); G.wait_for_timeout(700); G.screenshot(path=f'{OUT}/chat-G-staffdm.png')
+        th = admin('/api/admin/dm/threads')['threads']
+        if not th or th[0]['from'] == 'staff' or th[0]['text'] != '감사합니다': errs.append('student reply not visible to staff: ' + str(th)[:200])
+        G.click('[data-act=dmback]'); G.wait_for_timeout(200); G.click('[data-act=chattab][data-a=world]'); G.wait_for_timeout(300)
     # 새로고침 후 기록 유지
     A.reload(); A.wait_for_timeout(900); dock(A); A.click('[data-act=chattab][data-a=world]'); A.wait_for_timeout(500)
     if not any('반가워요' in x for x in texts(A)): errs.append('history missing after reload')

@@ -33,7 +33,7 @@
     api('GET', '/api/admin/stats').then(function (j) {
       if (j._s !== 200) { $('#lmsg').textContent = j.error || '들어갈 수 없습니다'; $('#login').hidden = false; $('#main').hidden = true; return; }
       try { sessionStorage.setItem('arc_admin', tok); } catch (e) { }
-      $('#login').hidden = true; $('#main').hidden = false; stats(j); invites(); reports(); mails(); oplog(); sys(); bdload();
+      $('#login').hidden = true; $('#main').hidden = false; stats(j); invites(); reports(); sdmThreads(); sdmView(); mails(); oplog(); sys(); bdload();
     });
   }
   var WBA = 0, WBF = 0;
@@ -130,11 +130,30 @@
       return '<tr' + (m.me ? ' style="background:rgba(224,124,114,.16)"' : '') + '><td class="tiny" style="white-space:nowrap">' + whenS(m.t) + '</td><td style="white-space:nowrap">' + (m.me ? '<b>' + esc(m.name) + '</b>' : esc(m.name)) + '</td><td class="msgtext">' + (m.kind === 'act' ? '<i>' : '') + (m.deleted ? '<s class="faint">' + esc(m.text) + '</s> <span class="tiny faint">(삭제됨)</span>' : esc(m.text)) + (m.kind === 'act' ? '</i>' : '') + '</td></tr>';
     }).join('') + '</tbody></table></div><p class="tiny faint" style="margin-top:4px">같은 채널의 앞 10건 · 뒤 10건입니다. 붉은 줄이 신고된 메시지입니다.</p>';
   }
+  // 운영진 1:1: 대화 목록 · 고른 학생과의 대화
+  var SDM = { peer: '', name: '' };
+  function sdmThreads() {
+    api('GET', '/api/admin/dm/threads').then(function (j) {
+      $('#sdmthreads').innerHTML = (j.threads || []).map(function (t) { var un = t.from !== 'staff';
+        return '<tr' + (t.peer === SDM.peer ? ' style="background:rgba(214,173,95,.14)"' : '') + '><td><button class="btn sm ghost" data-a="sdmgo" data-p="' + esc(t.peer) + '" data-n="' + esc(t.name) + '">' + esc(t.name) + '</button>' + (un ? ' <b class="tiny" style="color:#e07c72">답장</b>' : '') + '</td><td class="small msgtext">' + esc(t.text) + '</td><td class="tiny faint" style="white-space:nowrap">' + when(t.t) + '</td></tr>'; }).join('') || '<tr><td class="faint">아직 나눈 대화가 없습니다</td></tr>';
+    });
+  }
+  function sdmView() {
+    if (!SDM.peer) { $('#sdmbox').innerHTML = '<p class="small faint">왼쪽 목록이나 신고의 「신고자 1:1」에서 학생을 선택합니다.</p>'; return; }
+    api('GET', '/api/admin/dm?peer=' + encodeURIComponent(SDM.peer)).then(function (j) {
+      if (j.error) { $('#sdmbox').innerHTML = '<p class="small faint">' + esc(j.error) + '</p>'; return; }
+      var log = (j.msgs || []).map(function (m) { var st = m.from === 'staff'; return '<div style="margin:4px 0;text-align:' + (st ? 'right' : 'left') + '"><span class="small" style="display:inline-block;max-width:85%;padding:6px 9px;border-radius:8px;white-space:pre-wrap;text-align:left;background:' + (st ? 'rgba(214,173,95,.18)' : 'rgba(255,255,255,.06)') + '">' + esc(m.text) + '</span><div class="tiny faint">' + (st ? '운영진' : esc(j.name || SDM.name)) + ' · ' + whenS(m.t) + '</div></div>'; }).join('');
+      $('#sdmbox').innerHTML = '<b>' + esc(j.name || SDM.name) + '</b><div class="scroll" id="sdmlog" style="max-height:260px;margin-top:6px">' + (log || '<p class="small faint">아직 메시지가 없습니다.</p>') + '</div>' +
+        '<textarea id="sdmtext" maxlength="500" rows="3" style="width:100%;margin-top:8px" placeholder="운영진 이름으로 보낼 내용 (500자 이내)"></textarea><div class="row" style="justify-content:flex-end;margin-top:6px"><button class="btn sm primary" data-a="sdmsend">보내기</button></div>';
+      var lg = $('#sdmlog'); if (lg) lg.scrollTop = lg.scrollHeight;
+    });
+  }
   function reports() {
     api('GET', '/api/admin/reports' + ($('#showres').checked ? '?resolved=1' : '')).then(function (j) {
       $('#reports').innerHTML = (j.reports || []).map(function (r) {
         return '<tr><td>' + when(r.t) + '</td><td>' + esc(r.chName || r.ch) + '</td><td>' + esc(r.author) + '</td><td class="msgtext">' + (r.deleted ? '<s class="faint">' + esc(r.text) + '</s>' : esc(r.text)) + '</td><td>' + esc(r.reporter) + '</td><td class="msgtext">' + (r.reason ? esc(r.reason) : '<span class="faint">—</span>') + '</td><td><div class="row" style="gap:4px">' +
           '<button class="btn sm ghost" data-a="rctx" data-c="' + r.msg_id + '">앞뒤 대화</button>' +
+          (r.reporter_id ? '<button class="btn sm ghost" data-a="sdmgo" data-p="' + esc(r.reporter_id) + '" data-n="' + esc(r.reporter) + '">신고자 1:1</button>' : '') +
           (r.deleted ? '' : '<button class="btn sm danger" data-a="del" data-c="' + r.msg_id + '" data-r="' + r.id + '">삭제</button>') +
           '<button class="btn sm" data-a="rmute" data-p="' + esc(r.author_id) + '" data-r="' + r.id + '" data-m="1440">1일 금지</button>' +
           (r.resolved ? '' : '<button class="btn sm ghost" data-a="resolve" data-r="' + r.id + '">처리 완료</button>') + '</div></td></tr>' +
@@ -272,6 +291,13 @@
     bdreply: function (el) { var t = $('#bdr-' + el.dataset.c); if (!t || !t.value.trim()) return; api('POST', '/api/admin/board', { op: 'reply', id: +el.dataset.c, text: t.value.trim() }).then(function (j) { if (j.error) return toast(j.error); toast('답변했습니다 · 학생에게 우편 알림'); bdshow(j); }); },
     bddel: function (el) { if (!confirm('이 글을 지울까요?')) return; api('POST', '/api/admin/board', { op: 'del', id: +el.dataset.c }).then(function (j) { if (j.error) return toast(j.error); bdshow(j); }); },
     bdcdel: function (el) { api('POST', '/api/admin/board', { op: 'cdel', cid: +el.dataset.c }).then(function (j) { if (j.error) return toast(j.error); bdshow(j); }); },
+    sdmload: function () { sdmThreads(); sdmView(); },
+    sdmgo: function (el) { SDM.peer = el.dataset.p; SDM.name = el.dataset.n || ''; sdmThreads(); sdmView(); $('#sdmcard').scrollIntoView({ behavior: 'smooth', block: 'start' }); },
+    sdmopen: function () { var n = $('#sdmname').value.trim(); if (!n) return; api('GET', '/api/admin/dm?name=' + encodeURIComponent(n)).then(function (j) { if (j.error) { toast(j.error); return; } SDM.peer = j.peer; SDM.name = j.name; sdmThreads(); sdmView(); }); },
+    sdmsend: function () {
+      var tx = $('#sdmtext').value.trim(); if (!tx) return;
+      api('POST', '/api/admin/dm', { pid: SDM.peer, text: tx }).then(function (j) { if (j.error) { toast(j.error); return; } SDM.peer = j.peer; SDM.name = j.name; toast('보냈습니다'); sdmThreads(); sdmView(); });
+    },
     rctx: function (el) {
       var id = el.dataset.c; if (RCTX[id]) { delete RCTX[id]; reports(); return; }
       api('GET', '/api/admin/reports/ctx?id=' + encodeURIComponent(id)).then(function (j) { RCTX[id] = rctxHtml(j); reports(); });
@@ -322,5 +348,5 @@
   $('#tok').addEventListener('keydown', function (e) { if (e.key === 'Enter') { tok = $('#tok').value.trim(); enter(); } });
   $('#showres').addEventListener('change', reports);
   if (tok) enter();
-  setInterval(function () { if (!$('#main').hidden && !document.hidden) { api('GET', '/api/admin/stats').then(function (j) { if (j._s === 200) stats(j); }); reports(); } }, 30000);
+  setInterval(function () { if (!$('#main').hidden && !document.hidden) { api('GET', '/api/admin/stats').then(function (j) { if (j._s === 200) stats(j); }); reports(); sdmThreads(); } }, 30000);
 })();
