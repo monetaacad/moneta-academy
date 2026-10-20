@@ -852,7 +852,7 @@
   function profileCard(p, m) {
     if (p.deleted) return '<div class="pcard"><p class="small muted" style="padding:18px 4px;text-align:center">삭제된 사용자입니다.</p></div>';
     var hh = R.HOUSE[p.house], dc = p.deco || {}, fr = decoFrame(dc.frame), bgs = decoBg(dc.bg), dk = dc.frame || dc.bg;
-    var h = (p.preview ? '<p class="tiny gold" style="margin-bottom:10px">미리보기 · 저장하지 않은 내용이 들어 있습니다</p>' : '') + '<div class="pcard' + (dk ? ' deco ' + fr.cls : '') + (dc.bg ? (decoDark(dc.bg) ? ' bgdark' : ' bglight') : '') + '"' + (dk ? ' style="' + fr.style + bgs + '"' : '') + '>' + (dc.stamp && R.DECO[dc.stamp] ? '<span class="pstamp" title="' + R.DECO[dc.stamp].name + '" aria-hidden="true">' + R.DECO[dc.stamp].glyph + '</span>' : '') + '<div class="pav">' + avatarHtml(p, 100) + (p.avcredit && (p.av || p.avData) ? '<span class="avcredit" title="두상 출처">' + esc(p.avcredit) + '</span>' : '') + '</div>' + '<div style="min-width:0">' + (p.title ? '<div class="pttl">' + (R.OP_TITLES[p.title] ? '<span class="ttl' + R.opTitleCls(p.title) + '">' + esc(p.title) + '</span>' : esc(p.title)) + '</div>' : '') + '<h2 class="pname">' + inkName(p.name, dc.ink) + (p.badge && R.GEM[p.badge.gem] ? ' <span class="pbdg" title="' + esc((p.badge.name || '') + ' · Lv ' + p.badge.lv) + '">' + badgeSvg(p.badge, 26) + '</span>' : '') + (p.online ? ' <span class="odot" title="접속 중"></span>' : '') + '</h2>' +
+    var h = (p.preview ? '<p class="tiny gold" style="margin-bottom:10px">미리보기 · 저장하지 않은 내용이 들어 있습니다</p>' : '') + '<div class="pcard' + (dk ? ' deco ' + fr.cls : '') + (dc.bg ? (decoDark(dc.bg) ? ' bgdark' : ' bglight') : '') + '"' + (dk ? ' style="' + fr.style + bgs + '"' : '') + '>' + (dc.stamp && R.DECO[dc.stamp] ? '<span class="pstamp" title="' + R.DECO[dc.stamp].name + '" aria-hidden="true">' + R.DECO[dc.stamp].glyph + '</span>' : '') + '<div class="pav">' + avatarHtml(p, 100) + (p.avcredit && (p.av || p.avData) ? '<span class="avcredit" title="두상 출처">' + esc(p.avcredit) + '</span>' : '') + '</div>' + '<div style="min-width:0">' + (p.title ? '<div class="pttl">' + (R.OP_TITLES[p.title] ? '<span class="ttl' + R.opTitleCls(p.title) + '">' + esc(p.title) + '</span>' : esc(p.title)) + '</div>' : '') + '<h2 class="pname">' + inkName(p.name, dc.ink, decoBgRef(dc.bg)) + (p.badge && R.GEM[p.badge.gem] ? ' <span class="pbdg" title="' + esc((p.badge.name || '') + ' · Lv ' + p.badge.lv) + '">' + badgeSvg(p.badge, 26) + '</span>' : '') + (p.online ? ' <span class="odot" title="접속 중"></span>' : '') + '</h2>' +
       '<div class="small">' + (hh ? houseDot(p.house, 16) + ' ' : '') + '<span style="color:' + (hh ? hh.color : 'inherit') + '">' + (hh ? hh.name : '') + '</span> · ' + (p.grade >= 8 ? '마스터 과정' : p.grade + '학년') + (p.lvl ? ' · Lv ' + p.lvl : '') + (R.CLS[p.cls] ? ' · <span class="pcls">' + clsDot(p.cls, 14) + ' ' + R.CLS[p.cls].name + '</span>' : '') + '</div>' +
       (p.guild ? '<div class="pguild">' + gEmblem(p.guild.color, p.guild.name, 20, p.guild.icon) + '<span class="pgt"><b class="pgn">' + esc(p.guild.name) + '</b><span class="pgm"><span class="tiny faint">Lv ' + (p.guild.lv || 1) + '</span>' + (p.guild.rank ? '<span class="tag' + (p.guild.role === 'owner' ? ' br' : p.guild.role === 'officer' ? ' ok' : '') + '">' + esc(p.guild.rank) + '</span>' : '') + '</span></span></div>' : '') +
       (p.fam && R.FAM[p.fam.id] ? '<div class="tiny pfam">동행 사역마 <b>' + esc(p.fam.nm || R.FAM[p.fam.id].name) + '</b>' + (p.fam.nm ? ' <span class="faint">' + R.FAM[p.fam.id].name + '</span>' : '') + ' <span class="num gold">Lv ' + p.fam.lv + '</span></div>' : '') +
@@ -3792,12 +3792,13 @@
       '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>', true);
   }
   ACT.promo = function (g) { promoModal(+g); };
-  // 시험 합격 창: 「새로 열린 것」 · 「다음 이야기」를 보고 닫으면 합격 창으로 돌아온다 (다른 쪽도 볼 수 있게).
-  // 합격 창을 닫을 때 새로 열린 것을 아직 안 봤으면 한 번 보여 준다
+  // 시험 합격 창: 「새로 열린 것」만 보고 닫으면 합격 창으로 돌아와 이야기를 볼 수 있다.
+  // 이야기를 본 뒤에는 합격 창으로 돌아가지 않고(같은 자리를 계속 누르면 이야기가 반복되던 문제) 새로 열린 것을 아직 안 봤으면 한 번 보여 주고 끝낸다
   function examResBack() { if (!S.examRes) return; modal(S.examRes.h); S.afterClose = examResClose; }
   function examResClose() { var x = S.examRes; S.examRes = null; if (x && !x.seenP) promoModal(x.g); }
-  ACT.exampromo = function () { var x = S.examRes; if (!x) return; x.seenP = true; promoModal(x.g); S.afterClose = examResBack; };
-  ACT.examstory = function (i) { if (!S.examRes) { ACT.story(i); return; } ACT.story(i); S.afterClose = examResBack; };
+  function examResNext() { var x = S.examRes; if (!x) return; if (!x.seenS) return examResBack(); examResClose(); }
+  ACT.exampromo = function () { var x = S.examRes; if (!x) return; x.seenP = true; promoModal(x.g); S.afterClose = examResNext; };
+  ACT.examstory = function (i) { var x = S.examRes; ACT.story(i); if (!x) return; x.seenS = true; S.afterClose = examResNext; };
   ACT.story = function (i) { var s = D.STORY[+i]; modal(mhead(s.title, '') + '<p style="white-space:pre-line;color:var(--ink2)">' + esc(s.text) + '</p><div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn primary" data-act="modal-close" autofocus>계속</button></div>'); act('storySeen', { n: +i + 1 }); };
   /* ── 기숙사: 배정 거울 연출(가입 직후) · 기숙사 정보 카드(기숙사 RP 채팅 상단 · 사감 이름) ── */
   // 기숙사 설정 항목: 촘촘한 2열(이름 | 내용). short = 배정 거울용 (위치 · 휴게실 · 사감 · 인사만)
@@ -4257,11 +4258,23 @@
   function hexA(h, a) { var c = parseInt(h.slice(1), 16); return 'rgba(' + ((c >> 16) & 255) + ',' + ((c >> 8) & 255) + ',' + (c & 255) + ',' + a + ')'; }
   function lum(h) { var c = parseInt(h.slice(1), 16); return (0.299 * ((c >> 16) & 255) + 0.587 * ((c >> 8) & 255) + 0.114 * (c & 255)) / 255; }
   function forTone(c) { return lightUi() ? mixDark(c, lum(c) > 0.82 ? 0.6 : 0.4) : c; }
-  function inkAttr(id) {
-    var x = id && R.DECO[id]; if (!x || x.slot !== 'ink') return null; var c = x.c.map(forTone);
+  // 학생 카드 배경 꾸미기 위: 배경(첫 색 · 평균 색)과의 밝기 대비가 3 이상이 될 때까지만 잉크를 밝게(어두운 배경) · 진하게(밝은 배경) 조금씩 옮긴다 (색조는 그대로)
+  function rgbOf(h) { var c = parseInt(h.slice(1), 16); return [(c >> 16) & 255, (c >> 8) & 255, c & 255]; }
+  function hexOf(a) { return '#' + a.map(function (v) { v = Math.round(v); return (v < 16 ? '0' : '') + v.toString(16); }).join(''); }
+  function relL(h) { var a = rgbOf(h).map(function (v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); return 0.2126 * a[0] + 0.7152 * a[1] + 0.0722 * a[2]; }
+  function contrast(a, b) { var x = relL(a), y = relL(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
+  function inkFit(c, bg) {
+    var dk = bg.dark, base = dk ? c : mixDark(c, lum(c) > 0.82 ? 0.6 : 0.4), x = base, k = 0, to = dk ? 255 : 0;
+    while (k < 1 && Math.min(contrast(x, bg.refs[0]), contrast(x, bg.refs[1])) < 3) { k += 0.05; x = hexOf(rgbOf(base).map(function (v) { return v + (to - v) * k; })); }
+    return x;
+  }
+  function decoBgRef(id) { var x = id && R.DECO[id]; if (!x || x.slot !== 'bg') return null; var avg = hexOf([0, 1, 2].map(function (i) { return x.g.reduce(function (t, c) { return t + rgbOf(c)[i]; }, 0) / x.g.length; })); return { dark: decoDark(id), refs: [x.g[0], avg] }; }
+  // bg: 이름이 놓인 학생 카드의 배경 꾸미기 (없으면 화면 테마를 따른다)
+  function inkAttr(id, bg) {
+    var x = id && R.DECO[id]; if (!x || x.slot !== 'ink') return null; var c = x.c.map(function (v) { return bg ? inkFit(v, bg) : forTone(v); });
     return c.length === 1 ? { cls: '', style: 'color:' + c[0] } : { cls: 'ink' + (x.anim ? ' anim' : ''), style: 'background-image:linear-gradient(90deg,' + c.join(',') + ')' };
   }
-  function inkName(name, id) { var k = inkAttr(id); return k ? '<span class="' + k.cls + '" style="' + k.style + '">' + esc(name) + '</span>' : esc(name); }
+  function inkName(name, id, bg) { var k = inkAttr(id, bg); return k ? '<span class="' + k.cls + '" style="' + k.style + '">' + esc(name) + '</span>' : esc(name); }
   function decoFrame(id, small) {
     var x = id && R.DECO[id]; if (!x || x.slot !== 'frame') return { cls: '', style: '' };
     if (x.st === 'aurora' || x.st === 'spring') return { cls: 'fr-' + x.st, style: '' };
@@ -4819,7 +4832,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102119;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102120;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
