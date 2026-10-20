@@ -1150,13 +1150,21 @@
     if (Array.isArray(o.items)) { var its = o.items.filter(function (it) { return it && SLOT[it.slot] && typeof it.name === 'string' && Array.isArray(it.aff) && D.RARITY[it.r]; }).slice(0, 10); if (its.length) r.items = its; }
     return r; };
   R.rewardText = function (r) { return R.MAIL_REWARDS.filter(function (k) { return r && r[k[0]]; }).map(function (k) { return k[1] + ' ' + R.fmt(r[k[0]]); }).concat(r && r.items ? r.items.map(function (it) { return it.name + (it.enh ? ' +' + it.enh : ''); }) : []).join(', '); };
+  /* 보상 장비 레벨: 마지막으로 처치한 보스 단계 + 3~7 (낮을수록 자주). 예전에는 「최고 단계(보스 +9)」 그대로라 보스 직후 장비가 한 번에 크게 뛰었다.
+     extra: 주간 토벌 상위 보상처럼 더 높게 주는 경우 (상한도 그만큼 높다) */
+  R.REW_ILVL = [[3, 30], [4, 25], [5, 20], [6, 15], [7, 10]];
+  R.rewardIlvl = function (P, extra) {
+    extra = extra || 0; var x = rnd(P) * 100, add = 7;
+    for (var i = 0; i < R.REW_ILVL.length; i++) { x -= R.REW_ILVL[i][1]; if (x < 0) { add = R.REW_ILVL[i][0]; break; } }
+    return Math.max(1, Math.min(Math.max(0, P.maxStage - 9) + add + extra, Math.min(P.maxStage, R.stageCap(P)) + extra));
+  };
   R.mailNeedSlots = function (rw) { rw = rw || {}; return (Array.isArray(rw.items) ? rw.items.length : 0) + (Math.floor(Number(rw.gear) || 0)); };
   R.grantMail = function (P, W, now, rw) {
     rw = R.cleanRewards(rw); var out = { items: [] }; R.noMailQ = true;   // 우편에서 받는 장비는 다시 우편으로 돌리지 않는다 (받기 전에 가방 칸을 확인)
     if (rw.shard) P.res.shard += rw.shard; if (rw.gold) addGold(P, rw.gold); if (rw.stone) P.res.stone += rw.stone;
     if (rw.mana) addMana(P, rw.mana); if (rw.know) P.res.know += rw.know; if (rw.egg) P.fam.eggs += rw.egg; if (rw.ticket) P.wb.extra = (P.wb.extra || 0) + rw.ticket;
     if (rw.rsDone || rw.gradeUp || rw.respec) { var tk = P.tok || (P.tok = {}); if (rw.rsDone) tk.rsDone = (tk.rsDone || 0) + rw.rsDone; if (rw.gradeUp) tk.gradeUp = (tk.gradeUp || 0) + rw.gradeUp; if (rw.respec) tk.respec = (tk.respec || 0) + rw.respec; }
-    for (var i = 0; i < (rw.gear || 0); i++) { var it = makeItem(P, pick(P, D.SLOTS).id, Math.max(1, Math.min(P.maxStage, R.stageCap(P))), Math.max(2, rollRarity(P, 0.6)), 2); out.items.push({ name: it.name, r: it.r, res: gainItem(P, it, now) }); }
+    for (var i = 0; i < (rw.gear || 0); i++) { var it = makeItem(P, pick(P, D.SLOTS).id, R.rewardIlvl(P), Math.max(2, rollRarity(P, 0.6)), 2); out.items.push({ name: it.name, r: it.r, res: gainItem(P, it, now) }); }
     (rw.items || []).forEach(function (it0) { var it = JSON.parse(JSON.stringify(it0)); it.u = uid(P); it.lock = false; out.items.push({ name: it.name, r: it.r, res: gainItem(P, it, now) }); });
     R.noMailQ = false;
     out.text = R.rewardText(rw); return out;
@@ -1957,7 +1965,7 @@
     if (R.taskProg(P, sid, o.t) < o.t.n) err('아직 과제를 마치지 못했습니다');
     P.tasks[sid] = o.i + 1; var shard = R.taskShard(o.i); P.res.shard += shard; P.st.tasksDone++; cupAdd(P, 15, 'task');
     var out = { shard: shard, prof: SUBJ[sid].prof };
-    if (o.t.item) { var it = makeItem(P, o.t.item, Math.max(P.maxStage, 10), 3, 3); it.name = SUBJ[sid].prof.split(' ')[0] + '의 ' + R.baseName(it); out.item = { name: it.name, r: it.r, res: gainItem(P, it, now) }; }
+    if (o.t.item) { var it = makeItem(P, o.t.item, Math.max(R.rewardIlvl(P), 10), 3, 3); it.name = SUBJ[sid].prof.split(' ')[0] + '의 ' + R.baseName(it); out.item = { name: it.name, r: it.r, res: gainItem(P, it, now) }; }
     log(P, now, SUBJ[sid].prof + '의 과제 완료', 'good'); return out;
   };
   A.buy = function (P, W, now, a) {
@@ -1968,7 +1976,7 @@
     var price = R.shopPrice(P, id), cur = s.cur === 'gold' ? 'gold' : 'shard'; if (P.res[cur] < price) err((cur === 'gold' ? CUR : '별조각') + '가 부족합니다');
     P.res[cur] -= price; var out = { id: id };
     if (id === 'stone10') P.res.stone += 10;
-    else if (id === 'gearbox') { var it = makeItem(P, pick(P, D.SLOTS).id, Math.min(P.maxStage, R.stageCap(P)), Math.max(1, rollRarity(P, calc(P, W, now).rarity + 0.4)), 1); out.item = { name: it.name, r: it.r, res: gainItem(P, it, now) }; }
+    else if (id === 'gearbox') { var it = makeItem(P, pick(P, D.SLOTS).id, R.rewardIlvl(P), Math.max(1, rollRarity(P, calc(P, W, now).rarity + 0.4)), 1); out.item = { name: it.name, r: it.r, res: gainItem(P, it, now) }; }
     else if (id === 'egg') P.fam.eggs++;
     else if (id === 'badgebox') { var nb = makeBadge(P); gainBadge(P, nb, now, '매점 휘장 원석'); out.badge = { name: nb.name, gem: nb.gem }; }
     else if (id === 'manavial') { var m = calc(P, W, now).mana * 14400; addMana(P, m); out.mana = m; }
@@ -2036,7 +2044,7 @@
       var top = r.mvps && r.mvps[pv.house] === P.id;   // 기숙사 안 개인 1위
       var gr = place !== 1 ? (r.v2 && top ? 3 : 0) : !r.v2 ? 3 : r.mvp && r.mvp === P.id ? 4 : ((R.CUP_GEAR.filter(function (x) { return pv.cup >= x[0]; })[0] || [0, 0])[1]);
       if (top && r.v2) out.mvp = true;
-      if (gr) { var it = makeItem(P, pick(P, D.SLOTS).id, Math.min(P.maxStage, R.stageCap(P)), gr, gr); out.items.push({ name: it.name, r: it.r, res: gainItem(P, it, now) }); }
+      if (gr) { var it = makeItem(P, pick(P, D.SLOTS).id, R.rewardIlvl(P), gr, gr); out.items.push({ name: it.name, r: it.r, res: gainItem(P, it, now) }); }
       if (r.v2) { var ct = R.CUP_TIERS.filter(function (x) { return pv.cup >= x[0]; })[0]; if (ct) { out.shard += ct[1]; out.cupTier = ct[0]; out.cupTierShard = ct[1]; } }   // 개인 점수 구간 보상
     }
     if (pv.att > 0) {
@@ -2044,7 +2052,7 @@
       if (r.killed) { var kn = Math.max(1, r.kills || 1), un = Math.max(0, kn - (r.paidKills || 0)); P.st.wbKills += kn; out.kills = kn; if (un) { out.shard += R.WB_KILL_RW.shard * un; P.fam.eggs += R.WB_KILL_RW.egg * un; out.egg = un; } }   // 토벌 보상은 잡은 순간 우편으로(paidKills). 그때 못 낸 것만 여기서
       var t = r.tiers || [], tier = pv.dmg >= (t[0] || Infinity) ? 1 : pv.dmg >= (t[1] || Infinity) ? 2 : pv.dmg >= (t[2] || Infinity) ? 3 : 4;
       out.tier = tier; out.shard += [0, 40, 20, 8, 0][tier];
-      if (tier <= 2) { var it2 = makeItem(P, pick(P, D.SLOTS).id, Math.min(P.maxStage, R.stageCap(P)) + 3, tier === 1 && rnd(P) < 0.25 ? 4 : 3, 3); out.items.push({ name: it2.name, r: it2.r, res: gainItem(P, it2, now) }); }
+      if (tier <= 2) { var it2 = makeItem(P, pick(P, D.SLOTS).id, R.rewardIlvl(P, 3), tier === 1 && rnd(P) < 0.25 ? 4 : 3, 3); out.items.push({ name: it2.name, r: it2.r, res: gainItem(P, it2, now) }); }
     }
     P.res.shard += out.shard;
     return out;
