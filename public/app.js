@@ -833,6 +833,7 @@
     h += '<div class="row" style="margin-top:14px">';
     if (p.preview) h += '<button class="btn primary" data-act="me" data-a="profile">편집으로 돌아가기</button><button class="btn" data-act="pe-save-preview">이대로 저장</button>';
     else if (p.self) h += '<button class="btn primary" data-act="me" data-a="profile">내 정보 편집</button>';
+    else if (p.mine) { }   // 내 카드를 남의 눈으로 볼 때는 버튼 없음
     else if (!p.demoPeer) {
       var pid = esc(p.id);
       // 친구
@@ -854,6 +855,7 @@
     return h;
   }
   function openProfile(pid, m) {
+    if (S.P && pid === S.P.id) { ACT.mycard(); return; }   // 내 카드는 다른 학생이 보는 모습으로 (편집은 상단 두상 → 내 정보에서만)
     S.profMsg = m || null; S.profId = pid;
     var stub = m ? { id: pid, name: m.name, house: m.house, grade: m.grade } : { id: pid, name: '…' };
     modal(mhead('학생 정보', '') + '<div id="pbox">' + profileCard(stub, m) + '</div>');
@@ -3871,9 +3873,18 @@
       '<div class="row" style="margin-top:14px"><button class="btn primary" data-act="pe-save">저장</button><button class="btn ghost" data-act="pe-preview">다른 학생에게 보이는 모습</button><span class="tiny" id="pe-msg"></span></div>';
   }
   // 내 학생 카드: 다른 학생에게 보이는 모습 그대로 (공개 범위 반영)
+  // 편집 화면 밖(좌측 내 정보 · 채팅 · 순위 등)에서 내 이름을 누르면: 다른 학생이 보는 그대로(공개 범위 「전체」만, 버튼 없음)
+  function publicSelf() {
+    var me = Object.assign({ id: S.P.id, name: S.P.name, house: S.P.house, av: 0 }, S.me || {}, { grade: S.P.grade, lvl: S.P.lvl, self: false, mine: true, friend: null, online: true, title: S.P.title ? R.titleName(S.P, S.P.title) : '', deco: R.decoView(S.P), badge: R.badgeWorn(S.P) });
+    var src = S.me || {};
+    if (peVis(src, 'visLv') !== 'all') { me.power = null; me.lvl = null; } if (peVis(src, 'visStat') !== 'all') delete me.stats; if (peVis(src, 'visEq') !== 'all') delete me.eq;
+    if (src.bioFriends) me.bio = '';
+    delete me.created; return me;
+  }
   ACT.mycard = function () {
-    modal(mhead('내 학생 카드', '다른 학생에게 보이는 모습') + '<div id="pbox">' + myCard() + '</div>');
-    loadMe().then(function () { var b = $('#pbox'); if (b && S.modal) b.innerHTML = myCard(); });
+    S.profId = S.P.id;
+    modal(mhead('학생 정보', '') + '<div id="pbox">' + profileCard(publicSelf(), null) + '</div>');
+    loadMe().then(function () { var b = $('#pbox'); if (b && S.modal && S.profId === S.P.id) b.innerHTML = profileCard(publicSelf(), null); });
   };
   ACT.me = function (tab) {
     var d = peRead(); if (d) S.peDraft = peDirty(d) ? d : null;   // 편집 중이던 내용 보관
@@ -4397,7 +4408,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102050;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102051;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

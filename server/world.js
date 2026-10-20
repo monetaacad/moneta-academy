@@ -25,6 +25,8 @@ function create(store, cfg, log) {
     kvSet('epoch', W.epoch);
     log('서버 개교일 설정:', new Date(W.epoch * 1000).toISOString());
   }
+  // 한 번만: 서버를 다시 만들며 개교일이 2026-10-20으로 잡힌 것을 처음 배포한 날(10-19)로 되돌린다
+  if (!kvGet('epochFix1019', 0)) { if (R.dayKST(W.epoch) === R.dayKST(Date.parse('2026-10-20T12:00:00+09:00') / 1000)) { W.epoch = Math.floor(Date.parse('2026-10-19T00:00:00+09:00') / 1000); kvSet('epoch', W.epoch); log('개교일을 2026-10-19로 고쳤습니다'); } kvSet('epochFix1019', 1); }
   let cache = { at: 0 };
   let bossDirty = false;
 
