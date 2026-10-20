@@ -1699,7 +1699,7 @@ routes['POST /api/admin/wbsummon'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
   const b = await readJson(req, 256); let boss;
   try { boss = world.summonBoss(nowSec(), b.hp, b.n, b.per); } catch (e) { return fail(req, res, 400, e.message); }
-  world.invalidate(); const t = '추가 월드 보스 ' + R.josa(boss.name, '이', '가') + ' 나타났습니다! 잡으면 도전한 학생 모두에게 토벌 보상이 또 우편으로 갑니다.';
+  world.invalidate(); const t = '추가 월드 보스 ' + R.josa(boss.name, '이', '가') + ' 등장했습니다! 토벌에 성공하면 도전한 학생 모두에게 보상이 우편으로 전달됩니다.';
   chat.system('world', t, Date.now() / 1000); chat.system('notice', t, Date.now() / 1000);
   oplog('admin', '관리자', 'wbsummon', `${boss.name} (${boss.round}번째, 체력 ${R.fmt(boss.maxHp)})`); send(req, res, 200, { ok: true, boss });
 };

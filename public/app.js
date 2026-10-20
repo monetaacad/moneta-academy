@@ -742,7 +742,7 @@
       var WHERE = { equip: '바로 장착했습니다', bag: '장비 가방에 넣었습니다', sold: '가방이 가득 차 판매했습니다', dis: '자동 분해했습니다', mail: '가방이 가득 차 우편함으로 보냈습니다' };
       setTimeout(function () {
         modal(mhead('받은 보상', '우편') + (its.length ? '<div class="section-t">장비 <span class="tiny faint">(장비 상자는 받는 순간 열립니다)</span></div><ul class="report" style="margin-top:4px">' + its.map(function (x) { return '<li><b style="color:' + rcol(x.r || 0) + '">' + esc(x.name) + '</b> — ' + (WHERE[x.res] || '받았습니다') + '</li>'; }).join('') + '</ul>' : '') +
-          (egg ? '<p class="small" style="margin-top:10px">환수의 알 · 토벌 도전권 · 망각의 차는 「장비 → 소지품」에 들어갔습니다. 소지품에서 바로 쓰거나 해당 화면으로 갈 수 있습니다.</p>' : '') +
+          (egg ? '<p class="small" style="margin-top:10px">환수의 알 · 토벌 도전권 · 망각의 차는 「장비 → 소지품」에 들어갔습니다. 소지품에서 바로 사용하거나 해당 화면으로 이동할 수 있습니다.</p>' : '') +
           '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px">' + (egg ? '<button class="btn" data-act="invgo">소지품에서 보기</button>' : '') + (its.length ? '<button class="btn" data-act="goto" data-a="gear">장비 화면으로</button>' : '') + '<button class="btn primary" data-act="modal-close">확인</button></div>');
       }, 200);
     }
@@ -3251,7 +3251,7 @@
     board: [['.page-head', '게시판', '말머리를 골라 글을 씁니다. 「관리자만 보기」로 쓰면 운영진에게 문의 · 건의 · 신고를 보낼 수 있습니다.']],
     auction: [['.page-head', '떠돌이 상인', '매일 낮 12시와 밤 8시에 2시간 동안 귀한 장비 세 점을 경매합니다. 더 높은 입찰이 나오면 입찰한 ' + CUR + '를 즉시 돌려받습니다.']],
     market: [['#view .tabs', '거래소', '「사기」에서 다른 학생의 물건을 사고, 「팔기」에서 내 물건을 올립니다. 「팔기」에는 최근 시세가 표시됩니다.']],
-    gear: [['h:장비 살펴보기', '장비', '장착 칸이나 가방의 장비를 누르면 능력치와 강화 · 재련 · 분해 · 잠금 메뉴가 표시됩니다.'], ['[data-anchor="bag"]', '가방 · 소지품', '초록 ▲ 표시는 현재보다 전투력이 오르는 장비입니다. 「소지품」 탭에는 환수의 알 · 토벌 도전권 · 물약 · 망각의 차가 모이며, 바로 쓰거나 해당 화면으로 갈 수 있습니다.'], ['h:능력치', '능력치', '레벨업 포인트를 직접 분배하거나, 자동 분배를 켜고 프리셋을 고를 수 있습니다.'], ['[data-anchor="badge"]', '아카데미 휘장', '달고 있는 휘장 하나만 효과가 있으며, 원정 · 수업 · 전투에서 별빛을 모아 성장합니다.']],
+    gear: [['h:장비 살펴보기', '장비', '장착 칸이나 가방의 장비를 누르면 능력치와 강화 · 재련 · 분해 · 잠금 메뉴가 표시됩니다.'], ['[data-anchor="bag"]', '가방 · 소지품', '초록 ▲ 표시는 현재보다 전투력이 오르는 장비입니다. 「소지품」 탭에는 환수의 알 · 토벌 도전권 · 물약 · 망각의 차가 모이며, 바로 사용하거나 해당 화면으로 이동할 수 있습니다.'], ['h:능력치', '능력치', '레벨업 포인트를 직접 분배하거나, 자동 분배를 활성화하고 프리셋을 선택할 수 있습니다.'], ['[data-anchor="badge"]', '아카데미 휘장', '달고 있는 휘장 하나만 효과가 있으며, 원정 · 수업 · 전투에서 별빛을 모아 성장합니다.']],
     work: [['h:연금술', '연금술', '재료와 마나로 물약을 즉시 만듭니다. 물약 효과는 마신 뒤 현실 시간으로 흐릅니다.'], ['h:사역마', '사역마', '환수의 알을 부화시켜 동행하거나 파견을 보냅니다. 동행 중인 사역마는 능력치를 올려 줍니다.']],
     shop: [['.page-head', '매점', '별조각과 ' + CUR + '로 환수의 알 · 가방 확장 · 휘장 원석 등을 구입합니다.']],
     rec: [['h:업적', '기록실', '업적 · 칭호 도감 · 몬스터 도감 · 통계를 확인합니다. 업적을 달성하면 별조각을 받습니다.']]
@@ -4059,7 +4059,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102009;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102010;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
