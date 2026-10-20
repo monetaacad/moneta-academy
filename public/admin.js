@@ -154,8 +154,8 @@
         return '<tr><td>' + when(r.t) + '</td><td>' + esc(r.chName || r.ch) + '</td><td>' + esc(r.author) + '</td><td class="msgtext">' + (r.deleted ? '<s class="faint">' + esc(r.text) + '</s>' : esc(r.text)) + '</td><td>' + esc(r.reporter) + '</td><td class="msgtext">' + (r.reason ? esc(r.reason) : '<span class="faint">—</span>') + '</td><td><div class="row" style="gap:4px">' +
           '<button class="btn sm ghost" data-a="rctx" data-c="' + r.msg_id + '">앞뒤 대화</button>' +
           (r.reporter_id ? '<button class="btn sm ghost" data-a="sdmgo" data-p="' + esc(r.reporter_id) + '" data-n="' + esc(r.reporter) + '">신고자 1:1</button>' : '') +
-          (r.deleted ? '' : '<button class="btn sm danger" data-a="del" data-c="' + r.msg_id + '" data-r="' + r.id + '">삭제</button>') +
-          '<button class="btn sm" data-a="rmute" data-p="' + esc(r.author_id) + '" data-r="' + r.id + '" data-m="1440">1일 금지</button>' +
+          (r.deleted ? '' : '<button class="btn sm danger" data-a="del" data-c="' + r.msg_id + '" data-r="' + r.id + '">메시지 삭제</button>') +
+          '<button class="btn sm" data-a="rmute" data-p="' + esc(r.author_id) + '" data-r="' + r.id + '" data-m="1440">작성자 1일 채팅 금지</button>' +
           (r.resolved ? '' : '<button class="btn sm ghost" data-a="resolve" data-r="' + r.id + '">처리 완료</button>') + '</div></td></tr>' +
           (RCTX[r.msg_id] ? '<tr class="rctx"><td colspan="7">' + RCTX[r.msg_id] + '</td></tr>' : '');
       }).join('') || '<tr><td colspan="7" class="faint">' + ($('#showres').checked ? '처리한 신고가 없습니다' : '새 신고가 없습니다') + '</td></tr>';
@@ -252,7 +252,7 @@
     copy: function () { var t = $('#codesbox').textContent; try { navigator.clipboard.writeText(t).then(function () { toast('복사했습니다'); }, sel); } catch (e) { sel(); } function sel() { var r = document.createRange(); r.selectNodeContents($('#codesbox')); var s = getSelection(); s.removeAllRanges(); s.addRange(r); toast('선택했습니다. Ctrl+C로 복사'); } },
     disable: function (el) { api('POST', '/api/admin/invites/disable', { code: el.dataset.c }).then(invites); },
     enable: function (el) { api('POST', '/api/admin/invites/disable', { code: el.dataset.c, enable: true }).then(invites); },
-    del: function (el) { api('POST', '/api/admin/chat/delete', { id: +el.dataset.c }).then(function () { return api('POST', '/api/admin/reports/resolve', { id: +el.dataset.r }); }).then(function () { toast('삭제했습니다'); reports(); }); },
+    del: function (el) { api('POST', '/api/admin/chat/delete', { id: +el.dataset.c }).then(function () { return api('POST', '/api/admin/reports/resolve', { id: +el.dataset.r }); }).then(function () { toast('메시지를 삭제했습니다'); reports(); }); },
     rmute: function (el) { api('POST', '/api/admin/mute', { pid: el.dataset.p, minutes: +el.dataset.m }).then(function () { return api('POST', '/api/admin/reports/resolve', { id: +el.dataset.r }); }).then(function () { toast('하루 동안 채팅 금지'); reports(); }); },
     bdload: function () { bdload(); },
     imore: function () { ISHOW += 20; invites(); },
