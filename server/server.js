@@ -1835,6 +1835,17 @@ routes['POST /api/admin/slow'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
   const b = await readJson(req, 256), before = chat.getSlow(), v = chat.setSlow(b.sec); dbx.kvSet('chat_slow', v); oplog('admin', '관리자', 'slow', `월드 ${before}초 → ${v}초`); send(req, res, 200, { ok: true, sec: v });
 };
+// 성장 데이터: 최근 N일 스냅샷을 CSV로. 학생은 이름 대신 해시(익명 번호)로
+routes['GET /api/admin/growth'] = (req, res) => {
+  if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
+  const u = new URL(req.url, 'http://x'), days = Math.max(1, Math.min(400, Number(u.searchParams.get('days')) || 30));
+  if (u.searchParams.get('now') === '1') growthSnap(true);
+  const from = kstDay(Math.floor(Date.now() / 1000) - (days - 1) * 86400), rows = dbx.q.growthFrom.all(from);
+  const cols = ['d', 'house', 'cls', 'lvl', 'power', 'grade', 'stage', 'ctM', 'ctK', 'cup', 'act'].concat(GROWTH_ST), anon = (id) => crypto.createHash('sha256').update('growth:' + id).digest('hex').slice(0, 10);
+  const lines = [['date', 'student'].concat(cols).join(',')];
+  rows.forEach((r) => { let o = {}; try { o = JSON.parse(r.data); } catch (e) { } lines.push([String(r.day).replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3'), anon(r.pid)].concat(cols.map((k) => o[k] == null ? '' : String(o[k]).replace(/[,\n]/g, ' '))).join(',')); });
+  send(req, res, 200, { csv: lines.join('\n'), rows: rows.length, days: dbx.q.growthDays.all().slice(0, days) });
+};
 routes['GET /api/admin/oplog'] = (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
   send(req, res, 200, { log: dbx.q.oplogList.all(200) });
@@ -2134,6 +2145,27 @@ server.headersTimeout = 70000;
 server.requestTimeout = 30000;
 
 /* ───────── 주기 작업 ───────── */
+// 성장 스냅샷: 한국 날짜가 바뀌면(서버를 켤 때 오늘 것이 없어도) 학생마다 한 줄. 정지 · 게스트 · 초기화로 남은 캐릭터는 뺀다
+const kstDay = (t) => { const d = new Date(t * 1000 + 9 * 3600000); return d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate(); };
+const GROWTH_ST = ['kills', 'lecHours', 'lecJobs', 'expJobs', 'bosses', 'bossTries', 'researchDone', 'brews', 'dispatches', 'tasksDone', 'duelWins', 'wbAttacks', 'goldTotal', 'manaTotal', 'famKinds', 'epicFound', 'legendFound', 'maxEnh'];
+function growthSnap(force) {
+  const real = Math.floor(Date.now() / 1000), day = kstDay(real);
+  if (!force && dbx.kvGet('growthDay', 0) === day) return 0;
+  const rows = dbx.db.prepare('SELECT id, house, created, last_seen, state, power, lvl, grade FROM players WHERE banned = 0 AND guest = 0 AND deleted = 0').all();
+  let n = 0;
+  dbx.tx(() => {
+    rows.forEach((r) => {
+      let P = store.peek(r.id); if (!P) { try { P = JSON.parse(r.state); } catch (e) { return; } }
+      const st = P.st || {}, o = { d: Math.floor((real - r.created) / 86400), house: r.house, cls: P.cls || '', lvl: P.lvl || r.lvl, power: Math.round(r.power), grade: P.grade || r.grade, stage: st.maxStageAll || 0,
+        ctM: st.twM || 0, ctK: st.twK || 0, cup: Math.round((P.wk && P.wk.cup) || 0), act: real - r.last_seen < 86400 ? 1 : 0 };
+      GROWTH_ST.forEach((k) => { o[k] = Math.round(st[k] || 0); });
+      dbx.q.growthPut.run(day, r.id, JSON.stringify(o)); n++;
+    });
+    dbx.kvSet('growthDay', day);
+  });
+  log('성장 스냅샷 ' + day + ': ' + n + '명');
+  return n;
+}
 function backup() {
   const dir = path.join(cfg.dataDir, 'backups'); fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
   store.flushAll();
@@ -2168,6 +2200,8 @@ const timers = [
   setInterval(() => { try { npcMarketTick(); } catch (e) { log('NPC 거래 실패', e); } }, 15 * 60000),
   setInterval(() => { try { aucTick(nowSec()); dbx.q.aucPurge.run(Math.floor(nowSec()) - 14 * 86400); } catch (e) { log('경매 처리 실패', e); } }, 20000),
   setInterval(() => { try { dbx.q.mailPurge.run(Math.floor(Date.now() / 1000) - 7 * 86400); dbx.q.mailStatePurge.run(); } catch (e) { log('우편 정리 실패', e); } }, 6 * 3600000),
+  setInterval(() => { try { growthSnap(); } catch (e) { log('성장 스냅샷 실패', e); } }, 10 * 60000),
+  setTimeout(() => { try { growthSnap(); } catch (e) { log('성장 스냅샷 실패', e); } }, 60000),   // 켜고 1분 뒤 오늘 것이 없으면 바로
   setInterval(() => { try { backup(); } catch (e) { log('백업 실패', e); } }, 12 * 3600000)
 ];
 timers.forEach((t) => t.unref());
