@@ -153,6 +153,18 @@
     opoff: function () { var n = $('#un').value.trim(); if (!n) return; api('POST', '/api/admin/ops', { name: n, op: false }).then(function (j) { $('#umsg').textContent = j.error || n + ' 님의 운영자 권한을 뗐습니다'; oplog(); }); },
     slow: function () { api('POST', '/api/admin/slow', { sec: +$('#slowsec').value || 0 }).then(function (j) { toast(j.error || (j.sec ? '월드 슬로우 모드 ' + j.sec + '초' : '슬로우 모드를 껐습니다')); oplog(); }); },
     mforever: function () { $('#mexp').value = 'forever'; $('#mdatew').hidden = true; },
+    // 초대코드 우편 배포: 받을 학생 수를 먼저 세고, 확인을 받은 뒤 보낸다
+    imsend: function () {
+      var o = { title: $('#imt').value.trim(), body: $('#imb').value, activeDays: +$('#imact').value, codeDays: +$('#imcd').value, mailDays: +$('#immd').value || 30 };
+      if (!o.title) { $('#immsg').textContent = '제목 입력 필요'; return; }
+      api('POST', '/api/admin/invitemail', Object.assign({ dry: true }, o)).then(function (j) {
+        if (j.error) { $('#immsg').textContent = j.error; return; }
+        if (!j.n) { $('#immsg').textContent = '받을 학생이 없습니다'; return; }
+        if (!confirm(j.n + '명에게 1회용 초대코드를 한 장씩 새로 발급해 우편으로 보냅니다.\n제목: ' + o.title + '\n코드 기한: ' + $('#imcd').selectedOptions[0].text + '\n\n보낸 뒤에는 되돌릴 수 없습니다.')) return;
+        o.expect = j.n; $('#immsg').textContent = '보내는 중…';
+        api('POST', '/api/admin/invitemail', o).then(function (k) { $('#immsg').textContent = k.error || k.n + '명에게 보냈습니다'; if (!k.error) { invites(); oplog(); } });
+      });
+    },
     mail: function () {
       var to = document.querySelector('input[name=mto]:checked').value, rw = {}, n = 0;
       document.querySelectorAll('[data-rw]').forEach(function (i) { var v = Math.floor(+i.value || 0); if (v > 0) { rw[i.dataset.rw] = v; n++; } });
