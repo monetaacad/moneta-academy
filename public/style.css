@@ -283,7 +283,8 @@ main { min-width: 0; container-type: inline-size; container-name: page; }
 .allocv .allocd { min-width: 2.6em; }
 .filters { display: flex; gap: 6px; flex-wrap: wrap; }
 .filters .btn.on { border-color: var(--brass2); color: var(--brass2); }
-.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line2); margin-bottom: 14px; overflow-x: auto; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line2); margin-bottom: 14px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }   /* 탭이 넘치면 밀어서 보되, 스크롤 막대는 숨긴다 */
+.tabs::-webkit-scrollbar { display: none; }
 .tabs button { background: none; border: 0; border-bottom: 2px solid transparent; padding: 8px 12px; cursor: pointer; color: var(--muted); white-space: nowrap; font-size: 14px; }
 .tabs button.on { color: var(--ink); border-bottom-color: var(--brass); }
 
