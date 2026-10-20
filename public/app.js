@@ -252,7 +252,7 @@
         '<dl class="spk"><dt>전투력</dt><dd class="gold">' + fmt(c.power) + (S.rank ? ' <span class="tiny faint">· ' + S.rank + '위</span>' : '') + '</dd><dt>초당 피해</dt><dd>' + fmt(c.totalDps) + '</dd><dt>생명력</dt><dd>' + fmt(c.hp) + '</dd><dt>방어력</dt><dd>' + fmt(c.def) + '</dd></dl>' +
         '<div class="spstat">' + R.STATS.map(function (k) { return '<span><i>' + D.STAT_NAMES[k] + '</i><b class="num">' + fmt(c.stat[k]) + '</b></span>'; }).join('') + '</div>' +
         (P.pts > 0 ? '<button class="spbtn gold" data-act="nav" data-a="gear">남은 능력치 ' + P.pts + '점 나누기</button>' : '') +
-        '<div class="speq">' + D.SLOTS.map(function (sl) { var it = P.eq[sl.id]; return '<button data-act="nav" data-a="gear" title="' + sl.name + (it ? ' · ' + esc(it.name) + ' Lv ' + it.ilvl : ' · 비어 있음') + '"><i>' + sl.name + '</i><span class="ell" style="' + (it ? 'color:' + rcol(it.r) : '') + '">' + (it ? esc(it.name) + (it.enh ? ' +' + it.enh : '') : '—') + '</span></button>'; }).join('') + '</div>' +
+        '<div class="speq">' + D.SLOTS.map(function (sl) { var it = P.eq[sl.id]; return '<button data-act="nav" data-a="gear" title="' + sl.name + (it ? ' · ' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + ' · ' + D.RARITY[it.r].name + ' · Lv ' + it.ilvl : ' · 비어 있음') + '"><i>' + sl.name + '</i><span class="ell" style="' + (it ? 'color:' + rcol(it.r) : '') + '">' + (it ? esc(it.name) : '—') + '</span>' + (it && it.enh ? '<b class="num speh">+' + it.enh + '</b>' : '') + '</button>'; }).join('') + '</div>' +
         (R.badgeWorn(P) ? (function (b) { return '<div class="tiny muted spfam">휘장 · <span style="color:' + R.GEM[b.gem].color + '">' + esc(b.name) + '</span> Lv ' + b.lv + '</div>'; })(R.badgeWorn(P)) : '') +
         (P.fam.act && R.FAM[P.fam.act] ? '<div class="tiny muted spfam">동행 · ' + R.FAM[P.fam.act].name + ' Lv ' + P.fam.own[P.fam.act].lv + '</div>' : '') + '</div>';
     }
@@ -4155,7 +4155,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102028;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102029;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
