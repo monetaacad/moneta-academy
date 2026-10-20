@@ -4265,15 +4265,15 @@
   function hexA(h, a) { var c = parseInt(h.slice(1), 16); return 'rgba(' + ((c >> 16) & 255) + ',' + ((c >> 8) & 255) + ',' + (c & 255) + ',' + a + ')'; }
   function lum(h) { var c = parseInt(h.slice(1), 16); return (0.299 * ((c >> 16) & 255) + 0.587 * ((c >> 8) & 255) + 0.114 * (c & 255)) / 255; }
   function forTone(c) { return lightUi() ? mixDark(c, lum(c) > 0.82 ? 0.6 : 0.4) : c; }
-  // 학생 카드 배경 꾸미기 위: 잉크 색은 그대로 두고, 배경(첫 색 · 평균 색)과 대비가 낮을 때(3 미만)만 잉크와 반대되는 테두리를 두른다
+  // 학생 카드 배경 꾸미기 위: 잉크 색은 그대로 두고, 배경(첫 색 · 평균 색)과 대비가 낮을 때(3 미만)만 배경과 반대되는 그림자를 붙인다
   function rgbOf(h) { var c = parseInt(h.slice(1), 16); return [(c >> 16) & 255, (c >> 8) & 255, c & 255]; }
   function hexOf(a) { return '#' + a.map(function (v) { v = Math.round(v); return (v < 16 ? '0' : '') + v.toString(16); }).join(''); }
   function relL(h) { var a = rgbOf(h).map(function (v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); return 0.2126 * a[0] + 0.7152 * a[1] + 0.0722 * a[2]; }
   function contrast(a, b) { var x = relL(a), y = relL(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
   function inkOutline(c, bg) {
     var low = c.some(function (v) { return Math.min(contrast(v, bg.refs[0]), contrast(v, bg.refs[1])) < 3; }); if (!low) return '';
-    var o = bg.dark ? 'rgba(255,255,255,.18)' : 'rgba(20,16,30,.17)';   // 어두운 배경은 밝은 테두리, 밝은 배경은 어두운 테두리 (아주 연하게)
-    return 'filter:drop-shadow(1px 0 0 ' + o + ') drop-shadow(-1px 0 0 ' + o + ') drop-shadow(0 1px 0 ' + o + ') drop-shadow(0 -1px 0 ' + o + ');';
+    var o = bg.dark ? 'rgba(255,255,255,.5)' : 'rgba(20,16,30,.5)';   // 어두운 배경은 밝은 그림자, 밝은 배경은 어두운 그림자 (부드럽게 번지는 drop-shadow 하나)
+    return 'filter:drop-shadow(0 1px 2px ' + o + ');';
   }
   function decoBgRef(id) { var x = id && R.DECO[id]; if (!x || x.slot !== 'bg') return null; var avg = hexOf([0, 1, 2].map(function (i) { return x.g.reduce(function (t, c) { return t + rgbOf(c)[i]; }, 0) / x.g.length; })); return { dark: decoDark(id), refs: [x.g[0], avg] }; }
   // bg: 이름이 놓인 학생 카드의 배경 꾸미기 (없으면 화면 테마를 따른다)
