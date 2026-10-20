@@ -997,9 +997,47 @@ function mkAllowed(P, meta, sell) {
   if (wait > 0) return '판매 등록은 입학 24시간 뒤부터 가능합니다 (남은 시간 ' + R.fmtTime(wait) + ')';
   return null;
 }
+/* 학생 경매: 장비 · 휘장을 시작가부터 입찰로 판다. 즉시 구매가로 언제든(입찰이 들어온 뒤에도) 바로 살 수 있다.
+   입찰하면 아르크를 맡겨 두고, 더 높은 입찰이나 즉시 구매가 나오면 돌려준다. 마감 5분 안 입찰은 마감을 5분 미룬다.
+   학생마다 동시에 3개까지(거래소 등록 한도 10개 안에서 센다). 입찰이 들어오기 전까지만 취소할 수 있다. */
+const MK_AUC = { MAX: 3, HOURS: [12, 24, 48], MIN_UP: 0.05, BUYOUT_X: 1.2, SNIPE: 300 };
+function mkAucMin(r) { return r.bids > 0 ? Math.max(r.bid + 1, Math.ceil(r.bid * (1 + MK_AUC.MIN_UP))) : r.start_price; }
+// 맡겨 둔 입찰금을 돌려준다
+function mkRefund(pid, amount, name, why) {
+  if (!pid || String(pid).startsWith('npc:') || !(amount > 0)) return;
+  const Q = store.get(pid); if (!Q) return;
+  const now = nowSec(); R.advance(Q, world.ctx(now), now);
+  Q.res.gold += amount; R.log(Q, now, '거래소 경매: ' + name + ' — ' + why + ' 맡겨 둔 ' + R.fmt(amount) + ' ' + CUR + '를 돌려받았습니다', 'news'); store.markDirty(pid);
+  addNote(pid, 'market', '경매 ' + R.josa(name, '은', '는') + ' ' + why + ' 맡겨 둔 ' + R.fmt(amount) + ' ' + CUR + '를 돌려받았습니다', { view: 'market' });
+  try { push.direct(pid, 'mkbid', '거래소 경매', name + ' — ' + why + ' 맡겨 둔 ' + R.fmt(amount) + ' ' + CUR + '를 돌려받았습니다. 다시 입찰할 수 있습니다.', 'mkbid-' + name); } catch (e) { }
+}
+// 팔린 값(수수료를 뺀 것)을 판매자에게
+function mkPaySeller(r, price, buyerName, now, how) {
+  if (String(r.seller).startsWith('npc:')) return;
+  const SP = store.get(r.seller); if (!SP) return;
+  const got = Math.floor(price * (1 - MK.FEE)), nm = r.name + (r.kind !== 'item' && r.kind !== 'badge' ? ' ' + r.qty + '개' : '');
+  addNote(r.seller, 'market', '거래소에서 ' + R.josa(nm, '이', '가') + ' ' + (how || '팔렸습니다') + ' · ' + R.fmt(got) + ' ' + CUR + ' (' + buyerName + ' 님)', { view: 'market' });
+  R.advance(SP, world.ctx(now), now); SP.res.gold += got; SP.st.goldTotal = (SP.st.goldTotal || 0) + got;
+  R.log(SP, now, '거래소: ' + nm + ' 판매 +' + R.fmt(got) + ' ' + CUR + ' (수수료 ' + Math.round(MK.FEE * 100) + '%)', 'good'); store.markDirty(r.seller);
+}
+// 마감된 경매 정리: 입찰이 있으면 최고 입찰자에게 넘기고(맡겨 둔 아르크로 값을 치른다), 없으면 판매자에게 돌려준다
+function mkAucSettle(r, now) {
+  const real = Math.floor(Date.now() / 1000), W = r.bidder ? store.get(r.bidder) : null;
+  if (!W) { if (dbx.q.mkSetStatus.run('expired', '', real, r.id).changes) mkReturn(r, r.bidder ? '낙찰자를 찾을 수 없어 돌아왔습니다' : '입찰 없이 경매가 끝나 돌아왔습니다', now); return; }
+  if (!dbx.q.mkAucSold.run(r.bidder, real, r.bid, r.id).changes) return;
+  R.advance(W, world.ctx(now), now); mkGive(W, r);
+  R.log(W, now, '거래소 경매: ' + R.josa(r.name, '을', '를') + ' ' + R.fmt(r.bid) + ' ' + CUR + '에 낙찰받았습니다', 'good'); store.markDirty(r.bidder);
+  addNote(r.bidder, 'market', '경매에서 ' + R.josa(r.name, '을', '를') + ' ' + R.fmt(r.bid) + ' ' + CUR + '에 낙찰받았습니다', { view: 'market' });
+  try { push.direct(r.bidder, 'mkwon', '거래소 경매', R.josa(r.name, '을', '를') + ' ' + R.fmt(r.bid) + ' ' + CUR + '에 낙찰받았습니다.', 'mkwon-' + r.id); } catch (e) { }
+  mkPaySeller(r, r.bid, W.name, now, '경매로 팔렸습니다');
+  log(`경매 낙찰: #${r.id} ${r.name} ${r.bid}G`);
+  chat.pingAll('trade', mkTradeOut(Object.assign({}, r, { price: r.bid, done_at: real })));
+}
+function mkAucSweep() { const now = nowSec(); dbx.q.mkAucEnded.all(Math.floor(Date.now() / 1000)).forEach((r) => mkAucSettle(r, now)); }
 const mkQueries = new Map();
 function mkSearch(f, now) {
   const where = [`m.status = 'open'`, `m.expires > ?`], args = [Math.floor(now)];
+  if (f.auc) { where.push(`m.auc = 1`, `m.kind IN ('item', 'badge')`); if (f.nobid) where.push('m.bids = 0'); } else where.push('m.auc = 0');   // 경매는 「경매」 탭에서만
   if (f.kind === 'item' || f.kind === 'mat' || f.kind === 'pot' || f.kind === 'badge' || f.kind === 'tok') { where.push('m.kind = ?'); args.push(f.kind); }
   if (f.kind === 'badge' && f.gem && R.GEM[f.gem]) { where.push('m.slot = ?'); args.push(f.gem); }
   if (f.kind !== 'badge' && f.slot === 'sword') { where.push(`m.slot = 'staff' AND m.data LIKE '%"wk":"sword"%'`); }   // 무기 중 검
@@ -1013,13 +1051,16 @@ function mkSearch(f, now) {
   if (f.kind === 'tok' && f.tok && MK_TOK[f.tok]) { where.push('m.data = ?'); args.push(f.tok); }
   if (f.q) { where.push(`m.name LIKE ? ESCAPE '\\'`); args.push('%' + f.q.replace(/[\\%_]/g, (c) => '\\' + c) + '%'); }
   const dir = f.sort === 'high' ? 'DESC' : 'ASC';
-  const order = f.sort === 'new' ? 'm.id DESC' : f.sort === 'lvl' ? 'm.ilvl DESC, m.price ASC' : f.kind === 'mat' || f.kind === 'pot' || f.kind === 'tok' ? 'm.price / m.qty ' + dir : 'm.price ' + dir;
-  const sql = `SELECT m.id, m.kind, m.data, m.name, m.slot, m.rarity, m.ilvl, m.qty, m.price, m.created, m.expires, m.seller, COALESCE(p.name, m.seller_name) AS seller_name FROM market m LEFT JOIN players p ON p.id = m.seller WHERE ${where.join(' AND ')} ORDER BY ${order} LIMIT 60`;
+  const cur = '(CASE WHEN m.bids > 0 THEN m.bid ELSE m.start_price END)';
+  const order = f.auc ? ({ cur: cur + ' ASC', curhi: cur + ' DESC', buy: 'm.price ASC', buyhi: 'm.price DESC', new: 'm.id DESC', bids: 'm.bids DESC, m.expires ASC' }[f.sort] || 'm.expires ASC')   // 경매 기본: 마감 임박순
+    : f.sort === 'new' ? 'm.id DESC' : f.sort === 'lvl' ? 'm.ilvl DESC, m.price ASC' : f.kind === 'mat' || f.kind === 'pot' || f.kind === 'tok' ? 'm.price / m.qty ' + dir : 'm.price ' + dir;
+  const sql = `SELECT m.id, m.kind, m.data, m.name, m.slot, m.rarity, m.ilvl, m.qty, m.price, m.created, m.expires, m.seller, m.auc, m.start_price, m.bid, m.bids, m.bidder, COALESCE(p.name, m.seller_name) AS seller_name FROM market m LEFT JOIN players p ON p.id = m.seller WHERE ${where.join(' AND ')} ORDER BY ${order} LIMIT 60`;
   let st = mkQueries.get(sql); if (!st) { st = dbx.db.prepare(sql); mkQueries.set(sql, st); }
   return st.all(...args);
 }
 function mkOut(r, me) {
   const o = { id: r.id, kind: r.kind, name: r.name, slot: r.slot, r: r.rarity, ilvl: r.ilvl, qty: r.qty, price: r.price, created: r.created, expires: r.expires, seller: r.seller_name, npc: String(r.seller).startsWith('npc:'), mine: r.seller === me, status: r.status };
+  if (r.auc) { o.auc = 1; o.start = r.start_price; o.bid = r.bid; o.bids = r.bids; o.top = !!me && r.bidder === me; o.min = mkAucMin(r); o.won = r.status === 'sold' && r.buyer === me; }   // 입찰한 학생 이름은 보이지 않는다
   if (r.kind === 'item') { try { const it = JSON.parse(r.data); delete it.lock; delete it.u; o.item = it; } catch (e) { } } else if (r.kind === 'badge') { try { const bd = JSON.parse(r.data); delete bd.u; o.badge = bd; o.gem = bd.gem; o.lv = bd.lv; } catch (e) { } } else if (r.kind === 'pot') o.pot = r.data; else if (r.kind === 'tok') o.tok = r.data; else o.mat = r.data;
   return o;
 }
@@ -1035,8 +1076,9 @@ routes['GET /api/market'] = (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
   if (limited('mk:' + me, 2, 15)) return fail(req, res, 429, '요청이 너무 잦습니다');
   const u = new URL(req.url, 'http://x'), g = (k) => u.searchParams.get(k) || '', now = Date.now() / 1000;
-  const f = { kind: g('kind'), slot: g('slot'), r: g('r') === '' ? -1 : Number(g('r')), mat: g('mat'), pot: g('pot'), tok: g('tok'), gem: g('gem'), q: g('q').slice(0, 20), sort: g('sort') };
-  send(req, res, 200, { list: mkSearch(f, now).map((r) => mkOut(r, me)), mine: dbx.q.mkMine.all(me, Math.floor(now) - 3 * 86400).map((r) => mkOut(Object.assign({ seller_name: '' }, r, { seller: me }), me)), fee: MK.FEE, days: MK.DAYS, maxOpen: MK.MAX_OPEN, grade: MK.GRADE });
+  const f = { kind: g('kind'), slot: g('slot'), r: g('r') === '' ? -1 : Number(g('r')), mat: g('mat'), pot: g('pot'), tok: g('tok'), gem: g('gem'), q: g('q').slice(0, 20), sort: g('sort'), auc: g('auc') === '1', nobid: g('nobid') === '1' };
+  send(req, res, 200, { list: mkSearch(f, now).map((r) => mkOut(r, me)), mine: dbx.q.mkMine.all(me, Math.floor(now) - 3 * 86400).map((r) => mkOut(Object.assign({ seller_name: '' }, r, { seller: me }), me)), myBids: dbx.q.mkMyBids.all(me, Math.floor(now) - 3 * 86400).map((r) => mkOut(r, me)),
+    fee: MK.FEE, days: MK.DAYS, maxOpen: MK.MAX_OPEN, grade: MK.GRADE, auc: { max: MK_AUC.MAX, hours: MK_AUC.HOURS, up: MK_AUC.MIN_UP, buyoutX: MK_AUC.BUYOUT_X } });
 };
 // 시세: 최근 30일 팔린 기록의 평균과 최근 5건. 장비는 같은 부위·등급·레벨 ±5, 재료는 개당 가격.
 const mkPriceCache = new Map();
@@ -1081,15 +1123,25 @@ routes['POST /api/market'] = async (req, res) => {
   if (limited('mkp:' + me, 1, 10)) return fail(req, res, 429, '잠시 후 다시 시도');
   const b = await readJson(req, 2048), op = String(b.op || ''), now = nowSec(), meta = dbx.q.playerMeta.get(me);
   const P = loadPlayer(me, now); if (!P) return fail(req, res, 401, '학생 정보를 찾을 수 없습니다');
-  const no = mkAllowed(P, meta, op === 'list'); if (no) return fail(req, res, 403, no);
+  const no = mkAllowed(P, meta, op === 'list' || op === 'bid'); if (no) return fail(req, res, 403, no);
   const real = Date.now() / 1000;
   if (op === 'list') {
     if (Number(dbx.q.mkMineOpen.get(me).n) >= MK.MAX_OPEN) return fail(req, res, 400, '한 번에 ' + MK.MAX_OPEN + '개까지 올릴 수 있습니다');
     const price = Math.floor(Number(b.price)); if (!isFinite(price) || price < 1 || price > MK.MAX_PRICE) return fail(req, res, 400, '가격 확인 필요');
+    // 경매: 장비 · 휘장만. price = 즉시 구매가, start = 시작가(상점 판매가 이상), 즉시 구매가는 시작가의 1.2배 이상
+    const auc = !!b.auc, start = Math.floor(Number(b.start)), hours = Number(b.hours);
+    if (auc) {
+      if (!b.u && !b.badge) return fail(req, res, 400, '경매에는 장비와 휘장만 올릴 수 있습니다');
+      if (Number(dbx.q.mkAucMineOpen.get(me).n) >= MK_AUC.MAX) return fail(req, res, 400, '경매는 한 번에 ' + MK_AUC.MAX + '개까지 열 수 있습니다');
+      if (MK_AUC.HOURS.indexOf(hours) < 0) return fail(req, res, 400, '경매 기간 선택 필요');
+      if (!isFinite(start) || start < 1) return fail(req, res, 400, '시작가 확인 필요');
+      if (price < Math.ceil(start * MK_AUC.BUYOUT_X)) return fail(req, res, 400, '즉시 구매가는 시작가의 ' + MK_AUC.BUYOUT_X + '배(' + R.fmt(Math.ceil(start * MK_AUC.BUYOUT_X)) + ' ' + CUR + ') 이상이어야 합니다');
+    }
     let row;
     if (b.u) {
       const i = P.inv.findIndex((it) => it.u === String(b.u)); if (i < 0) return fail(req, res, 400, '가방에 없는 장비입니다 (장착 중인 장비는 해제한 뒤 올리세요)');
       const it = P.inv[i]; if (it.lock) return fail(req, res, 400, '잠금한 장비는 올릴 수 없습니다');
+      if (auc && start < R.sellPrice(it)) return fail(req, res, 400, '시작가는 상점 판매가(' + R.fmt(R.sellPrice(it)) + ' ' + CUR + ') 이상이어야 합니다');
       P.inv.splice(i, 1);
       row = ['item', JSON.stringify(it), it.name + (it.enh ? ' +' + it.enh : ''), it.slot, it.r, it.ilvl, 1];
     } else if (b.badge) {   // 아카데미 휘장 (달고 있는 것은 못 올림)
@@ -1115,8 +1167,10 @@ routes['POST /api/market'] = async (req, res) => {
       if (m === 'stone') P.res.stone -= qty; else P.mats[m] -= qty;
       row = ['mat', m, MAT_NAMES[m].name, '', 0, 0, qty];
     }
-    dbx.q.mkInsert.run(me, row[0], row[1], row[2], row[3], row[4], row[5], row[6], price, Math.floor(real), Math.floor(real + MK.DAYS * 86400), P.name);
-    R.log(P, now, '거래소에 ' + R.josa(row[2] + (row[0] !== 'item' ? ' ' + row[6] + '개' : ''), '을', '를') + ' ' + R.fmt(price) + ' ' + CUR + '에 올렸습니다', 'news');
+    const ins = dbx.q.mkInsert.run(me, row[0], row[1], row[2], row[3], row[4], row[5], row[6], price, Math.floor(real), Math.floor(real + (auc ? hours * 3600 : MK.DAYS * 86400)), P.name);
+    if (auc) dbx.q.mkAucInit.run(start, Number(ins.lastInsertRowid));
+    if (auc) R.log(P, now, '거래소 경매에 ' + R.josa(row[2], '을', '를') + ' 올렸습니다 (시작가 ' + R.fmt(start) + ' · 즉시 구매가 ' + R.fmt(price) + ' ' + CUR + ' · ' + hours + '시간)', 'news');
+    else R.log(P, now, '거래소에 ' + R.josa(row[2] + (row[0] !== 'item' ? ' ' + row[6] + '개' : ''), '을', '를') + ' ' + R.fmt(price) + ' ' + CUR + '에 올렸습니다', 'news');
     store.markDirty(me);
     return send(req, res, 200, { ok: true, P: R.publicState(P), now });
   }
@@ -1124,6 +1178,7 @@ routes['POST /api/market'] = async (req, res) => {
   if (!r || r.status !== 'open') return fail(req, res, 404, '이미 팔렸거나 내려간 물건입니다');
   if (op === 'cancel') {
     if (r.seller !== me) return fail(req, res, 403, '내 물건이 아닙니다');
+    if (r.auc && r.bids > 0) return fail(req, res, 400, '입찰이 들어온 경매는 취소할 수 없습니다');
     if (r.kind === 'item' && P.inv.length >= R.calc(P, world.ctx(now), now).bag) return fail(req, res, 400, '가방이 가득 찼습니다');
     if (!dbx.q.mkSetStatus.run('canceled', '', Math.floor(real), id).changes) return fail(req, res, 409, '이미 처리된 물건입니다');
     mkReturn(r, '판매를 취소해 돌려받았습니다', now);
@@ -1132,28 +1187,44 @@ routes['POST /api/market'] = async (req, res) => {
   if (op === 'buy') {
     if (r.seller === me) return fail(req, res, 400, '내가 올린 물건입니다');
     if (r.expires <= real) return fail(req, res, 404, '기한이 지난 물건입니다');
-    if (P.res.gold < r.price) return fail(req, res, 400, CUR + '가 부족합니다');
+    const held = r.auc && r.bidder === me ? r.bid : 0;   // 내가 최고 입찰자면 맡겨 둔 입찰금도 값에 넣는다
+    if (P.res.gold + held < r.price) return fail(req, res, 400, CUR + '가 부족합니다');
     if (r.kind === 'item' && P.inv.length >= R.calc(P, world.ctx(now), now).bag) return fail(req, res, 400, '가방이 가득 찼습니다');
     if (r.kind === 'badge' && (P.badges || []).length >= R.BADGE_HOLD) return fail(req, res, 400, '휘장 보관함이 가득 찼습니다 (' + R.BADGE_HOLD + '개)');
-    if (!dbx.q.mkSetStatus.run('sold', me, Math.floor(real), id).changes) return fail(req, res, 409, '방금 다른 학생이 샀습니다');
-    P.res.gold -= r.price;
+    if (!(r.auc ? dbx.q.mkAucSold.run(me, Math.floor(real), r.price, id) : dbx.q.mkSetStatus.run('sold', me, Math.floor(real), id)).changes) return fail(req, res, 409, '방금 다른 학생이 샀습니다');
+    P.res.gold -= r.price - held;
+    if (r.auc && r.bidder && r.bidder !== me) mkRefund(r.bidder, r.bid, r.name, '즉시 구매로 경매가 끝나');
     mkGive(P, r);
     R.log(P, now, '거래소에서 ' + R.josa(r.name + (r.kind !== 'item' ? ' ' + r.qty + '개' : ''), '을', '를') + ' ' + R.fmt(r.price) + ' ' + CUR + '에 샀습니다', 'good');
     store.markDirty(me);
-    const SP = String(r.seller).startsWith('npc:') ? null : store.get(r.seller);
     if (String(r.seller).startsWith('npc:')) setImmediate(() => { try { npcMarketTick(); } catch (e) { } });   // NPC 매물이 팔리면 바로 채운다
-    if (SP) addNote(r.seller, 'market', '거래소에서 ' + R.josa(r.name + (r.kind !== 'item' ? ' ' + r.qty + '개' : ''), '이', '가') + ' 팔렸습니다 · ' + R.fmt(Math.floor(r.price * (1 - MK.FEE))) + ' ' + CUR + ' (' + P.name + ' 님)', { view: 'market' });
-    if (SP) { const got = Math.floor(r.price * (1 - MK.FEE)); R.advance(SP, world.ctx(now), now); SP.res.gold += got; SP.st.goldTotal = (SP.st.goldTotal || 0) + got; R.log(SP, now, '거래소: ' + r.name + (r.kind !== 'item' ? ' ' + r.qty + '개' : '') + ' 판매 +' + R.fmt(got) + ' ' + CUR + ' (수수료 ' + Math.round(MK.FEE * 100) + '%)', 'good'); store.markDirty(r.seller); }
+    mkPaySeller(r, r.price, P.name, now, r.auc ? '즉시 구매로 팔렸습니다' : '팔렸습니다');
     log(`거래: #${id} ${r.name} ${r.price}G`);
     chat.pingAll('trade', mkTradeOut(Object.assign({}, r, { done_at: Math.floor(real) })));
     return send(req, res, 200, { ok: true, P: R.publicState(P), now });
+  }
+  if (op === 'bid') {
+    if (!r.auc) return fail(req, res, 400, '경매 물건이 아닙니다');
+    if (r.seller === me) return fail(req, res, 400, '내가 올린 경매에는 입찰할 수 없습니다');
+    if (r.expires <= real) return fail(req, res, 404, '마감된 경매입니다');
+    if (r.bidder === me) return fail(req, res, 400, '이미 최고 입찰자입니다');
+    const amount = Math.floor(Number(b.amount)), min = mkAucMin(r);
+    if (!isFinite(amount) || amount < min) return fail(req, res, 400, '최소 입찰가는 ' + R.fmt(min) + ' ' + CUR + '입니다');
+    if (amount >= r.price) return fail(req, res, 400, '즉시 구매가(' + R.fmt(r.price) + ' ' + CUR + ') 이상은 즉시 구매로 진행 필요');
+    if (P.res.gold < amount) return fail(req, res, 400, CUR + '가 부족합니다');
+    const ends = r.expires - real < MK_AUC.SNIPE ? Math.floor(real + MK_AUC.SNIPE) : r.expires;   // 마감 5분 안 입찰은 마감을 5분 미룬다
+    if (!dbx.q.mkAucBid.run(amount, me, P.name, ends, id, r.bid, r.bidder).changes) return fail(req, res, 409, '방금 다른 입찰이 들어왔습니다. 다시 확인 필요');
+    P.res.gold -= amount; dbx.q.mkBidLog.run(id, me, amount, Math.floor(real));
+    R.log(P, now, '거래소 경매: ' + R.josa(r.name, '에', '에') + ' ' + R.fmt(amount) + ' ' + CUR + '를 입찰했습니다 (맡겨 둠)', 'news'); store.markDirty(me);
+    if (r.bidder) mkRefund(r.bidder, r.bid, r.name, '더 높은 입찰이 들어와');
+    return send(req, res, 200, { ok: true, P: R.publicState(P), now, ends });
   }
   fail(req, res, 400, '알 수 없는 요청입니다');
 };
 function mkSweep() {
   const real = Date.now() / 1000, now = nowSec();
-  dbx.q.mkExpired.all(Math.floor(real)).forEach((r) => { if (dbx.q.mkSetStatus.run('expired', '', Math.floor(real), r.id).changes) mkReturn(r, '판매 기한(' + MK.DAYS + '일)이 지나 돌아왔습니다', now); });
-  dbx.q.mkPurge.run(Math.floor(real) - 14 * 86400);
+  dbx.q.mkExpired.all(Math.floor(real)).forEach((r) => { if (r.auc) return mkAucSettle(r, now); if (dbx.q.mkSetStatus.run('expired', '', Math.floor(real), r.id).changes) mkReturn(r, '판매 기한(' + MK.DAYS + '일)이 지나 돌아왔습니다', now); });
+  dbx.q.mkPurge.run(Math.floor(real) - 14 * 86400); dbx.q.mkBidPurge.run();
 }
 // NPC 학생들이 장비 · 재료 · 물약 · 휘장을 올린다 (R.npcLot: 서버 · 데모 공용). 학생들의 진도 하나를 골라 그에 맞춘 매물, 1~2일 뒤 만료
 function npcList(n, wantMat) {
@@ -1914,13 +1985,16 @@ function resetCharacter(oldId) {
     if (g) gRankCache.at = 0;
   }
   const P0 = R.newPlayer(newId, '새 학생', row.house, now, crypto.randomInt(1, 2147483647)); P0.needCreate = 1;
+  let mkGone = [];
   dbx.tx(() => {
     const D = (sql, ...a) => dbx.db.prepare(sql).run(...a);
     D('DELETE FROM friends WHERE pid = ? OR fid = ?', oldId, oldId);
     D('DELETE FROM party_invites WHERE pid = ?', oldId);
     D('DELETE FROM guild_apps WHERE pid = ?', oldId);
     D('DELETE FROM guild_invites WHERE pid = ?', oldId);
+    mkGone = dbx.db.prepare(`SELECT id, name, bid, bidder FROM market WHERE seller = ? AND status = 'open' AND auc = 1 AND bidder != ''`).all(oldId);   // 입찰금은 돌려준다 (아래)
     D("DELETE FROM market WHERE seller = ? AND status = 'open'", oldId);
+    D("UPDATE market SET bid = 0, bidder = '', bidder_name = '', bids = 0 WHERE status = 'open' AND auc = 1 AND bidder = ?", oldId);
     D("UPDATE auction SET price = 0, bidder = '', bidder_name = '', bids = 0 WHERE done = 0 AND bidder = ?", oldId);
     D('DELETE FROM notes WHERE pid = ?', oldId);
     D('DELETE FROM sessions WHERE pid = ?', oldId);
@@ -1932,6 +2006,7 @@ function resetCharacter(oldId) {
     if (row.role === 'admin' || row.role === 'chief') dbx.q.setRole.run(row.role, newId);
     D('UPDATE players SET login_enc = ? WHERE id = ?', row.login_enc || '', newId);
   });
+  mkGone.forEach((r) => mkRefund(r.bidder, r.bid, r.name, '판매자의 캐릭터가 초기화되어 경매가 취소되어'));
   if (adminIds.has(oldId)) { adminIds.delete(oldId); adminIds.add(newId); }
   if (chiefIds.has(oldId)) { chiefIds.delete(oldId); chiefIds.add(newId); }
   for (const [k, v] of sessionCache) if (v.pid === oldId) sessionCache.delete(k);
@@ -2288,6 +2363,7 @@ const timers = [
   setInterval(() => { if (!MAINT.on && MAINT.start && Date.now() / 1000 >= MAINT.start) maintSet({ on: true, until: MAINT.until, msg: MAINT.msg }, 'auto'); }, 5000),
   setInterval(() => { store.evictIdle(20 * 60000); dbx.q.purgeSessions.run(Math.floor(Date.now() / 1000)); }, 5 * 60000),
   setInterval(() => { try { mkSweep(); } catch (e) { log('거래소 정리 실패', e); } }, 5 * 60000),
+  setInterval(() => { try { mkAucSweep(); } catch (e) { log('거래소 경매 정리 실패', e); } }, 20000),
   setInterval(() => { try { dbx.q.ginvPurge.run(Math.floor(Date.now() / 1000) - 7 * 86400); } catch (e) { log('동아리 초대 정리 실패', e); } }, 6 * 3600000),
   setInterval(() => { try { npcMarketTick(); } catch (e) { log('NPC 거래 실패', e); } }, 15 * 60000),
   setInterval(() => { try { aucTick(nowSec()); dbx.q.aucPurge.run(Math.floor(nowSec()) - 14 * 86400); } catch (e) { log('경매 처리 실패', e); } }, 20000),

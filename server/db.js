@@ -167,6 +167,12 @@ function open(dir) {
   if (pcols.indexOf('allgo') < 0) db.exec(`ALTER TABLE parties ADD COLUMN allgo INTEGER NOT NULL DEFAULT 0`);   // 파티원도 원정에 파티를 데려갈 수 있음
   const mcols = db.prepare(`PRAGMA table_info(market)`).all().map((c) => c.name);
   if (mcols.indexOf('seller_name') < 0) db.exec(`ALTER TABLE market ADD COLUMN seller_name TEXT NOT NULL DEFAULT ''`);
+  // 학생 경매: 거래소 물건 중 auc = 1. price = 즉시 구매가, start_price = 시작가, bid = 현재 입찰가(입찰한 학생의 아르크는 맡겨 둔다), expires = 마감
+  [['auc', 'INTEGER NOT NULL DEFAULT 0'], ['start_price', 'INTEGER NOT NULL DEFAULT 0'], ['bid', 'INTEGER NOT NULL DEFAULT 0'], ['bidder', "TEXT NOT NULL DEFAULT ''"], ['bidder_name', "TEXT NOT NULL DEFAULT ''"], ['bids', 'INTEGER NOT NULL DEFAULT 0']]
+    .forEach((c) => { if (mcols.indexOf(c[0]) < 0) db.exec(`ALTER TABLE market ADD COLUMN ${c[0]} ${c[1]}`); });
+  db.exec(`CREATE TABLE IF NOT EXISTS market_bids (mid INTEGER NOT NULL, pid TEXT NOT NULL, amount INTEGER NOT NULL, t INTEGER NOT NULL);
+    CREATE INDEX IF NOT EXISTS market_bids_pid ON market_bids(pid, mid);
+    CREATE INDEX IF NOT EXISTS market_auc ON market(auc, status, expires);`);
   // 게시판: 제목·본문은 암호화 (관리자만 보기 문의에 개인정보가 들어갈 수 있으므로). 검색은 서버 메모리에서 푼 뒤에 한다.
   db.exec(`
     CREATE TABLE IF NOT EXISTS board_posts (
@@ -468,10 +474,18 @@ function open(dir) {
     mkTrades: db.prepare(`SELECT id, kind, name, slot, rarity, ilvl, qty, price, done_at FROM market WHERE status = 'sold' ORDER BY done_at DESC, id DESC LIMIT ?`),
     mkHistory: db.prepare(`SELECT id, kind, name, slot, rarity, ilvl, qty, price, done_at, seller, buyer, COALESCE((SELECT name FROM players WHERE id = market.seller), seller_name) AS seller_name FROM market WHERE status = 'sold' AND (seller = ? OR buyer = ?) AND done_at > ? ORDER BY done_at DESC, id DESC LIMIT 100`),
     mkSetStatus: db.prepare(`UPDATE market SET status = ?, buyer = ?, done_at = ? WHERE id = ? AND status = 'open'`),
-    mkMine: db.prepare(`SELECT id, kind, data, name, slot, rarity, ilvl, qty, price, created, expires, status, done_at FROM market WHERE seller = ? AND (status = 'open' OR done_at > ?) ORDER BY id DESC LIMIT 40`),
+    mkMine: db.prepare(`SELECT id, kind, data, name, slot, rarity, ilvl, qty, price, created, expires, status, done_at, auc, start_price, bid, bids, buyer FROM market WHERE seller = ? AND (status = 'open' OR done_at > ?) ORDER BY id DESC LIMIT 40`),
     mkMineOpen: db.prepare(`SELECT COUNT(*) AS n FROM market WHERE seller = ? AND status = 'open'`),
     mkExpired: db.prepare(`SELECT * FROM market WHERE status = 'open' AND expires < ? LIMIT 200`),
     mkPurge: db.prepare(`DELETE FROM market WHERE status != 'open' AND done_at < ?`),
+    mkAucMineOpen: db.prepare(`SELECT COUNT(*) AS n FROM market WHERE seller = ? AND status = 'open' AND auc = 1`),
+    mkAucBid: db.prepare(`UPDATE market SET bid = ?, bidder = ?, bidder_name = ?, bids = bids + 1, expires = ? WHERE id = ? AND status = 'open' AND auc = 1 AND bid = ? AND bidder = ?`),
+    mkAucSold: db.prepare(`UPDATE market SET status = 'sold', buyer = ?, done_at = ?, price = ? WHERE id = ? AND status = 'open'`),
+    mkAucEnded: db.prepare(`SELECT * FROM market WHERE status = 'open' AND auc = 1 AND expires <= ? LIMIT 200`),
+    mkAucInit: db.prepare(`UPDATE market SET auc = 1, start_price = ? WHERE id = ?`),
+    mkBidLog: db.prepare(`INSERT INTO market_bids (mid, pid, amount, t) VALUES (?, ?, ?, ?)`),
+    mkMyBids: db.prepare(`SELECT m.*, COALESCE(p.name, m.seller_name) AS seller_name FROM market m LEFT JOIN players p ON p.id = m.seller WHERE m.auc = 1 AND m.id IN (SELECT mid FROM market_bids WHERE pid = ?) AND (m.status = 'open' OR m.done_at > ?) ORDER BY m.status = 'open' DESC, m.expires ASC LIMIT 30`),
+    mkBidPurge: db.prepare(`DELETE FROM market_bids WHERE mid NOT IN (SELECT id FROM market)`),
     // 동아리
     gGet: db.prepare(`SELECT * FROM guilds WHERE id = ?`),
     gByKey: db.prepare(`SELECT id FROM guilds WHERE name_key = ?`),

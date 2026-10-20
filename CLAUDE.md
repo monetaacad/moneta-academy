@@ -17,7 +17,7 @@
 - **미리보기(데모) 빌드 · 게시는 이제 하지 않는다** (사용자 요청, 2026-10-20). 토큰 · 시간이 거의 들지 않을 때만 예외. `var BUILD`는 화면이 바뀌면 계속 올린다(서버판 새로고침 안내용)
 - 건의 · 문의 처리: 운영실 「건의 · 문의 전체 복사」로 사용자가 붙여 주면, 건마다 따로 PR을 만들고 **머지하지 않고 둔다** (사용자가 골라서 머지 = 배포)
 - 시험 서버: `sh tools/srv.sh start e 8098 TIME_SCALE=60 TEST_MODE=1 ADMIN_TOKEN=test-admin-token-0123456789abcdef ADMIN_NAMES=운영자` (끄기 `sh tools/srv.sh stop e`, 초기화 `rm -rf /tmp/arc-e`)
-- 시험: `tools/e2e.py`, `e2e_guild.py`, `e2e_chat.py`, `api_exproom.py`, `api_npc.py`, `api_hchat.py` (시험 서버 필요), `e2e_mail.py`(ADMIN_NAMES 없이 새 서버), `e2e_party_demo.py` · `e2e_onb_demo.py`(미리보기를 `http://127.0.0.1:8765/demo.html`로 띄워서)
+- 시험: `tools/e2e.py`, `e2e_guild.py`, `e2e_chat.py`, `api_exproom.py`, `api_npc.py`, `api_hchat.py` (시험 서버 필요), `api_auction.py`(거래소 경매 · 시간 배율 큰 새 서버: `sh tools/srv.sh start a 8097 TIME_SCALE=3600 TEST_MODE=1 ADMIN_TOKEN=test-admin-token-0123456789abcdef`), `e2e_mail.py`(ADMIN_NAMES 없이 새 서버), `e2e_party_demo.py` · `e2e_onb_demo.py`(미리보기를 `http://127.0.0.1:8765/demo.html`로 띄워서)
 - 프로세스 종료는 `pkill -f` 금지 — 특정 pid만 `kill <pid>`
 
 ## 아티팩트 동시 수정
