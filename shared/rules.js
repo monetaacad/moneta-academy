@@ -1784,7 +1784,7 @@
     P.opt.allocW = o; if (P.opt.autoAlloc) R.autoAlloc(P); return { ok: true };
   };
   A.opt = function (P, W, now, a) {
-    var k = str(a.k); if (['autoEquip', 'autoAlloc', 'sound', 'reduceFx', 'hideMyTitle', 'hideOtherTitle', 'dockClosed', 'bulkAsk'].indexOf(k) < 0) err('잘못된 설정');
+    var k = str(a.k); if (['autoEquip', 'autoAlloc', 'sound', 'reduceFx', 'hideMyTitle', 'hideOtherTitle', 'dockClosed', 'bulkAsk', 'showFam'].indexOf(k) < 0) err('잘못된 설정');
     P.opt[k] = !!a.v; if (k === 'autoAlloc' && P.opt[k]) R.autoAlloc(P); return { ok: true };
   };
   A.spell = function (P, W, now, a) {
@@ -1812,6 +1812,16 @@
   A.feed = function (P, W, now, a) {
     var id = str(a.id), o = P.fam.own[id]; if (!o) err('없는 사역마입니다'); if (o.lv >= 20) err('최대 레벨입니다');
     var cost = R.feedCost(P, id); if (P.res.gold < cost) err(CUR + '가 부족합니다'); P.res.gold -= cost; o.lv++; return { lv: o.lv };
+  };
+  // 사역마 이름: 학생이 지어 준 이름(o.nm). 비우면 원래 종 이름으로
+  R.FAM_NAME_MAX = 10;
+  R.famLabel = function (P, id) { var o = P && P.fam && P.fam.own[id], f = FAM[id]; return o && o.nm ? o.nm : f ? f.name : ''; };
+  A.famName = function (P, W, now, a) {
+    var id = str(a.id), o = P.fam.own[id]; if (!o) err('없는 사역마입니다');
+    var nm = String(a.name == null ? '' : a.name).slice(0, 100).replace(/[\u0000-\u001F\u007F\u200B-\u200F\u202A-\u202E\u2066-\u2069]/g, '').replace(/\s+/g, ' ').trim();
+    if (Array.from(nm).length > R.FAM_NAME_MAX) err('이름은 ' + R.FAM_NAME_MAX + '자까지 입력할 수 있습니다');
+    if (nm && nm !== FAM[id].name) o.nm = nm; else delete o.nm;
+    return { ok: true, nm: o.nm || '' };
   };
   A.famAct = function (P, W, now, a) { var id = str(a.id); if (!P.fam.own[id]) err('없는 사역마입니다'); if (P.fam.disp[id]) err('파견 중입니다'); P.fam.act = id; return { ok: true }; };
   /* ── 정보 카드 꾸미기 (아르크로 산다) ── */
