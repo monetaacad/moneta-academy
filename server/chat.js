@@ -236,8 +236,8 @@ function create(dbx, log, opts) {
     return store(ch, party, { ch, t: now, pid: 'system', name: '아카데미', house: 'system', grade: 0, guest: false, kind: 'sys', text });
   }
   // 사감 한마디: 기숙사 RP 채널에 사감(교수)이 말한다. kind 'head'는 서버만 쓴다 (학생이 보내는 글은 say · me로만 저장)
-  function headSay(house, name, text, now) {
-    return store('hrp', house, { ch: 'hrp', t: now, pid: 'head:' + house, name, house, grade: 0, guest: false, kind: 'head', text, title: '' });
+  function headSay(house, name, text, now, extra) {
+    return store('hrp', house, Object.assign({ ch: 'hrp', t: now, pid: 'head:' + house, name, house, grade: 0, guest: false, kind: 'head', text, title: '' }, extra || {}));
   }
   // NPC(가상의 학생)가 말하기: 파티 채널에서만
   function npcSay(party, npc, text, now) {

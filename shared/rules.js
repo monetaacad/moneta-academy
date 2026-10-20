@@ -1233,6 +1233,22 @@
     }
   }
   R.checkAch = checkAch;
+  // 할 일 달성 알림: 학기 이야기 목표 · 일일 목표 · 교수님 과제가 「받을 수 있음」이 되는 순간 한 번 일지에 적고,
+  // 서버가 알림(종 모양)으로 옮기도록 P.noteQ에 넣는다 (P.qTold: 이미 알린 것)
+  R.questCheck = function (P, now) {
+    var told = P.qTold || (P.qTold = {}), out = [];
+    if (P.mq && R.mqReady(P)) { var s = R.mqStep(P), k = s.g + ':' + s.i; if (told.mq !== k) { told.mq = k; out.push(['학기 이야기 「' + s.st.t + '」 목표를 달성했습니다. 광장에서 보상을 받을 수 있습니다', { view: 'home', anchor: 'mq' }]); } }
+    if (P.daily && P.daily.q) {
+      if (told.dd !== P.daily.day) { told.dd = P.daily.day; told.d = []; }
+      P.daily.q.forEach(function (q, i) { var k = i + ':' + q.type; if (q && !q.done && R.dailyProg(P, q) >= q.goal && told.d.indexOf(k) < 0) { told.d.push(k); out.push(['일일 목표 「' + q.name + '」를 달성했습니다. 광장에서 보상을 받을 수 있습니다', { view: 'home', anchor: 'daily' }]); } });
+    }
+    var tt = told.t || (told.t = {});
+    for (var sid in D.TASKS) { var o = R.taskOf(P, sid); if (o && tt[sid] !== o.i && R.taskProg(P, sid, o.t) >= o.t.n) { tt[sid] = o.i; out.push([SUBJ[sid].prof + '의 과제(' + SUBJ[sid].name + ')를 마쳤습니다. 강의실에서 제출할 수 있습니다', { view: 'lecture' }]); } }
+    if (!out.length) return;
+    var q2 = P.noteQ || (P.noteQ = []);
+    out.forEach(function (x) { log(P, now, x[0], 'good'); q2.push(x); });
+    if (q2.length > 20) q2.splice(0, q2.length - 20);
+  };
 
   /* ───────── 전투 시뮬레이션 (보스 · 대련 · 월드 보스) ─────────
      enemy: {hp, atk, boss, name}. 30초 제한. 로그는 재생용으로 압축. */
@@ -2226,7 +2242,7 @@
     var f = A[type]; if (typeof f !== 'function' || !Object.prototype.hasOwnProperty.call(A, type)) err('알 수 없는 행동입니다');
     R.advance(P, W, now);
     var out = f(P, W, now, a || {});
-    checkAch(P, now);
+    checkAch(P, now); R.questCheck(P, now);
     return out;
   };
 

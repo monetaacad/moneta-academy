@@ -101,6 +101,8 @@ const chat = Chat.create(dbx, log, { initExtra: (pid) => ({ build: BUILD.build, 
 const Board = require('./board.js');
 // 알림 기록: 우편과 따로, 일어난 일을 모아 보여 준다 (최근 100개, 30일)
 function pname(pid) { const w = dbx.q.getProfile.get(pid); return w ? w.name : '학생'; }
+// 할 일 달성(학기 이야기 · 일일 목표 · 교수님 과제): 규칙이 P.noteQ에 넣은 것을 알림으로 옮긴다
+function questNotes(P) { if (!P || !P.noteQ || !P.noteQ.length) return; const q = P.noteQ; P.noteQ = []; q.forEach((x) => addNote(P.id, 'quest', x[0], x[1])); store.markDirty(P.id); }
 function addNote(pid, kind, text, link) {
   if (!pid || String(pid).startsWith('npc:') || pid === 'staff') return;
   try { dbx.q.noteInsert.run(pid, Math.floor(Date.now() / 1000), kind, sec.enc(String(text).slice(0, 300)), link ? JSON.stringify(link) : ''); chat.ping(pid, 'note', { n: Number(dbx.q.noteUnread.get(pid).n) }); } catch (e) { log('알림 저장 실패', e); }
@@ -119,8 +121,8 @@ const exprooms = ExpRoom.create({ loadPlayer: (pid, now) => loadPlayer(pid, now)
 // 새 업데이트 노트가 배포되면 공지 · 월드 채널에 한 번 알린다
 { const pn = R.D.PATCH && R.D.PATCH[0]; if (pn && dbx.kvGet('patchPosted', 0) < pn.id) { const t = '새 업데이트 노트가 게시되었습니다: 「' + pn.title + '」. 상단의 업데이트 노트 버튼에서 확인할 수 있습니다.'; chat.system('notice', t, Date.now() / 1000); chat.system('world', t, Date.now() / 1000); dbx.kvSet('patchPosted', pn.id); } }
 // 사감 한마디: 기숙사 RP 채널에 (신입생 환영 · 주간 대항전 결과 · 대항전 선두가 바뀔 때). 채팅 시각은 다른 알림처럼 실제 시각
-function headSay(house, text) { const L = D.HOUSE_LORE[house]; if (L && text) chat.headSay(house, L.head, text, Date.now() / 1000); }
-function headWelcome(P) { const L = D.HOUSE_LORE[P.house]; if (L) headSay(P.house, L.say.welcome.replace('{n}', P.name)); }
+function headSay(house, text, extra) { const L = D.HOUSE_LORE[house]; if (L && text) chat.headSay(house, L.head, text, Date.now() / 1000, extra); }
+function headWelcome(P) { const L = D.HOUSE_LORE[P.house]; if (L) headSay(P.house, L.say.welcome.replace('{n}', P.name), { w: 1 }); }   // w: 신입생 환영 (설정에서 이것만 숨길 수 있다)
 world.onWeek = (week, order) => order.forEach((id, i) => { const L = D.HOUSE_LORE[id]; if (L) headSay(id, L.say.rank[i]); });
 world.onLead = (id) => { const L = D.HOUSE_LORE[id]; if (L) headSay(id, L.say.lead); };
 world.onKill = (name) => { const t = name + ' 토벌 성공! 이번 주에 도전한 모든 학생에게 토벌 보상 우편을 보냈습니다.'; chat.system('world', t, Date.now() / 1000); chat.system('notice', t, Date.now() / 1000); };
@@ -303,7 +305,7 @@ function loadPlayer(pid, now) {
   syncOp(P);
   const fp = R.fingerprint(P);
   const pc = setPartyN(P) | setGuildLv(P);
-  R.advance(P, world.ctx(now), now);
+  R.advance(P, world.ctx(now), now); R.questCheck(P, now); questNotes(P);
   if (pc) store.markDirty(pid);
   if (R.fingerprint(P) !== fp) store.markDirty(pid); else store.touch(pid);
   return P;
@@ -523,7 +525,7 @@ routes['POST /api/act'] = async (req, res) => {
     const before = P.wk.dmg;
     setPartyN(P); setGuildLv(P);
     const W0 = world.ctx(now); W0.lecPeers = type === 'lecStart' || type === 'ttApply' ? lecCounts(now) : null;
-    r = R.act(P, W0, now, type, a); W0.lecPeers = null;
+    r = R.act(P, W0, now, type, a); W0.lecPeers = null; questNotes(P);
     if (type === 'lecStart' || type === 'lecCancel' || type === 'ttApply') { lecSync(P); if (type === 'lecStart' || type === 'ttApply') { const j = P.lec[type === 'ttApply' ? 0 : Number(a.slot)]; if (j) lecStarted(P, j.s, now); } }
     if (type === 'exam' && r && r.pass) world.addNews(P.name + ' 학생이 ' + (P.grade >= 8 ? '졸업 시험을 통과해 마스터 과정이 되었습니다' : P.grade + '학년으로 진급했습니다'), now);
     if ((type === 'clsExam' || type === 'setCls') && r) setImmediate(() => { try { chat.clsChanged(pid); } catch (e) { } });

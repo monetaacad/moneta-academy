@@ -1777,3 +1777,5 @@ mark.hl { color: inherit; background: linear-gradient(transparent 38%, color-mix
 .fsnow { font-size: 10px; padding: 0 5px; }
 .fssrc { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 2px 6px 8px 14px; font-size: 12px; color: var(--muted); }
 .fssrc b { color: var(--ink2); }
+[data-st][hidden] { display: none !important; }   /* 설정 탭: 고른 탭만 */
+.settabs { flex-wrap: wrap; }
