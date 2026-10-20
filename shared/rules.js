@@ -242,7 +242,7 @@
     var jm = R.jarMax(P); if (k > 0) { n = Math.min(jm, n + k); at += k * K.SPIRIT_EVERY; }
     if (n < jm) { var full = at + (jm - n) * K.SPIRIT_EVERY; add('jar:' + Math.round(full), 'jar', full, '반딧불 정령 병이 가득 찼습니다', '접속해 풀어 줄 수 있습니다'); }
     var sk = R.skyNext(now); if (sk) add('sky:' + sk.key, 'sky', sk.start, '하늘에 ' + sk.name + '!', sk.text + ' · 올려다보면 작은 선물');
-    var av = R.auctionVisit(now); if (av && !av.active) add('auc:' + av.start, 'auc', av.start, '떠돌이 상인이 왔습니다', '귀한 장비 세 점이 2시간 동안 경매에 오릅니다');
+    var av = R.auctionVisit(now); if (av && !av.active) add('auc:' + av.start, 'auc', av.start, '떠돌이 상인이 왔습니다', '귀한 장비 아홉 점이 2시간 동안 경매에 오릅니다');
     return out;
   };
   // 이미 서버가 처리해 보고함(inbox)에 들어간 일 (접속 중이라 상태가 먼저 갱신된 경우도 알림이 빠지지 않게)
@@ -259,6 +259,9 @@
     var seen = {}, heads = evs.filter(function (e) { if (seen[e.title]) return false; seen[e.title] = 1; return true; }).map(function (e) { return e.title.replace(/[.!]$/, ''); });
     return { title: (prefix || '') + (evs.length > 1 ? '아카데미 소식 ' + evs.length + '건' : evs[0].title), body: heads.join(' · ') };
   };
+  // 떠돌이 상인 구간: 활동 학생 원정 최고 단계 분포의 지점(p) + 3 레벨. 신입생 · 중급은 장비 레벨 + 10단계를 넘는 학생은 입찰 불가
+  R.AUC_TIERS = [{ name: '신입생', p: 0.25, cap: 10 }, { name: '중급', p: 0.5, cap: 10 }, { name: '상급', p: 0.88, cap: 0 }];
+  R.aucCap = function (lot) { var t = R.AUC_TIERS[lot.tier == null ? 2 : lot.tier]; return t && t.cap ? lot.ilvl + t.cap : 0; };
   R.auctionStep = function (price, min) { return price ? Math.ceil(price * 1.05) : min; };
 
   /* ───────── 새 학생 ───────── */
@@ -972,7 +975,7 @@
     speculum: { cats: ['enh', 'spirit', 'sky', 'shop', 'auc'], text: '장비 강화 · 반딧불 정령 · 하늘 올려다보기 · 매점 구매 · 떠돌이 상인 낙찰' }
   };
   R.CUP_SHOP_WEEK = 200;   // 매점 구매 점수는 한 주에 이만큼까지 (아르크로 마석을 거듭 사서 점수를 올리지 못하게)
-  R.CUP_AUC = 100;         // 떠돌이 상인 경매 낙찰 1회 (학생끼리 거래인 거래소에는 점수가 없다)
+  R.CUP_AUC = 50;          // 떠돌이 상인 경매 낙찰 1회 (학생끼리 거래인 거래소에는 점수가 없다) · 구간 3개 · 9점이 되며 100 → 50 (방문당 총점 300 → 450)
   function cupAdd(P, v, cat) { if (cat !== 'shop' && cat !== 'auc') famActivity(P, v); if (!P.wk) return; var sp = R.CUP_SPEC[P.house]; P.wk.cup += cat && sp && sp.cats.indexOf(cat) >= 0 ? v * R.CUP_SPEC_MULT : v; }
   // 대항전 순위 점수: 이번 주 점수가 CUP_ACTIVE 이상인 학생을 「활동 학생」으로 보고, 그 평균(1인 반영은 중간 점수의 3배까지, 최소 5명으로 나눔).
   // 인원이 많은 기숙사가 합계로 앞서지 않게 한다. cups = 그 기숙사 학생들의 이번 주 점수 목록

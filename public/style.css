@@ -1726,3 +1726,8 @@ mark.hl { color: inherit; background: linear-gradient(transparent 38%, color-mix
 .mksbtn { display: flex; align-items: baseline; gap: 6px; max-width: 100%; padding: 0; border: 0; background: none; font: inherit; text-align: left; cursor: pointer; }
 .mksbtn .ell { min-width: 0; }
 .mksbtn:hover .ell { text-decoration: underline; }
+/* 떠돌이 상인: 구간 머리글 (누르면 접기 · 펼치기) */
+.auchd { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; width: 100%; margin: 14px 0 6px; padding: 8px 12px; border: 1px solid var(--line2); border-radius: 9px; background: var(--sunk); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.auchd:hover { border-color: var(--line); }
+.auchd .chev { margin-left: 0; }
+.auchd .chev.up { transform: rotate(-135deg) translate(-2px, -2px); }
