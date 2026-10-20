@@ -2638,9 +2638,11 @@
   function loadMarket() {
     var m = S.mk; m.at = Date.now();
     if (m.tab === 'live') return loadTrades();
+    if (m.tab === 'hist') return loadHist();
     var f = m.tab === 'buy' ? { kind: m.kind, slot: m.kind === 'item' ? m.slot : '', r: m.kind === 'item' ? m.r : '', mat: m.kind === 'mat' ? m.mat : '', pot: m.kind === 'pot' ? m.pot : '', tok: m.kind === 'tok' ? (m.tok || '') : '', gem: m.kind === 'badge' ? (m.gem || '') : '', q: m.q, sort: m.sort } : {};
     return API.market(f).then(function (j) { if (j.error) { m.err = j.error; } else { m.err = ''; m.data = j; } if (m.tab === 'sell') loadPrices(); if (S.view === 'market' && !S.modal) render(); });
   }
+  function loadHist() { var m = S.mk; m.hiAt = Date.now(); if (!API.marketHistory) { m.hist = []; return Promise.resolve(); } return API.marketHistory().then(function (j) { if (!j.error) m.hist = j.list || []; if (S.view === 'market' && !S.modal) render(); }); }
   function loadTrades() { var m = S.mk; m.trAt = Date.now(); return API.marketTrades().then(function (j) { if (!j.error) m.trades = j.trades || []; if (!m.data) m.data = { grade: 1 }; if (S.view === 'market' && !S.modal) render(); }); }
   // 팔기 화면: 가방 장비·재료의 시세를 한 번에 묻는다
   function pKey(it) { return it.kind === 'mat' ? 'mat:' + it.mat : it.kind === 'pot' ? 'pot:' + it.pot : it.kind === 'tok' ? 'tok:' + it.tok : 'item:' + it.slot + ':' + it.r + ':' + it.ilvl; }
@@ -2673,9 +2675,10 @@
   V.market = function () {
     var P = S.P, m = S.mk, d = m.data, c = C();
     if (m.tab === 'live') { if (!m.trades || Date.now() - m.trAt > 30000) { if (Date.now() - m.trAt > 1500) loadTrades(); } }
+    else if (m.tab === 'hist') { if (!m.hist || Date.now() - (m.hiAt || 0) > 30000) { if (Date.now() - (m.hiAt || 0) > 1500) loadHist(); } }
     else if (!d || Date.now() - m.at > 30000) { if (Date.now() - m.at > 1500) loadMarket(); }
     var h = pageHead('부엉이 상단', '거래소', '수수료 5% · 3일 보관 · 한 번에 10개');
-    h += '<div class="tabs" role="tablist">' + [['buy', '사기'], ['sell', '팔기'], ['live', '실시간 거래'], ['mine', '내 물건']].map(function (t) { return '<button role="tab" class="' + (m.tab === t[0] ? 'on' : '') + '" data-act="mktab" data-a="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
+    h += '<div class="tabs" role="tablist">' + [['buy', '사기'], ['sell', '팔기'], ['live', '실시간 거래'], ['mine', '내 물건'], ['hist', '거래 내역']].map(function (t) { return '<button role="tab" class="' + (m.tab === t[0] ? 'on' : '') + '" data-act="mktab" data-a="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
     var low = d && d.grade && P.grade < d.grade;   // 학년이 모자라면 구경만
     if (low) { if (m.tab === 'sell' || m.tab === 'mine') m.tab = 'buy'; h += '<div class="card inset" style="margin-bottom:12px"><p class="small gold">거래소에서 사고팔기는 ' + d.grade + '학년부터입니다. 지금은 구경만 할 수 있습니다.</p></div>'; }
     var sellWait = P.created ? P.created + 86400 - now() : 0;   // 판매 등록은 입학 24시간 뒤부터 (서버 MK.SELL_AFTER)
@@ -2729,6 +2732,18 @@
       h += '<div class="card"><h3>물약 올리기</h3><p class="tiny faint">연금술로 만든 물약을 선반에서 꺼내 올립니다. 시세는 병당 가격입니다.</p><div class="stack" style="gap:0;margin-top:6px">' + (pots.length ? pots.map(function (p) {
         return '<div class="mksell' + (m.focus === 'pot:' + p.id ? ' focus' : '') + '" data-anchor="mks-pot:' + p.id + '"><div class="mksl"><div class="small"><span class="pot-ic" style="background:' + p.color + '"></span> ' + p.name + ' <span class="tiny faint">선반에 ' + fmt(P.shelf[p.id]) + '</span></div><div class="tiny faint ell">' + p.desc + '</div>' + priceLine('pot:' + p.id, true) + '</div><div class="mksr"><input type="number" min="1" max="' + P.shelf[p.id] + '" step="1" inputmode="numeric" class="mkqty" id="mkq-pot-' + p.id + '" placeholder="수량" value="1"><input type="number" min="1" step="1" inputmode="numeric" class="mkprice" id="mkp-pot-' + p.id + '" data-key="pot:' + p.id + '" data-unit="1" placeholder="가격" data-fmt="1"><span class="tiny faint mkfmt"></span><button class="btn sm" data-act="mklist" data-a="pot" data-b="' + p.id + '">올리기</button></div></div>';
       }).join('') : '<div class="empty">선반에 물약이 없습니다. 연구실에서 연금술로 만들 수 있습니다.</div>') + '</div></div>' + tokSellCard() + badgeSellCard() + '</div>';
+    } else if (m.tab === 'hist') {
+      var hl = m.hist, hf = m.hf || '', sold = (hl || []).filter(function (x) { return x.side === 'sell'; }), bought = (hl || []).filter(function (x) { return x.side === 'buy'; });
+      var sum = function (a, k) { return a.reduce(function (s, x) { return s + (x[k] || 0); }, 0); };
+      h += '<div class="card"><div class="row between"><h3>나의 거래 내역</h3><span class="tiny faint">최근 30일 · 산 사람은 보이지 않습니다</span></div>' +
+        (hl ? '<div class="row small" style="margin-top:6px;gap:14px;flex-wrap:wrap"><span>판매 <b class="num">' + sold.length + '</b>건 · 받은 ' + CUR + ' <b class="num good">+' + fmt(sum(sold, 'got')) + '</b></span><span>구매 <b class="num">' + bought.length + '</b>건 · 쓴 ' + CUR + ' <b class="num bad">−' + fmt(sum(bought, 'price')) + '</b></span></div>' +
+          '<div class="filters" style="margin-top:8px">' + [['', '전체'], ['sell', '판매'], ['buy', '구매']].map(function (f) { return '<button class="btn sm ghost' + (hf === f[0] ? ' on' : '') + '" data-act="mkhf" data-a="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '</div>' : '');
+      var hv = (hl || []).filter(function (x) { return !hf || x.side === hf; });
+      h += !hl ? '<div class="empty">불러오는 중…</div>' : !hv.length ? '<div class="empty">' + (hf === 'buy' ? '산 물건이 없습니다.' : hf === 'sell' ? '판 물건이 없습니다.' : '최근 30일 동안 거래가 없습니다.') + '</div>' : '<div class="trlist">' + hv.map(function (x) {
+        return '<div class="trrow"><span class="tiny faint num trt">' + ago(x.t) + '</span><span class="tag ' + (x.side === 'sell' ? 'ok' : 'br') + '">' + (x.side === 'sell' ? '판매' : '구매') + '</span><span class="ell trn"' + (x.kind === 'item' ? ' style="color:' + rcol(x.r) + '"' : '') + '>' + esc(x.name) + (x.kind !== 'item' ? ' <span class="num faint">×' + fmt(x.qty) + '</span>' : ' <span class="tiny faint">' + R.slotName(x) + ' Lv ' + x.ilvl + '</span>') + (x.side === 'buy' && x.seller ? ' <span class="tiny faint">· ' + esc(x.seller) + (x.npc ? ' (NPC)' : '') + '</span>' : '') + '</span>' +
+          '<b class="num ' + (x.side === 'sell' ? 'good' : 'bad') + '">' + (x.side === 'sell' ? '+' + fmt(x.got) : '−' + fmt(x.price)) + '</b></div>';
+      }).join('') + '</div>';
+      h += '</div>';
     } else if (m.tab === 'live') {
       var tr = m.trades;
       h += '<div class="card"><div class="row between"><h3>실시간 거래</h3><span class="tiny faint"><span class="odot"></span> 팔리는 대로 올라옵니다 · 산 사람은 보이지 않습니다</span></div>';
@@ -2798,6 +2813,7 @@
     else if (kind === 'item') o.u = k; else { o.mat = k; o.qty = Math.floor(+($('#mkq-' + k) || {}).value || 0); if (!(o.qty >= 1)) { toast('거래소', '수량 입력 필요'); return; } }
     API.marketOp(o).then(function (j) { mkDone(j, '판매 등록이 완료되었습니다'); });
   };
+  ACT.mkhf = function (f) { S.mk.hf = f || ''; render(); };
   ACT.mkcancel = function (id) { API.marketOp({ op: 'cancel', id: +id }).then(function (j) { mkDone(j, '판매를 취소했습니다 · 물건이 돌아왔습니다'); }); };
 
   /* ── 툴팁: 자원이 어디서 오는지, 지금 얼마나 들어오는지 ── */
