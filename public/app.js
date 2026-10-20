@@ -4318,6 +4318,33 @@
   // 입학 · 로그인
 
   /* ───────── 입학 · 로그인 화면 ───────── */
+  /* ── 기숙사 테스트 (로그인 · 가입 화면): 한 문항씩, 고른 답의 기숙사에 1점. 10문항부터는 중간에 결과를 볼 수 있다 ── */
+  function hqShuffle(n) { var a = []; for (var i = 0; i < n; i++) a.push(i); for (var j = n - 1; j > 0; j--) { var k = Math.floor(Math.random() * (j + 1)), t = a[j]; a[j] = a[k]; a[k] = t; } return a; }
+  ACT.hquiz = function () { S.hq = { i: 0, ans: [], ord: D.HOUSE_QUIZ.map(function (q) { return hqShuffle(q.a.length); }) }; hqDraw(); };
+  function hqDraw() {
+    var Q = D.HOUSE_QUIZ, t = S.hq; if (!t) return;
+    if (t.i >= Q.length) return hqResult();
+    var q = Q[t.i], done = t.ans.filter(Boolean).length;
+    modal(mhead('나에게 어울리는 기숙사 찾기', (t.i + 1) + ' / ' + Q.length) + '<div class="bar brass" style="height:6px;margin-bottom:12px"><b style="width:' + (t.i / Q.length * 100).toFixed(1) + '%"></b></div>' +
+      '<p style="font-size:16px;line-height:1.6;margin-bottom:12px">' + esc(q.q) + '</p><div class="stack" style="gap:8px">' +
+      t.ord[t.i].map(function (k) { var a = q.a[k]; return '<button class="btn hqopt' + (t.ans[t.i] === a[1] ? ' primary' : '') + '" data-act="hqpick" data-a="' + a[1] + '" style="justify-content:flex-start;text-align:left;white-space:normal">' + esc(a[0]) + '</button>'; }).join('') + '</div>' +
+      '<div class="row" style="margin-top:14px;gap:8px">' + (t.i > 0 ? '<button class="btn sm ghost" data-act="hqprev">이전</button>' : '') + '<span class="spacer"></span>' + (done >= 10 ? '<button class="btn sm ghost" data-act="hqend">여기까지 결과 보기</button>' : '<span class="tiny faint">10문항부터 중간에 결과를 볼 수 있습니다</span>') + '</div>');
+  }
+  ACT.hqpick = function (h) { var t = S.hq; if (!t) return; t.ans[t.i] = h; t.i++; hqDraw(); };
+  ACT.hqprev = function () { var t = S.hq; if (!t || t.i <= 0) return; t.i--; hqDraw(); };
+  ACT.hqend = function () { hqResult(); };
+  function hqResult() {
+    var t = S.hq, sc = {}, n = 0; D.HOUSES.forEach(function (h) { sc[h.id] = 0; }); t.ans.forEach(function (h) { if (h) { sc[h]++; n++; } });
+    var rank = D.HOUSES.slice().sort(function (a, b) { return sc[b.id] - sc[a.id]; }), best = sc[rank[0].id], tops = rank.filter(function (h) { return sc[h.id] === best; });
+    var pick = $('.housepick:not(.clspick)');   // 가입 화면이면 바로 선택할 수 있게
+    modal(mhead('기숙사 테스트 결과', n + '문항') + '<div style="text-align:center;margin-bottom:12px">' + tops.map(function (h) { return dotImg(h.id + '_big', 88, h.name + ' 문장', 'hdot hbig'); }).join(' ') +
+      '<p class="small muted" style="margin-top:8px">당신에게 어울리는 기숙사는</p><h2 style="margin:2px 0 6px">' + tops.map(function (h) { return '<span style="color:' + h.color + '">' + h.name + '</span>'; }).join(' · ') + '</h2>' +
+      (tops.length > 1 ? '<p class="tiny faint">점수가 같은 기숙사가 있습니다. 마음이 가는 곳을 선택하십시오.</p>' : '<p class="small" style="font-style:italic">“' + esc(tops[0].motto) + '”</p><p class="small muted" style="margin-top:4px">' + esc(tops[0].desc) + '</p>') + '</div>' +
+      '<div class="stack" style="gap:6px">' + rank.map(function (h) { return '<div><div class="row small"><span style="color:' + h.color + '">' + h.name + '</span><span class="spacer"></span><span class="num">' + sc[h.id] + '</span></div><div class="bar" style="height:6px;margin-top:2px"><b style="width:' + (n ? sc[h.id] / n * 100 : 0).toFixed(1) + '%;background:' + h.color + ' !important"></b></div></div>'; }).join('') + '</div>' +
+      '<p class="tiny faint" style="margin-top:10px">테스트 결과는 참고용입니다. 기숙사는 가입할 때 직접 선택하며, 대항전 점수는 인원수에 따라 보정됩니다.</p>' +
+      '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:12px"><button class="btn ghost" data-act="hquiz">다시 하기</button>' + (pick ? '<button class="btn primary" data-act="hqchoose" data-a="' + tops[0].id + '">' + tops[0].name + ' 선택</button>' : '<button class="btn primary" data-act="modal-close">닫기</button>') + '</div>');
+  }
+  ACT.hqchoose = function (id) { closeModal(); ACT.ihouse(id); var b = $('.housepick:not(.clspick) button[data-a="' + id + '"]'); if (b) b.scrollIntoView({ block: 'center', behavior: 'smooth' }); };
   function authScreen() {
     stopLoop(); chatDisconnect();
     var server = API.mode === 'server', M = S.meta || {};
@@ -4325,7 +4352,8 @@
     var tabs = redo ? [['recreate', '새 학생 만들기']] : server ? [['login', '로그인'], ['signup', '가입'], ['findid', '아이디 찾기']] : [['guest', '바로 입학']];   // 서버판에는 게스트가 없다. '바로 입학'은 아티팩트 미리보기에서만
     var tab = S.authTab && tabs.some(function (t) { return t[0] === S.authTab; }) ? S.authTab : tabs[0][0];
     var h = '<div class="body" style="grid-template-columns:minmax(0,1fr)"><main><div class="intro"><img class="crestbig" src="' + LOGO_URL + '" width="96" height="96" alt=""><h1>모네타 아카데미</h1>' +
-      '<p class="lede">별의 종의 울림을 듣는 이들에게만 초대장이 날아드는 곳.<br>오선의 열차를 타고 구름섬 라디아로.<br>모네타 아카데미에 오신 것을 환영합니다.</p>';
+      '<p class="lede">별의 종의 울림을 듣는 이들에게만 초대장이 날아드는 곳.<br>오선의 열차를 타고 구름섬 라디아로.<br>모네타 아카데미에 오신 것을 환영합니다.</p>' +
+      '<p style="margin-top:8px"><button class="btn sm ghost" data-act="hquiz">나에게 어울리는 기숙사 찾기 <span class="cost">30문항</span></button></p>';
     if (!server) h += '<div class="card inset"><p class="small">이 페이지는 <b>미리보기</b>입니다. 진행 상황은 이 브라우저에만 저장되고, 다른 학생과 월드 보스·대항전은 가상입니다. 실제 게임은 아카데미 서버에서 열립니다.</p></div>';
     if (tabs.length > 1) h += '<div class="tabs" role="tablist">' + tabs.map(function (t) { return '<button role="tab" class="' + (tab === t[0] ? 'on' : '') + '" data-act="authtab" data-a="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
     h += '<form id="authform" class="card stack" style="gap:12px" autocomplete="on">';
@@ -4473,7 +4501,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102056;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102057;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
