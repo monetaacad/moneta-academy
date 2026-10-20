@@ -651,6 +651,12 @@
     return ups;
   }
   // 주문 한 번의 기준 피해: 물리 기술(phys)은 물리 공격력, 나머지는 주문 공격력 × 주문 위력
+  // 원정 일지용 전투 수치: 평타 · 장착한 공격 주문 한 방 · 치명타 · 방어력 (보상과는 상관없는 표시용)
+  R.expCombat = function (P, W, now) {
+    var c = calc(P, W, now), sp = [];
+    for (var i = 0; i < R.spellSlots(P); i++) { var x = SPELL[P.spells[i]]; if (x && R.spellUnlocked(P, x.id) && (x.type === 'dmg' || x.type === 'stun')) sp.push([x.id, Math.round(R.spellHit(c, x) * x.mult * spellLvMult(P, x))]); }
+    return { a: Math.round(c.atk), cc: Math.round(c.critC * 1000) / 1000, cd: Math.round(c.critD * 100) / 100, df: Math.round(c.def), sp: sp };
+  };
   R.spellHit = function (c, sp) { return sp.phys ? (c.patk || c.atk) * (c.skill || 1) : (c.matk || c.atk) * c.spell; };
   // 자동 분배 프리셋 (학과마다 공격 능력치가 다르다)
   R.ALLOC_PRESETS = {
@@ -796,6 +802,7 @@
   R.expPartyApply = function (P, now, slot, s, durK, pv, info) {
     var d = DUR[durK] || DUR['1h'];
     var j = P.exp[slot] = { s: s, start: now, end: now + d.s, dur: d.s, eff: d.eff, kps: pv.kps, gEach: pv.gEach, xEach: pv.xEach, drop: pv.drop, rarity: pv.rarity, killMana: pv.killMana, risk: pv.risk, pt: info };
+    j.cb = R.expCombat(P, null, now);   // 원정 일지에 보일 전투 수치 (출발할 때 그대로)
     var fa = fallAt(P, now, d.s, pv.risk); if (fa) j.fallAt = fa;
     var kills = Math.floor(j.kps * j.dur * j.eff + 0.5), n = Math.floor(kills * K.ITEM_RATE * j.drop + rnd(P)), made = Math.min(n, 12);
     j.nItems = n; j.loot = [];
@@ -1548,9 +1555,12 @@
   function lecQ(P) { if (!P.lecQ) P.lecQ = [null, null, null]; if (!P.lecEnd) P.lecEnd = [0, 0, 0]; return P.lecQ; }
   R.lecQ = lecQ;
   R.onTime = function (P, i, now) { lecQ(P); var e = P.lecEnd[i] || 0; return !P.lec[i] && e > 0 && now >= e && now - e <= R.ONTIME_WIN; };
+  // 복습하는 꿈: 1시간에 강의의 0.4배, 깨어난 뒤 3시간 안에 그 과목 수업을 시작하면 경험치 +20% (복습 효과)
+  R.DREAM_STUDY = 0.4; R.REVIEW_BONUS = 0.2; R.REVIEW_TIME = 3 * 3600;
+  R.reviewOn = function (P, sid, t) { var r = P.review; return !!r && r.s === sid && t < r.until; };
   function lecMake(P, W, i, sid, dk, now, peers, ontime) {
-    var d = DUR[dk], pv = R.lecPreview(P, W, sid, d.k, now), pb = R.peerBonus(peers || 0), ob = ontime ? R.ONTIME_BONUS : 0;
-    P.lec[i] = { s: sid, start: now, end: now + d.s, dur: d.s, eff: d.eff, xp: pv.xp * (1 + pb + ob), know: pv.know, peers: peers || 0, pb: pb, ontime: !!ontime };
+    var d = DUR[dk], pv = R.lecPreview(P, W, sid, d.k, now), pb = R.peerBonus(peers || 0), ob = ontime ? R.ONTIME_BONUS : 0, rb = R.reviewOn(P, sid, now) ? R.REVIEW_BONUS : 0;
+    P.lec[i] = { s: sid, start: now, end: now + d.s, dur: d.s, eff: d.eff, xp: pv.xp * (1 + pb + ob + rb), know: pv.know, peers: peers || 0, pb: pb, ontime: !!ontime, rb: rb || undefined };
     return P.lec[i];
   }
   function lecCheck(P, W, now, i, sid, dk) {
@@ -1566,7 +1576,7 @@
     if (P.ttRun) P.ttRun = null;   // 직접 수업을 시작하면 기다리던 시간표는 멈춘다
     var on = R.onTime(P, i, now), j = lecMake(P, W, i, sid, dk, now, W && W.lecPeers ? (W.lecPeers[sid] || 0) : 0, on);
     P.lecEnd[i] = 0;
-    return { ok: true, ontime: on };
+    return { ok: true, ontime: on, review: R.reviewOn(P, sid, now) };
   };
   // 다음 교시 예약 (s를 비우면 예약 취소)
   A.lecQueue = function (P, W, now, a) {
@@ -1684,6 +1694,7 @@
     if (R.isBoss(s)) err('보스 단계는 보스 도전으로만 갈 수 있습니다');
     var pv = R.expPreview(P, W, s, d.k, now);
     var j = P.exp[i] = { s: s, start: now, end: now + d.s, dur: d.s, eff: d.eff, kps: pv.kps, gEach: pv.gEach, xEach: pv.xEach, drop: pv.drop, rarity: pv.rarity, killMana: pv.killMana, risk: pv.risk };
+    j.cb = R.expCombat(P, W, now);   // 원정 일지에 보일 전투 수치 (출발할 때 그대로)
     var fa = fallAt(P, now, d.s, pv.risk); if (fa) j.fallAt = fa;
     // 전리품은 떠날 때 미리 정해 둔다 (원정 일지에 언제 무엇을 주웠는지 그대로 보여 주려고). 실제로 받는 건 돌아올 때.
     var kills = Math.floor(j.kps * j.dur * j.eff + 0.5), n = Math.floor(kills * K.ITEM_RATE * j.drop + rnd(P)), made = Math.min(n, 12);
@@ -1977,7 +1988,7 @@
     var h = d.s / 3600, c = calc(P, W, t0, t0 + d.s), out = { dur: d.s };
     var subs = R.availableSubjects(P), top = subs.slice().sort(function (a, b) { return P.subj[b.id].lv - P.subj[a.id].lv; })[0];
     function lec(id) { var L = P.subj[id].lv; return { xp: K.LEC_XP * c.lecSpd * (1 + P.grade * 0.08), know: (K.LEC_KNOW + L * K.LEC_KNOW_LV) * c.know * c.lecSpd }; }
-    if (kind === 'study') { var one = lec(SUBJ[sid] ? sid : top.id); out.xp = one.xp * h * 0.35; out.know = one.know * h * 0.25; }
+    if (kind === 'study') { var one = lec(SUBJ[sid] ? sid : top.id); out.xp = one.xp * h * R.DREAM_STUDY; out.know = one.know * h * 0.25; }
     else if (kind === 'stars') { out.shard = Math.floor(h * 0.6); out.know = lec(top.id).know * h * 0.3; out.egg = h * 0.004; }
     else { var z = R.zoneOf(Math.min(P.maxStage, R.stageCap(P))); out.mat = z.mat; out.mats = Math.floor(h * 3.5); out.stones = Math.floor(h * 0.45); out.gold = Math.floor(h * 22 * K.KILL_GOLD * Math.pow(K.G_GOLD, z.from - 1) * (1 + (c.b.goldPct || 0))); }
     var dm = 1 + (c.b.offlineEff || 0); if (dm > 1) ['xp', 'know', 'shard', 'egg', 'gold', 'mats', 'stones'].forEach(function (k) { if (out[k]) out[k] = k === 'egg' || k === 'xp' || k === 'know' ? out[k] * dm : Math.floor(out[k] * dm); });   // 꿈나방: 꿈길 보상 +
@@ -1995,6 +2006,7 @@
   function dreamFinish(P, j, t) {
     var m = j.lucid ? 1.5 : 1, out = { k: 'dream', kind: j.kind, t: t, lucid: !!j.lucid, line: j.line };
     if (j.xp) { out.s = j.s; out.from = P.subj[j.s].lv; subjGain(P, j.s, j.xp * m, t); out.to = P.subj[j.s].lv; out.xp = j.xp * m; }
+    if (j.kind === 'study' && j.s) { P.review = { s: j.s, until: t + R.REVIEW_TIME }; out.review = P.review.until; }   // 복습 효과
     if (j.know) { var dk = Math.round(j.know * m); P.res.know += dk; out.know = dk; }
     if (j.shard) { var sh = Math.floor(j.shard * m); P.res.shard += sh; out.shard = sh; }
     if (j.egg && rnd(P) < j.egg * m) { P.fam.eggs++; out.egg = 1; }

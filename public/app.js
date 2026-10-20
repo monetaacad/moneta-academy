@@ -214,7 +214,7 @@
       else if (o.k === 'res') lines.push('<li><b>연구 완료</b> — ' + R.RES[o.id].name + ' ' + o.lv + '단계</li>');
       else if (o.k === 'hatch') lines.push('<li><b>부화</b> — ' + R.FAM[o.f].name + (o.isNew ? ' <span class="gold">(새 사역마)</span>' : '') + '</li>');
       else if (o.k === 'disp') lines.push('<li><b>' + R.FAM[o.f].name + '</b> 귀환 — ' + D.MATS[o.mat].name + ' ' + o.mats + ', 마석 ' + o.stones + ', ' + MONEY(o.gold, '+') + (o.egg ? ', <span class="gold">환수의 알</span>' : '') + (o.shard ? ', 별조각 +' + o.shard : '') + (o.xp ? ', 경험치 +' + o.xp : '') + '</li>');
-      else if (o.k === 'dream') { var dn = R.DREAM[o.kind]; lines.push('<li><b>' + (dn ? dn.name : '꿈') + '</b>에서 깼습니다' + (o.lucid ? ' <span class="gold">(자각몽 · 1.5배)</span>' : '') + ' — ' + [o.xp ? R.SUBJ[o.s].name + ' 경험치 +' + fmt(o.xp) + (o.to > o.from ? ' <span class="gold">(Lv ' + o.from + '→' + o.to + ')</span>' : '') : '', o.know ? '지식 +' + fmt(o.know) : '', o.shard ? '별조각 +' + o.shard : '', o.gold ? MONEY(o.gold, '+') : '', o.mats ? D.MATS[o.mat].name + ' ' + o.mats : '', o.stones ? '마석 ' + o.stones : '', o.egg ? '<span class="gold">환수의 알</span>' : ''].filter(Boolean).join(', ') + (o.line != null && D.DREAM_LINES[o.line] ? '<div class="tiny muted">꿈 일기: “' + D.DREAM_LINES[o.line] + '”</div>' : '') + '</li>'); }
+      else if (o.k === 'dream') { var dn = R.DREAM[o.kind]; lines.push('<li><b>' + (dn ? dn.name : '꿈') + '</b>에서 깼습니다' + (o.lucid ? ' <span class="gold">(자각몽 · 1.5배)</span>' : '') + (o.review && R.SUBJ[o.s] ? ' <span class="gold">· 복습 효과: ' + clock(o.review) + '까지 ' + R.SUBJ[o.s].name + ' 수업 경험치 +' + Math.round(R.REVIEW_BONUS * 100) + '%</span>' : '') + ' — ' + [o.xp ? R.SUBJ[o.s].name + ' 경험치 +' + fmt(o.xp) + (o.to > o.from ? ' <span class="gold">(Lv ' + o.from + '→' + o.to + ')</span>' : '') : '', o.know ? '지식 +' + fmt(o.know) : '', o.shard ? '별조각 +' + o.shard : '', o.gold ? MONEY(o.gold, '+') : '', o.mats ? D.MATS[o.mat].name + ' ' + o.mats : '', o.stones ? '마석 ' + o.stones : '', o.egg ? '<span class="gold">환수의 알</span>' : ''].filter(Boolean).join(', ') + (o.line != null && D.DREAM_LINES[o.line] ? '<div class="tiny muted">꿈 일기: “' + D.DREAM_LINES[o.line] + '”</div>' : '') + '</li>'); }
       else if (o.k === 'ach') { var a = D.ACH.find(function (x) { return x.id === o.id; }); if (a) lines.push('<li><b>업적</b> — ' + a.name + ' (별조각 +' + a.r + ')</li>'); }
     });
     if (!lines.length) { act('inboxAck', { upto: S.inboxUpto }); return; }
@@ -1347,7 +1347,7 @@
       var sj = P.subj[S2.id], open = S2.unlock <= Math.min(P.grade, 7);
       var on = P.lec.some(function (x) { return x && x.s === S2.id; }), inEx = ex && P.grade < 8 && (ex.subj.indexOf(S2.id) >= 0 || (ex.opt || []).indexOf(S2.id) >= 0);
       var nextSp = D.SPELLS.filter(function (sp) { return sp.req && sp.req[0] === S2.id && sj.lv < sp.req[1]; })[0];
-      var h2 = '<div class="card subj' + (on ? ' active' : '') + (open ? '' : ' lockd') + '" data-anchor="subj-' + S2.id + '"><div class="hd"><h3>' + S2.name + '</h3>' + (inEx ? '<span class="tag ' + (sj.lv >= ex.req ? 'ok' : 'br') + '">시험 ' + ex.req + '</span>' : '') + '<span class="lv">' + sj.lv + '</span></div><div class="prof">' + S2.prof + (open && clsN(S2.id, true) ? ' · <span class="classmates">지금 ' + clsN(S2.id, true) + '명 수강 중</span>' : '') + '</div>';
+      var h2 = '<div class="card subj' + (on ? ' active' : '') + (open ? '' : ' lockd') + '" data-anchor="subj-' + S2.id + '"><div class="hd"><h3>' + S2.name + '</h3>' + (R.reviewOn(P, S2.id, now()) ? '<span class="tag ok" title="복습하는 꿈에서 깬 뒤 3시간 안에 이 과목 수업을 시작하면 경험치 +' + Math.round(R.REVIEW_BONUS * 100) + '%">복습 효과 ~' + clock(P.review.until) + '</span>' : '') + (inEx ? '<span class="tag ' + (sj.lv >= ex.req ? 'ok' : 'br') + '">시험 ' + ex.req + '</span>' : '') + '<span class="lv">' + sj.lv + '</span></div><div class="prof">' + S2.prof + (open && clsN(S2.id, true) ? ' · <span class="classmates">지금 ' + clsN(S2.id, true) + '명 수강 중</span>' : '') + '</div>';
       if (!open) return h2 + '<p class="small muted">' + S2.unlock + '학년부터 수강할 수 있습니다.</p></div>';
       return h2 + '<div class="bar"><b style="width:' + (sj.xp / R.subjXpNeed(sj.lv) * 100).toFixed(1) + '%"></b></div><div class="row tiny faint"><span>과목 경험치 ' + fmt(sj.xp) + ' / ' + fmt(R.subjXpNeed(sj.lv)) + '</span><span class="spacer"></span><span>레벨당 ' + D.STAT_NAMES[S2.stat] + ' +1.2, ' + D.STAT_NAMES[S2.stat2] + ' +0.6</span></div>' +
         '<p class="small muted">' + S2.desc + '</p><blockquote>' + S2.line + '</blockquote>' + subjMiles(S2.id) + taskBox(S2.id) +
@@ -1356,10 +1356,13 @@
     return h;
   };
   // 다음 교시 예약 칸 (수업 중인 슬롯 아래)
+  // 꿈길 중이면: 예약 교시 · 시간표 다음 교시는 깨어난 뒤 이어진다
+  function dreamWake() { var d = S.P.dream; return d && d.end > now() ? d.end : 0; }
+  function dreamHold(t) { var w = dreamWake(); return w && (!t || t < w) ? ' <span class="tiny gold">· 꿈길 중이라 깨어난 뒤(' + clock(w) + ') 시작</span>' : ''; }
   function queueBox(i, l) {
     var P = S.P, q = P.lecQ && P.lecQ[i];
     if (l.tt || P.ttRun) return '<div class="qbox"><span class="tiny faint">시간표 수업 중에는 다음 교시를 예약할 수 없습니다 · 시간표의 다음 교시가 이어집니다</span></div>';
-    if (q) return '<div class="qbox"><span class="tiny gold">다음 교시 예약</span><div class="row small" style="gap:6px"><b>' + R.SUBJ[q.s].name + '</b><span class="faint">' + R.DUR[q.d].label + ' · ' + clock(l.end) + ' 시작</span><span class="spacer"></span><button class="btn sm ghost" data-act="lecq-del" data-a="' + i + '">예약 취소</button></div></div>';
+    if (q) return '<div class="qbox"><span class="tiny gold">다음 교시 예약</span><div class="row small" style="gap:6px"><b>' + R.SUBJ[q.s].name + '</b><span class="faint">' + R.DUR[q.d].label + ' · ' + clock(Math.max(l.end, dreamWake())) + ' 시작</span>' + dreamHold(l.end) + '<span class="spacer"></span><button class="btn sm ghost" data-act="lecq-del" data-a="' + i + '">예약 취소</button></div></div>';
     if (!S.qOpen || S.qOpen[i] !== true) return '<div class="qbox"><button class="btn sm ghost" data-act="lecq-open" data-a="' + i + '">＋ 다음 교시 예약</button> <span class="tiny faint">수업이 끝나면 자동으로 시작 · 한 칸</span></div>';
     var subs = R.availableSubjects(P), sel = S.pick['qs' + i] || l.s, dk = S.pick['qd' + i] || l.dur && Object.keys(R.DUR).find(function (k) { return R.DUR[k].s === l.dur; }) || '1h';
     return '<div class="qbox"><span class="tiny gold">다음 교시 예약</span><div class="row qrow" style="gap:6px;margin-top:4px;flex-wrap:wrap"><select id="qs' + i + '" data-act="pick-sel" data-a="qs' + i + '" style="flex:1 1 150px;min-width:140px">' + subs.map(function (s) { return '<option value="' + s.id + '"' + (s.id === sel ? ' selected' : '') + '>' + s.name + ' (Lv ' + P.subj[s.id].lv + ')</option>'; }).join('') + '</select>' +
@@ -1373,7 +1376,7 @@
   function ttCard(c) {
     var P = S.P, tt = (P.tt || []).map(R.ttNorm), run = P.ttRun, busy = !!P.lec[0], open = S.ttEdit != null;
     var h = '<div class="card ttcard" style="margin-bottom:14px"><div class="row between"><h3>시간표</h3><span class="tiny faint">교시를 최대 4시간까지 짜 두고 「시간표 듣기」로 차례로 이어 듣기 · 교시가 바뀔 때 종이 울립니다</span></div>';
-    if (run) h += '<p class="small gold" style="margin-top:6px">「' + esc(run.name) + '」 듣는 중 · ' + (run.i + 1) + ' / ' + run.p.length + '교시' + (run.p[run.i + 1] ? ' · 다음: ' + R.SUBJ[run.p[run.i + 1].s].name + ' ' + R.DUR[run.p[run.i + 1].d].label : ' · 마지막 교시') + '</p>';
+    if (run) h += '<p class="small gold" style="margin-top:6px">「' + esc(run.name) + '」 듣는 중 · ' + (run.i + 1) + ' / ' + run.p.length + '교시' + (run.p[run.i + 1] ? ' · 다음: ' + R.SUBJ[run.p[run.i + 1].s].name + ' ' + R.DUR[run.p[run.i + 1].d].label : ' · 마지막 교시') + '</p>' + (dreamWake() ? '<p class="tiny gold">꿈길 중: 다음 교시는 깨어난 뒤(' + clock(dreamWake()) + ') 이어집니다</p>' : '');
     h += '<div class="ttlist">';
     for (var k = 0; k < R.TT_MAX; k++) {
       var t = tt[k];
@@ -2205,7 +2208,7 @@
     if (j && j.end > now()) {
       var dn = R.DREAM[j.kind];
       h += '<div class="row">' + dotImg('dream', 28, '', 'evimg') + '<div style="flex:1;min-width:0"><b>' + dn.name + '</b>' + (j.s ? ' <span class="tiny muted">' + R.SUBJ[j.s].name + '</span>' : '') + '<div class="bar" style="margin-top:4px;height:6px"><b data-b="prog:' + j.start + ':' + j.end + '" style="--bfill:#8f86d8;background:linear-gradient(90deg,#8f86d8,#c8b8ff)"></b></div><div class="tiny faint" style="margin-top:3px"><span data-l="left:' + j.end + '"></span> 남음 · ' + clock(j.end) + '에 깹니다</div></div>' +
-        '<button class="btn sm ghost" data-act="dreamcancel" title="깨면 이번 꿈의 보상을 받을 수 없습니다">꿈에서 깨기</button>' + '</div>';
+        '<button class="btn sm ghost" data-act="dreamcancel" title="깨면 이번 꿈의 보상을 받을 수 없습니다">꿈에서 깨기</button>' + '</div>' + ((P.lecQ || []).some(Boolean) || P.ttRun ? '<p class="tiny gold" style="margin-top:6px">예약한 다음 교시 · 시간표의 남은 교시는 깨어나면(' + clock(j.end) + ') 이어집니다.</p>' : '');
       sum = dn.name + ' · <span data-l="left:' + j.end + '"></span>';
     } else {
       var kind = S.pick.drk || 'study', subs = R.availableSubjects(P), sid = S.pick.drs; if (!subs.some(function (x) { return x.id === sid; })) { sid = defaultSubject(subs); S.pick.drs = sid; }
@@ -2216,6 +2219,7 @@
         (kind === 'study' ? '<div class="field"><label class="small muted" for="drs">복습할 과목</label><select id="drs" data-act="pick-sel" data-a="drs">' + subs.map(function (x) { return '<option value="' + x.id + '"' + (x.id === sid ? ' selected' : '') + '>' + x.name + ' (Lv ' + P.subj[x.id].lv + ')</option>'; }).join('') + '</select></div>' : '') +
         durPicker('drd', D.DREAM_DUR, '8h') +
         '<div class="small" style="margin:6px 0">예상: ' + [pv.xp ? '과목 경험치 +' + fmt(pv.xp) : '', pv.know ? '지식 +' + fmt(pv.know) : '', pv.shard ? '별조각 +' + pv.shard : '', pv.egg ? '환수의 알 ' + Math.round(pv.egg * 100) + '%' : '', pv.gold ? MONEY(pv.gold, '+') : '', pv.mats ? D.MATS[pv.mat].name + ' ' + pv.mats : '', pv.stones ? '마석 ' + pv.stones : ''].filter(Boolean).join(' · ') + '</div>' +
+        ((P.lecQ || []).some(Boolean) || P.ttRun ? '<p class="tiny gold" style="margin:4px 0">듣던 강의는 꿈속에서도 이어지지만, 예약한 다음 교시 · 시간표의 남은 교시는 꿈길 동안 멈췄다가 깨어나면 이어집니다 (꿈길 시간만큼 늦어집니다).</p>' : '<p class="tiny faint" style="margin:4px 0">듣던 강의는 꿈속에서도 끝까지 이어집니다(잠들기 전에 강의를 걸어 두면 함께 받습니다). 수업 예약 · 시간표는 멈췄다가 깨어나면 이어집니다.</p>') +
         '<button class="btn primary" data-act="dreamgo">' + R.DRDUR[dk].label + ' 꿈길 시작</button>';
       sum = '<span class="gold">비어 있음</span>';
     }
@@ -2782,7 +2786,10 @@
     else if (m.tab === 'hist') { if (!m.hist || Date.now() - (m.hiAt || 0) > 30000) { if (Date.now() - (m.hiAt || 0) > 1500) loadHist(); } }
     else if (!d || Date.now() - m.at > 30000) { if (Date.now() - m.at > 1500) loadMarket(); }
     var h = pageHead('부엉이 상단', '거래소', '수수료 5% · 3일 보관 · 한 번에 10개');
-    h += '<div class="tabs" role="tablist">' + [['buy', '사기'], ['sell', '팔기'], ['live', '실시간 거래'], ['mine', '내 물건'], ['hist', '거래 내역']].map(function (t) { return '<button role="tab" class="' + (m.tab === t[0] ? 'on' : '') + '" data-act="mktab" data-a="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
+    // 올린 물건 수 (판매 중 / 한 번에 올릴 수 있는 수): 내 물건 탭 이름과 팔기 화면 위에
+    var openN = d && d.mine ? d.mine.filter(function (x) { return x.status === 'open'; }).length : null, openMax = (d && d.maxOpen) || 10, openTxt = openN == null ? '' : ' <span class="num tiny' + (openN >= openMax ? ' bad' : ' faint') + '">' + openN + ' / ' + openMax + '</span>';
+    h += '<div class="tabs" role="tablist">' + [['buy', '사기'], ['sell', '팔기'], ['live', '실시간 거래'], ['mine', '내 물건' + openTxt], ['hist', '거래 내역']].map(function (t) { return '<button role="tab" class="' + (m.tab === t[0] ? 'on' : '') + '" data-act="mktab" data-a="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
+    if (m.tab === 'sell' && openN != null) h += '<div class="row small" style="justify-content:flex-end;margin:-8px 0 8px"><span class="muted">올린 물건 <b class="num' + (openN >= openMax ? ' bad' : ' gold') + '">' + openN + ' / ' + openMax + '</b></span></div>';
     var low = d && d.grade && P.grade < d.grade;   // 학년이 모자라면 구경만
     if (low) { if (m.tab === 'sell' || m.tab === 'mine') m.tab = 'buy'; h += '<div class="card inset" style="margin-bottom:12px"><p class="small gold">거래소에서 사고팔기는 ' + d.grade + '학년부터입니다. 지금은 구경만 할 수 있습니다.</p></div>'; }
     var sellWait = P.created ? P.created + 86400 - now() : 0;   // 판매 등록은 입학 24시간 뒤부터 (서버 MK.SELL_AFTER)
@@ -2865,11 +2872,12 @@
       }).join('') + '</div>';
       h += '</div>';
     } else {
-      var mine = d && d.mine ? d.mine : [];
+      var mine = d && d.mine ? d.mine.filter(function (x) { return x.status === 'open'; }) : [];   // 판매 중인 것만 (팔린 물건은 거래 내역에)
+      h += '<p class="tiny faint" style="margin-bottom:6px">판매 중인 물건 ' + mine.length + ' / ' + openMax + ' · 팔린 물건은 「거래 내역」에서 볼 수 있습니다. 기한이 지나거나 내린 물건은 바로 돌아옵니다.</p>';
       h += mine.length ? '<div class="mklist">' + mine.map(function (x) {
         var st = { open: '<span class="tag br">판매 중 · ' + R.fmtTime(Math.max(0, x.expires - Date.now() / 1000)) + ' 남음</span>', sold: '<span class="tag ok">팔림 · +' + fmt(Math.floor(x.price * (1 - (d.fee || 0.05)))) + ' ' + CUR + '</span>', canceled: '<span class="tag">취소함</span>', expired: '<span class="tag">기한 지나 돌아옴</span>' }[x.status] || '';
         return '<div class="mkrow"><div class="mki"><span class="mkn ell"' + (x.kind === 'item' ? ' style="color:' + rcol(x.r) + '"' : '') + '>' + esc(x.name) + (x.kind !== 'item' ? ' ×' + fmt(x.qty) : '') + '</span><div>' + st + '</div></div><b class="num gold mkpr">' + fmt(x.price) + '</b>' + (x.status === 'open' ? '<button class="btn sm ghost" data-act="mkcancel" data-a="' + x.id + '">내리기</button>' : '') + '</div>';
-      }).join('') + '</div>' : '<div class="empty">올린 물건이 없습니다.</div>';
+      }).join('') + '</div>' : '<div class="empty">판매 중인 물건이 없습니다.</div>';
     }
     return h;
   };
@@ -3215,14 +3223,22 @@
   function ro(w) { var c = w.charCodeAt(w.length - 1), j = (c >= 0xAC00 && c <= 0xD7A3) ? (c - 0xAC00) % 28 : 0; return w + (j && j !== 8 ? '으로' : '로'); }
   function josa(w, a, b) { return R.josa(w, a, b); }   // a = 받침 있을 때
   var EXP_TICK = 25;   // 게임 시간으로 25초마다 한 줄
+  // 원정 전투 수치: 출발할 때 저장한 값, 예전 원정이면 지금 수치로
+  function expCb(j) { if (j.cb) return j.cb; var c = C(); return { a: Math.round(c.atk), cc: c.critC, cd: c.critD, df: Math.round(c.def), sp: [] }; }
+  var EXP_SUM = 24;   // 24줄(10분)마다 요약 한 줄
   function expLine(j, k, slot) {
     var z = R.zoneOf(j.s), x = (Math.sin((j.start + k * 7919 + slot * 104729) * 12.9898) * 43758.5453) % 1; x = Math.abs(x);
     var y = Math.abs((Math.sin((j.start + k * 3571) * 78.233) * 12345.678) % 1), m = z.mons[Math.floor(y * z.mons.length)];
     // 한 줄(25초)에 처치가 일어날 확률 = 그 사이 처치 수. 처치 줄의 보상은 처치 1회 몫
     var per = j.kps * EXP_TICK * j.eff, pk = Math.min(0.55, per), g = fmt(Math.max(1, Math.round(j.gEach)));
-    if (x < pk * 0.85) return [josa(m.name, '을', '를') + ' 쓰러뜨렸다', CUR + ' +' + g];
-    if (x < pk) return ['치명타! ' + josa(m.name, '이', '가') + ' 단번에 쓰러졌다', CUR + ' +' + g];
+    // 피해 숫자: 출발할 때의 전투 수치(j.cb)와 그 단계 몬스터 체력 · 공격력으로 (같은 줄은 언제 봐도 같은 숫자)
+    var cb = expCb(j), mh = R.monHp(j.s), r3 = Math.abs((Math.sin((j.start + k * 2131 + slot * 7) * 45.164) * 9871.31) % 1), r4 = Math.abs((Math.sin((j.start + k * 613) * 3.7) * 4421.7) % 1);
+    var spl = cb.sp.length && r3 < 0.4 ? cb.sp[Math.floor(r4 * cb.sp.length)] : null, base = spl ? spl[1] : cb.a, dmg = Math.max(1, Math.round(base * (0.9 + r4 * 0.2))), hits = Math.max(1, Math.ceil(mh / Math.max(1, dmg)));
+    var who = spl && R.SPELL[spl[0]] ? '「' + R.SPELL[spl[0]].name + '」! ' : '';
+    if (x < pk * 0.85) return [who + josa(m.name, '에게', '에게') + ' ' + fmt(dmg) + ' 피해 — 쓰러뜨렸다' + (hits > 1 ? ' (' + hits + '번째 공격)' : ''), CUR + ' +' + g, { kill: 1 }];
+    if (x < pk) { var cd = Math.round(dmg * cb.cd); return ['치명타 ' + fmt(cd) + '! ' + josa(m.name, '이', '가') + (cd >= mh ? ' 단번에 쓰러졌다' : ' 쓰러졌다'), CUR + ' +' + g, { kill: 1 }]; }
     var x2 = (x - pk) / (1 - pk);
+    if (x2 < 0.1) { var tk = Math.max(1, Math.round(R.dmgTaken(R.monAtk(j.s), cb.df) * (0.8 + r4 * 0.4))); return [josa(m.name, '의', '의') + ' 반격 — 생명력 −' + fmt(tk), '', { taken: tk }]; }
     if (j.pt && x2 >= 0.5 && x2 < 0.75) return ptLine(j, m, y, x2);
     if (x2 < 0.18) return [josa(m.name, '과', '와') + ' 마주쳤다. 거리를 재며 틈을 노린다.', ''];
     if (x2 < 0.3) return [josa(D.MATS[z.mat].name, '을', '를') + ' 주웠다', '재료'];
@@ -3251,12 +3267,16 @@
     var t = Math.min(now(), j.end), n = Math.floor((t - j.start) / EXP_TICK), from = Math.max(0, n - 30), out = [];
     out.push('<div class="el start"><span class="et num">' + clock(j.start).replace(/^(오전|오후) /, '') + '</span><span>' + j.s + '단계 ' + ro(R.zoneOf(j.s).name) + ' ' + (j.pt && j.pt.with && j.pt.with.length ? josa(j.pt.with.map(function (w) { return esc(w.name); }).join(' · '), '과', '와') + ' 함께 ' : '') + '출발했다.</span></div>');
     if (from > 0) { var early = (j.loot || []).filter(function (x) { return x.it && x.at <= j.start + from * EXP_TICK; }); out.push('<div class="el faint"><span class="et"></span><span>… ' + from + '줄 생략' + (early.length ? ' · 그동안 주운 장비 ' + early.map(function (x) { return '<b style="color:' + rcol(x.it.r) + '">' + esc(x.it.name) + '</b>'; }).join(', ') : '') + ' …</span></div>'); }
+    var sk = 0, sd = 0, st = 0, mh = R.monHp(j.s), sumAt = function (k2) { return '<div class="el ksum" data-k="' + k2 + 's"><span class="et num">' + clock(j.start + k2 * EXP_TICK).replace(/^(오전|오후) /, '') + '</span><span>지난 10분 · 처치 <b class="num">' + sk + '</b>마리 · 입힌 피해 <b class="num">' + fmt(Math.round(sd)) + '</b> · 받은 피해 <b class="num">' + fmt(Math.round(st)) + '</b></span></div>'; };
+    for (var k0 = Math.floor(from / EXP_SUM) * EXP_SUM + 1; k0 <= from; k0++) { var L0 = expLine(j, k0, i); if (L0[2] && L0[2].kill) { sk++; sd += mh; } if (L0[2] && L0[2].taken) st += L0[2].taken; }   // 생략한 줄도 요약에는 센다
     for (var k = from + 1; k <= n; k++) {
       var L = expLine(j, k, i), at = j.start + k * EXP_TICK;
+      if (L[2] && L[2].kill) { sk++; sd += mh; } if (L[2] && L[2].taken) st += L[2].taken;
+      if (k % EXP_SUM === 0) { var sumH = sumAt(k); sk = 0; sd = 0; st = 0; } else sumH = '';
       // 이 줄 사이에 실제로 주운 전리품이 있으면 그것을 적는다
       var got = (j.loot || []).filter(function (x) { return x.it && x.at > at - EXP_TICK && x.at <= at; });   // 아직 받아 오지 않은 전리품(시각만 있음)은 다음 상태 받기 뒤에
-      if (got.length) { out.push('<div class="el kloot" data-k="' + k + 'l"><span class="et num">' + clock(at).replace(/^(오전|오후) /, '') + '</span><span>' + got.map(function (x) { return '<b style="color:' + rcol(x.it.r) + '">' + esc(x.it.name) + '</b>'; }).join(', ') + josa(got[got.length - 1].it.name, '을', '를').slice(-1) + ' 주웠다. <span class="eg">' + got.map(function (x) { return (D.RARITY[x.it.r] ? D.RARITY[x.it.r].name : '') + ' ' + R.slotName(x.it); }).join(', ') + '</span></span></div>'); continue; }
-      out.push('<div class="el" data-k="' + k + '"><span class="et num">' + clock(at).replace(/^(오전|오후) /, '') + '</span><span>' + logDot(L[0]) + (L[1] ? ' <span class="eg">' + L[1] + '</span>' : '') + '</span></div>'); }
+      if (got.length) { out.push('<div class="el kloot" data-k="' + k + 'l"><span class="et num">' + clock(at).replace(/^(오전|오후) /, '') + '</span><span>' + got.map(function (x) { return '<b style="color:' + rcol(x.it.r) + '">' + esc(x.it.name) + '</b>'; }).join(', ') + josa(got[got.length - 1].it.name, '을', '를').slice(-1) + ' 주웠다. <span class="eg">' + got.map(function (x) { return (D.RARITY[x.it.r] ? D.RARITY[x.it.r].name : '') + ' ' + R.slotName(x.it); }).join(', ') + '</span></span></div>'); if (sumH) out.push(sumH); continue; }
+      out.push('<div class="el" data-k="' + k + '"><span class="et num">' + clock(at).replace(/^(오전|오후) /, '') + '</span><span>' + logDot(L[0]) + (L[1] ? ' <span class="eg">' + L[1] + '</span>' : '') + '</span></div>'); if (sumH) out.push(sumH); }
     if (now() >= j.end) out.push('<div class="el start"><span class="et num">' + clock(j.end).replace(/^(오전|오후) /, '') + '</span><span>원정을 마치고 아카데미로 돌아간다.</span></div>');
     return out.join('');
   }
@@ -3377,7 +3397,7 @@
     S.pick['ls' + k] = sid; render();
     setTimeout(function () { var el = $('[data-anchor="lslot' + k + '"]'); if (!el) return; el.scrollIntoView({ block: 'center', behavior: 'smooth' }); el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }, 30);
   };
-  ACT['lec-start'] = function (i) { i = +i; var s = S.pick['ls' + i], d = curDur('ld' + i, '1h'); act('lecStart', { slot: i, s: s, d: d.k }).then(function (r) { if (r) { Snd.play('click'); toast(R.SUBJ[s].name + ' 수업 시작' + (r.ontime ? ' · 제때 입실!' : ''), clock(now() + d.s) + '에 끝납니다' + (r.ontime ? ' · 과목 경험치 +' + Math.round(R.ONTIME_BONUS * 100) + '%' : ''), 2200); } render(); }); };
+  ACT['lec-start'] = function (i) { i = +i; var s = S.pick['ls' + i], d = curDur('ld' + i, '1h'); act('lecStart', { slot: i, s: s, d: d.k }).then(function (r) { if (r) { Snd.play('click'); toast(R.SUBJ[s].name + ' 수업 시작' + (r.ontime ? ' · 제때 입실!' : ''), clock(now() + d.s) + '에 끝납니다' + (r.ontime ? ' · 과목 경험치 +' + Math.round(R.ONTIME_BONUS * 100) + '%' : '') + (r.review ? ' · 복습 효과 +' + Math.round(R.REVIEW_BONUS * 100) + '%' : ''), 2200); } render(); }); };
   ACT.es = function (i, d) { var cap = Math.min(S.P.maxStage, R.stageCap(S.P)), s = (S.pick['es' + i] || 1) + +d; if (R.isBoss(s)) s += +d; S.pick['es' + i] = Math.max(1, Math.min(cap, s)); if (R.isBoss(S.pick['es' + i])) S.pick['es' + i]--; render(); };
   ACT['es-best'] = function (i) { S.pick['es' + i] = R.bestStage(S.P, wctx()); render(); };
   // 끝난 원정: 끝나는 순간 다시 그리고(완료 단추), 학생이 눌러야 결과를 받는다
@@ -3654,7 +3674,7 @@
     $('#crp-reason').focus(); };
   ACT.creport = function (id) { var rs = $('#crp-reason'); API.chatReport(+id || id, rs ? rs.value.trim().slice(0, 200) : '').then(function (j) { closeModal(); toast(j.error ? '신고하지 못했습니다' : '신고가 접수되었습니다', j.error || '관리자가 확인합니다', 2200); }); };
   ACT['rp-skip'] = function () { if (S.replay) S.replay.skip(); };
-  ACT.spirit = function () { act('spirit').then(function (r) { if (!r) return; Snd.play('spirit'); var g = []; if (r.mana) g.push('마나 +' + fmt(r.mana)); if (r.gold) g.push('' + MONEY(r.gold, '+')); if (r.shard) g.push('별조각 +' + r.shard); if (r.stone) g.push('마석 +' + r.stone); toast('정령 ' + r.n + '마리를 풀어 주었습니다', g.join(' · '), 2600); render(); }); };
+  ACT.spirit = function () { act('spirit').then(function (r) { if (!r) return; Snd.play('spirit'); var g = []; if (r.mana) g.push('마나 +' + fmt(r.mana)); if (r.know) g.push('지식 +' + fmt(r.know)); if (r.gold) g.push('' + MONEY(r.gold, '+')); if (r.shard) g.push('별조각 +' + r.shard); if (r.stone) g.push('마석 +' + r.stone); toast('정령 ' + r.n + '마리를 풀어 주었습니다', g.join(' · '), 2600); render(); }); };
   // 기말시험: 문제 풀이 없이 버튼 하나로 채점 (이론 30 · 실기 40 · 대련 30)
   ACT.exam = function () {
     var ex = R.examFor(S.P), th = R.examTheory(S.P, ex), pr = R.examPractical(S.P, ex), pv = R.examPredict(S.P, wctx(), now());
@@ -4288,7 +4308,7 @@
     API.board({ tag: b.tag, q: b.q, qt: b.q ? b.qt : '', page: b.page, hd: bdHideDone() ? 1 : '' }).then(function (j) { if (j.error) { b.err = j.error; } else { b.err = ''; b.data = j; } if (S.view === 'board' && !S.modal && b.mode === 'list') render(); });
   }
   // 건의 처리 상태 (학생회장이 붙인다) · 해결 완료 숨기기(이 기기에 기억)
-  var BD_ST = { review: '검토 중', wip: '적용 중', done: '해결 완료', no: '반영 안 함', norepro: '재현 안 됨' };
+  var BD_ST = { review: '검토 중', wip: '확인 중', done: '해결 완료', no: '반영 안 함', norepro: '재현 안 됨' };
   function bdSt(st) { return BD_ST[st] ? '<span class="btag st-' + st + '">' + BD_ST[st] + '</span>' : ''; }
   function bdHideDone() { try { return localStorage.getItem('arc_bdhd') === '1'; } catch (e) { return !!S.bdHd; } }
   ACT.bdhd = function () { var v = !bdHideDone(); S.bdHd = v; try { localStorage.setItem('arc_bdhd', v ? '1' : '0'); } catch (e) { } S.bd.page = 1; loadBoard(); };
@@ -4324,7 +4344,7 @@
     var b = S.bd, armed = S.confirm['bd' + p.id] > Date.now();
     var h = '<div class="row" style="margin-bottom:10px"><button class="btn sm ghost" data-act="bdback">← 목록</button><span class="spacer"></span>' +
       (p.canEdit ? '<button class="btn sm ghost" data-act="bdedit">수정</button>' : '') + (p.canDel ? '<button class="btn sm ' + (armed ? 'danger' : 'ghost') + '" data-act="bddel" data-a="' + p.id + '">' + (armed ? '한 번 더 누르면 지웁니다' : '지우기') + '</button>' : '') + '</div>';
-    h += '<article class="card bdpost"><div class="row" style="gap:6px;flex-wrap:wrap">' + bdTag(p.tag) + (p.priv ? '<span class="btag lock">관리자만 보기</span>' : '') + bdSt(p.st) + (p.canStatus ? '<span class="spacer"></span>' + [['review', '검토 중'], ['wip', '적용 중'], ['done', '해결 완료'], ['no', '반영 안 함'], ['norepro', '재현 안 됨'], ['', '표시 없음']].map(function (o) { return '<button class="btn sm' + ((p.st || '') === o[0] ? ' primary' : ' ghost') + '" data-act="bdst" data-a="' + p.id + '" data-b="' + o[0] + '">' + o[1] + '</button>'; }).join('') : '') + '</div><h2 class="bdh">' + esc(p.title) + '</h2>' +
+    h += '<article class="card bdpost"><div class="row" style="gap:6px;flex-wrap:wrap">' + bdTag(p.tag) + (p.priv ? '<span class="btag lock">관리자만 보기</span>' : '') + bdSt(p.st) + (p.canStatus ? '<span class="spacer"></span>' + [['review', '검토 중'], ['wip', '확인 중'], ['done', '해결 완료'], ['no', '반영 안 함'], ['norepro', '재현 안 됨'], ['', '표시 없음']].map(function (o) { return '<button class="btn sm' + ((p.st || '') === o[0] ? ' primary' : ' ghost') + '" data-act="bdst" data-a="' + p.id + '" data-b="' + o[0] + '">' + o[1] + '</button>'; }).join('') : '') + '</div><h2 class="bdh">' + esc(p.title) + '</h2>' +
       '<div class="tiny faint"><button class="cn" data-act="prof" data-a="' + esc(p.aid) + '">' + esc(p.author) + '</button>' + (p.aop && R.OP_TITLES[p.aop] ? ' <span class="ttl' + R.opTitleCls(p.aop) + '">' + esc(p.aop) + '</span>' : '') + ' · ' + new Date(p.created * 1000).toLocaleString('ko-KR') + (p.updated > p.created + 60 ? ' · 고침' : '') + '</div>' +
       (p.priv ? '<p class="tiny gold" style="margin-top:8px">작성자와 운영진만 볼 수 있는 글입니다. 운영진이 답하면 우편으로 알려 드립니다.</p>' : '') +
       '<div class="bdbody">' + (p.tag === 'rp' ? rpText(p.body) : esc(p.body)) + '</div></article>';
