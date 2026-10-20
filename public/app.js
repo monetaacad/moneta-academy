@@ -759,6 +759,42 @@
   function closeMenu() { var m = $('#memenu'), b = $('.mebtn'); if (m) m.hidden = true; if (b) b.setAttribute('aria-expanded', 'false'); }
   document.addEventListener('click', function (e) { var m = $('#memenu'); if (m && !m.hidden && !e.target.closest('.memenu-wrap')) closeMenu(); else if (m && !m.hidden && e.target.closest('.memenu [data-act]')) setTimeout(closeMenu, 0); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeMenu(); });
+  // 학생 카드 「능력치 · 장비」: 능력치는 가로로, 장비는 칸 타일 → 누르면 상세 · 내 장비와 비교
+  function pcGear(p) {
+    var h = '';
+    if (p.stats) {
+      h += '<div class="section-t" style="margin-top:12px">능력치</div><div class="pstats">' + R.STATS.map(function (k) { return '<span><i>' + D.STAT_NAMES[k] + '</i><b class="num">' + fmt(p.stats.st[k] || 0) + '</b></span>'; }).join('') + '</div>' +
+        '<p class="tiny faint" style="margin-top:4px">초당 피해 ' + fmt(p.stats.dps) + ' · 생명력 ' + fmt(p.stats.hp) + ' · 방어력 ' + fmt(p.stats.def) + '</p>';
+    }
+    if (p.eq) {
+      var mine = !p.self && S.P;
+      h += '<div class="section-t" style="margin-top:12px">장비 <span class="tiny faint">칸을 누르면 상세가 펼쳐집니다</span></div><div class="peq">' + D.SLOTS.map(function (s) {
+        var it = p.eq[s.id];
+        if (!it) return '<span class="peqt empty"><i>' + s.name + '</i><span class="faint">비어 있음</span></span>';
+        return '<button class="peqt rb' + it.r + '" data-act="pceq" data-a="' + s.id + '"><i>' + R.slotName(it) + '</i><span class="pn" style="color:' + rcol(it.r) + '">' + esc(it.name) + '</span>' + (it.enh ? '<b class="pe">+' + it.enh + '</b>' : '') + '</button>';
+      }).join('') + '</div>' + D.SLOTS.map(function (s) {
+        var it = p.eq[s.id]; if (!it) return '';
+        var my = mine && S.P.eq[s.id];
+        return '<div class="peqd" data-slot="' + s.id + '" hidden><div class="tiny" style="color:' + rcol(it.r) + '">' + D.RARITY[it.r].name + ' ' + R.slotName(it) + ' · Lv ' + it.ilvl + (it.enh ? ' · +' + it.enh : '') + '</div>' +
+          '<div class="peqcols"><div><div class="nm" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</div>' + statLines(it) + '</div>' +
+          (mine ? '<div class="peqmine" hidden>' + (my ? '<div class="tiny faint">내 장비</div><div class="nm" style="color:' + rcol(my.r) + '">' + esc(my.name) + (my.enh ? ' +' + my.enh : '') + '</div>' + statLines(my) : '<div class="tiny faint">이 칸에 장착한 내 장비가 없습니다.</div>') + '</div>' : '') + '</div>' +
+          (mine ? '<div class="peqcmp" hidden>' + (my ? cmpLine(it, my, '내 장비') : '') + '</div><div class="row" style="margin-top:6px"><button class="btn sm" data-act="pccmp">내 장비와 비교</button></div>' : '') + '</div>';
+      }).join('');
+    }
+    return h;
+  }
+  ACT.pctab = function (a, b, el) { var c = el.closest('.pcard') ? el.closest('.pcard').parentNode : el.parentNode.parentNode; c.querySelectorAll('.pctabs button').forEach(function (x) { x.classList.toggle('on', x === el); }); c.querySelectorAll('.pcpane').forEach(function (x) { x.hidden = x.dataset.pane !== a; }); };
+  ACT.pceq = function (slot, b, el) {
+    var pane = el.closest('.pcpane'); if (!pane) return;
+    var on = !el.classList.contains('sel');
+    pane.querySelectorAll('.peqt').forEach(function (x) { x.classList.toggle('sel', on && x === el); });
+    pane.querySelectorAll('.peqd').forEach(function (x) { x.hidden = !(on && x.dataset.slot === slot); });
+  };
+  ACT.pccmp = function (a, b, el) {
+    var d = el.closest('.peqd'); if (!d) return;
+    var mm = d.querySelector('.peqmine'), cm = d.querySelector('.peqcmp'), show = mm.hidden;
+    mm.hidden = !show; if (cm) cm.hidden = !show; d.classList.toggle('cmp', show); el.textContent = show ? '비교 닫기' : '내 장비와 비교';
+  };
   function profileCard(p, m) {
     if (p.deleted) return '<div class="pcard"><p class="small muted" style="padding:18px 4px;text-align:center">삭제된 사용자입니다.</p></div>';
     var hh = R.HOUSE[p.house], dc = p.deco || {}, fr = decoFrame(dc.frame), bgs = decoBg(dc.bg), dk = dc.frame || dc.bg;
@@ -766,12 +802,15 @@
       '<div class="small">' + (hh ? houseDot(p.house, 16) + ' ' : '') + '<span style="color:' + (hh ? hh.color : 'inherit') + '">' + (hh ? hh.name : '') + '</span> · ' + (p.grade >= 8 ? '마스터 과정' : p.grade + '학년') + (p.lvl ? ' · Lv ' + p.lvl : '') + (R.CLS[p.cls] ? ' · <span class="pcls">' + clsDot(p.cls, 14) + ' ' + R.CLS[p.cls].name + '</span>' : '') + '</div>' +
       (p.guild ? '<div class="pguild">' + gEmblem(p.guild.color, p.guild.name, 20, p.guild.icon) + '<b>' + esc(p.guild.name) + '</b><span class="tiny faint">Lv ' + (p.guild.lv || 1) + '</span>' + (p.guild.rank ? '<span class="tag' + (p.guild.role === 'owner' ? ' br' : p.guild.role === 'officer' ? ' ok' : '') + '">' + esc(p.guild.rank) + '</span>' : '') + '</div>' : '') +
       (p.status ? '<div class="pstatus">' + esc(p.status) + '</div>' : '') + '</div></div>';
-    if (p.bio) { var long = p.bio.length > 120 || (p.bio.match(/\n/g) || []).length > 3; h += '<div class="pbiow' + (long ? ' clamp' : '') + '"><p class="pbio">' + esc(p.bio) + '</p>' + (long ? '<button class="btn sm ghost biomore" data-act="biomore">더보기</button>' : '') + '</div>'; } else if (p.bioHidden) h += '<p class="tiny faint" style="margin-top:10px">자기소개는 친구에게만 공개되어 있습니다.</p>';
+    var ih = '';
+    if (p.bio) { var long = p.bio.length > 120 || (p.bio.match(/\n/g) || []).length > 3; ih += '<div class="pbiow' + (long ? ' clamp' : '') + '"><p class="pbio">' + esc(p.bio) + '</p>' + (long ? '<button class="btn sm ghost biomore" data-act="biomore">더보기</button>' : '') + '</div>'; } else if (p.bioHidden) h += '<p class="tiny faint" style="margin-top:10px">자기소개는 친구에게만 공개되어 있습니다.</p>';
     var rows = [];
     if (p.power != null) rows.push(['전투력', fmt(p.power) + (p.rank ? ' · ' + p.rank + '위' : '')]);
     if (p.fav && R.SUBJ[p.fav]) rows.push(['좋아하는 과목', R.SUBJ[p.fav].name]);
     if (p.created) rows.push(['입학', new Date(p.created * 1000).toLocaleDateString('ko-KR')]);
-    if (rows.length) h += '<dl class="kv" style="margin-top:12px">' + rows.map(function (r) { return '<dt>' + r[0] + '</dt><dd>' + r[1] + '</dd>'; }).join('') + '</dl>';
+    if (rows.length) ih += '<dl class="kv" style="margin-top:12px">' + rows.map(function (r) { return '<dt>' + r[0] + '</dt><dd>' + r[1] + '</dd>'; }).join('') + '</dl>';
+    var gh = pcGear(p);   // 공개한 능력치 · 장비 (없으면 탭 없이 소개만)
+    h += gh ? '<div class="pctabs" role="tablist"><button class="on" data-act="pctab" data-a="intro" role="tab">소개</button><button data-act="pctab" data-a="gear" role="tab">능력치 · 장비</button></div><div class="pcpane" data-pane="intro">' + (ih || '<p class="small faint" style="margin-top:10px">소개가 없습니다.</p>') + '</div><div class="pcpane" data-pane="gear" hidden>' + gh + '</div>' : ih;
     if (p.demoPeer) h += '<p class="tiny faint" style="margin-top:10px">데모에서는 채팅에 실린 정보만 보입니다.</p>';
     h += '<div class="row" style="margin-top:14px">';
     if (p.preview) h += '<button class="btn primary" data-act="me" data-a="profile">편집으로 돌아가기</button><button class="btn" data-act="pe-save-preview">이대로 저장</button>';
@@ -1701,17 +1740,22 @@
     if (it.eng) { var en = D.ENGRAVES.find(function (x) { return x.id === it.eng.id; }); out.push('<hr class="sep"><div class="small" style="color:var(--r4)">' + en.name + '</div><div class="statline"><span class="small muted">' + en.desc + '</span><span class="d" style="color:var(--r4)">' + (en.pct ? (en.id === 'cdr' ? '-' : '+') + pct(it.eng.v) : (it.eng.id === 'killMana' ? it.eng.v * R.K.KILL_PACK : it.eng.v).toFixed(1) + '초') + '</span></div>'); }
     return out.join('');
   }
-  // 지금 장착한 같은 칸 장비와 능력치 비교: 능력치 · 지금 · 이 장비 · 차이
-  function cmpTable(it, cur) {
-    if (!cur) return '<p class="tiny faint" style="margin-top:4px">이 칸에 장착한 장비가 없습니다.</p>';
+  // 같은 칸 장비와 능력치 비교를 한 줄로: 「지금 장착 ○○ +3 대비  공격력 +12 · 생명력 −30 · 치명 피해 +5%」
+  function cmpLine(it, cur, lab) {
+    if (!cur) return '<div class="cmpline faint">이 칸에 장착한 장비가 없습니다.</div>';
     var a = R.itemStats(cur), b = R.itemStats(it), keys = [], Sx = R.slotDef(it);
     [Sx.main, Sx.sub].concat(Object.keys(a), Object.keys(b)).forEach(function (k) { if (k && keys.indexOf(k) < 0) keys.push(k); });
-    var isFlat = function (k) { return k === 'atk' || k === 'hp' || k === 'def' || !!D.STAT_NAMES[k]; }, show = function (k, v) { return v ? (isFlat(k) ? fmt(v) : pct(v)) : '—'; };
-    var rows = keys.map(function (k) {
-      var x = a[k] || 0, y = b[k] || 0, d = y - x, dd = Math.abs(d) < 1e-9 ? '' : (d > 0 ? '+' : '−') + (isFlat(k) ? fmt(Math.abs(d)) : pct(Math.abs(d)));
-      return '<tr><th>' + (D.STAT_NAMES[k] || D.BONUS_NAMES[k] || k) + '</th><td class="num">' + show(k, x) + '</td><td class="num">' + show(k, y) + '</td><td class="num ' + (d > 0 ? 'good' : d < 0 ? 'bad' : 'faint') + '">' + (dd || '·') + '</td></tr>';
-    }).join('');
-    return '<table class="cmptbl"><thead><tr><th></th><th>지금 장착</th><th>이 장비</th><th>차이</th></tr></thead><tbody>' + rows + '</tbody></table><p class="tiny faint">지금 장착: ' + esc(cur.name) + (cur.enh ? ' +' + cur.enh : '') + '</p>';
+    var isFlat = function (k) { return k === 'atk' || k === 'hp' || k === 'def' || !!D.STAT_NAMES[k]; };
+    var parts = keys.map(function (k) {
+      var d = (b[k] || 0) - (a[k] || 0); if (Math.abs(d) < 1e-9 || (isFlat(k) && fmt(Math.abs(d)) === '0')) return '';
+      return '<span class="ci ' + (d > 0 ? 'good' : 'bad') + '">' + (D.STAT_NAMES[k] || D.BONUS_NAMES[k] || k) + ' ' + (d > 0 ? '+' : '−') + (isFlat(k) ? fmt(Math.abs(d)) : pct(Math.abs(d))) + '</span>';
+    }).filter(Boolean);
+    return '<div class="cmpline"><span class="cl">' + (lab || '지금 장착') + ' <b style="color:' + rcol(cur.r) + '">' + esc(cur.name) + (cur.enh ? ' +' + cur.enh : '') + '</b> 대비</span>' + (parts.join('<span class="cs">·</span>') || '<span class="faint">능력치 같음</span>') + '</div>';
+  }
+  // 거래소 · 떠돌이 상인 · 부실 창고: 장착 시 전투력 + 지금 장비와 한 줄 비교
+  function cmpBlock(it) {
+    var P = S.P, delta = R.powerWith(P, it) - C().power;
+    return '<div class="cmpblk"><span class="small">장착 시 전투력 <b class="num ' + (delta >= 0 ? 'good' : 'bad') + '">' + (delta >= 0 ? '+' : '') + fmt(delta) + '</b></span>' + cmpLine(it, P.eq[it.slot]) + '</div>';
   }
   // 강화하면 오르는 능력치: 「생명력 19 → 24 (+5)」 · 장착 중이면 전투력 변화도
   function enhPreview(it, eqd) {
@@ -1729,7 +1773,7 @@
     if (!it) return '<div class="card detail"><h3>장비 살펴보기</h3><p class="small muted">장착 칸이나 가방의 장비를 누르면 능력치와 강화 정보를 볼 수 있습니다. 초록 ▲는 지금보다 전투력이 오르는 장비입니다.</p></div>';
     var eqd = P.eq[it.slot] && P.eq[it.slot].u === it.u, c = C(), cost = R.enhCost(P, it), ch = R.enhChance(P, it), delta = eqd ? 0 : R.powerWith(P, it) - c.power;
     var h = '<div class="card detail hl ' + (eqd ? 'eqsel' : 'bagsel') + '"><div class="tiny" style="color:' + rcol(it.r) + '">' + D.RARITY[it.r].name + ' ' + R.slotName(it) + ' · Lv ' + it.ilvl + (eqd ? ' · 장착 중' : '') + '</div><div class="nm" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</div><div style="margin-top:8px">' + statLines(it) + '</div>';
-    if (!eqd) h += '<div class="small" style="margin-top:8px">장착 시 전투력 <b class="num ' + (delta >= 0 ? 'good' : 'bad') + '">' + (delta >= 0 ? '+' : '') + fmt(delta) + '</b></div>' + cmpTable(it, P.eq[it.slot]);
+    if (!eqd) h += '<div class="small" style="margin-top:8px">장착 시 전투력 <b class="num ' + (delta >= 0 ? 'good' : 'bad') + '">' + (delta >= 0 ? '+' : '') + fmt(delta) + '</b></div>' + cmpLine(it, P.eq[it.slot]);
     h += '<hr class="sep"><div class="row small"><span class="muted">강화 +' + it.enh + ' → +' + (it.enh + 1) + '</span><span class="spacer"></span>' + (it.enh >= R.ENH_MAX ? '<span class="tag br">최대 강화</span>' : '<span>성공 확률 <b class="num">' + Math.round(ch * 100) + '%</b></span>') + '</div>' + enhPreview(it, eqd) + '<div class="row" style="margin-top:10px">';
     h += eqd ? '<button class="btn sm" data-act="do" data-a="unequip" data-b="' + it.slot + '">해제</button>' : '<button class="btn sm primary" data-act="do" data-a="equip" data-b="' + it.u + '">장착</button>';
     if (it.enh < R.ENH_MAX && !it.lock) {
@@ -1737,8 +1781,8 @@
       h += '<button class="btn sm" data-act="enh" data-a="' + it.u + '"' + (okc ? '' : why(P.res.gold < cost.gold ? CUR + '가 부족합니다' : '마석이 부족합니다')) + '>강화 <span class="cost">' + fmt(cost.gold) + ' ' + CUR + ' · 마석 ' + cost.stone + '</span></button><button class="btn sm ghost" data-act="enh" data-a="' + it.u + '" data-b="until"' + (okc ? '' : why(P.res.gold < cost.gold ? CUR + '가 부족합니다' : '마석이 부족합니다')) + '>성공할 때까지</button>';
     }
     h += '<button class="btn sm ghost" data-act="do" data-a="lock" data-b="' + it.u + '">' + (it.lock ? '잠금 해제' : '잠금') + '</button>';
-    if (D.RARITY[it.r].affix && !it.lock) { var rf = R.reforgeCost(it); h += '<button class="btn sm" data-act="reforge" data-a="' + it.u + '"' + ((P.res.dust || 0) >= rf ? '' : ' disabled') + ' title="지금 옵션은 사라지고 새 옵션으로 바뀝니다 (등급·레벨·강화는 그대로)">재련 <span class="cost">가루 ' + fmt(rf) + '</span></button>'; }
-    if (!eqd && !it.lock) { var dy = R.dismantleYield(it); h += '<button class="btn sm" data-act="do" data-a="dismantle" data-b="' + it.u + '">분해 <span class="cost">마석 ' + dy.stone + ' · 가루 ' + dy.dust + '</span></button>'; }
+    if (D.RARITY[it.r].affix && !it.lock) { var rf = R.reforgeCost(it); h += '<button class="btn sm" data-act="reforge" data-a="' + it.u + '"' + ((P.res.dust || 0) >= rf ? '' : ' disabled') + ' title="지금 옵션은 사라지고 새 옵션으로 바뀝니다 (등급·레벨·강화는 그대로)">재련 <span class="cost">마석가루 ' + fmt(rf) + '</span></button>'; }
+    if (!eqd && !it.lock) { var dy = R.dismantleYield(it); h += '<button class="btn sm" data-act="do" data-a="dismantle" data-b="' + it.u + '">분해 <span class="cost">마석 ' + dy.stone + ' · 마석가루 ' + dy.dust + '</span></button>'; }
     if (!eqd && !it.lock) h += '<button class="btn sm danger" data-act="do" data-a="sell" data-b="' + it.u + '">판매 ' + fmt(R.sellPrice(it)) + ' ' + CUR + '</button><button class="btn sm" data-act="mksellgo" data-a="' + it.u + '">거래소에서 팔기</button>';
     return h + '</div><p class="tiny faint" style="margin-top:8px">' + (it.lock ? '잠긴 장비입니다. 장착 · 해제만 할 수 있고 강화 · 재련 · 분해 · 판매 · 거래소 · 창고에 넣기는 막혀 있습니다.' : '강화 실패 시 장비는 그대로입니다. 최대 +' + R.ENH_MAX + '. 잠그면 강화 · 판매 같은 실수를 막을 수 있습니다.') + '</p></div>';
   }
@@ -1997,7 +2041,7 @@
     h += '<div class="card inset" style="margin-bottom:12px"><p class="small">' + (v && v.active ? '<b class="gold">상인이 와 있습니다.</b> <span data-l="left:' + v.end + '"></span> 뒤에 떠납니다. 끝나기 2분 안에 값을 부르면 경매가 2분 늘어납니다. 낙찰품은 우편으로 보내 드립니다.' : '상인은 지금 다른 섬을 돌고 있습니다. 다음 방문은 <b>' + (v ? clock(v.start) : '—') + '</b>, 2시간 동안 귀한 장비 세 점을 경매에 붙입니다.') + (d.demo ? ' <span class="gold">데모: NPC 학생들이 시간이 갈수록 값을 올립니다.</span>' : '') + '</p></div>';
     if (v && v.active && d.lots.length) h += '<div class="mklist">' + d.lots.map(function (l) {
       var up = l.item ? R.powerWith(P, l.item) - c.power : 0, live = !l.done && l.ends > now();
-      return '<div class="card mkrow auclot' + (l.mine ? ' mine' : '') + '"><div style="flex:1;min-width:0"><div class="mkn" style="color:' + rcol(l.r) + '">' + esc(l.name) + '</div><div class="tiny faint">' + D.RARITY[l.r].name + ' ' + R.slotName(l.item || l) + ' · Lv ' + l.ilvl + (up > 0 ? ' · <span class="good">장착하면 전투력 +' + fmt(up) + '</span>' : '') + '</div>' + (l.item ? '<div class="mkst">' + statLines(l.item) + '</div>' : '') + '</div>' +
+      return '<div class="card mkrow auclot' + (l.mine ? ' mine' : '') + '"><div style="flex:1;min-width:0"><div class="mkn" style="color:' + rcol(l.r) + '">' + esc(l.name) + '</div><div class="tiny faint">' + D.RARITY[l.r].name + ' ' + R.slotName(l.item || l) + ' · Lv ' + l.ilvl + (up > 0 ? ' · <span class="good">장착하면 전투력 +' + fmt(up) + '</span>' : '') + '</div>' + (l.item ? '<div class="mkst">' + statLines(l.item) + '</div>' + cmpBlock(l.item) : '') + '</div>' +
         '<div class="mkp"><span class="tiny faint">' + (l.price ? '지금 가장 높은 값' : '시작가') + '</span><b class="num gold">' + fmt(l.price || l.min) + '</b><span class="tiny ' + (l.mine ? 'good' : 'faint') + '">' + (l.price ? (l.mine ? '내가 가장 높음' : esc(l.bidder) + (l.npc ? ' (NPC)' : '')) + ' · ' + l.bids + '번' : '아직 아무도 안 부름') + '</span>' +
         (live ? '<span class="tiny faint"><span data-l="left:' + l.ends + '"></span> 남음</span>' + (l.mine ? '' : '<div class="row" style="gap:4px;flex-wrap:nowrap"><input type="number" class="aucamt" id="auc-' + l.id + '" min="' + l.need + '" value="' + l.need + '" data-fmt="1" style="width:110px"><button class="btn sm primary" data-act="bid" data-a="' + l.id + '"' + (P.res.gold >= l.need ? '' : ' disabled title="' + CUR + '가 모자랍니다"') + '>부르기</button></div><span class="tiny faint mkfmt"></span>') : '<span class="tag">끝남</span>') + '</div></div>';
     }).join('') + '</div>';
@@ -2392,9 +2436,9 @@
   // 부실 창고 장비 자세히: 능력치 · 옵션 · 지금 장비와 비교
   ACT.gitemview = function (id) {
     var g = S.gd || {}, x = (g.items || []).filter(function (y) { return String(y.id) === String(id); })[0]; if (!x || !x.item) return;
-    var it = x.item, P = S.P, cur = P.eq[it.slot], delta = R.powerWith(P, it) - C().power;
+    var it = x.item;
     modal(mhead(esc(x.name), D.RARITY[it.r].name + ' ' + R.slotName(it) + ' · Lv ' + it.ilvl + (it.enh ? ' · +' + it.enh : '')) + '<div class="detail">' + statLines(it) + '</div>' +
-      '<hr class="sep"><div class="small">장착 시 전투력 <b class="num ' + (delta >= 0 ? 'good' : 'bad') + '">' + (delta >= 0 ? '+' : '') + fmt(delta) + '</b>' + (cur ? ' <span class="tiny faint">(지금 ' + esc(cur.name) + ' 대신)</span>' : '') + '</div>' +
+      '<hr class="sep">' + cmpBlock(it) +
       '<p class="tiny faint" style="margin-top:6px">' + esc(x.by) + ' 님이 넣은 장비입니다.</p><div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn primary" data-act="modal-close">닫기</button></div>');
   };
   ACT.gitem = function () { var u = ($('#g-item') || {}).value; if (!u) return; API.guildOp({ op: 'deposit', u: u }).then(function (j) { gDone(j, '부실 창고에 넣었습니다'); }); };
@@ -2509,7 +2553,7 @@
         } else if (x.kind === 'pot') { var pp = R.POT[x.pot]; info = '<span class="mkn">' + (pp ? '<span class="pot-ic" style="background:' + pp.color + '"></span> ' : '') + esc(x.name) + ' <span class="num">×' + fmt(x.qty) + '</span></span>'; sub = (pp ? pp.desc + ' · ' : '') + '개당 ' + fmt(x.price / x.qty) + ' · 선반에 ' + fmt(P.shelf[x.pot] || 0); }
         else { info = '<span class="mkn">' + esc(x.name) + ' <span class="num">×' + fmt(x.qty) + '</span></span>'; sub = '개당 ' + fmt(x.price / x.qty) + ' · 가진 수 ' + fmt(x.mat === 'stone' ? P.res.stone : (P.mats[x.mat] || 0)); }
         var tap = x.kind === 'item' && x.item;   // 장비는 줄(이름·요약) 어디를 눌러도 옵션이 펼쳐진다 (휴대폰에서 이름만 누르기 어려워서)
-        return '<div class="mkrow' + (open ? ' open' : '') + '"><div class="mki' + (tap ? ' tap" data-act="mkopen" data-a="' + x.id + '" role="button" tabindex="0" aria-expanded="' + !!open + '"' : '"') + '>' + info + '<div class="tiny faint ell">' + sub + ' · ' + esc(x.seller) + (x.npc ? ' <span class="tag npc">NPC</span>' : '') + ' · ' + R.fmtTime(Math.max(0, x.expires - Date.now() / 1000)) + '</div>' + (open && x.item ? '<div class="mkst">' + statLines(x.item) + '</div>' : '') + '</div>' +
+        return '<div class="mkrow' + (open ? ' open' : '') + '"><div class="mki' + (tap ? ' tap" data-act="mkopen" data-a="' + x.id + '" role="button" tabindex="0" aria-expanded="' + !!open + '"' : '"') + '>' + info + '<div class="tiny faint ell">' + sub + ' · ' + esc(x.seller) + (x.npc ? ' <span class="tag npc">NPC</span>' : '') + ' · ' + R.fmtTime(Math.max(0, x.expires - Date.now() / 1000)) + '</div>' + (open && x.item ? '<div class="mkst">' + statLines(x.item) + '</div>' + cmpBlock(x.item) : '') + '</div>' +
           '<b class="num gold mkpr">' + fmt(x.price) + '</b>' + (x.mine ? '<span class="tag">내 물건</span>' : '<button class="btn sm primary" data-act="mkbuy" data-a="' + x.id + '"' + (can ? '' : why(low ? '학년이 낮아 살 수 없습니다' : CUR + '가 부족합니다')) + '>사기</button>') + '</div>';
       }).join('') + '</div>';
     } else if (m.tab === 'sell') {
@@ -3151,7 +3195,7 @@
     var it = R.findItem(S.P, u); if (!it) return; var rf = R.reforgeCost(it);
     modal(mhead('재련', esc(it.name)) + '<p class="small"><b class="bad">지금 옵션은 사라지고</b> 새로 굴린 옵션으로 바뀝니다. 되돌릴 수 없습니다. 등급 · 레벨 · 강화 · 기본 능력치는 그대로입니다.</p>' +
       '<div class="section-t" style="margin-top:10px">사라질 옵션</div><div class="rfold">' + affList(it) + '</div>' +
-      '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn ghost" data-act="modal-close">취소</button><button class="btn primary" data-act="reforge-go" data-a="' + esc(u) + '">재련하기 <span class="cost">가루 ' + fmt(rf) + '</span></button></div>');
+      '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn ghost" data-act="modal-close">취소</button><button class="btn primary" data-act="reforge-go" data-a="' + esc(u) + '">재련하기 <span class="cost">마석가루 ' + fmt(rf) + '</span></button></div>');
   };
   ACT['reforge-go'] = function (u) {
     var it0 = R.findItem(S.P, u), old = it0 ? affList(it0) : '';
@@ -3645,8 +3689,11 @@
     });
   }
   // 편집 중인 내용(저장 전)은 S.peDraft에 들고 있다가, 탭을 옮기거나 미리보기를 다녀와도 그대로 돌려준다
-  function peRead() { if (!$('#pe-status')) return null; return { status: $('#pe-status').value, bio: $('#pe-bio').value, avcredit: ($('#pe-avc') || {}).value || '', fav: $('#pe-fav').value, title: S.P.title || '', showStats: $('#pe-stats').checked, allowFriend: $('#pe-friend').checked, bioFriends: $('#pe-biof').checked }; }
-  function peDirty(d) { var me = S.me || {}; return !!d && (d.status !== (me.status || '') || (d.avcredit || '') !== (me.avcredit || '') || d.bio !== (me.bio || '') || d.fav !== (me.fav || '') || d.title !== (S.P.title || '') || d.showStats !== (me.showStats !== false) || d.allowFriend !== (me.allowFriend !== false) || d.bioFriends !== !!me.bioFriends); }
+  // 공개 범위: 전체 · 친구만 · 비공개 (레벨·전투력은 예전 「보여 주기」 체크를 따른다)
+  var VIS_OPT = [['all', '전체'], ['friend', '친구만'], ['none', '비공개']];
+  function peVis(me, k) { var v = me[k]; if (v === 'all' || v === 'friend' || v === 'none') return v; return k === 'visLv' ? (me.showStats === false ? 'none' : 'all') : 'none'; }
+  function peRead() { if (!$('#pe-status')) return null; var rv = function (k) { var x = $('input[name="pe-' + k + '"]:checked'); return x ? x.value : 'none'; }; return { visLv: rv('visLv'), visStat: rv('visStat'), visEq: rv('visEq'), status: $('#pe-status').value, bio: $('#pe-bio').value, avcredit: ($('#pe-avc') || {}).value || '', fav: $('#pe-fav').value, title: S.P.title || '', allowFriend: $('#pe-friend').checked, bioFriends: $('#pe-biof').checked }; }
+  function peDirty(d) { var me = S.me || {}; return !!d && (d.status !== (me.status || '') || (d.avcredit || '') !== (me.avcredit || '') || d.bio !== (me.bio || '') || d.fav !== (me.fav || '') || d.title !== (S.P.title || '') || d.visLv !== peVis(me, 'visLv') || d.visStat !== peVis(me, 'visStat') || d.visEq !== peVis(me, 'visEq') || d.allowFriend !== (me.allowFriend !== false) || d.bioFriends !== !!me.bioFriends); }
   function profileBody() {
     var me0 = S.me || { id: S.P.id, name: S.P.name, house: S.P.house, av: 0, status: '', bio: '', fav: '', showStats: true, allowFriend: true };
     var me = Object.assign({}, me0, S.peDraft || {}), curT = S.peDraft ? S.peDraft.title : (S.P.title || '');
@@ -3662,7 +3709,8 @@
       '<div class="field" style="margin-top:10px"><label class="small muted" for="pe-status">한 줄 소개 <span class="faint">(40자)</span></label><input id="pe-status" maxlength="40" value="' + esc(me.status || '') + '" placeholder="예: 별샘 관측 동아리 부원"></div>' +
       '<div class="field" style="margin-top:10px"><label class="small muted" for="pe-bio">자기소개 <span class="faint">(300자)</span></label><textarea id="pe-bio" maxlength="300" rows="' + (S.peWide ? 12 : 4) + '" style="font-family:var(--f-body);font-size:14px" placeholder="캐릭터 설정, 좋아하는 것, RP 가능한 시간 등">' + esc(me.bio || '') + '</textarea></div>' +
       '<div class="field" style="margin-top:10px"><label class="small muted" for="pe-fav">좋아하는 과목</label><select id="pe-fav"><option value="">선택 안 함</option>' + D.SUBJECTS.filter(function (x) { return R.subjVisible(S.P, x); }).map(function (x) { return '<option value="' + x.id + '"' + (me.fav === x.id ? ' selected' : '') + '>' + x.name + '</option>'; }).join('') + '</select></div>' +
-      '<div class="stack" style="gap:8px;margin-top:12px"><label class="tog"><input type="checkbox" id="pe-stats"' + (me.showStats !== false ? ' checked' : '') + '> 다른 학생에게 레벨·전투력 보여 주기</label><label class="tog"><input type="checkbox" id="pe-friend"' + (me.allowFriend !== false ? ' checked' : '') + '> 친구 신청 받기</label><label class="tog"><input type="checkbox" id="pe-biof"' + (me.bioFriends ? ' checked' : '') + '> 자기소개는 친구에게만 보이기</label></div>' +
+      '<div class="section-t" style="margin-top:12px">다른 학생에게 보여 줄 정보</div><div class="visrows">' + [['visLv', '레벨·전투력'], ['visStat', '능력치'], ['visEq', '장비']].map(function (v) { var cur = peVis(me, v[0]); return '<div class="visrow"><span class="small">' + v[1] + '</span><span class="seg" role="radiogroup" aria-label="' + v[1] + ' 공개 범위">' + VIS_OPT.map(function (o) { return '<label><input type="radio" name="pe-' + v[0] + '" value="' + o[0] + '"' + (cur === o[0] ? ' checked' : '') + '><span>' + o[1] + '</span></label>'; }).join('') + '</span></div>'; }).join('') + '</div>' +
+      '<div class="stack" style="gap:8px;margin-top:10px"><label class="tog"><input type="checkbox" id="pe-friend"' + (me.allowFriend !== false ? ' checked' : '') + '> 친구 신청 받기</label><label class="tog"><input type="checkbox" id="pe-biof"' + (me.bioFriends ? ' checked' : '') + '> 자기소개는 친구에게만 보이기</label></div>' +
       '<div class="row" style="margin-top:14px"><button class="btn primary" data-act="pe-save">저장</button><button class="btn ghost" data-act="pe-preview">다른 학생에게 보이는 모습</button><span class="tiny" id="pe-msg"></span></div>';
   }
   ACT.me = function (tab) {
@@ -3763,8 +3811,11 @@
   // 다른 학생이 내 이름을 눌렀을 때 보는 모습 (저장된 내용 그대로)
   function myCard() {
     var me = Object.assign({ id: S.P.id, name: S.P.name, house: S.P.house, av: 0 }, S.me || {}, { grade: S.P.grade, lvl: S.P.lvl, self: true, online: true, title: S.P.title ? R.titleName(S.P, S.P.title) : '', deco: S.decoTry || R.decoView(S.P), badge: R.badgeWorn(S.P) });
-    var hidden = S.me && S.me.showStats === false; if (hidden) { me.power = null; me.lvl = null; }
-    return '<p class="tiny faint" style="margin-bottom:10px">다른 학생이 채팅이나 친구 목록에서 내 이름을 누르면 이렇게 보입니다.' + (hidden ? ' 레벨·전투력은 숨겨 두었습니다.' : '') + (S.peDraft || S.peAv !== undefined ? ' <span class="gold">편집 탭에 저장하지 않은 변경이 있습니다.</span>' : '') + '</p>' + profileCard(me, null);
+    var src = S.me || {}, vl = peVis(src, 'visLv'), vs = peVis(src, 'visStat'), ve = peVis(src, 'visEq'), hid = [], fo = [];
+    if (vl === 'none') { me.power = null; me.lvl = null; hid.push('레벨·전투력'); } else if (vl === 'friend') fo.push('레벨·전투력');
+    if (vs === 'none') { delete me.stats; hid.push('능력치'); } else if (vs === 'friend') fo.push('능력치');
+    if (ve === 'none') { delete me.eq; hid.push('장비'); } else if (ve === 'friend') fo.push('장비');
+    return '<p class="tiny faint" style="margin-bottom:10px">다른 학생이 채팅이나 친구 목록에서 내 이름을 누르면 이렇게 보입니다.' + (hid.length ? ' ' + hid.join(' · ') + '은(는) 숨겨 두었습니다.' : '') + (fo.length ? ' ' + fo.join(' · ') + '은(는) 친구에게만 보입니다.' : '') + (S.peDraft || S.peAv !== undefined ? ' <span class="gold">편집 탭에 저장하지 않은 변경이 있습니다.</span>' : '') + '</p>' + profileCard(me, null);
   }
   function loadFriends() {
     API.friends().then(function (j) {
@@ -3943,11 +3994,12 @@
     var o = peRead(); if (!o) return; $('#pe-msg').textContent = '저장 중…';
     peSave(o, function (e) { var m = $('#pe-msg'); if (m) m.textContent = e || '저장되었습니다'; if (!e) ACT.me('profile'); });
   };
-  function peFromMe() { var me = S.me || {}; return { status: me.status || '', avcredit: me.avcredit || '', bio: me.bio || '', fav: me.fav || '', title: S.P.title || '', showStats: me.showStats !== false, allowFriend: me.allowFriend !== false, bioFriends: !!me.bioFriends }; }
+  function peFromMe() { var me = S.me || {}; return { status: me.status || '', avcredit: me.avcredit || '', bio: me.bio || '', fav: me.fav || '', title: S.P.title || '', visLv: peVis(me, 'visLv'), visStat: peVis(me, 'visStat'), visEq: peVis(me, 'visEq'), allowFriend: me.allowFriend !== false, bioFriends: !!me.bioFriends }; }
   ACT['pe-preview'] = function () {
     var d = peRead(); S.peDraft = peDirty(d) ? d : null;
     var me = Object.assign({}, S.me || { id: S.P.id, name: S.P.name, house: S.P.house, grade: S.P.grade }, d || {}, { self: false, preview: true, online: true, friend: null, allowFriend: false, deco: R.decoView(S.P), badge: R.badgeWorn(S.P) }, S.peAv !== undefined ? { avData: S.peAv } : {});
-    me.title = d && d.title ? R.titleName(S.P, d.title) : ''; if (!me.showStats) { me.power = null; me.lvl = null; }
+    me.title = d && d.title ? R.titleName(S.P, d.title) : '';
+    if (peVis(me, 'visLv') !== 'all') { me.power = null; me.lvl = null; } if (peVis(me, 'visStat') !== 'all') delete me.stats; if (peVis(me, 'visEq') !== 'all') delete me.eq;   // 친구가 아닌 학생에게 보이는 모습
     modal(mhead('다른 학생에게 보이는 모습', '') + '<div id="pbox">' + profileCard(me, null) + '</div>');
   };
   ACT['pe-save-preview'] = function () { if (!S.peDraft && S.peAv === undefined) { ACT.me('profile'); return; } peSave(S.peDraft || peFromMe(), function (e) { if (e) toast('저장하지 못했습니다', e); else { toast('저장되었습니다', '', 1500); ACT.me('profile'); } }); };
@@ -4183,7 +4235,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102036;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102037;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
