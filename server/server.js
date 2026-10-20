@@ -720,6 +720,13 @@ routes['POST /api/push/unsub'] = async (req, res) => {
 };
 // 친구 개인 메모: 쓴 학생에게만 내려 준다 (상대에게는 보이지 않는다)
 const memoOf = (m) => { if (!m) return ''; try { return sec.dec(m); } catch (e) { return ''; } };
+// 설정 화면: 지금 로그인한 아이디 (본인에게만)
+routes['GET /api/me/login'] = (req, res) => {
+  const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
+  if (limited('ml:' + me, 1, 5)) return fail(req, res, 429, '요청이 너무 잦습니다');
+  let login = ''; try { const r = dbx.db.prepare('SELECT login_enc FROM players WHERE id = ?').get(me); login = r && r.login_enc ? sec.dec(r.login_enc) : ''; } catch (e) { }
+  send(req, res, 200, { login });
+};
 routes['GET /api/friends'] = (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
   if (limited('fl:' + me, 1, 10)) return fail(req, res, 429, '요청이 너무 잦습니다');
@@ -917,25 +924,35 @@ const NPCS = R.D.RIVALS.map((r, k) => { const h = Object.keys(NPC_HOUSE).find((x
 
 /* ───────── 거래소 ─────────
    장비와 재료를 아르크로 사고판다. 올린 물건은 맡겨 두고(가방에서 빠짐), 팔리면 판매자에게 아르크(수수료 5% 뺀 값)가 바로 들어간다.
-   3일 안에 안 팔리면 돌아온다. 2학년부터, 정식 학생만(게스트로 부계정을 만들어 몰아주는 것을 막기 위함). */
-const MK = { FEE: 0.05, DAYS: 3, MAX_OPEN: 10, GRADE: +(process.env.MARKET_GRADE || 2), MAX_PRICE: 1e15 };
+   3일 안에 안 팔리면 돌아온다. 1학년부터, 정식 학생만(게스트로 부계정을 만들어 몰아주는 것을 막기 위함).
+   판매 등록은 입학 24시간 뒤부터 (새 캐릭터로 시작 보상을 넘기는 것을 막기 위함). */
+const MK = { FEE: 0.05, DAYS: 3, MAX_OPEN: 10, GRADE: +(process.env.MARKET_GRADE || 1), SELL_AFTER: 86400, MAX_PRICE: 1e15 };
+// 소지품도 거래 가능: 환수의 알 · 토벌 도전권 · 망각의 차 (별조각으로 산 것을 아르크로 바꾸는 길)
+const MK_TOK = {
+  egg: { name: '환수의 알', have: (P) => P.fam.eggs || 0, add: (P, n) => { P.fam.eggs = (P.fam.eggs || 0) + n; } },
+  ticket: { name: '토벌 도전권', have: (P) => P.wb.extra || 0, add: (P, n) => { P.wb.extra = (P.wb.extra || 0) + n; } },
+  respec: { name: '망각의 차', have: (P) => (P.tok && P.tok.respec) || 0, add: (P, n) => { const tk = P.tok || (P.tok = {}); tk.respec = (tk.respec || 0) + n; } }
+};
 const MAT_NAMES = Object.assign({ stone: { name: '마석' } }, R.D.MATS);
 // 맡긴 물건을 학생에게 넣어 준다 (산 사람 · 돌려받는 판매자 공통). pot = 연금술로 만든 물약(선반으로)
 function mkGive(P, r) {
   if (r.kind === 'item') { try { P.inv.push(JSON.parse(r.data)); } catch (e) { } }
   else if (r.kind === 'badge') { try { (P.badges || (P.badges = [])).push(JSON.parse(r.data)); } catch (e) { } }   // 아카데미 휘장 (slot=보석, ilvl=레벨)
   else if (r.kind === 'pot') P.shelf[r.data] = (P.shelf[r.data] || 0) + r.qty;
+  else if (r.kind === 'tok') { if (MK_TOK[r.data]) MK_TOK[r.data].add(P, r.qty); }
   else if (r.data === 'stone') P.res.stone += r.qty; else P.mats[r.data] = (P.mats[r.data] || 0) + r.qty;
 }
-function mkAllowed(P, meta) {
+function mkAllowed(P, meta, sell) {
   if (!meta || meta.guest) return '게스트는 거래소를 이용할 수 없습니다. 설정에서 정식 학생 등록 필요';
   if (P.grade < MK.GRADE) return MK.GRADE + '학년부터 거래소를 이용할 수 있습니다';
+  const wait = sell ? (meta.created || 0) + MK.SELL_AFTER - nowSec() : 0;
+  if (wait > 0) return '판매 등록은 입학 24시간 뒤부터 가능합니다 (남은 시간 ' + R.fmtTime(wait) + ')';
   return null;
 }
 const mkQueries = new Map();
 function mkSearch(f, now) {
   const where = [`m.status = 'open'`, `m.expires > ?`], args = [Math.floor(now)];
-  if (f.kind === 'item' || f.kind === 'mat' || f.kind === 'pot' || f.kind === 'badge') { where.push('m.kind = ?'); args.push(f.kind); }
+  if (f.kind === 'item' || f.kind === 'mat' || f.kind === 'pot' || f.kind === 'badge' || f.kind === 'tok') { where.push('m.kind = ?'); args.push(f.kind); }
   if (f.kind === 'badge' && f.gem && R.GEM[f.gem]) { where.push('m.slot = ?'); args.push(f.gem); }
   if (f.kind !== 'badge' && f.slot === 'sword') { where.push(`m.slot = 'staff' AND m.data LIKE '%"wk":"sword"%'`); }   // 무기 중 검
   else if (f.kind !== 'badge' && f.slot === 'staff') { where.push(`m.slot = 'staff' AND m.data NOT LIKE '%"wk":"sword"%'`); }   // 무기 중 지팡이
@@ -945,16 +962,17 @@ function mkSearch(f, now) {
   if (f.r >= 0 && f.r <= 4) { where.push('m.rarity = ?'); args.push(f.r); }
   if (f.mat && MAT_NAMES[f.mat]) { where.push('m.data = ?'); args.push(f.mat); }
   if (f.pot && R.POT[f.pot]) { where.push('m.data = ?'); args.push(f.pot); }
+  if (f.kind === 'tok' && f.tok && MK_TOK[f.tok]) { where.push('m.data = ?'); args.push(f.tok); }
   if (f.q) { where.push(`m.name LIKE ? ESCAPE '\\'`); args.push('%' + f.q.replace(/[\\%_]/g, (c) => '\\' + c) + '%'); }
   const dir = f.sort === 'high' ? 'DESC' : 'ASC';
-  const order = f.sort === 'new' ? 'm.id DESC' : f.sort === 'lvl' ? 'm.ilvl DESC, m.price ASC' : f.kind === 'mat' || f.kind === 'pot' ? 'm.price / m.qty ' + dir : 'm.price ' + dir;
+  const order = f.sort === 'new' ? 'm.id DESC' : f.sort === 'lvl' ? 'm.ilvl DESC, m.price ASC' : f.kind === 'mat' || f.kind === 'pot' || f.kind === 'tok' ? 'm.price / m.qty ' + dir : 'm.price ' + dir;
   const sql = `SELECT m.id, m.kind, m.data, m.name, m.slot, m.rarity, m.ilvl, m.qty, m.price, m.created, m.expires, m.seller, COALESCE(p.name, m.seller_name) AS seller_name FROM market m LEFT JOIN players p ON p.id = m.seller WHERE ${where.join(' AND ')} ORDER BY ${order} LIMIT 60`;
   let st = mkQueries.get(sql); if (!st) { st = dbx.db.prepare(sql); mkQueries.set(sql, st); }
   return st.all(...args);
 }
 function mkOut(r, me) {
   const o = { id: r.id, kind: r.kind, name: r.name, slot: r.slot, r: r.rarity, ilvl: r.ilvl, qty: r.qty, price: r.price, created: r.created, expires: r.expires, seller: r.seller_name, npc: String(r.seller).startsWith('npc:'), mine: r.seller === me, status: r.status };
-  if (r.kind === 'item') { try { const it = JSON.parse(r.data); delete it.lock; delete it.u; o.item = it; } catch (e) { } } else if (r.kind === 'badge') { try { const bd = JSON.parse(r.data); delete bd.u; o.badge = bd; o.gem = bd.gem; o.lv = bd.lv; } catch (e) { } } else if (r.kind === 'pot') o.pot = r.data; else o.mat = r.data;
+  if (r.kind === 'item') { try { const it = JSON.parse(r.data); delete it.lock; delete it.u; o.item = it; } catch (e) { } } else if (r.kind === 'badge') { try { const bd = JSON.parse(r.data); delete bd.u; o.badge = bd; o.gem = bd.gem; o.lv = bd.lv; } catch (e) { } } else if (r.kind === 'pot') o.pot = r.data; else if (r.kind === 'tok') o.tok = r.data; else o.mat = r.data;
   return o;
 }
 function mkReturn(r, why, now) {   // 맡긴 물건을 판매자에게 돌려준다
@@ -969,7 +987,7 @@ routes['GET /api/market'] = (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
   if (limited('mk:' + me, 2, 15)) return fail(req, res, 429, '요청이 너무 잦습니다');
   const u = new URL(req.url, 'http://x'), g = (k) => u.searchParams.get(k) || '', now = Date.now() / 1000;
-  const f = { kind: g('kind'), slot: g('slot'), r: g('r') === '' ? -1 : Number(g('r')), mat: g('mat'), pot: g('pot'), gem: g('gem'), q: g('q').slice(0, 20), sort: g('sort') };
+  const f = { kind: g('kind'), slot: g('slot'), r: g('r') === '' ? -1 : Number(g('r')), mat: g('mat'), pot: g('pot'), tok: g('tok'), gem: g('gem'), q: g('q').slice(0, 20), sort: g('sort') };
   send(req, res, 200, { list: mkSearch(f, now).map((r) => mkOut(r, me)), mine: dbx.q.mkMine.all(me, Math.floor(now) - 3 * 86400).map((r) => mkOut(Object.assign({ seller_name: '' }, r, { seller: me }), me)), fee: MK.FEE, days: MK.DAYS, maxOpen: MK.MAX_OPEN, grade: MK.GRADE });
 };
 // 시세: 최근 30일 팔린 기록의 평균과 최근 5건. 장비는 같은 부위·등급·레벨 ±5, 재료는 개당 가격.
@@ -980,6 +998,7 @@ function mkPrice(key, real) {
   if (p[0] === 'item' && R.SLOT[p[1]] && /^[0-4]$/.test(p[2]) && /^\d{1,6}$/.test(p[3])) { const lv = +p[3]; rows = dbx.q.mkSoldItem.all(p[1], +p[2], lv - 5, lv + 5, since); }
   else if (p[0] === 'mat' && MAT_NAMES[p[1]]) rows = dbx.q.mkSoldMat.all(p[1], since);
   else if (p[0] === 'pot' && R.POT[p[1]]) rows = dbx.q.mkSoldPot.all(p[1], since);
+  else if (p[0] === 'tok' && MK_TOK[p[1]]) rows = dbx.q.mkSoldTok.all(p[1], since);
   else if (p[0] === 'badge' && R.GEM[p[1]] && /^\d{1,3}$/.test(p[2])) { const lv = +p[2]; rows = dbx.q.mkSoldBadge.all(p[1], lv - 2, lv + 2, since); }
   else return null;
   if (rows.length) { const unit = rows.map((r) => r.price / Math.max(1, r.qty)); v = { avg: Math.round(unit.reduce((a, b) => a + b, 0) / unit.length), n: rows.length, recent: rows.slice(0, 5).map((r) => ({ t: r.done_at, price: r.price, qty: r.qty, ilvl: r.ilvl || 0, name: r.name })) }; }
@@ -1007,7 +1026,7 @@ routes['POST /api/market'] = async (req, res) => {
   if (limited('mkp:' + me, 1, 10)) return fail(req, res, 429, '잠시 후 다시 시도');
   const b = await readJson(req, 2048), op = String(b.op || ''), now = nowSec(), meta = dbx.q.playerMeta.get(me);
   const P = loadPlayer(me, now); if (!P) return fail(req, res, 401, '학생 정보를 찾을 수 없습니다');
-  const no = mkAllowed(P, meta); if (no) return fail(req, res, 403, no);
+  const no = mkAllowed(P, meta, op === 'list'); if (no) return fail(req, res, 403, no);
   const real = Date.now() / 1000;
   if (op === 'list') {
     if (Number(dbx.q.mkMineOpen.get(me).n) >= MK.MAX_OPEN) return fail(req, res, 400, '한 번에 ' + MK.MAX_OPEN + '개까지 올릴 수 있습니다');
@@ -1029,6 +1048,11 @@ routes['POST /api/market'] = async (req, res) => {
       if (!(qty >= 1 && qty <= (P.shelf[id] || 0))) return fail(req, res, 400, '수량 확인 필요');
       P.shelf[id] -= qty;
       row = ['pot', id, R.POT[id].name, '', 0, 0, qty];
+    } else if (b.tok) {   // 소지품: 환수의 알 · 토벌 도전권 · 망각의 차
+      const id = String(b.tok), T = MK_TOK[id], qty = Math.floor(Number(b.qty)); if (!T) return fail(req, res, 400, '거래할 수 없는 소지품입니다');
+      if (!(qty >= 1 && qty <= T.have(P))) return fail(req, res, 400, '수량 확인 필요');
+      T.add(P, -qty);
+      row = ['tok', id, T.name, '', 0, 0, qty];
     } else {
       const m = String(b.mat || ''), qty = Math.floor(Number(b.qty)); if (!MAT_NAMES[m]) return fail(req, res, 400, '없는 재료입니다');
       const have = m === 'stone' ? P.res.stone : (P.mats[m] || 0);

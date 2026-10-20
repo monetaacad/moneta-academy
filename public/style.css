@@ -881,12 +881,12 @@ button.mkn:hover { text-decoration: underline; }
 /* 내 정보 공개 범위: 항목마다 전체 · 친구만 · 비공개 (가로로 이어 붙이고 좁으면 줄바꿈) */
 .visrows { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 4px; }
 .visrow { display: inline-flex; align-items: center; gap: 8px; }
-.seg { display: inline-flex; border: 1px solid var(--line2); border-radius: 8px; overflow: hidden; }
-.seg label { cursor: pointer; } .seg input { position: absolute; opacity: 0; width: 0; height: 0; }
-.seg span { display: block; padding: 4px 9px; font-size: 12px; color: var(--muted); }
-.seg label + label span { border-left: 1px solid var(--line2); }
-.seg input:checked + span { background: color-mix(in srgb, var(--brass) 26%, transparent); color: var(--ink); font-weight: 600; }
-.seg input:focus-visible + span { outline: 2px solid var(--brass2); outline-offset: -2px; }
+.visseg { display: inline-flex; border: 1px solid var(--line2); border-radius: 8px; overflow: hidden; }
+.visseg label { cursor: pointer; } .visseg input { position: absolute; opacity: 0; width: 0; height: 0; }
+.visseg span { display: block; padding: 4px 9px; font-size: 12px; color: var(--muted); }
+.visseg label + label span { border-left: 1px solid var(--line2); }
+.visseg input:checked + span { background: color-mix(in srgb, var(--brass) 26%, transparent); color: var(--ink); font-weight: 600; }
+.visseg input:focus-visible + span { outline: 2px solid var(--brass2); outline-offset: -2px; }
 /* 학생 카드: 소개 | 능력치 · 장비 */
 .pctabs { display: flex; gap: 4px; margin-top: 12px; border-bottom: 1px solid var(--line2); }
 .pctabs button { border: 0; background: none; font: inherit; font-size: 13px; color: var(--muted); padding: 6px 10px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
@@ -1546,7 +1546,7 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 .pthp { height: 7px; border-radius: 4px; background: color-mix(in srgb, var(--ink) 12%, transparent); overflow: hidden; }
 .pthp b { display: block; height: 100%; border-radius: 4px; transition: width .8s ease, background-color .8s; }
 .pthpt { color: var(--muted); text-align: right; font-size: 10.5px; }
-@media (max-width: 560px) { .ptm .ptn { display: flex; flex-direction: column; line-height: 1.25; } .ptm .ptmeta { font-size: 10px; overflow: hidden; text-overflow: ellipsis; } }
+@media (max-width: 560px) { .ptm .ptn { display: flex; flex-direction: column; line-height: 1.2; } .ptm .ptmeta { font-size: 10px; overflow: hidden; text-overflow: ellipsis; } .ptm .ptpw { display: block; } .ptm .ptsep { display: none; } }   /* 모바일: 전투력은 둘째 줄로 (잘리지 않게) */
 /* 채팅 탭 새 글: 숫자 배지 대신 탭 아래에 옅은 밑줄 (선택된 탭보다 약하게, 테마 포인트 색) */
 .dtabs .ub { display: none !important; }
 /* 1:1만 안 읽은 수를 빨간 숫자 배지로 (밑줄은 그대로) */

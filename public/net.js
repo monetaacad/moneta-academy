@@ -90,6 +90,7 @@ var Net = (function () {
   ServerApi.prototype.setAvatar = function (dataUrl) { return this.req('POST', '/api/avatar', { img: dataUrl }); };
   ServerApi.prototype.avatarUrl = function (id, v) { return v ? '/api/avatar?id=' + encodeURIComponent(id) + '&v=' + v : ''; };
   ServerApi.prototype.playerSearch = function (q) { return this.req('GET', '/api/players?q=' + encodeURIComponent(q)); };
+  ServerApi.prototype.myLogin = function () { return this.req('GET', '/api/me/login'); };
   ServerApi.prototype.friends = function () { return this.req('GET', '/api/friends'); };
   ServerApi.prototype.friendOp = function (op, id, name) { return this.req('POST', '/api/friends', { op: op, id: id, name: name }); };
   ServerApi.prototype.friendMemo = function (id, memo) { return this.req('POST', '/api/friends', { op: 'memo', id: id, memo: memo }); };

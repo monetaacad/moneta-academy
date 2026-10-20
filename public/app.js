@@ -2066,7 +2066,7 @@
   function twShown(l) { if (S.twSkip && S.twSkip[l.t]) return l.sc.length; var el = twNow() - l.t, n = 0; l.sc.forEach(function (x) { if (x[0] <= el) n++; }); return n; }
   function twLive(l) { return l.t + l.d > twNow() && !(S.twSkip && S.twSkip[l.t]); }
   function twLinesHtml(l) {
-    var n = twShown(l), out = l.sc.slice(0, n).map(function (x) { return '<div class="el k' + x[2] + '"><span class="et num">' + twHm(l.t + x[0]) + '</span><span>' + esc(x[1]) + '</span></div>'; });
+    var n = twShown(l), out = l.sc.slice(0, n).map(function (x) { return '<div class="el k' + x[2] + '"><span class="et num">' + twHm(l.t + x[0]) + '</span><span>' + esc(logDot(x[1])) + '</span></div>'; });
     if (n < l.sc.length) out.push('<div class="el faint twdots"><span class="et"></span><span>…</span></div>');
     return out.join('');
   }
@@ -2485,20 +2485,25 @@
 
   /* ── 거래소 ── */
   S.mk.open = {}; S.mk.prices = {}; S.mk.trades = null; S.mk.trAt = 0;
+  // 거래소에 올릴 수 있는 소지품 (서버 MK_TOK과 같은 목록)
+  var MK_TOKS = [['egg', '환수의 알', function (P) { return P.fam.eggs || 0; }], ['ticket', '토벌 도전권', function (P) { return P.wb.extra || 0; }], ['respec', '망각의 차', function (P) { return (P.tok && P.tok.respec) || 0; }]];
+  function tokName(id) { var t = MK_TOKS.filter(function (x) { return x[0] === id; })[0]; return t ? t[1] : id; }
+  function tokHave(id) { var t = MK_TOKS.filter(function (x) { return x[0] === id; })[0]; return t ? t[2](S.P) : 0; }
   function loadMarket() {
     var m = S.mk; m.at = Date.now();
     if (m.tab === 'live') return loadTrades();
-    var f = m.tab === 'buy' ? { kind: m.kind, slot: m.kind === 'item' ? m.slot : '', r: m.kind === 'item' ? m.r : '', mat: m.kind === 'mat' ? m.mat : '', pot: m.kind === 'pot' ? m.pot : '', gem: m.kind === 'badge' ? (m.gem || '') : '', q: m.q, sort: m.sort } : {};
+    var f = m.tab === 'buy' ? { kind: m.kind, slot: m.kind === 'item' ? m.slot : '', r: m.kind === 'item' ? m.r : '', mat: m.kind === 'mat' ? m.mat : '', pot: m.kind === 'pot' ? m.pot : '', tok: m.kind === 'tok' ? (m.tok || '') : '', gem: m.kind === 'badge' ? (m.gem || '') : '', q: m.q, sort: m.sort } : {};
     return API.market(f).then(function (j) { if (j.error) { m.err = j.error; } else { m.err = ''; m.data = j; } if (m.tab === 'sell') loadPrices(); if (S.view === 'market' && !S.modal) render(); });
   }
   function loadTrades() { var m = S.mk; m.trAt = Date.now(); return API.marketTrades().then(function (j) { if (!j.error) m.trades = j.trades || []; if (!m.data) m.data = { grade: 1 }; if (S.view === 'market' && !S.modal) render(); }); }
   // 팔기 화면: 가방 장비·재료의 시세를 한 번에 묻는다
-  function pKey(it) { return it.kind === 'mat' ? 'mat:' + it.mat : it.kind === 'pot' ? 'pot:' + it.pot : 'item:' + it.slot + ':' + it.r + ':' + it.ilvl; }
+  function pKey(it) { return it.kind === 'mat' ? 'mat:' + it.mat : it.kind === 'pot' ? 'pot:' + it.pot : it.kind === 'tok' ? 'tok:' + it.tok : 'item:' + it.slot + ':' + it.r + ':' + it.ilvl; }
   function loadPrices() {
     var P = S.P, keys = {};
     P.inv.filter(function (it) { return !it.lock; }).slice(0, 40).forEach(function (it) { keys[pKey({ slot: it.slot, r: it.r, ilvl: it.ilvl })] = 1; });
     ['stone'].concat(Object.keys(D.MATS)).forEach(function (k) { if ((k === 'stone' ? P.res.stone : P.mats[k]) > 0) keys['mat:' + k] = 1; });
     D.POTIONS.forEach(function (p) { if (P.shelf[p.id] > 0) keys['pot:' + p.id] = 1; });
+    MK_TOKS.forEach(function (t) { if (t[2](P) > 0) keys['tok:' + t[0]] = 1; });
     (P.badges || []).forEach(function (b) { if (b.u !== P.badgeOn && !b.lock) keys['badge:' + b.gem + ':' + b.lv] = 1; });
     var need = Object.keys(keys).filter(function (k) { return !S.mk.prices[k] || Date.now() - S.mk.prices[k].at > 60000; });
     if (!need.length || !API.marketPrices) return;
@@ -2526,16 +2531,19 @@
     var h = pageHead('부엉이 상단', '거래소', '수수료 5% · 3일 보관 · 한 번에 10개');
     h += '<div class="tabs" role="tablist">' + [['buy', '사기'], ['sell', '팔기'], ['live', '실시간 거래'], ['mine', '내 물건']].map(function (t) { return '<button role="tab" class="' + (m.tab === t[0] ? 'on' : '') + '" data-act="mktab" data-a="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
     var low = d && d.grade && P.grade < d.grade;   // 학년이 모자라면 구경만
-    if (low) { if (m.tab === 'sell' || m.tab === 'mine') m.tab = 'buy'; h += '<div class="card inset" style="margin-bottom:12px"><p class="small gold">거래소에서 사고팔기는 ' + d.grade + '학년부터입니다. 지금은 구경만 할 수 있고, 첫 기말시험을 통과하면 열립니다.</p></div>'; }
+    if (low) { if (m.tab === 'sell' || m.tab === 'mine') m.tab = 'buy'; h += '<div class="card inset" style="margin-bottom:12px"><p class="small gold">거래소에서 사고팔기는 ' + d.grade + '학년부터입니다. 지금은 구경만 할 수 있습니다.</p></div>'; }
+    var sellWait = P.created ? P.created + 86400 - now() : 0;   // 판매 등록은 입학 24시간 뒤부터 (서버 MK.SELL_AFTER)
+    if (sellWait > 0 && (m.tab === 'sell' || m.tab === 'mine')) h += '<div class="card inset" style="margin-bottom:12px"><p class="small gold">구매는 바로 가능하며, 판매 등록은 입학 24시간 뒤부터 가능합니다. 남은 시간 ' + R.fmtTime(sellWait) + '</p></div>';
     if (d && d.demo && m.tab !== 'live') h += '<div class="card inset" style="margin-bottom:12px"><p class="small">데모: NPC 학생들이 올린 물건을 사 볼 수 있고, 내가 올린 물건은 적당한 값이면 몇 분 뒤 NPC가 구매합니다. 기록은 이 브라우저에만 남습니다.</p></div>';
     if (m.err) h += '<p class="small bad" style="margin-bottom:8px">' + esc(m.err) + '</p>';
     if (m.tab === 'buy') {
-      h += '<div class="card mkfilt" style="margin-bottom:10px"><div class="row"><div class="filters"><button class="btn sm ghost' + (m.kind === 'item' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="item">장비</button><button class="btn sm ghost' + (m.kind === 'mat' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="mat">재료</button><button class="btn sm ghost' + (m.kind === 'pot' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="pot">물약</button><button class="btn sm ghost' + (m.kind === 'badge' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="badge">휘장</button></div><span class="spacer"></span>' +
+      h += '<div class="card mkfilt" style="margin-bottom:10px"><div class="row"><div class="filters"><button class="btn sm ghost' + (m.kind === 'item' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="item">장비</button><button class="btn sm ghost' + (m.kind === 'mat' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="mat">재료</button><button class="btn sm ghost' + (m.kind === 'pot' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="pot">물약</button><button class="btn sm ghost' + (m.kind === 'badge' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="badge">휘장</button><button class="btn sm ghost' + (m.kind === 'tok' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="tok">소지품</button></div><span class="spacer"></span>' +
         '<select id="mk-sort" data-act="mksel" data-a="sort" style="width:auto"><option value="price"' + (m.sort === 'price' ? ' selected' : '') + '>' + (m.kind !== 'item' ? '개당 가격 낮은 순' : '가격 낮은 순') + '</option><option value="high"' + (m.sort === 'high' ? ' selected' : '') + '>' + (m.kind !== 'item' ? '개당 가격 높은 순' : '가격 높은 순') + '</option><option value="new"' + (m.sort === 'new' ? ' selected' : '') + '>새로 올라온 순</option>' + (m.kind === 'item' ? '<option value="lvl"' + (m.sort === 'lvl' ? ' selected' : '') + '>장비 레벨 높은 순</option>' : '') + '</select></div>';
       if (m.kind === 'item') h += '<div class="filters" style="margin-top:6px">' + [['', '전체'], ['staff', '지팡이'], ['sword', '검']].concat(D.SLOTS.filter(function (x) { return x.id !== 'staff'; }).map(function (x) { return [x.id, x.name]; }), [['manual', '전술서']]).map(function (f) { return '<button class="btn sm ghost' + (m.slot === f[0] ? ' on' : '') + '" data-act="mkf" data-a="slot" data-b="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '<span class="fsep"></span>' +
         [['', '모든 등급', 'inherit']].concat(D.RARITY.map(function (r) { return [String(r.id), r.name, r.color]; })).map(function (f) { return '<button class="btn sm ghost' + (String(m.r) === f[0] ? ' on' : '') + '" data-act="mkf" data-a="r" data-b="' + f[0] + '" style="color:' + f[2] + '">' + f[1] + '</button>'; }).join('') + '</div>' +
         '<div class="row" style="margin-top:6px"><input id="mk-q" maxlength="20" placeholder="이름 검색" value="' + esc(m.q) + '" style="flex:1;min-width:120px"><button class="btn sm" data-act="mkq">검색</button></div>';
       else if (m.kind === 'pot') h += '<div class="row" style="margin-top:6px"><select id="mk-pot" data-act="mksel" data-a="pot" style="width:auto"><option value="">모든 물약</option>' + D.POTIONS.map(function (p) { return '<option value="' + p.id + '"' + (m.pot === p.id ? ' selected' : '') + '>' + p.name + '</option>'; }).join('') + '</select></div>';
+      else if (m.kind === 'tok') h += '<div class="row" style="margin-top:6px"><select id="mk-tok" data-act="mksel" data-a="tok" style="width:auto"><option value="">모든 소지품</option>' + MK_TOKS.map(function (t) { return '<option value="' + t[0] + '"' + (m.tok === t[0] ? ' selected' : '') + '>' + t[1] + '</option>'; }).join('') + '</select></div>';
       else if (m.kind === 'badge') h += '<div class="row" style="margin-top:6px"><select id="mk-gem" data-act="mksel" data-a="gem" style="width:auto"><option value="">모든 보석</option>' + D.BADGE_GEMS.map(function (g) { return '<option value="' + g.id + '"' + (m.gem === g.id ? ' selected' : '') + '>' + g.name + ' · ' + D.BONUS_NAMES[g.bonus] + '</option>'; }).join('') + '</select><span class="tiny faint">가진 휘장 ' + (P.badges || []).length + ' / ' + R.BADGE_HOLD + '</span></div>';
       else h += '<div class="row" style="margin-top:6px"><select id="mk-mat" data-act="mksel" data-a="mat" style="width:auto"><option value="">모든 재료</option><option value="stone"' + (m.mat === 'stone' ? ' selected' : '') + '>마석</option>' + Object.keys(D.MATS).map(function (k) { return '<option value="' + k + '"' + (m.mat === k ? ' selected' : '') + '>' + D.MATS[k].name + '</option>'; }).join('') + '</select></div>';
       h += '</div>';
@@ -2551,6 +2559,7 @@
           info = '<span class="mkn">' + esc(x.badge.name) + ' ' + badgeSvg(x.badge) + ' <span class="num faint">Lv ' + x.badge.lv + '</span></span>';
           sub = badgeBrief(x.badge) + (x.badge.aff || []).map(function (a) { return ' · ' + (D.BONUS_NAMES[a.id] || a.id) + ' +' + pct(a.v); }).join('');
         } else if (x.kind === 'pot') { var pp = R.POT[x.pot]; info = '<span class="mkn">' + (pp ? '<span class="pot-ic" style="background:' + pp.color + '"></span> ' : '') + esc(x.name) + ' <span class="num">×' + fmt(x.qty) + '</span></span>'; sub = (pp ? pp.desc + ' · ' : '') + '개당 ' + fmt(x.price / x.qty) + ' · 선반에 ' + fmt(P.shelf[x.pot] || 0); }
+        else if (x.kind === 'tok') { info = '<span class="mkn">' + esc(x.name) + ' <span class="num">×' + fmt(x.qty) + '</span></span>'; sub = '개당 ' + fmt(x.price / x.qty) + ' · 가진 수 ' + fmt(tokHave(x.tok)); }
         else { info = '<span class="mkn">' + esc(x.name) + ' <span class="num">×' + fmt(x.qty) + '</span></span>'; sub = '개당 ' + fmt(x.price / x.qty) + ' · 가진 수 ' + fmt(x.mat === 'stone' ? P.res.stone : (P.mats[x.mat] || 0)); }
         var tap = x.kind === 'item' && x.item;   // 장비는 줄(이름·요약) 어디를 눌러도 옵션이 펼쳐진다 (휴대폰에서 이름만 누르기 어려워서)
         return '<div class="mkrow' + (open ? ' open' : '') + '"><div class="mki' + (tap ? ' tap" data-act="mkopen" data-a="' + x.id + '" role="button" tabindex="0" aria-expanded="' + !!open + '"' : '"') + '>' + info + '<div class="tiny faint ell">' + sub + ' · ' + esc(x.seller) + (x.npc ? ' <span class="tag npc">NPC</span>' : '') + ' · ' + R.fmtTime(Math.max(0, x.expires - Date.now() / 1000)) + '</div>' + (open && x.item ? '<div class="mkst">' + statLines(x.item) + '</div>' + cmpBlock(x.item) : '') + '</div>' +
@@ -2573,7 +2582,7 @@
       if (m.focus && /^pot:/.test(m.focus)) { var pf = pots.findIndex(function (p) { return 'pot:' + p.id === m.focus; }); if (pf > 0) pots.unshift(pots.splice(pf, 1)[0]); }
       h += '<div class="card"><h3>물약 올리기</h3><p class="tiny faint">연금술로 만든 물약을 선반에서 꺼내 올립니다. 시세는 병당 가격입니다.</p><div class="stack" style="gap:0;margin-top:6px">' + (pots.length ? pots.map(function (p) {
         return '<div class="mksell' + (m.focus === 'pot:' + p.id ? ' focus' : '') + '" data-anchor="mks-pot:' + p.id + '"><div class="mksl"><div class="small"><span class="pot-ic" style="background:' + p.color + '"></span> ' + p.name + ' <span class="tiny faint">선반에 ' + fmt(P.shelf[p.id]) + '</span></div><div class="tiny faint ell">' + p.desc + '</div>' + priceLine('pot:' + p.id, true) + '</div><div class="mksr"><input type="number" min="1" max="' + P.shelf[p.id] + '" step="1" inputmode="numeric" class="mkqty" id="mkq-pot-' + p.id + '" placeholder="수량" value="1"><input type="number" min="1" step="1" inputmode="numeric" class="mkprice" id="mkp-pot-' + p.id + '" data-key="pot:' + p.id + '" data-unit="1" placeholder="가격" data-fmt="1"><span class="tiny faint mkfmt"></span><button class="btn sm" data-act="mklist" data-a="pot" data-b="' + p.id + '">올리기</button></div></div>';
-      }).join('') : '<div class="empty">선반에 물약이 없습니다. 연구실에서 연금술로 만들 수 있습니다.</div>') + '</div></div>' + badgeSellCard() + '</div>';
+      }).join('') : '<div class="empty">선반에 물약이 없습니다. 연구실에서 연금술로 만들 수 있습니다.</div>') + '</div></div>' + tokSellCard() + badgeSellCard() + '</div>';
     } else if (m.tab === 'live') {
       var tr = m.trades;
       h += '<div class="card"><div class="row between"><h3>실시간 거래</h3><span class="tiny faint"><span class="odot"></span> 팔리는 대로 올라옵니다 · 산 사람은 보이지 않습니다</span></div>';
@@ -2600,7 +2609,7 @@
     }).join('') : '<div class="empty">올릴 수 있는 휘장이 없습니다.</div>') + '</div></div>';
   }
   ACT.mksellbadge = function (u) {
-    var d = S.mk.data, g = d && d.grade || 2; if (S.P.grade < g) { toast('거래소', g + '학년부터 팔 수 있습니다'); return; }
+    var d = S.mk.data, g = d && d.grade || 1; if (S.P.grade < g) { toast('거래소', g + '학년부터 팔 수 있습니다'); return; }
     var f = 'badge:' + u; S.mk.tab = 'sell'; S.mk.focus = f; ACT.nav('market'); loadMarket();
     setTimeout(function () { var el = $('[data-anchor="mks-' + f + '"]'), inp = $('#mkp-badge-' + u); if (el) { el.scrollIntoView({ block: 'center' }); el.classList.add('flash'); } if (inp) inp.focus(); }, 80);
   };
@@ -2613,13 +2622,20 @@
     setTimeout(function () { var el = $('[data-anchor="mks-' + u + '"]'), inp = $('#mkp-' + u); if (el) { el.scrollIntoView({ block: 'center' }); el.classList.add('flash'); } if (inp) inp.focus(); }, 80);
   };
   // 물약 선반에서 바로 「거래소에서 팔기」
+  // 소지품 올리기: 환수의 알 · 토벌 도전권 · 망각의 차
+  function tokSellCard() {
+    var P = S.P, toks = MK_TOKS.filter(function (t) { return t[2](P) > 0; });
+    return '<div class="card"><h3>소지품 올리기</h3><p class="tiny faint">매점에서 별조각으로 산 환수의 알 · 토벌 도전권 · 망각의 차를 ' + CUR + '로 팔 수 있습니다. 시세는 개당 가격입니다.</p><div class="stack" style="gap:0;margin-top:6px">' + (toks.length ? toks.map(function (t) {
+      return '<div class="mksell"><div class="mksl"><div class="small">' + t[1] + ' <span class="tiny faint">가진 수 ' + fmt(t[2](P)) + '</span></div>' + priceLine('tok:' + t[0], true) + '</div><div class="mksr"><input type="number" min="1" max="' + t[2](P) + '" step="1" inputmode="numeric" class="mkqty" id="mkq-tok-' + t[0] + '" placeholder="수량" value="1"><input type="number" min="1" step="1" inputmode="numeric" class="mkprice" id="mkp-tok-' + t[0] + '" data-key="tok:' + t[0] + '" data-unit="1" placeholder="가격" data-fmt="1"><span class="tiny faint mkfmt"></span><button class="btn sm" data-act="mklist" data-a="tok" data-b="' + t[0] + '">올리기</button></div></div>';
+    }).join('') : '<div class="empty">올릴 수 있는 소지품이 없습니다.</div>') + '</div></div>';
+  }
   ACT.mksellpot = function (id) {
-    var d = S.mk.data, g = d && d.grade || 2; if (S.P.grade < g) { toast('거래소', g + '학년부터 팔 수 있습니다'); return; }
+    var d = S.mk.data, g = d && d.grade || 1; if (S.P.grade < g) { toast('거래소', g + '학년부터 팔 수 있습니다'); return; }
     var u = 'pot:' + id; S.mk.tab = 'sell'; S.mk.focus = u; ACT.nav('market'); loadMarket();
     setTimeout(function () { var el = $('[data-anchor="mks-' + u + '"]'), inp = $('#mkp-pot-' + id); if (el) { el.scrollIntoView({ block: 'center' }); el.classList.add('flash'); } if (inp) inp.focus(); }, 80);
   };
   ACT.mktab = function (t) { S.mk.tab = t; if (t !== 'live') S.mk.data = null; if (t !== 'sell') S.mk.focus = null; render(); loadMarket(); };
-  ACT.mkf = function (k, v) { S.mk[k] = v; if (k === 'kind') { S.mk.slot = ''; S.mk.r = ''; S.mk.mat = ''; S.mk.pot = ''; S.mk.gem = ''; S.mk.q = ''; if (S.mk.sort === 'lvl') S.mk.sort = 'price'; } S.mk.data = null; render(); loadMarket(); };
+  ACT.mkf = function (k, v) { S.mk[k] = v; if (k === 'kind') { S.mk.slot = ''; S.mk.r = ''; S.mk.mat = ''; S.mk.pot = ''; S.mk.tok = ''; S.mk.gem = ''; S.mk.q = ''; if (S.mk.sort === 'lvl') S.mk.sort = 'price'; } S.mk.data = null; render(); loadMarket(); };
   ACT.mkq = function () { S.mk.q = ($('#mk-q') || {}).value || ''; loadMarket(); };
   function mkDone(j, msg) { if (j.error) { toast('거래소', j.error); return; } absorb(j); toast(msg, '', 2000); Snd.play('click'); loadMarket(); render(); }
   // 사기: 한 번 누르면 바로 산다 (누르는 사이 두 번 사지 않게 잠깐 잠근다)
@@ -2628,10 +2644,11 @@
     API.marketOp({ op: 'buy', id: +id }).then(function (j) { S.mkBusy = false; mkDone(j, '구매가 완료되었습니다'); }, function () { S.mkBusy = false; render(); });
   };
   ACT.mklist = function (kind, k) {
-    var price = Math.floor(+($('#mkp-' + (kind === 'pot' ? 'pot-' : kind === 'badge' ? 'badge-' : '') + k) || {}).value || 0); if (!(price >= 1)) { toast('거래소', '가격 입력 필요'); return; }
+    var price = Math.floor(+($('#mkp-' + (kind === 'pot' ? 'pot-' : kind === 'tok' ? 'tok-' : kind === 'badge' ? 'badge-' : '') + k) || {}).value || 0); if (!(price >= 1)) { toast('거래소', '가격 입력 필요'); return; }
     var o = { op: 'list', price: price };
     if (kind === 'pot') { price = Math.floor(+($('#mkp-pot-' + k) || {}).value || 0); if (!(price >= 1)) { toast('거래소', '가격 입력 필요'); return; } o.price = price; o.pot = k; o.qty = Math.floor(+($('#mkq-pot-' + k) || {}).value || 0); if (!(o.qty >= 1)) { toast('거래소', '수량 입력 필요'); return; } }
     else if (kind === 'badge') o.badge = k;
+    else if (kind === 'tok') { o.tok = k; o.qty = Math.floor(+($('#mkq-tok-' + k) || {}).value || 0); if (!(o.qty >= 1)) { toast('거래소', '수량 입력 필요'); return; } }
     else if (kind === 'item') o.u = k; else { o.mat = k; o.qty = Math.floor(+($('#mkq-' + k) || {}).value || 0); if (!(o.qty >= 1)) { toast('거래소', '수량 입력 필요'); return; } }
     API.marketOp(o).then(function (j) { mkDone(j, '판매 등록이 완료되었습니다'); });
   };
@@ -2825,10 +2842,10 @@
   function ptTeam(j, i) {
     var st = ptState(j);
     return '<div class="ptteam" data-pt="' + i + '" style="height:' + (j.pt.team.length * PT_ROW) + 'px">' + j.pt.team.map(function (m, k) {
-      var me = k === j.pt.me, x = st[k], meta = m.npc ? '동행 · 방장 힘의 60%' : [(m.grade >= 8 ? '마스터' : (m.grade || 1) + '학년'), 'Lv ' + (m.lvl || 1), R.CLS[m.cls] ? R.CLS[m.cls].name : '', m.power ? '전투력 ' + fmt(m.power) : ''].filter(Boolean).join(' · ');
+      var me = k === j.pt.me, x = st[k], meta = m.npc ? '동행 · 방장 힘의 60%' : [(m.grade >= 8 ? '마스터' : (m.grade || 1) + '학년'), 'Lv ' + (m.lvl || 1), R.CLS[m.cls] ? R.CLS[m.cls].name : ''].filter(Boolean).join(' · '), pw = !m.npc && m.power ? '전투력 ' + fmt(m.power) : '';
       var nm = m.npc ? '<button class="cn" data-act="npccard" data-a="' + (+m.k || 0) + '">' + esc(m.name) + '</button>' : m.id ? '<button class="cn" data-act="prof" data-a="' + esc(m.id) + '">' + esc(m.name) + '</button>' : esc(m.name);
       return '<div class="ptm' + (me ? ' me' : '') + '" data-k="' + k + '" style="transform:translateY(' + (x.rank * PT_ROW) + 'px)"><span class="ptr num">' + (x.rank + 1) + '</span><span class="postag p-' + m.pos + '">' + R.EXP_POS[m.pos].name + '</span>' +
-        '<span class="ptn">' + nm + ' <span class="tiny faint ptmeta">' + esc(meta) + '</span></span>' +
+        '<span class="ptn">' + nm + ' <span class="tiny faint ptmeta">' + esc(meta) + (pw ? '<span class="ptpw"><span class="ptsep"> · </span>' + pw + '</span>' : '') + '</span></span>' +
         '<span class="pthpw"><span class="pthp" title="HP"><b style="width:' + Math.round(x.hp * 100) + '%;background:' + ptHpCol(x.hp) + '"></b></span><span class="tiny num pthpt">HP ' + ptHpTxt(m, x.hp) + '</span></span></div>';
     }).join('') + '</div>';
   }
@@ -2919,6 +2936,7 @@
     t = t.replace('{m}을', josa(m.name, '을', '를')).replace('{m}이', josa(m.name, '이', '가')).replace('{m}', m.name);
     return [t, ''];
   }
+  function logDot(t) { return /[.!?…]$/.test(t) ? t : t + '.'; }   // 일지 문장은 마침표로 끝낸다
   function expLogHtml(i) {
     var j = S.P.exp[i]; if (!j) return '';
     var t = Math.min(now(), j.end), n = Math.floor((t - j.start) / EXP_TICK), from = Math.max(0, n - 30), out = [];
@@ -2928,8 +2946,8 @@
       var L = expLine(j, k, i), at = j.start + k * EXP_TICK;
       // 이 줄 사이에 실제로 주운 전리품이 있으면 그것을 적는다
       var got = (j.loot || []).filter(function (x) { return x.it && x.at > at - EXP_TICK && x.at <= at; });   // 아직 받아 오지 않은 전리품(시각만 있음)은 다음 상태 받기 뒤에
-      if (got.length) { out.push('<div class="el kloot" data-k="' + k + 'l"><span class="et num">' + clock(at).replace(/^(오전|오후) /, '') + '</span><span>' + got.map(function (x) { return '<b style="color:' + rcol(x.it.r) + '">' + esc(x.it.name) + '</b>'; }).join(', ') + josa(got[got.length - 1].it.name, '을', '를').slice(-1) + ' 주웠다 <span class="eg">' + got.map(function (x) { return (D.RARITY[x.it.r] ? D.RARITY[x.it.r].name : '') + ' ' + R.slotName(x.it); }).join(', ') + '</span></span></div>'); continue; }
-      out.push('<div class="el" data-k="' + k + '"><span class="et num">' + clock(at).replace(/^(오전|오후) /, '') + '</span><span>' + L[0] + (L[1] ? ' <span class="eg">' + L[1] + '</span>' : '') + '</span></div>'); }
+      if (got.length) { out.push('<div class="el kloot" data-k="' + k + 'l"><span class="et num">' + clock(at).replace(/^(오전|오후) /, '') + '</span><span>' + got.map(function (x) { return '<b style="color:' + rcol(x.it.r) + '">' + esc(x.it.name) + '</b>'; }).join(', ') + josa(got[got.length - 1].it.name, '을', '를').slice(-1) + ' 주웠다. <span class="eg">' + got.map(function (x) { return (D.RARITY[x.it.r] ? D.RARITY[x.it.r].name : '') + ' ' + R.slotName(x.it); }).join(', ') + '</span></span></div>'); continue; }
+      out.push('<div class="el" data-k="' + k + '"><span class="et num">' + clock(at).replace(/^(오전|오후) /, '') + '</span><span>' + logDot(L[0]) + (L[1] ? ' <span class="eg">' + L[1] + '</span>' : '') + '</span></div>'); }
     if (now() >= j.end) out.push('<div class="el start"><span class="et num">' + clock(j.end).replace(/^(오전|오후) /, '') + '</span><span>원정을 마치고 아카데미로 돌아간다.</span></div>');
     return out.join('');
   }
@@ -3615,7 +3633,8 @@
     if (API.mode === 'local' && API.cheat) h += '<div class="setsec cheat"><div class="section-t">테스트 도구 <span class="tag br">데모에서만</span></div><p class="tiny faint">기능을 둘러보기 위한 버튼입니다. 서버판에는 없습니다.</p><div class="filters">' +
       [['grade', '한 학년 올리기'], ['subj', '과목 +5레벨'], ['lvl', '레벨 +10'], ['res', '자원 듬뿍'], ['stage', '원정 단계 모두 열기'], ['finish', '작업 즉시 끝내기'], ['spirit', '정령·도전권 채우기']].map(function (c) { return '<button class="btn sm" data-act="cheat" data-a="' + c[0] + '">' + c[1] + '</button>'; }).join('') + '</div></div>';
     h += '<div class="setsec"><div class="section-t">계정</div><p class="small muted">' + (API.mode === 'local' ? '미리보기: 진행 상황은 이 브라우저에만 저장됩니다.' : '진행 상황은 아카데미 서버에 저장됩니다. 글씨 크기·소리·알림 설정은 이 브라우저에만 기억합니다.') + '</p><p class="tiny faint">화면 버전 ' + BUILD + '</p>';
-    if (API.mode === 'server') h += '<hr class="sep"><div class="field"><label class="small muted" for="pw-old">비밀번호 바꾸기</label><input id="pw-old" type="password" placeholder="현재 비밀번호" autocomplete="current-password"><input id="pw-new" type="password" placeholder="새 비밀번호 (8자 이상)" autocomplete="new-password"><div class="row"><button class="btn sm" data-act="pw">변경</button><span class="tiny faint" id="pw-msg"></span></div></div>' +
+    if (API.mode === 'server') { h += '<hr class="sep"><div class="row small" style="gap:8px"><span class="muted">로그인 아이디</span><b class="num" id="my-login">' + esc(S.myLogin || '…') + '</b></div>'; if (!S.myLogin && API.myLogin) setTimeout(function () { API.myLogin().then(function (j) { if (j.login) S.myLogin = j.login; var el = $('#my-login'); if (el) el.textContent = j.login || (j.error ? '불러오지 못했습니다' : '확인 불가'); }); }, 0); }
+    if (API.mode === 'server') h += '<div class="field" style="margin-top:10px"><label class="small muted" for="pw-old">비밀번호 바꾸기</label><input id="pw-old" type="password" placeholder="현재 비밀번호" autocomplete="current-password"><input id="pw-new" type="password" placeholder="새 비밀번호 (8자 이상)" autocomplete="new-password"><div class="row"><button class="btn sm" data-act="pw">변경</button><span class="tiny faint" id="pw-msg"></span></div></div>' +
       '<div class="row"><button class="btn danger sm" data-act="logout">로그아웃</button></div>';
     else h += '<hr class="sep"><div class="row"><button class="btn danger sm" data-act="demo-reset">' + (S.resetArm > Date.now() ? '한 번 더 누르면 처음부터 다시 시작합니다' : '데모 처음부터 다시') + '</button></div>';
     return h + '</div>';
@@ -3709,7 +3728,7 @@
       '<div class="field" style="margin-top:10px"><label class="small muted" for="pe-status">한 줄 소개 <span class="faint">(40자)</span></label><input id="pe-status" maxlength="40" value="' + esc(me.status || '') + '" placeholder="예: 별샘 관측 동아리 부원"></div>' +
       '<div class="field" style="margin-top:10px"><label class="small muted" for="pe-bio">자기소개 <span class="faint">(300자)</span></label><textarea id="pe-bio" maxlength="300" rows="' + (S.peWide ? 12 : 4) + '" style="font-family:var(--f-body);font-size:14px" placeholder="캐릭터 설정, 좋아하는 것, RP 가능한 시간 등">' + esc(me.bio || '') + '</textarea></div>' +
       '<div class="field" style="margin-top:10px"><label class="small muted" for="pe-fav">좋아하는 과목</label><select id="pe-fav"><option value="">선택 안 함</option>' + D.SUBJECTS.filter(function (x) { return R.subjVisible(S.P, x); }).map(function (x) { return '<option value="' + x.id + '"' + (me.fav === x.id ? ' selected' : '') + '>' + x.name + '</option>'; }).join('') + '</select></div>' +
-      '<div class="section-t" style="margin-top:12px">다른 학생에게 보여 줄 정보</div><div class="visrows">' + [['visLv', '레벨·전투력'], ['visStat', '능력치'], ['visEq', '장비']].map(function (v) { var cur = peVis(me, v[0]); return '<div class="visrow"><span class="small">' + v[1] + '</span><span class="seg" role="radiogroup" aria-label="' + v[1] + ' 공개 범위">' + VIS_OPT.map(function (o) { return '<label><input type="radio" name="pe-' + v[0] + '" value="' + o[0] + '"' + (cur === o[0] ? ' checked' : '') + '><span>' + o[1] + '</span></label>'; }).join('') + '</span></div>'; }).join('') + '</div>' +
+      '<div class="section-t" style="margin-top:12px">다른 학생에게 보여 줄 정보</div><div class="visrows">' + [['visLv', '레벨·전투력'], ['visStat', '능력치'], ['visEq', '장비']].map(function (v) { var cur = peVis(me, v[0]); return '<div class="visrow"><span class="small">' + v[1] + '</span><span class="visseg" role="radiogroup" aria-label="' + v[1] + ' 공개 범위">' + VIS_OPT.map(function (o) { return '<label><input type="radio" name="pe-' + v[0] + '" value="' + o[0] + '"' + (cur === o[0] ? ' checked' : '') + '><span>' + o[1] + '</span></label>'; }).join('') + '</span></div>'; }).join('') + '</div>' +
       '<div class="stack" style="gap:8px;margin-top:10px"><label class="tog"><input type="checkbox" id="pe-friend"' + (me.allowFriend !== false ? ' checked' : '') + '> 친구 신청 받기</label><label class="tog"><input type="checkbox" id="pe-biof"' + (me.bioFriends ? ' checked' : '') + '> 자기소개는 친구에게만 보이기</label></div>' +
       '<div class="row" style="margin-top:14px"><button class="btn primary" data-act="pe-save">저장</button><button class="btn ghost" data-act="pe-preview">다른 학생에게 보이는 모습</button><span class="tiny" id="pe-msg"></span></div>';
   }
@@ -4235,7 +4254,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102037;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102038;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

@@ -562,8 +562,8 @@
       if (q) { var a = (p.pid === me ? P.name : p.author).toLowerCase(), hay = f.qt === 'author' ? a : f.qt === 'title' ? p.title.toLowerCase() : (p.title + '\n' + p.body).toLowerCase(); if (hay.indexOf(q) < 0) return false; }
       return true;
     }).sort(function (x, y) { return y.id - x.id; });
-    var pages = Math.max(1, Math.ceil(list.length / 20)), page = Math.min(pages, Math.max(1, +f.page || 1));
-    return Promise.resolve({ list: list.slice((page - 1) * 20, page * 20).map(function (p) { return out(p); }), total: list.length, page: page, pages: pages, op: false, privN: 0 });
+    var pages = Math.max(1, Math.ceil(list.length / 10)), page = Math.min(pages, Math.max(1, +f.page || 1));
+    return Promise.resolve({ list: list.slice((page - 1) * 10, page * 10).map(function (p) { return out(p); }), total: list.length, page: page, pages: pages, op: false, privN: 0 });
   };
   LocalApi.prototype.boardOp = function (o) {
     var b = this._bd(), P = this.d.P, me = P.id, now = Date.now() / 1000, self = this, tags = D2().BOARD_TAGS.map(function (t) { return t.id; });
