@@ -59,7 +59,7 @@
   function closeCell(i) {
     if (!i.first_at) return '<td class="faint">-</td>';
     var full = i.uses >= i.max_uses, tip = '코드 생성 ' + when(i.created) + ' · 첫 사용 ' + when(i.first_at) + (i.max_uses > 1 ? ' · 마지막 사용 ' + when(i.last_at) : '');
-    return '<td class="num" title="' + esc(tip) + '">' + (full ? '<b>' + whenS(i.last_at) + '</b> <span class="faint">' + dur(i.last_at - i.created) + '</span>' : '<span class="faint">첫 사용 ' + whenS(i.first_at) + '</span>') + '</td>';
+    return '<td class="num iclose" title="' + esc(tip) + '">' + (full ? '<b>' + whenS(i.last_at) + '</b><div class="tiny faint">' + dur(i.last_at - i.created) + ' 만에 마감</div>' : '<span class="faint">첫 사용 ' + whenS(i.first_at) + '</span>') + '</td>';
   }
   function invites() {
     api('GET', '/api/admin/invites').then(function (j) {

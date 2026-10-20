@@ -826,7 +826,7 @@
     var hh = R.HOUSE[p.house], dc = p.deco || {}, fr = decoFrame(dc.frame), bgs = decoBg(dc.bg), dk = dc.frame || dc.bg;
     var h = (p.preview ? '<p class="tiny gold" style="margin-bottom:10px">미리보기 · 저장하지 않은 내용이 들어 있습니다</p>' : '') + '<div class="pcard' + (dk ? ' deco ' + fr.cls : '') + '"' + (dk ? ' style="' + fr.style + bgs + '"' : '') + '>' + (dc.stamp && R.DECO[dc.stamp] ? '<span class="pstamp" title="' + R.DECO[dc.stamp].name + '" aria-hidden="true">' + R.DECO[dc.stamp].glyph + '</span>' : '') + '<div class="pav">' + avatarHtml(p, 100) + (p.avcredit && (p.av || p.avData) ? '<span class="avcredit" title="두상 출처">' + esc(p.avcredit) + '</span>' : '') + '</div>' + '<div style="min-width:0">' + (p.title ? '<div class="pttl">' + (R.OP_TITLES[p.title] ? '<span class="ttl' + R.opTitleCls(p.title) + '">' + esc(p.title) + '</span>' : esc(p.title)) + '</div>' : '') + '<h2 class="pname">' + inkName(p.name, dc.ink) + (p.badge && R.GEM[p.badge.gem] ? ' <span class="pbdg" title="' + esc((p.badge.name || '') + ' · Lv ' + p.badge.lv) + '">' + badgeSvg(p.badge, 26) + '</span>' : '') + (p.online ? ' <span class="odot" title="접속 중"></span>' : '') + '</h2>' +
       '<div class="small">' + (hh ? houseDot(p.house, 16) + ' ' : '') + '<span style="color:' + (hh ? hh.color : 'inherit') + '">' + (hh ? hh.name : '') + '</span> · ' + (p.grade >= 8 ? '마스터 과정' : p.grade + '학년') + (p.lvl ? ' · Lv ' + p.lvl : '') + (R.CLS[p.cls] ? ' · <span class="pcls">' + clsDot(p.cls, 14) + ' ' + R.CLS[p.cls].name + '</span>' : '') + '</div>' +
-      (p.guild ? '<div class="pguild">' + gEmblem(p.guild.color, p.guild.name, 20, p.guild.icon) + '<b>' + esc(p.guild.name) + '</b><span class="tiny faint">Lv ' + (p.guild.lv || 1) + '</span>' + (p.guild.rank ? '<span class="tag' + (p.guild.role === 'owner' ? ' br' : p.guild.role === 'officer' ? ' ok' : '') + '">' + esc(p.guild.rank) + '</span>' : '') + '</div>' : '') +
+      (p.guild ? '<div class="pguild">' + gEmblem(p.guild.color, p.guild.name, 20, p.guild.icon) + '<span class="pgt"><b class="pgn">' + esc(p.guild.name) + '</b><span class="pgm"><span class="tiny faint">Lv ' + (p.guild.lv || 1) + '</span>' + (p.guild.rank ? '<span class="tag' + (p.guild.role === 'owner' ? ' br' : p.guild.role === 'officer' ? ' ok' : '') + '">' + esc(p.guild.rank) + '</span>' : '') + '</span></span></div>' : '') +
       (p.fam && R.FAM[p.fam.id] ? '<div class="tiny pfam">동행 사역마 <b>' + esc(p.fam.nm || R.FAM[p.fam.id].name) + '</b>' + (p.fam.nm ? ' <span class="faint">' + R.FAM[p.fam.id].name + '</span>' : '') + ' <span class="num gold">Lv ' + p.fam.lv + '</span></div>' : '') +
       (p.status ? '<div class="pstatus">' + esc(p.status) + '</div>' : '') + '</div></div>';
     var ih = '';
@@ -4577,7 +4577,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102075;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102076;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

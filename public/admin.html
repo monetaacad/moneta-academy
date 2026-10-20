@@ -25,10 +25,11 @@
 /* 초대코드 표: 칸 폭이 내용에 따라 출렁이지 않게 (좁은 화면은 가로 스크롤) */
 .adm .scroll > table { min-width: 680px; }
 .adm table:has(#invites) { table-layout: fixed; }
-.adm table:has(#invites) th:nth-child(1) { width: 150px; } .adm table:has(#invites) th:nth-child(2) { width: 64px; } .adm table:has(#invites) th:nth-child(3) { width: 190px; } .adm table:has(#invites) th:nth-child(4) { width: 92px; }
+.adm table:has(#invites) th:nth-child(1) { width: 150px; } .adm table:has(#invites) th:nth-child(2) { width: 96px; } .adm table:has(#invites) th:nth-child(3) { width: 190px; } .adm table:has(#invites) th:nth-child(4) { width: 92px; }
 .adm table:has(#invites) th:nth-child(5) { width: var(--imw, 180px); position: relative; } .adm table:has(#invites) th:nth-child(7) { width: 92px; }
 .adm #invites td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .adm #invites td:nth-child(5) { white-space: normal; overflow-wrap: anywhere; }
+.adm #invites td.iclose { white-space: normal; }   /* 마감 시각 아래 줄에 걸린 시간 */
 .adm #invites td.iub.open { white-space: normal; overflow-wrap: anywhere; }   /* 사용한 학생 펼침 */
 .adm #invites .ubm { margin-left: 4px; padding: 0 4px; border: 0; background: none; color: var(--gold, #d8b45a); font: inherit; font-size: 12px; cursor: pointer; }
 .adm .colgrip { position: absolute; top: 0; right: -4px; width: 9px; height: 100%; cursor: col-resize; touch-action: none; z-index: 1; }   /* 메모 칸 너비 조절 */
