@@ -507,7 +507,7 @@
     h += '<div id="chatlog" class="chatlog ch-' + ch + '" aria-live="polite">' +
       (c.more[ch] && API.mode === 'server' && c.msgs[ch].length >= 80 ? '<button class="btn sm ghost chatmore" data-act="chatmore">이전 대화 더 보기</button>' : '') +
       '<div class="chatdesc"><div class="chatmeta tiny"><span class="ondot" aria-hidden="true"></span><span class="gold" data-l="chatonline"></span>' + (c.loading === ch ? '<span class="faint">새 글 불러오는 중…</span>' : '') + (ch === 'world' && c.slow.world ? '<span class="tag br">슬로우 모드 ' + c.slow.world + '초</span>' : '') + (ch === 'world' && isOp() ? '<button class="btn sm ghost" data-act="slowset" style="padding:0 7px">슬로우 모드 설정</button>' : '') + '</div>' +
-      '<p class="tiny faint">' + info.desc + (API.mode === 'local' && ch !== 'notice' ? '<br><span class="gold">데모: 같은 페이지를 연 사람끼리만 보이고, 기록은 이 브라우저에만 남습니다.</span>' : '') + '</p></div>' +
+      (ch === 'hrp' ? houseRoom(S.chHouse) : '') + '<p class="tiny faint">' + info.desc + (API.mode === 'local' && ch !== 'notice' ? '<br><span class="gold">데모: 같은 페이지를 연 사람끼리만 보이고, 기록은 이 브라우저에만 남습니다.</span>' : '') + '</p></div>' +
       (c.msgs[ch].length ? list : '<div class="empty">' + (ch === 'notice' ? '아직 공지가 없습니다.' : ch === 'recruit' ? '아직 모집 알림이 없습니다. 함께 원정 방 · 동아리 · 파티 화면에서 모집 알림을 보낼 수 있습니다.' : '아직 대화가 없습니다. 첫 인사를 건넬 차례.') + '</div>') + '<button class="chatnew" data-act="chatbottom" hidden></button></div>';
     if (ch !== 'notice') h += chatInput(ch);
     d.innerHTML = h; d.classList.remove('closed'); scrollHints();
@@ -558,6 +558,7 @@
         '<span class="rcpos">' + (rc.pos || []).map(function (k) { return R.EXP_POS[k] ? '<span class="postag p-' + k + '">' + R.EXP_POS[k].name + '</span>' : ''; }).join('') + (free.length ? '<span class="tiny faint">빈자리 ' + free.map(function (k) { return R.EXP_POS[k].name; }).join(' · ') + '</span>' : '') + '</span></span>' +
         rcFoot(rc.note, me ? '' : '<button class="btn sm" data-act="erpeek" data-a="' + esc(String(rc.room || '')) + '">살펴보기</button>') + '</span></div>';
     }
+    if (m.kind === 'head') return '<div class="cm head" data-id="' + m.id + '"><span class="ct num">' + time + '</span><span class="cx"><span class="tag hd">사감</span><button class="cn" data-act="houseinfo" data-a="' + esc(m.house) + '" style="color:' + hc + '">' + esc(m.name) + '</button> <span class="cb">' + chatText(m.text) + '</span></span></div>';   // 사감 한마디 (서버만 보낼 수 있다)
     var npc = String(m.pid).indexOf('npc:') === 0;
     var name = titleHtml(m.title, me) + '<button class="cn" data-act="' + (npc ? 'npcinfo' : 'cprof') + '" data-a="' + m.id + '">' + inkName(m.name, m.ink) + '</button>' + '<span class="tiny faint">' + (m.grade >= 8 ? '마스터' : m.grade + '학년') + '</span>';
     if (m.kind === 'me') return '<div class="cm' + (me ? ' mine' : '') + '" data-id="' + m.id + '"><span class="ct num">' + time + '</span><span class="cx">' + name + ' <i class="act">' + esc(m.text).replace(/\n/g, '<br>') + '</i></span></div>';
@@ -725,6 +726,7 @@
     if (L.grade) { promoModal(+L.grade); return; }
     if (L.me) { ACT.me(L.me); return; }
     if (L.view === 'board' && L.post) { ACT.nav('board'); setTimeout(function () { openPost(+L.post); }, 0); return; }
+    if (L.gtab) S.gtab2 = L.gtab;   // 동아리: 관리 탭(가입 신청)으로
     if (L.view) ACT.goto(L.view, L.anchor || '');
   };
   function updateMailBadge() { var b = $('#mailbadge'); if (b) { var n = S.mailN || 0; b.hidden = !n; b.textContent = n > 9 ? '9+' : n; } var mb = $('.mailbtn'); if (mb) mb.classList.toggle('has', !!S.mailN); }
@@ -1789,7 +1791,7 @@
     var P = S.P, q = b.q || 1, qmax = q >= R.BADGE_Q_MAX - 1e-9, sc = R.badgeShineCost(b), rc = R.badgeRecutCost(b), sh = P.res.shard || 0;
     var li = Math.min(+(S.pick.brc || 0), Math.max(0, (b.aff || []).length - 1)), armed = S.confirm['brc' + b.u] > Date.now(), lk = !!b.lock, lkTag = '<span class="tag" title="잠금을 풀면 할 수 있습니다">잠김</span>';
     return '<div class="bdgups">' +
-      '<div class="bdgup"><div class="bdgut"><b class="small">닦기</b><span class="tiny faint">마석가루로 별빛을 채워 레벨을 올립니다</span></div>' + (full ? '<span class="tag br">완성</span>' : lk ? lkTag : '<button class="btn sm primary" data-act="bpolish" data-a="' + b.u + '"' + (can ? '' : ' disabled') + '>별빛 +' + R.badgePolishXp(b) + ' <span class="cost">가루 ' + pc.dust + ' · ' + fmt(pc.gold) + ' ' + CUR + '</span></button>') + '</div>' +
+      '<div class="bdgup"><div class="bdgut"><b class="small">닦기</b><span class="tiny faint">마석가루로 별빛을 채워 레벨을 올립니다</span></div>' + (full ? '<span class="tag br">완성</span>' : lk ? lkTag : '<span class="row" style="gap:8px;flex-wrap:nowrap"><span class="bdgdeal"><span class="tiny"><span class="faint">얻음</span> <b class="gold">별빛 +' + R.badgePolishXp(b) + '</b></span><span class="tiny"><span class="faint">소모</span> 마석가루 ' + fmt(pc.dust) + ' <span class="faint">(보유 ' + fmt(P.res.dust || 0) + ')</span> · ' + fmt(pc.gold) + ' ' + CUR + '</span></span><button class="btn sm primary" data-act="bpolish" data-a="' + b.u + '"' + (can ? '' : ' disabled') + '>닦기</button></span>') + '</div>' +
       '<div class="bdgup"><div class="bdgut"><b class="small">' + gterm('광내기') + '</b><span class="tiny faint">별조각으로 보석 품질을 올려 대표 효과를 키웁니다 · 지금 ' + (Math.round(q * 1000) / 10) + '% / 최대 ' + Math.round(R.BADGE_Q_MAX * 100) + '%</span></div>' + (qmax ? '<span class="tag br">최고 품질</span>' : lk ? lkTag : '<button class="btn sm" data-act="bshine" data-a="' + b.u + '"' + (sh >= sc ? '' : ' disabled') + '>품질 +' + (R.BADGE_Q_STEP * 100) + '% <span class="cost">별조각 ' + sc + '</span></button>') + '</div>' +
       ((b.aff || []).length ? '<div class="bdgup"><div class="bdgut"><b class="small">' + gterm('세공 다시 새기기', '세공') + '</b><span class="tiny faint">별조각으로 선택한 세공 한 줄을 새로 굴립니다 (이름의 앞말은 첫 줄을 따릅니다)</span></div><span class="row" style="gap:6px;flex-wrap:nowrap"><select id="brc-line" aria-label="다시 새길 세공" style="width:auto;max-width:230px">' + b.aff.map(function (a, i) { return '<option value="' + i + '"' + (i === li ? ' selected' : '') + '>' + (i + 1) + '. ' + (D.BONUS_NAMES[a.id] || a.id) + ' +' + pct(a.v) + '</option>'; }).join('') + '</select>' + (lk ? lkTag : '<button class="btn sm' + (armed ? ' primary' : '') + '" data-act="brecut" data-a="' + b.u + '"' + (sh >= rc ? '' : ' disabled') + '>' + (armed ? '한 번 더 누르면 새깁니다' : '새기기') + ' <span class="cost">별조각 ' + rc + '</span></button>') + '</span></div>' : '') +
       '</div>';
@@ -1844,13 +1846,15 @@
     var pw = eqd ? R.powerWith(S.P, nx) - C().power : 0;
     return rows ? '<div class="enhpv" style="margin-top:6px">' + rows + (pw > 0 ? '<div class="statline"><span class="tiny muted">성공하면 전투력</span><span class="d num good">+' + fmt(pw) + '</span></div>' : '') + '</div>' : '';
   }
+  // 강화 · 재련 · 분해 바로 위에 지금 가진 재화 (마석가루는 상단 자원 막대에 없어서 여기서 확인한다)
+  function ownLine(P) { return '<div class="ownline small"><span class="faint">보유</span>' + dotImg('stone', 16) + '<span>마석 <b class="num">' + fmt(P.res.stone) + '</b></span><span>마석가루 <b class="num gold">' + fmt(P.res.dust || 0) + '</b></span><span>' + CUR + ' <b class="num">' + fmt(P.res.gold) + '</b></span></div>'; }
   function detailCard() {
     var P = S.P, it = S.sel && R.findItem(P, S.sel);
     if (!it) return '<div class="card detail"><h3>장비 살펴보기</h3><p class="small muted">장착 칸이나 가방의 장비를 누르면 능력치와 강화 정보를 볼 수 있습니다. 초록 ▲는 지금보다 전투력이 오르는 장비입니다.</p></div>';
     var eqd = P.eq[it.slot] && P.eq[it.slot].u === it.u, c = C(), cost = R.enhCost(P, it), ch = R.enhChance(P, it), delta = eqd ? 0 : R.powerWith(P, it) - c.power;
     var h = '<div class="card detail hl ' + (eqd ? 'eqsel' : 'bagsel') + '"><div class="tiny" style="color:' + rcol(it.r) + '">' + D.RARITY[it.r].name + ' ' + R.slotName(it) + ' · Lv ' + it.ilvl + (eqd ? ' · 장착 중' : '') + '</div><div class="nm" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</div><div style="margin-top:8px">' + statLines(it) + '</div>';
     if (!eqd) h += '<div class="small" style="margin-top:8px">장착 시 전투력 <b class="num ' + (delta >= 0 ? 'good' : 'bad') + '">' + (delta >= 0 ? '+' : '') + fmt(delta) + '</b></div>' + cmpLine(it, P.eq[it.slot]);
-    h += '<hr class="sep"><div class="row small"><span class="muted">강화 +' + it.enh + ' → +' + (it.enh + 1) + '</span><span class="spacer"></span>' + (it.enh >= R.ENH_MAX ? '<span class="tag br">최대 강화</span>' : '<span>성공 확률 <b class="num">' + Math.round(ch * 100) + '%</b></span>') + '</div>' + enhPreview(it, eqd) + '<div class="row" style="margin-top:10px">';
+    h += '<hr class="sep"><div class="row small"><span class="muted">강화 +' + it.enh + ' → +' + (it.enh + 1) + '</span><span class="spacer"></span>' + (it.enh >= R.ENH_MAX ? '<span class="tag br">최대 강화</span>' : '<span>성공 확률 <b class="num">' + Math.round(ch * 100) + '%</b></span>') + '</div>' + enhPreview(it, eqd) + ownLine(P) + '<div class="row" style="margin-top:10px">';
     h += eqd ? '<button class="btn sm" data-act="do" data-a="unequip" data-b="' + it.slot + '">해제</button>' : '<button class="btn sm primary" data-act="do" data-a="equip" data-b="' + it.u + '">장착</button>';
     if (it.enh < R.ENH_MAX && !it.lock) {
       var okc = P.res.gold >= cost.gold && P.res.stone >= cost.stone;
@@ -2413,7 +2417,7 @@
     var owner = g.myRole === 'owner', staff = owner || g.myRole === 'officer', p = g.perms || {}, h = '<div class="grid g2"><div class="stack">';
     if (p.invite) {
       h += '<div class="card"><h3>초대하기</h3><div class="row" style="margin-top:8px"><input id="g-inv" maxlength="12" placeholder="학생 이름" style="flex:1;min-width:0"><button class="btn sm primary" data-act="ginvite">초대</button></div><p class="tiny faint" style="margin-top:6px">채팅에서 이름을 눌러 정보창의 「동아리 초대」로도 부를 수 있습니다.</p></div>';
-      h += '<div class="card"><h3>가입 신청' + (g.apps && g.apps.length ? ' <span class="tag br num">' + g.apps.length + '</span>' : '') + '</h3>' + (g.apps && g.apps.length ? g.apps.map(function (a) { return '<div class="frow"><button class="avbtn" data-act="prof" data-a="' + esc(a.id) + '">' + avatarHtml(a, 36) + '</button><div style="flex:1;min-width:0"><b>' + esc(a.name) + '</b> <span class="tiny faint">' + a.grade + '학년 · Lv ' + a.lvl + '</span>' + (a.msg ? '<div class="tiny muted ell">' + esc(a.msg) + '</div>' : '') + '</div><button class="btn sm primary" data-act="gop" data-a="accept" data-b="' + esc(a.id) + '">받기</button><button class="btn sm ghost" data-act="gop" data-a="reject" data-b="' + esc(a.id) + '">거절</button></div>'; }).join('') : '<p class="small muted" style="margin-top:4px">들어온 신청이 없습니다.</p>') + '</div>';
+      h += '<div class="card"><h3>가입 신청' + (g.apps && g.apps.length ? ' <span class="tag br num">' + g.apps.length + '</span>' : '') + '</h3>' + (g.apps && g.apps.length ? g.apps.map(function (a) { return '<div class="frow"><button class="avbtn" data-act="prof" data-a="' + esc(a.id) + '">' + avatarHtml(a, 36) + '</button><div style="flex:1;min-width:0"><b>' + esc(a.name) + '</b> <span class="tiny faint">' + a.grade + '학년 · Lv ' + a.lvl + '</span>' + (a.msg ? '<div class="tiny muted ell">' + esc(a.msg) + '</div>' : '') + '</div><button class="btn sm primary" data-act="gop" data-a="accept" data-b="' + esc(a.id) + '">받기</button><button class="btn sm ghost" data-act="greject" data-a="' + esc(a.id) + '" data-b="' + esc(a.name) + '">거절</button></div>'; }).join('') : '<p class="small muted" style="margin-top:4px">들어온 신청이 없습니다.</p>') + '</div>';
     }
     if (p.notice) h += '<div class="card"><h3>공지 · 소개</h3><div class="field" style="margin-top:6px"><label class="small muted" for="gd-notice">공지 <span class="faint">(바꾸면 동아리 채팅에 알림)</span></label><input id="gd-notice" maxlength="300" value="' + esc(g.notice || '') + '"></div>' +
       '<div class="field" style="margin-top:8px"><label class="small muted" for="gd-intro">소개</label><textarea id="gd-intro" maxlength="300" rows="3" style="font-family:var(--f-body);font-size:13.5px">' + esc(g.intro || '') + '</textarea></div>' +
@@ -2609,6 +2613,12 @@
   ACT.gquitgo2 = function () { closeModal(); S.gtab2 = 'members'; render(); };
   ACT.grit = function () { API.guildOp({ op: 'ritual' }).then(function (j) { gDone(j, '동아리 의식에 봉헌했습니다'); }); };
   ACT.gwq = function (id) { API.guildOp({ op: 'wqClaim', id: id }).then(function (j) { gDone(j, j.got ? '주간 과제 보상 · 별조각 +' + j.got.shard : ''); }); };
+  // 가입 신청 거절: 사유는 선택 (적으면 신청한 학생의 알림에 함께 표시)
+  ACT.greject = function (id, name) {
+    modal(mhead('가입 신청 거절', esc(name || '')) + '<div class="field"><label class="small muted" for="g-rjwhy">거절 사유 <span class="faint">(선택 · 100자 · 신청한 학생의 알림에 함께 표시됩니다)</span></label><textarea id="g-rjwhy" maxlength="100" rows="2" placeholder="입력하지 않으면 「가입 신청이 거절되었습니다」만 전달됩니다"></textarea></div>' +
+      '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:12px"><button class="btn ghost" data-act="modal-close">취소</button><button class="btn danger" data-act="greject-go" data-a="' + esc(id) + '">거절하기</button></div>');
+  };
+  ACT['greject-go'] = function (id) { var why = (($('#g-rjwhy') || {}).value || '').trim(); closeModal(); API.guildOp({ op: 'reject', pid: id, reason: why }).then(function (j) { gDone(j, '가입 신청을 거절했습니다'); }); };
   ACT.gop = function (op, b, el) {
     var o = { op: op };
     if (op === 'accept' || op === 'reject' || op === 'kick' || op === 'transfer') o.pid = b;
@@ -2930,7 +2940,7 @@
 
   /* ── 세계관 ── */
   V.lore = function () {
-    var P = S.P, tabs = [['story', '이야기'], ['world', '세계']]; if (S.loreTab === 'guide') S.loreTab = 'story';
+    var P = S.P, tabs = [['story', '이야기'], ['world', '세계'], ['house', '기숙사']]; if (S.loreTab === 'guide') S.loreTab = 'story';
     var h = pageHead('에테라 대륙 · 구름섬 라디아', '세계관', '');
     h += '<div class="tabs" role="tablist">' + tabs.map(function (t) { return '<button role="tab" class="' + (S.loreTab === t[0] ? 'on' : '') + '" data-act="loretab" data-a="' + t[0] + '">' + t[1] + (t[0] === 'story' && storyUnread() ? ' <span class="tag br">새 글</span>' : '') + '</button>'; }).join('') + '</div>';
     if (S.loreTab === 'story') {
@@ -2940,9 +2950,17 @@
         return '<div class="card chapter' + (unread ? ' hl' : '') + '"><div class="roman">' + ROMAN[i + 1] + '</div><h3>' + s2.title + (unread ? ' <span class="tag br">새 글</span>' : '') + '</h3>' + (unread ? '<div class="row" style="margin-top:8px"><button class="btn sm primary" data-act="story" data-a="' + i + '">읽기</button></div>' : '<p class="small" style="margin-top:6px">' + esc(s2.text) + '</p>') + '</div>';
       }).join('') + '</div>';
     } else if (S.loreTab === 'world') {
-      h += '<div class="grid g2">' + D.LORE.map(function (l) { return '<div class="card"><h3>' + l.title + '</h3><p class="small" style="margin-top:4px;color:var(--ink2);white-space:pre-line">' + l.text + '</p></div>'; }).join('') + '</div>' +
-        '<div class="section-t" style="margin-top:16px">네 기숙사</div><div class="grid g2">' + D.HOUSES.map(function (hh) { return '<div class="card hcard">' + houseDot(hh.id, 56) + '<div style="min-width:0"><h4 style="color:' + hh.color + '">' + hh.name + ' <span class="faint small">' + hh.latin + '</span></h4><p class="small muted">“' + hh.motto + '”</p><p class="small" style="margin-top:4px">' + hh.desc + '</p></div></div>'; }).join('') + '</div>' +
+      h += '<div class="grid g2">' + D.LORE.filter(function (l) { return l.id !== 'houses'; }).map(function (l) {   // 「네 기숙사」는 기숙사 탭 첫머리로 옮김
+         return '<div class="card"><h3>' + l.title + '</h3><p class="small" style="margin-top:4px;color:var(--ink2);white-space:pre-line">' + l.text + '</p></div>'; }).join('') + '</div>' +
         '<div class="section-t" style="margin-top:16px">교수진</div><div class="grid g2">' + D.SUBJECTS.filter(function (x) { return R.subjVisible(S.P, x); }).map(function (s2) { return '<div class="card"><h4>' + s2.prof + '</h4><div class="tiny gold">' + s2.name + '</div><p class="small muted" style="margin-top:4px">' + s2.desc + '</p><p class="small" style="margin-top:4px;font-style:italic">“' + s2.line + '”</p></div>'; }).join('') + '</div>';
+    } else if (S.loreTab === 'house') {
+      var mine = P.house, op = S.hOpen || (S.hOpen = {}), anyOpen = D.HOUSES.some(function (x) { return op[x.id]; });
+      h += '<div class="card hcommon">' + D.HOUSE_COMMON.map(function (c) { return '<div><b>' + c.t + '</b><p class="small">' + c.b + '</p></div>'; }).join('') + '</div>' +
+        '<div class="row" style="margin-top:16px;align-items:baseline"><div class="section-t" style="margin:0">네 기숙사</div><span class="tiny faint">카드를 누르면 펼쳐집니다</span><span class="spacer"></span><button class="btn sm ghost" data-act="hfoldall">' + (anyOpen ? '모두 접기' : '모두 펼치기') + '</button></div>' +
+        '<div class="grid g2" style="margin-top:8px">' + D.HOUSES.map(function (hh) {
+          var on = !!op[hh.id];
+          return '<div class="card hfold' + (on ? ' open' : '') + '"><button class="hcard hsum" data-act="hfold" data-a="' + hh.id + '" aria-expanded="' + on + '">' + houseDot(hh.id, 56) + '<div style="min-width:0;flex:1"><h4 style="color:' + hh.color + '">' + hh.name + ' <span class="faint small">' + hh.latin + '</span>' + (hh.id === mine ? ' <span class="tag br">내 기숙사</span>' : '') + '</h4><p class="small muted">“' + hh.motto + '”</p><p class="small" style="margin-top:4px">' + hh.desc + '</p></div><span class="hchev" aria-hidden="true">▾</span></button>' + (on ? houseRows(hh.id) : '') + '</div>';
+        }).join('') + '</div>';
     }
     return h + '<p class="small muted" style="margin-top:16px">게임 방법은 상단의 <button class="btn sm ghost" data-act="guide">가이드</button>에서 검색할 수 있습니다.</p>';
   };
@@ -3531,6 +3549,39 @@
   }
   ACT.promo = function (g) { promoModal(+g); };
   ACT.story = function (i) { var s = D.STORY[+i]; modal(mhead(s.title, '') + '<p style="white-space:pre-line;color:var(--ink2)">' + esc(s.text) + '</p><div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn primary" data-act="modal-close" autofocus>계속</button></div>'); act('storySeen', { n: +i + 1 }); };
+  /* ── 기숙사: 배정 거울 연출(가입 직후) · 기숙사 정보 카드(기숙사 RP 채팅 상단 · 사감 이름) ── */
+  // 기숙사 설정 항목: 촘촘한 2열(이름 | 내용). short = 배정 거울용 (위치 · 휴게실 · 사감 · 인사만)
+  function houseRows(id, short) {
+    var h = R.HOUSE[id], L = D.HOUSE_LORE[id]; if (!h || !L) return '';
+    function row(k, v) { return '<dt>' + k + '</dt><dd>' + esc(v) + '</dd>'; }
+    var rows = row('위치', L.loc + '. ' + L.look) + row('휴게실', L.room + ' — ' + L.roomDesc) + row('사감', L.head + ' (' + L.headOf + ')');
+    if (!short) rows += row('상징', L.crest) + row('성향', L.trait) + row('전통', L.trad) + row('속설', L.myth) + row('손님 출입', L.guest);
+    rows += row('인사', '「' + L.greet + '」'); if (!short) rows += row('기숙사 효과', h.bonusText);
+    return '<dl class="hdl" style="--hc:' + h.color + '">' + rows + '</dl>';
+  }
+  function houseCard(id, short) {
+    var h = R.HOUSE[id]; if (!h) return '';
+    return '<div class="hlcard" style="--hc:' + h.color + '">' + (short ? '' : '<div class="hlhead">' + dotImg(id, 44) + '<div><h3>' + esc(h.name) + ' <span class="tiny faint">' + esc(h.latin) + '</span></h3><p class="small hlmotto">「' + esc(h.motto) + '」</p><p class="small muted">' + esc(h.desc) + '</p></div></div>') + houseRows(id, short) + '</div>';   // 짧은 카드(배정 거울)는 위에 이름 · 교훈이 이미 있다
+  }
+  function houseReveal(cb) {
+    var id = S.P && S.P.house, h = R.HOUSE[id], L = D.HOUSE_LORE[id]; if (!h || !L) { cb(); return; }
+    S.afterClose = cb;   // 닫기(Esc 포함)를 눌러도 다음 안내로 이어진다
+    modal(mhead('배정 거울', '모네타 아카데미 기숙사 배정', true) +
+      '<div class="hmirror" data-act="hmskip" style="--hc:' + h.color + '"><div class="hmglass"><i class="hmglow"></i>' + dotImg(id, 64, '', 'hmcrest') + '</div>' +
+      '<div class="hmlines"><p>기숙사 문 앞, 키보다 큰 거울에 손을 댑니다.</p><p>차가운 거울 속에서 ' + esc(L.light) + ' 빛이 번집니다.</p><p class="hmname">' + esc(h.name) + '</p><p class="small muted">「' + esc(h.motto) + '」</p></div></div>' +
+      '<div class="hmcard">' + houseCard(id, true) + '<p class="tiny faint" style="margin-top:8px">기숙사 이야기는 세계관 › 기숙사 탭이나 기숙사 RP 채팅 상단의 「기숙사 정보」에서 다시 볼 수 있습니다.</p></div>' +
+      '<div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn primary" data-act="modal-close" autofocus>기숙사로 들어가기</button></div>');
+  }
+  ACT.hfold = function (id) { S.hOpen = S.hOpen || {}; S.hOpen[id] = !S.hOpen[id]; render(); };
+  ACT.hfoldall = function () { var op = S.hOpen || {}, any = D.HOUSES.some(function (x) { return op[x.id]; }); S.hOpen = {}; if (!any) D.HOUSES.forEach(function (x) { S.hOpen[x.id] = true; }); render(); };
+  ACT.hmskip = function () { var m = $('.hmirror'); if (m) m.parentNode.classList.add('hmdone'); };
+  ACT.houseinfo = function (id) { var k = R.HOUSE[id] ? id : S.P.house; modal(mhead('기숙사 정보', R.HOUSE[k] ? R.HOUSE[k].name : '') + houseCard(k)); };
+  // 기숙사 RP 채팅 상단: 휴게실 이름 · 오늘의 장면(날마다 하나) · RP 키워드
+  function houseRoom(id) {
+    var h = R.HOUSE[id], L = D.HOUSE_LORE[id]; if (!h || !L) return '';
+    return '<div class="hroom" style="--hc:' + h.color + '"><div class="row" style="gap:6px;align-items:baseline"><b>' + esc(L.room) + '</b><span class="tiny faint">' + esc(h.name) + ' 휴게실</span><span class="spacer"></span><button class="btn sm ghost" data-act="houseinfo" data-a="' + id + '">기숙사 정보</button></div>' +
+      '<p class="small hrsc">' + esc(L.scenes[R.dayKST(now()) % L.scenes.length]) + '</p><p class="tiny faint">인사 「' + esc(L.greet) + '」 · 소품 ' + L.props.map(esc).join(' · ') + '</p></div>';
+  }
   /* ── 처음 온 학생: 이야기 → 「처음」 안내 몇 장 → 화면 둘러보기(튜토리얼) ── */
   function onbGuide(i, thenTour) {
     var list = D.GUIDE.filter(function (g) { return g.c === '처음'; }), n = list.length; i = Math.max(0, Math.min(n - 1, +i || 0)); var g = list[i];
@@ -4047,7 +4098,7 @@
     API.board({ tag: b.tag, q: b.q, qt: b.q ? b.qt : '', page: b.page, hd: bdHideDone() ? 1 : '' }).then(function (j) { if (j.error) { b.err = j.error; } else { b.err = ''; b.data = j; } if (S.view === 'board' && !S.modal && b.mode === 'list') render(); });
   }
   // 건의 처리 상태 (학생회장이 붙인다) · 해결 완료 숨기기(이 기기에 기억)
-  var BD_ST = { wip: '적용 중', done: '해결 완료' };
+  var BD_ST = { review: '검토 중', wip: '적용 중', done: '해결 완료', no: '반영 안 함', norepro: '재현 안 됨' };
   function bdSt(st) { return BD_ST[st] ? '<span class="btag st-' + st + '">' + BD_ST[st] + '</span>' : ''; }
   function bdHideDone() { try { return localStorage.getItem('arc_bdhd') === '1'; } catch (e) { return !!S.bdHd; } }
   ACT.bdhd = function () { var v = !bdHideDone(); S.bdHd = v; try { localStorage.setItem('arc_bdhd', v ? '1' : '0'); } catch (e) { } S.bd.page = 1; loadBoard(); };
@@ -4083,7 +4134,7 @@
     var b = S.bd, armed = S.confirm['bd' + p.id] > Date.now();
     var h = '<div class="row" style="margin-bottom:10px"><button class="btn sm ghost" data-act="bdback">← 목록</button><span class="spacer"></span>' +
       (p.canEdit ? '<button class="btn sm ghost" data-act="bdedit">수정</button>' : '') + (p.canDel ? '<button class="btn sm ' + (armed ? 'danger' : 'ghost') + '" data-act="bddel" data-a="' + p.id + '">' + (armed ? '한 번 더 누르면 지웁니다' : '지우기') + '</button>' : '') + '</div>';
-    h += '<article class="card bdpost"><div class="row" style="gap:6px;flex-wrap:wrap">' + bdTag(p.tag) + (p.priv ? '<span class="btag lock">관리자만 보기</span>' : '') + bdSt(p.st) + (p.canStatus ? '<span class="spacer"></span>' + [['wip', '적용 중'], ['done', '해결 완료'], ['', '표시 없음']].map(function (o) { return '<button class="btn sm' + ((p.st || '') === o[0] ? ' primary' : ' ghost') + '" data-act="bdst" data-a="' + p.id + '" data-b="' + o[0] + '">' + o[1] + '</button>'; }).join('') : '') + '</div><h2 class="bdh">' + esc(p.title) + '</h2>' +
+    h += '<article class="card bdpost"><div class="row" style="gap:6px;flex-wrap:wrap">' + bdTag(p.tag) + (p.priv ? '<span class="btag lock">관리자만 보기</span>' : '') + bdSt(p.st) + (p.canStatus ? '<span class="spacer"></span>' + [['review', '검토 중'], ['wip', '적용 중'], ['done', '해결 완료'], ['no', '반영 안 함'], ['norepro', '재현 안 됨'], ['', '표시 없음']].map(function (o) { return '<button class="btn sm' + ((p.st || '') === o[0] ? ' primary' : ' ghost') + '" data-act="bdst" data-a="' + p.id + '" data-b="' + o[0] + '">' + o[1] + '</button>'; }).join('') : '') + '</div><h2 class="bdh">' + esc(p.title) + '</h2>' +
       '<div class="tiny faint"><button class="cn" data-act="prof" data-a="' + esc(p.aid) + '">' + esc(p.author) + '</button>' + (p.aop && R.OP_TITLES[p.aop] ? ' <span class="ttl' + R.opTitleCls(p.aop) + '">' + esc(p.aop) + '</span>' : '') + ' · ' + new Date(p.created * 1000).toLocaleString('ko-KR') + (p.updated > p.created + 60 ? ' · 고침' : '') + '</div>' +
       (p.priv ? '<p class="tiny gold" style="margin-top:8px">작성자와 운영진만 볼 수 있는 글입니다. 운영진이 답하면 우편으로 알려 드립니다.</p>' : '') +
       '<div class="bdbody">' + (p.tag === 'rp' ? rpText(p.body) : esc(p.body)) + '</div></article>';
@@ -4283,6 +4334,33 @@
   // 입학 · 로그인
 
   /* ───────── 입학 · 로그인 화면 ───────── */
+  /* ── 기숙사 테스트 (로그인 · 가입 화면): 한 문항씩, 고른 답의 기숙사에 1점. 10문항부터는 중간에 결과를 볼 수 있다 ── */
+  function hqShuffle(n) { var a = []; for (var i = 0; i < n; i++) a.push(i); for (var j = n - 1; j > 0; j--) { var k = Math.floor(Math.random() * (j + 1)), t = a[j]; a[j] = a[k]; a[k] = t; } return a; }
+  ACT.hquiz = function () { S.hq = { i: 0, ans: [], ord: D.HOUSE_QUIZ.map(function (q) { return hqShuffle(q.a.length); }) }; hqDraw(); };
+  function hqDraw() {
+    var Q = D.HOUSE_QUIZ, t = S.hq; if (!t) return;
+    if (t.i >= Q.length) return hqResult();
+    var q = Q[t.i], done = t.ans.filter(Boolean).length;
+    modal(mhead('나에게 어울리는 기숙사 찾기', (t.i + 1) + ' / ' + Q.length) + '<div class="bar brass" style="height:6px;margin-bottom:12px"><b style="width:' + (t.i / Q.length * 100).toFixed(1) + '%"></b></div>' +
+      '<p style="font-size:16px;line-height:1.6;margin-bottom:12px">' + esc(q.q) + '</p><div class="stack" style="gap:8px">' +
+      t.ord[t.i].map(function (k) { var a = q.a[k]; return '<button class="btn hqopt' + (t.ans[t.i] === a[1] ? ' primary' : '') + '" data-act="hqpick" data-a="' + a[1] + '" style="justify-content:flex-start;text-align:left;white-space:normal">' + esc(a[0]) + '</button>'; }).join('') + '</div>' +
+      '<div class="row" style="margin-top:14px;gap:8px">' + (t.i > 0 ? '<button class="btn sm ghost" data-act="hqprev">이전</button>' : '') + '<span class="spacer"></span>' + (done >= 10 ? '<button class="btn sm ghost" data-act="hqend">여기까지 결과 보기</button>' : '<span class="tiny faint">10문항부터 중간에 결과를 볼 수 있습니다</span>') + '</div>');
+  }
+  ACT.hqpick = function (h) { var t = S.hq; if (!t) return; t.ans[t.i] = h; t.i++; hqDraw(); };
+  ACT.hqprev = function () { var t = S.hq; if (!t || t.i <= 0) return; t.i--; hqDraw(); };
+  ACT.hqend = function () { hqResult(); };
+  function hqResult() {
+    var t = S.hq, sc = {}, n = 0; D.HOUSES.forEach(function (h) { sc[h.id] = 0; }); t.ans.forEach(function (h) { if (h) { sc[h]++; n++; } });
+    var rank = D.HOUSES.slice().sort(function (a, b) { return sc[b.id] - sc[a.id]; }), best = sc[rank[0].id], tops = rank.filter(function (h) { return sc[h.id] === best; });
+    var pick = $('.housepick:not(.clspick)');   // 가입 화면이면 바로 선택할 수 있게
+    modal(mhead('기숙사 테스트 결과', n + '문항') + '<div style="text-align:center;margin-bottom:12px">' + tops.map(function (h) { return dotImg(h.id + '_big', 88, h.name + ' 문장', 'hdot hbig'); }).join(' ') +
+      '<p class="small muted" style="margin-top:8px">당신에게 어울리는 기숙사는</p><h2 style="margin:2px 0 6px">' + tops.map(function (h) { return '<span style="color:' + h.color + '">' + h.name + '</span>'; }).join(' · ') + '</h2>' +
+      (tops.length > 1 ? '<p class="tiny faint">점수가 같은 기숙사가 있습니다. 마음이 가는 곳을 선택하십시오.</p>' : '<p class="small" style="font-style:italic">“' + esc(tops[0].motto) + '”</p><p class="small muted" style="margin-top:4px">' + esc(tops[0].desc) + '</p>') + '</div>' +
+      '<div class="stack" style="gap:6px">' + rank.map(function (h) { return '<div><div class="row small"><span style="color:' + h.color + '">' + h.name + '</span><span class="spacer"></span><span class="num">' + sc[h.id] + '</span></div><div class="bar" style="height:6px;margin-top:2px"><b style="width:' + (n ? sc[h.id] / n * 100 : 0).toFixed(1) + '%;background:' + h.color + ' !important"></b></div></div>'; }).join('') + '</div>' +
+      '<p class="tiny faint" style="margin-top:10px">테스트 결과는 참고용입니다. 기숙사는 가입할 때 직접 선택하며, 대항전 점수는 인원수에 따라 보정됩니다.</p>' +
+      '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:12px"><button class="btn ghost" data-act="hquiz">다시 하기</button>' + (pick ? '<button class="btn primary" data-act="hqchoose" data-a="' + tops[0].id + '">' + tops[0].name + ' 선택</button>' : '<button class="btn primary" data-act="modal-close">닫기</button>') + '</div>');
+  }
+  ACT.hqchoose = function (id) { closeModal(); ACT.ihouse(id); var b = $('.housepick:not(.clspick) button[data-a="' + id + '"]'); if (b) b.scrollIntoView({ block: 'center', behavior: 'smooth' }); };
   function authScreen() {
     stopLoop(); chatDisconnect();
     var server = API.mode === 'server', M = S.meta || {};
@@ -4290,7 +4368,8 @@
     var tabs = redo ? [['recreate', '새 학생 만들기']] : server ? [['login', '로그인'], ['signup', '가입'], ['findid', '아이디 찾기']] : [['guest', '바로 입학']];   // 서버판에는 게스트가 없다. '바로 입학'은 아티팩트 미리보기에서만
     var tab = S.authTab && tabs.some(function (t) { return t[0] === S.authTab; }) ? S.authTab : tabs[0][0];
     var h = '<div class="body" style="grid-template-columns:minmax(0,1fr)"><main><div class="intro"><img class="crestbig" src="' + LOGO_URL + '" width="96" height="96" alt=""><h1>모네타 아카데미</h1>' +
-      '<p class="lede">별의 종의 울림을 듣는 이들에게만 초대장이 날아드는 곳.<br>오선의 열차를 타고 구름섬 라디아로.<br>모네타 아카데미에 오신 것을 환영합니다.</p>';
+      '<p class="lede">별의 종의 울림을 듣는 이들에게만 초대장이 날아드는 곳.<br>오선의 열차를 타고 구름섬 라디아로.<br>모네타 아카데미에 오신 것을 환영합니다.</p>' +
+      '<p style="margin-top:8px"><button class="btn sm ghost" data-act="hquiz">나에게 어울리는 기숙사 찾기 <span class="cost">30문항</span></button></p>';
     if (!server) h += '<div class="card inset"><p class="small">이 페이지는 <b>미리보기</b>입니다. 진행 상황은 이 브라우저에만 저장되고, 다른 학생과 월드 보스·대항전은 가상입니다. 실제 게임은 아카데미 서버에서 열립니다.</p></div>';
     if (tabs.length > 1) h += '<div class="tabs" role="tablist">' + tabs.map(function (t) { return '<button role="tab" class="' + (tab === t[0] ? 'on' : '') + '" data-act="authtab" data-a="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
     h += '<form id="authform" class="card stack" style="gap:12px" autocomplete="on">';
@@ -4334,7 +4413,7 @@
   ACT['auth-go'] = function (tab) {
     var name = $('#a-name') ? $('#a-name').value.trim() : '', id = $('#a-id') ? $('#a-id').value.trim() : '', pw = $('#a-pw') ? $('#a-pw').value : '', msg = $('#a-msg');
     if ($('#a-name')) S.authName = name; if ($('#a-id')) S.authId = id;
-    function done(j) { if (j.error) { msg.textContent = j.error; return; } absorb(j); if (S.P && S.P.needCreate) { S.authName = ''; authScreen(); return; } start(); if (tab === 'login') { afterSync(); if (j.pwTemp) setTimeout(function () { ACT.settings(); setTimeout(function () { var o = $('#pw-old'); if (o) { o.scrollIntoView({ block: 'center' }); o.focus({ preventScroll: true }); } var m = $('#pw-msg'); if (m) m.textContent = '임시 비밀번호로 로그인했습니다. 새 비밀번호로 바꿔 주세요'; }, 300); }, 400); } else if (!PREF.tutDone) { S.onbChain = true; onbGuide(0, true); } else { S.afterClose = function () { if (S.view !== 'home') ACT.nav('home'); ACT.mqscene('intro'); }; ACT.story(0); } }
+    function done(j) { if (j.error) { msg.textContent = j.error; return; } absorb(j); if (S.P && S.P.needCreate) { S.authName = ''; authScreen(); return; } start(); if (tab === 'login') { afterSync(); if (j.pwTemp) setTimeout(function () { ACT.settings(); setTimeout(function () { var o = $('#pw-old'); if (o) { o.scrollIntoView({ block: 'center' }); o.focus({ preventScroll: true }); } var m = $('#pw-msg'); if (m) m.textContent = '임시 비밀번호로 로그인했습니다. 새 비밀번호로 바꿔 주세요'; }, 300); }, 400); } else houseReveal(function () { if (!PREF.tutDone) { S.onbChain = true; onbGuide(0, true); } else { S.afterClose = function () { if (S.view !== 'home') ACT.nav('home'); ACT.mqscene('intro'); }; ACT.story(0); } }); }
     if (tab === 'login') { if (!id) { msg.textContent = '아이디 입력 필요'; return; } msg.textContent = '확인 중…'; return API.login(id, pw).then(done); }
     if (tab === 'findid') {
       var nid = $('#a-nid') ? $('#a-nid').value.trim() : '';
@@ -4438,7 +4517,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102053;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102058;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
