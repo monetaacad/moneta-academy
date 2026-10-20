@@ -4134,7 +4134,7 @@
     var tabs = redo ? [['recreate', '새 학생 만들기']] : server ? [['login', '로그인'], ['signup', '가입'], ['findid', '아이디 찾기']] : [['guest', '바로 입학']];   // 서버판에는 게스트가 없다. '바로 입학'은 아티팩트 미리보기에서만
     var tab = S.authTab && tabs.some(function (t) { return t[0] === S.authTab; }) ? S.authTab : tabs[0][0];
     var h = '<div class="body" style="grid-template-columns:minmax(0,1fr)"><main><div class="intro"><img class="crestbig" src="' + LOGO_URL + '" width="96" height="96" alt=""><h1>모네타 아카데미</h1>' +
-      '<p class="lede">별의 종의 울림을 듣는 아이에게만 초대장이 날아드는 곳. 입학 열차 칼리오페호를 타고 구름섬 라디아로, 모든 학생이 같은 시간을 살아가는 아카데미에 오신 것을 환영합니다.</p>';
+      '<p class="lede">별의 종의 울림을 듣는 이들에게만 초대장이 날아드는 곳. 오선의 열차를 타고 구름섬 라디아로.<br>모네타 아카데미에 오신 것을 환영합니다.</p>';
     if (!server) h += '<div class="card inset"><p class="small">이 페이지는 <b>미리보기</b>입니다. 진행 상황은 이 브라우저에만 저장되고, 다른 학생과 월드 보스·대항전은 가상입니다. 실제 게임은 아카데미 서버에서 열립니다.</p></div>';
     if (tabs.length > 1) h += '<div class="tabs" role="tablist">' + tabs.map(function (t) { return '<button role="tab" class="' + (tab === t[0] ? 'on' : '') + '" data-act="authtab" data-a="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
     h += '<form id="authform" class="card stack" style="gap:12px" autocomplete="on">';
