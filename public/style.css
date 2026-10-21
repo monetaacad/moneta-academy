@@ -222,7 +222,7 @@ main { min-width: 0; container-type: inline-size; container-name: page; }
 .goal .step { font-family: var(--f-num); color: var(--brass); font-size: 12px; border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; flex: none; margin-top: 2px; }
 .logbox { max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; font-size: 13px; padding-right: 4px; }
 .logbox .ln { display: flex; gap: 8px; }
-.logbox .ln .lt { color: var(--faint); font-family: var(--f-num); font-size: 11px; flex: none; padding-top: 2px; min-width: 44px; }
+.logbox .ln .lt { color: var(--faint); font-family: var(--f-num); font-size: 11px; flex: none; padding-top: 2px; min-width: 44px; white-space: nowrap; }
 .ln.k-good { color: var(--goodt); } .ln.k-bad { color: var(--badt); } .ln.k-story { color: var(--brass2); } .ln.k-legend { color: var(--r4); } .ln.k-epic { color: var(--r3); } .ln.k-ach { color: var(--brass2); } .ln.k-news { color: var(--news); }
 .quest { display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; align-items: center; }
 
