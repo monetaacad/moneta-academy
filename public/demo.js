@@ -306,7 +306,7 @@
   };
   LocalApi.prototype.towerOp = function (o) {
     o = o || {}; var now = this._now(), P = this.d.P, self = this; Rules.advance(P, this._world(now), now); var x = this._towerCore(now); if (!x) return Promise.resolve({ error: '파티에 들어가 있어야 별의 탑에 오를 수 있습니다' });
-    var mk = function (kind) { return Object.assign(Rules.twRun(x.ms, Rules.twBest(P, now) + 1, Math.floor(Math.random() * 2147483646) + 1), { id: String(Date.now()), kind: kind, by: P.name, t0: Date.now() / 1000, ms: Rules.twMeta(x.ms), day: Rules.dayKST(now) }); };
+    var mk = function (kind) { return Object.assign(Rules.twRun(x.ms, Rules.twBest(P, now) + 1, Math.floor(Math.random() * 2147483646) + 1), { id: String(Date.now()), kind: kind, by: P.name, pname: x.pa.name || '', t0: Date.now() / 1000, ms: Rules.twMeta(x.ms), day: Rules.dayKST(now) }); };
     if (o.mode === 'pos') { if (Rules.expPositions(P).indexOf(o.pos) < 0) return Promise.resolve({ error: '선택할 수 없는 포지션입니다' }); P.opt.twPos = o.pos; this._save(); return this.tower(); }
     if (o.mode === 'solo') return Promise.resolve({ run: mk('solo') });
     if (o.mode === 'stop') { if (!x.live || x.live.kind !== 'party') return Promise.resolve({ error: '중단할 파티 연습이 없습니다' }); x.live.d = Math.max(0, Date.now() / 1000 - x.live.t0); x.live.stopped = P.name; this._save(); return this.tower(); }

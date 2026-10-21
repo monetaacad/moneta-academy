@@ -2591,12 +2591,43 @@
     }).join('') + '</div>';
     return h;
   }
-  function twLinesHtml(r) {
-    var el = twEl(r), out = [];
-    (r.floors || []).forEach(function (fl) { if (fl.t > el) return; fl.L.forEach(function (x) { if (fl.t + x[0] <= el) out.push('<div class="el k' + x[2] + '"><span class="et num">' + twHm(r.t0 + fl.t + x[0]) + '</span><span>' + esc(logDot(x[1])) + '</span></div>'); }); });
-    if (el < r.d) out.push('<div class="el faint twdots"><span class="et"></span><span>…</span></div>');
-    return out.slice(-60).join('');
+  // 한 층의 대본 줄: 요약(L) + 전체 기록(E). upto = 층 시작 기준 몇 초까지, max = 끝에서 몇 줄. [층 시작 기준 초, 글, 종류]
+  function twFloorLines(r, fl, full, upto, max) {
+    var cut = function (a) { var lo = 0, hi = a.length; while (lo < hi) { var mid = (lo + hi) >> 1; if (a[mid][0] <= upto) lo = mid + 1; else hi = mid; } return a.slice(max ? Math.max(0, lo - max) : 0, lo); };
+    var L = cut(fl.L).filter(function (x) { return !full || !fl.E || x[2] === 's' || x[2] === 'm' || x[2] === 'x'; }).map(function (x, i) { return [x[0], x[1], x[2], i]; });
+    var foe = fl.foe ? fl.foe.name : '', E = full && fl.E ? cut(fl.E).map(function (e, i) { var w = R.twEvText(e, r.ms, foe); return [e[0], w[0], w[1], 1e6 + i]; }) : [];
+    var out = L.concat(E).sort(function (a, b) { return a[0] - b[0] || a[3] - b[3]; });
+    return max ? out.slice(-max) : out;
   }
+  function twLinesHtml(r) {
+    var el = twEl(r), fs = r.floors || [], out = [], full = S.twFull !== false;
+    for (var i = fs.length - 1; i >= 0 && out.length < 60; i--) { var fl = fs[i]; if (fl.t > el) continue; out = twFloorLines(r, fl, full, el - fl.t, 60 - out.length).map(function (x) { return '<div class="el k' + x[2] + '"><span class="et num">' + twHm(r.t0 + fl.t + x[0]) + '</span><span>' + esc(logDot(x[1])) + '</span></div>'; }).concat(out); }
+    if (el < r.d) out.push('<div class="el faint twdots"><span class="et"></span><span>…</span></div>');
+    return out.join('');
+  }
+  // 전투 기록 내보내기: 한 실행의 모든 층 · 모든 기록을 글 파일로
+  function twExportText(r) {
+    var d = new Date(r.t0 * 1000), pad = function (x) { return (x < 10 ? '0' : '') + x; }, ymd = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+    var out = ['별의 탑 ' + TW_KIND[r.kind] + ' 전투 기록', '파티: ' + (r.pname || '') + ' · 시작: ' + esc0(r.by) + ' · ' + ymd + ' ' + twHm(r.t0), '결과: ' + r.start + '층부터 → ' + (r.stopped ? '중단' : r.cleared >= r.start ? r.cleared + '층까지' : '첫 층에서 물러남') + ' · 총 ' + R.fmtTime(Math.round(r.d)),
+      '파티원: ' + r.ms.map(function (m) { var p = R.EXP_POS[m.pos]; return m.name + '(' + (p ? p.name : '') + (m.npc ? ' · NPC' : '') + ' · 생명력 ' + R.fmt(m.hp) + (m.sp && m.sp.length ? ' · ' + m.sp.join('/') : '') + ')'; }).join(', '), ''];
+    (r.floors || []).forEach(function (fl) {
+      out.push('── ' + fl.f + '층 · ' + (fl.rest ? '별샘의 쉼터 (휴식층)' : fl.foe.name + ' (' + fl.foe.stage + '단계 수준 · 체력 ' + R.fmt(fl.foe.hp) + ')') + ' ──');
+      twFloorLines(r, fl, true, Infinity, 0).forEach(function (x) { out.push('[' + twHm(r.t0 + fl.t + x[0]) + ' +' + x[0].toFixed(1) + '초] ' + x[1]); });
+      out.push('');
+    });
+    return out.join('\n');
+  }
+  function esc0(s) { return String(s == null ? '' : s); }
+  function twExport(r) {
+    if (!r || !r.floors) { toast('별의 탑', '이 기록은 대본이 남아 있지 않습니다'); return; }
+    var d = new Date(r.t0 * 1000), pad = function (x) { return (x < 10 ? '0' : '') + x; };
+    var blob = new Blob(['\ufeff' + twExportText(r)], { type: 'text/plain;charset=utf-8' }), a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = 'star-tower-' + r.kind + '-' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '-' + pad(d.getHours()) + pad(d.getMinutes()) + '.txt';
+    document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }
+  function twRunById(id) { if (S.twSolo && S.twSolo.id === id) return S.twSolo; var t = S.towerD; return (t && t.runs || []).filter(function (r) { return r.id === id; })[0] || S.twCache[id] || null; }
+  ACT.twexport = function (id) { twExport(twRunById(id)); };
+  ACT.twfull = function () { S.twFull = S.twFull === false; twTick(true); render(); };
   function twHm(t) { var d = new Date(t * 1000), h = d.getHours(), m = d.getMinutes(), s = d.getSeconds(); return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s; }
   function towerStage() {
     var r = twViewRun(); if (!r) return '';
@@ -2606,7 +2637,9 @@
       '<div id="twstage" data-tw="' + r.id + '" style="margin-top:10px">' + twStageTop(r) + '</div>' +
       '<div class="logw" style="margin-top:10px"><div class="explog twlines" id="twlines" data-tw="' + r.id + '" aria-live="polite">' + twLinesHtml(r) + '</div><button class="lognew" hidden></button></div>' +
       '<div class="row tiny faint" style="margin-top:6px;gap:6px;flex-wrap:wrap"><span>' + (r.kind === 'real' ? '결과는 대본이 끝나면 알려 드립니다.' : '연습은 기록 · 보상에 반영되지 않습니다.') + '</span><span class="spacer"></span>' +
-      (r.kind === 'party' ? '<button class="btn sm ghost" data-act="twstop">연습 중단</button>' : '') + (r.kind === 'solo' ? '<button class="btn sm ghost" data-act="twclose">연습 닫기</button>' : '') + '<button class="btn sm ghost" data-act="twskip" data-a="' + r.id + '">끝까지 보기</button></div></div>';
+      '<button class="btn sm ghost" data-act="twfull">' + (S.twFull === false ? '전체 기록 보기' : '요약만 보기') + '</button>' +
+      (r.kind === 'party' ? '<button class="btn sm ghost" data-act="twstop">연습 중단</button>' : '') + (r.kind === 'solo' ? '<button class="btn sm ghost" data-act="twclose">연습 닫기</button>' : '') +
+      (twEl(r) >= r.d ? '<button class="btn sm ghost" data-act="twexport" data-a="' + r.id + '">기록 내보내기</button>' : '<button class="btn sm ghost" data-act="twskip" data-a="' + r.id + '">끝까지 보기</button>') + '</div></div>';
   }
   ACT.twwatch = function (w) { S.twWatch = w; render(); };
   ACT.twskip = function (id) { (S.twSkip || (S.twSkip = {}))[id] = 1; twTick(true); render(); };
@@ -2631,7 +2664,7 @@
     Snd.play(r.cleared >= r.start ? 'pass' : 'fail'); sync(true); S.towerAt = 0; loadTower();
     var got = r.cleared >= r.start;
     modal(mhead('별의 탑 실전 종료', r.start + '층부터 시작') + '<p>' + (got ? '<b class="gold">' + r.cleared + '층</b>까지 올랐습니다.' : '첫 층을 넘지 못했습니다.') + ' 각자의 이번 주 기록보다 높으면 기록이 갱신되고, 처음 넘은 층의 보상은 우편으로 전달됩니다.</p>' +
-      '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn" data-act="mailbox">우편함 열기</button><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>');
+      '<div class="row" style="justify-content:flex-end;margin-top:14px;gap:6px;flex-wrap:wrap"><button class="btn" data-act="twexport" data-a="' + r.id + '">전투 기록 내보내기</button><button class="btn" data-act="mailbox">우편함 열기</button><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>');
   }
   // 별의 탑 화면 (원정·전투): 파티가 있으면 일지 · 도전 칸, 없으면 파티와 함께 오른다는 안내
   /* ── 무한의 탑 (개인): 기사의 탑 · 마법사의 탑 ── */
@@ -2706,7 +2739,7 @@
     var t = S.towerD; if (!t || !t.party || !t.runs.length) return '';
     var rows = t.runs.filter(function (r) { return twEnd(r) <= twNow(); }).slice(0, 4); if (!rows.length) return '';
     return '<div class="card" style="margin-top:14px"><h3>최근 기록</h3><div class="twlog">' + rows.map(function (r) {
-      return '<div class="tiny"><span class="faint num">' + clock(r.t0) + '</span> ' + esc(r.by) + ' · ' + TW_KIND[r.kind] + ' ' + r.start + '층부터 → ' + (r.stopped ? '<span class="faint">중단</span>' : r.cleared >= r.start ? '<span class="good">' + r.cleared + '층까지</span>' : '<span class="faint">첫 층에서 물러남</span>') + '</div>';
+      return '<div class="tiny row" style="gap:6px"><span><span class="faint num">' + clock(r.t0) + '</span> ' + esc(r.by) + ' · ' + TW_KIND[r.kind] + ' ' + r.start + '층부터 → ' + (r.stopped ? '<span class="faint">중단</span>' : r.cleared >= r.start ? '<span class="good">' + r.cleared + '층까지</span>' : '<span class="faint">첫 층에서 물러남</span>') + '</span>' + (r.floors ? '<span class="spacer"></span><button class="btn sm ghost" data-act="twexport" data-a="' + r.id + '">기록 내보내기</button>' : '') + '</div>';
     }).join('') + '</div></div>';
   }
   ACT.twpos = function (k) { API.towerOp({ mode: 'pos', pos: k }).then(function (j) { if (j.error) { toast('별의 탑', j.error); return; } S.P.opt.twPos = k; S.towerAt = 0; loadTower(); }); };

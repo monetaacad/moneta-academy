@@ -1389,7 +1389,7 @@ routes['POST /api/tower'] = async (req, res) => {
     const last = towerSolo.get(me) || 0; if (Date.now() - last < 5000) return fail(req, res, 429, '잠시 후 다시 시도');
     towerSolo.set(me, Date.now());
     const { ms, ps } = towerTeam(party, me, now), start = R.twStart(ps.map((Q) => R.twBest(Q, now)));
-    const run = Object.assign(R.twRun(ms, start, crypto.randomInt(1, 2147483647)), { id: crypto.randomBytes(6).toString('base64url'), kind: 'solo', by: P.name, t0: Date.now() / 1000, ms: R.twMeta(ms) });
+    const run = Object.assign(R.twRun(ms, start, crypto.randomInt(1, 2147483647)), { id: crypto.randomBytes(6).toString('base64url'), kind: 'solo', by: P.name, pname: (dbx.q.partyGet.get(party) || {}).name || '', t0: Date.now() / 1000, ms: R.twMeta(ms) });
     return send(req, res, 200, { run });
   }
   if (towerBusy.has(party)) return fail(req, res, 409, '파티원이 지금 도전을 시작하고 있습니다. 잠시 후 다시 시도');
@@ -1410,7 +1410,7 @@ routes['POST /api/tower'] = async (req, res) => {
       if (used.length) return fail(req, res, 400, '오늘 이미 실전에 도전한 파티원이 있습니다: ' + used.map((Q) => Q.name).join(', ') + ' (매일 KST 자정에 초기화)');
     }
     const start = R.twStart(ps.map((Q) => R.twBest(Q, now)));
-    const run = Object.assign(R.twRun(ms, start, crypto.randomInt(1, 2147483647)), { id: crypto.randomBytes(6).toString('base64url'), kind: mode, by: P.name, t0: Math.round(Date.now() / 100) / 10, ms: R.twMeta(ms), day: R.dayKST(now) });
+    const run = Object.assign(R.twRun(ms, start, crypto.randomInt(1, 2147483647)), { id: crypto.randomBytes(6).toString('base64url'), kind: mode, by: P.name, pname: pa ? pa.name : '', t0: Math.round(Date.now() / 100) / 10, ms: R.twMeta(ms), day: R.dayKST(now) });
     const after = Math.round(run.d * 1000), later = (fn) => setTimeout(fn, after).unref(), pname = pa ? pa.name : '';
     if (mode === 'real') {
       run.prev = {};
