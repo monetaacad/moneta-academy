@@ -3885,7 +3885,7 @@
   ACT['do'] = function (type, b) {
     var argf = SIMPLE[type]; if (!argf) return;
     if (type === 'sell' || type === 'equip') S.sel = type === 'sell' ? null : S.sel;
-    act(type, argf(b)).then(function (r) { if (r && type === 'buy' && b === 'respec') { modal(mhead('망각의 차', '구매 완료') + '<p>망각의 차를 소지품에 넣었습니다. 「장비 → 소지품」에서 원할 때 마실 수 있습니다.</p><div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn ghost" data-act="modal-close">닫기</button><button class="btn primary" data-act="invgo" autofocus>소지품으로 이동</button></div>'); render(); return; } if (r && MSG[type]) { var m = MSG[type](r); toast(m[0], m[1] + (type === 'buy' && (b === 'ticket' || b === 'egg') ? ' · 「장비 → 소지품」에서 확인' : ''), 2200); } if (r && type === 'task') Snd.play('ach'); if (r && type === 'drink') Snd.play('drink'); render(); });
+    act(type, argf(b)).then(function (r) { if (r && type === 'buy' && b === 'respec') { modal(mhead('망각의 차', '구매 완료', true) + '<p>망각의 차를 소지품에 넣었습니다. 「장비 → 소지품」에서 원할 때 마실 수 있습니다.</p><div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn ghost" data-act="modal-close">닫기</button><button class="btn primary" data-act="invgo" autofocus>소지품으로 이동</button></div>'); render(); return; } if (r && MSG[type]) { var m = MSG[type](r); toast(m[0], m[1] + (type === 'buy' && (b === 'ticket' || b === 'egg') ? ' · 「장비 → 소지품」에서 확인' : ''), 2200); } if (r && type === 'task') Snd.play('ach'); if (r && type === 'drink') Snd.play('drink'); render(); });
   };
   // 망각의 차를 마신 뒤: 능력치 칸으로 바로 가서 다시 나누게 한다
   function respecDone(n) { toast('망각의 차', '능력치 포인트 ' + R.josa(fmt(n || 0), '을', '를') + ' 돌려받았습니다 · 자동 분배는 꺼 두었습니다', 3200); Snd.play('enh'); ACT.goto('gear', 'alloc'); }
@@ -5294,7 +5294,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102260;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102261;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
