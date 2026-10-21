@@ -233,17 +233,33 @@
     bkre: function (el) {
       var x = RE[+el.dataset.c]; if (!x) return;
       $('#rebox').innerHTML = '<div class="card inset" style="margin-top:10px"><b>장비 재지급 · ' + esc(BKNAME) + '</b><p class="small" style="margin-top:4px">' + esc(x.rn + ' ' + x.slot + ' 「' + x.name + '」 Lv ' + x.ilvl + ' · ' + (x.opt || '')) + '</p>' +
+        (x.dy ? '<label class="tog small" style="margin-top:6px"><input type="checkbox" id="bkr-rc"> 분해로 얻은 마석 ' + x.dy.stone + ' · 마석가루 ' + x.dy.dust + '도 함께 회수 <span class="tiny faint">(가진 만큼만 · 학생 일지에 남음)</span></label>' : '') +
         '<div class="form" style="margin-top:8px;flex-direction:column;align-items:stretch"><label>제목<input id="bkr-t" value="장비 복구 안내"></label><label>내용<textarea id="bkr-b" rows="3">요청하신 장비를 같은 옵션으로 복구해 드립니다. 우편함에서 받으실 수 있습니다.</textarea></label></div>' +
         '<div class="row" style="justify-content:flex-end;gap:6px;margin-top:8px"><button class="btn ghost" data-a="bkrno">취소</button><button class="btn primary" data-a="bkrgo" data-c="' + el.dataset.c + '">이 학생에게 우편 보내기</button></div></div>';
       $('#rebox').scrollIntoView({ behavior: 'smooth', block: 'center' });
     },
+    reclaim: function () {
+      var n = $('#un').value.trim(); if (!n) { $('#umsg').textContent = '학생 이름 입력 필요'; return; }
+      var rs = {}, parts = [], NM = { stone: '마석', dust: '마석가루', gold: CUR, shard: '별조각' };
+      Object.keys(NM).forEach(function (k) { var v = Math.floor(+($('#rc-' + k).value || 0)); if (v > 0) { rs[k] = v; parts.push(NM[k] + ' ' + v.toLocaleString()); } });
+      if (!parts.length) { $('#umsg').textContent = '회수할 양 입력 필요'; return; }
+      if (!confirm('「' + n + '」 학생에게서 ' + parts.join(' · ') + '을(를) 회수합니다. 계속하시겠습니까?')) return;
+      api('POST', '/api/admin/reclaim', { name: n, res: rs, reason: $('#rc-why').value.trim() }).then(function (j) {
+        if (j.error) { $('#umsg').textContent = j.error; return; }
+        var sh = Object.keys(j.short || {}).map(function (k) { return (NM[k] || k) + ' ' + j.short[k].toLocaleString(); });
+        $('#umsg').textContent = '「' + j.name + '」 회수 완료 · ' + Object.keys(j.took).map(function (k) { return (NM[k] || k) + ' ' + j.took[k].toLocaleString(); }).join(' · ') + (sh.length ? ' (보유량이 모자라 ' + sh.join(' · ') + '은(는) 회수하지 못했습니다)' : '') + ' · 남은 양: 마석 ' + j.res.stone + ' · 마석가루 ' + j.res.dust;
+        ['stone', 'dust', 'gold', 'shard'].forEach(function (k) { $('#rc-' + k).value = ''; }); oplog();
+      });
+    },
     bkrno: function () { $('#rebox').innerHTML = ''; },
     bkrgo: function (el) {
       var x = RE[+el.dataset.c]; if (!x || el.disabled) return; el.disabled = true;
+      var rc = $('#bkr-rc') && $('#bkr-rc').checked && x.dy ? api('POST', '/api/admin/reclaim', { name: BKNAME, res: { stone: x.dy.stone, dust: x.dy.dust }, reason: '「' + x.name + '」 복구에 따른 분해 재료 회수' }) : Promise.resolve({});
+      rc.then(function (r1) { if (r1.error) { toast('회수 실패: ' + r1.error); el.disabled = false; return; }
       api('POST', '/api/admin/mail', { to: BKNAME, title: $('#bkr-t').value.trim(), body: $('#bkr-b').value.trim(), days: 30, rewards: { items: [x.item] } }).then(function (j) {
         if (j.error) { toast(j.error); el.disabled = false; return; }
-        $('#rebox').innerHTML = '<p class="small good" style="margin-top:8px">「' + esc(x.name) + '」 재지급 우편을 보냈습니다.</p>'; mails();
-      });
+        $('#rebox').innerHTML = '<p class="small good" style="margin-top:8px">「' + esc(x.name) + '」 재지급 우편을 보냈습니다.' + (r1.took ? ' 회수: 마석 ' + (r1.took.stone || 0) + ' · 마석가루 ' + (r1.took.dust || 0) + (Object.keys(r1.short || {}).length ? ' (보유량이 모자라 일부만 회수)' : '') : '') + '</p>'; mails(); oplog();
+      }); });
     },
     plogcopy: function () { var t = window.__plogJson || ''; if (!t) return; (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () { $('#umsg').textContent = '분석용 기록을 복사했습니다'; }, function () { prompt('아래 내용을 복사하십시오', t); }); },
     plog: function () {
