@@ -493,6 +493,33 @@ routes['GET /api/state'] = (req, res) => {
   send(req, res, 200, statePayload(P, now));
 };
 // 세계: 내용이 같으면 304 (ETag는 본문 해시). 접속자 수가 바뀌면 본문도 바뀐다.
+/* ───────── 과목 수석: 과목마다 레벨 → 그 레벨 안의 경험치 순 (5분 캐시) ───────── */
+const subjRank = { at: 0, tops: {} };
+function subjTops() {
+  if (Date.now() - subjRank.at < 5 * 60000) return subjRank.tops;
+  const tops = {};
+  D.SUBJECTS.forEach((sj) => {
+    const lp = '$.subj.' + sj.id + '.lv', xp = '$.subj.' + sj.id + '.xp';
+    tops[sj.id] = dbx.db.prepare(`SELECT id, name, house, grade, CAST(json_extract(state, ?) AS INTEGER) AS lv, CAST(json_extract(state, ?) AS REAL) AS xp FROM players WHERE banned = 0 AND CAST(json_extract(state, ?) AS INTEGER) > 0 ORDER BY lv DESC, xp DESC, created ASC LIMIT 50`)
+      .all(lp, xp, lp).map((r) => ({ id: r.id, name: r.name, house: r.house, grade: r.grade, lv: r.lv, xp: Math.floor(r.xp || 0) }));
+  });
+  subjRank.at = Date.now(); subjRank.tops = tops;
+  return tops;
+}
+function subjHeads(id) { const t = subjTops(), out = []; for (const k in t) if (t[k][0] && t[k][0].id === id) out.push(k); return out; }   // 이 학생이 1위인 과목들
+routes['GET /api/subjranks'] = (req, res) => {
+  const pid = authed(req); if (!pid) return fail(req, res, 401, '로그인이 필요합니다');
+  if (limited('sr:' + pid, 2, 10)) return fail(req, res, 429, '요청이 너무 잦습니다');
+  const P = store.get(pid), tops = subjTops(), mine = {};
+  if (P && P.subj) for (const k in tops) {   // 내 순위: 50위 밖이면 따로 센다
+    const sj = P.subj[k]; if (!sj || !(sj.lv > 0)) continue;
+    const i = tops[k].findIndex((r) => r.id === pid);
+    if (i >= 0) { mine[k] = i + 1; continue; }
+    const lp = '$.subj.' + k + '.lv', xp = '$.subj.' + k + '.xp';
+    mine[k] = Number(dbx.db.prepare(`SELECT COUNT(*) + 1 AS r FROM players WHERE banned = 0 AND id != ? AND (CAST(json_extract(state, ?) AS INTEGER) > ? OR (CAST(json_extract(state, ?) AS INTEGER) = ? AND CAST(json_extract(state, ?) AS REAL) > ?))`).get(pid, lp, sj.lv, lp, sj.lv, xp, sj.xp || 0).r);
+  }
+  send(req, res, 200, { tops, mine });
+};
 routes['GET /api/myranks'] = (req, res) => {
   const pid = authed(req); if (!pid) return fail(req, res, 401, '로그인이 필요합니다');
   if (limited('mr:' + pid, 2, 10)) return fail(req, res, 429, '요청이 너무 잦습니다');
@@ -679,6 +706,7 @@ routes['GET /api/profile'] = (req, res) => {
     const fa = DP && DP.opt && DP.opt.showFam && DP.fam && DP.fam.act, fo = fa && DP.fam.own[fa]; if (fo && R.FAM[fa]) out.fam = { id: fa, lv: fo.lv, nm: fo.nm || '' }; }   // 동행 사역마 (학생이 공개를 켰을 때만)   // 정보 카드 꾸미기
   const fs = self ? null : friendState(me, id), can = (v) => self || v === 'all' || (v === 'friend' && fs === 'ok');
   if (can(pr.visLv)) Object.assign(out, { lvl, power, rank: world.rankOf(power) });
+  { const hd = subjHeads(id); if (hd.length) out.heads = hd; }   // 과목 수석 (순위표에 공개되는 정보라 공개 범위와 관계없이)
   if (can(pr.visFull)) { const DP = LP || store.get(id); if (DP) try { out.full = R.fullStats(DP, world.ctx(nowSec()), Math.min(nowSec(), DP.at)); } catch (e) { } }   // 전체 능력치 (기본은 나만 보기)
   if (can(pr.visBadge)) { const DP = LP || store.get(id), bw = DP && R.badgeWorn(DP); if (bw) out.badgeD = { gem: bw.gem, lv: bw.lv, name: bw.name, q: bw.q, aff: bw.aff || [] }; }   // 착용 휘장 상세 (장비 칸 옆에 표시)
   if (can(pr.visStat) || can(pr.visEq)) {
