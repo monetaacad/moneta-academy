@@ -831,7 +831,7 @@
       got.forEach(function (x) { var res2 = gainItem(P, x.it, t); out.items.push({ name: x.it.name, r: x.it.r, res: res2 }); });
       var rest = Math.max(0, (j.nItems || 0) - j.loot.length); if (canceled) rest = Math.floor(rest * frac * keep);
       if (rest) { var ex2 = rest * R.sellPrice({ ilvl: j.s, r: 0, enh: 0 }); addGold(P, ex2); out.gold += Math.floor(ex2); out.sold = rest; }
-      if (!canceled) { P.st.expJobs++; if (j.dur >= 28800) P.st.nightJobs++; }
+      if (!canceled) { P.st.expJobs++; nightJob(P, t); }
       return out;
     }
     // (예전 방식) 기대 개수만큼 굴리되 상위 12개만 실제 생성, 나머지는 판매가로
@@ -842,7 +842,7 @@
       var res = gainItem(P, it, t); out.items.push({ name: it.name, r: it.r, res: res });
     }
     if (n > made) { var extra = (n - made) * R.sellPrice({ ilvl: j.s, r: 0, enh: 0 }); addGold(P, extra); out.gold += Math.floor(extra); out.sold = n - made; }
-    if (!canceled) { P.st.expJobs++; if (j.dur >= 28800) P.st.nightJobs++; }
+    if (!canceled) { P.st.expJobs++; nightJob(P, t); }
     return out;
   }
 
@@ -871,13 +871,15 @@
     }
     return ups;
   }
+  // 밤샘 작업: 한국 시각 0~6시에 끝난 수업 · 원정 · 연구 · 파견 · 꿈길
+  function nightJob(P, t) { if (((t + K.TZ) % 86400) < 6 * 3600) P.st.nightJobs++; }
   function lecFinish(P, j, t, frac, canceled) {
     var k = frac * (canceled ? K.CANCEL_KEEP : 1);
     var lv0 = P.subj[j.s].lv;
     subjGain(P, j.s, j.xp * k, t);
     var kn = Math.round(j.know * k); P.res.know += kn;   // 지식은 정수로 (소수점이 남지 않게)
     var hours = j.dur * frac / 3600;
-    if (!canceled) { P.st.lecJobs++; if (j.dur >= 28800) P.st.nightJobs++; }
+    if (!canceled) { P.st.lecJobs++; nightJob(P, t); }
     P.st.lecHours += hours * (canceled ? K.CANCEL_KEEP : 1);
     badgeGain(P, hours * (canceled ? K.CANCEL_KEEP : 1) * R.BADGE_XP.lecH, t);
     cupAdd(P, hours * 10 * (canceled ? K.CANCEL_KEEP : 1), 'lec');
@@ -928,7 +930,7 @@
     if (rnd(P) < h * 0.008 * mult) { P.fam.eggs++; out.egg = 1; }
     if (rnd(P) < h * 0.04) { var sh = ri(P, 1, 3); P.res.shard += sh; out.shard = sh; }
     P.st.dispatches++; cupAdd(P, 20, 'disp');
-    if (d.dur >= 28800) P.st.nightJobs++;
+    nightJob(P, t);
     return out;
   }
 
@@ -1100,7 +1102,7 @@
     P.exp.forEach(function (j) { var te = R.expEnd(j || {}); if (j && !j.done && te <= now) ev.push({ t: te, f: function () { j.done = te; if (te < j.end) log(P, te, j.s + '단계 원정에서 쓰러졌습니다 · 「원정 완료」를 누르면 모은 것의 80%를 받습니다', 'bad'); } }); });
     P.rsq.forEach(function (q, i) {
       if (q && q.end <= now) ev.push({ t: q.end, f: function () {
-        P.rs[q.id] = (P.rs[q.id] || 0) + 1; P.rsq[i] = null; P.st.researchDone++; cupAdd(P, 25, 'res'); if (q.end - q.start >= 28800) P.st.nightJobs++;
+        P.rs[q.id] = (P.rs[q.id] || 0) + 1; P.rsq[i] = null; P.st.researchDone++; cupAdd(P, 25, 'res'); nightJob(P, q.end);
         if (q.id === 'sorter' && P.autoSell < 0) P.autoSell = 0;
         log(P, q.end, '연구 완료: ' + RES[q.id].name + ' ' + P.rs[q.id] + '단계', 'good'); inbox(P, { k: 'res', id: q.id, lv: P.rs[q.id], t: q.end });
       } });
@@ -2013,7 +2015,7 @@
     if (j.gold) { addGold(P, j.gold * m); out.gold = Math.floor(j.gold * m); }
     if (j.mats) { var mt = Math.floor(j.mats * m); P.mats[j.mat] = (P.mats[j.mat] || 0) + mt; out.mats = mt; out.mat = j.mat; }
     if (j.stones) { var sn = Math.floor(j.stones * m); P.res.stone += sn; out.stones = sn; }
-    P.st.dreams = (P.st.dreams || 0) + 1; P.st.nightJobs++; cupAdd(P, 15, 'dream');
+    P.st.dreams = (P.st.dreams || 0) + 1; nightJob(P, t); cupAdd(P, 15, 'dream');
     log(P, t, '꿈에서 깼습니다: ' + DREAM[j.kind].name + (j.lucid ? ' (자각몽!)' : ''), 'good');
     return out;
   }

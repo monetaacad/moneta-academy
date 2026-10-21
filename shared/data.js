@@ -774,7 +774,7 @@ var DATA = (function () {
     ],
     flight: [
       { k: 'subj', n: 5, t: '빗자루에서 떨어지지 않는 것부터! 체술·비행 5레벨.' },
-      { k: 'st', s: 'nightJobs', n: 20, t: '밤새 날아 본 적 있어? 8시간 넘는 파견이나 연구를 20번 끝내 봐!' },
+      { k: 'st', s: 'nightJobs', n: 20, t: '밤새 날아 본 적 있어? 한밤중(0~6시)에 끝나는 작업을 20번 해내 봐!' },
       { k: 'stage', n: 71, t: '시간의 탑 계단을 뛰어올라 봐. 착지는 알아서!', item: 'robe' }
     ],
     rune: [
@@ -794,7 +794,7 @@ var DATA = (function () {
     { id: 'g6', name: '상급생', grade: 6, how: '6학년 진급' },
     { id: 'g8', name: '별의 종을 울린 자', grade: 8, how: '졸업 시험 합격' },
     { id: 'lamp', name: '등불 아래 서생', stat: 'lecHours', n: 100, how: '수업 100시간' },
-    { id: 'owl', name: '밤샘 올빼미', stat: 'nightJobs', n: 30, how: '8시간 넘는 작업 30번' },
+    { id: 'owl', name: '밤샘 올빼미', stat: 'nightJobs', n: 30, how: '0~6시에 끝난 작업 30번' },
     { id: 'forest', name: '숲의 친구', stat: 'maxStageAll', n: 11, how: '속삭이는 숲 도달' },
     { id: 'crystal', name: '수정 채굴꾼', stat: 'maxStageAll', n: 31, how: '수정 동굴 도달' },
     { id: 'rift', name: '균열을 본 자', stat: 'maxStageAll', n: 51, how: '별의 균열 도달' },
@@ -1015,8 +1015,8 @@ var DATA = (function () {
     { id: 'lech100', name: '성실한 학생', desc: '수업 누적 100시간', stat: 'lecHours', n: 100, r: 10 },
     { id: 'lech500', name: '도서관의 유령', desc: '수업 누적 500시간', stat: 'lecHours', n: 500, r: 25 },
     { id: 'lech1500', name: '살아있는 교과서', desc: '수업 누적 1,500시간', stat: 'lecHours', n: 1500, r: 50 },
-    { id: 'night10', name: '밤의 학생', desc: '8시간 이상 파견·연구 10번 마치기', stat: 'nightJobs', n: 10, r: 10 },
-    { id: 'night100', name: '불 꺼진 기숙사', desc: '8시간 이상 파견·연구 100번 마치기', stat: 'nightJobs', n: 100, r: 30 },
+    { id: 'night10', name: '밤의 학생', desc: '0~6시에 수업·원정·연구·파견·꿈길 10번 마치기', stat: 'nightJobs', n: 10, r: 10 },
+    { id: 'night100', name: '불 꺼진 기숙사', desc: '0~6시에 수업·원정·연구·파견·꿈길 100번 마치기', stat: 'nightJobs', n: 100, r: 30 },
     { id: 'kill1', name: '첫 실전', desc: '몬스터 1마리 처치', stat: 'kills', n: 1, r: 3 },
     { id: 'kill10k', name: '저장고 청소부', desc: '몬스터 100마리 처치', stat: 'kills', n: 100, r: 10 },
     { id: 'kill100k', name: '사냥꾼', desc: '몬스터 1천 마리 처치', stat: 'kills', n: 1000, r: 25 },
