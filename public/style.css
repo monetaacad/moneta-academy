@@ -1820,3 +1820,4 @@ mark.hl { color: inherit; background: linear-gradient(transparent 38%, color-mix
 .el.ksum { color: var(--brass2); border-top: 1px dashed var(--line2); padding-top: 3px; margin-top: 2px; }   /* 원정 일지 10분 요약 */
 
 .bdpost .bdmute { margin-left: auto; }   /* 게시글: 알림 받지 않기 (우측) */
+.bdgcard.fold { margin-top: 14px; }

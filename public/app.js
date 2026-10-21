@@ -1848,8 +1848,10 @@
   }
   function badgeCard() {
     var P = S.P, list = P.badges || [], b = R.badgeWorn(P);
-    var h = '<div class="card bdgcard" data-anchor="badge" style="margin-top:14px"><div class="row between"><h3>아카데미 휘장 <span class="tag br">로브 가슴의 브로치</span></h3><span class="tiny faint">' + list.length + ' / ' + R.BADGE_HOLD + '개 · ' + dotImg('dust', 14) + ' 마석가루 <b class="num">' + fmt(P.res.dust || 0) + '</b></span></div>';
-    if (!list.length) return h + '<p class="small muted" style="margin-top:6px">2학년 기말시험을 통과해 3학년이 되면 아카데미가 휘장을 수여합니다. 매점 「휘장 원석」, 보스 전리품, 거래소에서도 얻을 수 있습니다.</p></div>';
+    var h = '', wrap = function (body) {   // 접을 수 있는 카드 (접으면 제목 옆에 달고 있는 휘장만)
+      return fold('badge', '아카데미 휘장 <span class="tag br">로브 가슴의 브로치</span>', body, true, '<span class="tiny faint bdgcnt">' + list.length + ' / ' + R.BADGE_HOLD + '개 · ' + dotImg('dust', 14) + ' 마석가루 <b class="num">' + fmt(P.res.dust || 0) + '</b></span>', 'bdgcard', b ? esc(b.name) + ' · Lv ' + b.lv : '', 'badge');
+    };
+    if (!list.length) return wrap('<p class="small muted" style="margin-top:6px">2학년 기말시험을 통과해 3학년이 되면 아카데미가 휘장을 수여합니다. 매점 「휘장 원석」, 보스 전리품, 거래소에서도 얻을 수 있습니다.</p>');
     if (b) {
       var g = R.GEM[b.gem], full = b.lv >= R.BADGE_MAX, need = R.badgeNeed(b.lv), pc = R.badgePolishCost(P, b), can = (P.res.dust || 0) >= pc.dust && P.res.gold >= pc.gold;
       h += '<div class="bdgmain"><div style="flex:1;min-width:0"><div class="nm">' + esc(b.name) + ' ' + badgeSvg(b, 26) + '</div><div class="tiny faint">' + g.feel + '의 보석 · 품질 ' + (Math.round((b.q || 1) * 1000) / 10) + '% · ' + esc(g.desc) + '</div>' +
@@ -1864,7 +1866,7 @@
       return '<div class="bdgrow"><div style="flex:1;min-width:0"><div class="small ell">' + esc(x.name) + ' ' + badgeSvg(x) + ' <span class="num faint">Lv ' + x.lv + '</span></div><div class="tiny faint ell">' + badgeBrief(x) + '</div></div>' +
         '<span class="frbtns"><button class="btn sm" data-act="bwear" data-a="' + x.u + '">장착</button>' + (x.lock ? '' : '<button class="btn sm ghost" data-act="mksellbadge" data-a="' + x.u + '">거래소</button><button class="btn sm ' + (armed ? 'danger' : 'ghost') + '" data-act="bbreak" data-a="' + x.u + '">' + (armed ? '한 번 더 누르면 깨뜨립니다' : '깨뜨리기') + ' <span class="cost">가루 +' + R.badgeBreakDust(x) + '</span></button>') + lockBtn(x) + '</span></div>';
     }).join('') + '</div>';
-    return h + '<p class="tiny faint" style="margin-top:10px">달고 있는 휘장 하나만 효과가 있고 별빛을 모읍니다 · 원정 1시간 +' + R.BADGE_XP.expH + ', 수업 1시간 +' + R.BADGE_XP.lecH + ', 보스 · 결투 · 월드 보스 한 번 +' + R.BADGE_XP.fight + '(이기면 두 배) · ' + D.BADGE_FACET_LV.join(' · ') + '레벨에 세공이 한 줄씩 늘어납니다 · 거래소에서 사고팔 수 있습니다</p></div>';
+    return wrap(h + '<p class="tiny faint" style="margin-top:10px">달고 있는 휘장 하나만 효과가 있고 별빛을 모읍니다 · 원정 1시간 +' + R.BADGE_XP.expH + ', 수업 1시간 +' + R.BADGE_XP.lecH + ', 보스 · 결투 · 월드 보스 한 번 +' + R.BADGE_XP.fight + '(이기면 두 배) · ' + D.BADGE_FACET_LV.join(' · ') + '레벨에 세공이 한 줄씩 늘어납니다 · 거래소에서 사고팔 수 있습니다</p>');
   }
   function lockBtn(b) { return '<button class="btn sm ghost" data-act="block" data-a="' + b.u + '" title="잠그면 닦기 · 광내기 · 세공 · 깨뜨리기 · 거래소가 막힙니다 (장착 · 해제는 가능)">' + (b.lock ? '잠금 해제' : '잠금') + '</button>'; }
   ACT.block = function (u) { act('badgeLock', { u: u }).then(function (r) { if (r) toast(r.lock ? '휘장을 잠갔습니다' : '휘장 잠금을 풀었습니다', '', 1400); render(); }); };
@@ -4890,7 +4892,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102132;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102133;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
