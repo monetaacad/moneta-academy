@@ -188,6 +188,7 @@ function create(o) {
       if (m.npc) return;
       const P = st[i].P, slot = R.expCanGo(P, W, now, r.s);
       R.expPartyApply(P, now, slot, r.s, r.d, pv.each[i], { n: r.members.length, pos: m.pos, with: names.filter((y, k) => k !== i), team, me: i, ck: r.ck });
+      if (people(r).length >= 2) P.st.partyExp = (P.st.partyExp || 0) + 1;   // 칭호 「함께 걷는 길」: 다른 학생과 함께 출정
       markDirty(m.id); gone.set(m.id, { at: real(), ok: true, s: r.s, n: r.members.length });
     });
     log(`함께 원정 출발: ${r.s}단계 ${people(r).length}명 + 동행 ${r.members.length - people(r).length}`);
