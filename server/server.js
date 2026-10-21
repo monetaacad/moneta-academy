@@ -2147,7 +2147,10 @@ routes['POST /api/admin/plog'] = async (req, res) => {
       fam: P.fam && P.fam.act && P.fam.own[P.fam.act] ? (R.FAM[P.fam.act] ? R.FAM[P.fam.act].name : P.fam.act) + ' Lv ' + (P.fam.own[P.fam.act].lv || 1) : '' };
   } catch (e) { log('운영실 학생 카드 계산 실패', e); }
   oplog('admin', '관리자', 'plog', row.name + ' 활동 기록 확인');
-  send(req, res, 200, { name: row.name, card, log: (P.log || []).slice(0, 50).map((l) => ({ t: l.t, m: l.m, k: l.k, n: l.n || 1 })), high, st: { expJobs: P.st.expJobs || 0, epicFound: P.st.epicFound || 0, legendFound: P.st.legendFound || 0 } });
+  const RN = ['일반', '고급', '희귀', '영웅', '전설'];
+  const dlog = (P.dlog || []).slice(0, 80).map((d) => ({ t: d.t, a: d.a, n: d.n, x: d.x || '', it: d.it || '', lv: d.lv, by: (d.rc || []).map((c, i) => c ? RN[i] + ' ' + c : '').filter(Boolean).join(' · ') }));
+  const auto = P.rs && P.rs.sorter ? { on: P.autoSell >= 0, upto: P.autoSell >= 0 ? RN[P.autoSell] + ' 이하' : '꺼짐', mode: P.autoDis ? '분해' : '판매' } : null;
+  send(req, res, 200, { name: row.name, card, dlog, auto, log: (P.log || []).slice(0, 50).map((l) => ({ t: l.t, m: l.m, k: l.k, n: l.n || 1 })), high, st: { expJobs: P.st.expJobs || 0, epicFound: P.st.epicFound || 0, legendFound: P.st.legendFound || 0 } });
 };
 // 운영실: 비밀번호를 잃어버린 학생에게 임시 비밀번호를 발급한다. 모든 기기에서 로그아웃되고, 로그인하면 비밀번호를 바꾸라고 안내한다
 routes['POST /api/admin/resetpw'] = async (req, res) => {

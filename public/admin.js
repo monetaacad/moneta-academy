@@ -204,10 +204,12 @@
       var n = $('#un').value.trim(); if (!n) { $('#umsg').textContent = '학생 이름 입력 필요'; return; }
       api('POST', '/api/admin/plog', { name: n }).then(function (j) {
         if (j.error) { $('#umsg').textContent = j.error; $('#plog').innerHTML = ''; return; }
-        window.__plogJson = JSON.stringify({ name: j.name, card: j.card, high: j.high, st: j.st, log: j.log });
+        window.__plogJson = JSON.stringify({ name: j.name, card: j.card, high: j.high, st: j.st, auto: j.auto, dlog: j.dlog, log: j.log });
         $('#umsg').textContent = '「' + j.name + '」 활동 기록 · 원정 완료 ' + j.st.expJobs + '회 · 지금까지 얻은 영웅 ' + j.st.epicFound + '개 · 전설 ' + j.st.legendFound + '개';
         var RN = ['일반', '고급', '희귀', '영웅', '전설'];
-        $('#plog').innerHTML = cardHtml(j.card, RN) + '<p class="small" style="margin-top:8px"><b>보유 영웅 · 전설</b> ' + (j.high.length ? j.high.map(function (x) { return esc(RN[x.r] + ' · ' + x.name + ' (Lv ' + x.ilvl + ', ' + x.at + ')'); }).join(' / ') : '없음') + '</p>' +
+        var dl = '<div class="row between" style="margin-top:10px"><b>장비 처분 기록</b><span class="small faint">분류 마법 자동 처분: ' + (j.auto ? esc(j.auto.on ? j.auto.upto + ' · ' + j.auto.mode : '꺼짐') : '연구 전') + '</span></div>' +
+          '<div class="scroll" style="margin-top:6px;max-height:260px"><table><thead><tr><th>때</th><th>처분</th><th>개수</th><th>내용</th></tr></thead><tbody>' + ((j.dlog || []).map(function (d) { return '<tr><td>' + when(d.t) + '</td><td>' + esc(d.a) + (d.x ? ' <span class="tiny faint">(' + esc(d.x) + ')</span>' : '') + '</td><td class="num">' + d.n + '</td><td class="small">' + esc(d.it || (d.by + (d.lv ? ' · 최고 Lv ' + d.lv : ''))) + '</td></tr>'; }).join('') || '<tr><td colspan="4" class="faint">기록 없음 (이 기능을 넣은 뒤부터 기록됩니다)</td></tr>') + '</tbody></table></div>';
+        $('#plog').innerHTML = cardHtml(j.card, RN) + dl + '<p class="small" style="margin-top:8px"><b>보유 영웅 · 전설</b> ' + (j.high.length ? j.high.map(function (x) { return esc(RN[x.r] + ' · ' + x.name + ' (Lv ' + x.ilvl + ', ' + x.at + ')'); }).join(' / ') : '없음') + '</p>' +
           '<div class="scroll" style="margin-top:8px;max-height:320px"><table><thead><tr><th>때</th><th>기록</th></tr></thead><tbody>' + j.log.map(function (l) { return '<tr><td>' + when(l.t) + '</td><td>' + esc(l.m) + (l.n > 1 ? ' <b>×' + l.n + '</b>' : '') + '</td></tr>'; }).join('') + '</tbody></table></div>' +
           '<p class="tiny faint" style="margin-top:4px">같은 기록이 이어지면 한 줄로 묶고 횟수(×)를 표시합니다. 시각은 마지막으로 일어난 때입니다.</p>';
       });
