@@ -268,7 +268,9 @@
 
   /* ───────── 새 학생 ───────── */
   // 불러올 때 예전 저장본 정리: 없어진 쪽지시험 값 지우기, 새로 생긴 성적 통계 채우기
-  R.ECON_C_AT = 1792359000;   // 2026-10-19 06:30 KST: 이보다 먼저 입학한 학생에게 경제 조정 공지
+  R.ECON_C_AT = 1792359000;
+  R.EXAM_OPT_AT = 1792505876;   // 2026-10-20 23:17 KST 기말시험 선택 과목 도입: 이보다 먼저 입학한 학생에게 학점 이전 증서 2장
+  R.TRANSFER_GIVE = 2;   // 2026-10-19 06:30 KST: 이보다 먼저 입학한 학생에게 경제 조정 공지
   R.fixState = function (P) {
     if (P.st && P.subj && P.grade) R.mqInit(P);   // 학기 이야기: 예전 학생은 지금 학년 장의 처음부터
     if (P.cls === 'spellblade') P.cls = 'knight';   // 마검사 학과는 없어졌다 (기사 + 일반 주문 = 마검사)
@@ -289,6 +291,7 @@
     if (P.wb && P.wb.extra == null) { P.wb.extra = Math.max(0, (P.wb.tickets || 0) - K.WB_TICKET_MAX); P.wb.tickets = Math.min(P.wb.tickets || 0, K.WB_TICKET_MAX); P.wb.bought = 0; P.wb.buyWk = -1; P.wb.exUsed = 0; P.wb.exWk = -1; delete P.wb.buyDay; }
     if (P.famGift == null && P.fam && P.grade >= 3) P.famGift = 1;   // 사역마 해금이 레벨로 바뀌기 전(3학년)에 이미 첫 알을 받은 학생
     if (P.econC == null) P.econC = P.created && P.created < R.ECON_C_AT ? 1 : 2;
+    if (P.tfV == null && P.subj) { P.tfV = 1; if (P.created && P.created < R.EXAM_OPT_AT) { var tkf = P.tok || (P.tok = {}); tkf.transfer = (tkf.transfer || 0) + R.TRANSFER_GIVE; if (P.log) log(P, P.at || P.created, '선택 과목 도입 전에 입학한 학생에게 학점 이전 증서 ' + R.TRANSFER_GIVE + '장이 지급되었습니다. 소지품에서 사용할 수 있습니다', 'story'); } }
     if (!P.badges) P.badges = [];
     if (P.grade >= 3 && !P.badgeGot && P.res && P.log) { P.badgeGot = 1; gainBadge(P, makeBadge(P), P.at || 0, '아카데미 휘장 수여'); }
     if (P.st && P.st.aGrades == null) P.st.aGrades = Object.keys(P.scores || {}).filter(function (g) { var l = P.scores[g].letter; return l === 'S' || l === 'A'; }).length;
@@ -561,7 +564,7 @@
     var b = bonuses(P, W, t0, t1), st = {};
     STATS.forEach(function (k) { st[k] = 5 + (P.alloc[k] || 0) + (P.lvl - 1) * 0.3; });
     var sst = {};   // 과목에서 온 능력치 (화면에 기본 · 분배 · 과목 · 장비로 나눠 보이기용)
-    for (var sid in P.subj) { var S = SUBJ[sid]; if (!S) continue; var L = P.subj[sid].lv; st[S.stat] += L * 1.2; st[S.stat2] += L * 0.6; sst[S.stat] = (sst[S.stat] || 0) + L * 1.2; sst[S.stat2] = (sst[S.stat2] || 0) + L * 0.6; }
+    for (var sid in P.subj) { var S = SUBJ[sid]; if (!S) continue; var L = P.subj[sid].lv, ss = R.subjStats(P, S); st[ss[0]] += L * 1.2; st[ss[1]] += L * 0.6; sst[ss[0]] = (sst[ss[0]] || 0) + L * 1.2; sst[ss[1]] = (sst[ss[1]] || 0) + L * 0.6; }
     var gear = { atk: 0, hp: 0, def: 0 }, gst = {};   // gst: 장비에서 온 능력치 (화면에 기본 · 장비로 나눠 보이기용)
     for (var s in P.eq) {
       var it = P.eq[s]; if (!it) continue; var ist = itemStats(it);
@@ -857,6 +860,7 @@
 
   /* ───────── 수업 ───────── */
   R.subjXpNeed = function (lv) { return Math.floor(K.SUBJ_A * Math.pow(K.SUBJ_G, lv)); };
+  R.subjStats = function (P, s) { return P && P.cls === 'knight' && s.kstat ? [s.kstat, s.kstat2 || s.stat2] : [s.stat, s.stat2]; };   // 과목이 올려 주는 능력치 (원소역학은 학과마다 다르다)
   R.subjVisible = function (P, s) { return !s.cls || s.cls === (P.cls || 'mage'); };   // 학과 전용 수업은 그 학과에게만
   R.availableSubjects = function (P) { return D.SUBJECTS.filter(function (s) { return s.unlock <= Math.min(P.grade, 7) && R.subjVisible(P, s); }); };
   R.lecPreview = function (P, W, sid, durK, t0) {
@@ -1687,6 +1691,30 @@
     return { ok: true, id: q.id, lv: P.rs[q.id] };
   };
   // 학년 진급: 시험 없이 한 학년 올린다 (성적표에는 남지 않음, 시험 보상 없음)
+  // 학점 이전 증서: 한 과목에 쌓은 수업 경험치를 다른 과목으로 모두 옮긴다 (보내는 과목은 0레벨이 되고, 그 과목으로 배운 주문은 주문 칸에서 빠진다)
+  R.subjTotalXp = function (sj) { var s = (sj && sj.xp) || 0; for (var l = 0; l < ((sj && sj.lv) || 0); l++) s += R.subjXpNeed(l); return s; };
+  R.subjTransferPreview = function (P, from, to) {
+    var x = R.subjTotalXp(P.subj[from]), lv = P.subj[to].lv, xp = P.subj[to].xp + x;
+    while (xp >= R.subjXpNeed(lv) && lv < 1000) { xp -= R.subjXpNeed(lv); lv++; }
+    return { lv: lv, xp: x };
+  };
+  R.subjTransferCheck = function (P, from, to) {
+    if (!((P.tok || {}).transfer > 0)) return '학점 이전 증서가 없습니다';
+    if (!SUBJ[from] || !P.subj[from] || !SUBJ[to] || !P.subj[to]) return '없는 과목입니다'; if (from === to) return '같은 과목입니다';
+    if (!R.subjTotalXp(P.subj[from])) return '옮길 경험치가 없는 과목입니다';
+    if (!R.availableSubjects(P).some(function (s) { return s.id === to; })) return '지금 들을 수 있는 과목으로만 옮길 수 있습니다';
+    return '';
+  };
+  A.subjTransfer = function (P, W, now, a) {
+    var from = str(a.from), to = str(a.to), why = R.subjTransferCheck(P, from, to); if (why) err(why);
+    if (P.lec.some(function (l) { return l && (l.s === from || l.s === to); })) err('두 과목 중 듣고 있는 수업이 있습니다. 수업이 끝난 뒤 사용 가능');
+    var x = R.subjTotalXp(P.subj[from]), lf = P.subj[from].lv, lt = P.subj[to].lv;
+    P.subj[from].lv = 0; P.subj[from].xp = 0; P.tok.transfer--;
+    subjGain(P, to, x, now);
+    if (P.spells) P.spells = P.spells.map(function (sid) { return sid && R.spellUnlocked(P, sid) ? sid : null; });
+    log(P, now, '학점 이전 증서: ' + SUBJ[from].name + ' Lv ' + lf + '의 수업 경험치를 ' + R.josa(SUBJ[to].name, '으로', '로') + ' 옮겼습니다 (Lv ' + lt + ' → ' + P.subj[to].lv + ')', 'good');
+    return { from: SUBJ[from].name, to: SUBJ[to].name, lf: lf, lt: lt, lv: P.subj[to].lv };
+  };
   A.useGradeUp = function (P, W, now) {
     var tk = P.tok || {}; if (!(tk.gradeUp > 0)) err('학년 진급 물약이 없습니다');
     if (P.grade >= 8) err('이미 마스터 과정입니다');
