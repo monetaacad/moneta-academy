@@ -368,6 +368,9 @@
     if (P.log.length > 50) P.log.length = 50;
   }
   function inbox(P, item) { P.inbox.push(item); if (P.inbox.length > 40) P.inbox.splice(0, P.inbox.length - 40); }
+  R.inbox = inbox;
+  // 함께 원정(다른 학생과)에서 혼자 먼저 귀환: 모은 것의 50%만 (남은 일행은 출발할 때 정해진 대로 계속). 30분 안에 3번이면 3시간 동안 함께 원정 참가 불가
+  R.EXP_LEAVE_KEEP = 0.5; R.EXP_LEAVE_N = 3; R.EXP_LEAVE_WIN = 1800; R.EXP_LEAVE_BAN = 3 * 3600;
   R.log = log;
 
   /* ───────── 보너스 집계 ───────── */
@@ -811,9 +814,9 @@
     return j;
   };
   function expFinish(P, j, t, frac, mode) {
-    var keep = mode === 'recall' ? 1 : mode === 'fall' ? K.FALL_KEEP : mode ? K.CANCEL_KEEP : 1, canceled = !!mode;
+    var keep = mode === 'recall' ? 1 : mode === 'leave' ? R.EXP_LEAVE_KEEP : mode === 'fall' ? K.FALL_KEEP : mode ? K.CANCEL_KEEP : 1, canceled = !!mode;
     var kills = Math.floor(j.kps * j.dur * j.eff * frac * keep + rnd(P));   // 처치 수가 작아 소수점은 확률로
-    var z = R.zoneOf(j.s), out = { k: 'exp', s: j.s, ck: j.pt && j.pt.ck || undefined, kills: kills, gold: 0, xp: 0, mats: 0, stones: 0, items: [], sold: 0, t: t, canceled: mode === true, recall: mode === 'recall', fell: mode === 'fall' };
+    var z = R.zoneOf(j.s), out = { k: 'exp', s: j.s, ck: j.pt && j.pt.ck || undefined, kills: kills, gold: 0, xp: 0, mats: 0, stones: 0, items: [], sold: 0, t: t, canceled: mode === true, recall: mode === 'recall' || mode === 'leave', leave: mode === 'leave' || undefined, fell: mode === 'fall' };
     if (kills <= 0) return out;
     badgeGain(P, j.dur / 3600 * frac * keep * R.BADGE_XP.expH, t);
     var g = kills * j.gEach, x = kills * j.xEach;
@@ -997,8 +1000,9 @@
   }
   R.gainBadge = gainBadge;
   // 별빛: 달고 있는 휘장만 모은다
-  function badgeGain(P, x, t) {
-    var b = R.badgeWorn(P); if (!b || !(x > 0) || b.lv >= R.BADGE_MAX) return 0;
+  function badgeGain(P, x, t) { return badgeAddXp(P, R.badgeWorn(P), x, t); }
+  function badgeAddXp(P, b, x, t) {
+    if (!b || !(x > 0) || b.lv >= R.BADGE_MAX) return 0;
     b.xp += x; var ups = 0;
     while (b.lv < R.BADGE_MAX && b.xp >= R.badgeNeed(b.lv)) {
       b.xp -= R.badgeNeed(b.lv); b.lv++; ups++;
@@ -1010,6 +1014,22 @@
     return ups;
   }
   R.badgeGain = badgeGain;
+  // 휘장 계승: 높은 레벨 휘장(재료)을 없애고 모은 별빛의 60%를 낮은 레벨 휘장에 옮긴다 (보석 · 품질 · 세공은 받는 휘장 것 그대로, 레벨이 오르며 넘은 세공 레벨에서는 새 세공)
+  R.BADGE_INHERIT = 0.6;
+  R.badgeTotalXp = function (b) { var s = b.xp || 0; for (var l = 1; l < b.lv; l++) s += R.badgeNeed(l); return s; };
+  R.badgeInheritCost = function (src) { return 20 + src.lv * 8; };   // 마석가루 (깨뜨릴 때 얻는 양과 비슷하게)
+  R.badgeInheritCheck = function (P, src, dst) {
+    if (!src || !dst) return '없는 휘장입니다'; if (src === dst) return '같은 휘장입니다';
+    if (src.lock) return '잠긴 휘장은 재료로 사용할 수 없습니다'; if (P.badgeOn === src.u) return '달고 있는 휘장은 재료로 사용할 수 없습니다. 먼저 해제 필요';
+    if (dst.lv >= src.lv) return '레벨이 더 낮은 휘장에만 계승할 수 있습니다';
+    if ((P.res.dust || 0) < R.badgeInheritCost(src)) return '마석가루가 모자랍니다 (' + R.badgeInheritCost(src) + '개 필요)';
+    return '';
+  };
+  R.badgeInheritPreview = function (src, dst) {
+    var lv = dst.lv, xp = (dst.xp || 0) + Math.floor(R.badgeTotalXp(src) * R.BADGE_INHERIT), fac = 0;
+    while (lv < R.BADGE_MAX && xp >= R.badgeNeed(lv)) { xp -= R.badgeNeed(lv); lv++; if (D.BADGE_FACET_LV.indexOf(lv) >= 0) fac++; }
+    return { lv: lv, xp: lv >= R.BADGE_MAX ? 0 : Math.floor(xp), facets: fac, cost: R.badgeInheritCost(src) };
+  };
   R.badgePolishCost = function (P, b) { return { dust: 10 + b.lv * 4, gold: Math.floor(150 * Math.pow(1.11, Math.max(1, Math.min(P.maxStage, R.stageCap(P))) - 1)) }; };
   R.badgePolishXp = function (b) { return Math.ceil(R.badgeNeed(b.lv) / 4); };
   R.badgeBreakDust = function (b) { return 15 + b.lv * 8 + (b.aff || []).length * 5; };
@@ -1717,7 +1737,7 @@
   A.expCancel = function (P, W, now, a) {
     var i = int(a.slot, 0, 1), j = P.exp[i]; if (!j) err('진행 중인 원정이 없습니다');
     if (R.expEnd(j) <= now) return A.expClaim(P, W, now, a);   // 이미 끝난 원정은 귀환이 아니라 완료로
-    var o = expFinish(P, j, now, clamp((now - j.start) / j.dur, 0, 1), 'recall'); P.exp[i] = null; log(P, now, j.s + '단계 원정에서 직접 귀환했습니다', 'news'); return o;
+    var lv = !!a.leave, o = expFinish(P, j, now, clamp((now - j.start) / j.dur, 0, 1), lv ? 'leave' : 'recall'); P.exp[i] = null; log(P, now, j.s + '단계 ' + (lv ? '함께 원정에서 혼자 먼저 귀환했습니다 (모은 것의 ' + Math.round(R.EXP_LEAVE_KEEP * 100) + '%)' : '원정에서 직접 귀환했습니다'), 'news'); return o;
   };
   /* ───────── 무한의 탑 (개인): 기사의 탑 · 마법사의 탑 ─────────
      혼자 오르는 끝없는 탑. 학과마다 따로 층을 쌓으며 줄어들지 않는다(주간 초기화 없음). 도전 횟수 제한 없이 한 번에 한 층 — 전투력이 되는 만큼 오른다.
@@ -1840,7 +1860,7 @@
   R.GEARSET_N = 3;
   A.gearSet = function (P, W, now, a) {
     var i = int(a.i, 0, R.GEARSET_N - 1), op = str(a.op), sets = P.gearSets || (P.gearSets = []);
-    if (op === 'save') { var eq = {}; for (var s in P.eq) if (P.eq[s]) eq[s] = P.eq[s].u; if (!Object.keys(eq).length) err('장착한 장비가 없습니다'); sets[i] = { eq: eq, at: now }; return { saved: i }; }
+    if (op === 'save') { var eq = {}; for (var s in P.eq) if (P.eq[s]) eq[s] = P.eq[s].u; var bw = R.badgeWorn(P); if (!Object.keys(eq).length && !bw) err('장착한 장비가 없습니다'); sets[i] = { eq: eq, badge: bw ? bw.u : '', at: now }; return { saved: i }; }   // 달고 있는 휘장도 함께
     if (op === 'clear') { sets[i] = null; return { cleared: i }; }
     if (op !== 'load') err('잘못된 요청');
     var st = sets[i]; if (!st) err('저장된 프리셋이 없습니다');
@@ -1851,6 +1871,7 @@
       if (!R.canWear(P, P.inv[k])) { low++; return; }   // 레벨이 모자라는 장비는 그 칸을 그대로 둔다
       var it = P.inv.splice(k, 1)[0], cur = P.eq[sl.id]; P.eq[sl.id] = it; if (cur) P.inv.push(cur); moved++;
     });
+    if (st.badge && st.badge !== P.badgeOn) { if (R.badgeFind(P, st.badge)) { P.badgeOn = st.badge; moved++; } else miss++; }   // 휘장 (예전에 저장한 프리셋 · 휘장 없이 저장한 프리셋은 지금 휘장을 그대로 둔다)
     return { moved: moved, miss: miss, low: low };
   };
   A.unequip = function (P, W, now, a) {
@@ -1869,7 +1890,7 @@
     addGold(P, tot); return { n: n, gold: tot };
   };
   // 분해: 장비를 마석과 마석가루로. 마석가루는 재련(옵션 다시 굴리기)에 쓴다
-  R.dismantleYield = function (it) { return { stone: 1 + it.r + Math.floor(it.ilvl / 15) + Math.floor((it.enh || 0) / 2), dust: Math.floor((it.r + 1) * (it.r + 1) * (2 + it.ilvl / 10)) }; };
+  R.dismantleYield = function (it) { return { stone: 1 + it.r + Math.floor(it.ilvl / 15) + Math.floor((it.enh || 0) / 2), dust: Math.max(1, Math.floor((it.r + 1) * (it.r + 1) * (1 + it.ilvl / 6))) }; };   // 마석가루: 등급(제곱) × 장비 레벨에 비례 (Lv 20 근처는 예전과 같고, 낮으면 적게 · 높으면 많이)
   function dismantleGive(P, it) { var y = R.dismantleYield(it); P.res.stone += y.stone; P.res.dust = (P.res.dust || 0) + y.dust; P.st.dismantled = (P.st.dismantled || 0) + 1; return y; }
   A.dismantle = function (P, W, now, a) {
     var u = str(a.u), i = P.inv.findIndex(function (x) { return x.u === u; }); if (i < 0) err('가방에 없는 장비입니다');
@@ -2216,6 +2237,14 @@
     var c = R.badgePolishCost(P, b); if ((P.res.dust || 0) < c.dust) err('마석가루가 모자랍니다 (' + c.dust + '개 필요)'); if (P.res.gold < c.gold) err(CUR + '가 모자랍니다');
     P.res.dust -= c.dust; P.res.gold -= c.gold; var x = R.badgePolishXp(b), lv0 = b.lv; badgeGain(P, x, now); P.st.polished = (P.st.polished || 0) + 1;
     return { xp: x, from: lv0, to: b.lv, name: b.name, dust: c.dust, gold: c.gold };
+  };
+  A.badgeInherit = function (P, W, now, a) {
+    var src = R.badgeFind(P, str(a.from)), dst = R.badgeFind(P, str(a.to)), why = R.badgeInheritCheck(P, src, dst); if (why) err(why);
+    var cost = R.badgeInheritCost(src), x = Math.floor(R.badgeTotalXp(src) * R.BADGE_INHERIT), lv0 = dst.lv;
+    P.res.dust -= cost; P.badges = P.badges.filter(function (b) { return b !== src; });
+    badgeAddXp(P, dst, x, now);
+    log(P, now, src.name + '의 별빛을 ' + dst.name + '에 계승했습니다 (Lv ' + lv0 + ' → ' + dst.lv + ')', 'good');
+    return { from: src.name, to: dst.name, lv0: lv0, lv: dst.lv, xp: x, cost: cost };
   };
   A.badgeBreak = function (P, W, now, a) {
     var b = R.badgeFind(P, str(a.u)); if (!b) err('없는 휘장입니다'); if (b.lock) err('잠긴 휘장입니다'); if (P.badgeOn === b.u) err('달고 있는 휘장은 깨뜨릴 수 없습니다. 먼저 장착 해제 필요');

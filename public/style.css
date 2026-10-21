@@ -1451,6 +1451,9 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 :root[data-paper="on"] .cm.rcm .cx { border-color: transparent; background-image: var(--tex); -webkit-mask-box-image: var(--torn-s) 6 fill / 6px round; }
 .ptwith { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
 .erm.sm { font-size: 12px; padding: 2px 6px; }
+.erm.left { opacity: .55; }
+.ptm.gone { opacity: .45; }
+.ptm.gone .ptgone { font-size: 11px; }
 .erm .cn, .erprow .cn { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; }
 .erm .cn:hover, .erprow .cn:hover { text-decoration: underline; }
 /* ── 알림 기록 ── */
