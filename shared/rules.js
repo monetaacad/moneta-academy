@@ -369,6 +369,8 @@
   }
   function inbox(P, item) { P.inbox.push(item); if (P.inbox.length > 40) P.inbox.splice(0, P.inbox.length - 40); }
   R.inbox = inbox;
+  // 함께 원정(다른 학생과)에서 혼자 먼저 귀환: 모은 것의 50%만 (남은 일행은 출발할 때 정해진 대로 계속). 30분 안에 3번이면 3시간 동안 함께 원정 참가 불가
+  R.EXP_LEAVE_KEEP = 0.5; R.EXP_LEAVE_N = 3; R.EXP_LEAVE_WIN = 1800; R.EXP_LEAVE_BAN = 3 * 3600;
   R.log = log;
 
   /* ───────── 보너스 집계 ───────── */
@@ -812,9 +814,9 @@
     return j;
   };
   function expFinish(P, j, t, frac, mode) {
-    var keep = mode === 'recall' ? 1 : mode === 'fall' ? K.FALL_KEEP : mode ? K.CANCEL_KEEP : 1, canceled = !!mode;
+    var keep = mode === 'recall' ? 1 : mode === 'leave' ? R.EXP_LEAVE_KEEP : mode === 'fall' ? K.FALL_KEEP : mode ? K.CANCEL_KEEP : 1, canceled = !!mode;
     var kills = Math.floor(j.kps * j.dur * j.eff * frac * keep + rnd(P));   // 처치 수가 작아 소수점은 확률로
-    var z = R.zoneOf(j.s), out = { k: 'exp', s: j.s, ck: j.pt && j.pt.ck || undefined, kills: kills, gold: 0, xp: 0, mats: 0, stones: 0, items: [], sold: 0, t: t, canceled: mode === true, recall: mode === 'recall', fell: mode === 'fall' };
+    var z = R.zoneOf(j.s), out = { k: 'exp', s: j.s, ck: j.pt && j.pt.ck || undefined, kills: kills, gold: 0, xp: 0, mats: 0, stones: 0, items: [], sold: 0, t: t, canceled: mode === true, recall: mode === 'recall' || mode === 'leave', leave: mode === 'leave' || undefined, fell: mode === 'fall' };
     if (kills <= 0) return out;
     badgeGain(P, j.dur / 3600 * frac * keep * R.BADGE_XP.expH, t);
     var g = kills * j.gEach, x = kills * j.xEach;
@@ -1735,7 +1737,7 @@
   A.expCancel = function (P, W, now, a) {
     var i = int(a.slot, 0, 1), j = P.exp[i]; if (!j) err('진행 중인 원정이 없습니다');
     if (R.expEnd(j) <= now) return A.expClaim(P, W, now, a);   // 이미 끝난 원정은 귀환이 아니라 완료로
-    var o = expFinish(P, j, now, clamp((now - j.start) / j.dur, 0, 1), 'recall'); P.exp[i] = null; log(P, now, j.s + '단계 원정에서 직접 귀환했습니다', 'news'); return o;
+    var lv = !!a.leave, o = expFinish(P, j, now, clamp((now - j.start) / j.dur, 0, 1), lv ? 'leave' : 'recall'); P.exp[i] = null; log(P, now, j.s + '단계 ' + (lv ? '함께 원정에서 혼자 먼저 귀환했습니다 (모은 것의 ' + Math.round(R.EXP_LEAVE_KEEP * 100) + '%)' : '원정에서 직접 귀환했습니다'), 'news'); return o;
   };
   /* ───────── 무한의 탑 (개인): 기사의 탑 · 마법사의 탑 ─────────
      혼자 오르는 끝없는 탑. 학과마다 따로 층을 쌓으며 줄어들지 않는다(주간 초기화 없음). 도전 횟수 제한 없이 한 번에 한 층 — 전투력이 되는 만큼 오른다.

@@ -1474,9 +1474,9 @@
       absorb(r); toast(r.done ? '원정에서 귀환했습니다' : '귀환 투표', r.done ? '과반이 찬성해 모두 함께 귀환했습니다' : (on === '1' ? '귀환에 찬성했습니다' : '찬성을 취소했습니다') + ' · ' + r.yes + '/' + r.need + '명 (과반이 찬성하면 모두 귀환)', 2600); render();
     });
   };
-  function cancelBtn(key, type, a) {
+  function cancelBtn(key, type, a, leave) {   // leave: 함께 원정에서 혼자 먼저 귀환 (모은 것의 50%)
     var armed = S.confirm[key] && S.confirm[key] > Date.now(), rc = type === 'expCancel';
-    return '<button class="btn sm ' + (armed ? (rc ? 'primary' : 'danger') : 'ghost') + '" data-act="cancel" data-a="' + key + '" data-b="' + type + '" data-c=\'' + JSON.stringify(a) + '\'>' + (armed ? (rc ? '한 번 더 누르면 귀환합니다 · 모은 것은 모두 받습니다' : '한 번 더 누르면 취소합니다 · 절반만 받습니다') : (rc ? '귀환' : '취소')) + '</button>';
+    return '<button class="btn sm ' + (armed ? (rc && !leave ? 'primary' : 'danger') : 'ghost') + '" data-act="cancel" data-a="' + key + '" data-b="' + type + '" data-c=\'' + JSON.stringify(a) + '\'' + (leave ? ' title="혼자 먼저 돌아오면 모은 것의 ' + Math.round(R.EXP_LEAVE_KEEP * 100) + '%만 받습니다. 남은 일행은 그대로 계속합니다"' : '') + '>' + (armed ? (leave ? '한 번 더 누르면 혼자 귀환합니다 · 모은 것의 ' + Math.round(R.EXP_LEAVE_KEEP * 100) + '%만 받습니다' : rc ? '한 번 더 누르면 귀환합니다 · 모은 것은 모두 받습니다' : '한 번 더 누르면 취소합니다 · 절반만 받습니다') : (leave ? '혼자 귀환' : rc ? '귀환' : '취소')) + '</button>';
   }
   function taskBox(sid) {
     var P = S.P, o = R.taskOf(P, sid), done = P.tasks[sid] || 0;
@@ -1509,6 +1509,7 @@
     var P = S.P, c = C(); erLoad();
     var er = S.er, free = P.exp.slice(0, c.expSlots).some(function (j) { return !j; }) || P.exp.length < c.expSlots, my = erPos(), ok = R.expPositions(P);
     var h = '<div class="card ercard" data-anchor="exproom" style="margin-top:14px"><div class="row between"><h3>함께 원정 <span class="tag br">최대 ' + R.EXP_PARTY_MAX + '명</span></h3><span class="tiny faint">인원이 다 모이지 않아도 출정할 수 있습니다</span></div>';
+    if (S.P.erBan > now()) h += '<p class="small bad" style="margin-top:6px">함께 원정에서 30분 안에 ' + R.EXP_LEAVE_N + '번 혼자 귀환해 함께 원정 참가가 제한되었습니다 · ' + R.fmtTime(S.P.erBan - now()) + ' 남음 (혼자 원정은 가능)</p>';
     h += '<div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap"><span class="small muted">내 포지션</span>' + ['van', 'rear', 'sup'].map(function (k) {
       var x = R.EXP_POS[k], can = ok.indexOf(k) >= 0;
       return '<button class="btn sm ghost' + (my === k ? ' on' : '') + '" data-act="erpos" data-a="' + k + '"' + (can ? '' : ' disabled') + ' data-tip="' + esc(x.desc) + '"><span class="postag p-' + k + '">' + x.name + '</span></button>';
@@ -1641,8 +1642,8 @@
           '<div class="row" style="margin-top:10px"><button class="btn primary" data-act="exp-claim" data-a="' + i + '">원정 완료</button><span class="tiny faint">눌러야 결과를 받고 다음 원정을 보낼 수 있습니다</span></div></div>';
       } else if (j) {
         var el = Math.min(1, (now() - j.start) / j.dur), sofar = Math.floor(j.kps * j.dur * j.eff * el);
-        h += '<div class="card hl slotcard"><div class="row between"><span class="tiny gold">원정 ' + (i + 1) + '</span>' + (expVoting(j) ? expVoteBtn(i, j) : cancelBtn('exp' + i, 'expCancel', { slot: i })) + '</div>' +
-          '<h3>' + j.s + '단계 <span class="small muted">' + R.zoneOf(j.s).name + '</span></h3>' + (j.pt ? '<div class="tiny" style="margin:2px 0 4px"><span class="tag br">함께 원정 ' + j.pt.n + '명</span> <span class="postag p-' + j.pt.pos + '">' + R.EXP_POS[j.pt.pos].name + '</span>' + (j.pt.team ? '' : '<span class="tiny muted">나</span>') + (j.pt.team ? '' : j.pt.with && j.pt.with.length ? '<div class="ptwith">' + j.pt.with.map(function (w) { return '<span class="erm sm' + (w.npc ? ' npc' : '') + '"><span class="postag p-' + w.pos + '">' + R.EXP_POS[w.pos].name + '</span>' + erName(w) + '</span>'; }).join('') + '</div>' : '') + '</div>' : '') + (j.pt && j.pt.team ? '<span hidden data-l="ptteam:' + i + '"></span>' + ptTeam(j, i) : '') + '<div class="bar thick"><b data-b="prog:' + j.start + ':' + j.end + '"></b></div>' +
+        h += '<div class="card hl slotcard"><div class="row between"><span class="tiny gold">원정 ' + (i + 1) + '</span>' + (expVoting(j) ? '<span class="frbtns">' + expVoteBtn(i, j) + cancelBtn('exp' + i, 'expCancel', { slot: i }, true) + '</span>' : cancelBtn('exp' + i, 'expCancel', { slot: i })) + '</div>' +
+          '<h3>' + j.s + '단계 <span class="small muted">' + R.zoneOf(j.s).name + '</span></h3>' + (j.pt ? '<div class="tiny" style="margin:2px 0 4px"><span class="tag br">함께 원정 ' + j.pt.n + '명</span> <span class="postag p-' + j.pt.pos + '">' + R.EXP_POS[j.pt.pos].name + '</span>' + (j.pt.team ? '' : '<span class="tiny muted">나</span>') + (j.pt.team ? '' : j.pt.with && j.pt.with.length ? '<div class="ptwith">' + j.pt.with.slice().sort(function (a, b) { var L = j.pt.left || []; return (L.indexOf(a.id) >= 0) - (L.indexOf(b.id) >= 0); }).map(function (w) { var gone = w.id && (j.pt.left || []).indexOf(w.id) >= 0; return '<span class="erm sm' + (w.npc ? ' npc' : '') + (gone ? ' left' : '') + '"><span class="postag p-' + w.pos + '">' + R.EXP_POS[w.pos].name + '</span>' + erName(w) + (gone ? ' <span class="tag">개인 귀환</span>' : '') + '</span>'; }).join('') + '</div>' : '') + '</div>' : '') + (j.pt && j.pt.team ? '<span hidden data-l="ptteam:' + i + '"></span>' + ptTeam(j, i) : '') + '<div class="bar thick"><b data-b="prog:' + j.start + ':' + j.end + '"></b></div>' +
           '<div class="row small muted"><span data-l="left:' + j.end + '"></span> 남음 · ' + clock(j.end) + '</div>' + (j.fallAt ? '<p class="tiny bad">무모한 원정 · ' + clock(j.fallAt) + '쯤 쓰러져 돌아옵니다 (그때까지 모은 것의 80%). 먼저 「귀환」하면 모은 것을 모두 받습니다.</p>' : '') +
           '<div class="small">예상 처치 ' + fmt(Math.round(j.kps * j.dur * j.eff)) + '마리 · ' + MONEY(j.kps * j.dur * j.eff * j.gEach, '+') + ' · 경험치 +' + fmt(j.kps * j.dur * j.eff * j.xEach) + '</div><div class="tiny faint">지금까지 약 ' + fmt(sofar) + '마리 처치</div></div>';
       } else if (i === resv) {
@@ -3317,9 +3318,10 @@
       var me = k === j.pt.me, r = Math.min(1.4, m.risk || 0), ph = Math.abs(Math.sin(t / 7 + k * 1.9)) * 0.6 + Math.abs(Math.sin(t / 2.3 + k)) * 0.4;
       var hp = done ? 1 : Math.max(0.05, 1 - Math.min(0.95, r * (0.35 + 0.65 * ph)));
       if (me && j.fallAt && t >= j.fallAt) hp = 0;
-      return { k: k, hp: hp, sc: (m.dmg || 0) * (0.7 + 0.6 * Math.abs(Math.sin(t / 11 + k * 2.3))) };
+      var gone = !!(m.id && (j.pt.left || []).indexOf(m.id) >= 0);   // 혼자 먼저 귀환한 학생: 맨 아래 · 흐리게
+      return { k: k, hp: gone ? 0 : hp, gone: gone, sc: gone ? -1 : (m.dmg || 0) * (0.7 + 0.6 * Math.abs(Math.sin(t / 11 + k * 2.3))) };
     });
-    st.slice().sort(function (a, b) { return b.sc - a.sc; }).forEach(function (x, i) { x.rank = i; });
+    st.slice().sort(function (a, b) { return (a.gone - b.gone) || (b.sc - a.sc); }).forEach(function (x, i) { x.rank = i; });
     return st;
   }
   function ptHpTxt(m, hp) { return m.hp ? fmt(Math.round(m.hp * hp)) + ' / ' + fmt(m.hp) : Math.round(hp * 100) + '%'; }
@@ -3329,9 +3331,9 @@
     return '<div class="ptteam" data-pt="' + i + '" style="height:' + (j.pt.team.length * PT_ROW) + 'px">' + j.pt.team.map(function (m, k) {
       var me = k === j.pt.me, x = st[k], meta = m.npc ? '동행 · 부른 학생 힘의 60%' : [(m.grade >= 8 ? '마스터' : (m.grade || 1) + '학년'), 'Lv ' + (m.lvl || 1), R.CLS[m.cls] ? R.CLS[m.cls].name : ''].filter(Boolean).join(' · '), pw = !m.npc && m.power ? '전투력 ' + fmt(m.power) : '';
       var nm = m.npc ? '<button class="cn" data-act="npccard" data-a="' + (+m.k || 0) + '">' + esc(m.name) + '</button>' : m.id ? '<button class="cn" data-act="prof" data-a="' + esc(m.id) + '">' + esc(m.name) + '</button>' : esc(m.name);
-      return '<div class="ptm' + (me ? ' me' : '') + '" data-k="' + k + '" style="transform:translateY(' + (x.rank * PT_ROW) + 'px)"><span class="ptr num">' + (x.rank + 1) + '</span><span class="postag p-' + m.pos + '">' + R.EXP_POS[m.pos].name + '</span>' +
+      return '<div class="ptm' + (me ? ' me' : '') + (x.gone ? ' gone' : '') + '" data-k="' + k + '" style="transform:translateY(' + (x.rank * PT_ROW) + 'px)"><span class="ptr num">' + (x.gone ? '–' : x.rank + 1) + '</span><span class="postag p-' + m.pos + '">' + R.EXP_POS[m.pos].name + '</span>' +
         '<span class="ptn">' + nm + ' <span class="tiny faint ptmeta">' + esc(meta) + (pw ? '<span class="ptpw"><span class="ptsep"> · </span>' + pw + '</span>' : '') + '</span></span>' +
-        '<span class="pthpw"><span class="pthp" title="HP"><b style="width:' + Math.round(x.hp * 100) + '%;background:' + ptHpCol(x.hp) + '"></b></span><span class="tiny num pthpt">HP ' + ptHpTxt(m, x.hp) + '</span></span></div>';
+        (x.gone ? '<span class="pthpw"><span class="tag ptgone">개인 귀환</span></span></div>' : '<span class="pthpw"><span class="pthp" title="HP"><b style="width:' + Math.round(x.hp * 100) + '%;background:' + ptHpCol(x.hp) + '"></b></span><span class="tiny num pthpt">HP ' + ptHpTxt(m, x.hp) + '</span></span></div>');
     }).join('') + '</div>';
   }
   // 매초: 줄을 다시 그리지 않고 순위 자리 · HP만 바꾼다
@@ -3339,8 +3341,8 @@
     var j = S.P.exp[+i], box = document.querySelector('[data-pt="' + (+i) + '"]'); if (!j || !j.pt || !j.pt.team || !box) return undefined;
     ptState(j).forEach(function (x) {
       var row = box.querySelector('[data-k="' + x.k + '"]'); if (!row) return; var m = j.pt.team[x.k];
-      row.style.transform = 'translateY(' + (x.rank * PT_ROW) + 'px)'; row.querySelector('.ptr').textContent = x.rank + 1;
-      var b = row.querySelector('.pthp b'); b.style.width = Math.round(x.hp * 100) + '%'; b.style.background = ptHpCol(x.hp); row.querySelector('.pthpt').textContent = 'HP ' + ptHpTxt(m, x.hp);
+      row.style.transform = 'translateY(' + (x.rank * PT_ROW) + 'px)'; row.querySelector('.ptr').textContent = x.gone ? '–' : x.rank + 1;
+      var b = row.querySelector('.pthp b'); if (!b) return; b.style.width = Math.round(x.hp * 100) + '%'; b.style.background = ptHpCol(x.hp); row.querySelector('.pthpt').textContent = 'HP ' + ptHpTxt(m, x.hp);
     });
     return undefined;
   };
@@ -3555,7 +3557,7 @@
   ACT['inbox-ok'] = function () { var upto = S.inboxUpto; closeModal(); act('inboxAck', { upto: upto }).then(function () { render(); if (S.P.inbox.length) inboxReport(); }); };
   ACT['inbox-go'] = function (view) { var upto = S.inboxUpto; closeModal(); ACT.nav(view); act('inboxAck', { upto: upto }).then(function () { render(); }); };
   ACT.cancel = function (key, type, el) {
-    if (S.confirm[key] && S.confirm[key] > Date.now()) { S.confirm[key] = 0; act(type, JSON.parse(el.dataset.c)).then(function (r) { if (r) { if (type === 'expCancel') toast('원정에서 귀환했습니다', fmt(r.kills || 0) + '마리 · ' + MONEY(r.gold || 0, '+') + (r.items && r.items.length ? ' · 장비 ' + r.items.length + '개' : '') + ' — 모은 것을 모두 받았습니다', 2800); else toast('작업을 취소했습니다', '지난 시간의 절반만큼 받았습니다'); } render(); }); }
+    if (S.confirm[key] && S.confirm[key] > Date.now()) { S.confirm[key] = 0; act(type, JSON.parse(el.dataset.c)).then(function (r) { if (r) { if (type === 'expCancel') toast(r.leave ? '혼자 먼저 귀환했습니다 (모은 것의 ' + Math.round(R.EXP_LEAVE_KEEP * 100) + '%)' : '원정에서 귀환했습니다', fmt(r.kills || 0) + '마리 · ' + MONEY(r.gold || 0, '+') + (r.items && r.items.length ? ' · 장비 ' + r.items.length + '개' : '') + ' — 모은 것을 모두 받았습니다', 2800); else toast('작업을 취소했습니다', '지난 시간의 절반만큼 받았습니다'); } render(); }); }
     else { S.confirm[key] = Date.now() + 4000; render(); setTimeout(render, 4100); }
   };
   // 과목 카드의 「수업 듣기」: 빈 슬롯(지금 고른 슬롯 우선)의 과목 칸에 바로 넣고 그 슬롯으로 옮겨 간다
@@ -4952,7 +4954,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102141;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102142;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

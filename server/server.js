@@ -519,7 +519,8 @@ routes['POST /api/act'] = async (req, res) => {
   if (P.needCreate) return fail(req, res, 400, '새 학생 만들기 필요');
   world.tick(now);
   // 함께 원정 방에서 출발을 기다리는 중이면, 방이 쓸 마지막 빈 원정 슬롯으로 혼자 원정은 못 보낸다
-  if (type === 'expCancel') { const pa = expPartyOf(P, Number(a.slot) | 0, now); if (pa && pa.act.length > 1) return send(req, res, 400, { error: '다른 학생과 함께 떠난 원정은 귀환 투표로 돌아옵니다' }); }   // 함께 원정: 혼자 귀환 대신 투표
+  let leavePa = null;
+  if (type === 'expCancel') { delete a.leave; const pa = expPartyOf(P, Number(a.slot) | 0, now); if (pa && pa.act.length > 1) { a.leave = 1; leavePa = pa; } }   // 함께 원정에서 혼자 먼저 귀환: 50%만 (서버가 정한다)
   if (type === 'expStart' && exprooms.inRoom(pid)) { const c0 = R.calc(P, world.ctx(now), now); let free = 0; for (let i = 0; i < c0.expSlots; i++) if (!P.exp[i]) free++; if (free <= 1) return send(req, res, 400, { error: '함께 원정 방에서 출발을 기다리는 중입니다. 혼자 출정하려면 먼저 방 나가기 필요', P: R.publicState(P), now }); }
   let r;
   try {
@@ -530,6 +531,7 @@ routes['POST /api/act'] = async (req, res) => {
     if (type === 'lecStart' || type === 'lecCancel' || type === 'ttApply') { lecSync(P); if (type === 'lecStart' || type === 'ttApply') { const j = P.lec[type === 'ttApply' ? 0 : Number(a.slot)]; if (j) lecStarted(P, j.s, now); } }
     if (type === 'exam' && r && r.pass) world.addNews(P.name + ' 학생이 ' + (P.grade >= 8 ? '졸업 시험을 통과해 마스터 과정이 되었습니다' : P.grade + '학년으로 진급했습니다'), now);
     if ((type === 'clsExam' || type === 'setCls') && r) setImmediate(() => { try { chat.clsChanged(pid); } catch (e) { } });
+    if (leavePa) expLeft(P, leavePa, now);
     if (type === 'inboxAck' || type === 'expCancel' || type === 'expClaim') setImmediate(() => { try { chat.exrChanged(pid); } catch (e) { } });   // 결과를 받으면 원정 채팅 탭을 닫는다
     if ((type === 'exam' && r && r.pass) || (type === 'useGradeUp' && r && r.grade)) addNote(pid, 'grade', (P.grade >= 8 ? '졸업 시험을 통과해 마스터 과정이 되었습니다' : P.grade + '학년으로 진급했습니다') + ' · 새로 열린 것 보기', { grade: P.grade });
     if (type === 'wbAttack') { const killed = world.applyDamage(pid, P.wk.dmg - before, now); r.killed = killed; world.invalidate(); }
@@ -1507,6 +1509,19 @@ function expPartyOf(P, slot, now) {
   const ids = [P.id].concat((j.pt.with || []).filter((w) => w && w.id && !w.npc).map((w) => w.id));
   return { j, ck: j.pt.ck, act: expPartyActive(j.pt.ck, [...new Set(ids)], now) };
 }
+// 혼자 먼저 귀환한 뒤: 남은 일행 화면에 「귀환」 표시 · 알림, 내 찬성표 지우기, 30분 안에 3번이면 3시간 함께 원정 제한
+function expLeft(P, pa, now) {
+  const V = expVotes.get(pa.ck); if (V) V.delete(P.id);
+  pa.act.forEach((x) => {
+    if (x.id === P.id) return; const j = x.P.exp[x.slot]; if (!j || !j.pt) return;
+    j.pt.left = [...new Set((j.pt.left || []).concat(P.id))];
+    if (j.pt.vote) { const ids = pa.act.filter((y) => y.id !== P.id).map((y) => y.id), yes = [...(V || [])].filter((id) => ids.indexOf(id) >= 0); j.pt.vote = { yes, need: Math.floor(ids.length / 2) + 1, n: ids.length }; }
+    store.markDirty(x.id); addNote(x.id, 'exp', P.name + ' 님이 함께 원정에서 혼자 먼저 귀환했습니다. 남은 일행의 원정은 그대로 계속됩니다', { view: 'explore' });
+  });
+  const L = (P.expLeaves || []).filter((t) => now - t < R.EXP_LEAVE_WIN).concat(now); P.expLeaves = L.slice(-R.EXP_LEAVE_N);
+  if (L.length >= R.EXP_LEAVE_N) { P.erBan = now + R.EXP_LEAVE_BAN; P.expLeaves = []; R.log(P, now, '함께 원정에서 30분 안에 ' + R.EXP_LEAVE_N + '번 혼자 귀환해 3시간 동안 함께 원정에 참가할 수 없습니다', 'bad'); }
+  store.markDirty(P.id);
+}
 routes['POST /api/exp/vote'] = async (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
   if (store.isBanned(me)) return fail(req, res, 403, '이용이 정지된 계정입니다');
@@ -1544,6 +1559,7 @@ routes['POST /api/exproom'] = async (req, res) => {
   if (limited('ero:' + me, 2, 8)) return fail(req, res, 429, '요청이 너무 잦습니다');
   const b = await readJson(req, 1024), now = nowSec();
   world.tick(now);
+  { const Pm = store.get(me); if (Pm && Pm.erBan > now && (b.op === 'create' || b.op === 'join')) return fail(req, res, 400, '혼자 귀환을 반복해 함께 원정에 참가할 수 없습니다 (' + R.fmtTime(Pm.erBan - now) + ' 남음)'); }
   let r; try { r = exprooms.op(me, b); } catch (e) { if (e.status) return fail(req, res, e.status, e.message); throw e; }
   const P = store.get(me);
   send(req, res, 200, Object.assign({ now, scale: cfg.timeScale, P: P ? R.publicState(P) : undefined }, r, exprooms.list(me)));

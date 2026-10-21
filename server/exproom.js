@@ -174,7 +174,7 @@ function create(o) {
     const now = gameNow(), W = ctx(), fails = [];
     people(r).forEach((m) => {
       const P = loadPlayer(m.id, now); if (!P) { fails.push({ m, why: '학생 정보를 찾을 수 없습니다' }); return; }
-      try { R.expCanGo(P, W, now, r.s); if (R.expPositions(P).indexOf(m.pos) < 0) m.pos = 'van'; }
+      try { if (P.erBan > now) throw Object.assign(new Error('혼자 귀환을 반복해 함께 원정 제한 중입니다'), { game: true }); R.expCanGo(P, W, now, r.s); if (R.expPositions(P).indexOf(m.pos) < 0) m.pos = 'van'; }
       catch (e) { if (!e.game) throw e; fails.push({ m, why: e.message }); }
     });
     fails.forEach((f) => gone.set(f.m.id, { at: real(), ok: false, why: f.why, s: r.s }));
