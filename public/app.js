@@ -835,20 +835,22 @@
       h += '<div class="section-t" style="margin-top:12px">능력치</div><div class="pstats">' + R.STATS.map(function (k) { return '<span><i>' + D.STAT_NAMES[k] + '</i><b class="num">' + fmt(p.stats.st[k] || 0) + '</b></span>'; }).join('') + '</div>' +
         '<p class="tiny faint" style="margin-top:4px">초당 피해 ' + fmt(p.stats.dps) + ' · 생명력 ' + fmt(p.stats.hp) + ' · 방어력 ' + fmt(p.stats.def) + '</p>';
     }
-    if (p.eq) {
-      var mine = !p.self && S.P;
-      h += '<div class="section-t" style="margin-top:12px">장비 <span class="tiny faint">칸을 누르면 상세가 펼쳐집니다</span></div><div class="peq">' + D.SLOTS.map(function (s) {
+    var bd = p.badgeD && R.GEM[p.badgeD.gem] ? p.badgeD : null;   // 휘장 공개: 장비 칸 옆 빈자리에
+    if (p.eq || bd) {
+      var mine = !p.self && S.P, bg = bd && R.GEM[bd.gem];
+      h += '<div class="section-t" style="margin-top:12px">' + (p.eq ? '장비' : '휘장') + ' <span class="tiny faint">칸을 누르면 상세가 펼쳐집니다</span></div><div class="peq' + (p.eq && bd ? ' peq6' : '') + '">' + (p.eq ? D.SLOTS : []).map(function (s) {
         var it = p.eq[s.id];
         if (!it) return '<span class="peqt empty"><i>' + s.name + '</i><span class="faint">비어 있음</span></span>';
         return '<button class="peqt rb' + it.r + '" data-act="pceq" data-a="' + s.id + '"><i>' + R.slotName(it) + '</i><span class="pn" style="color:' + rcol(it.r) + '">' + esc(it.name) + '</span>' + (it.enh ? '<b class="pe">+' + it.enh + '</b>' : '') + '</button>';
-      }).join('') + '</div>' + D.SLOTS.map(function (s) {
+      }).join('') + (bd ? '<button class="peqt" data-act="pceq" data-a="badge"><i>휘장</i><span class="pn" style="color:' + bg.color + '">' + esc(bd.name) + ' ' + badgeSvg(bd) + '</span><b class="pe">Lv ' + bd.lv + '</b></button>' : '') + '</div>' + (p.eq ? D.SLOTS : []).map(function (s) {
         var it = p.eq[s.id]; if (!it) return '';
         var my = mine && S.P.eq[s.id];
         return '<div class="peqd" data-slot="' + s.id + '" hidden><div class="tiny" style="color:' + rcol(it.r) + '">' + D.RARITY[it.r].name + ' ' + R.slotName(it) + ' · Lv ' + it.ilvl + (it.enh ? ' · +' + it.enh : '') + '</div>' +
           '<div class="peqcols"><div><div class="nm" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</div>' + statLines(it) + '</div>' +
           (mine ? '<div class="peqmine" hidden>' + (my ? '<div class="tiny faint">내 장비</div><div class="nm" style="color:' + rcol(my.r) + '">' + esc(my.name) + (my.enh ? ' +' + my.enh : '') + '</div>' + statLines(my) : '<div class="tiny faint">이 칸에 장착한 내 장비가 없습니다.</div>') + '</div>' : '') + '</div>' +
           (mine ? '<div class="peqcmp" hidden>' + (my ? cmpLine(it, my, '내 장비') : '') + '</div><div class="row" style="margin-top:6px"><button class="btn sm" data-act="pccmp">내 장비와 비교</button></div>' : '') + '</div>';
-      }).join('');
+      }).join('') +
+        (bd ? '<div class="peqd" data-slot="badge" hidden><div class="tiny" style="color:' + bg.color + '">아카데미 휘장 · Lv ' + bd.lv + ' · 품질 ' + (Math.round((bd.q || 1) * 1000) / 10) + '%</div><div class="nm" style="color:' + bg.color + '">' + esc(bd.name) + '</div>' + badgeLines(bd) + '</div>' : '');
     }
     return h;
   }
@@ -4243,8 +4245,8 @@
   // 공개 범위: 전체 · 친구만 · 비공개 (레벨·전투력은 예전 「보여 주기」 체크를 따른다)
   var VIS_OPT = [['all', '전체'], ['friend', '친구만'], ['none', '비공개']];
   function peVis(me, k) { var v = me[k]; if (v === 'all' || v === 'friend' || v === 'none') return v; return k === 'visLv' ? (me.showStats === false ? 'none' : 'all') : 'none'; }
-  function peRead() { if (!$('#pe-status')) return null; var rv = function (k) { var x = $('input[name="pe-' + k + '"]:checked'); return x ? x.value : 'none'; }; return { visLv: rv('visLv'), visStat: rv('visStat'), visEq: rv('visEq'), visFull: rv('visFull'), status: $('#pe-status').value, bio: $('#pe-bio').value, avcredit: ($('#pe-avc') || {}).value || '', fav: $('#pe-fav').value, title: S.P.title || '', allowFriend: $('#pe-friend').checked, bioFriends: $('#pe-biof').checked }; }
-  function peDirty(d) { var me = S.me || {}; return !!d && (d.status !== (me.status || '') || (d.avcredit || '') !== (me.avcredit || '') || d.bio !== (me.bio || '') || d.fav !== (me.fav || '') || d.title !== (S.P.title || '') || d.visLv !== peVis(me, 'visLv') || d.visStat !== peVis(me, 'visStat') || d.visEq !== peVis(me, 'visEq') || d.visFull !== peVis(me, 'visFull') || d.allowFriend !== (me.allowFriend !== false) || d.bioFriends !== !!me.bioFriends); }
+  function peRead() { if (!$('#pe-status')) return null; var rv = function (k) { var x = $('input[name="pe-' + k + '"]:checked'); return x ? x.value : 'none'; }; return { visLv: rv('visLv'), visStat: rv('visStat'), visEq: rv('visEq'), visFull: rv('visFull'), visBadge: rv('visBadge'), status: $('#pe-status').value, bio: $('#pe-bio').value, avcredit: ($('#pe-avc') || {}).value || '', fav: $('#pe-fav').value, title: S.P.title || '', allowFriend: $('#pe-friend').checked, bioFriends: $('#pe-biof').checked }; }
+  function peDirty(d) { var me = S.me || {}; return !!d && (d.status !== (me.status || '') || (d.avcredit || '') !== (me.avcredit || '') || d.bio !== (me.bio || '') || d.fav !== (me.fav || '') || d.title !== (S.P.title || '') || d.visLv !== peVis(me, 'visLv') || d.visStat !== peVis(me, 'visStat') || d.visEq !== peVis(me, 'visEq') || d.visFull !== peVis(me, 'visFull') || d.visBadge !== peVis(me, 'visBadge') || d.allowFriend !== (me.allowFriend !== false) || d.bioFriends !== !!me.bioFriends); }
   function profileBody() {
     var me0 = S.me || { id: S.P.id, name: S.P.name, house: S.P.house, av: 0, status: '', bio: '', fav: '', showStats: true, allowFriend: true };
     var me = Object.assign({}, me0, S.peDraft || {}), curT = S.peDraft ? S.peDraft.title : (S.P.title || '');
@@ -4260,7 +4262,7 @@
       '<div class="field" style="margin-top:10px"><label class="small muted" for="pe-status">한 줄 소개 <span class="faint">(40자)</span></label><input id="pe-status" maxlength="40" value="' + esc(me.status || '') + '" placeholder="예: 별샘 관측 동아리 부원"></div>' +
       '<div class="field" style="margin-top:10px"><label class="small muted" for="pe-bio">자기소개 <span class="faint">(300자)</span></label><textarea id="pe-bio" maxlength="300" rows="' + (S.peWide ? 12 : 4) + '" style="font-family:var(--f-body);font-size:14px" placeholder="캐릭터 설정, 좋아하는 것, RP 가능한 시간 등">' + esc(me.bio || '') + '</textarea></div>' +
       '<div class="field" style="margin-top:10px"><label class="small muted" for="pe-fav">좋아하는 과목</label><select id="pe-fav"><option value="">선택 안 함</option>' + D.SUBJECTS.filter(function (x) { return R.subjVisible(S.P, x); }).map(function (x) { return '<option value="' + x.id + '"' + (me.fav === x.id ? ' selected' : '') + '>' + x.name + '</option>'; }).join('') + '</select></div>' +
-      '<div class="section-t" style="margin-top:12px">다른 학생에게 보여 줄 정보</div><div class="visrows">' + [['visLv', '레벨·전투력'], ['visStat', '능력치'], ['visEq', '장비'], ['visFull', '전체 능력치']].map(function (v) { var cur = peVis(me, v[0]); return '<div class="visrow"><span class="small">' + v[1] + '</span><span class="visseg" role="radiogroup" aria-label="' + v[1] + ' 공개 범위">' + VIS_OPT.map(function (o) { return '<label><input type="radio" name="pe-' + v[0] + '" value="' + o[0] + '"' + (cur === o[0] ? ' checked' : '') + '><span>' + o[1] + '</span></label>'; }).join('') + '</span></div>'; }).join('') + '</div>' +
+      '<div class="section-t" style="margin-top:12px">다른 학생에게 보여 줄 정보</div><div class="visrows">' + [['visLv', '레벨·전투력'], ['visStat', '능력치'], ['visEq', '장비'], ['visBadge', '휘장'], ['visFull', '전체 능력치']].map(function (v) { var cur = peVis(me, v[0]); return '<div class="visrow"><span class="small">' + v[1] + '</span><span class="visseg" role="radiogroup" aria-label="' + v[1] + ' 공개 범위">' + VIS_OPT.map(function (o) { return '<label><input type="radio" name="pe-' + v[0] + '" value="' + o[0] + '"' + (cur === o[0] ? ' checked' : '') + '><span>' + o[1] + '</span></label>'; }).join('') + '</span></div>'; }).join('') + '</div>' +
       '<div class="stack" style="gap:8px;margin-top:10px"><label class="tog"><input type="checkbox" id="pe-friend"' + (me.allowFriend !== false ? ' checked' : '') + '> 친구 신청 받기</label><label class="tog"><input type="checkbox" id="pe-biof"' + (me.bioFriends ? ' checked' : '') + '> 자기소개는 친구에게만 보이기</label></div>' +
       '<div class="row" style="margin-top:14px"><button class="btn primary" data-act="pe-save">저장</button><button class="btn ghost" data-act="pe-preview">다른 학생에게 보이는 모습</button><span class="tiny" id="pe-msg"></span></div>';
   }
@@ -4269,7 +4271,7 @@
   function publicSelf() {
     var me = Object.assign({ id: S.P.id, name: S.P.name, house: S.P.house, av: 0 }, S.me || {}, { grade: S.P.grade, lvl: S.P.lvl, self: false, mine: true, friend: null, online: true, title: S.P.title ? R.titleName(S.P, S.P.title) : '', deco: R.decoView(S.P), badge: R.badgeWorn(S.P) });
     var src = S.me || {};
-    if (peVis(src, 'visLv') !== 'all') { me.power = null; me.lvl = null; } if (peVis(src, 'visStat') !== 'all') delete me.stats; if (peVis(src, 'visEq') !== 'all') delete me.eq; if (peVis(src, 'visFull') !== 'all') delete me.full;
+    if (peVis(src, 'visLv') !== 'all') { me.power = null; me.lvl = null; } if (peVis(src, 'visStat') !== 'all') delete me.stats; if (peVis(src, 'visEq') !== 'all') delete me.eq; if (peVis(src, 'visFull') !== 'all') delete me.full; me.badgeD = peVis(src, 'visBadge') === 'all' ? R.badgeWorn(S.P) : null;
     if (src.bioFriends) me.bio = '';
     delete me.created; return me;
   }
@@ -4400,6 +4402,7 @@
     if (vl === 'none') { me.power = null; me.lvl = null; hid.push('레벨·전투력'); } else if (vl === 'friend') fo.push('레벨·전투력');
     if (vs === 'none') { delete me.stats; hid.push('능력치'); } else if (vs === 'friend') fo.push('능력치');
     if (ve === 'none') { delete me.eq; hid.push('장비'); } else if (ve === 'friend') fo.push('장비');
+    var vb = peVis(src, 'visBadge'); me.badgeD = vb === 'none' ? null : R.badgeWorn(S.P); if (vb === 'none') hid.push('휘장'); else if (vb === 'friend') fo.push('휘장');
     var vf = peVis(src, 'visFull'); if (vf === 'none') { delete me.full; hid.push('전체 능력치'); } else if (vf === 'friend') fo.push('전체 능력치');
     return '<p class="tiny faint" style="margin-bottom:10px">다른 학생이 채팅이나 친구 목록에서 내 이름을 누르면 이렇게 보입니다.' + (hid.length ? ' ' + hid.join(' · ') + '은(는) 숨겨 두었습니다.' : '') + (fo.length ? ' ' + fo.join(' · ') + '은(는) 친구에게만 보입니다.' : '') + (S.peDraft || S.peAv !== undefined ? ' <span class="gold">편집 탭에 저장하지 않은 변경이 있습니다.</span>' : '') + '</p>' + profileCard(me, null);
   }
@@ -4593,12 +4596,12 @@
     var o = peRead(); if (!o) return; $('#pe-msg').textContent = '저장 중…';
     peSave(o, function (e) { var m = $('#pe-msg'); if (m) m.textContent = e || '저장되었습니다'; if (!e) ACT.me('profile'); });
   };
-  function peFromMe() { var me = S.me || {}; return { status: me.status || '', avcredit: me.avcredit || '', bio: me.bio || '', fav: me.fav || '', title: S.P.title || '', visLv: peVis(me, 'visLv'), visStat: peVis(me, 'visStat'), visEq: peVis(me, 'visEq'), allowFriend: me.allowFriend !== false, bioFriends: !!me.bioFriends }; }
+  function peFromMe() { var me = S.me || {}; return { status: me.status || '', avcredit: me.avcredit || '', bio: me.bio || '', fav: me.fav || '', title: S.P.title || '', visLv: peVis(me, 'visLv'), visStat: peVis(me, 'visStat'), visEq: peVis(me, 'visEq'), visBadge: peVis(me, 'visBadge'), allowFriend: me.allowFriend !== false, bioFriends: !!me.bioFriends }; }
   ACT['pe-preview'] = function () {
     var d = peRead(); S.peDraft = peDirty(d) ? d : null;
     var me = Object.assign({}, S.me || { id: S.P.id, name: S.P.name, house: S.P.house, grade: S.P.grade }, d || {}, { self: false, preview: true, online: true, friend: null, allowFriend: false, deco: R.decoView(S.P), badge: R.badgeWorn(S.P) }, S.peAv !== undefined ? { avData: S.peAv } : {});
     me.title = d && d.title ? R.titleName(S.P, d.title) : '';
-    if (peVis(me, 'visLv') !== 'all') { me.power = null; me.lvl = null; } if (peVis(me, 'visStat') !== 'all') delete me.stats; if (peVis(me, 'visEq') !== 'all') delete me.eq;   // 친구가 아닌 학생에게 보이는 모습
+    if (peVis(me, 'visLv') !== 'all') { me.power = null; me.lvl = null; } if (peVis(me, 'visStat') !== 'all') delete me.stats; if (peVis(me, 'visEq') !== 'all') delete me.eq; me.badgeD = peVis(me, 'visBadge') === 'all' ? R.badgeWorn(S.P) : null;   // 친구가 아닌 학생에게 보이는 모습
     modal(mhead('다른 학생에게 보이는 모습', '') + '<div id="pbox">' + profileCard(me, null) + '</div>');
   };
   ACT['pe-save-preview'] = function () { if (!S.peDraft && S.peAv === undefined) { ACT.me('profile'); return; } peSave(S.peDraft || peFromMe(), function (e) { if (e) toast('저장하지 못했습니다', e); else { toast('저장되었습니다', '', 1500); ACT.me('profile'); } }); };
@@ -4884,7 +4887,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102128;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102129;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

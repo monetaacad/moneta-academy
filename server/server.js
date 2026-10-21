@@ -638,10 +638,10 @@ routes['POST /api/chat/ticket'] = (req, res) => {
 };
 
 /* ───────── 내 정보 · 두상 · 친구 ───────── */
-// 공개 범위: 레벨·전투력(visLv) · 능력치(visStat) · 장비(visEq) — 전체 · 친구만 · 비공개
+// 공개 범위: 레벨·전투력(visLv) · 능력치(visStat) · 장비(visEq) · 휘장 상세(visBadge) — 전체 · 친구만 · 비공개
 const VIS = new Set(['all', 'friend', 'none']);
 const PROFILE_DEF = { status: '', bio: '', fav: '', avcredit: '', showStats: true, allowFriend: true, bioFriends: false };   // avcredit: 두상 그림 출처 (선택)
-function profileOf(json) { let p = {}; try { p = JSON.parse(sec.dec(json) || '{}') || {}; } catch (e) { } const o = Object.assign({}, PROFILE_DEF, p); if (!VIS.has(o.visLv)) o.visLv = o.showStats ? 'all' : 'none'; if (!VIS.has(o.visStat)) o.visStat = 'none'; if (!VIS.has(o.visEq)) o.visEq = 'none'; if (!VIS.has(o.visFull)) o.visFull = 'none'; return o; }
+function profileOf(json) { let p = {}; try { p = JSON.parse(sec.dec(json) || '{}') || {}; } catch (e) { } const o = Object.assign({}, PROFILE_DEF, p); if (!VIS.has(o.visLv)) o.visLv = o.showStats ? 'all' : 'none'; if (!VIS.has(o.visStat)) o.visStat = 'none'; if (!VIS.has(o.visEq)) o.visEq = 'none'; if (!VIS.has(o.visFull)) o.visFull = 'none'; if (!VIS.has(o.visBadge)) o.visBadge = 'none'; return o; }
 const pubItem = (it) => it && { slot: it.slot, wk: it.wk, name: it.name, ilvl: it.ilvl, r: it.r, enh: it.enh, q: it.q, aff: it.aff, eng: it.eng };
 function cleanText(v, max) { return String(v == null ? '' : v).replace(/\r\n?/g, '\n').replace(/[\u0000-\u0009\u000B-\u001F\u007F​-‏‪-‮⁦-⁩]/g, '').replace(/\n{3,}/g, '\n\n').trim().slice(0, max); }
 function isOnline(pid) { return chat.isOnline(pid) || Date.now() - store.seen(pid) < 180000; }
@@ -670,6 +670,7 @@ routes['GET /api/profile'] = (req, res) => {
   const fs = self ? null : friendState(me, id), can = (v) => self || v === 'all' || (v === 'friend' && fs === 'ok');
   if (can(pr.visLv)) Object.assign(out, { lvl, power, rank: world.rankOf(power) });
   if (can(pr.visFull)) { const DP = LP || store.get(id); if (DP) try { out.full = R.fullStats(DP, world.ctx(nowSec()), Math.min(nowSec(), DP.at)); } catch (e) { } }   // 전체 능력치 (기본은 나만 보기)
+  if (can(pr.visBadge)) { const DP = LP || store.get(id), bw = DP && R.badgeWorn(DP); if (bw) out.badgeD = { gem: bw.gem, lv: bw.lv, name: bw.name, q: bw.q, aff: bw.aff || [] }; }   // 착용 휘장 상세 (장비 칸 옆에 표시)
   if (can(pr.visStat) || can(pr.visEq)) {
     const DP = LP || store.get(id);
     if (DP && can(pr.visStat)) { const c = R.calc(DP, world.ctx(nowSec()), Math.min(nowSec(), DP.at)), st = {}; R.STATS.forEach((k) => { st[k] = Math.round(c.stat[k]); }); out.stats = { st, dps: Math.round(c.totalDps), hp: Math.round(c.hp), def: Math.round(c.def) }; }
@@ -683,7 +684,7 @@ routes['GET /api/profile'] = (req, res) => {
     out.canGuildInvite = !!(mgr && !tg && R.guildCan(gRanksOf(mgr), guildRole.get(me), (dbx.q.gMember.get(me) || {}).rank, 'invite'));
     out.sameParty = !!(partyOf.get(me) && partyOf.get(me) === partyOf.get(id));
   }
-  if (self) Object.assign(out, { showStats: pr.showStats, visLv: pr.visLv, visStat: pr.visStat, visEq: pr.visEq, visFull: pr.visFull, allowFriend: pr.allowFriend, bioFriends: pr.bioFriends });
+  if (self) Object.assign(out, { showStats: pr.showStats, visLv: pr.visLv, visStat: pr.visStat, visEq: pr.visEq, visFull: pr.visFull, visBadge: pr.visBadge, allowFriend: pr.allowFriend, bioFriends: pr.bioFriends });
   else {
     out.friend = fs; out.allowFriend = pr.allowFriend;
     if (pr.bioFriends && out.friend !== 'ok') { out.bio = ''; out.bioHidden = true; }   // 자기소개는 친구에게만
@@ -701,7 +702,7 @@ routes['POST /api/profile'] = async (req, res) => {
   if (b.avcredit !== undefined) pr.avcredit = cleanText(b.avcredit, 60).replace(/\n/g, ' ');
   if (b.fav !== undefined) pr.fav = R.SUBJ[b.fav] ? b.fav : '';
   if (b.showStats !== undefined) { pr.showStats = !!b.showStats; pr.visLv = pr.showStats ? 'all' : 'none'; }   // 예전 화면 호환
-  ['visLv', 'visStat', 'visEq', 'visFull'].forEach((k) => { if (VIS.has(b[k])) pr[k] = b[k]; });
+  ['visLv', 'visStat', 'visEq', 'visFull', 'visBadge'].forEach((k) => { if (VIS.has(b[k])) pr[k] = b[k]; });
   pr.showStats = pr.visLv !== 'none';
   if (b.allowFriend !== undefined) pr.allowFriend = !!b.allowFriend;
   if (b.bioFriends !== undefined) pr.bioFriends = !!b.bioFriends;
