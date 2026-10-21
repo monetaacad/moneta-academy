@@ -967,9 +967,19 @@
   R.gainItem = gainItem; R.MAILQ_MAX = 100;
   // 착용 제한: 내 레벨 이하 장비만 장착할 수 있다 (이미 장착 중인 장비는 그대로 둔다)
   R.canWear = function (P, it) { return !!it && (it.ilvl || 1) <= (P.lvl || 1); };
+  // 장비 처분 기록 (운영실 학생 기록용 · 학생 일지에는 보이지 않음): 분해 · 판매 · 일괄 · 분류 마법 자동 처분
+  function dlog(P, act, items, extra) {
+    var L = P.dlog || (P.dlog = []), now = P.at || 0, rc = [0, 0, 0, 0, 0], top = 0;
+    items.forEach(function (it) { rc[it.r] = (rc[it.r] || 0) + 1; if (it.ilvl > top) top = it.ilvl; });
+    var o = { t: now, a: act, n: items.length, rc: rc, lv: top };
+    if (items.length === 1) o.it = items[0].name + (items[0].enh ? ' +' + items[0].enh : '') + ' (' + D.RARITY[items[0].r].name + ' Lv ' + items[0].ilvl + ')';
+    if (extra) o.x = extra;
+    var last = L[0]; if (last && last.a === act && act.indexOf('자동') === 0 && last.x === o.x && now - last.t < 3600) { last.n += o.n; last.t = now; for (var i = 0; i < 5; i++) last.rc[i] += rc[i]; if (top > last.lv) last.lv = top; delete last.it; return; }   // 자동 처분은 1시간 안이면 한 줄로 묶는다
+    L.unshift(o); if (L.length > 80) L.length = 80;
+  }
   function storeOrSell(P, it, wasEq) {
     var bag = calc(P, null).bag;
-    if (!wasEq && P.rs.sorter && P.autoSell >= 0 && it.r <= P.autoSell && !it.lock) { if (P.autoDis) { dismantleGive(P, it); return 'dis'; } addGold(P, R.sellPrice(it)); return 'sold'; }
+    if (!wasEq && P.rs.sorter && P.autoSell >= 0 && it.r <= P.autoSell && !it.lock) { var setx = D.RARITY[P.autoSell].name + ' 이하'; if (P.autoDis) { dismantleGive(P, it); dlog(P, '자동 분해', [it], setx); return 'dis'; } addGold(P, R.sellPrice(it)); dlog(P, '자동 판매', [it], setx); return 'sold'; }
     if (P.inv.length >= bag) { if (!wasEq && !R.noMailQ && (P.mailQ || (P.mailQ = [])).length < R.MAILQ_MAX) { P.mailQ.push(it); return 'mail'; } addGold(P, R.sellPrice(it)); return 'sold'; }   // 가방이 가득 차면 우편으로 (서버가 P.mailQ를 우편으로 보낸다)
     P.inv.push(it); return 'bag';
   }
@@ -1919,11 +1929,12 @@
   A.sell = function (P, W, now, a) {
     var u = str(a.u), i = P.inv.findIndex(function (x) { return x.u === u; }); if (i < 0) err('가방에 없는 장비입니다');
     if (P.inv[i].lock) err('잠긴 장비입니다');
-    var p = R.sellPrice(P.inv[i]); P.inv.splice(i, 1); addGold(P, p); return { gold: p };
+    var p = R.sellPrice(P.inv[i]); dlog(P, '판매', [P.inv[i]]); P.inv.splice(i, 1); addGold(P, p); return { gold: p };
   };
   A.sellBelow = function (P, W, now, a) {
     var r = int(a.r, 0, 4), tot = 0, n = 0;
-    P.inv = P.inv.filter(function (it) { if (!it.lock && it.r <= r) { tot += R.sellPrice(it); n++; return false; } return true; });
+    var gone = []; P.inv = P.inv.filter(function (it) { if (!it.lock && it.r <= r) { tot += R.sellPrice(it); n++; gone.push(it); return false; } return true; });
+    if (gone.length) dlog(P, '일괄 판매', gone, D.RARITY[r].name + ' 이하');
     addGold(P, tot); return { n: n, gold: tot };
   };
   // 분해: 장비를 마석과 마석가루로. 마석가루는 재련(옵션 다시 굴리기)에 쓴다
@@ -1932,11 +1943,12 @@
   A.dismantle = function (P, W, now, a) {
     var u = str(a.u), i = P.inv.findIndex(function (x) { return x.u === u; }); if (i < 0) err('가방에 없는 장비입니다');
     if (P.inv[i].lock) err('잠긴 장비입니다');
-    var y = dismantleGive(P, P.inv[i]); P.inv.splice(i, 1); return y;
+    var y = dismantleGive(P, P.inv[i]); dlog(P, '분해', [P.inv[i]]); P.inv.splice(i, 1); return y;
   };
   A.dismantleBelow = function (P, W, now, a) {
     var r = int(a.r, 0, 4), o = { n: 0, stone: 0, dust: 0 };
-    P.inv = P.inv.filter(function (it) { if (!it.lock && it.r <= r) { var y = dismantleGive(P, it); o.n++; o.stone += y.stone; o.dust += y.dust; return false; } return true; });
+    var gone = []; P.inv = P.inv.filter(function (it) { if (!it.lock && it.r <= r) { var y = dismantleGive(P, it); o.n++; o.stone += y.stone; o.dust += y.dust; gone.push(it); return false; } return true; });
+    if (gone.length) dlog(P, '일괄 분해', gone, D.RARITY[r].name + ' 이하');
     return o;
   };
   // 재련: 등급·레벨·강화는 그대로 두고 옵션만 새로 굴린다 (옵션이 없는 일반 등급은 못 함)
@@ -2363,7 +2375,7 @@
 
   /* ───────── 클라이언트로 보낼 때 숨길 값 ───────── */
   R.publicState = function (P) {
-    var o = {}; for (var k in P) if (k !== 'rng' && k !== 'lrng' && k !== 'pq' && k !== 'px' && k !== 'qRecent' && k !== 'quizCd') o[k] = P[k];
+    var o = {}; for (var k in P) if (k !== 'rng' && k !== 'lrng' && k !== 'pq' && k !== 'px' && k !== 'qRecent' && k !== 'quizCd' && k !== 'dlog') o[k] = P[k];   // dlog: 장비 처분 기록 (운영실 전용)
     // 원정 전리품은 출정할 때 정해 두지만, 아직 줍지 않은 것은 시각만 보낸다 (미리 보고 귀환 · 재출정으로 고르지 못하게)
     if (P.exp) o.exp = P.exp.map(function (j) { return j && j.loot ? Object.assign({}, j, { loot: j.loot.map(function (x) { return x.at <= P.at ? x : { at: x.at }; }) }) : j; });
     o.examPending = !!P.px;
