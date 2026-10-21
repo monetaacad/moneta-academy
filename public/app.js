@@ -1875,7 +1875,7 @@
   function badgeSvg(b, size) {
     var g = b && R.GEM[b.gem]; if (!g) return '';
     var done = (b.lv || 1) >= R.BADGE_MAX;
-    return '<span class="bdg' + (done ? ' done' : '') + '" style="color:' + g.color + (size ? ';font-size:' + Math.max(12, Math.round(size * 0.6)) + 'px' : '') + '" aria-hidden="true">✦</span>';
+    return '<span class="bdg' + (done ? ' done' : '') + '" style="color:' + (g._c0 || g.color) + (size ? ';font-size:' + Math.max(12, Math.round(size * 0.6)) + 'px' : '') + '" aria-hidden="true">✦</span>';
   }
 
   function badgeBrief(b) { var g = R.GEM[b.gem]; return g ? D.BONUS_NAMES[g.bonus] + ' +' + pct(R.badgeMain(b)) + (b.aff && b.aff.length ? ' · 세공 ' + b.aff.length : '') : ''; }
@@ -4179,11 +4179,15 @@
   ];
   function curTheme() { var id = PREF.theme; if (id === 'auto') id = window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches ? 'day' : 'night'; return THEMES.find(function (t) { return t.id === id; }) || THEMES[0]; }
   function mixDark(hex, k) { var c = parseInt(hex.slice(1), 16); return '#' + [16, 8, 0].map(function (sh) { var v = Math.round(((c >> sh) & 255) * (1 - k)); return (v < 16 ? '0' : '') + v.toString(16); }).join(''); }
+  function relLum(hex) { var c = parseInt(hex.slice(1), 16); return [16, 8, 0].reduce(function (a, sh, i) { var v = ((c >> sh) & 255) / 255; v = v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); return a + v * [0.2126, 0.7152, 0.0722][i]; }, 0); }
+  function contrast(a, b) { var x = relLum(a), y = relLum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
   function applyTheme() {
     var t = curTheme(), de = document.documentElement; de.classList.toggle('nav-homeleft', !!PREF.homeLeft); de.dataset.paper = PREF.paper === false ? 'off' : 'on'; de.dataset.skin = t.id; de.dataset.skintone = t.dark ? 'dark' : 'light'; de.style.colorScheme = t.dark ? 'dark' : 'light';
     var mt = document.querySelector('meta[name="theme-color"]'); if (!mt) { mt = document.createElement('meta'); mt.name = 'theme-color'; document.head.appendChild(mt); } mt.content = getComputedStyle(de).getPropertyValue('--night').trim() || (t.dark ? '#11152a' : '#f3ede1');
     // 밝은 바탕에서는 기숙사·등급 글자색을 조금 진하게 (그림에 쓰는 색도 같이)
     [D.HOUSES, D.RARITY, D.FAM_RARITY].forEach(function (arr) { arr.forEach(function (x) { if (!x._c0) x._c0 = x.color; x.color = t.dark ? x._c0 : mixDark(x._c0, 0.38); }); });
+    // 휘장 보석색: 진주 · 월장석처럼 밝은 보석은 0.38로도 흐려서, 밝은 카드 바탕(가장 어두운 쪽 #e9eef5) 대비 4.5:1이 될 때까지 더 진하게
+    D.BADGE_GEMS.forEach(function (x) { if (!x._c0) x._c0 = x.color; var k = 0.38, c = mixDark(x._c0, k); if (!t.dark) while (contrast(c, '#e9eef5') < 4.5 && k < 0.9) { k += 0.03; c = mixDark(x._c0, k); } x.color = t.dark ? x._c0 : c; });
     var sky = $('#sky'); if (sky && A) A.sky(sky, t.sky);
   }
   applyTheme();
@@ -5015,7 +5019,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102153;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102164;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
