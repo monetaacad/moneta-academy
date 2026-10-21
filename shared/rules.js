@@ -262,7 +262,7 @@
     return { title: (prefix || '') + (evs.length > 1 ? '아카데미 소식 ' + evs.length + '건' : evs[0].title), body: heads.join(' · ') };
   };
   // 떠돌이 상인 구간: 활동 학생 원정 최고 단계 분포의 지점(p) + 3 레벨. 신입생 · 중급은 장비 레벨 + 10단계를 넘는 학생은 입찰 불가
-  R.AUC_TIERS = [{ name: '신입생', p: 0.25, cap: 10 }, { name: '중급', p: 0.5, cap: 10 }, { name: '상급', p: 0.88, cap: 0 }];
+  R.AUC_TIERS = [{ name: '신입생', p: 0.10, cap: 10 }, { name: '중급', p: 0.5, cap: 10 }, { name: '상급', p: 0.88, cap: 0 }];
   R.aucCap = function (lot) { var t = R.AUC_TIERS[lot.tier == null ? 2 : lot.tier]; return t && t.cap ? lot.ilvl + t.cap : 0; };
   R.auctionStep = function (price, min) { return price ? Math.ceil(price * 1.05) : min; };
 
@@ -939,7 +939,7 @@
     if (it.r === 3) P.st.epicFound++;
     if (it.r === 4) { P.st.legendFound++; log(P, t, '전설 장비 획득: ' + it.name + '!', 'legend'); }
     else if (it.r === 3) log(P, t, '영웅 장비 획득: ' + it.name, 'epic');
-    if (P.opt.autoEquip) {
+    if (P.opt.autoEquip && R.canWear(P, it)) {
       var cur = P.eq[it.slot];
       if (!cur || (!cur.lock && R.powerWith(P, it) > calc(P, null).power * 1.0001)) {
         if (cur) storeOrSell(P, cur, true);
@@ -949,6 +949,8 @@
     return storeOrSell(P, it, false);
   }
   R.gainItem = gainItem; R.MAILQ_MAX = 100;
+  // 착용 제한: 내 레벨 이하 장비만 장착할 수 있다 (이미 장착 중인 장비는 그대로 둔다)
+  R.canWear = function (P, it) { return !!it && (it.ilvl || 1) <= (P.lvl || 1); };
   function storeOrSell(P, it, wasEq) {
     var bag = calc(P, null).bag;
     if (!wasEq && P.rs.sorter && P.autoSell >= 0 && it.r <= P.autoSell && !it.lock) { if (P.autoDis) { dismantleGive(P, it); return 'dis'; } addGold(P, R.sellPrice(it)); return 'sold'; }
@@ -1491,9 +1493,9 @@
   };
   R.letter = function (s) { return s >= 95 ? 'S' : s >= 85 ? 'A' : s >= 75 ? 'B' : s >= 60 ? 'C' : 'F'; };
   // 등급별 합격 보상 (화면 표와 실제 지급이 같은 표). 합격하면 바로 다음 학년이라 같은 시험은 다시 볼 수 없다.
-  R.EXAM_S_LEGEND = 0.01;   // S 보상 장비: 전설 확률 추가 (기본 약 0.6% → 약 1.6%)
+  R.EXAM_S_LEGEND = 0.03;   // S 보상 장비: 전설 확률 3% (나머지는 영웅)
   R.EXAM_REWARD = {
-    S: { mult: 2, minR: 3, egg: 1, text: '별조각·' + CUR + ' 2배 · 영웅 이상 장비 · 환수의 알' },
+    S: { mult: 2, minR: 3, egg: 1, text: '별조각·' + CUR + ' 2배 · 영웅 이상 장비(전설 3%) · 환수의 알' },
     A: { mult: 1.5, minR: 2, egg: 0, text: '별조각·' + CUR + ' 1.5배 · 희귀 이상 장비' },
     B: { mult: 1.2, minR: 1, egg: 0, text: '별조각·' + CUR + ' 1.2배' },
     C: { mult: 1, minR: 1, egg: 0, text: '기본 보상' }
@@ -1831,6 +1833,7 @@
   };
   A.equip = function (P, W, now, a) {
     var u = str(a.u), i = P.inv.findIndex(function (x) { return x.u === u; }); if (i < 0) err('가방에 없는 장비입니다');
+    if (!R.canWear(P, P.inv[i])) err('레벨 ' + P.inv[i].ilvl + '부터 장착할 수 있습니다');
     var it = P.inv.splice(i, 1)[0], cur = P.eq[it.slot]; P.eq[it.slot] = it; if (cur) P.inv.push(cur); return { ok: true };
   };
   // 장비 프리셋 3칸: 지금 장착한 장비를 저장해 두었다가 한 번에 바꿔 낀다 (가방에 없으면 그 칸은 그대로)
@@ -1841,13 +1844,14 @@
     if (op === 'clear') { sets[i] = null; return { cleared: i }; }
     if (op !== 'load') err('잘못된 요청');
     var st = sets[i]; if (!st) err('저장된 프리셋이 없습니다');
-    var moved = 0, miss = 0;
+    var moved = 0, miss = 0, low = 0;
     D.SLOTS.forEach(function (sl) {
       var u = st.eq[sl.id]; if (!u || (P.eq[sl.id] && P.eq[sl.id].u === u)) return;
       var k = P.inv.findIndex(function (x) { return x.u === u; }); if (k < 0) { miss++; return; }
+      if (!R.canWear(P, P.inv[k])) { low++; return; }   // 레벨이 모자라는 장비는 그 칸을 그대로 둔다
       var it = P.inv.splice(k, 1)[0], cur = P.eq[sl.id]; P.eq[sl.id] = it; if (cur) P.inv.push(cur); moved++;
     });
-    return { moved: moved, miss: miss };
+    return { moved: moved, miss: miss, low: low };
   };
   A.unequip = function (P, W, now, a) {
     var s = str(a.slot); if (!SLOT[s] || !P.eq[s]) err('장착한 장비가 없습니다');
@@ -1923,7 +1927,7 @@
     P.opt.allocW = o; if (P.opt.autoAlloc) R.autoAlloc(P); return { ok: true };
   };
   A.opt = function (P, W, now, a) {
-    var k = str(a.k); if (['autoEquip', 'autoAlloc', 'sound', 'reduceFx', 'hideMyTitle', 'hideOtherTitle', 'dockClosed', 'bulkAsk', 'showFam'].indexOf(k) < 0) err('잘못된 설정');
+    var k = str(a.k); if (['autoEquip', 'autoAlloc', 'sound', 'reduceFx', 'hideMyTitle', 'hideOtherTitle', 'dockClosed', 'bulkAsk', 'showFam', 'hideRank'].indexOf(k) < 0) err('잘못된 설정');
     P.opt[k] = !!a.v; if (k === 'autoAlloc' && P.opt[k]) R.autoAlloc(P); return { ok: true };
   };
   A.spell = function (P, W, now, a) {
@@ -2053,9 +2057,9 @@
       var rw = R.EXAM_REWARD[L] || R.EXAM_REWARD.C, mult = rw.mult, shard = Math.round((8 + run.grade * 4) * mult);
       var gold = Math.floor(400 * K.KILL_GOLD * Math.pow(K.G_GOLD, ex.duel) * mult); P.res.shard += shard; addGold(P, gold);
       var minR = rw.minR;
-      // 장비 레벨: 지금 연 원정 단계 ±3 (학년 상한을 넘어도 됨). S는 전설 확률 +1%p
+      // 장비 레벨: 지금 연 원정 단계 ±3 (학년 상한을 넘어도 됨). S는 전설 확률 3%
       var ilv = Math.max(1, Math.min(P.maxStage, R.stageCap(P)) + Math.floor(rnd(P) * 7) - 3), rr = Math.max(minR, rollRarity(P, 0.5));
-      if (L === 'S' && rr < 4 && rndL(P) < R.EXAM_S_LEGEND) rr = 4;
+      if (L === 'S') rr = rndL(P) < R.EXAM_S_LEGEND ? 4 : Math.min(rr, 3);
       var it = makeItem(P, pick(P, D.SLOTS).id, ilv, rr, minR);
       if (rw.egg) P.fam.eggs += rw.egg;
       res.reward = { shard: shard, gold: gold, egg: rw.egg, item: { name: it.name, r: it.r, res: gainItem(P, it, now) } };

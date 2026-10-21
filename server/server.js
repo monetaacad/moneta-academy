@@ -97,7 +97,7 @@ if (!dbx.kvGet('staffNoticeMig', 0)) {
     dbx.kvSet('staffNoticeMig', 1); if (n) log('예전 운영진 공지 ' + n + '건을 강조 표시로 바꿨습니다');
   } catch (e) { log('운영진 공지 이주 실패', e); }
 }
-const chat = Chat.create(dbx, log, { initExtra: (pid) => ({ build: BUILD.build, minBuild: BUILD.minBuild, maint: maintView(pid), pin: dbx.kvGet('pinNotice', null) }), sec, gzip: process.env.SSE_GZIP !== '0', isOp: (pid) => isChatOp(pid), slow: { world: dbx.kvGet('chat_slow', 0) }, partyOf: (pid) => partyOf.get(pid) || null, exrOf: (pid) => exprooms.chatKey(pid) || R.expChatKey(store.peek(pid)), guildOf: (pid) => guildOf.get(pid) || null, houseOf: (pid) => { const P = store.get(pid); return P && R.HOUSE[P.house] ? P.house : null; }, clsOf: (pid) => { const P = store.get(pid); return P && R.CLS[P.cls] ? P.cls : null; }, titleOf: (P) => R.titleName(P, P.title), inkOf: (P) => R.decoView(P).ink || '', canDm: (a, b) => friendState(a, b) === 'ok' });
+const chat = Chat.create(dbx, log, { initExtra: (pid) => ({ build: BUILD.build, minBuild: BUILD.minBuild, maint: maintView(pid), pin: pinList()[0] || null, pins: pinList() }), sec, gzip: process.env.SSE_GZIP !== '0', isOp: (pid) => isChatOp(pid), slow: { world: dbx.kvGet('chat_slow', 0) }, partyOf: (pid) => partyOf.get(pid) || null, exrOf: (pid) => exprooms.chatKey(pid) || R.expChatKey(store.peek(pid)), guildOf: (pid) => guildOf.get(pid) || null, houseOf: (pid) => { const P = store.get(pid); return P && R.HOUSE[P.house] ? P.house : null; }, clsOf: (pid) => { const P = store.get(pid); return P && R.CLS[P.cls] ? P.cls : null; }, titleOf: (P) => R.titleName(P, P.title), inkOf: (P) => R.decoView(P).ink || '', canDm: (a, b) => friendState(a, b) === 'ok' });
 const Board = require('./board.js');
 // 알림 기록: 우편과 따로, 일어난 일을 모아 보여 준다 (최근 100개, 30일)
 function pname(pid) { const w = dbx.q.getProfile.get(pid); return w ? w.name : '학생'; }
@@ -1029,7 +1029,7 @@ function mkPaySeller(r, price, buyerName, now, how) {
   const SP = store.get(r.seller); if (!SP) return;
   const got = Math.floor(price * (1 - MK.FEE)), nm = r.name + (r.kind !== 'item' && r.kind !== 'badge' ? ' ' + r.qty + '개' : '');
   addNote(r.seller, 'market', '거래소에서 ' + R.josa(nm, '이', '가') + ' ' + (how || '팔렸습니다') + ' · ' + R.fmt(got) + ' ' + CUR + ' (' + buyerName + ' 님)', { view: 'market' });
-  R.advance(SP, world.ctx(now), now); SP.res.gold += got; SP.st.goldTotal = (SP.st.goldTotal || 0) + got;
+  R.advance(SP, world.ctx(now), now); SP.res.gold += got; SP.st.goldTotal = (SP.st.goldTotal || 0) + got; SP.st.mkSold = (SP.st.mkSold || 0) + 1;   // 칭호 「거래소 큰손」
   R.log(SP, now, '거래소: ' + nm + ' 판매 +' + R.fmt(got) + ' ' + CUR + ' (수수료 ' + Math.round(MK.FEE * 100) + '%)', 'good'); store.markDirty(r.seller);
 }
 // 마감된 경매 정리: 입찰이 있으면 최고 입찰자에게 넘기고(맡겨 둔 아르크로 값을 치른다), 없으면 판매자에게 돌려준다
@@ -1037,7 +1037,7 @@ function mkAucSettle(r, now) {
   const real = Math.floor(Date.now() / 1000), W = r.bidder ? store.get(r.bidder) : null;
   if (!W) { if (dbx.q.mkSetStatus.run('expired', '', real, r.id).changes) mkReturn(r, r.bidder ? '낙찰자를 찾을 수 없어 돌아왔습니다' : '입찰 없이 경매가 끝나 돌아왔습니다', now); return; }
   if (!dbx.q.mkAucSold.run(r.bidder, real, r.bid, r.id).changes) return;
-  R.advance(W, world.ctx(now), now); mkGive(W, r);
+  R.advance(W, world.ctx(now), now); mkGive(W, r); W.st.aucWon = (W.st.aucWon || 0) + 1;   // 칭호 「경매의 승자」
   R.log(W, now, '거래소 경매: ' + R.josa(r.name, '을', '를') + ' ' + R.fmt(r.bid) + ' ' + CUR + '에 낙찰받았습니다', 'good'); store.markDirty(r.bidder);
   addNote(r.bidder, 'market', '경매에서 ' + R.josa(r.name, '을', '를') + ' ' + R.fmt(r.bid) + ' ' + CUR + '에 낙찰받았습니다', { view: 'market' });
   try { push.direct(r.bidder, 'mkwon', '거래소 경매', R.josa(r.name, '을', '를') + ' ' + R.fmt(r.bid) + ' ' + CUR + '에 낙찰받았습니다.', 'mkwon-' + r.id); } catch (e) { }
@@ -1207,7 +1207,7 @@ routes['POST /api/market'] = async (req, res) => {
     if (!(r.auc ? dbx.q.mkAucSold.run(me, Math.floor(real), r.price, id) : dbx.q.mkSetStatus.run('sold', me, Math.floor(real), id)).changes) return fail(req, res, 409, '방금 다른 학생이 샀습니다');
     P.res.gold -= r.price - held;
     if (r.auc && r.bidder && r.bidder !== me) mkRefund(r.bidder, r.bid, r.name, '즉시 구매로 경매가 끝나');
-    mkGive(P, r);
+    mkGive(P, r); if (r.auc) P.st.aucWon = (P.st.aucWon || 0) + 1;   // 경매 즉시 구매도 낙찰로 센다
     R.log(P, now, '거래소에서 ' + R.josa(r.name + (r.kind !== 'item' ? ' ' + r.qty + '개' : ''), '을', '를') + ' ' + R.fmt(r.price) + ' ' + CUR + '에 샀습니다', 'good');
     store.markDirty(me);
     if (String(r.seller).startsWith('npc:')) setImmediate(() => { try { npcMarketTick(); } catch (e) { } });   // NPC 매물이 팔리면 바로 채운다
@@ -1409,7 +1409,7 @@ function aucTick(now) {
   if (v && v.active && !dbx.q.aucByVisit.all(v.id).length) {
     const stages = dbx.db.prepare(`SELECT max_stage FROM players WHERE last_seen > ? AND banned = 0 ORDER BY max_stage`).all(Math.floor(Date.now() / 1000) - 7 * 86400).map((r) => r.max_stage);
     const at = (p) => stages.length ? stages[Math.min(stages.length - 1, Math.floor(stages.length * p))] : 10, dummy = { rng: crypto.randomInt(1, 2147483647) };
-    // 구간마다 3점: 신입생(하위 25%) · 중급(중간값) · 상급(상위 12%) 단계 + 3. 영웅 2점 + 영웅/전설(50%) 1점
+    // 구간마다 3점: 신입생(하위 10%) · 중급(중간값) · 상급(상위 12%) 단계 + 3. 영웅 2점 + 영웅/전설(50%) 1점
     R.AUC_TIERS.forEach((tp, tier) => {
       const lv = Math.max(1, at(tp.p) + 3);
       [3, 3, Math.random() < 0.5 ? 4 : 3].forEach((r) => {
@@ -1431,7 +1431,7 @@ function aucTick(now) {
     if (!dbx.q.aucDone.run(r.id).changes) return;
     if (r.bidder && !String(r.bidder).startsWith('npc:')) {
       let it = null; try { it = JSON.parse(r.item); } catch (e) { }
-      try { const Q = loadPlayer(r.bidder, nowSec()); if (Q) { R.cupAdd(Q, R.CUP_AUC, 'auc'); store.markDirty(r.bidder); } } catch (e) { log('낙찰 대항전 점수 실패', e); }   // 대항전 점수 (거울관 특기)
+      try { const Q = loadPlayer(r.bidder, nowSec()); if (Q) { R.cupAdd(Q, R.CUP_AUC, 'auc'); Q.st.wandWon = (Q.st.wandWon || 0) + 1; store.markDirty(r.bidder); } } catch (e) { log('낙찰 대항전 점수 실패', e); }   // 대항전 점수 (거울관 특기)
       if (it) sendMail(r.bidder, '떠돌이 상인', '낙찰: ' + r.name, r.bidder_name + ' 님, ' + R.fmt(r.price) + ' ' + CUR + '에 낙찰되었습니다. 좋은 주인을 만나 다행이군요.\n— 떠돌이 상인', { items: [it] }, Math.floor(Date.now() / 1000) + 14 * 86400, true);
       chat.system('notice', '떠돌이 상인: ' + r.bidder_name + ' 님이 ' + R.josa('「' + r.name + '」', '을', '를') + ' ' + R.fmt(r.price) + ' ' + CUR + '에 낙찰받았습니다.', Date.now() / 1000);
     }
@@ -1532,7 +1532,7 @@ routes['POST /api/board'] = async (req, res) => {
   if (limited('bdp:' + me, 1, 10)) return fail(req, res, 429, '잠시 후 다시 시도');
   try {
     let id = null;
-    if (op === 'write') id = board.write(me, b, now);
+    if (op === 'write') { id = board.write(me, b, now); if (!b.priv) { const BP = store.get(me); if (BP) { BP.st.posts = (BP.st.posts || 0) + 1; store.markDirty(me); } } }   // 칭호 「게시판 터줏대감」 (관리자만 보기 글 제외)
     else if (op === 'edit') id = board.edit(me, b, now);
     else if (op === 'del') board.del(me, b.id);
     else if (op === 'comment') id = board.comment(me, b.id, b.text, now, b.parent);
@@ -1847,6 +1847,7 @@ routes['POST /api/guild'] = async (req, res) => {
   if (op === 'checkin') {
     if (!dbx.q.gCheckin.run(day, R.GUILD_CHECKIN, me, day).changes) return fail(req, res, 400, '오늘은 이미 동아리 출석을 했습니다');
     gXp(mine, R.GUILD_CHECKIN); gLog(mine, P.name + ' 님 출석 (+' + R.GUILD_CHECKIN + ')');
+    P.st.gCheckin = (P.st.gCheckin || 0) + 1; store.markDirty(me);   // 칭호 「동아리의 기둥」
     return ok({ got: R.GUILD_CHECKIN });
   }
   R.advance(P, world.ctx(gnow), gnow);
@@ -1932,15 +1933,19 @@ routes['GET /api/admin/stats'] = (req, res) => {
     chatConnections: chat.connections(), chatOnline: chat.online(), inviteRequired: cfg.inviteRequired, boss: world.W.boss, epoch: world.W.epoch, wbForecast: Math.floor(world.wbForecast(Math.floor(nowSec()))), wbAttacks: R.wbAttacksLeft(nowSec())
   });
 };
+// 공지 탭 상단 고정 공지: 최대 2개 (새로 고정하면 가장 오래된 것이 빠진다). 예전 한 개짜리(pinNotice)는 첫 칸으로 이어받는다
+const PIN_MAX = 2;
+function pinList() { let l = dbx.kvGet('pinNotices', null); if (!Array.isArray(l)) { const o = dbx.kvGet('pinNotice', null); l = o && o.text ? [o] : []; } return l.slice(0, PIN_MAX); }
+function pinSave(l) { l = l.slice(0, PIN_MAX); dbx.kvSet('pinNotices', l); dbx.kvSet('pinNotice', l[0] || null); chat.pingAll('pin', { pin: l[0] || null, pins: l }); return l; }
 routes['POST /api/admin/notice'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
   const b = await readJson(req, 4096);
-  if (b.unpin) { dbx.kvSet('pinNotice', null); chat.pingAll('pin', { pin: null }); oplog('admin', '관리자', 'notice', '상단 고정 해제'); return send(req, res, 200, { ok: true, pin: null }); }   // 고정 해제만
+  if (b.unpin) { const id = b.id != null ? String(b.id) : '', l = pinSave(id ? pinList().filter((p) => String(p.id) !== id) : []); oplog('admin', '관리자', 'notice', id ? '상단 고정 하나 해제' : '상단 고정 모두 해제'); return send(req, res, 200, { ok: true, pin: l[0] || null, pins: l }); }   // 고정 해제만 (id가 없으면 모두)
   if (!b.text) return fail(req, res, 400, 'text가 필요합니다');
   const text = String(b.text).slice(0, 500), t = Date.now() / 1000;
   world.addNotice(text, nowSec(), false); world.invalidate(); const m = chat.staffNotice(text, t);
-  if (b.pin) { const pin = { id: m.id, t, text }; dbx.kvSet('pinNotice', pin); chat.pingAll('pin', { pin }); }   // 공지 탭 상단에 고정
-  send(req, res, 200, { ok: true, pin: b.pin ? dbx.kvGet('pinNotice', null) : undefined });
+  if (b.pin) pinSave([{ id: m.id, t, text }].concat(pinList()));   // 공지 탭 상단에 고정 (새 것이 위)
+  send(req, res, 200, { ok: true, pin: b.pin ? pinList()[0] || null : undefined, pins: b.pin ? pinList() : undefined });
 };
 routes['POST /api/admin/wbsummon'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
@@ -2285,7 +2290,7 @@ routes['GET /api/admin/dist'] = (req, res) => {
     detailActive7d: { note: 'dps=초당 피해 합계(basic 평타 + spell 주문 + fam 사역마), spellShare=주문 비중, patk/matk=물리/주문 공격력, critC=치명타 확률, aps=초당 공격 횟수', all, byCls: group('cls'), byGrade: group('grade'), byClsGrade: cg }, towers });
 };
 routes['GET /api/admin/ideas'] = (req, res) => { if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다'); send(req, res, 200, { text: board.exportIdeas() }); };
-routes['GET /api/admin/sys'] = (req, res) => { if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다'); send(req, res, 200, { build: BUILD, maint: MAINT, pin: dbx.kvGet('pinNotice', null), epoch: world.W.epoch, cal: R.calendar(world.W, nowSec()) }); };
+routes['GET /api/admin/sys'] = (req, res) => { if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다'); send(req, res, 200, { build: BUILD, maint: MAINT, pin: pinList()[0] || null, pins: pinList(), epoch: world.W.epoch, cal: R.calendar(world.W, nowSec()) }); };
 // 개교일(아카데미력 서사달 1일이 되는 날, 한국 시간 날짜). 바꾸면 달력 · 달 축복 · 날씨가 그 날짜 기준으로 다시 계산된다
 routes['POST /api/admin/epoch'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');

@@ -176,8 +176,8 @@
   });
   function oplog() { api('GET', '/api/admin/oplog').then(function (j) { $('#oplog').innerHTML = (j.log || []).map(function (l) { return '<tr><td>' + when(l.t) + '</td><td>' + esc(l.name || l.actor) + '</td><td>' + esc({ slow: '슬로우 모드', role: '운영자 지정', maint: '점검', build: '새 버전' }[l.action] || l.action) + '</td><td>' + esc(l.detail) + '</td></tr>'; }).join('') || '<tr><td colspan="4" class="faint">기록이 없습니다</td></tr>'; }); }
   function kst(t) { return t ? new Date(t * 1000).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) : ''; }
-  function showPin(p) { $('#pinnow').textContent = p && p.text ? '고정 중: ' + p.text.slice(0, 60) + (p.text.length > 60 ? '…' : '') : '고정 공지 없음'; }
-  function sys() { api('GET', '/api/admin/sys').then(function (j) { if (j.error) return; showPin(j.pin); var m = j.maint || {}, b = j.build || {}; $('#sysnow').textContent = '지금: ' + (m.on ? '점검 중' + (m.until ? ' (' + kst(m.until) + ' 종료 예정)' : '') : m.start ? '점검 예고 ' + kst(m.start) : '점검 없음') + ' · 화면 빌드 ' + (b.build || 0) + (b.minBuild ? ' · 최소 ' + b.minBuild : ''); if (j.epoch) { var e = new Date((j.epoch + 9 * 3600) * 1000).toISOString().slice(0, 10); $('#epnow').textContent = '지금 개교일: ' + e + (j.cal ? ' · 오늘은 ' + j.cal.year + '년 ' + j.cal.month + ' ' + j.cal.d + '일' : '') + (j.epoch > Date.now() / 1000 ? ' (개교일이 미래라 달력이 1일에 멈춰 있습니다)' : ''); if (!$('#epdate').value) $('#epdate').value = e; } }); }
+  function showPin(l) { l = (Array.isArray(l) ? l : l ? [l] : []).filter(function (p) { return p && p.text; }); $('#pinnow').innerHTML = l.length ? l.map(function (p) { return '<span style="display:block">고정 중: ' + esc(p.text.slice(0, 60)) + (p.text.length > 60 ? '…' : '') + ' <button class="btn sm ghost" data-a="unpin" data-id="' + esc(String(p.id)) + '">해제</button></span>'; }).join('') : '고정 공지 없음 (최대 2개)'; }
+  function sys() { api('GET', '/api/admin/sys').then(function (j) { if (j.error) return; showPin(j.pins || j.pin); var m = j.maint || {}, b = j.build || {}; $('#sysnow').textContent = '지금: ' + (m.on ? '점검 중' + (m.until ? ' (' + kst(m.until) + ' 종료 예정)' : '') : m.start ? '점검 예고 ' + kst(m.start) : '점검 없음') + ' · 화면 빌드 ' + (b.build || 0) + (b.minBuild ? ' · 최소 ' + b.minBuild : ''); if (j.epoch) { var e = new Date((j.epoch + 9 * 3600) * 1000).toISOString().slice(0, 10); $('#epnow').textContent = '지금 개교일: ' + e + (j.cal ? ' · 오늘은 ' + j.cal.year + '년 ' + j.cal.month + ' ' + j.cal.d + '일' : '') + (j.epoch > Date.now() / 1000 ? ' (개교일이 미래라 달력이 1일에 멈춰 있습니다)' : ''); if (!$('#epdate').value) $('#epdate').value = e; } }); }
   function tsOf(id) { var v = $(id).value; return v ? Math.floor(new Date(v + ':00+09:00').getTime() / 1000) : 0; }
   function maint(o, msg) { api('POST', '/api/admin/maint', o).then(function (j) { toast(j.error || msg); sys(); oplog(); }); }
   var A = {
@@ -303,10 +303,10 @@
       api('GET', '/api/admin/reports/ctx?id=' + encodeURIComponent(id)).then(function (j) { RCTX[id] = rctxHtml(j); reports(); });
     },
     resolve: function (el) { api('POST', '/api/admin/reports/resolve', { id: +el.dataset.r }).then(reports); },
-    unpin: function () { api('POST', '/api/admin/notice', { unpin: true }).then(function (j) { showPin(null); toast(j.error || '고정을 풀었습니다'); }); },
+    unpin: function (el) { var id = el && el.dataset.id; api('POST', '/api/admin/notice', id ? { unpin: true, id: id } : { unpin: true }).then(function (j) { showPin(j.pins || []); toast(j.error || '고정을 풀었습니다'); }); },
     notice: function () {
       var t = $('#nt').value.trim(); if (!t) return;
-      api('POST', '/api/admin/notice', { text: t, pin: $('#ntpin').checked }).then(function (j) { if (j && j.pin !== undefined) showPin(j.pin); $('#ntpin').checked = false; return $('#ntchat').checked ? api('POST', '/api/admin/chat/system', { ch: 'world', text: '[공지] ' + t }) : null; }).then(function () { $('#nt').value = ''; toast('공지를 올렸습니다'); });
+      api('POST', '/api/admin/notice', { text: t, pin: $('#ntpin').checked }).then(function (j) { if (j && j.pins !== undefined) showPin(j.pins); $('#ntpin').checked = false; return $('#ntchat').checked ? api('POST', '/api/admin/chat/system', { ch: 'world', text: '[공지] ' + t }) : null; }).then(function () { $('#nt').value = ''; toast('공지를 올렸습니다'); });
     },
     mute: function () { api('POST', '/api/admin/mute', { name: $('#un').value.trim(), minutes: +$('#um').value }).then(function (j) { $('#umsg').textContent = j.error || '적용했습니다'; }); },
     grant: function () { api('POST', '/api/admin/grant', { name: $('#un').value.trim(), shard: +$('#ug').value, reason: $('#ur').value }).then(function (j) { $('#umsg').textContent = j.error || '지급했습니다 (보유 ' + j.shard + ')'; }); },
