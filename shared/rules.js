@@ -997,8 +997,9 @@
   }
   R.gainBadge = gainBadge;
   // 별빛: 달고 있는 휘장만 모은다
-  function badgeGain(P, x, t) {
-    var b = R.badgeWorn(P); if (!b || !(x > 0) || b.lv >= R.BADGE_MAX) return 0;
+  function badgeGain(P, x, t) { return badgeAddXp(P, R.badgeWorn(P), x, t); }
+  function badgeAddXp(P, b, x, t) {
+    if (!b || !(x > 0) || b.lv >= R.BADGE_MAX) return 0;
     b.xp += x; var ups = 0;
     while (b.lv < R.BADGE_MAX && b.xp >= R.badgeNeed(b.lv)) {
       b.xp -= R.badgeNeed(b.lv); b.lv++; ups++;
@@ -1010,6 +1011,22 @@
     return ups;
   }
   R.badgeGain = badgeGain;
+  // 휘장 계승: 높은 레벨 휘장(재료)을 없애고 모은 별빛의 60%를 낮은 레벨 휘장에 옮긴다 (보석 · 품질 · 세공은 받는 휘장 것 그대로, 레벨이 오르며 넘은 세공 레벨에서는 새 세공)
+  R.BADGE_INHERIT = 0.6;
+  R.badgeTotalXp = function (b) { var s = b.xp || 0; for (var l = 1; l < b.lv; l++) s += R.badgeNeed(l); return s; };
+  R.badgeInheritCost = function (src) { return 20 + src.lv * 8; };   // 마석가루 (깨뜨릴 때 얻는 양과 비슷하게)
+  R.badgeInheritCheck = function (P, src, dst) {
+    if (!src || !dst) return '없는 휘장입니다'; if (src === dst) return '같은 휘장입니다';
+    if (src.lock) return '잠긴 휘장은 재료로 사용할 수 없습니다'; if (P.badgeOn === src.u) return '달고 있는 휘장은 재료로 사용할 수 없습니다. 먼저 해제 필요';
+    if (dst.lv >= src.lv) return '레벨이 더 낮은 휘장에만 계승할 수 있습니다';
+    if ((P.res.dust || 0) < R.badgeInheritCost(src)) return '마석가루가 모자랍니다 (' + R.badgeInheritCost(src) + '개 필요)';
+    return '';
+  };
+  R.badgeInheritPreview = function (src, dst) {
+    var lv = dst.lv, xp = (dst.xp || 0) + Math.floor(R.badgeTotalXp(src) * R.BADGE_INHERIT), fac = 0;
+    while (lv < R.BADGE_MAX && xp >= R.badgeNeed(lv)) { xp -= R.badgeNeed(lv); lv++; if (D.BADGE_FACET_LV.indexOf(lv) >= 0) fac++; }
+    return { lv: lv, xp: lv >= R.BADGE_MAX ? 0 : Math.floor(xp), facets: fac, cost: R.badgeInheritCost(src) };
+  };
   R.badgePolishCost = function (P, b) { return { dust: 10 + b.lv * 4, gold: Math.floor(150 * Math.pow(1.11, Math.max(1, Math.min(P.maxStage, R.stageCap(P))) - 1)) }; };
   R.badgePolishXp = function (b) { return Math.ceil(R.badgeNeed(b.lv) / 4); };
   R.badgeBreakDust = function (b) { return 15 + b.lv * 8 + (b.aff || []).length * 5; };
@@ -2217,6 +2234,14 @@
     var c = R.badgePolishCost(P, b); if ((P.res.dust || 0) < c.dust) err('마석가루가 모자랍니다 (' + c.dust + '개 필요)'); if (P.res.gold < c.gold) err(CUR + '가 모자랍니다');
     P.res.dust -= c.dust; P.res.gold -= c.gold; var x = R.badgePolishXp(b), lv0 = b.lv; badgeGain(P, x, now); P.st.polished = (P.st.polished || 0) + 1;
     return { xp: x, from: lv0, to: b.lv, name: b.name, dust: c.dust, gold: c.gold };
+  };
+  A.badgeInherit = function (P, W, now, a) {
+    var src = R.badgeFind(P, str(a.from)), dst = R.badgeFind(P, str(a.to)), why = R.badgeInheritCheck(P, src, dst); if (why) err(why);
+    var cost = R.badgeInheritCost(src), x = Math.floor(R.badgeTotalXp(src) * R.BADGE_INHERIT), lv0 = dst.lv;
+    P.res.dust -= cost; P.badges = P.badges.filter(function (b) { return b !== src; });
+    badgeAddXp(P, dst, x, now);
+    log(P, now, src.name + '의 별빛을 ' + dst.name + '에 계승했습니다 (Lv ' + lv0 + ' → ' + dst.lv + ')', 'good');
+    return { from: src.name, to: dst.name, lv0: lv0, lv: dst.lv, xp: x, cost: cost };
   };
   A.badgeBreak = function (P, W, now, a) {
     var b = R.badgeFind(P, str(a.u)); if (!b) err('없는 휘장입니다'); if (b.lock) err('잠긴 휘장입니다'); if (P.badgeOn === b.u) err('달고 있는 휘장은 깨뜨릴 수 없습니다. 먼저 장착 해제 필요');
