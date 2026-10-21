@@ -2273,16 +2273,18 @@
   /* 고서 열람실: 지식으로 3시간 버프. 한 번에 한 권 (다른 책은 한 번 더 눌러 바꿔 펼침), 같은 책은 이어 읽기 최대 9시간 */
   function bookCard() {
     var P = S.P, t = now(), cur = P.buffs.book && P.buffs.book.end > t ? P.buffs.book : null, cost = R.bookCost(P), lock = P.grade < R.BOOK_GRADE;
-    var h = '<div class="card bookroom" style="margin-bottom:14px"><div class="row between" style="gap:8px;flex-wrap:wrap"><h4>고서 열람실</h4><span class="tiny faint">보유 지식 <b class="num gold">' + fmt(P.res.know) + '</b></span></div>' +
-      '<p class="tiny faint" style="margin:2px 0 10px">지식을 사용해 고서를 열람하면 ' + R.BOOK_DUR / 3600 + '시간 동안 효과가 적용됩니다. 한 번에 한 권만 펼칠 수 있으며, 같은 책을 다시 열람하면 효과 시간이 이어집니다(최대 ' + R.BOOK_MAX / 3600 + '시간).</p>';
-    if (lock) return h + '<span class="tag">' + R.BOOK_GRADE + '학년부터</span></div>';
-    if (cur) h += '<div class="row small" style="margin-bottom:8px;gap:6px"><i class="bdot" style="background:' + esc(cur.color || '#e8c36a') + '"></i><span>열람 중: <b>' + esc(cur.name) + '</b> · ' + esc(R.BOOK[cur.id] ? R.BOOK[cur.id].desc : R.effText(cur.eff)) + '</span><span class="spacer"></span><span class="num faint" data-l="left:' + cur.end + '"></span></div>';
-    return h + '<div class="grid gauto">' + D.BOOKS.map(function (b) {
-      var same = cur && cur.id === b.id, full = same && cur.end - t > R.BOOK_MAX - R.BOOK_DUR, swap = cur && !same, armed = S.confirm['bk' + b.id] > Date.now();
-      var ok = P.res.know >= cost && !full, label = full ? '최대 시간까지 열람함' : armed ? '한 번 더 누르면 바꿔 펼칩니다' : same ? '이어 읽기' : swap ? '바꿔 펼치기' : '열람하기';
-      return '<div class="card inset' + (same ? ' hl' : '') + '"><div class="row" style="gap:6px"><i class="bdot" style="background:' + b.color + '"></i><h4>' + b.name + '</h4></div><p class="small muted" style="margin:4px 0 8px">' + R.BOOK_DUR / 3600 + '시간 동안 ' + b.desc + '</p>' +
-        '<button class="btn sm' + (armed ? ' danger' : ' primary') + '" data-act="bookread" data-a="' + b.id + '"' + (ok ? '' : ' disabled') + '>' + label + (full ? '' : ' <span class="cost">지식 ' + fmt(cost) + '</span>') + '</button></div>';
-    }).join('') + '</div>' + '</div>';
+    var h = '<p class="tiny faint" style="margin:0 0 10px">지식을 사용해 고서를 열람하면 ' + R.BOOK_DUR / 3600 + '시간 동안 효과가 적용됩니다. 한 번에 한 권만 펼칠 수 있으며, 같은 책을 다시 열람하면 효과 시간이 이어집니다(최대 ' + R.BOOK_MAX / 3600 + '시간). 열람 비용 <b class="num gold">지식 ' + fmt(cost) + '</b> · 보유 <b class="num">' + fmt(P.res.know) + '</b></p>';
+    if (lock) h += '<span class="tag">' + R.BOOK_GRADE + '학년부터</span>';
+    else {
+      if (cur) h += '<div class="row small" style="margin-bottom:8px;gap:6px"><i class="bdot" style="background:' + esc(cur.color || '#e8c36a') + '"></i><span>열람 중: <b>' + esc(cur.name) + '</b> · ' + esc(R.BOOK[cur.id] ? R.BOOK[cur.id].desc : R.effText(cur.eff)) + '</span><span class="spacer"></span><span class="num faint" data-l="left:' + cur.end + '"></span></div>';
+      h += '<div class="booklist">' + D.BOOKS.map(function (b) {
+        var same = cur && cur.id === b.id, full = same && cur.end - t > R.BOOK_MAX - R.BOOK_DUR, swap = cur && !same, armed = S.confirm['bk' + b.id] > Date.now();
+        var ok = P.res.know >= cost && !full, label = full ? '최대 시간' : armed ? '한 번 더 누르면 바꿔 펼칩니다' : same ? '이어 읽기' : swap ? '바꿔 펼치기' : '열람하기';
+        return '<div class="bookrow' + (same ? ' on' : '') + '"><i class="bdot" style="background:' + b.color + '"></i><span class="bkname"><b>' + b.name + '</b> <span class="small muted">' + b.desc + '</span></span>' +
+          '<button class="btn sm' + (armed ? ' danger' : same ? ' primary' : '') + '" data-act="bookread" data-a="' + b.id + '"' + (ok ? '' : ' disabled') + '>' + label + '</button></div>';
+      }).join('') + '</div>';
+    }
+    return fold('bookroom', '고서 열람실', h, true, cur ? '<span class="tiny faint">' + esc(cur.name) + '</span>' : '', 'bookroom');
   }
   ACT.bookread = function (id) {
     var P = S.P, cur = P.buffs.book && P.buffs.book.end > now() ? P.buffs.book : null, k = 'bk' + id;

@@ -1891,3 +1891,11 @@ mark.hl { color: inherit; background: linear-gradient(transparent 38%, color-mix
 /* 과목 카드: 이름은 낱말 단위로만 줄바꿈 (한 글자씩 세로로 쌓이지 않게), 복습 효과는 이름 아래 줄 */
 .subj .hd h3 { word-break: keep-all; min-width: 0; }
 .subj .revline { margin: 2px 0 4px; }
+
+/* 고서 열람실: 책 한 권 = 한 줄 (모바일에서는 버튼이 다음 줄로) */
+.bookroom { margin-bottom: 14px; }
+.booklist { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 6px 14px; }
+.bookrow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 8px; border-radius: 8px; background: var(--sunk); }
+.bookrow.on { outline: 1px solid var(--brass2); }
+.bookrow .bkname { flex: 1; min-width: 150px; }
+@media (max-width: 520px) { .booklist { grid-template-columns: 1fr; } }
