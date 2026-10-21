@@ -1376,6 +1376,9 @@ routes['GET /api/tower'] = (req, res) => {
   send(req, res, 200, v);
 };
 // mode: real(실전) · party(파티 연습) · solo(혼자 연습) · stop(파티 연습 중단) · pos(내 포지션)
+// 끝난 실전의 대기 순위를 정식 기록으로 (실전이 끝날 때 · 1분마다 · 서버를 켤 때)
+function twRankSettle() { try { if (dbx.q.twRankSettle.run(Math.floor(Date.now() / 1000)).changes) world.invalidate(); } catch (e) { log('별의 탑 순위 정리 실패', e); } }
+setInterval(twRankSettle, 60000).unref(); setTimeout(twRankSettle, 1000).unref();
 // 별의 탑 실전 보상 맡겨 두기: P.twPend = { id, end(실제 시각), from, to, pname }. 끝난 뒤 「보상 받기」로 우편 발송
 function twPendMail(Q) {
   const p = Q.twPend; if (!p) return; delete Q.twPend;
@@ -1431,7 +1434,8 @@ function twStartRun(party, mode, starterId) {
     const after = Math.round(run.d * 1000), later = (fn) => setTimeout(fn, after).unref(), pname = pa ? pa.name : '';
     if (mode === 'real') {
       run.prev = {};
-      if (run.cleared > 0) dbx.q.twRankPut.run(R.weekId(now), party, pname, JSON.stringify(run.ms.map((m) => ({ name: m.name, house: m.house, npc: m.npc || undefined }))), run.cleared, Math.floor(Date.now() / 1000));
+      // 파티 순위는 실전이 끝난 뒤에 (대기 기록으로 넣고, 끝나는 시각에 정식 기록으로)
+      if (run.cleared > 0) dbx.q.twRankPend.run(R.weekId(now), party, run.cleared, Math.floor(run.t0 + run.d), pname, JSON.stringify(run.ms.map((m) => ({ name: m.name, house: m.house, npc: m.npc || undefined }))));
       ps.forEach((Q) => {
         R.twUse(Q, now); const old = R.twRecord(Q, now, run.cleared); run.prev[Q.id] = old;
         // 보상은 맡겨 두었다가 실전이 끝난 뒤 「보상 받기」를 누르면 우편으로 보낸다 (진행 중에 결과가 새지 않게, 원정 귀환처럼)
@@ -1440,6 +1444,7 @@ function twStartRun(party, mode, starterId) {
         store.markDirty(Q.id);
       });
       later(() => {
+        twRankSettle();
         chat.system('party', '✦ 별의 탑 실전 종료 — ' + run.start + '층에서 시작해 ' + (run.cleared >= run.start ? run.cleared + '층까지 올랐습니다.' : '첫 층을 넘지 못했습니다.') + ' 각자의 이번 주 기록에 반영되었습니다.', Date.now() / 1000, party);
         ps.forEach((Q) => { const X = store.get(Q.id); if (X) { R.log(X, nowSec(), '별의 탑 실전: ' + run.cleared + '층까지 기록', 'good'); store.markDirty(Q.id); } });
       });
