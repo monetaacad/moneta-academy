@@ -528,9 +528,9 @@
   }
   function chatInput(ch) {
     var c = S.chat;
-    return '<div class="chatin"><div class="chatrow"><textarea id="chatinput" rows="1" maxlength="' + (ch === 'world' || ch === 'recruit' ? 300 : 500) + '" placeholder="' + (ch === 'world' ? '메시지 · Enter 보내기, Shift+Enter 줄바꿈' : ch === 'dm' ? '메시지 · Enter 보내기' : ch === 'gooc' ? '오너로서 하는 이야기 · Enter 보내기' : '대사를 입력하고 *행동*은 별표 사이에') + '">' + esc(c.draft[ch === 'dm' ? 'dm:' + S.dm.peer : ch] || '') + '</textarea>' +
+    return '<div class="chatin"><div class="chatrow"><div class="chatbox"><textarea id="chatinput" rows="1" data-max="' + chatMax(ch) + '" placeholder="' + (ch === 'world' ? '메시지 · Enter 보내기, Shift+Enter 줄바꿈' : ch === 'dm' ? '메시지 · Enter 보내기' : ch === 'gooc' ? '오너로서 하는 이야기 · Enter 보내기' : '대사를 입력하고 *행동*은 별표 사이에') + '">' + esc(c.draft[ch === 'dm' ? 'dm:' + S.dm.peer : ch] || '') + '</textarea><span class="chatcnt num" id="chatcount" aria-live="polite"></span></div>' +
       '<button class="btn sm primary chatsendbtn" data-act="chatsend">보내기</button></div>' +
-      '<div class="row chatmeta"><span class="tiny faint" id="chatcount"></span><span class="spacer"></span><span class="tiny bad" id="chatmsg"></span></div>' +
+      '<div class="row chatmeta"><span class="spacer"></span><span class="tiny bad" id="chatmsg"></span></div>' +
       (c.blocked.length && ch !== 'dm' ? '<p class="tiny faint">가린 학생 ' + c.blocked.length + '명 · <button class="btn sm ghost" data-act="unblockall">모두 다시 보기</button></p>' : '') + '</div>';
   }
   // 접힌 채팅창: 지금 고른 탭의 최근 글 한 줄 (글이 없으면 우측에 「채팅 열기」)
@@ -605,13 +605,28 @@
       updNewBtn();
     }
     if (!inp) return;
-    function grow() { inp.style.height = 'auto'; inp.style.height = Math.min(inp.scrollHeight + 2, 110) + 'px'; }   // 한 줄로 시작해 쓰는 만큼 늘어난다 (최대 4줄쯤)
+    var grow = function () { chatGrow(inp); };
     inp.addEventListener('input', function () { S.chat.draft[S.chat.ch === 'dm' ? 'dm:' + S.dm.peer : S.chat.ch] = inp.value; chatCount(); grow(); });
-    if (inp.value) grow();
+    grow();   // 빈 칸도 한 줄 높이로 맞춰 둔다 (첫 글자를 입력할 때 칸이 몇 px 커지며 화면이 밀리지 않게)
     inp.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); ACT.chatsend(); } });
     chatCount();
   }
-  function chatCount() { var inp = $('#chatinput'), el = $('#chatcount'); if (inp && el) el.textContent = inp.value.length ? inp.value.length + ' / ' + inp.maxLength : ''; }
+  function chatGrow(inp) {   // 한 줄로 시작해 쓰는 만큼 늘어난다 (최대 4줄쯤). 빈 칸은 긴 안내 문구가 줄바꿈되어도 한 줄 높이로 잰다
+    var ph = !inp.value && inp.getAttribute('placeholder'); if (ph) inp.setAttribute('placeholder', '');
+    inp.style.height = 'auto'; inp.style.height = Math.min(inp.scrollHeight + 2, 110) + 'px';
+    if (ph) inp.setAttribute('placeholder', ph);
+  }
+  // 글자 수 한도 (서버 chat.js CHANNELS와 같게: 월드 · 모집 대화 300자, 나머지 500자)
+  function chatMax(ch) { return ch === 'world' || ch === 'recruit' ? 300 : 500; }
+  var CHAT_CNT_NEAR = 50;   // 한도까지 이만큼 남으면 입력칸 우측 하단에 글자 수를 겹쳐 보인다 (자리를 차지하지 않아 화면이 밀리지 않는다)
+  function chatCount() {
+    var inp = $('#chatinput'), el = $('#chatcount'); if (!inp || !el) return;
+    var n = inp.value.length, max = +inp.getAttribute('data-max') || chatMax(S.chat.ch), show = n >= max - CHAT_CNT_NEAR, over = n > max;
+    el.textContent = show ? n + ' / ' + max : '';
+    el.classList.toggle('over', over); inp.classList.toggle('cntpad', show); inp.classList.toggle('over', over);
+    el.title = over ? max + '자까지 작성할 수 있습니다' : '';
+    var mm = $('#chatmsg'); if (mm && !over && /자까지 작성할 수 있습니다/.test(mm.textContent)) mm.textContent = '';   // 입력 중에는 붉은 글자 수만, 경고 문구는 보내기를 누를 때
+  }
   function chatConnect() {
     if (S.chat.conn || !API.chatConnect) return;
     loadRead();
@@ -3935,6 +3950,7 @@
     var inp = $('#chatinput'); if (!inp) return; var text = inp.value.trim(), ch = S.chat.ch; if (!text) return;
     var kind = 'say';
     if (/^\/me\s+/i.test(text)) { kind = 'me'; text = text.replace(/^\/me\s+/i, ''); }
+    if (text.length > chatMax(ch)) { chatCount(); chatNote(chatMax(ch) + '자까지 작성할 수 있습니다 · ' + (text.length - chatMax(ch)) + '자 초과'); return; }   // 서버는 넘친 글자를 잘라 내므로 보내기 전에 막는다
     var c = S.chat, nowMs = Date.now(), dkey = ch === 'dm' ? 'dm:' + S.dm.peer : ch;
     // 운영자 명령: /slow 5 · /slow off
     var sm = /^\/slow(?:\s+(\S+))?$/i.exec(text);
@@ -3972,7 +3988,7 @@
         if (arr2 && !arr2.some(function (x) { return x.id === j.id || (x.nonce === nonce && x.pid === S.P.id); })) { var real = Object.assign({}, pm, { id: j.id }); arr2.push(real); pel.outerHTML = msgHtml(real); }
         else pel.remove();
       }
-      c.pend = null; S.divider[ch] = 0; if (!pel) { S.chat.draft[dkey] = ''; var i = $('#chatinput'); if (i) { i.value = ''; i.style.height = ''; i.focus(); } chatCount(); } S.chat.stick = true;
+      c.pend = null; S.divider[ch] = 0; if (!pel) { S.chat.draft[dkey] = ''; var i = $('#chatinput'); if (i) { i.value = ''; chatGrow(i); i.focus(); } chatCount(); } S.chat.stick = true;
     }, function () { done(); chatNote('전송이 늦어지고 있습니다. 다시 눌러도 한 번만 전송됩니다'); if (pel) { pel.classList.add('late'); giveBack(); } });
   };
   ACT.slowset = function () {
