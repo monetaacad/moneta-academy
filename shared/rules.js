@@ -1375,13 +1375,14 @@
   /* ───────── 별의 탑 (파티 콘텐츠) ─────────
      파티가 함께 1층부터 실시간으로 오른다. 실전은 파티 단위 하루 1번(누른 시각의 KST 날짜 기준): 파티원 누구도 그날 실전을 하지 않았어야 시작할 수 있고,
      시작하면 파티원 모두의 기회를 쓴다. 파티가 쓰러지거나 제한 시간 안에 적을 쓰러뜨리지 못할 때까지 층을 이어 오르고,
+     전투 시간 제한은 없다(오래 버티며 조금씩 깎는 전략도 인정). 다만 계산이 끝나지 않는 일이 없도록 10분이 지나면 물러난다.
      마지막으로 넘은 층이 각자의 이번 주 기록이 된다(더 높을 때만 · 월요일 KST 0시에 초기화). 실전 시작 층 = 파티원 기록 중 가장 낮은 층 + 1.
      연습(파티가 함께 보는 연습 · 혼자 보는 연습)은 언제나 할 수 있고 기록 · 보상이 없다.
      전투는 파티원마다 따로 계산한다: 몬스터는 선봉 한 명(몬스터를 가장 잘 끄는 선봉)을 집중해서 노리고(함께 원정 포지션 규칙), 8초마다 파티 전체를 치는 광역 공격을 한다.
      지원은 치유 · 보호막을 가장 위태로운 동료에게 건다.
      층 사이에 최대 체력의 30%를 회복하고(쓰러진 동료도 30%로 일어난다), 5층마다 휴식층(별샘의 쉼터)에서 모두 회복한다.
      적은 무한의 탑 곡선(R.ctStage) 기준으로 체력 ×5 · 공격 ×2. 대본은 실제 시간 그대로 흐른다(1초 = 1초). */
-  R.TW = { TIME: 60, HEAL: 0.3, REST: 5, GAP: 2, REST_D: 5, HPX: 5, ATKX: 2, MAX_F: 500, AOE: 8, AOE_K: 0.5 };
+  R.TW = { TIME: 600, HEAL: 0.3, REST: 5, GAP: 2, REST_D: 5, HPX: 5, ATKX: 2, MAX_F: 500, AOE: 8, AOE_K: 0.5 };
   R.TOWER_FOES = [
     { name: '탑의 문지기 석상', arch: 'golem', c1: '#b8a98a', c2: '#4a4236' }, { name: '별빛 갑옷 기사', arch: 'construct', c1: '#cfd8ff', c2: '#3a4470' },
     { name: '거울 속 쌍둥이', arch: 'wisp', c1: '#d8c8ff', c2: '#3a2a6a' }, { name: '시간을 먹는 올빼미', arch: 'beast', c1: '#c9a26b', c2: '#4a3418' },
@@ -1516,7 +1517,7 @@
       }
       var up = 0; for (i = 0; i < n; i++) if (hp[i] > 0) { hp[i] = Math.min(ms[i].hp, hp[i] + ms[i].hp * ms[i].regen * dt); up++; }
       if (!up) { line('파티가 모두 쓰러졌다. ' + foe.name + ' 체력 ' + Math.ceil(mh / foe.hp * 100) + '% 남음', 's'); snap(); return { win: false, why: 'wipe', t: t, hp: hp, S: S, L: L, dealt: dealt }; }
-      if (t >= R.TW.TIME) { line('시간이 다 되었다. ' + foe.name + ' 체력 ' + Math.ceil(mh / foe.hp * 100) + '% 남음 — 파티가 물러난다', 's'); snap(); return { win: false, why: 'time', t: t, hp: hp, S: S, L: L, dealt: dealt }; }
+      if (t >= R.TW.TIME) { line('10분이 지나도록 결판이 나지 않았다. ' + foe.name + ' 체력 ' + Math.ceil(mh / foe.hp * 100) + '% 남음 — 파티가 물러난다', 's'); snap(); return { win: false, why: 'time', t: t, hp: hp, S: S, L: L, dealt: dealt }; }
       if (Math.floor(t) !== sec) { sec = Math.floor(t); snap(); }
     }
   };

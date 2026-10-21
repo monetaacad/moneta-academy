@@ -1920,7 +1920,7 @@
     h += '<div class="card">' + rkHead('레벨 순위', '학생 레벨 순위입니다. 같은 레벨이면 원정 최고 단계, 그다음 전투력이 높은 학생이 앞섭니다. 이름 옆에 학년과 원정 최고 단계를 함께 표시합니다.', MR.lvl) + rankList((W.topLvl || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: 'Lv ' + r.lvl, sub: R.gradeLabel({ grade: r.grade }) + ' · 원정 ' + r.stage + '단계' }; }), 'lvl', { rank: MR.lvl, v: 'Lv ' + P.lvl, sub: R.gradeLabel({ grade: P.grade }) + ' · 원정 ' + P.maxStage + '단계' }) + '</div>';
     h += '<div class="card">' + rkHead('이번 주 월드 보스 피해 순위', '이번 주(월요일 KST 0시~) 월드 보스에 입힌 피해 합계입니다.', MR.dmg, P.wk.dmg > 0 ? '' : '이번 주 기록 없음') + rankList((W.topDmg || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: fmt(r.dmg) }; }), 'dmg', { rank: MR.dmg, v: fmt(P.wk.dmg) }) + '</div>';
     h += '</div><div class="stack">';
-    (function () { var b = R.twBest(P, now()); h += '<div class="card">' + rkHead('이번 주 별의 탑 순위', '이번 주(월요일 KST 0시~) 별의 탑 실전에서 기록한 가장 높은 층입니다. 연습 기록은 반영하지 않습니다.', b > 0 ? MR.tw : null, b > 0 ? '' : '이번 주 기록 없음') + rankList((W.topTw || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: r.f + '층' }; }), 'tw', b > 0 ? { rank: MR.tw, v: b + '층' } : null) + '</div>'; })();
+    h += '<div class="card">' + rkHead('이번 주 별의 탑 파티 순위', '이번 주(월요일 KST 0시~) 파티가 실전에서 오른 가장 높은 층입니다. 같은 층이면 먼저 오른 파티가 앞섭니다. 기록을 세운 때의 파티 이름과 파티원이 그대로 남으며, 연습 기록은 반영하지 않습니다.', MR.twp, S.party ? '우리 파티 기록 없음' : '') + twRankList(W.topTwP || [], MR) + '</div>';
     ['knight', 'mage'].forEach(function (cl) { var L = cl === 'knight' ? W.topTwK : W.topTwM, mine = R.ctCls(P) === cl, rk = cl === 'knight' ? MR.twK : MR.twM, b = R.ctBest(P, cl); h += '<div class="card">' + rkHead(R.CT_NAME[cl] + ' 순위', R.CLS[cl].name + '가 혼자 오르는 무한의 탑에서 도달한 가장 높은 층입니다.', b > 0 ? rk : null, mine && !b ? '아직 기록 없음' : '') + rankList((L || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: r.f + '층' }; }), 'ct' + cl, b > 0 ? { rank: rk, v: b + '층' } : null) + '</div>'; });
     var gr = gRankData('lv');
     h += '<div class="card"><div class="row between"><h3>동아리 순위</h3><button class="btn sm ghost" data-act="grall">전체 보기</button></div>' + (!gr ? '<div class="empty">불러오는 중…</div>' : gr.list.length ? (gr.mine ? '<p class="small" style="margin-top:4px">우리 동아리 <b class="num gold">' + gr.mine.rank + '위</b></p>' : '') + gRankRows(gr.list.slice(0, 10), true, gr.mine && gr.mine.id, 'lv') : '<div class="empty" style="margin-top:8px">아직 동아리가 없습니다.</div>') + '</div>';
@@ -1929,6 +1929,18 @@
   };
   /* 순위 목록: 10위까지, 「더보기」로 50위까지. 내가 보이는 범위 밖이면 맨 아래에 내 순위를 같은 모양으로 한 줄 더 */
   S.rkOpen = {};
+  // 별의 탑 파티 순위: 파티 이름 아래에 그때의 파티원 이름
+  function twRankList(rows, MR) {
+    if (!rows.length) return '<div class="empty" style="margin-top:8px">아직 기록이 없습니다.</div>';
+    var open = S.rkOpen.twp, shown = rows.slice(0, open ? 50 : 10);
+    var h = '<ol class="rank">' + shown.map(function (r, i) {
+      return '<li' + (r.party === S.party ? ' class="me"' : '') + ' style="flex-wrap:wrap"><span class="num rk">' + (i + 1) + '</span><span class="rn"><b>' + esc(r.name) + '</b><span class="tiny faint" style="display:block">' + r.members.map(function (m) { return '<span style="color:' + (R.HOUSE[m.house] ? R.HOUSE[m.house].color : 'inherit') + '">' + esc(m.name) + '</span>' + (m.npc ? ' <span class="faint">(NPC)</span>' : ''); }).join(' · ') + '</span></span><span class="num rv">' + r.f + '층</span></li>';
+    }).join('');
+    if (MR.twp && MR.twp > shown.length && !shown.some(function (r) { return r.party === S.party; })) h += '<li class="sep" aria-hidden="true">⋯</li><li class="me"><span class="num rk">' + MR.twp + '</span><span class="rn"><b>우리 파티</b></span><span class="num rv">' + MR.twpF + '층</span></li>';
+    h += '</ol>';
+    if (rows.length > 10) h += '<div class="row" style="justify-content:center;margin-top:6px"><button class="btn sm ghost" data-act="rkmore" data-a="twp">' + (open ? '접기' : '더보기 (' + Math.min(50, rows.length) + '위까지)') + '</button></div>';
+    return h;
+  }
   function rankList(rows, key, me) {
     if (!rows.length && !(me && me.rank)) return '<div class="empty" style="margin-top:8px">아직 기록이 없습니다.</div>';
     var open = key && S.rkOpen[key], shown = rows.slice(0, open ? 50 : 10);
@@ -2571,7 +2583,7 @@
     var el = twEl(r), a = twAt(r, el); if (!a) return '';
     var fl = a.fl, sn = a.sn, foe = fl.foe, h = '';
     h += '<div class="row between" style="gap:8px;flex-wrap:wrap"><div class="row" style="gap:8px"><div class="twf num">' + fl.f + '<span>층</span></div><div><b>' + (fl.rest ? '별샘의 쉼터' : esc(foe.name)) + '</b><div class="tiny faint">' + (fl.rest ? '휴식층 · 모두 회복합니다' : foe.stage + '단계 수준 · 체력 ' + fmt(foe.hp)) + '</div></div></div>' +
-      '<span class="tiny faint num">' + (a.done ? '종료' : a.gap ? '다음 층으로 이동 중' : (fl.rest ? '휴식 중' : Math.min(R.TW.TIME, Math.floor(a.rel)) + '초 / ' + R.TW.TIME + '초')) + '</span></div>';
+      '<span class="tiny faint num">' + (a.done ? '종료' : a.gap ? '다음 층으로 이동 중' : (fl.rest ? '휴식 중' : '전투 ' + R.fmtTime(Math.floor(a.rel)))) + '</span></div>';
     if (!fl.rest) h += '<div style="margin-top:8px">' + twBar(sn[1], 'violet thick') + '<div class="tiny faint num" style="text-align:right">' + (Math.round(sn[1] * 10) / 10) + '%</div></div>';
     h += '<div class="twms">' + r.ms.map(function (m, i) {
       var p = sn[2 + i], pos = R.EXP_POS[m.pos];
@@ -2685,7 +2697,7 @@
       '<div class="row" style="margin-top:12px;gap:6px;flex-wrap:wrap"><button class="btn primary" data-act="twgo" data-a="real"' + (realWhy ? why(realWhy) : '') + '>실전 ' + t.start + '층부터 <span class="cost">오늘 1회</span></button>' +
       '<button class="btn" data-act="twgo" data-a="party"' + (live ? why(realWhy) : '') + '>파티 연습</button><button class="btn ghost" data-act="twgo" data-a="solo">혼자 연습</button></div>' +
       '<p class="tiny faint" style="margin-top:8px">실전은 파티 단위로 하루 1번이며, 누르는 순간 파티원 모두의 오늘 기회를 사용합니다(KST 자정 초기화 · 결과가 자정을 넘겨 끝나도 누른 날의 기회로 계산합니다). 파티원 중 한 명이라도 오늘 실전을 했다면 시작할 수 없습니다. ' +
-      '실전은 파티원 기록 중 가장 낮은 층의 다음 층부터 시작해, 파티가 모두 쓰러지거나 ' + R.TW.TIME + '초 안에 적을 쓰러뜨리지 못할 때까지 이어집니다. 마지막으로 넘은 층이 각자의 이번 주 기록이 되며(더 높을 때만), 처음 넘은 층의 보상은 우편으로 전달됩니다. ' +
+      '실전은 파티원 기록 중 가장 낮은 층의 다음 층부터 시작해, 파티가 모두 쓰러질 때까지 이어집니다(전투 시간 제한 없음 · 한 층이 10분을 넘기면 물러남). 마지막으로 넘은 층이 각자의 이번 주 기록이 되며(더 높을 때만), 처음 넘은 층의 보상은 우편으로 전달됩니다. ' +
       '층 사이에 최대 생명력의 ' + Math.round(R.TW.HEAL * 100) + '%를 회복하고(쓰러진 파티원도 일어납니다), ' + R.TW.REST + '층마다 휴식층에서 모두 회복합니다. 적은 선봉 한 명을 집중해서 노리고, ' + R.TW.AOE + '초마다 파티 전체를 공격합니다. ' +
       '연습은 언제든 할 수 있고 기록 · 보상에 반영되지 않습니다. 파티 연습은 파티원 모두가 함께 보고, 혼자 연습은 내 화면에서만 진행됩니다.</p></div>';
     return h;

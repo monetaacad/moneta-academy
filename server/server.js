@@ -524,7 +524,9 @@ routes['GET /api/myranks'] = (req, res) => {
   const pid = authed(req); if (!pid) return fail(req, res, 401, '로그인이 필요합니다');
   if (limited('mr:' + pid, 2, 10)) return fail(req, res, 429, '요청이 너무 잦습니다');
   const now = nowSec(), P = loadPlayer(pid, now); if (!P) return fail(req, res, 401, '학생 정보를 찾을 수 없습니다');
-  send(req, res, 200, { ranks: world.myRanks(P, R.summary(P, world.W, now).power, now) });
+  const ranks = world.myRanks(P, R.summary(P, world.W, now).power, now), party = partyOf.get(pid), tr = party && dbx.q.twRankGet.get(R.weekId(now), party);
+  ranks.twp = tr ? Number(dbx.q.twRankOf.get(R.weekId(now), tr.floor, tr.floor, tr.t).r) : null; ranks.twpF = tr ? tr.floor : 0;   // 우리 파티의 이번 주 별의 탑 순위
+  send(req, res, 200, { ranks });
 };
 routes['GET /api/world'] = (req, res) => {
   const pid = authed(req); if (!pid) return fail(req, res, 401, '로그인이 필요합니다');
@@ -1412,6 +1414,7 @@ routes['POST /api/tower'] = async (req, res) => {
     const after = Math.round(run.d * 1000), later = (fn) => setTimeout(fn, after).unref(), pname = pa ? pa.name : '';
     if (mode === 'real') {
       run.prev = {};
+      if (run.cleared > 0) dbx.q.twRankPut.run(R.weekId(now), party, pname, JSON.stringify(run.ms.map((m) => ({ name: m.name, house: m.house, npc: m.npc || undefined }))), run.cleared, Math.floor(Date.now() / 1000));
       ps.forEach((Q) => {
         R.twUse(Q, now); const old = R.twRecord(Q, now, run.cleared); run.prev[Q.id] = old;
         if (run.cleared > old) {
@@ -2351,7 +2354,7 @@ routes['POST /api/admin/reset'] = async (req, res) => {
    남기는 것: 계정(아이디 · 비밀번호 · 운영 등급), 학생 이름(같은 계정만 다시 사용 가능), 프로필, 초대코드, 운영 기록, 신고된 채팅, 운영진 1:1.
    지우는 것: 친구 · 동아리 · 파티 · 게시판 · 1:1 대화 · 거래소 · 경매 · 우편 · 탑 · 주간 기록 · 성장 기록 · 월드 보스 · 소식.
    끝나면 서버를 내려 systemd가 다시 켠다(메모리의 동아리 · 파티 · 채팅 캐시를 비우기 위해). */
-const SEASON_WIPE = ['auction', 'board_comments', 'board_posts', 'friends', 'growth', 'guild_apps', 'guild_invites', 'guild_items', 'guild_log', 'guild_members', 'guild_stock', 'guilds', 'mail', 'mail_state', 'market', 'market_bids', 'notes', 'parties', 'party_members', 'party_invites', 'tower', 'weekly'];
+const SEASON_WIPE = ['auction', 'board_comments', 'board_posts', 'friends', 'growth', 'guild_apps', 'guild_invites', 'guild_items', 'guild_log', 'guild_members', 'guild_stock', 'guilds', 'mail', 'mail_state', 'market', 'market_bids', 'notes', 'parties', 'party_members', 'party_invites', 'tower', 'tower_rank', 'weekly'];
 const SEASON_KV = ['boss', 'results', 'news', 'hbase', 'exprooms', 'growthSlot', 'ritual', 'profline'];
 let SEASON_RESETTING = false;
 routes['POST /api/admin/season-reset'] = async (req, res) => {
