@@ -2368,7 +2368,9 @@
       '<div class="tiny" style="margin-top:4px">이 층 보상 <span class="rwd">' + esc(R.rewardText(rw)) + '</span></div></div></div>' +
       '<div class="row" style="margin-top:12px"><span class="tiny faint">' + (mt ? nextMile + '층 돌파 시 칭호 「' + esc(mt.name) + '」 · 별조각 30 · 희귀 장비 상자 · 환수의 알' : nextMile + '층 돌파 시 별조각 30 · 희귀 장비 상자 · 환수의 알') + '</span><span class="spacer"></span><button class="btn primary" data-act="ctower"' + '' + '>' + f + '층 도전</button></div></div>';
     var got = D.TITLES.filter(function (t) { return t.stat === R.ctKey(cl); });
-    h += '<div class="card" style="margin-top:14px"><h3>' + nm + ' 칭호</h3><div class="stack" style="gap:6px;margin-top:8px">' + got.map(function (t) { var ok = best >= t.n; return '<div class="row small"><span class="' + (ok ? 'gold' : 'faint') + '">' + (ok ? '✦ ' : '· ') + esc(t.name) + '</span><span class="spacer"></span><span class="tiny ' + (ok ? 'good' : 'faint') + '">' + t.n + '층' + (ok ? ' · 획득' : '') + '</span></div>'; }).join('') + '</div>' +
+    // 탑 칭호는 칭호 도감에 모두 있으므로 여기서는 한 줄 (획득 수 · 다음 칭호)
+    var gotN = got.filter(function (t) { return best >= t.n; }).length, nextT = got.filter(function (t) { return best < t.n; }).sort(function (x, y) { return x.n - y.n; })[0];
+    h += '<div class="card" style="margin-top:14px"><div class="row between" style="gap:8px;flex-wrap:wrap"><span class="small"><b>' + nm + ' 칭호</b> <span class="num gold">' + gotN + ' / ' + got.length + '</span>' + (nextT ? ' <span class="tiny faint">· 다음 「' + esc(nextT.name) + '」 ' + nextT.n + '층</span>' : ' <span class="tiny good">· 모두 획득</span>') + '</span><button class="btn sm ghost" data-act="cttitles">칭호 도감</button></div>' +
       '<p class="tiny faint" style="margin-top:8px">보상: 층마다 ' + CUR + ', 2층마다 마석 1, 10층마다 별조각 3, ' + R.CT_MILE + '층마다 칭호와 추가 보상. 시련의 층(50층마다)은 탑의 문지기가 지켜 갑자기 어려워지고, 넘은 뒤 몇 층은 다시 쉬워집니다. 학과를 바꾸면 그 학과의 탑을 따로 오릅니다. 순위는 「기록·랭킹 → 랭킹」에서 볼 수 있습니다.</p></div>';
     return h;
   };
@@ -3684,6 +3686,7 @@
     });
   };
   ACT.rectab = function (t) { S.recTab = t; render(); };
+  ACT.cttitles = function () { S.recTab = 'titles'; ACT.nav('rec'); };
   ACT.titleset = function (id) { act('title', { id: id || '' }).then(function (r) { if (!r) return; toast(id ? '칭호를 적용했습니다' : '칭호를 해제했습니다', r.title || '', 1800); loadMe(); render(); }); };
   ACT.brew = function (id) { act('brew', { id: id, n: +(S.pick.bn || 1) }).then(function (r) { if (r) { Snd.play('enh'); toast('물약이 완성되었습니다', R.POT[id].name + ' ' + r.n + '병 · 선반에 올렸습니다', 1800); } render(); }); };
   ACT.dispall = function () { var d = S.pick.dd || '8h'; act('dispatchAll', { d: d }).then(function (r) { if (r) toast('사역마 ' + r.n + '마리 파견', clock(now() + R.DDUR[d].s) + '에 돌아옵니다', 2200); render(); }); };
@@ -4900,7 +4903,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102138;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102139;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
