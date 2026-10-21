@@ -1849,17 +1849,17 @@ mark.hl { color: inherit; background: linear-gradient(transparent 38%, color-mix
 .hblk.ed { outline: 1px dashed var(--brass); outline-offset: 4px; border-radius: 10px; }
 .hbtool { display: flex; align-items: center; gap: 4px; margin: 0 0 6px; }
 /* 상단 날짜 · 효과 줄
-   모바일: 한 줄로 펼치고 넘치면 가로로 밀어서 본다 (줄마다 쌓여 화면을 많이 차지하던 문제)
+   모바일: 글처럼 이어 놓고 줄 끝에서만 아랫줄로 넘긴다 (줄마다 하나씩 쌓이거나 칸을 늘려 채우지 않게)
    PC: 효과가 3개 이상이면(.metarow) 두상 ~ 재화 아래에 한 줄로 내린다 */
 @media (max-width: 900px) {
-  .topmeta { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 0 8px; }
-  .topmeta::-webkit-scrollbar { display: none; }
+  .topmeta { flex-wrap: wrap; gap: 4px 6px; }
   .topmeta .seg { flex: none; }
-  .topmeta .seg[data-l="buffs"] { width: auto; flex-wrap: nowrap; gap: 0 6px; }
+  .topmeta .seg[data-l="buffs"] { display: contents; }
   .topmeta .seg[data-l="buffs"] > * { flex: none; }
 }
 @media (min-width: 901px) {
   .top-row.metarow { flex-wrap: wrap; }
+  .top-row.metarow .resbar { margin-left: auto; }   /* 날짜 줄이 내려가도 재화 · 버튼은 우측에 */
   .top-row.metarow .topmeta { order: 9; flex-basis: 100%; width: 100%; flex-direction: row; flex-wrap: wrap; justify-content: flex-start; align-items: center; margin-left: 0; text-align: left; gap: 4px 10px; padding-top: 2px; }
   .top-row.metarow .topmeta .seg[data-l="buffs"] { justify-content: flex-start; }
   .top-row.metarow .topmeta .buffpill .bn { display: inline; }
