@@ -3631,15 +3631,18 @@
     var lines = [[0, josa(en, '과', '와') + ' 마주 섰다. ' + (opts.infinite ? '30초 동안 할 수 있는 만큼 퍼붓는다.' : '주문서를 펼친다.'), 's']];
     var N = 14, win = total / N, dealt = 0, php = 1, k = 0, marks = opts.infinite ? [0.25, 0.5, 0.75] : [0.25, 0.5, 0.75], mk = 0, lowSaid = false, dead = false, best = 0;
     for (var w = 0; w < N && k < ev.length; w++) {
-      var end = (w + 1) * win + 1e-6, d = { n: 0, p: 0, f: 0, crit: 0, x: 0, sp: [] };
+      var end = (w + 1) * win + 1e-6, d = { n: 0, p: 0, f: 0, crit: 0, x: 0, r: 0, g: 0, sp: [] };
       while (k < ev.length && ev[k][0] <= end) {
         var e = ev[k++];
         if (e[1] === 'h') { dealt += e[2]; if (e[3] === 'p') d.p += e[2]; else if (e[3] === 'f') d.f += e[2]; else d.n += e[2]; if (e[4] && e[2] > d.crit) d.crit = e[2]; }
-        else if (e[1] === 's') { var sp = R.SPELL[e[2]]; if (sp && d.sp.indexOf(sp.name) < 0) d.sp.push(sp.name); }
+        else if (e[1] === 's') { var sp = R.SPELL[e[2]]; if (sp && d.sp.indexOf(sp.name) < 0) d.sp.push(sp.name); if (sp && sp.type === 'heal') { d.r += e[3] || 0; php = Math.min(1, php + (e[3] || 0) / pHpMax); } else if (sp && sp.type === 'shield') d.g += e[3] || 0; }
         else if (e[1] === 'x') { d.x += e[2]; php = Math.max(0, php - e[2] / pHpMax); }
       }
       var t = Math.min(total, end), txt = '', kind = '';
-      if (d.sp.length) { txt = d.sp.map(function (x) { return '「' + x + '」'; }).join(' · ') + '! ' + fmt(d.p + d.n) + ' 피해'; kind = 'p'; }
+      if (d.sp.length) {
+        var fx = []; if (d.p + d.n) fx.push(fmt(d.p + d.n) + ' 피해'); if (d.r) fx.push('생명력 +' + fmt(d.r) + ' 회복'); if (d.g) fx.push('보호막 ' + fmt(d.g));
+        txt = d.sp.map(function (x) { return '「' + x + '」'; }).join(' · ') + '!' + (fx.length ? ' ' + fx.join(' · ') : ''); kind = 'p';
+      }
       else if (d.crit && d.crit > best * 0.8) { txt = '치명타! ' + fmt(d.crit) + ' — ' + josa(en, '이', '가') + ' 비틀거린다'; kind = 's'; best = Math.max(best, d.crit); }
       else if (d.n + d.p) txt = BT_VERB[(w * 7 + total | 0) % BT_VERB.length] + ' · ' + fmt(d.n + d.p) + ' 피해';
       if (d.f && fam) txt += (txt ? ' · ' : '') + josa(fam, '이', '가') + ' 거든다 (' + fmt(d.f) + ')';
@@ -3660,7 +3663,7 @@
       '<div class="explog twlines" id="btlines" aria-live="polite"></div></div>' +
       '<div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn ghost" data-act="rp-skip" id="rp-skip">건너뛰기</button></div>', true, true);
     var ev = opts.ev || [], pHpMax = C().hp, mhp = opts.maxHp || 1;
-    function hpAt(gt) { var dl = 0, ph = 1; for (var i = 0; i < ev.length && ev[i][0] <= gt; i++) { if (ev[i][1] === 'h') dl += ev[i][2]; else if (ev[i][1] === 'x') ph = Math.max(0, ph - ev[i][2] / pHpMax); } return [dl, ph]; }
+    function hpAt(gt) { var dl = 0, ph = 1; for (var i = 0; i < ev.length && ev[i][0] <= gt; i++) { if (ev[i][1] === 'h') dl += ev[i][2]; else if (ev[i][1] === 'x') ph = Math.max(0, ph - ev[i][2] / pHpMax); else if (ev[i][1] === 's' && ev[i][3] && R.SPELL[ev[i][2]] && R.SPELL[ev[i][2]].type === 'heal') ph = Math.min(1, ph + ev[i][3] / pHpMax); } return [dl, ph]; }
     S.replay = { skip: function () { t0 = -1e9; } };
     function frame(ts) {
       if (!S.replay) return;
@@ -5164,7 +5167,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102225;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102226;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
