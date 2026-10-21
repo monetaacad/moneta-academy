@@ -1461,6 +1461,19 @@
     while (x >= R.subjXpNeed(lv) && lv < 200) { x -= R.subjXpNeed(lv); lv++; }
     return lv > sj.lv ? '<span class="gold">(Lv ' + sj.lv + '→' + lv + ')</span>' : '<span class="faint">(Lv ' + lv + ' ' + Math.floor(x / R.subjXpNeed(lv) * 100) + '%)</span>';
   }
+  // 함께 원정(다른 학생과): 혼자 귀환 대신 귀환 투표 — 아직 원정 중인 학생의 과반이 찬성하면 모두 함께 귀환
+  function expVoting(j) { return !!(j && j.pt && j.pt.ck && (j.pt.with || []).some(function (w) { return w && w.id && !w.npc; }) && !(S.expSolo && S.expSolo[j.pt.ck])); }
+  function expVoteBtn(i, j) {
+    var v = j.pt.vote, mine = !!(v && v.yes && v.yes.indexOf(S.P.id) >= 0);
+    return '<button class="btn sm ' + (mine ? 'primary' : 'ghost') + '" data-act="expvote" data-a="' + i + '" data-b="' + (mine ? 0 : 1) + '" title="아직 원정 중인 학생의 과반이 찬성하면 모두 함께 귀환합니다">' + (mine ? '귀환 찬성 취소' : '귀환 투표') + (v ? ' <span class="cost">' + v.yes.length + '/' + v.need + '</span>' : '') + '</button>';
+  }
+  ACT.expvote = function (i, on) {
+    var j = S.P.exp[+i]; if (!j || !j.pt) return;
+    API.expVote({ slot: +i, on: on === '1' }).then(function (r) {
+      if (r.error) { if (/다른 학생이 없습니다/.test(r.error)) { (S.expSolo = S.expSolo || {})[j.pt.ck] = 1; toast('함께 원정', '다른 학생이 모두 돌아와 혼자 귀환할 수 있습니다', 2400); render(); return; } toast('귀환 투표', r.error, 2400); return; }
+      absorb(r); toast(r.done ? '원정에서 귀환했습니다' : '귀환 투표', r.done ? '과반이 찬성해 모두 함께 귀환했습니다' : (on === '1' ? '귀환에 찬성했습니다' : '찬성을 취소했습니다') + ' · ' + r.yes + '/' + r.need + '명 (과반이 찬성하면 모두 귀환)', 2600); render();
+    });
+  };
   function cancelBtn(key, type, a) {
     var armed = S.confirm[key] && S.confirm[key] > Date.now(), rc = type === 'expCancel';
     return '<button class="btn sm ' + (armed ? (rc ? 'primary' : 'danger') : 'ghost') + '" data-act="cancel" data-a="' + key + '" data-b="' + type + '" data-c=\'' + JSON.stringify(a) + '\'>' + (armed ? (rc ? '한 번 더 누르면 귀환합니다 · 모은 것은 모두 받습니다' : '한 번 더 누르면 취소합니다 · 절반만 받습니다') : (rc ? '귀환' : '취소')) + '</button>';
@@ -1628,7 +1641,7 @@
           '<div class="row" style="margin-top:10px"><button class="btn primary" data-act="exp-claim" data-a="' + i + '">원정 완료</button><span class="tiny faint">눌러야 결과를 받고 다음 원정을 보낼 수 있습니다</span></div></div>';
       } else if (j) {
         var el = Math.min(1, (now() - j.start) / j.dur), sofar = Math.floor(j.kps * j.dur * j.eff * el);
-        h += '<div class="card hl slotcard"><div class="row between"><span class="tiny gold">원정 ' + (i + 1) + '</span>' + cancelBtn('exp' + i, 'expCancel', { slot: i }) + '</div>' +
+        h += '<div class="card hl slotcard"><div class="row between"><span class="tiny gold">원정 ' + (i + 1) + '</span>' + (expVoting(j) ? expVoteBtn(i, j) : cancelBtn('exp' + i, 'expCancel', { slot: i })) + '</div>' +
           '<h3>' + j.s + '단계 <span class="small muted">' + R.zoneOf(j.s).name + '</span></h3>' + (j.pt ? '<div class="tiny" style="margin:2px 0 4px"><span class="tag br">함께 원정 ' + j.pt.n + '명</span> <span class="postag p-' + j.pt.pos + '">' + R.EXP_POS[j.pt.pos].name + '</span>' + (j.pt.team ? '' : '<span class="tiny muted">나</span>') + (j.pt.team ? '' : j.pt.with && j.pt.with.length ? '<div class="ptwith">' + j.pt.with.map(function (w) { return '<span class="erm sm' + (w.npc ? ' npc' : '') + '"><span class="postag p-' + w.pos + '">' + R.EXP_POS[w.pos].name + '</span>' + erName(w) + '</span>'; }).join('') + '</div>' : '') + '</div>' : '') + (j.pt && j.pt.team ? '<span hidden data-l="ptteam:' + i + '"></span>' + ptTeam(j, i) : '') + '<div class="bar thick"><b data-b="prog:' + j.start + ':' + j.end + '"></b></div>' +
           '<div class="row small muted"><span data-l="left:' + j.end + '"></span> 남음 · ' + clock(j.end) + '</div>' + (j.fallAt ? '<p class="tiny bad">무모한 원정 · ' + clock(j.fallAt) + '쯤 쓰러져 돌아옵니다 (그때까지 모은 것의 80%). 먼저 「귀환」하면 모은 것을 모두 받습니다.</p>' : '') +
           '<div class="small">예상 처치 ' + fmt(Math.round(j.kps * j.dur * j.eff)) + '마리 · ' + MONEY(j.kps * j.dur * j.eff * j.gEach, '+') + ' · 경험치 +' + fmt(j.kps * j.dur * j.eff * j.xEach) + '</div><div class="tiny faint">지금까지 약 ' + fmt(sofar) + '마리 처치</div></div>';
@@ -4939,7 +4952,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102140;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102141;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

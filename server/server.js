@@ -519,6 +519,7 @@ routes['POST /api/act'] = async (req, res) => {
   if (P.needCreate) return fail(req, res, 400, '새 학생 만들기 필요');
   world.tick(now);
   // 함께 원정 방에서 출발을 기다리는 중이면, 방이 쓸 마지막 빈 원정 슬롯으로 혼자 원정은 못 보낸다
+  if (type === 'expCancel') { const pa = expPartyOf(P, Number(a.slot) | 0, now); if (pa && pa.act.length > 1) return send(req, res, 400, { error: '다른 학생과 함께 떠난 원정은 귀환 투표로 돌아옵니다' }); }   // 함께 원정: 혼자 귀환 대신 투표
   if (type === 'expStart' && exprooms.inRoom(pid)) { const c0 = R.calc(P, world.ctx(now), now); let free = 0; for (let i = 0; i < c0.expSlots; i++) if (!P.exp[i]) free++; if (free <= 1) return send(req, res, 400, { error: '함께 원정 방에서 출발을 기다리는 중입니다. 혼자 출정하려면 먼저 방 나가기 필요', P: R.publicState(P), now }); }
   let r;
   try {
@@ -1492,6 +1493,50 @@ routes['GET /api/exprooms'] = (req, res) => {
   const id = new URL(req.url, 'http://x').searchParams.get('id');
   if (id) { try { return send(req, res, 200, exprooms.peek(me, id)); } catch (e) { if (e.status) return fail(req, res, e.status, e.message); throw e; } }
   send(req, res, 200, exprooms.list(me));
+};
+// 함께 원정 귀환 투표: 다른 학생과 함께 떠난 원정은 혼자 귀환하지 않고, 아직 원정 중인 학생의 과반이 찬성하면 모두 함께 귀환한다
+// (투표는 메모리에만 · 서버를 다시 켜면 처음부터. 원정 일정의 pt.vote에 찬성한 학생 id를 적어 화면에 보여 준다)
+const expVotes = new Map();   // pt.ck → Set(pid)
+function expPartyActive(ck, ids, now) {   // 같은 원정(ck)에 아직 나가 있는 학생들: [{id, P, slot}]
+  const out = [];
+  ids.forEach((id) => { const Q = loadPlayer(id, now); if (!Q) return; const k = Q.exp.findIndex((j) => j && j.pt && j.pt.ck === ck && R.expEnd(j) > now); if (k >= 0) out.push({ id, P: Q, slot: k }); });
+  return out;
+}
+function expPartyOf(P, slot, now) {
+  const j = P.exp[slot]; if (!j || !j.pt || !j.pt.ck || R.expEnd(j) <= now) return null;
+  const ids = [P.id].concat((j.pt.with || []).filter((w) => w && w.id && !w.npc).map((w) => w.id));
+  return { j, ck: j.pt.ck, act: expPartyActive(j.pt.ck, [...new Set(ids)], now) };
+}
+routes['POST /api/exp/vote'] = async (req, res) => {
+  const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
+  if (store.isBanned(me)) return fail(req, res, 403, '이용이 정지된 계정입니다');
+  if (limited('exv:' + me, 1, 5)) return fail(req, res, 429, '요청이 너무 잦습니다');
+  const b = await readJson(req, 512), now = nowSec(); world.tick(now);
+  const P = loadPlayer(me, now); if (!P) return fail(req, res, 401, '학생 정보를 찾을 수 없습니다');
+  const slot = Number(b.slot) | 0, pa = expPartyOf(P, slot, now); if (!pa) return fail(req, res, 400, '진행 중인 함께 원정이 없습니다');
+  if (pa.act.length <= 1) return fail(req, res, 400, '함께 원정 중인 다른 학생이 없습니다. 「귀환」으로 돌아올 수 있습니다');
+  const ids = pa.act.map((x) => x.id), V = expVotes.get(pa.ck) || new Set();
+  if (b.on === false) V.delete(me); else V.add(me);
+  [...V].forEach((id) => { if (ids.indexOf(id) < 0) V.delete(id); });
+  expVotes.set(pa.ck, V);
+  const need = Math.floor(ids.length / 2) + 1;
+  if (V.size >= need) {   // 과반 찬성: 모두 귀환
+    expVotes.delete(pa.ck); let mine = null;
+    pa.act.forEach((x) => {
+      try {
+        const o = R.act(x.P, world.ctx(now), now, 'expCancel', { slot: x.slot }); o.vote = 1;
+        if (x.id === me) mine = o; else { R.inbox(x.P, o); addNote(x.id, 'exp', '함께 원정 귀환 투표에서 과반이 찬성해 모두 귀환했습니다 (' + V.size + '/' + ids.length + '명 찬성)', { view: 'explore' }); }
+        store.markDirty(x.id); setImmediate(() => { try { chat.exrChanged(x.id); } catch (e) { } });
+      } catch (e) { log('귀환 투표 처리 실패', x.id, e.message); }
+    });
+    log(`함께 원정 귀환 투표: ${pa.ck} ${V.size}/${ids.length} 찬성 → 모두 귀환`);
+    return send(req, res, 200, { ok: true, done: true, yes: V.size, n: ids.length, r: mine, P: R.publicState(P) });
+  }
+  pa.act.forEach((x) => {   // 찬성 현황을 모두의 원정 일정에 적는다
+    const j = x.P.exp[x.slot]; j.pt.vote = { yes: [...V], need, n: ids.length }; store.markDirty(x.id);
+    if (x.id !== me && b.on !== false) addNote(x.id, 'exp', P.name + ' 님이 함께 원정 귀환에 찬성했습니다 (' + V.size + '/' + need + '명). 과반이 찬성하면 모두 함께 귀환합니다', { view: 'explore' });
+  });
+  send(req, res, 200, { ok: true, done: false, yes: V.size, need, n: ids.length, P: R.publicState(P) });
 };
 routes['POST /api/exproom'] = async (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');

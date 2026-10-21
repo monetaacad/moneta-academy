@@ -368,6 +368,7 @@
     if (P.log.length > 50) P.log.length = 50;
   }
   function inbox(P, item) { P.inbox.push(item); if (P.inbox.length > 40) P.inbox.splice(0, P.inbox.length - 40); }
+  R.inbox = inbox;
   R.log = log;
 
   /* ───────── 보너스 집계 ───────── */

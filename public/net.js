@@ -109,6 +109,7 @@ var Net = (function () {
   ServerApi.prototype.boardOp = function (o) { return this.req('POST', '/api/board', o); };
   ServerApi.prototype.expRooms = function () { return this.req('GET', '/api/exprooms'); };
   ServerApi.prototype.expRoom = function (o) { return this.req('POST', '/api/exproom', o); };
+  ServerApi.prototype.expVote = function (o) { return this.req('POST', '/api/exp/vote', o); };
   ServerApi.prototype.notes = function () { return this.req('GET', '/api/notes'); };
   ServerApi.prototype.notesRead = function () { return this.req('POST', '/api/notes', {}); };
   ServerApi.prototype.expPeek = function (id) { return this.req('GET', '/api/exprooms?id=' + encodeURIComponent(id)); };
