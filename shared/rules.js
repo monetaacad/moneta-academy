@@ -923,8 +923,11 @@
     log(P, t, '알이 부화했습니다: ' + f.name + (res.isNew ? ' (새로운 사역마!)' : ' (성장)'), 'good');
     return res;
   }
+  // 파견 지역: 사역마마다 정해 둘 수 있다 (P.fam.zone[fid] = 지역 id, 없으면 갈 수 있는 가장 높은 지역). 출발할 때 정해진 지역으로 다녀온다
+  R.dispZones = function (P) { var top = Math.min(P.maxStage, R.stageCap(P)); return D.ZONES.filter(function (z) { return z.from <= top; }); };
+  R.dispZoneOf = function (P, fid, zid) { var zs = R.dispZones(P), want = zid || (P.fam.zone && P.fam.zone[fid]); return zs.filter(function (z) { return z.id === want; })[0] || zs[zs.length - 1] || D.ZONES[0]; };
   function dispatchFinish(P, fid, d, t) {
-    var f = FAM[fid], z = R.zoneOf(Math.min(P.maxStage, R.stageCap(P))), h = d.dur / 3600, out = { k: 'disp', f: fid, t: t };
+    var f = FAM[fid], z = R.dispZoneOf(P, fid, d.z), h = d.dur / 3600, out = { k: 'disp', f: fid, t: t };
     out.xp = Math.round(h * R.FAM_DISP_XP); famGainXp(P, fid, out.xp, t);   // 파견 경험치 (시간에 비례, 동행보다 낮게)
     var mult = (1 + f.r * 0.3) * (1 + 0.05 * (P.fam.own[fid].lv - 1)) * (d.bonus || 1);
     var mats = Math.floor(h * 6 * mult + rnd(P) * 3); P.mats[z.mat] = (P.mats[z.mat] || 0) + mats; out.mats = mats; out.mat = z.mat;
@@ -2056,7 +2059,12 @@
     if (!R.famOpen(P)) err(R.FAM_OPEN_TEXT + '부터 할 수 있습니다'); if (!P.fam.own[id]) err('없는 사역마입니다'); if (!d) err('잘못된 시간입니다');
     if (P.fam.disp[id]) err('이미 파견 중입니다'); if (P.fam.act === id) err('동행 중인 사역마는 파견할 수 없습니다');
     var b = calc(P, W, now, now + d.s).b;   // 숙면의 차 등은 파견 시간과 겹친 만큼
-    P.fam.disp[id] = { start: now, end: now + d.s, dur: d.s, bonus: 1 + (b.dispPct || 0) + P.subj.beast.lv * R.BEAST_DISP }; return { ok: true };
+    P.fam.disp[id] = { start: now, end: now + d.s, dur: d.s, bonus: 1 + (b.dispPct || 0) + P.subj.beast.lv * R.BEAST_DISP, z: R.dispZoneOf(P, id).id }; return { ok: true };
+  };
+  A.famZone = function (P, W, now, a) {
+    var id = str(a.id), z = a.z ? str(a.z) : ''; if (!P.fam.own[id]) err('없는 사역마입니다');
+    if (z && !R.dispZones(P).some(function (x) { return x.id === z; })) err('아직 갈 수 없는 지역입니다');
+    var m = P.fam.zone || (P.fam.zone = {}); if (z) m[id] = z; else delete m[id]; return { ok: true };
   };
   // 이론 30: 시험 과목 평균 레벨이 기준이면 21점, 기준보다 3 높으면 30점 (문제 풀이 없음)
   R.examTheory = function (P, ex) { var xs = R.examSubjs(P, ex), avg = xs.reduce(function (s2, k) { return s2 + sjLv(P, k); }, 0) / xs.length; return clamp(21 + (avg - ex.req) * 3, 0, 30); };
@@ -2329,9 +2337,11 @@
   };
 
   /* ───────── 서버 보조: 랭킹·보스 체력 추정 ───────── */
+  // power = 랭킹 · 학생 카드 · 파티에 보이는 전투력: 물약 · 의식 같은 시간제 효과(P.buffs)는 빼고 계산한다 (공정한 순위)
   R.summary = function (P, W, now) {
-    var c = calc(P, W, now);
-    return { power: c.power, lvl: P.lvl, grade: P.grade, maxStage: P.maxStage, wbDps: Math.floor(c.totalDps * 30) };
+    var c = calc(P, W, now), bf = P.buffs, base;
+    P.buffs = {}; try { base = calc(P, W, now); } finally { P.buffs = bf; }
+    return { power: base.power, lvl: P.lvl, grade: P.grade, maxStage: P.maxStage, wbDps: Math.floor(c.totalDps * 30) };
   };
 
   /* ───────── 표기 ───────── */

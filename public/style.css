@@ -388,7 +388,7 @@ textarea { min-height: 90px; font-family: var(--f-num); font-size: 12px; resize:
   .nav button .gs { display: inline; }
   .nav button .dot { right: 22%; }
   .nav button[data-g="study"] { order: 1; } .nav button[data-g="adv"] { order: 2; } .nav button[data-g="craft"] { order: 3; }
-  .nav button[data-g="home"] { order: 4; } .nav button[data-g="social"] { order: 5; } .nav button[data-g="store"] { order: 6; } .nav button[data-g="book"] { order: 7; }
+  .nav button[data-g="home"] { order: 4; } html.nav-homeleft .nav button[data-g="home"] { order: 0; }   /* 설정: 광장 버튼 맨 왼쪽 */ .nav button[data-g="social"] { order: 5; } .nav button[data-g="store"] { order: 6; } .nav button[data-g="book"] { order: 7; }
   .nav button[data-g="home"] svg { width: 22px; height: 22px; padding: 5px; box-sizing: content-box; border-radius: 50%; background: var(--panel); border: 1px solid var(--line); margin-top: -10px; opacity: 1; }
   .nav button[data-g="home"].on svg { background: var(--brass); color: var(--night); border-color: var(--brass); }
   .g2, .g3 { grid-template-columns: minmax(0, 1fr); }
@@ -534,7 +534,10 @@ img.av { background: transparent; }   /* 배경 투명 두상은 뒤의 화면�
 .avbtn:hover .av { border-color: var(--brass2); }
 .pcard { display: flex; gap: 16px; align-items: center; }
 .pcard h2 { font-size: 22px; margin: 0 0 2px; overflow-wrap: anywhere; }
-.pcard h2 .pbdg .bdg { vertical-align: middle; }   /* 휘장 보석: 이름 글자 가운데 높이에 맞춤 */
+.pcard h2.pname { display: flex; align-items: center; flex-wrap: wrap; gap: 0 6px; }   /* 휘장 보석 · 접속 점을 이름 글자 가운데 높이에 맞춤 */
+.pcard h2.pname .pnm { min-width: 0; overflow-wrap: anywhere; }
+.pcard h2.pname .pbdg { display: inline-flex; align-items: center; line-height: 1; }
+.pcard h2.pname .pbdg .bdg { display: block; }
 .pstatus { margin-top: 6px; color: var(--brass2); font-size: 13.5px; overflow-wrap: anywhere; }
 .pbio { white-space: pre-wrap; margin-top: 12px; font-size: 14px; color: var(--ink2); border-left: 2px solid var(--line); padding-left: 10px; overflow-wrap: anywhere; }
 .msgq { white-space: pre-wrap; border-left: 2px solid var(--line); padding-left: 9px; overflow-wrap: anywhere; }
@@ -1840,3 +1843,7 @@ mark.hl { color: inherit; background: linear-gradient(transparent 38%, color-mix
 
 .bdpost .bdmute { margin-left: auto; }   /* 게시글: 알림 받지 않기 (우측) */
 .bdgcard.fold { margin-top: 14px; }
+
+/* 광장 배치 편집 */
+.hblk.ed { outline: 1px dashed var(--brass); outline-offset: 4px; border-radius: 10px; }
+.hbtool { display: flex; align-items: center; gap: 4px; margin: 0 0 6px; }
