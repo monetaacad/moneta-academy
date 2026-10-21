@@ -2722,11 +2722,7 @@
     });
   };
   V.tower = function () {
-<<<<<<< HEAD
-    var h = pageHead('파티와 함께 오르는 탑', '<span class="phimg">' + dotImg('tower', 40, '', 'twimg') + '별의 탑</span>', '실전 하루 1회 · 월요일 KST 0시 기록 초기화');
-=======
-    var h = pageHead('파티와 함께 오르는 탑', '<span class="phimg">' + dotImg('tower', 40, '', 'twimg') + '별의 탑</span>', '한 주 동안 · 월요일에 0층부터') + potBar(['atkPct', 'hpPct', 'defPct']);   // 전투 물약
->>>>>>> origin/main
+    var h = pageHead('파티와 함께 오르는 탑', '<span class="phimg">' + dotImg('tower', 40, '', 'twimg') + '별의 탑</span>', '실전 하루 1회 · 월요일 KST 0시 기록 초기화') + potBar(['atkPct', 'hpPct', 'defPct']);   // 전투 물약
     if (!S.partyD || Date.now() - S.partyAt > 20000) { if (Date.now() - S.partyAt > 1500) loadParty(); }
     if (!S.party) return h + '<div class="card hl"><h3>파티와 함께 오르는 탑</h3><p class="small" style="margin-top:4px">별의 탑은 파티가 함께 1층부터 실시간으로 오르는 곳입니다. 실전은 파티 단위로 하루 1번이며, 파티가 쓰러질 때까지 층을 이어 오릅니다. 연습은 언제든 할 수 있습니다.</p><p class="small muted" style="margin-top:6px">파티에 들어가 있어야 도전할 수 있습니다. 혼자서도 파티를 만들 수 있고, 빈자리는 아카데미 친구(NPC)를 불러 채울 수 있습니다.</p><div class="row" style="margin-top:10px;gap:6px"><button class="btn primary" data-act="twparty">파티 만들기</button><button class="btn ghost" data-act="nav" data-a="party">파티 화면으로</button></div></div>';
     return h + towerStage() + towerCard() + towerRuns() + '<div class="row" style="margin-top:10px"><span class="tiny faint">파티원 · 초대 · 아카데미 친구 · 파티 이름은 파티 화면에서 관리합니다.</span><span class="spacer"></span><button class="btn sm ghost" data-act="nav" data-a="party">파티 화면</button></div>';
