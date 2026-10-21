@@ -46,7 +46,7 @@
 
   /* ───────── 색인 ───────── */
   function idx(arr) { var o = {}; arr.forEach(function (x) { o[x.id] = x; }); return o; }
-  var SUBJ = R.SUBJ = idx(D.SUBJECTS), SPELL = R.SPELL = idx(D.SPELLS), RES = R.RES = idx(D.RESEARCH);
+  var SUBJ = R.SUBJ = idx(D.SUBJECTS), SPELL = R.SPELL = idx(D.SPELLS), RES = R.RES = idx(D.RESEARCH), BOOK = R.BOOK = idx(D.BOOKS);
   var POT = R.POT = idx(D.POTIONS), FAM = R.FAM = idx(D.FAMILIARS), HOUSE = R.HOUSE = idx(D.HOUSES);
   R.D = D;
   var SLOT = R.SLOT = idx(D.SLOTS), AFF = R.AFF = idx(D.AFFIXES), SHOP = R.SHOP_IDX = idx(D.SHOP);
@@ -1874,6 +1874,21 @@
   R.RUSH_N = 3; R.RUSH_SEC = 3600;
   R.rushLeft = function (P, now) { var d = R.dayKST(now), r = P.rush; return R.RUSH_N - (r && r.d === d ? r.n : 0); };
   R.rushCost = function (P, W, now, q) { var c = calc(P, W, now), rc = R.resCost(P, q.id, P.rs[q.id] || 0); return { mana: Math.max(1000, Math.floor(c.mana * 7200)), know: Math.max(200, Math.floor(rc.know * 0.5)) }; };
+  /* 고서 열람실: 지식으로 3시간 버프 (한 번에 한 권 · 같은 책은 이어 읽기 최대 9시간 · 다른 책은 바꿔 펼침) */
+  R.BOOK_DUR = 10800; R.BOOK_MAX = 32400; R.BOOK_GRADE = 2;
+  // 값: 학년마다 1.62배 (2학년 1,600 · 4학년 4,100 · 6학년 10,800 · 8학년 28,000). 시뮬레이션의 하루 남는 지식 1/6쯤
+  R.bookCost = function (P) { return Math.round(600 * Math.pow(1.62, Math.max(2, P.grade)) / 100) * 100; };
+  A.bookRead = function (P, W, now, a) {
+    var id = str(a.id), b = BOOK[id]; if (!b) err('없는 책입니다');
+    if (P.grade < R.BOOK_GRADE) err(R.BOOK_GRADE + '학년부터 열람할 수 있습니다');
+    var cost = R.bookCost(P); if (P.res.know < cost) err('지식이 부족합니다 (' + R.fmt(cost) + ' 필요)');
+    var cur = P.buffs.book, same = cur && cur.end > now && cur.id === id;
+    if (same && cur.end - now > R.BOOK_MAX - R.BOOK_DUR) err('이 책은 최대 ' + (R.BOOK_MAX / 3600) + '시간까지 이어 읽을 수 있습니다');
+    P.res.know -= cost;
+    P.buffs.book = { id: id, name: b.name, eff: b.eff, start: same ? cur.start : now, end: (same ? cur.end : now) + R.BOOK_DUR, color: b.color };
+    P.st.books = (P.st.books || 0) + 1;
+    return { ok: true, id: id, end: P.buffs.book.end, paid: cost, swapped: !!(cur && cur.end > now && !same) };
+  };
   A.resRush = function (P, W, now, a) {
     var i = int(a.i, 0, 3), q = P.rsq[i], by = str(a.by); if (!q || q.end <= now) err('진행 중인 연구가 없습니다'); if (by !== 'mana' && by !== 'know') err('잘못된 요청');
     if (R.rushLeft(P, now) <= 0) err('오늘은 더 가속할 수 없습니다 (하루 ' + R.RUSH_N + '회 · KST 자정 초기화)');
