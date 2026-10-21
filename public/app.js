@@ -2330,13 +2330,13 @@
   V.shop = function () {
     var P = S.P, h = pageHead('부엉이 매점', '매점', '주인 부엉이는 “부엉”이라고만 말합니다');
     h += '<p class="small muted" style="margin:-4px 0 12px">토벌 도전권은 한 주에 ' + R.K.WB_BUY_MAX + '번까지 살 수 있으며, 매주 <b>월요일 한국 시간(KST) 0시</b>에 초기화됩니다.</p>';
-    var tkLeft = R.wbBuyLeft(P, now());
+    var tkLeft = R.wbBuyLeft(P, now()), sbDone = P.sbDay === R.dayKST(now());
     h += '<div class="grid gauto">' + D.SHOP.map(function (s) {
       var locked = s.grade && P.grade < s.grade, price = R.shopPrice(P, s.id), cur = s.cur === 'gold' ? 'gold' : s.cur === 'stone' ? 'stone' : 'shard';
       if (s.multi) return '<div class="card"><h4>' + s.name + '</h4><p class="small muted" style="margin:4px 0 10px">' + s.desc + ' <span class="tiny faint">(보유 마석 ' + fmt(P.res.stone) + ' · 마석가루 ' + fmt(P.res.dust || 0) + ')</span></p><div class="row" style="gap:6px;flex-wrap:wrap">' +
         [1, s.multi].map(function (k) { return '<button class="btn sm primary" data-act="do" data-a="buy" data-b="' + s.id + ':' + k + '"' + (P.res.stone >= price * k ? '' : ' disabled') + '>×' + (k * 10) + ' <span class="cost">' + fmt(price * k) + ' 마석</span></button>'; }).join('') + '</div></div>';
       return '<div class="card"' + (locked ? ' style="opacity:.55"' : '') + '><h4>' + s.name + '</h4><p class="small muted" style="margin:4px 0 10px">' + s.desc + '</p>' +
-        (locked ? '<span class="tag">' + s.grade + '학년부터</span>' : '<button class="btn sm primary" data-act="do" data-a="buy" data-b="' + s.id + '"' + (P.res[cur] >= price && (s.id !== 'ticket' || tkLeft > 0) ? '' : ' disabled') + '>구매 <span class="cost">' + fmt(price) + (cur === 'gold' ? ' ' + CUR : ' 별조각') + '</span></button>' + (s.id === 'ticket' ? ' <span class="tiny faint">이번 주 ' + tkLeft + ' / ' + R.K.WB_BUY_MAX + '</span>' : '')) + '</div>';
+        (locked ? '<span class="tag">' + s.grade + '학년부터</span>' : '<button class="btn sm primary" data-act="do" data-a="buy" data-b="' + s.id + '"' + (P.res[cur] >= price && (s.id !== 'ticket' || tkLeft > 0) && !(s.id === 'shardbag' && sbDone) ? '' : ' disabled') + '>' + (s.id === 'shardbag' && sbDone ? '오늘 구매 완료' : '구매') + ' <span class="cost">' + fmt(price) + (cur === 'gold' ? ' ' + CUR : ' 별조각') + '</span></button>' + (s.id === 'ticket' ? ' <span class="tiny faint">이번 주 ' + tkLeft + ' / ' + R.K.WB_BUY_MAX + '</span>' : '')) + '</div>';
     }).join('') + '</div><div class="card inset" style="margin-top:14px"><p class="small muted">별조각은 업적, 일일 목표, 출석, 보스 첫 처치, 시험, 결투제, 과제, 월드 보스, 기숙사 대항전에서 얻습니다.</p></div>';
     return h;
   };
@@ -2740,7 +2740,7 @@
       var me = m.id === S.P.id, act2 = '';
       if (!me) {
         if (owner && (!m.npc || L.demo)) act2 += (m.role === 'officer' ? '<button class="btn sm ghost" data-act="gop" data-a="role" data-b="' + esc(m.id) + '" data-c="member">부회장 해제</button>' : '<button class="btn sm ghost" data-act="gop" data-a="role" data-b="' + esc(m.id) + '" data-c="officer">부회장으로</button>') + '<button class="btn sm ghost" data-act="gop" data-a="transfer" data-b="' + esc(m.id) + '">회장 넘기기</button>';
-        if (staff && m.role === 'member' && ranks.list.length) act2 += '<select class="gsel" data-act="grank" data-a="' + esc(m.id) + '" aria-label="계급"><option value="">' + esc(ranks.base.name) + '</option>' + ranks.list.map(function (r) { return '<option value="' + r.id + '"' + (m.rank === r.id ? ' selected' : '') + '>' + esc(r.name) + '</option>'; }).join('') + '</select>';
+        if (staff && m.role === 'member' && ranks.list.length) act2 += '<select class="gsel" data-act="grank" data-a="' + esc(m.id) + '" aria-label="역할"><option value="">' + esc(ranks.base.name) + '</option>' + ranks.list.map(function (r) { return '<option value="' + r.id + '"' + (m.rank === r.id ? ' selected' : '') + '>' + esc(r.name) + '</option>'; }).join('') + '</select>';
         if ((owner && m.role !== 'owner') || (canKick && m.role === 'member')) act2 += '<button class="btn sm danger" data-act="gop" data-a="kick" data-b="' + esc(m.id) + '">내보내기</button>';
       }
       return '<div class="frow gmrow">' + (m.npc ? '<span class="av av0" style="width:36px;height:36px;font-size:15px;--hc:' + (R.HOUSE[m.house] ? R.HOUSE[m.house].color : '#d6ad5f') + '">' + esc(m.name.slice(0, 1)) + '</span>' : '<button class="avbtn" data-act="prof" data-a="' + esc(m.id) + '">' + avatarHtml(m, 36) + '</button>') + '<div style="flex:1;min-width:0">' + (m.title && m.title !== 'NPC' ? '<span class="ttl' + R.opTitleCls(m.title) + '">' + esc(m.title) + '</span>' : '') + '<b>' + esc(m.name) + '</b>' + (m.npc ? ' <span class="tag npc">NPC</span>' : '') + (m.online ? ' <span class="odot"></span>' : '') + ' ' + gRankTag(m) + '<div class="tiny faint">' + (m.grade >= 8 ? '마스터' : m.grade + '학년') + ' · Lv ' + m.lvl + ' · 기여도 ' + fmt(m.contrib || 0) + '</div></div><span class="frbtns">' + act2 + '</span></div>';
@@ -2777,13 +2777,15 @@
         '<div class="row small" style="margin-top:8px"><span class="muted">가입</span><label class="tog"><input type="radio" name="gd-mode" value="open"' + (g.mode !== 'apply' ? ' checked' : '') + '> 누구나</label><label class="tog"><input type="radio" name="gd-mode" value="apply"' + (g.mode === 'apply' ? ' checked' : '') + '> 신청 후 승인</label></div>' : '') +
       '<div class="row" style="margin-top:10px"><button class="btn sm primary" data-act="gedit">저장</button></div></div>';
     h += '</div><div class="stack">';
-    // 계급: 회장만 고친다
+    // 역할: 회장만 고친다 (회장 · 부회장은 이름만, 부원 역할은 이름과 권한)
     var rk = g.ranks || { base: { name: '부원', perms: {} }, list: [] }, rows = [{ id: 'base', name: rk.base.name, perms: rk.base.perms || {}, base: true }].concat(rk.list);
     var rmax = g.ranksMax || R.guildRanksMax(g.lv); while (owner && rows.length < 1 + rmax) rows.push({ id: 'r' + rows.length, name: '', perms: {}, empty: true });
-    h += '<div class="card"><h3>계급과 권한</h3><p class="tiny faint">회장·부회장은 모든 권한을 가집니다. 부원 계급은 기본 「' + esc(rk.base.name) + '」 말고 ' + rmax + '개까지 만들 수 있습니다' + (rmax < R.GUILD_RANKS_MAX ? ' (' + (g.lv < 5 ? 5 : 10) + '레벨에 한 칸 더)' : '') + (owner ? '' : ' (회장만 고칠 수 있음)') + '.</p><div class="ranks" style="margin-top:8px">' +
+    var lead = [['owner', rk.owner || '회장', '회장'], ['officer', rk.officer || '부회장', '부회장']];
+    h += '<div class="card"><h3>역할과 권한</h3><p class="tiny faint">회장 · 부회장 역할은 모든 권한을 가지며 이름만 바꿀 수 있습니다. 부원 역할은 기본 「' + esc(rk.base.name) + '」 말고 ' + rmax + '개까지 만들 수 있습니다' + (rmax < R.GUILD_RANKS_MAX ? ' (' + (g.lv < 5 ? 5 : 10) + '레벨에 한 칸 더)' : '') + (owner ? '' : ' (회장만 고칠 수 있음)') + '.</p><div class="ranks" style="margin-top:8px">' +
       '<div class="rkrow rkhd tiny faint"><span>이름</span>' + R.GUILD_PERMS.map(function (pp) { return '<span>' + pp[1] + '</span>'; }).join('') + '</div>' +
-      rows.map(function (r, i) { return '<div class="rkrow" data-rk="' + (r.base ? 'base' : 'r' + i) + '"><span>' + (owner ? '<input class="rkname" maxlength="8" value="' + esc(r.name || '') + '" placeholder="' + (r.base ? '기본 계급' : '새 계급') + '">' : '<b class="small">' + esc(r.name) + '</b>') + '</span>' + R.GUILD_PERMS.map(function (pp) { return '<span><input type="checkbox" class="rkp" data-p="' + pp[0] + '"' + (r.perms[pp[0]] ? ' checked' : '') + (owner ? '' : ' disabled') + ' aria-label="' + pp[1] + '"></span>'; }).join('') + '</div>'; }).join('') +
-      '</div>' + (owner ? '<div class="row" style="margin-top:10px"><button class="btn sm primary" data-act="granks">계급 저장</button></div>' : '') + '</div>';
+      lead.map(function (r) { return '<div class="rkrow" data-lead="' + r[0] + '"><span>' + (owner ? '<input class="rkname" maxlength="8" value="' + esc(r[1]) + '" placeholder="' + r[2] + '" aria-label="' + r[2] + ' 역할 이름">' : '<b class="small">' + esc(r[1]) + '</b>') + '</span>' + R.GUILD_PERMS.map(function (pp) { return '<span><input type="checkbox" checked disabled aria-label="' + pp[1] + '"></span>'; }).join('') + '</div>'; }).join('') +
+      rows.map(function (r, i) { return '<div class="rkrow" data-rk="' + (r.base ? 'base' : 'r' + i) + '"><span>' + (owner ? '<input class="rkname" maxlength="8" value="' + esc(r.name || '') + '" placeholder="' + (r.base ? '기본 역할' : '새 역할') + '">' : '<b class="small">' + esc(r.name) + '</b>') + '</span>' + R.GUILD_PERMS.map(function (pp) { return '<span><input type="checkbox" class="rkp" data-p="' + pp[0] + '"' + (r.perms[pp[0]] ? ' checked' : '') + (owner ? '' : ' disabled') + ' aria-label="' + pp[1] + '"></span>'; }).join('') + '</div>'; }).join('') +
+      '</div>' + (owner ? '<div class="row" style="margin-top:10px"><button class="btn sm primary" data-act="granks">역할 저장</button></div>' : '') + '</div>';
     return h + '</div></div>';
   }
   V.guild = function () {
@@ -2944,10 +2946,11 @@
   ACT.ginvite = function (name, id) { var o = { op: 'invite' }; if (id) o.id = id; else o.name = name || (($('#g-inv') || {}).value || '').trim(); if (!o.id && !o.name) return; API.guildOp(o).then(function (j) { if (j.error) { toast('동아리 초대', j.error); return; } toast('동아리 초대를 보냈습니다', '', 1800); var i = $('#g-inv'); if (i) i.value = ''; }); };
   ACT.granks = function () {
     var out = { base: null, list: [] };
+    $$('.rkrow[data-lead]').forEach(function (row) { var nm = ((row.querySelector('.rkname') || {}).value || '').trim(); out[row.dataset.lead] = nm || (row.dataset.lead === 'owner' ? '회장' : '부회장'); });
     $$('.rkrow[data-rk]').forEach(function (row) { var nm = (row.querySelector('.rkname') || {}).value || '', pm = {}; $$('.rkp', row).forEach(function (c) { if (c.checked) pm[c.dataset.p] = true; }); if (row.dataset.rk === 'base') out.base = { name: nm.trim() || '부원', perms: pm }; else if (nm.trim()) out.list.push({ id: 'r' + (out.list.length + 1), name: nm.trim(), perms: pm }); });
     // 기존 id를 지키려면 위치를 그대로 쓴다
     var cur = (S.gd && S.gd.ranks && S.gd.ranks.list) || []; out.list.forEach(function (r, i) { if (cur[i]) r.id = cur[i].id; });
-    API.guildOp({ op: 'ranks', ranks: out }).then(function (j) { gDone(j, '계급이 저장되었습니다'); });
+    API.guildOp({ op: 'ranks', ranks: out }).then(function (j) { gDone(j, '역할이 저장되었습니다'); });
   };
   // 동아리 해체 · 탈퇴: 조건을 먼저 보여 주고, 다 맞으면 한 번 더 묻는다
   function gCond(rows) { return '<ul class="gcond">' + rows.map(function (r) { return '<li class="' + (r[0] ? 'ok' : 'no') + '">' + (r[0] ? '✓ ' : '✗ ') + r[1] + '</li>'; }).join('') + '</ul>'; }
@@ -3861,7 +3864,7 @@
   };
   var MSG = { login: function (r) { return ['출석 ' + r.streak + '일째', '별조각 +' + r.shard + ', 마석 +' + r.stone]; }, daily: function (r) { return ['일일 목표 완료', '별조각 +' + r.shard + ', ' + MONEY(r.gold, '+')]; },
     task: function (r) { return [r.prof + '의 과제 완료', '별조각 +' + r.shard + (r.item ? ' · ' + r.item.name : '')]; }, sellBelow: function (r) { return ['일괄 판매', r.n + '개 · +' + fmt(r.gold) + ' ' + CUR]; },
-    sell: function (r) { return ['판매가 완료되었습니다', '+' + fmt(r.gold) + ' ' + CUR]; }, dismantle: function (r) { return ['분해했습니다', '마석 +' + r.stone + ' · 마석가루 +' + r.dust]; }, dismantleBelow: function (r) { return ['일괄 분해', r.n + '개 · 마석 +' + r.stone + ' · 마석가루 +' + r.dust]; }, buy: function (r) { return r.dust ? ['교환이 완료되었습니다', '마석 −' + fmt(r.n * 10) + ' · 마석가루 +' + fmt(r.dust)] : ['구매가 완료되었습니다', r.badge ? r.badge.name : r.item ? r.item.name : r.mana ? '마나 +' + fmt(r.mana) : '']; },
+    sell: function (r) { return ['판매가 완료되었습니다', '+' + fmt(r.gold) + ' ' + CUR]; }, dismantle: function (r) { return ['분해했습니다', '마석 +' + r.stone + ' · 마석가루 +' + r.dust]; }, dismantleBelow: function (r) { return ['일괄 분해', r.n + '개 · 마석 +' + r.stone + ' · 마석가루 +' + r.dust]; }, buy: function (r) { return r.dust ? ['교환이 완료되었습니다', '마석 −' + fmt(r.n * 10) + ' · 마석가루 +' + fmt(r.dust)] : ['구매가 완료되었습니다', r.badge ? r.badge.name : r.item ? r.item.name : r.shard ? '별조각 +' + r.shard : r.mana ? '마나 +' + fmt(r.mana) : '']; },
     drink: function (r) { var p = R.POT[r.id]; return p ? [R.josa('「' + p.name + '」', '을', '를') + ' 마셨습니다', '효과 ' + R.fmtTime(p.dur) + (r.end && r.end - now() > p.dur + 1 ? ' · 남은 효과 ' + left(r.end) : '') + ' · 남은 수량 ' + fmt(r.n || 0) + '병'] : ['물약을 마셨습니다', '']; },
     resStart: function () { return ['연구 시작', '']; }, eggCancel: function () { return ['품기를 취소했습니다', '알을 보관함으로 되돌렸습니다']; }, eggInc: function (r) { return ['알을 품었습니다', '활동할수록 진행도가 오릅니다 · 필요 기여도 ' + fmt(r.need)]; }, eggHatch: function (r) { return ['알이 깨어났습니다', R.FAM[r.f].name + (r.isNew ? ' (새 사역마!)' : r.max ? ' (최대 레벨 · 별조각 +10)' : ' Lv ' + r.lv)]; }, egg: function (r) { return ['알이 깨어났습니다', R.FAM[r.f].name + (r.isNew ? ' (새 사역마!)' : r.max ? ' (최대 레벨 · 별조각 +10)' : ' Lv ' + r.lv)]; } };
   ACT['do'] = function (type, b) {
@@ -5247,7 +5250,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102257;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102258;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
@@ -5393,7 +5396,7 @@
     else if (el.dataset.act === 'autosell') ACT.autosell();
     else if (el.dataset.act === 'automode') ACT.automode();
     else if (el.id === 'pe-file' && el.files && el.files[0]) onAvatarFile(el.files[0]);
-    else if (el.dataset.act === 'grank') { API.guildOp({ op: 'setrank', pid: el.dataset.a, rank: el.value }).then(function (j) { gDone(j, '계급이 변경되었습니다'); }); }
+    else if (el.dataset.act === 'grank') { API.guildOp({ op: 'setrank', pid: el.dataset.a, rank: el.value }).then(function (j) { gDone(j, '역할이 변경되었습니다'); }); }
     else if (el.dataset.act === 'mkaff') { if (el.value) { var la = (S.mk.aff || '').split(',').filter(Boolean); if (la.indexOf(el.value) < 0 && la.length < 3) la.push(el.value); S.mk.aff = la.join(','); S.mk.data = null; render(); loadMarket(); } }
     else if (el.dataset.act === 'mksel') { S.mk[el.dataset.a] = el.value; S.mk.data = null; render(); loadMarket(); }
   });

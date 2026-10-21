@@ -1926,21 +1926,21 @@ routes['POST /api/guild'] = async (req, res) => {
     const nr = b.role === 'officer' ? 'officer' : 'member';
     if (nr === 'officer' && tRole !== 'officer' && dbx.q.gMembers.all(mine).filter((m) => m.role === 'officer').length >= GUILD_OFFICERS) return fail(req, res, 400, '부회장은 ' + GUILD_OFFICERS + '명까지입니다');
     dbx.q.gRole.run(nr, target); dbx.q.gSetRank.run('', target); guildRole.set(target, nr);
-    gLog(mine, nameOf(target) + ' 님 → ' + (nr === 'officer' ? '부회장' : ranks.base.name)); if (nr === 'officer') gSys(mine, nameOf(target) + ' 님이 부회장이 되었습니다.');
+    gLog(mine, nameOf(target) + ' 님 → ' + (nr === 'officer' ? ranks.officer || '부회장' : ranks.base.name)); if (nr === 'officer') gSys(mine, nameOf(target) + ' 님이 ' + R.josa(ranks.officer || '부회장', '이', '가') + ' 되었습니다.');
     return ok();
   }
   if (op === 'setrank') {
-    if (!staff || !sameG) return fail(req, res, 403, '회장·부회장만 계급을 정할 수 있습니다');
-    if (tRole !== 'member') return fail(req, res, 400, '회장·부회장에게는 계급을 줄 수 없습니다');
-    const rk = String(b.rank || ''); if (rk && !ranks.list.some((x) => x.id === rk)) return fail(req, res, 400, '없는 계급입니다');
+    if (!staff || !sameG) return fail(req, res, 403, '회장·부회장만 역할을 정할 수 있습니다');
+    if (tRole !== 'member') return fail(req, res, 400, '회장·부회장에게는 부원 역할을 줄 수 없습니다');
+    const rk = String(b.rank || ''); if (rk && !ranks.list.some((x) => x.id === rk)) return fail(req, res, 400, '없는 역할입니다');
     dbx.q.gSetRank.run(rk, target); gLog(mine, nameOf(target) + ' 님 → ' + R.guildRankName(ranks, 'member', rk) + ' (' + P.name + ')');
     return ok();
   }
   if (op === 'ranks') {
-    if (role !== 'owner') return fail(req, res, 403, '회장만 계급을 고칠 수 있습니다');
+    if (role !== 'owner') return fail(req, res, 403, '회장만 역할을 고칠 수 있습니다');
     const nr = R.guildCleanRanks(b.ranks, R.guildRanksMax(g.lv || 1)); dbx.q.gRanks.run(JSON.stringify(nr), mine);
     ranks.list.forEach((x) => { if (!nr.list.some((y) => y.id === x.id)) dbx.q.gClearRank.run(mine, x.id); });
-    gLog(mine, P.name + ' 님이 계급을 고쳤습니다 (' + [nr.base.name].concat(nr.list.map((x) => x.name)).join(' · ') + ')');
+    gLog(mine, P.name + ' 님이 역할을 고쳤습니다 (' + [nr.owner, nr.officer, nr.base.name].concat(nr.list.map((x) => x.name)).join(' · ') + ')');
     return ok();
   }
   if (op === 'transfer') {
