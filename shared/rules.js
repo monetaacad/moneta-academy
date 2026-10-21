@@ -1622,9 +1622,9 @@
     return ['', 'h'];
   };
 
-  /* ───────── 동아리: 레벨 · 기여도 · 계급 · 창고 ─────────
+  /* ───────── 동아리: 레벨 · 기여도 · 역할 · 창고 ─────────
      기여도: 하루 한 번 출석(+10), 아르크 기부(내 진도 기준 환산, 하루 최대 200점). 기여도가 곧 동아리 경험치.
-     계급: 회장 · 부회장(고정) + 부원 계급 최대 3개(5레벨에 4개, 10레벨에 5개 · 이름과 권한을 회장이 정한다) + 기본 「부원」.
+     역할: 회장 · 부회장(이름만 바꿀 수 있음) + 부원 역할 최대 3개(5레벨에 4개, 10레벨에 5개 · 이름과 권한을 회장이 정한다) + 기본 「부원」.
      4레벨: 동아리 의식(하루 한 번, 부원 절반이 봉헌하면 봉헌한 부원에게 4시간 축복). 5레벨: 주간 동아리 과제. */
   R.GUILD_MAX_LV = 10;
   R.guildXpNeed = function (lv) { return Math.floor(400 * Math.pow(1.65, lv - 1)); };
@@ -1637,7 +1637,7 @@
   R.guildBonus = function (lv) { return 0.005 * (lv || 0); };          // 부원 모두 아르크·경험치 +0.5%/레벨
   R.GUILD_PERMS = [['invite', '초대·가입 승인'], ['kick', '부원 내보내기'], ['notice', '공지·소개 수정'], ['take', '창고에서 꺼내기']];
   R.GUILD_RANKS_MAX = 5; R.GUILD_CHECKIN = 10; R.GUILD_DONATE_CAP = 200;
-  R.guildRanksMax = function (lv) { return 3 + (lv >= 5 ? 1 : 0) + (lv >= 10 ? 1 : 0); };   // 만들 수 있는 부원 계급 수
+  R.guildRanksMax = function (lv) { return 3 + (lv >= 5 ? 1 : 0) + (lv >= 10 ? 1 : 0); };   // 만들 수 있는 부원 역할 수
   /* 동아리 의식 (4레벨~): 부원마다 마나 30분 분을 봉헌, 그날 목표(부원 수의 절반, 1인 동아리는 1명)를 채우면 봉헌한 부원이
      각자 원할 때 「축복 받기」를 눌러 그때부터 4시간 축복을 받는다 (그날 KST 자정까지 · 하루 한 번, P.gritDay).
      효과는 동아리 레벨 보너스(아르크·경험치)와 겹치지 않는 지식 · 전리품으로, 5% 안쪽. */
@@ -1650,18 +1650,19 @@
   R.GWQ_LV = 5;
   R.GWQ = [{ id: 'exp', st: 'expJobs', name: '원정 완료', unit: '회', goal: 15 }, { id: 'lec', st: 'lecJobs', name: '수업 듣기', unit: '교시', goal: 15 }, { id: 'res', st: 'researchDone', name: '연구 완료', unit: '회', goal: 3 }];
   // from 레벨 다음부터 to 레벨까지 새로 열린 것 (레벨업 알림에 덧붙인다)
-  R.guildUnlockText = function (from, to) { var out = []; for (var l = from + 1; l <= to; l++) { if (l === R.GRIT_LV) out.push('동아리 의식'); if (l === R.GWQ_LV) out.push('주간 동아리 과제'); if (R.guildRanksMax(l) > R.guildRanksMax(l - 1)) out.push('부원 계급 ' + R.guildRanksMax(l) + '개까지'); } return out.length ? ' · 새로 열림: ' + out.join(', ') : ''; };
+  R.guildUnlockText = function (from, to) { var out = []; for (var l = from + 1; l <= to; l++) { if (l === R.GRIT_LV) out.push('동아리 의식'); if (l === R.GWQ_LV) out.push('주간 동아리 과제'); if (R.guildRanksMax(l) > R.guildRanksMax(l - 1)) out.push('부원 역할 ' + R.guildRanksMax(l) + '개까지'); } return out.length ? ' · 새로 열림: ' + out.join(', ') : ''; };
   R.gwqNeed = function (q) { return Math.max(1, Math.ceil(q.goal / 5)); };
   R.gwqReward = function (P) { return { shard: 4 + Math.min(P.grade, 8), gxp: 30 }; };
   R.gwqSync = function (P, now) { var w = R.weekId(now); if (!P.gwq || P.gwq.wk !== w) { var b = {}; R.GWQ.forEach(function (q) { b[q.st] = P.st[q.st] || 0; }); P.gwq = { wk: w, b: b, got: {} }; return true; } return false; };
   R.gwqMine = function (P, q, w) { return P && P.gwq && P.gwq.wk === w ? Math.max(0, (P.st[q.st] || 0) - (P.gwq.b[q.st] || 0)) : 0; };
-  R.guildDefRanks = function () { return { base: { name: '부원', perms: {} }, list: [] }; };
+  R.guildDefRanks = function () { return { owner: '회장', officer: '부회장', base: { name: '부원', perms: {} }, list: [] }; };   // owner · officer: 회장 · 부회장 역할 이름 (회장이 바꿀 수 있다)
   R.guildCleanRanks = function (o, max) {
     var out = R.guildDefRanks(); o = o || {};
     function nm(v, d) { v = String(v == null ? '' : v).replace(/[<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 8); return v || d; }
     function pm(x) { var r = {}; R.GUILD_PERMS.forEach(function (k) { if (x && x[k[0]]) r[k[0]] = true; }); return r; }
+    out.owner = nm(o.owner, '회장'); out.officer = nm(o.officer, '부회장');
     if (o.base) out.base = { name: nm(o.base.name, '부원'), perms: pm(o.base.perms) };
-    (Array.isArray(o.list) ? o.list : []).slice(0, max || R.GUILD_RANKS_MAX).forEach(function (x, i) { if (x && String(x.name || '').trim()) out.list.push({ id: /^r[1-9]$/.test(x.id) ? x.id : 'r' + (i + 1), name: nm(x.name, '계급' + (i + 1)), perms: pm(x.perms) }); });
+    (Array.isArray(o.list) ? o.list : []).slice(0, max || R.GUILD_RANKS_MAX).forEach(function (x, i) { if (x && String(x.name || '').trim()) out.list.push({ id: /^r[1-9]$/.test(x.id) ? x.id : 'r' + (i + 1), name: nm(x.name, '역할' + (i + 1)), perms: pm(x.perms) }); });
     var seen = {}; out.list = out.list.filter(function (x) { if (seen[x.id]) return false; seen[x.id] = 1; return true; });
     return out;
   };
@@ -1673,7 +1674,7 @@
     return !!(r.perms && r.perms[perm]);
   };
   R.guildRankName = function (ranks, role, rank) {
-    if (role === 'owner') return '회장'; if (role === 'officer') return '부회장';
+    if (role === 'owner') return (ranks && ranks.owner) || '회장'; if (role === 'officer') return (ranks && ranks.officer) || '부회장';
     ranks = ranks || R.guildDefRanks(); var r = (ranks.list || []).find(function (x) { return x.id === rank; });
     return r ? r.name : (ranks.base && ranks.base.name) || '부원';
   };
@@ -1747,6 +1748,7 @@
   R.shopPrice = function (P, id) {
     var s = SHOP[id];
     if (s.price === 'stone') return Math.floor(400 * Math.pow(1.11, P.maxStage - 1));
+    if (s.price === 'shardbag') return Math.floor(2000 * Math.pow(1.11, P.maxStage - 1));   // 마석 꾸러미의 5배
     if (s.price === 'gearbox') return Math.floor(500 * Math.pow(1.11, P.maxStage - 1));
     if (s.price === 'bag') return 20 + P.bagExtra * 4;
     return s.price;
@@ -2190,7 +2192,9 @@
   };
   A.allocW = function (P, W, now, a) {
     var w = a.w || {}, o = {}; STATS.forEach(function (k) { var v = Number(w[k]); o[k] = isFinite(v) ? clamp(v, 0, 10) : 0; });
-    P.opt.allocW = o; if (P.opt.autoAlloc) R.autoAlloc(P); return { ok: true };
+    if (!STATS.some(function (k) { return o[k] > 0; })) err('비율을 하나 이상 입력해야 합니다');
+    P.opt.allocW = o; if (a.mine) P.opt.allocMy = JSON.parse(JSON.stringify(o));   // 개인 프리셋으로 저장
+    if (P.opt.autoAlloc) R.autoAlloc(P); return { ok: true };
   };
   A.opt = function (P, W, now, a) {
     var k = str(a.k); if (['autoEquip', 'autoAlloc', 'sound', 'reduceFx', 'hideMyTitle', 'hideOtherTitle', 'dockClosed', 'bulkAsk', 'showFam', 'hideRank', 'buffMerge'].indexOf(k) < 0) err('잘못된 설정');
@@ -2388,6 +2392,7 @@
     if (id === 'bagslot' && P.bagExtra >= 60) err('더 늘릴 수 없습니다');
     if (id === 'badgebox' && (P.badges || []).length >= R.BADGE_HOLD) err('휘장 보관함이 가득 찼습니다 (' + R.BADGE_HOLD + '개)');
     if (id === 'ticket' && R.wbBuyLeft(P, now) <= 0) err('이번 주에는 더 살 수 없습니다 (월요일 KST 0시 초기화)');
+    if (id === 'shardbag' && P.sbDay === R.dayKST(now)) err('오늘은 이미 구매했습니다 (KST 0시 초기화)');
     var n = s.multi ? (a.n == null ? 1 : int(a.n, 1, s.multi)) : 1;   // 여러 번 한꺼번에 (마석가루 교환 ×100 = 10회)
     var price = R.shopPrice(P, id) * n, cur = s.cur === 'gold' ? 'gold' : s.cur === 'stone' ? 'stone' : 'shard'; if (P.res[cur] < price) err((cur === 'gold' ? CUR + '가' : cur === 'stone' ? '마석이' : '별조각이') + ' 부족합니다');
     P.res[cur] -= price; var out = { id: id, n: n };
@@ -2395,6 +2400,7 @@
     else if (id === 'dust10') { var dg = s.give.dust * n; P.res.dust = (P.res.dust || 0) + dg; out.dust = dg; }
     else if (id === 'gearbox') { var it = makeItem(P, pick(P, D.SLOTS).id, R.rewardIlvl(P), Math.max(1, rollRarity(P, calc(P, W, now).rarity + 0.4)), 1); out.item = { name: it.name, r: it.r, res: gainItem(P, it, now) }; }
     else if (id === 'egg') P.fam.eggs++;
+    else if (id === 'shardbag') { P.sbDay = R.dayKST(now); P.res.shard += s.give.shard; out.shard = s.give.shard; }   // 하루 1번
     else if (id === 'badgebox') { var nb = makeBadge(P); gainBadge(P, nb, now, '매점 휘장 원석'); out.badge = { name: nb.name, gem: nb.gem }; }
     else if (id === 'manavial') { var m = calc(P, W, now).mana * 14400; addMana(P, m); out.mana = m; }
     else if (id === 'ticket') { R.wbBuyLeft(P, now); P.wb.extra++; P.wb.bought++; }

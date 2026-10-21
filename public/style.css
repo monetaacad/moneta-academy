@@ -1911,3 +1911,8 @@ table.sjtop .sjmeta { white-space: nowrap; }
 .pheads { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .phead { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--brass); color: var(--brass); background: color-mix(in srgb, var(--brass) 10%, transparent); white-space: nowrap; }
 .phead.two { border-color: var(--line); color: var(--muted); background: transparent; }
+
+/* 콘텐츠 화면 물약 줄 */
+.potbar { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; margin: -4px 0 12px; padding: 6px 10px; border: 1px dashed var(--line2); border-radius: 8px; }
+.potb { display: inline-flex; align-items: center; gap: 6px; }
+.potb .pot-ic { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }

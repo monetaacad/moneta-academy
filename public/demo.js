@@ -323,7 +323,7 @@
     this._save();
     return this._ok(now, { run: run });
   };
-  // 데모 동아리: 직접 만들거나, 미리 있는 NPC 동아리에 들어갈 수 있다 (레벨·기여도·계급·창고까지 서버와 같은 규칙)
+  // 데모 동아리: 직접 만들거나, 미리 있는 NPC 동아리에 들어갈 수 있다 (레벨·기여도·역할·창고까지 서버와 같은 규칙)
   var DEMO_GUILDS = [{ id: 'npc-g1', name: '별빛 관측회', intro: '밤마다 천문대 옥상에서 별샘을 관측합니다. 누구나 환영!', color: '#8fa8ff', mode: 'open', npcs: [1, 4, 7], lv: 3, xp: 420 }, { id: 'npc-g2', name: '결투 연구회', intro: '가시왕관관 주최. 결투제 대비 합동 연습. 가입은 신청 후 승인.', color: '#d9736b', mode: 'apply', npcs: [2, 5], lv: 2, xp: 150 }];
   function gFix(g) {   // 예전 데모 저장본에 새 칸 채우기
     if (g.lv == null) { g.lv = 1; g.xp = 0; } if (g.gold == null) g.gold = 0; if (!g.items) g.items = []; if (!g.stock) g.stock = {}; if (!g.log) g.log = []; if (!g.ranks) g.ranks = Rules.guildDefRanks(); if (!g.nr) g.nr = {}; if (g.contrib == null) g.contrib = 0; if (!g.nc) g.nc = {}; if (g.myRank == null) g.myRank = '';
@@ -389,8 +389,8 @@
       else if (o.op === 'npcAdd') { if (!staff) return fail('회장·부회장만 부를 수 있습니다'); if (1 + g.npcs.length >= Rules.guildCap(g.lv)) return fail('정원이 가득 찼습니다'); if (g.npcs.indexOf(o.k) < 0) g.npcs.push(o.k); this._npcSay('grp', o.k, N[o.k].hello); this._gLog(N[o.k].name + ' 님 가입'); }
       else if (o.op === 'kick') { var okk = role === 'owner' ? tRole !== 'owner' : (staff || can('kick')) && tRole === 'member'; if (!okk) return fail('내보낼 권한이 없습니다'); g.npcs = g.npcs.filter(function (x) { return x !== k; }); delete g.nr[k]; this._sys('grp', N[k].name + ' 님이 동아리에서 나갔습니다.'); this._gLog(P.name + ' 님이 ' + N[k].name + ' 님을 내보냈습니다'); }
       else if (o.op === 'role') { if (role !== 'owner') return fail('회장만 부회장을 정할 수 있습니다'); var nr = o.role === 'officer' ? 'officer' : 'member'; if (nr === 'officer' && tRole !== 'officer' && g.npcs.filter(function (x) { return (g.nr[x] || {}).role === 'officer'; }).length >= 2) return fail('부회장은 2명까지입니다'); tr.role = nr; tr.rank = ''; this._gLog(N[k].name + ' 님 → ' + (nr === 'officer' ? '부회장' : g.ranks.base.name)); if (nr === 'officer') this._sys('grp', N[k].name + ' 님이 부회장이 되었습니다.'); }
-      else if (o.op === 'setrank') { if (!staff) return fail('회장·부회장만 계급을 정할 수 있습니다'); if (tRole !== 'member') return fail('회장·부회장에게는 계급을 줄 수 없습니다'); tr.rank = String(o.rank || ''); this._gLog(N[k].name + ' 님 → ' + Rules.guildRankName(g.ranks, 'member', tr.rank)); }
-      else if (o.op === 'ranks') { if (role !== 'owner') return fail('회장만 계급을 고칠 수 있습니다'); var nrk = Rules.guildCleanRanks(o.ranks, Rules.guildRanksMax(g.lv)); Object.keys(g.nr).forEach(function (x) { if (g.nr[x].rank && !nrk.list.some(function (y) { return y.id === g.nr[x].rank; })) g.nr[x].rank = ''; }); g.ranks = nrk; this._gLog(P.name + ' 님이 계급을 고쳤습니다'); }
+      else if (o.op === 'setrank') { if (!staff) return fail('회장·부회장만 역할을 정할 수 있습니다'); if (tRole !== 'member') return fail('회장·부회장에게는 부원 역할을 줄 수 없습니다'); tr.rank = String(o.rank || ''); this._gLog(N[k].name + ' 님 → ' + Rules.guildRankName(g.ranks, 'member', tr.rank)); }
+      else if (o.op === 'ranks') { if (role !== 'owner') return fail('회장만 역할을 고칠 수 있습니다'); var nrk = Rules.guildCleanRanks(o.ranks, Rules.guildRanksMax(g.lv)); Object.keys(g.nr).forEach(function (x) { if (g.nr[x].rank && !nrk.list.some(function (y) { return y.id === g.nr[x].rank; })) g.nr[x].rank = ''; }); g.ranks = nrk; this._gLog(P.name + ' 님이 역할을 고쳤습니다'); }
       else if (o.op === 'transfer') { if (role !== 'owner') return fail('회장만 넘길 수 있습니다'); tr.role = 'owner'; tr.rank = ''; g.role = 'officer'; g.myRank = ''; this._sys('grp', N[k].name + ' 님이 새 회장이 되었습니다.'); this._gLog(P.name + ' 님이 ' + N[k].name + ' 님에게 회장을 넘겼습니다'); }
       else if (o.op === 'invite') return fail('데모에는 초대할 다른 학생이 없습니다. 부원 탭에서 NPC를 불러 보세요');
       else if (o.op === 'accept' || o.op === 'reject') return fail('데모에는 가입 신청이 없습니다');

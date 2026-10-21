@@ -1807,6 +1807,9 @@ function gwqView(members, P, now) {
   const w = R.weekId(now), Qs = members.map((m) => store.get(m.id)).filter(Boolean);
   return { wk: w, end: R.weekStart(w + 1), list: R.GWQ.map((q) => ({ id: q.id, name: q.name, unit: q.unit, goal: q.goal, need: R.gwqNeed(q), prog: Qs.reduce((a, Q) => a + R.gwqMine(Q, q, w), 0), mine: R.gwqMine(P, q, w), got: !!(P && P.gwq && P.gwq.wk === w && P.gwq.got[q.id]) })), reward: P ? R.gwqReward(P) : null };
 }
+// 동아리를 스스로 탈퇴하면 24시간(현실 시간) 동안 다른 동아리에 가입 · 신청 · 창설할 수 없다
+const G_REJOIN = 24 * 3600;
+function gRejoinMsg(pid) { const Q = store.get(pid), left = Q && Q.gLeftAt ? Q.gLeftAt + G_REJOIN - Date.now() / 1000 : 0; return left > 0 ? '동아리 탈퇴 후 24시간 동안은 가입할 수 없습니다 (' + Math.ceil(left / 3600) + '시간 남음)' : ''; }
 function gJoin(pid, gid, role) { dbx.q.gJoin.run(pid, gid, role, Math.floor(Date.now() / 1000)); dbx.q.gAppDelAll.run(pid); dbx.q.ginvDelPid.run(pid); guildOf.set(pid, gid); guildRole.set(pid, role); if (!guildLv.has(gid)) guildLv.set(gid, (dbx.q.gGet.get(gid) || {}).lv || 1); chat.guildChanged(pid); const P = store.peek(pid); if (P && setGuildLv(P)) store.markDirty(pid); }
 function gLeave(pid) { const g = guildOf.get(pid); dbx.q.gLeave.run(pid); guildOf.delete(pid); guildRole.delete(pid); chat.guildChanged(pid); const P = store.peek(pid); if (P && setGuildLv(P)) store.markDirty(pid); return g; }
 function gSys(gid, text) { const now = Date.now() / 1000; chat.system('grp', text, now, gid); chat.system('gooc', text, now, gid); }
@@ -1869,6 +1872,7 @@ routes['POST /api/guild'] = async (req, res) => {
   const target = String(b.pid || ''), tRole = guildRole.get(target), sameG = target && guildOf.get(target) === mine;
   const ok = (extra) => send(req, res, 200, Object.assign({ ok: true, guild: mine || guildOf.get(me) ? gView(me, guildOf.get(me), true) : null }, extra || {}));
   const nameOf = (pid) => { const w = dbx.q.getProfile.get(pid); return w ? w.name : '학생'; };
+  if ((op === 'join' || op === 'create' || op === 'inviteAccept') && !mine && gRejoinMsg(me)) return fail(req, res, 400, gRejoinMsg(me));
   if (op === 'create') {
     if (meta.guest) return fail(req, res, 403, '게스트는 동아리를 만들 수 없습니다. 정식 학생 등록 필요');
     if (mine) return fail(req, res, 400, '이미 동아리에 들어가 있습니다');
@@ -1931,6 +1935,7 @@ routes['POST /api/guild'] = async (req, res) => {
     dbx.q.gAppDel.run(target, mine);
     if (op === 'accept') {
       if (guildOf.get(target)) return fail(req, res, 400, '이미 다른 동아리에 들어간 학생입니다');
+      if (gRejoinMsg(target)) return fail(req, res, 400, '탈퇴 후 24시간이 지나지 않은 학생입니다');
       if (gCount(mine) >= R.guildCap(g.lv)) return fail(req, res, 400, '정원이 가득 찼습니다');
       gJoin(target, mine, 'member'); gSys(mine, nameOf(target) + ' 님이 동아리에 들어왔습니다.'); gLog(mine, nameOf(target) + ' 님 가입 (' + P.name + ' 님이 승인)');
       addNote(target, 'guild', '동아리 「' + g.name + '」 가입이 승인되었습니다', { view: 'guild' });
@@ -1944,7 +1949,7 @@ routes['POST /api/guild'] = async (req, res) => {
   if (op === 'leave') {
     if (role === 'owner' && gCount(mine) > 1) return fail(req, res, 400, '부원이 있으면 회장은 나갈 수 없습니다. 먼저 회장 위임 필요');
     if (role === 'owner') return fail(req, res, 400, '혼자 남은 회장은 「동아리 해체」로 정리 필요');
-    gLeave(me); gSys(mine, P.name + ' 님이 동아리에서 나갔습니다.'); gLog(mine, P.name + ' 님 탈퇴');
+    gLeave(me); P.gLeftAt = Math.floor(Date.now() / 1000); store.markDirty(me); gSys(mine, P.name + ' 님이 동아리에서 나갔습니다.'); gLog(mine, P.name + ' 님 탈퇴');
     return send(req, res, 200, { ok: true, guild: null });
   }
   if (op === 'kick') {
@@ -1959,21 +1964,21 @@ routes['POST /api/guild'] = async (req, res) => {
     const nr = b.role === 'officer' ? 'officer' : 'member';
     if (nr === 'officer' && tRole !== 'officer' && dbx.q.gMembers.all(mine).filter((m) => m.role === 'officer').length >= GUILD_OFFICERS) return fail(req, res, 400, '부회장은 ' + GUILD_OFFICERS + '명까지입니다');
     dbx.q.gRole.run(nr, target); dbx.q.gSetRank.run('', target); guildRole.set(target, nr);
-    gLog(mine, nameOf(target) + ' 님 → ' + (nr === 'officer' ? '부회장' : ranks.base.name)); if (nr === 'officer') gSys(mine, nameOf(target) + ' 님이 부회장이 되었습니다.');
+    gLog(mine, nameOf(target) + ' 님 → ' + (nr === 'officer' ? ranks.officer || '부회장' : ranks.base.name)); if (nr === 'officer') gSys(mine, nameOf(target) + ' 님이 ' + R.josa(ranks.officer || '부회장', '이', '가') + ' 되었습니다.');
     return ok();
   }
   if (op === 'setrank') {
-    if (!staff || !sameG) return fail(req, res, 403, '회장·부회장만 계급을 정할 수 있습니다');
-    if (tRole !== 'member') return fail(req, res, 400, '회장·부회장에게는 계급을 줄 수 없습니다');
-    const rk = String(b.rank || ''); if (rk && !ranks.list.some((x) => x.id === rk)) return fail(req, res, 400, '없는 계급입니다');
+    if (!staff || !sameG) return fail(req, res, 403, '회장·부회장만 역할을 정할 수 있습니다');
+    if (tRole !== 'member') return fail(req, res, 400, '회장·부회장에게는 부원 역할을 줄 수 없습니다');
+    const rk = String(b.rank || ''); if (rk && !ranks.list.some((x) => x.id === rk)) return fail(req, res, 400, '없는 역할입니다');
     dbx.q.gSetRank.run(rk, target); gLog(mine, nameOf(target) + ' 님 → ' + R.guildRankName(ranks, 'member', rk) + ' (' + P.name + ')');
     return ok();
   }
   if (op === 'ranks') {
-    if (role !== 'owner') return fail(req, res, 403, '회장만 계급을 고칠 수 있습니다');
+    if (role !== 'owner') return fail(req, res, 403, '회장만 역할을 고칠 수 있습니다');
     const nr = R.guildCleanRanks(b.ranks, R.guildRanksMax(g.lv || 1)); dbx.q.gRanks.run(JSON.stringify(nr), mine);
     ranks.list.forEach((x) => { if (!nr.list.some((y) => y.id === x.id)) dbx.q.gClearRank.run(mine, x.id); });
-    gLog(mine, P.name + ' 님이 계급을 고쳤습니다 (' + [nr.base.name].concat(nr.list.map((x) => x.name)).join(' · ') + ')');
+    gLog(mine, P.name + ' 님이 역할을 고쳤습니다 (' + [nr.owner, nr.officer, nr.base.name].concat(nr.list.map((x) => x.name)).join(' · ') + ')');
     return ok();
   }
   if (op === 'transfer') {
