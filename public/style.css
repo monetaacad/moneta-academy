@@ -1483,7 +1483,15 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 .chatrow textarea { flex: 1; min-width: 0; height: 34px; min-height: 34px; padding: 6px 9px; line-height: 1.45; overflow-y: auto; }
 .chatsendbtn { flex: none; height: 34px; }
 .chatmeta { min-height: 0; }
-.chatmeta:has(#chatcount:empty):has(#chatmsg:empty) { display: none; }
+.chatmeta:has(#chatmsg:empty) { display: none; }
+/* 글자 수: 한도 가까이에서만 입력칸 우측 하단에 겹쳐 표시 (레이아웃 자리를 차지하지 않는다) */
+.chatbox { position: relative; flex: 1; min-width: 0; display: flex; }
+.chatbox textarea { flex: 1; }
+.chatcnt { position: absolute; right: 7px; bottom: 4px; font-size: 10.5px; line-height: 1.3; padding: 0 4px; border-radius: 5px; color: var(--faint); background: var(--sunk); pointer-events: none; }
+.chatcnt:empty { display: none; }
+.chatcnt.over { color: var(--badt); font-weight: 600; }
+.chatrow textarea.cntpad { padding-right: 66px; }
+.chatrow textarea.over { border-color: var(--rose); }
 .erwait { border: 1px dashed var(--brass); }
 
 /* ── 학기 이야기 · 시험 준비도 ── */
@@ -1880,3 +1888,6 @@ mark.hl { color: inherit; background: linear-gradient(transparent 38%, color-mix
 @media (pointer: coarse) {
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea, select { font-size: max(16px, 1em) !important; }
 }
+/* 과목 카드: 이름은 낱말 단위로만 줄바꿈 (한 글자씩 세로로 쌓이지 않게), 복습 효과는 이름 아래 줄 */
+.subj .hd h3 { word-break: keep-all; min-width: 0; }
+.subj .revline { margin: 2px 0 4px; }

@@ -528,9 +528,9 @@
   }
   function chatInput(ch) {
     var c = S.chat;
-    return '<div class="chatin"><div class="chatrow"><textarea id="chatinput" rows="1" maxlength="' + (ch === 'world' || ch === 'recruit' ? 300 : 500) + '" placeholder="' + (ch === 'world' ? '메시지 · Enter 보내기, Shift+Enter 줄바꿈' : ch === 'dm' ? '메시지 · Enter 보내기' : ch === 'gooc' ? '오너로서 하는 이야기 · Enter 보내기' : '대사를 입력하고 *행동*은 별표 사이에') + '">' + esc(c.draft[ch === 'dm' ? 'dm:' + S.dm.peer : ch] || '') + '</textarea>' +
+    return '<div class="chatin"><div class="chatrow"><div class="chatbox"><textarea id="chatinput" rows="1" data-max="' + chatMax(ch) + '" placeholder="' + (ch === 'world' ? '메시지 · Enter 보내기, Shift+Enter 줄바꿈' : ch === 'dm' ? '메시지 · Enter 보내기' : ch === 'gooc' ? '오너로서 하는 이야기 · Enter 보내기' : '대사를 입력하고 *행동*은 별표 사이에') + '">' + esc(c.draft[ch === 'dm' ? 'dm:' + S.dm.peer : ch] || '') + '</textarea><span class="chatcnt num" id="chatcount" aria-live="polite"></span></div>' +
       '<button class="btn sm primary chatsendbtn" data-act="chatsend">보내기</button></div>' +
-      '<div class="row chatmeta"><span class="tiny faint" id="chatcount"></span><span class="spacer"></span><span class="tiny bad" id="chatmsg"></span></div>' +
+      '<div class="row chatmeta"><span class="spacer"></span><span class="tiny bad" id="chatmsg"></span></div>' +
       (c.blocked.length && ch !== 'dm' ? '<p class="tiny faint">가린 학생 ' + c.blocked.length + '명 · <button class="btn sm ghost" data-act="unblockall">모두 다시 보기</button></p>' : '') + '</div>';
   }
   // 접힌 채팅창: 지금 고른 탭의 최근 글 한 줄 (글이 없으면 우측에 「채팅 열기」)
@@ -605,13 +605,28 @@
       updNewBtn();
     }
     if (!inp) return;
-    function grow() { inp.style.height = 'auto'; inp.style.height = Math.min(inp.scrollHeight + 2, 110) + 'px'; }   // 한 줄로 시작해 쓰는 만큼 늘어난다 (최대 4줄쯤)
+    var grow = function () { chatGrow(inp); };
     inp.addEventListener('input', function () { S.chat.draft[S.chat.ch === 'dm' ? 'dm:' + S.dm.peer : S.chat.ch] = inp.value; chatCount(); grow(); });
-    if (inp.value) grow();
+    grow();   // 빈 칸도 한 줄 높이로 맞춰 둔다 (첫 글자를 입력할 때 칸이 몇 px 커지며 화면이 밀리지 않게)
     inp.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); ACT.chatsend(); } });
     chatCount();
   }
-  function chatCount() { var inp = $('#chatinput'), el = $('#chatcount'); if (inp && el) el.textContent = inp.value.length ? inp.value.length + ' / ' + inp.maxLength : ''; }
+  function chatGrow(inp) {   // 한 줄로 시작해 쓰는 만큼 늘어난다 (최대 4줄쯤). 빈 칸은 긴 안내 문구가 줄바꿈되어도 한 줄 높이로 잰다
+    var ph = !inp.value && inp.getAttribute('placeholder'); if (ph) inp.setAttribute('placeholder', '');
+    inp.style.height = 'auto'; inp.style.height = Math.min(inp.scrollHeight + 2, 110) + 'px';
+    if (ph) inp.setAttribute('placeholder', ph);
+  }
+  // 글자 수 한도 (서버 chat.js CHANNELS와 같게: 월드 · 모집 대화 300자, 나머지 500자)
+  function chatMax(ch) { return ch === 'world' || ch === 'recruit' ? 300 : 500; }
+  var CHAT_CNT_NEAR = 50;   // 한도까지 이만큼 남으면 입력칸 우측 하단에 글자 수를 겹쳐 보인다 (자리를 차지하지 않아 화면이 밀리지 않는다)
+  function chatCount() {
+    var inp = $('#chatinput'), el = $('#chatcount'); if (!inp || !el) return;
+    var n = inp.value.length, max = +inp.getAttribute('data-max') || chatMax(S.chat.ch), show = n >= max - CHAT_CNT_NEAR, over = n > max;
+    el.textContent = show ? n + ' / ' + max : '';
+    el.classList.toggle('over', over); inp.classList.toggle('cntpad', show); inp.classList.toggle('over', over);
+    el.title = over ? max + '자까지 작성할 수 있습니다' : '';
+    var mm = $('#chatmsg'); if (mm && !over && /자까지 작성할 수 있습니다/.test(mm.textContent)) mm.textContent = '';   // 입력 중에는 붉은 글자 수만, 경고 문구는 보내기를 누를 때
+  }
   function chatConnect() {
     if (S.chat.conn || !API.chatConnect) return;
     loadRead();
@@ -901,6 +916,8 @@
       h += p.friend === 'ok' ? '<button class="btn sm" data-act="dmopen" data-a="' + pid + '" data-b="' + esc(p.name) + '">1:1 대화</button>' : '<button class="btn sm" disabled title="1:1 대화는 친구끼리 할 수 있습니다">1:1 대화</button>';
       // 파티
       h += p.sameParty ? '<span class="tag ok">같은 파티</span>' : '<button class="btn sm" data-act="pinvite" data-a="' + pid + '">파티 초대</button>';
+      // 함께 원정 (파티와 따로: 파티가 가득 차 있어도 지금 들어가 있는 원정 방으로 초대)
+      h += '<button class="btn sm" data-act="erinvp" data-a="' + pid + '" title="내가 들어가 있는 함께 원정 방으로 초대합니다 (친구 · 같은 동아리원 · 같은 파티원)">원정 초대</button>';
       // 동아리 (초대 권한이 있을 때만)
       if (p.canGuildInvite) h += '<button class="btn sm" data-act="ginvite" data-a="" data-b="' + pid + '">동아리 초대</button>';
       if (p.friend === 'ok') h += '<button class="btn sm ghost" data-act="fop" data-a="remove" data-b="' + pid + '">친구 끊기</button>';
@@ -1419,7 +1436,7 @@
       var sj = P.subj[S2.id], open = S2.unlock <= Math.min(P.grade, 7);
       var on = P.lec.some(function (x) { return x && x.s === S2.id; }), inEx = ex && P.grade < 8 && (ex.subj.indexOf(S2.id) >= 0 || (ex.opt || []).indexOf(S2.id) >= 0);
       var nextSp = D.SPELLS.filter(function (sp) { return sp.req && sp.req[0] === S2.id && sj.lv < sp.req[1]; })[0];
-      var h2 = '<div class="card subj' + (on ? ' active' : '') + (open ? '' : ' lockd') + '" data-anchor="subj-' + S2.id + '"><div class="hd"><h3>' + S2.name + '</h3><button class="btn sm ghost sylbtn" data-act="syllabus" data-a="' + S2.id + '" title="레벨별 보상 · 교수 과제 · 기말시험을 미리 봅니다">강의계획서</button>' + (R.reviewOn(P, S2.id, now()) ? '<span class="tag ok" title="복습하는 꿈에서 깬 뒤 3시간 안에 이 과목 수업을 시작하면 경험치 +' + Math.round(R.REVIEW_BONUS * 100) + '%">복습 효과 ~' + clock(P.review.until) + '</span>' : '') + (inEx ? '<span class="tag ' + (sj.lv >= ex.req ? 'ok' : 'br') + '">시험 ' + ex.req + '</span>' : '') + '<span class="lv">' + sj.lv + '</span></div><div class="prof">' + S2.prof + (open && clsN(S2.id, true) ? ' · <span class="classmates">지금 ' + clsN(S2.id, true) + '명 수강 중</span>' : '') + '</div>';
+      var h2 = '<div class="card subj' + (on ? ' active' : '') + (open ? '' : ' lockd') + '" data-anchor="subj-' + S2.id + '"><div class="hd"><h3>' + S2.name + '</h3><button class="btn sm ghost sylbtn" data-act="syllabus" data-a="' + S2.id + '" title="레벨별 보상 · 교수 과제 · 기말시험을 미리 봅니다">강의계획서</button>' + (inEx ? '<span class="tag ' + (sj.lv >= ex.req ? 'ok' : 'br') + '">시험 ' + ex.req + '</span>' : '') + '<span class="lv">' + sj.lv + '</span></div><div class="prof">' + S2.prof + (open && clsN(S2.id, true) ? ' · <span class="classmates">지금 ' + clsN(S2.id, true) + '명 수강 중</span>' : '') + '</div>' + (R.reviewOn(P, S2.id, now()) ? '<div class="revline"><span class="tag ok" title="복습하는 꿈에서 깬 뒤 3시간 안에 이 과목 수업을 시작하면 경험치 +' + Math.round(R.REVIEW_BONUS * 100) + '%">복습 효과 ~' + clock(P.review.until) + '</span></div>' : '');   // 복습 효과는 과목 이름 아래 줄 (제목 줄에 두면 이름이 세로로 줄었다)
       if (!open) return h2 + '<p class="small muted">' + S2.unlock + '학년부터 수강할 수 있습니다.</p></div>';
       return h2 + '<div class="bar"><b style="width:' + (sj.xp / R.subjXpNeed(sj.lv) * 100).toFixed(1) + '%"></b></div><div class="row tiny faint"><span>과목 경험치 ' + fmt(sj.xp) + ' / ' + fmt(R.subjXpNeed(sj.lv)) + '</span><span class="spacer"></span><span>레벨당 ' + D.STAT_NAMES[R.subjStats(P, S2)[0]] + ' +1.2, ' + D.STAT_NAMES[R.subjStats(P, S2)[1]] + ' +0.6</span></div>' +
         '<p class="small muted">' + S2.desc + '</p><blockquote>' + S2.line + '</blockquote>' + subjMiles(S2.id) + taskBox(S2.id) +
@@ -1649,12 +1666,13 @@
   ACT.erpos2 = function (k, id) { S.erPos = k; ACT.erpeek(id); };
   function erPartyToast(j) { if (!j.added && !j.skipped) return; toast('파티로 함께 원정', (j.added.length ? j.added.join(', ') + ' 님과 함께 들어갔습니다' : '함께 간 파티원이 없습니다') + (j.skipped.length ? ' · 빠진 파티원: ' + j.skipped.join(', ') : ''), 6000); }
   ACT.erjoin2 = function (id, wp) { API.expRoom({ op: 'join', id: id, pos: erPos(), withParty: wp === 'party' }).then(function (j) { if (j.error) { toast('함께 원정', j.error); return; } closeModal(); if (wp === 'party') erPartyToast(j); else toast('함께 원정', '방에 들어갔습니다'); erAbsorb(j); if (S.view !== 'explore') ACT.goto('explore', 'exproom'); else render(); }); };
-  // 초대: 친구 · 같은 동아리원 중 한 명씩 골라 보낸다 (검색 가능, 한꺼번에 보내기 없음)
+  // 초대: 친구 · 같은 동아리원 · 같은 파티원 중 한 명씩 골라 보낸다 (검색 가능, 한꺼번에 보내기 없음)
   ACT.erinvite = function () {
-    modal(mhead('함께 원정에 초대', '친구와 같은 동아리원 중에서 한 명씩 선택해 초대합니다') + '<input id="eri-q" type="search" placeholder="이름으로 찾기" autocomplete="off" style="margin-bottom:10px"><div id="eri-list" class="stack" style="gap:6px"><p class="small muted">불러오는 중…</p></div>');
+    modal(mhead('함께 원정에 초대', '친구 · 같은 동아리원 · 같은 파티원 중에서 한 명씩 선택해 초대합니다') + '<input id="eri-q" type="search" placeholder="이름으로 찾기" autocomplete="off" style="margin-bottom:10px"><div id="eri-list" class="stack" style="gap:6px"><p class="small muted">불러오는 중…</p></div>');
     var q = $('#eri-q'); if (q) { q.addEventListener('input', erInvList); setTimeout(function () { q.focus(); }, 40); }
-    Promise.all([API.friends ? API.friends() : Promise.resolve({}), S.guild && API.guild ? API.guild() : Promise.resolve({})]).then(function (r) {
+    Promise.all([API.friends ? API.friends() : Promise.resolve({}), S.guild && API.guild ? API.guild() : Promise.resolve({}), S.party && API.party ? API.party() : Promise.resolve({})]).then(function (r) {
       var seen = {}, list = [];
+      (((r[2] && r[2].party) || {}).members || []).forEach(function (m) { if (m.id && m.id !== S.P.id && !seen[m.id]) { seen[m.id] = 1; list.push({ id: m.id, name: m.name, tag: '파티', online: !!m.online, grade: m.grade, lvl: m.lvl }); } });
       ((r[0] && r[0].friends) || []).forEach(function (f) { if (!seen[f.id]) { seen[f.id] = 1; list.push({ id: f.id, name: f.name, tag: '친구', online: !!f.online, grade: f.grade, lvl: f.lvl }); } });
       (((r[1] && r[1].guild) || {}).members || []).forEach(function (m) { if (m.id !== S.P.id && !seen[m.id]) { seen[m.id] = 1; list.push({ id: m.id, name: m.name, tag: '동아리', online: !!m.online, grade: m.grade, lvl: m.lvl }); } });
       S.erInvList = list.sort(function (a, b) { return (b.online - a.online) || a.name.localeCompare(b.name); }); erInvList();
@@ -1666,6 +1684,7 @@
     box.innerHTML = a.length ? a.map(function (x) { return '<div class="row erprow"><span class="odot' + (x.online ? ' on' : '') + '"></span><b>' + esc(x.name) + '</b><span class="tag">' + x.tag + '</span><span class="tiny faint">' + (x.grade ? x.grade + '학년' : '') + (x.lvl ? ' · Lv ' + x.lvl : '') + '</span><span class="spacer"></span>' + (sent[x.id] ? '<span class="tiny gold">보냄</span>' : '<button class="btn sm" data-act="erinv1" data-a="' + esc(x.id) + '">초대</button>') + '</div>'; }).join('')
       : '<p class="small muted">' + (S.erInvList.length ? '「' + esc(q) + '」에 맞는 학생이 없습니다.' : '친구나 동아리원이 없습니다. 「모집 알림」으로 사람을 모아 보세요.') + '</p>';
   }
+  ACT.erinvp = function (id) { API.expRoom({ op: 'invite', to: id }).then(function (j) { if (j.error) { if (/들어가 있는 방이 없습니다/.test(j.error)) { toast('원정 초대', '먼저 원정 화면의 「함께 원정」에서 방을 만들거나 들어간 뒤 초대할 수 있습니다', 3200); return; } toast('원정 초대', j.error); return; } toast('원정 초대', (j.invited || '학생') + ' 님에게 함께 원정 초대를 보냈습니다', 2200); }); };   // 학생 정보 카드에서
   ACT.erinv1 = function (id) { API.expRoom({ op: 'invite', to: id }).then(function (j) { if (j.error) { toast('초대', j.error); return; } (S.erSent || (S.erSent = {}))[id] = 1; toast('초대', (j.invited || '학생') + ' 님에게 초대를 보냈습니다'); erInvList(); }); };
   ACT.ernpcdel = function (k) { erOp({ op: 'npcdel', k: +k }); };
   // 1초마다: 출발까지 남은 시간만 고치고, 3초마다 목록을 새로 받는다 (원정 화면이거나 방에 들어가 있을 때만)
@@ -2190,7 +2209,7 @@
       var act2 = P.fam.act === f.id, disp = P.fam.disp[f.id], cost = o.lv < 20 ? R.feedCost(P, f.id) : 0;
       h += '<div class="card famcard' + (act2 ? ' act' : '') + '"><div style="flex:1;min-width:0"><div class="row" style="gap:6px;flex-wrap:wrap"><b>' + esc(o.nm || f.name) + '</b>' + (o.nm ? '<span class="tiny faint">' + f.name + '</span>' : '') + '<span class="num tiny gold">Lv ' + o.lv + '</span><button class="btn ghost sm famnm" data-act="famname" data-a="' + f.id + '">이름 짓기</button></div><div class="tiny" style="color:' + fr.color + '">' + fr.name + '</div>' +
         '<div class="small">' + D.BONUS_NAMES[f.bonus] + ' +' + pct(R.famBonus(f, o.lv, P)) + '</div>' + famXpBar(f, o, act2, disp) + (disp ? '<div class="tiny gold">파견 중 · ' + R.dispZoneOf(P, f.id, disp.z).name + ' · ' + clock(disp.end) + ' 귀환</div>' : '<div class="tiny faint">' + f.desc + '</div>') +
-        (act2 ? '' : (function () { var zs = R.dispZones(P), cur = P.fam.zone && P.fam.zone[f.id], top = zs[zs.length - 1];   // 파견 지역 (사역마마다 저장)
+        (act2 || (o.lock && !disp) ? '' : (function () { var zs = R.dispZones(P), cur = P.fam.zone && P.fam.zone[f.id], top = zs[zs.length - 1];   // 파견 지역 (사역마마다 저장, 파견 잠금이면 숨김)
           return '<div class="row tiny" style="gap:6px;margin-top:6px"><span class="faint">파견 지역</span><select data-act="famzone" data-a="' + f.id + '" style="width:auto;flex:1;min-width:0"><option value=""' + (cur ? '' : ' selected') + '>자동 · ' + (top ? top.name : '') + '</option>' + zs.map(function (z) { return '<option value="' + z.id + '"' + (cur === z.id ? ' selected' : '') + '>' + z.name + ' · ' + D.MATS[z.mat].name + '</option>'; }).join('') + '</select></div>'; })()) +
         '<div class="row" style="margin-top:6px;gap:6px">' + (o.lv < 20 ? '<button class="btn sm primary" data-act="do" data-a="feed" data-b="' + f.id + '"' + (P.res.gold >= cost ? '' : ' disabled') + '>먹이 <span class="cost">' + fmt(cost) + ' ' + CUR + '</span></button>' : '<span class="tag br">최대 레벨</span>') +
         (act2 ? '<span class="tag ok">동행 중</span>' : disp ? famRecallBtn(f.id) : '<button class="btn sm primary" data-act="do" data-a="famAct" data-b="' + f.id + '">동행</button>' + (o.lock ? '<span class="tag br" title="「모두 파견」에서 빠지며 따로 보낼 수도 없습니다">파견 잠금</span>' : '<button class="btn sm primary" data-act="dispatch" data-a="' + f.id + '">' + R.DDUR[dk].label + ' 파견</button>')) +
@@ -3045,7 +3064,7 @@
         var st = x.auc && x.status === 'open' ? '<span class="tag br">경매 중 · ' + R.fmtTime(Math.max(0, x.expires - Date.now() / 1000)) + ' 남음</span> <span class="tiny faint">' + (x.bids ? '현재가 <b class="num gold">' + fmt(x.bid) + '</b> · 입찰 ' + x.bids + '건' : '시작가 ' + fmt(x.start) + ' · 입찰 없음') + ' · 즉시 구매가</span>' : { open: '<span class="tag br">판매 중 · ' + R.fmtTime(Math.max(0, x.expires - Date.now() / 1000)) + ' 남음</span>', sold: '<span class="tag ok">팔림 · +' + fmt(Math.floor(x.price * (1 - (d.fee || 0.05)))) + ' ' + CUR + '</span>', canceled: '<span class="tag">취소함</span>', expired: '<span class="tag">기한 지나 돌아옴</span>' }[x.status] || '';
         return '<div class="mkrow"><div class="mki"><span class="mkn ell"' + (x.kind === 'item' ? ' style="color:' + rcol(x.r) + '"' : '') + '>' + esc(x.name) + (x.kind !== 'item' ? ' ×' + fmt(x.qty) : '') + '</span><div>' + st + '</div></div><b class="num gold mkpr">' + fmt(x.price) + '</b>' + (x.status === 'open' && !x.auc && API.mode === 'server' ? '<button class="btn sm' + ((m.eopen || {})[x.id] ? ' on' : '') + '" data-act="mkedit" data-a="' + x.id + '">가격 수정</button>' : '') + (x.status === 'open' && !(x.auc && x.bids) ? '<button class="btn sm ghost" data-act="mkcancel" data-a="' + x.id + '">내리기</button>' : '') + '</div>' + ((m.eopen || {})[x.id] && x.status === 'open' && !x.auc ? mkEditRow(x) : '');
       }).join('') + '</div>' : '<div class="empty">판매 중인 물건이 없습니다.</div>';
-      if (API.mode === 'server') { var mb = (d && d.myBids) || []; h += '<div class="section-t" style="margin-top:14px">내가 입찰한 경매</div>' + (mb.length ? '<div class="mklist">' + mb.map(function (x) { return aucRow(x, low); }).join('') + '</div>' : '<div class="empty">입찰한 경매가 없습니다.</div>'); }
+      if (API.mode === 'server') { var mb = ((d && d.myBids) || []).filter(function (x) { return x.status === 'open'; }); h += '<div class="section-t" style="margin-top:14px">내가 입찰한 경매</div><p class="tiny faint" style="margin-bottom:6px">진행 중인 경매만 표시됩니다. 낙찰받은 물건은 「거래 내역」에서 볼 수 있습니다.</p>' + (mb.length ? '<div class="mklist">' + mb.map(function (x) { return aucRow(x, low); }).join('') + '</div>' : '<div class="empty">입찰한 경매가 없습니다.</div>'); }
     }
     return h;
   };
@@ -3931,6 +3950,7 @@
     var inp = $('#chatinput'); if (!inp) return; var text = inp.value.trim(), ch = S.chat.ch; if (!text) return;
     var kind = 'say';
     if (/^\/me\s+/i.test(text)) { kind = 'me'; text = text.replace(/^\/me\s+/i, ''); }
+    if (text.length > chatMax(ch)) { chatCount(); chatNote(chatMax(ch) + '자까지 작성할 수 있습니다 · ' + (text.length - chatMax(ch)) + '자 초과'); return; }   // 서버는 넘친 글자를 잘라 내므로 보내기 전에 막는다
     var c = S.chat, nowMs = Date.now(), dkey = ch === 'dm' ? 'dm:' + S.dm.peer : ch;
     // 운영자 명령: /slow 5 · /slow off
     var sm = /^\/slow(?:\s+(\S+))?$/i.exec(text);
@@ -3968,7 +3988,7 @@
         if (arr2 && !arr2.some(function (x) { return x.id === j.id || (x.nonce === nonce && x.pid === S.P.id); })) { var real = Object.assign({}, pm, { id: j.id }); arr2.push(real); pel.outerHTML = msgHtml(real); }
         else pel.remove();
       }
-      c.pend = null; S.divider[ch] = 0; if (!pel) { S.chat.draft[dkey] = ''; var i = $('#chatinput'); if (i) { i.value = ''; i.style.height = ''; i.focus(); } chatCount(); } S.chat.stick = true;
+      c.pend = null; S.divider[ch] = 0; if (!pel) { S.chat.draft[dkey] = ''; var i = $('#chatinput'); if (i) { i.value = ''; chatGrow(i); i.focus(); } chatCount(); } S.chat.stick = true;
     }, function () { done(); chatNote('전송이 늦어지고 있습니다. 다시 눌러도 한 번만 전송됩니다'); if (pel) { pel.classList.add('late'); giveBack(); } });
   };
   ACT.slowset = function () {
@@ -5117,7 +5137,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102183;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102220;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

@@ -116,7 +116,7 @@ const exprooms = ExpRoom.create({ loadPlayer: (pid, now) => loadPlayer(pid, now)
   recruit: (P, data) => chat.recruit(P, data, Date.now() / 1000),
   note: (...a) => addNote(...a),
   partyInfo: (pid) => { const id = partyOf.get(pid); if (!id) return null; const pa = dbx.q.partyGet.get(id); if (!pa) return null; return { id, leader: pa.leader, allgo: !!pa.allgo, members: dbx.q.partyMembers.all(id).map((m) => m.id) }; },
-  canInvite: (a, b) => friendState(a, b) === 'ok' || (guildOf.get(a) && guildOf.get(a) === guildOf.get(b)),
+  canInvite: (a, b) => friendState(a, b) === 'ok' || (guildOf.get(a) && guildOf.get(a) === guildOf.get(b)) || (partyOf.get(a) && partyOf.get(a) === partyOf.get(b)),   // 친구 · 같은 동아리 · 같은 파티
   nameOf: (pid) => { const r = dbx.q.getProfile.get(pid); return r ? r.name : ''; } });
 // 새 업데이트 노트가 배포되면 공지 · 월드 채널에 한 번 알린다
 { const pn = R.D.PATCH && R.D.PATCH[0]; if (pn && dbx.kvGet('patchPosted', 0) < pn.id) { const t = '새 업데이트 노트가 게시되었습니다: 「' + pn.title + '」. 상단의 업데이트 노트 버튼에서 확인할 수 있습니다.'; chat.system('notice', t, Date.now() / 1000); chat.system('world', t, Date.now() / 1000); dbx.kvSet('patchPosted', pn.id); } }
@@ -1103,7 +1103,7 @@ routes['GET /api/market'] = (req, res) => {
   const u = new URL(req.url, 'http://x'), g = (k) => u.searchParams.get(k) || '', now = Date.now() / 1000;
   const f = { kind: g('kind'), slot: g('slot'), r: g('r') === '' ? -1 : Number(g('r')), mat: g('mat'), pot: g('pot'), tok: g('tok'), gem: g('gem'), q: g('q').slice(0, 20), sort: g('sort'), auc: g('auc') === '1', nobid: g('nobid') === '1', wear: 0 };
   if (g('wear') === '1') { const P = store.get(me); f.wear = Math.max(1, (P && P.lvl) || 1); }   // 레벨은 서버가 아는 값으로
-  send(req, res, 200, { list: mkSearch(f, now).map((r) => mkOut(r, me)), mine: dbx.q.mkMine.all(me, Math.floor(now) - 3 * 86400).map((r) => mkOut(Object.assign({ seller_name: '' }, r, { seller: me }), me)), myBids: dbx.q.mkMyBids.all(me, Math.floor(now) - 3 * 86400).map((r) => mkOut(r, me)),
+  send(req, res, 200, { list: mkSearch(f, now).map((r) => mkOut(r, me)), mine: dbx.q.mkMine.all(me, Math.floor(now) - 3 * 86400).map((r) => mkOut(Object.assign({ seller_name: '' }, r, { seller: me }), me)), myBids: dbx.q.mkMyBids.all(me).map((r) => mkOut(r, me)),
     fee: MK.FEE, days: MK.DAYS, maxOpen: MK.MAX_OPEN, grade: MK.GRADE, auc: { max: MK_AUC.MAX, hours: MK_AUC.HOURS, up: MK_AUC.MIN_UP, buyoutX: MK_AUC.BUYOUT_X } });
 };
 // 시세: 최근 30일 팔린 기록의 평균과 최근 5건. 장비는 같은 부위·등급·레벨 ±5, 재료는 개당 가격.
