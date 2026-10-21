@@ -1516,7 +1516,7 @@ function expLeft(P, pa, now) {
     if (x.id === P.id) return; const j = x.P.exp[x.slot]; if (!j || !j.pt) return;
     j.pt.left = [...new Set((j.pt.left || []).concat(P.id))];
     if (j.pt.vote) { const ids = pa.act.filter((y) => y.id !== P.id).map((y) => y.id), yes = [...(V || [])].filter((id) => ids.indexOf(id) >= 0); j.pt.vote = { yes, need: Math.floor(ids.length / 2) + 1, n: ids.length }; }
-    store.markDirty(x.id); addNote(x.id, 'exp', P.name + ' 님이 함께 원정에서 혼자 먼저 귀환했습니다. 남은 일행의 원정은 그대로 계속됩니다', { view: 'explore' });
+    store.markDirty(x.id); addNote(x.id, 'exp', P.name + ' 님이 함께 원정에서 혼자 먼저 귀환했습니다. 남은 일행의 원정은 그대로 계속되며, 처치 · 보상도 출발할 때 정해진 대로 받습니다 (벌칙은 먼저 귀환한 학생만)', { view: 'explore' });
   });
   const L = (P.expLeaves || []).filter((t) => now - t < R.EXP_LEAVE_WIN).concat(now); P.expLeaves = L.slice(-R.EXP_LEAVE_N);
   if (L.length >= R.EXP_LEAVE_N) { P.erBan = now + R.EXP_LEAVE_BAN; P.expLeaves = []; R.log(P, now, '함께 원정에서 30분 안에 ' + R.EXP_LEAVE_N + '번 혼자 귀환해 3시간 동안 함께 원정에 참가할 수 없습니다', 'bad'); }
