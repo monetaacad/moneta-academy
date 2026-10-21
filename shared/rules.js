@@ -1456,12 +1456,17 @@
   R.GUILD_MAX_LV = 10;
   R.guildXpNeed = function (lv) { return Math.floor(400 * Math.pow(1.65, lv - 1)); };
   R.guildCap = function (lv) { return Math.min(40, 28 + 2 * (lv || 1)); };   // 정원: 1레벨 30명 … 6레벨부터 40명
-  R.guildSlots = function (lv) { return 20 + 5 * (lv || 1); };        // 창고 장비 칸
+  R.guildSlots = function (lv) { return 20 + 5 * (lv || 1); };        // 창고 칸: 장비 1개 = 1칸, 재료 · 물약은 종류마다 1칸(수량 무관)
+  // 동아리 창고 재료 · 물약: k = 'm'(재료, P.mats) · 'p'(물약, P.shelf). 없는 종류면 null
+  R.gStockName = function (k, id) { return k === 'm' ? (Object.prototype.hasOwnProperty.call(D.MATS, id) ? D.MATS[id].name : null) : k === 'p' ? (Object.prototype.hasOwnProperty.call(POT, id) ? POT[id].name : null) : null; };
+  R.gStockBag = function (P, k) { return k === 'm' ? P.mats : k === 'p' ? P.shelf : null; };
+  R.GSTOCK_MAX = 1e9;   // 한 종류에 쌓을 수 있는 최대 수량
   R.guildBonus = function (lv) { return 0.005 * (lv || 0); };          // 부원 모두 아르크·경험치 +0.5%/레벨
   R.GUILD_PERMS = [['invite', '초대·가입 승인'], ['kick', '부원 내보내기'], ['notice', '공지·소개 수정'], ['take', '창고에서 꺼내기']];
   R.GUILD_RANKS_MAX = 5; R.GUILD_CHECKIN = 10; R.GUILD_DONATE_CAP = 200;
   R.guildRanksMax = function (lv) { return 3 + (lv >= 5 ? 1 : 0) + (lv >= 10 ? 1 : 0); };   // 만들 수 있는 부원 계급 수
-  /* 동아리 의식 (4레벨~): 부원마다 마나 30분 분을 봉헌, 그날 목표(부원 수의 절반, 1인 동아리는 1명)를 채우면 봉헌한 부원에게 축복.
+  /* 동아리 의식 (4레벨~): 부원마다 마나 30분 분을 봉헌, 그날 목표(부원 수의 절반, 1인 동아리는 1명)를 채우면 봉헌한 부원이
+     각자 원할 때 「축복 받기」를 눌러 그때부터 4시간 축복을 받는다 (그날 KST 자정까지 · 하루 한 번, P.gritDay).
      효과는 동아리 레벨 보너스(아르크·경험치)와 겹치지 않는 지식 · 전리품으로, 5% 안쪽. */
   R.GRIT_LV = 4;
   R.GRIT_BUFF = { name: '동아리의 결속', eff: { knowPct: 0.05, dropPct: 0.05 }, dur: 4 * 3600, color: '#e8b86a', text: '4시간 동안 지식 · 전리품 +5%' };
@@ -1898,7 +1903,7 @@
     P.shelf[id]--; var cur = P.buffs['p_' + id];
     var start = cur && cur.end > now ? cur.start : now, end = Math.min((cur && cur.end > now ? cur.end : now) + p.dur, now + p.dur * 3);
     P.buffs['p_' + id] = { name: p.name, eff: p.eff, start: start, end: end, color: p.color };
-    return { ok: true };
+    return { ok: true, id: id, end: end, n: P.shelf[id] };
   };
   A.equip = function (P, W, now, a) {
     var u = str(a.u), i = P.inv.findIndex(function (x) { return x.u === u; }); if (i < 0) err('가방에 없는 장비입니다');
@@ -1911,6 +1916,7 @@
     var i = int(a.i, 0, R.GEARSET_N - 1), op = str(a.op), sets = P.gearSets || (P.gearSets = []);
     if (op === 'save') { var eq = {}; for (var s in P.eq) if (P.eq[s]) eq[s] = P.eq[s].u; var bw = R.badgeWorn(P); if (!Object.keys(eq).length && !bw) err('장착한 장비가 없습니다'); sets[i] = { eq: eq, badge: bw ? bw.u : '', at: now }; return { saved: i }; }   // 달고 있는 휘장도 함께
     if (op === 'clear') { sets[i] = null; return { cleared: i }; }
+    if (op === 'name') { if (!sets[i]) err('저장된 프리셋이 없습니다'); var nm = R.cleanName(a.name).slice(0, 10); if (nm) sets[i].name = nm; else delete sets[i].name; return { named: i, name: nm }; }   // 프리셋 이름 (최대 10자, 비우면 번호만)
     if (op !== 'load') err('잘못된 요청');
     var st = sets[i]; if (!st) err('저장된 프리셋이 없습니다');
     var moved = 0, miss = 0, low = 0;
@@ -2026,6 +2032,11 @@
   A.eggHatch = function (P, W, now) {
     var inc = P.fam.inc; if (!inc) err('품고 있는 알이 없습니다'); if (inc.prog < inc.need) err('아직 깨어날 준비가 되지 않았습니다');
     P.fam.inc = null; return hatch(P, now);
+  };
+  // 품기 취소: 품던 알을 보관함으로 되돌린다. 진행도는 사라진다(소모한 자원이 없고, 종은 깨어날 때 정해지므로 다시 품어도 얻는 것이 없다)
+  A.eggCancel = function (P, W, now) {
+    var inc = P.fam.inc; if (!inc) err('품고 있는 알이 없습니다');
+    P.fam.inc = null; P.fam.eggs++; return { lost: Math.floor(inc.prog), need: inc.need };
   };
   A.feed = function (P, W, now, a) {
     var id = str(a.id), o = P.fam.own[id]; if (!o) err('없는 사역마입니다'); if (o.lv >= 20) err('최대 레벨입니다');
