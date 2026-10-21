@@ -262,7 +262,7 @@
     return { title: (prefix || '') + (evs.length > 1 ? '아카데미 소식 ' + evs.length + '건' : evs[0].title), body: heads.join(' · ') };
   };
   // 떠돌이 상인 구간: 활동 학생 원정 최고 단계 분포의 지점(p) + 3 레벨. 신입생 · 중급은 장비 레벨 + 10단계를 넘는 학생은 입찰 불가
-  R.AUC_TIERS = [{ name: '신입생', p: 0.25, cap: 10 }, { name: '중급', p: 0.5, cap: 10 }, { name: '상급', p: 0.88, cap: 0 }];
+  R.AUC_TIERS = [{ name: '신입생', p: 0.10, cap: 10 }, { name: '중급', p: 0.5, cap: 10 }, { name: '상급', p: 0.88, cap: 0 }];
   R.aucCap = function (lot) { var t = R.AUC_TIERS[lot.tier == null ? 2 : lot.tier]; return t && t.cap ? lot.ilvl + t.cap : 0; };
   R.auctionStep = function (price, min) { return price ? Math.ceil(price * 1.05) : min; };
 
@@ -1493,9 +1493,9 @@
   };
   R.letter = function (s) { return s >= 95 ? 'S' : s >= 85 ? 'A' : s >= 75 ? 'B' : s >= 60 ? 'C' : 'F'; };
   // 등급별 합격 보상 (화면 표와 실제 지급이 같은 표). 합격하면 바로 다음 학년이라 같은 시험은 다시 볼 수 없다.
-  R.EXAM_S_LEGEND = 0.01;   // S 보상 장비: 전설 확률 추가 (기본 약 0.6% → 약 1.6%)
+  R.EXAM_S_LEGEND = 0.03;   // S 보상 장비: 전설 확률 3% (나머지는 영웅)
   R.EXAM_REWARD = {
-    S: { mult: 2, minR: 3, egg: 1, text: '별조각·' + CUR + ' 2배 · 영웅 이상 장비 · 환수의 알' },
+    S: { mult: 2, minR: 3, egg: 1, text: '별조각·' + CUR + ' 2배 · 영웅 이상 장비(전설 3%) · 환수의 알' },
     A: { mult: 1.5, minR: 2, egg: 0, text: '별조각·' + CUR + ' 1.5배 · 희귀 이상 장비' },
     B: { mult: 1.2, minR: 1, egg: 0, text: '별조각·' + CUR + ' 1.2배' },
     C: { mult: 1, minR: 1, egg: 0, text: '기본 보상' }
@@ -2057,9 +2057,9 @@
       var rw = R.EXAM_REWARD[L] || R.EXAM_REWARD.C, mult = rw.mult, shard = Math.round((8 + run.grade * 4) * mult);
       var gold = Math.floor(400 * K.KILL_GOLD * Math.pow(K.G_GOLD, ex.duel) * mult); P.res.shard += shard; addGold(P, gold);
       var minR = rw.minR;
-      // 장비 레벨: 지금 연 원정 단계 ±3 (학년 상한을 넘어도 됨). S는 전설 확률 +1%p
+      // 장비 레벨: 지금 연 원정 단계 ±3 (학년 상한을 넘어도 됨). S는 전설 확률 3%
       var ilv = Math.max(1, Math.min(P.maxStage, R.stageCap(P)) + Math.floor(rnd(P) * 7) - 3), rr = Math.max(minR, rollRarity(P, 0.5));
-      if (L === 'S' && rr < 4 && rndL(P) < R.EXAM_S_LEGEND) rr = 4;
+      if (L === 'S') rr = rndL(P) < R.EXAM_S_LEGEND ? 4 : Math.min(rr, 3);
       var it = makeItem(P, pick(P, D.SLOTS).id, ilv, rr, minR);
       if (rw.egg) P.fam.eggs += rw.egg;
       res.reward = { shard: shard, gold: gold, egg: rw.egg, item: { name: it.name, r: it.r, res: gainItem(P, it, now) } };
