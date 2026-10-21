@@ -210,6 +210,7 @@ function open(dir) {
       parent INTEGER NOT NULL DEFAULT 0    -- 답글이면 원래 댓글 id
     );
     CREATE INDEX IF NOT EXISTS board_com ON board_comments(post, id);
+    CREATE TABLE IF NOT EXISTS board_mute (post INTEGER NOT NULL, pid TEXT NOT NULL, PRIMARY KEY (post, pid));   -- 이 글의 알림 받지 않기
   `);
   { const gc = db.prepare(`PRAGMA table_info(guilds)`).all().map((c) => c.name); if (gc.length && gc.indexOf('icon') < 0) db.exec(`ALTER TABLE guilds ADD COLUMN icon TEXT NOT NULL DEFAULT ''`); }   // 동아리 아이콘 (D.GUILD_ICONS id)
   { const bp = db.prepare(`PRAGMA table_info(board_posts)`).all().map((c) => c.name); if (bp.indexOf('st') < 0) db.exec(`ALTER TABLE board_posts ADD COLUMN st TEXT NOT NULL DEFAULT ''`); }   // 건의 처리 상태: '' · wip(적용 중) · done(해결 완료)
@@ -571,6 +572,9 @@ function open(dir) {
     noteReadAll: db.prepare(`UPDATE notes SET read = 1 WHERE pid = ? AND read = 0`),
     notePrune: db.prepare(`DELETE FROM notes WHERE t < ?`),
     noteDelBy: db.prepare(`DELETE FROM notes WHERE pid = ?`),
+    bdMuteAll: db.prepare(`SELECT post, pid FROM board_mute`),
+    bdMuteOn: db.prepare(`INSERT OR IGNORE INTO board_mute (post, pid) VALUES (?, ?)`),
+    bdMuteOff: db.prepare(`DELETE FROM board_mute WHERE post = ? AND pid = ?`),
     bdComs: db.prepare(`SELECT * FROM board_comments WHERE post = ? AND deleted = 0 ORDER BY id ASC LIMIT 300`),
     bdComGet: db.prepare(`SELECT * FROM board_comments WHERE id = ?`),
     bdComInsert: db.prepare(`INSERT INTO board_comments (post, pid, op, body, created, parent) VALUES (?, ?, ?, ?, ?, ?)`),

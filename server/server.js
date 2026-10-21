@@ -1537,6 +1537,7 @@ routes['POST /api/board'] = async (req, res) => {
     else if (op === 'comment') id = board.comment(me, b.id, b.text, now, b.parent);
     else if (op === 'cdel') { board.cdel(me, b.cid); id = Number(b.id) | 0; }
     else if (op === 'status') id = board.setStatus(me, b.id, b.st);
+    else if (op === 'mute') id = board.mute(me, b.id, !!b.on);
     else return fail(req, res, 400, '알 수 없는 요청입니다');
     send(req, res, 200, { ok: true, id, post: id ? board.get(me, id) : null });
   } catch (e) { if (e.status) return fail(req, res, e.status, e.message); throw e; }
