@@ -1277,7 +1277,7 @@
     var qDone = P.daily.q.filter(function (q) { return q.done; }).length;
     var dailyH = fold('daily', '일일 목표', dq, true, '<span class="tag br daily-st">출석 ' + P.daily.streak + '일째</span>' + (P.daily.login || claim ? '<span class="tag ok">받을 보상</span>' : ''), '', '<b class="num">' + qDone + '/' + P.daily.q.length + '</b>' + (qDone >= P.daily.q.length ? ' 완료' : ''), 'daily');
     // 내 정보 · 능력치 · 기숙사는 왼쪽 「내 정보」에, 하늘 · 오늘의 축복은 풍경 위에. 잠자리 · 꿈길은 평소엔 볼 일이 없어 맨 아래
-    h += '<div class="grid g2 hm"><div class="stack">' + storyH + ttH + goalsH + logH + '</div><div class="stack">' + eventsCard() + dailyH + '</div></div>';
+    h += '<div class="grid g2 hm"><div class="stack">' + storyH + ttH + goalsH + '</div><div class="stack">' + eventsCard() + dailyH + logH + '</div></div>';   // 일지는 우측 열 맨 아래 (좌측 열이 길어서)
     h += '<div class="hm-bottom">' + dreamCard(false) + '</div>';
     return h;
   };
@@ -4892,7 +4892,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102133;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102134;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
