@@ -117,7 +117,7 @@
     m.hidden = false; S.modal = true; S.modalLocked = !!locked; scrollHints();
     var f = m.querySelector('[autofocus]') || m.querySelector('button'); if (f) setTimeout(function () { f.focus({ preventScroll: true }); }, 30);   // 포커스가 창을 맨 위로 끌어올리지 않게 (같은 창을 다시 그릴 때 보던 자리 유지)
   }
-  function closeModal() { var m = $('#modal'); m.hidden = true; m.innerHTML = ''; S.modal = false; S.modalLocked = false; S.replay = null; S.mbox = null; S.meModal = false; S.notesOpen = false; render(); var f = S.afterClose; S.afterClose = null; if (f) setTimeout(f, 60); }
+  function closeModal() { var m = $('#modal'); m.hidden = true; m.innerHTML = ''; S.modal = false; S.modalLocked = false; S.replay = null; S.rpKeep = false; S.mbox = null; S.meModal = false; S.notesOpen = false; render(); var f = S.afterClose; S.afterClose = null; if (f) setTimeout(f, 60); }
   function mhead(title, sub, noClose) { return '<div class="mhead"><div><h2>' + title + '</h2>' + (sub ? '<p class="muted small">' + sub + '</p>' : '') + '</div>' + (noClose ? '' : '<button class="btn ghost sm x" data-act="modal-close" aria-label="닫기">닫기</button>') + '</div>'; }
 
   /* ───────── 서버와 주고받기 ───────── */
@@ -2487,15 +2487,16 @@
     act('ctower').then(function (r) {
       if (!r) return; var nm = R.CT_NAME[r.cls], fo = r.foe;
       var fn = fo.name.replace(/^탑의 문지기 · /, '');   // 모바일에서 이름이 어색하게 줄바꿈되지 않게 「탑의 문지기」는 부제로
-      replay({ title: nm + ' ' + r.f + '층', sub: fn !== fo.name ? '탑의 문지기' : '', enemy: { id: 'ct', arch: fo.arch, c1: fo.c1, c2: fo.c2, boss: true, name: fn }, ev: r.ev, maxHp: fo.hp, cc: r.cc }, function () {
+      // 전투 일지는 끝난 뒤에도 남겨 두고, 결과는 같은 창 아래에 붙인다 (확인을 눌러야 닫힘)
+      replay({ title: nm + ' ' + r.f + '층', sub: fn !== fo.name ? '탑의 문지기' : '', enemy: { id: 'ct', arch: fo.arch, c1: fo.c1, c2: fo.c2, boss: true, name: fn }, ev: r.ev, maxHp: fo.hp, cc: r.cc, keep: true }, function () {
         Snd.play(r.win ? 'pass' : 'fail'); var rwT = R.rewardText(r.rw);
-        modal(mhead(nm + ' ' + r.f + '층', r.win ? '돌파했습니다' : '이번에는 오르지 못했습니다') +
-          '<p>' + (r.win ? '<span class="good">' + esc(R.josa(fo.name, '을', '를')) + '</span> ' + (Math.round(r.t * 10) / 10) + '초 만에 쓰러뜨렸습니다.' : esc(fo.name) + '의 체력을 ' + r.pct + '% 깎았습니다. ' + (r.dead ? '생명력이 바닥났습니다.' : R.CT_TIME + '초 안에 쓰러뜨리지 못했습니다.')) + '</p>' +
+        render();
+        return '<h3 class="' + (r.win ? 'good' : 'bad') + '">' + (r.win ? '돌파했습니다' : '이번에는 오르지 못했습니다') + '</h3>' +
+          '<p style="margin-top:4px">' + (r.win ? '<span class="good">' + esc(R.josa(fo.name, '을', '를')) + '</span> ' + (Math.round(r.t * 10) / 10) + '초 만에 쓰러뜨렸습니다.' : esc(fo.name) + '의 체력을 ' + r.pct + '% 깎았습니다. ' + (r.dead ? '생명력이 바닥났습니다.' : R.CT_TIME + '초 안에 쓰러뜨리지 못했습니다.')) + '</p>' +
           (r.titles.length ? '<p class="gold" style="margin-top:8px">새 칭호: ' + r.titles.map(function (t) { return '「' + esc(t) + '」'; }).join(' ') + '</p>' : '') +
           (rwT ? '<p class="small" style="margin-top:8px">보상: ' + esc(rwT) + '</p>' : '') + ((r.items || []).length ? '<p class="small">' + r.items.map(function (it) { return '<span style="color:' + rcol(it.r) + '">' + esc(it.name) + '</span>'; }).join(', ') + '</p>' : '') +
           (!r.win && r.dead ? '<p class="tiny faint" style="margin-top:6px">탑의 적은 공격이 강합니다. 생명력 · 방어력을 올리거나 보호막 · 치유 주문을 장착하면 더 오래 버틸 수 있습니다.</p>' : '') +
-          '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>');
-        render();
+          '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>';
       });
     });
   };
@@ -3603,8 +3604,20 @@
         if (dd) dd.textContent = '피해 ' + fmt(hp[0]);
       }
       var tt = $('#rp-t'); if (tt) tt.textContent = gt.toFixed(1) + '초';
-      if (gt >= total && n >= L.length) { if (!fin) { fin = true; var j = $('.btjournal'); if (j) j.classList.remove('live'); setTimeout(function () { if (S.replay) { S.replay = null; done(); } }, 900); } return; }
+      if (gt >= total && n >= L.length) { if (!fin) { fin = true; var j = $('.btjournal'); if (j) j.classList.remove('live'); setTimeout(function () { if (S.replay) { S.replay = null; opts.keep ? keepResult() : done(); } }, opts.keep ? 300 : 900); } return; }
       requestAnimationFrame(frame);
+    }
+    // keep: 끝난 뒤에도 일지를 그대로 두고, 결과(done이 돌려준 HTML)를 같은 창 아래에 붙인다. 「확인」을 눌러야 닫힌다.
+    function keepResult() {
+      var hp = hpAt(total), taken = 0; ev.forEach(function (e) { if (e[1] === 'x') taken += e[2]; });
+      var row = $('#rp-skip'); row = row && row.parentNode; if (!row) return;
+      var res = document.createElement('div'); res.className = 'rpres'; res.id = 'rp-res';
+      res.innerHTML = '<div class="tiny faint num" style="margin-bottom:6px">입힌 피해 <b class="gold">' + fmt(hp[0]) + '</b> · 받은 피해 <b class="bad">' + fmt(taken) + '</b> · 전투 시간 ' + total.toFixed(1) + '초</div>' + (done() || '');
+      row.parentNode.replaceChild(res, row);
+      S.modalLocked = false; S.rpKeep = true;   // 바깥을 눌러도 닫히지 않게 (확인 단추로만)
+      var b = res.querySelector('[data-act="modal-close"]'); if (b) setTimeout(function () { b.focus({ preventScroll: true }); }, 30);
+      setTimeout(function () { res.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }, 40);
+      scrollHints();
     }
     requestAnimationFrame(frame);
   }
@@ -5216,7 +5229,7 @@
   document.addEventListener('visibilitychange', function () { if (!document.hidden && S.P) { sync(true); if (S.chat.paused) { S.chat.paused = false; chatConnect(); } } });
   var wasWide = wide();
   window.addEventListener('resize', function () { var sky = $('#sky'); if (sky) A.sky(sky, curTheme().sky); if (S.P && wide() !== wasWide) { wasWide = wide(); if (S.chat.open == null) { renderDock(); document.body.classList.toggle('dock-open', dockOpen()); } } });
-  $('#modal').addEventListener('click', function (e) { if (e.target.id === 'modal' && !S.modalLocked) tryClose(); });
+  $('#modal').addEventListener('click', function (e) { if (e.target.id === 'modal' && !S.modalLocked && !S.rpKeep) tryClose(); });
 
   /* ───────── 부팅 ───────── */
   A.sky($('#sky'), curTheme().sky);
