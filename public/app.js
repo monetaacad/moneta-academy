@@ -1930,23 +1930,28 @@
     return h;
   }
   ACT.rkmore = function (k) { S.rkOpen[k] = !S.rkOpen[k]; render(); };
-  /* 과목 수석: 과목을 골라 그 과목 순위 10위까지 + 내 순위 (서버 5분 캐시, 화면은 1분마다 다시 받는다). 처음에는 내 레벨이 가장 높은 과목 */
+  /* 과목 수석: 위에는 과목마다 수석 · 차석, 아래에는 과목별 순위(접어 두고 펼치면 10위까지 + 내 순위). 서버 5분 캐시, 화면은 1분마다 다시 받는다 */
   function subjRankData() {
     if (API.subjRanks && (!S.sjRkAt || Date.now() - S.sjRkAt > 60000)) { S.sjRkAt = Date.now(); API.subjRanks().then(function (j) { if (j && j.tops) { S.sjRk = j; if (S.view === 'rank' && !S.modal) render(); } }); }
     return S.sjRk;
   }
+  S.sjOpen = {};
   function subjRankCard() {
     if (!API.subjRanks) return '';
-    var d = subjRankData(), P = S.P, subs = D.SUBJECTS.filter(function (sj) { return R.subjVisible(P, sj); });
-    var sel = S.sjSel && R.SUBJ[S.sjSel] ? S.sjSel : subs.reduce(function (a, sj) { return !a || (P.subj[sj.id] || {}).lv > (P.subj[a] || {}).lv ? sj.id : a; }, null);
-    var mine = d && d.mine && d.mine[sel], sjm = P.subj[sel] || {};
-    var h = '<div class="card">' + rkHead('과목 수석', '과목 레벨 순위입니다. 같은 레벨이면 그 레벨에서 쌓은 경험치가 많은 학생이 앞섭니다. 학과 전용 과목은 그 학과 학생끼리 겨루며, 순위는 5분마다 갱신됩니다.', mine, sjm.lv > 0 ? '' : '아직 기록 없음') +
-      '<div class="tabs sjtabs" role="tablist" aria-label="과목">' + D.SUBJECTS.map(function (sj) { return '<button role="tab" class="' + (sj.id === sel ? 'on' : '') + '" aria-selected="' + (sj.id === sel) + '" data-act="sjsel" data-a="' + sj.id + '">' + sj.name + '</button>'; }).join('') + '</div>';
+    var d = subjRankData(), P = S.P;
+    var h = '<div class="card">' + rkHead('과목 수석', '과목마다 레벨이 가장 높은 학생(수석)과 두 번째 학생(차석)입니다. 같은 레벨이면 그 레벨에서 쌓은 경험치가 많은 학생이 앞섭니다. 학과 전용 과목은 그 학과 학생끼리 겨루며, 순위는 5분마다 갱신됩니다.', null);
     if (!d) return h + '<div class="empty">불러오는 중…</div></div>';
-    var rows = (d.tops[sel] || []).slice(0, 10).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: 'Lv ' + r.lv, sub: R.gradeLabel({ grade: r.grade }) }; });
-    return h + rankList(rows, null, mine ? { rank: mine, v: 'Lv ' + sjm.lv } : null) + '</div>';
+    function who(r) { if (!r) return '<span class="faint">—</span>'; var hh = R.HOUSE[r.house]; return '<span style="color:' + (hh ? hh.color : 'inherit') + '">●</span> <a class="rnk-name' + (r.id === P.id ? ' me' : '') + '" data-act="prof" data-a="' + esc(r.id) + '">' + esc(r.name) + '</a> <span class="num tiny faint">Lv ' + r.lv + '</span>'; }
+    h += '<table class="sjtop"><thead><tr><th>과목</th><th>수석</th><th>차석</th></tr></thead><tbody>' + D.SUBJECTS.map(function (sj) { var t = d.tops[sj.id] || []; return '<tr><th scope="row">' + sj.name + '</th><td>' + who(t[0]) + '</td><td>' + who(t[1]) + '</td></tr>'; }).join('') + '</tbody></table>';
+    h += '<div class="section-t" style="margin-top:12px">과목별 순위</div><div class="sjfolds">' + D.SUBJECTS.map(function (sj) {
+      var open = !!S.sjOpen[sj.id], mine = d.mine && d.mine[sj.id], lv = (P.subj[sj.id] || {}).lv || 0;
+      var rows = (d.tops[sj.id] || []).slice(0, 10).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: 'Lv ' + r.lv, sub: R.gradeLabel({ grade: r.grade }) }; });
+      return '<div class="sjfold"><button class="sjfh" data-act="sjfold" data-a="' + sj.id + '" aria-expanded="' + open + '"><span class="sjar">' + (open ? '▾' : '▸') + '</span><b>' + sj.name + '</b><span class="spacer"></span><span class="small">' + (mine ? '내 순위 <b class="num gold">' + mine + '위</b>' : '') + '</span></button>' +
+        (open ? rankList(rows, null, mine ? { rank: mine, v: 'Lv ' + lv } : null) : '') + '</div>';
+    }).join('') + '</div>';
+    return h + '</div>';
   }
-  ACT.sjsel = function (k) { if (R.SUBJ[k]) { S.sjSel = k; render(); } };
+  ACT.sjfold = function (k) { S.sjOpen[k] = !S.sjOpen[k]; render(); };
   // 내 순위들 (랭킹 화면을 볼 때만, 30초 캐시)
   function myRanks() {
     if (API.myRanks && (!S.myRanksAt || Date.now() - S.myRanksAt > 30000)) { S.myRanksAt = Date.now(); API.myRanks().then(function (j) { if (j && j.ranks) { S.myRanks = j.ranks; if ((S.view === 'world' || S.view === 'rank') && !S.modal) render(); } }); }
