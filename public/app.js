@@ -2599,14 +2599,18 @@
     if (top.length) h += '<div class="card" style="margin-top:12px"><h4>기여도 순위</h4><ol class="rank">' + top.map(function (m, i) { return '<li' + (m.id === S.P.id ? ' class="me"' : '') + '><span class="num rk">' + (i + 1) + '</span><span class="rn">' + esc(m.name) + ' <span class="tiny faint">' + esc(m.rankName || '') + '</span></span><span class="num rv">' + fmt(m.contrib || 0) + '</span></li>'; }).join('') + '</ol></div>';
     return h;
   }
-  // 동아리 의식 (4레벨~): 부원 절반이 마나를 봉헌하면 봉헌한 부원에게 축복
+  // 동아리 의식 (4레벨~): 부원 절반이 마나를 봉헌하면 봉헌한 부원이 각자 원할 때 축복을 받는다
   function gRitCard(g) {
     if (!g.rit) return '<div class="card inset" style="margin-top:12px"><h4>동아리 의식 <span class="tag">Lv ' + R.GRIT_LV + '</span></h4><p class="tiny faint" style="margin-top:2px">동아리 ' + R.GRIT_LV + '레벨에 열립니다. 하루 한 번 부원들이 마나를 봉헌해 「' + R.GRIT_BUFF.name + '」(' + R.GRIT_BUFF.text + ')을 받습니다.</p></div>';
-    var r = g.rit, pc = Math.min(100, r.n / r.goal * 100);
-    return '<div class="card" style="margin-top:12px"><div class="row between"><h4>동아리 의식 <span class="tiny faint">KST 자정 초기화</span></h4>' + (r.done ? '<span class="tag ok">오늘 이루어짐</span>' : '<span class="num small">' + r.n + ' / ' + r.goal + '명</span>') + '</div>' +
-      '<p class="tiny faint" style="margin-top:2px">하루 한 번 마나 30분 분을 봉헌합니다. 부원 절반(' + r.goal + '명)이 봉헌하면 봉헌한 부원에게 「' + R.GRIT_BUFF.name + '」 — ' + R.GRIT_BUFF.text + '. 이루어진 뒤에 봉헌해도 받습니다.</p>' +
+    var r = g.rit, pc = Math.min(100, r.n / r.goal * 100), act;
+    if (!r.mine) act = '<button class="btn sm primary" data-act="grit">봉헌 <span class="cost">마나 ' + fmt(r.cost) + '</span></button>' + (r.done ? '<span class="tiny faint">봉헌하면 축복을 받을 수 있습니다</span>' : '');
+    else if (!r.done) act = '<span class="tag ok">오늘 봉헌함</span><span class="tiny faint">의식이 이루어지면 축복을 받을 수 있습니다</span>';
+    else if (!r.claimed) act = '<button class="btn sm primary" data-act="gritclaim">축복 받기</button><span class="tiny faint">누른 순간부터 ' + R.GRIT_BUFF.text + ' · 오늘 KST 자정까지 받을 수 있습니다 (남은 시간 <span class="num" data-l="left:' + r.until + '"></span>)</span>';
+    else act = r.end ? '<span class="tag ok">축복 적용 중 · <span class="num" data-l="left:' + r.end + '"></span> 남음</span>' : '<span class="tag">오늘 축복을 받았습니다</span>';
+    return '<div class="card" style="margin-top:12px"><div class="row between"><h4>동아리 의식 <span class="tiny faint">KST 자정 초기화</span></h4>' + (r.done ? '<span class="tag ok">오늘 이루어짐 · 봉헌 ' + r.n + '명</span>' : '<span class="num small">' + r.n + ' / ' + r.goal + '명</span>') + '</div>' +
+      '<p class="tiny faint" style="margin-top:2px">하루 한 번 마나 30분 분을 봉헌합니다. 부원 절반(' + r.goal + '명)이 봉헌하면 의식이 이루어지고, 봉헌한 부원은 그날 KST 자정 전까지 원하는 때에 「축복 받기」를 눌러 「' + R.GRIT_BUFF.name + '」(' + R.GRIT_BUFF.text + ')을 받습니다. 이루어진 뒤에 봉헌해도 받을 수 있습니다.</p>' +
       '<div class="bar brass" style="margin-top:6px;height:6px"><b style="width:' + pc.toFixed(1) + '%"></b></div>' +
-      '<div class="row" style="margin-top:8px">' + (r.mine ? '<span class="tag ok">오늘 봉헌함</span>' : '<button class="btn sm primary" data-act="grit">봉헌 <span class="cost">마나 ' + fmt(r.cost) + '</span></button>') + '</div></div>';
+      '<div class="row" style="margin-top:8px;gap:8px;flex-wrap:wrap">' + act + '</div></div>';
   }
   // 주간 동아리 과제 (5레벨~): 부원들이 이번 주에 한 일을 합쳐 채운다
   function gWqCard(g) {
@@ -2845,6 +2849,7 @@
   ACT.gquitgo = function () { closeModal(); API.guildOp({ op: 'leave' }).then(function (j) { gDone(j, '동아리에서 탈퇴했습니다'); }); };
   ACT.gquitgo2 = function () { closeModal(); S.gtab2 = 'members'; render(); };
   ACT.grit = function () { API.guildOp({ op: 'ritual' }).then(function (j) { gDone(j, '동아리 의식에 봉헌했습니다'); }); };
+  ACT.gritclaim = function () { if (S.busy) return; S.busy = true; API.guildOp({ op: 'ritualClaim' }).then(function (j) { S.busy = false; if (!j.error) Snd.play('ach'); gDone(j, '「' + R.GRIT_BUFF.name + '」 축복을 받았습니다 · ' + R.GRIT_BUFF.text); }, function () { S.busy = false; }); };
   ACT.gwq = function (id) { API.guildOp({ op: 'wqClaim', id: id }).then(function (j) { gDone(j, j.got ? '주간 과제 보상 · 별조각 +' + j.got.shard : ''); }); };
   // 가입 신청 거절: 사유는 선택 (적으면 신청한 학생의 알림에 함께 표시)
   ACT.greject = function (id, name) {

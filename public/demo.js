@@ -342,7 +342,7 @@
   };
   // 데모 동아리 의식: 내가 봉헌하면 NPC 부원들도 따라 봉헌한다
   LocalApi.prototype._gRitSt = function (n) { var g = this._soc().guild, day = Rules.dayKST(this._now()); if (!g.rit || g.rit.day !== day) g.rit = { day: day, pids: [], done: 0, goal: Rules.gritGoal(n) }; return g.rit; };
-  LocalApi.prototype._gRit = function (n) { var P = this.d.P, st = this._gRitSt(n), now = this._now(); return { n: st.pids.length, goal: st.goal, done: st.done, mine: st.pids.indexOf(P.id) >= 0, cost: Rules.ritualCost(P, this._world(now), now) }; };
+  LocalApi.prototype._gRit = function (n) { var P = this.d.P, st = this._gRitSt(n), now = this._now(); var bf = P.buffs && P.buffs.gritual; return { n: st.pids.length, goal: st.goal, done: st.done, mine: st.pids.indexOf(P.id) >= 0, claimed: P.gritDay === st.day || !!(st.done && bf && bf.start >= st.done), until: Rules.nextMidnight(now), end: bf && bf.end > now ? bf.end : 0, cost: Rules.ritualCost(P, this._world(now), now) }; };
   LocalApi.prototype._gWq = function () { var P = this.d.P, now = this._now(), w = Rules.weekId(now); return { wk: w, end: Rules.weekStart(w + 1), list: Rules.GWQ.map(function (q) { var m = Rules.gwqMine(P, q, w); return { id: q.id, name: q.name, unit: q.unit, goal: q.goal, need: Rules.gwqNeed(q), prog: m, mine: m, got: !!(P.gwq && P.gwq.wk === w && P.gwq.got[q.id]) }; }), reward: Rules.gwqReward(P) }; };
   LocalApi.prototype.guilds = function () { var so = this._soc(), mine = so.guild ? so.guild.id : null; var list = DEMO_GUILDS.map(function (g) { return { id: g.id, name: g.name, intro: g.intro, color: g.color, mode: g.mode, n: g.npcs.length, max: Rules.guildCap(g.lv), lv: g.lv, owner: npcs()[g.npcs[0]].name, mine: g.id === mine }; }); if (so.guild && so.guild.own) list.unshift({ id: so.guild.id, name: so.guild.name, intro: so.guild.intro, color: so.guild.color, mode: so.guild.mode, n: 1 + so.guild.npcs.length, max: Rules.guildCap(so.guild.lv || 1), lv: so.guild.lv || 1, owner: this.d.P.name, mine: true }); return Promise.resolve({ list: list, mine: mine, demo: true, invites: [] }); };
   LocalApi.prototype.guildRank = function (sort) {
@@ -395,8 +395,16 @@
           var rc = Rules.ritualCost(P, this._world(now), now); if (P.res.mana < rc) return fail('마나가 모자랍니다 (마나 ' + Rules.fmt(rc) + ' 필요)');
           P.res.mana -= rc; rs.pids.push(P.id); g.npcs.forEach(function (k) { if (rs.pids.length < rs.goal) rs.pids.push('npc:' + k); });
           this._gLog(P.name + ' 님이 동아리 의식에 봉헌 (' + rs.pids.length + '/' + rs.goal + ')');
-          if (!rs.done && rs.pids.length >= rs.goal) { rs.done = now; this._sys('grp', '✦ 오늘의 동아리 의식이 이루어졌습니다! 봉헌한 ' + rs.pids.length + '명에게 「' + Rules.GRIT_BUFF.name + '」 — ' + Rules.GRIT_BUFF.text + '.'); }
-          if (rs.done) Rules.gritBless(P, now);
+          if (!rs.done && rs.pids.length >= rs.goal) { rs.done = now; this._sys('grp', '✦ 오늘의 동아리 의식이 이루어졌습니다. 봉헌한 부원은 오늘 KST 자정 전까지 원하는 때에 「축복 받기」를 누르면 그때부터 「' + Rules.GRIT_BUFF.name + '」 — ' + Rules.GRIT_BUFF.text + ' 효과를 받습니다.'); }
+          this._save(); return this._ok(now, { ok: true, guild: this._guildView() });
+        }
+        if (o.op === 'ritualClaim') {
+          if (g.lv < Rules.GRIT_LV) return fail('동아리 ' + Rules.GRIT_LV + '레벨부터 의식을 올릴 수 있습니다');
+          var rq = this._gRitSt(1 + g.npcs.length);
+          if (!rq.done) return fail('오늘의 동아리 의식이 아직 이루어지지 않았습니다 (' + rq.pids.length + '/' + rq.goal + ')');
+          if (rq.pids.indexOf(P.id) < 0) return fail('봉헌한 부원만 축복을 받을 수 있습니다');
+          var qb = P.buffs && P.buffs.gritual; if (P.gritDay === rq.day || (qb && qb.start >= rq.done)) return fail('오늘은 이미 축복을 받았습니다');
+          P.gritDay = rq.day; Rules.gritBless(P, now);
           this._save(); return this._ok(now, { ok: true, guild: this._guildView() });
         }
         if (o.op === 'wqClaim') {
