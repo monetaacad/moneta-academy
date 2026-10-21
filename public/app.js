@@ -2757,15 +2757,16 @@
   function mkQtyInputs(id, max, key, def) {
     return '<input type="number" min="1" max="' + max + '" step="1" inputmode="numeric" class="mkqty" id="mkq-' + id + '" placeholder="수량"' + (def ? ' value="' + def + '"' : '') + ' aria-label="수량"><span class="faint">×</span><input type="number" min="1" step="1" inputmode="numeric" class="mkunit" data-key="' + key + '" placeholder="개당 가격" data-fmt="1" aria-label="개당 가격"><span class="tiny faint mkfmt"></span><span class="mktot small">= <b class="num gold">-</b></span>';
   }
-  // 시세 대비: 평균가의 절반 미만이거나 두 배 넘으면 경고 (unit: 개당 또는 한 개 가격)
+  // 시세 대비: 시세(최근 30일 판매가의 중간값)의 절반 미만이거나 두 배 넘으면 경고 (unit: 개당 또는 한 개 가격). 판매 기록이 3건 미만이면 시세를 믿기 어려워 경고하지 않는다
   var MK_LOW = 0.5, MK_HIGH = 2;
-  function mkWarn(key, unit) { var p = S.mk.prices[key]; if (!p || !p.avg || !(unit > 0)) return null; var r = unit / p.avg; return r < MK_LOW ? { low: 1, pct: Math.round(r * 100), avg: p.avg } : r > MK_HIGH ? { high: 1, pct: Math.round(r * 100), avg: p.avg } : null; }
+  var MK_MIN_N = 3;
+  function mkWarn(key, unit) { var p = S.mk.prices[key]; if (!p || !p.avg || p.n < MK_MIN_N || !(unit > 0)) return null; var r = unit / p.avg, w = r < MK_LOW ? { low: 1 } : r > MK_HIGH ? { high: 1 } : null; if (!w) return null; w.pct = Math.round(r * 100); w.avg = p.avg; w.txt = r >= 10 ? '10배 이상' : w.pct + '%'; return w; }
   function mkRowUpdate(row) {
     var q = row.querySelector('.mkqty'), un = row.querySelector('.mkunit'), pr = row.querySelector('.mkprice'), inp = un || pr; if (!inp) return;
     var qty = q ? Math.max(0, Math.floor(+q.value || 0)) : 1, unit = Math.floor(+inp.value || 0), tot = row.querySelector('.mktot b');
     if (tot) tot.textContent = un && qty && unit ? fmt(qty * unit) : '-';
     var w = mkWarn(inp.dataset.key, unit), box = row.querySelector('.mkwarn'); if (!box) return;
-    box.innerHTML = w ? '<span class="bad">' + (un ? '개당 ' : '') + '평균가(' + fmt(w.avg) + ')의 ' + w.pct + '%입니다 · ' + (w.low ? '너무 싸게 올리는 것은 아닌지 확인' : '평균보다 많이 비쌉니다') + '</span>' : '';
+    box.innerHTML = w ? '<span class="bad">' + (un ? '개당 ' : '') + '시세(' + fmt(w.avg) + ')의 ' + w.txt + '입니다 · ' + (w.low ? '너무 싸게 올리는 것은 아닌지 확인' : '시세보다 많이 비쌉니다') + '</span>' : '';
     var btn = row.querySelector('[data-act="mklist"]'); if (btn && btn.dataset.armed && !w) { delete btn.dataset.armed; btn.textContent = '올리기'; btn.classList.remove('armed'); }
   }
   function priceLine(key, unitMat) {
@@ -2773,7 +2774,7 @@
     if (!p.n) return '<div class="tiny faint mkpl">최근 30일 거래 기록 없음</div>';
     return '<div class="tiny mkpl"><span class="muted">시세</span> <b class="num gold">' + fmt(p.avg) + '</b>' + (unitMat ? '<span class="faint">/개</span>' : '') + '<span class="faint"> · ' + p.n + '건 · 최근 </span>' +
       p.recent.slice(0, 3).map(function (r) { return '<span class="num" title="' + ago(r.t) + (r.ilvl ? ' · Lv ' + r.ilvl : '') + '">' + fmt(unitMat ? r.price / Math.max(1, r.qty) : r.price) + '</span>'; }).join('<span class="faint"> · </span>') +
-      '<button class="mkfill" data-act="mkfill" data-a="' + esc(key) + '" title="가격 칸에 평균가를 넣습니다">평균가 넣기</button></div>';
+      '<button class="mkfill" data-act="mkfill" data-a="' + esc(key) + '" title="가격 칸에 시세를 넣습니다">시세 넣기</button></div>';
   }
   // 장비 한 줄 요약: 대표 능력치 + 옵션 수
   function itemBrief(it) {
@@ -2827,7 +2828,7 @@
         else { info = '<span class="mkn">' + esc(x.name) + ' <span class="num">×' + fmt(x.qty) + '</span></span>'; sub = '개당 ' + fmt(x.price / x.qty) + ' · 가진 수 ' + fmt(x.mat === 'stone' ? P.res.stone : (P.mats[x.mat] || 0)); }
         var tap = x.kind === 'item' && x.item;   // 장비는 줄(이름·요약) 어디를 눌러도 옵션이 펼쳐진다 (휴대폰에서 이름만 누르기 어려워서)
         return '<div class="mkrow' + (open ? ' open' : '') + '"><div class="mki' + (tap ? ' tap" data-act="mkopen" data-a="' + x.id + '" role="button" tabindex="0" aria-expanded="' + !!open + '"' : '"') + '>' + info + '<div class="tiny faint ell">' + sub + ' · ' + esc(x.seller) + (x.npc ? ' <span class="tag npc">NPC</span>' : '') + ' · ' + R.fmtTime(Math.max(0, x.expires - Date.now() / 1000)) + '</div>' + (open && x.item ? '<div class="mkst">' + statLines(x.item) + '</div>' + cmpBlock(x.item) : '') + '</div>' +
-          '<b class="num gold mkpr">' + fmt(x.price) + '</b>' + (bw ? '<span class="tag no" title="최근 30일 평균가 ' + fmt(bw.avg) + (x.qty > 1 ? ' (개당)' : '') + '">평균의 ' + bw.pct + '%</span>' : '') + (x.mine ? '<span class="tag">내 물건</span>' : '<button class="btn sm primary' + (armed ? ' armed' : '') + '" data-act="mkbuy" data-a="' + x.id + '"' + (bw && bw.high ? ' data-warn="' + bw.pct + '"' : '') + (can ? '' : why(low ? '학년이 낮아 살 수 없습니다' : CUR + '가 부족합니다')) + '>' + (armed ? '한 번 더 누르면 구매' : '사기') + '</button>') + '</div>';
+          '<b class="num gold mkpr">' + fmt(x.price) + '</b>' + (bw ? '<span class="tag no" title="최근 30일 시세(판매가 중간값) ' + fmt(bw.avg) + (x.qty > 1 ? ' (개당)' : '') + '">시세의 ' + bw.txt + '</span>' : '') + (x.mine ? '<span class="tag">내 물건</span>' : '<button class="btn sm primary' + (armed ? ' armed' : '') + '" data-act="mkbuy" data-a="' + x.id + '"' + (bw && bw.high ? ' data-warn="' + bw.txt + '"' : '') + (can ? '' : why(low ? '학년이 낮아 살 수 없습니다' : CUR + '가 부족합니다')) + '>' + (armed ? '한 번 더 누르면 구매' : '사기') + '</button>') + '</div>';
       }).join('') + '</div>';
     } else if (m.tab === 'sell') {
       var items = P.inv.filter(function (it) { return !it.lock; }).sort(function (a, b) { return b.r - a.r || b.ilvl - a.ilvl; });
@@ -2991,8 +2992,8 @@
   function mkDone(j, msg) { if (j.error) { toast('거래소', j.error); return; } absorb(j); toast(msg, '', 2000); Snd.play('click'); loadMarket(); render(); }
   // 사기: 한 번 누르면 바로 산다 (누르는 사이 두 번 사지 않게 잠깐 잠근다)
   ACT.mkbuy = function (id, b, el) {
-    // 평균가의 두 배가 넘으면 한 번 더 눌러야 산다
-    if (el && el.dataset.warn && !(S.confirm['mk' + id] > Date.now())) { S.confirm['mk' + id] = Date.now() + 4000; render(); setTimeout(render, 4100); toast('거래소', '평균가의 ' + el.dataset.warn + '%인 물건입니다. 한 번 더 누르면 구매합니다'); return; }
+    // 시세의 두 배가 넘으면 한 번 더 눌러야 산다
+    if (el && el.dataset.warn && !(S.confirm['mk' + id] > Date.now())) { S.confirm['mk' + id] = Date.now() + 4000; render(); setTimeout(render, 4100); toast('거래소', '시세의 ' + el.dataset.warn + '인 물건입니다. 한 번 더 누르면 구매합니다'); return; }
     if (S.mkBusy) return; S.mkBusy = true; if (el) el.disabled = true;
     API.marketOp({ op: 'buy', id: +id }).then(function (j) { S.mkBusy = false; mkDone(j, '구매가 완료되었습니다'); }, function () { S.mkBusy = false; render(); });
   };
@@ -4847,7 +4848,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102120;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102121;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
