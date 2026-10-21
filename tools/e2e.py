@@ -52,7 +52,7 @@ with sync_playwright() as p:
         pg.click('[data-act=boss]'); pg.wait_for_timeout(400); pg.click('#rp-skip'); pg.wait_for_timeout(1200)
         pg.screenshot(path=f'{OUT}/{tag}-09-boss.png'); pg.click('[data-act=modal-close]')
         # 모든 탭 + 가로 넘침
-        for v in ['home', 'lecture', 'lib', 'explore', 'exam', 'world', 'gear', 'work', 'party', 'market', 'auction', 'shop', 'lore', 'rec']:
+        for v in ['home', 'lecture', 'lib', 'explore', 'exam', 'world', 'gear', 'alch', 'fam', 'work', 'party', 'market', 'auction', 'shop', 'lore', 'rec']:
             pg.evaluate(f"() => __ACT.nav('{v}')"); pg.wait_for_timeout(250)
             ow = pg.evaluate('() => document.documentElement.scrollWidth - window.innerWidth')
             if ow > 1: errs.append(f'[{tag}] overflow {v} {ow}')

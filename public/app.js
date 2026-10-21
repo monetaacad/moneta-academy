@@ -78,20 +78,21 @@
   function icon(k) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IC[k] + '</svg>'; }
   var VIEWS = [
     { id: 'home', name: '아카데미 광장' }, { id: 'lecture', name: '강의실' }, { id: 'explore', name: '원정' }, { id: 'tower', name: '별의 탑' }, { id: 'ctower', name: '무한의 탑' }, { id: 'exam', name: '시험·결투' },
-    { id: 'world', name: '월드 보스' }, { id: 'party', name: '파티' }, { id: 'guild', name: '동아리' }, { id: 'friends', name: '친구' }, { id: 'board', name: '게시판' }, { id: 'idea', name: '건의함' }, { id: 'auction', name: '떠돌이 상인' }, { id: 'market', name: '거래소' }, { id: 'gear', name: '장비·능력' }, { id: 'work', name: '공방', grade: 2 }, { id: 'lib', name: '서고' },
+    { id: 'world', name: '월드 보스' }, { id: 'party', name: '파티' }, { id: 'guild', name: '동아리' }, { id: 'friends', name: '친구' }, { id: 'board', name: '게시판' }, { id: 'idea', name: '건의함' }, { id: 'auction', name: '떠돌이 상인' }, { id: 'market', name: '거래소' }, { id: 'gear', name: '장비·능력' }, { id: 'alch', name: '연금 공방', grade: 2 }, { id: 'fam', name: '환수 사역장', fam: true }, { id: 'lib', name: '연구' },
     { id: 'shop', name: '매점' }, { id: 'lore', name: '세계관' }, { id: 'rec', name: '기록실' }, { id: 'rank', name: '랭킹' }, { id: 'hcup', name: '기숙사' }
   ];
-  function viewOpen(v) { return !v.grade || S.P.grade >= v.grade || (v.id === 'work' && R.famOpen(S.P)); }   // 공방은 사역마가 열리면(레벨) 2학년 전에도
-  // 안내도: 비슷한 곳끼리 묶고, 안에서 탭으로 옮겨 다닌다
+  function viewOpen(v) { return v.fam ? R.famOpen(S.P) : !v.grade || S.P.grade >= v.grade; }   // 환수 사역장은 사역마가 열리면(레벨)
+  // 안내도: 비슷한 곳끼리 묶고, 안에서 탭으로 옮겨 다닌다. short = 모바일 하단 바 이름 (모바일은 광장이 가운데: style.css의 order)
   var GROUPS = [
-    { id: 'home', name: '아카데미 광장', icon: 'home', tabs: ['home'] },
-    { id: 'study', name: '수업·연구', icon: 'lecture', tabs: ['lecture', 'lib'] },
-    { id: 'adv', name: '원정·전투', icon: 'explore', tabs: ['explore', 'tower', 'ctower', 'exam', 'world'] },
-    { id: 'craft', name: '장비·공방', icon: 'gear', tabs: ['gear', 'work'] },
-    { id: 'social', name: '교류·상점', icon: 'party', tabs: ['party', 'guild', 'friends', 'board', 'market', 'auction', 'shop'] },
-    { id: 'book', name: '기록·랭킹', icon: 'lore', tabs: ['lore', 'rec', 'rank', 'hcup'] }
+    { id: 'home', name: '아카데미 광장', short: '광장', icon: 'home', tabs: ['home'] },
+    { id: 'study', name: '수업·연구', short: '수업', icon: 'lecture', tabs: ['lecture', 'lib', 'exam'] },
+    { id: 'adv', name: '원정·전투', short: '원정', icon: 'explore', tabs: ['explore', 'tower', 'ctower', 'world'] },
+    { id: 'craft', name: '장비·공방', short: '장비', icon: 'gear', tabs: ['gear', 'alch', 'fam'] },
+    { id: 'social', name: '교류', short: '교류', icon: 'party', tabs: ['party', 'guild', 'friends', 'board'] },
+    { id: 'store', name: '상점', short: '상점', icon: 'shop', tabs: ['market', 'auction', 'shop'] },
+    { id: 'book', name: '기록·랭킹', short: '기록', icon: 'lore', tabs: ['lore', 'rec', 'rank', 'hcup'] }
   ];
-  var TAB_NAMES = { auction: '떠돌이 상인', home: '광장', lecture: '강의실', lib: '서고 · 연구', explore: '원정', tower: '별의 탑', ctower: '무한의 탑', exam: '시험 · 결투제', world: '월드 보스', rank: '랭킹', hcup: '기숙사', gear: '장비 · 능력치', work: '공방', party: '파티', guild: '동아리', friends: '친구', board: '게시판', market: '거래소', shop: '매점', lore: '세계관', rec: '업적 · 도감' };
+  var TAB_NAMES = { auction: '떠돌이 상인', home: '광장', lecture: '강의실', lib: '연구', explore: '원정', tower: '별의 탑', ctower: '무한의 탑', exam: '시험 · 결투제', world: '월드 보스', rank: '랭킹', hcup: '기숙사', gear: '장비 · 능력치', alch: '연금 공방', fam: '환수 사역장', party: '파티', guild: '동아리', friends: '친구', board: '게시판', market: '거래소', shop: '매점', lore: '세계관', rec: '업적 · 도감' };
   S.gtab = {};
   var IDEA_GROUP = { id: 'idea', name: '건의함', tabs: ['idea'] };   // 건의함: 안내도 밖(상단 아이콘)에서 연다
   function groupOf(v) { return GROUPS.find(function (g) { return g.tabs.indexOf(v) >= 0; }) || (v === 'idea' ? IDEA_GROUP : GROUPS[0]); }
@@ -222,7 +223,7 @@
     if (!lines.length) { act('inboxAck', { upto: S.inboxUpto }); return; }
     Snd.play(items.some(function (o) { return o.k === 'lec'; }) ? 'bell' : 'level');
     // 끝난 작업마다 바로가기: 확인하고 그 화면으로 가서 다음 연구 · 수업 · 원정을 바로 시작한다
-    var GO = [['res', 'lib', '서고로'], ['lec', 'lecture', '강의실로'], ['exp', 'explore', '원정으로'], ['disp', 'work:fam', '공방으로'], ['hatch', 'work:fam', '공방으로']], seen = {};
+    var GO = [['res', 'lib', '연구로'], ['lec', 'lecture', '강의실로'], ['exp', 'explore', '원정으로'], ['disp', 'fam', '사역장으로'], ['hatch', 'fam', '사역장으로']], seen = {};
     var gos = GO.filter(function (g) { if (seen[g[1]] || !items.some(function (o) { return o.k === g[0]; })) return false; seen[g[1]] = 1; return true; });
     modal(mhead('끝난 작업 보고', items.length + '건') + '<ul class="report">' + lines.join('') + '</ul>' +
       (onTimeBtn(0) ? '<div class="row ontrow" style="margin-top:12px;gap:8px;align-items:center"><span class="small gold">시간표 다음 교시 ' + R.SUBJ[S.P.lec[0].s].name + ' 시작</span>' + onTimeBtn(0) + '</div>' : '') +
@@ -264,7 +265,7 @@
     var cur = groupOf(S.view).id;
     nav.innerHTML = '<div class="navtitle">안내도</div>' + GROUPS.map(function (g) {
       var on = g.id === cur, to = S.gtab[g.id] || g.tabs[0];
-      return '<button data-act="nav" data-a="' + to + '" class="' + (on ? 'on' : '') + '"' + (on ? ' aria-current="page"' : '') + '>' + icon(g.icon) + '<span>' + g.name + '</span><span class="pg" data-badge="g:' + g.id + '"></span></button>';
+      return '<button data-act="nav" data-a="' + to + '" data-g="' + g.id + '" class="' + (on ? 'on' : '') + '"' + (on ? ' aria-current="page"' : '') + '>' + icon(g.icon) + '<span class="gn">' + g.name + '</span><span class="gs">' + g.short + '</span><span class="pg" data-badge="g:' + g.id + '"></span></button>';
     }).join('') + '<div id="sidep" class="sidep"></div>';
     updateBadges(); updateSide();
   }
@@ -977,7 +978,7 @@
     if (S.examRes) { S.examRes = null; S.afterClose = null; }   // 합격 창에서 「바로 가기」로 떠나면 합격 창으로 돌아오지 않는다
     var d = typeof peRead === 'function' && peRead(); if (d && peDirty(d)) S.peDraft = d;
     if (S.modal) closeModal();
-    if (view === 'work' && (anchor === 'alch' || anchor === 'fam')) { S.workTab = anchor; anchor = ''; }
+    if (view === 'work') { view = anchor === 'fam' || anchor === 'alch' ? anchor : 'alch'; anchor = ''; }   // 예전 「공방」 바로 가기 (학기 이야기 등의 go: ['work', 'alch'|'fam'])
     if (view === 'rec' && anchor === 'titles') { S.recTab = 'titles'; anchor = ''; }
     ACT.nav(view);
     if (!anchor) return;
@@ -1314,7 +1315,7 @@
   function goals() {
     var P = S.P, out = [], c = C(), ex = R.examFor(P);
     if (P.daily.login) out.push({ t: '출석 보상 받기', s: '연속 출석할수록 보상이 커집니다.', act: 'do-login', btn: '받기' });
-    if (P.fam.eggs > 0 && R.famOpen(P) && !P.fam.egg) out.push({ t: '환수의 알 ' + P.fam.eggs + '개', s: '공방 「사역마」에서 부화시킬 수 있습니다.', go: 'work:fam' });
+    if (P.fam.eggs > 0 && R.famOpen(P) && !P.fam.egg) out.push({ t: '환수의 알 ' + P.fam.eggs + '개', s: '「환수 사역장」에서 부화시킬 수 있습니다.', go: 'fam' });
     var idleL = 0, idleE = 0, dz = R.dreaming(P, now());
     if (!dz) { for (var i = 0; i < c.lecSlots; i++) if (!P.lec[i]) idleL++; for (var k = 0; k < c.expSlots; k++) if (!P.exp[k]) idleE++; }
     if (idleL) out.push({ t: '비어 있는 수업 슬롯 ' + idleL + '개', s: '다시 접속할 시간에 맞춰 수업 길이 선택.', go: 'lecture' });
@@ -2035,13 +2036,12 @@
       '<div class="filters" style="margin-top:8px">' + Object.keys(PRESETS).map(function (k) { return '<button class="btn sm ghost' + (cur === k ? ' on' : '') + '" data-act="preset" data-a="' + k + '">' + PNAMES[k] + '</button>'; }).join('') + '</div>' + info + '<p class="tiny faint" style="margin-top:6px">레벨마다 2포인트. 매점의 「망각의 차」로 초기화할 수 있습니다.</p></div>';
   }
 
-  /* ── 공방 ── */
-  V.work = function () {
-    var h = pageHead('연금화학 실습실 · 환수 사육장', '공방', ''), g2 = S.P.grade >= 2;
-    if (!g2) S.workTab = 'fam';
-    h += '<div class="tabs" role="tablist"><button role="tab" class="' + (S.workTab === 'alch' ? 'on' : '') + '" data-act="worktab" data-a="alch"' + (g2 ? '' : ' disabled') + '>연금술' + (g2 ? '' : ' (2학년)') + '</button><button role="tab" class="' + (S.workTab === 'fam' ? 'on' : '') + '" data-act="worktab" data-a="fam">사역마' + (R.famOpen(S.P) ? '' : ' (잠김)') + '</button></div>';
-    return h + (S.workTab === 'alch' ? alchView() : famView());
+  /* ── 연금 공방 · 환수 사역장 ── */
+  V.alch = function () {
+    var h = pageHead('연금화학 실습실', '연금 공방', '');
+    return h + (S.P.grade >= 2 ? alchView() : '<div class="card inset"><p class="small muted">연금 공방은 2학년부터 사용할 수 있습니다. 재료와 마나로 물약을 만들고, 거래소에 내다 팔 수도 있습니다.</p></div>');
   };
+  V.fam = function () { return pageHead('환수 사육장', '환수 사역장', '') + famView(); };
   function matTag(m, need) { var have = S.P.mats[m] || 0; return '<span class="tag ' + (have >= need ? 'ok' : 'no') + '">' + D.MATS[m].name + ' ' + fmt(have) + '/' + need + '</span>'; }
   function alchView() {
     var P = S.P, c = C(), cnt = +(S.pick.bn || 1);
@@ -2093,7 +2093,7 @@
   /* ── 서고 ── */
   V.lib = function () {
     var P = S.P, c = C(), used = P.rsq.filter(Boolean).length;
-    var h = pageHead('이름 없는 사서의 서가', '서고', '연구 자리 <b class="num gold">' + used + ' / ' + c.resSlots + '</b>');
+    var h = pageHead('이름 없는 사서의 서가 · 서고', '연구', '연구 자리 <b class="num gold">' + used + ' / ' + c.resSlots + '</b>');
     var running = P.rsq.map(function (q, i) { return q ? '<div class="tl"><span class="tli">연구</span><div class="tlb"><div class="row small"><span>' + R.RES[q.id].name + ' ' + ((P.rs[q.id] || 0) + 1) + '단계</span><span class="spacer"></span><span class="num faint" data-l="left:' + q.end + '"></span></div><div class="bar" style="margin-top:4px;height:6px"><b data-b="prog:' + q.start + ':' + q.end + '"></b></div><div class="row tiny faint" style="margin-top:2px"><span>' + clock(q.end) + ' 완료</span><span class="spacer"></span>' + (P.tok && P.tok.rsDone > 0 ? '<button class="btn sm primary" data-act="rsnow" data-a="' + i + '" title="운영진 보상 물약">즉시 완료 <span class="cost">물약 ' + P.tok.rsDone + '</span></button>' : '') + cancelBtn('rs' + i, 'resCancel', { slot: i }) + '</div></div></div>' : ''; }).join('');
     if (running) h += '<div class="card hl timetable" style="margin-bottom:14px">' + running + '</div>';
     h += '<div class="grid gauto">' + D.RESEARCH.filter(function (r) { return !r.gone; }).map(function (r) {
@@ -3487,6 +3487,7 @@
 
   /* ───────── 행동 ───────── */
   ACT.nav = function (a) { if (String(a).indexOf(':') > 0) { var sp = String(a).split(':'); ACT.goto(sp[0], sp[1]); return; }   // 'work:fam' = 공방 사역마 탭처럼 탭까지 지정
+    if (a === 'work') a = S.P && S.P.grade >= 2 ? 'alch' : 'fam';   // 예전 「공방」
     if (!VIEWS.some(function (v) { return v.id === a; })) a = 'home'; S.gtab[groupOf(a).id] = a; S.view = a; S.sel = S.view === 'gear' ? S.sel : null; renderNav(); render(); window.scrollTo(0, 0); viewTut(a); if (a === 'world') refreshWorld(); };
   ACT.loretab = function (t) { S.loreTab = t; render(); };
   ACT['modal-close'] = function () { if (S.modalLocked) return; tryClose(); };
@@ -3620,11 +3621,11 @@
   function invItems() {
     var P = S.P, tk = P.tok || {}, out = [], g3 = R.famOpen(P);
     function B(act, a, b, label, primary) { return '<button class="btn sm' + (primary ? ' primary' : ' ghost') + '" data-act="' + act + '"' + (a != null ? ' data-a="' + a + '"' : '') + (b != null ? ' data-b="' + b + '"' : '') + '>' + label + '</button>'; }
-    if (P.fam.eggs > 0) out.push({ k: 'egg', name: '환수의 알', n: P.fam.eggs, desc: (g3 ? '공방 부화기에서 마나로 부화시켜 사역마로 키웁니다.' : R.FAM_OPEN_TEXT + '부터 공방에서 부화할 수 있습니다. 그때까지 여기에 보관됩니다.') + ' 지니고 있는 동안 알 품기로 경험치 +' + Math.round(R.EGG_HOLD_EACH * 100) + '%(' + R.EGG_HOLD_MAX + '개까지).', acts: (g3 && !P.fam.egg ? B('do', 'egg', null, '바로 부화', true) : '') + B('goto', 'work', 'fam', '부화기로') });
+    if (P.fam.eggs > 0) out.push({ k: 'egg', name: '환수의 알', n: P.fam.eggs, desc: (g3 ? '환수 사역장의 부화기에서 마나로 부화시켜 사역마로 키웁니다.' : R.FAM_OPEN_TEXT + '부터 환수 사역장에서 부화할 수 있습니다. 그때까지 여기에 보관됩니다.') + ' 지니고 있는 동안 알 품기로 경험치 +' + Math.round(R.EGG_HOLD_EACH * 100) + '%(' + R.EGG_HOLD_MAX + '개까지).', acts: (g3 && !P.fam.egg ? B('do', 'egg', null, '바로 부화', true) : '') + B('goto', 'work', 'fam', '부화기로') });
     if (P.wb.tickets + (P.wb.extra || 0) > 0) out.push({ k: 'ticket', name: '토벌 도전권', n: P.wb.tickets + (P.wb.extra || 0), desc: '충전 도전권 ' + P.wb.tickets + ' / ' + R.K.WB_TICKET_MAX + (P.wb.extra > 0 ? ' · 추가 도전권 ' + P.wb.extra + '장 (이번 주 ' + R.wbExtraLeft(P, now()) + '번 더 사용 가능)' : '') + '. 월드 보스에 한 번 도전할 때 1장씩 사용합니다. 충전 도전권은 8시간마다 3장까지 차고, 매점 · 우편으로 받은 추가 도전권은 충전 도전권을 다 사용한 뒤 한 주에 ' + R.K.WB_EXTRA_USE + '번까지 사용할 수 있으며 남은 것은 다음 주로 넘어갑니다.', acts: B('goto', 'world', null, '월드 보스로', true) });
     if (tk.respec > 0) out.push({ k: 'respec', name: '망각의 차', n: tk.respec, desc: '마시면 분배한 능력치 포인트를 모두 돌려받고 자동 분배가 꺼집니다.', acts: B('respecuse', null, null, S.confirm.rsp > Date.now() ? '한 번 더 누르면 마십니다' : '바로 마시기', true) + B('goto', 'gear', 'alloc', '능력치 칸으로') });
-    D.POTIONS.forEach(function (p) { if (P.shelf[p.id] > 0) out.push({ k: 'pot:' + p.id, name: p.name, n: P.shelf[p.id], desc: p.desc, dot: p.color, acts: B('do', 'drink', p.id, '바로 마시기', true) + B('goto', 'work', 'alch', '연금술로') }); });
-    if (tk.rsDone > 0) out.push({ k: 'rsDone', name: '연구 즉시 완료 물약', n: tk.rsDone, desc: '진행 중인 연구 하나를 바로 끝냅니다. 서고에서 사용합니다.', acts: B('goto', 'lib', null, '서고로', true) });
+    D.POTIONS.forEach(function (p) { if (P.shelf[p.id] > 0) out.push({ k: 'pot:' + p.id, name: p.name, n: P.shelf[p.id], desc: p.desc, dot: p.color, acts: B('do', 'drink', p.id, '바로 마시기', true) + B('goto', 'alch', '', '연금 공방으로') }); });
+    if (tk.rsDone > 0) out.push({ k: 'rsDone', name: '연구 즉시 완료 물약', n: tk.rsDone, desc: '진행 중인 연구 하나를 바로 끝냅니다. 서고에서 사용합니다.', acts: B('goto', 'lib', null, '연구로', true) });
     if (tk.gradeUp > 0) out.push({ k: 'gradeUp', name: '학년 진급 물약', n: tk.gradeUp, desc: '마시면 한 학년 진급합니다. 시험장에서 사용합니다.', acts: B('goto', 'exam', null, '시험장으로', true) });
     return out;
   }
@@ -3634,10 +3635,10 @@
   function invBody() {
     var items = invItems(), nw = {}; invNew().forEach(function (x) { nw[x.k] = 1; });
     setTimeout(function () { invMarkSeen(); updateBadges(); }, 1500);   // 보고 나면 「새」 표시를 거둔다
-    if (!items.length) return '<div class="empty">소지품이 없습니다. 환수의 알 · 토벌 도전권 · 물약 · 망각의 차 같은 것을 받으면 여기에 모입니다.</div><p class="tiny faint" style="margin-top:8px">재료는 공방의 재료 보관함, 아카데미 휘장은 휘장 보관함에서 봅니다.</p>';
+    if (!items.length) return '<div class="empty">소지품이 없습니다. 환수의 알 · 토벌 도전권 · 물약 · 망각의 차 같은 것을 받으면 여기에 모입니다.</div><p class="tiny faint" style="margin-top:8px">재료는 연금 공방의 재료 보관함, 아카데미 휘장은 휘장 보관함에서 봅니다.</p>';
     return '<div class="invlist">' + items.map(function (x) {
       return '<div class="invrow' + (nw[x.k] ? ' new' : '') + '"><div class="invh">' + (x.dot ? '<span class="pot-ic" style="background:' + x.dot + '"></span>' : '') + '<b>' + esc(x.name) + '</b> <span class="num gold">×' + x.n + '</span>' + (nw[x.k] ? ' <span class="tag br">NEW</span>' : '') + '</div><div class="tiny muted">' + esc(x.desc) + '</div><div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap">' + x.acts + '</div></div>';
-    }).join('') + '</div><p class="tiny faint" style="margin-top:8px">장비 상자 · 휘장 원석 · 재료 상자는 받는 순간 열립니다. 재료는 공방의 재료 보관함, 아카데미 휘장은 휘장 보관함에서 봅니다.</p>';
+    }).join('') + '</div><p class="tiny faint" style="margin-top:8px">장비 상자 · 휘장 원석 · 재료 상자는 받는 순간 열립니다. 재료는 연금 공방의 재료 보관함, 아카데미 휘장은 휘장 보관함에서 봅니다.</p>';
   }
   ACT.bagtab = function (t) { S.bagTab = t === 'inv' ? 'inv' : 'eq'; render(); };
   ACT.invjump = function (slot) { S.bagTab = 'bag'; S.invF = slot; ACT.goto('gear', 'bag'); };   // 장비 화면 상단 칸 이름 → 가방에서 그 칸만
@@ -3682,7 +3683,6 @@
       render();
     });
   };
-  ACT.worktab = function (t) { S.workTab = t; render(); };
   ACT.rectab = function (t) { S.recTab = t; render(); };
   ACT.titleset = function (id) { act('title', { id: id || '' }).then(function (r) { if (!r) return; toast(id ? '칭호를 적용했습니다' : '칭호를 해제했습니다', r.title || '', 1800); loadMe(); render(); }); };
   ACT.brew = function (id) { act('brew', { id: id, n: +(S.pick.bn || 1) }).then(function (r) { if (r) { Snd.play('enh'); toast('물약이 완성되었습니다', R.POT[id].name + ' ' + r.n + '병 · 선반에 올렸습니다', 1800); } render(); }); };
@@ -3820,7 +3820,7 @@
   function promoItems(g) {
     var P = S.P, out = [];
     D.SUBJECTS.forEach(function (x) { if (x.unlock === g && R.subjVisible(P, x)) out.push(['새 과목 「' + x.name + '」', x.prof + ' · ' + x.desc, 'lecture', '']); });
-    if (g === 2) { out.push(['공방 · 연금술', '재료와 마나로 물약을 만들고, 거래소에 내다 팔 수도 있습니다.', 'work', 'alch']); }
+    if (g === 2) { out.push(['연금 공방', '재료와 마나로 물약을 만들고, 거래소에 내다 팔 수도 있습니다.', 'alch', '']); }
     // 거래소는 서버에서 정한 학년(기본 1학년)부터 — 그 학년일 때만 새로 열린 것으로 보인다
     if (g === ((S.mk && S.mk.data && S.mk.data.grade) || 1)) out.push(['거래소 사고팔기', '장비 · 재료 · 물약 · 휘장을 다른 학생과 ' + CUR + '로 거래합니다.', 'market', '']);
     if (g === 3) { out.push(['아카데미 휘장 수여', '2학년을 마친 기념으로 브로치를 수여합니다. 달고 있으면 별빛을 모아 성장합니다.', 'gear', 'badge']); }
@@ -3904,7 +3904,7 @@
     ['.resbar', '자원', '마나 · ' + CUR + ' · 지식 · 마석 · 별조각입니다. ' + CUR + '는 게임 내 화폐입니다. 마나는 시간이 지나면 자동으로 차오르고, ' + CUR + '는 원정, 지식은 수업에서 얻습니다. 각 자원을 누르면(PC는 마우스를 올리면) 얻는 방법과 현재 획득량이 표시됩니다.'],
     ['[data-anchor="timetable"]', '시간표', '게임의 중심입니다. 수업을 30분~3시간 단위로 듣고, 끝나면 다음 교시를 이어 가세요. 창을 닫아도 서버에서 그대로 진행됩니다.'],
     ['[data-fold="goals"]', '다음 할 일', '지금 하면 좋은 일을 순서대로 알려 줍니다. 「이동」을 누르면 해당 화면으로 바로 이동합니다.'],
-    ['#nav', '안내도', '화면을 이동하는 메뉴입니다. 수업·연구, 원정·전투, 장비·공방, 교류·상점, 기록이 있으며, 점이 표시된 곳은 지금 할 일이 있다는 뜻입니다.'],
+    ['#nav', '안내도', '화면을 이동하는 메뉴입니다. 수업·연구(시험 · 결투제 포함), 원정·전투, 장비·공방, 교류, 상점, 기록이 있으며, 점이 표시된 곳은 지금 할 일이 있다는 뜻입니다. 모바일에서는 하단 가운데가 광장입니다.'],
     ['#sidep', '내 정보 요약', '기숙사 · 전투력 · 능력치 · 착용 장비를 표시합니다. 기숙사에 마우스를 올리면 기숙사 혜택이 표시되며, 「접기」로 숨길 수 있습니다.'],
     ['#chatdock', '채팅', '공지 · RP · 월드 · 기숙사 · 학과 · 1:1 채팅입니다. RP 채널에서는 *별표 사이*에 작성한 글이 행동 묘사로 표시됩니다. 탭을 눌러 열고 닫습니다.'],
     ['.mebtn', '내 이름', '누르면 내 정보(두상 · 소개 · 꾸미기), 친구, 파티, 동아리, 칭호 도감으로 이동합니다.'],
@@ -3935,7 +3935,7 @@
       ['[data-anchor="boss"]', '보스', '10단계마다 있는 보스를 쓰러뜨리면 다음 구역이 열립니다.'],
       ['h:지역', '지역', '구역마다 몬스터와 재료가 다릅니다. 시간당 효율은 대체로 조금 낮은 단계가 좋습니다.']
     ],
-    lib: [['.page-head', '서고', '마나와 지식으로 연구를 진행합니다. 연구는 한 번에 하나만 진행되며 단계가 오를수록 오래 걸리므로, 잠들기 전에 긴 연구를 시작해 두면 좋습니다.']],
+    lib: [['.page-head', '연구', '마나와 지식으로 연구를 진행합니다. 연구는 한 번에 하나만 진행되며 단계가 오를수록 오래 걸리므로, 잠들기 전에 긴 연구를 시작해 두면 좋습니다.']],
     exam: [['#view .card', '기말시험', '시험 과목이 모두 기준 레벨에 도달하면 응시할 수 있습니다. 「예상 성적」을 확인한 뒤 응시합니다. 합격하면 다음 학년으로 진급합니다.'], ['h:성적표', '성적표', '학년별 성적이 기록됩니다. 「안내」를 누르면 진급 때 열린 콘텐츠를 다시 볼 수 있습니다.'], ['h:대진표', '결투제', '라이벌과 차례로 겨뤄 별조각과 ' + CUR + '를 받습니다. 지면 1시간 뒤 다시 도전할 수 있습니다.']],
     world: [['[data-anchor="wb"]', '월드 보스', '서버의 모든 학생이 함께 체력을 깎는 보스입니다. 도전권은 8시간마다 충전됩니다.']],
     hcup: [['h:기숙사 대항전', '기숙사 대항전', '모든 활동이 기숙사 점수로 쌓이며, 매주 활동 학생 평균 점수 순위에 따라 보상이 지급됩니다.'], ['h:기숙사 성장', '기숙사 성장', '대항전 점수가 쌓일수록 기숙사 혜택이 커집니다.']],
@@ -3948,7 +3948,8 @@
     auction: [['.page-head', '떠돌이 상인', '매일 낮 12시 · 저녁 6시 · 밤 10시에 1시간 동안 신입생 · 중급 · 상급 구간마다 귀한 장비 세 점씩(모두 아홉 점) 경매합니다. 신입생 · 중급 구간은 원정 최고 단계가 정해진 단계 이하인 학생만 입찰할 수 있습니다. 더 높은 입찰이 나오면 입찰한 ' + CUR + '를 즉시 돌려받습니다.']],
     market: [['#view .tabs', '거래소', '「사기」에서 다른 학생의 물건을 사고, 「팔기」에서 내 물건을 올립니다. 「팔기」에는 최근 시세가 표시됩니다.']],
     gear: [['h:장비 살펴보기', '장비', '장착 칸이나 가방의 장비를 누르면 능력치와 강화 · 재련 · 분해 · 잠금 메뉴가 표시됩니다.'], ['[data-anchor="bag"]', '가방 · 소지품', '초록 ▲ 표시는 현재보다 전투력이 오르는 장비입니다. 「소지품」 탭에는 환수의 알 · 토벌 도전권 · 물약 · 망각의 차가 모이며, 바로 사용하거나 해당 화면으로 이동할 수 있습니다.'], ['h:능력치', '능력치', '레벨업 포인트를 직접 분배하거나, 자동 분배를 활성화하고 프리셋을 선택할 수 있습니다.'], ['[data-anchor="badge"]', '아카데미 휘장', '달고 있는 휘장 하나만 효과가 있으며, 원정 · 수업 · 전투에서 별빛을 모아 성장합니다.']],
-    work: [['h:연금술', '연금술', '재료와 마나로 물약을 즉시 만듭니다. 물약 효과는 마신 뒤 현실 시간으로 흐르며, 마신 뒤 시작하는 수업 · 원정부터 적용됩니다.'], ['h:사역마', '사역마', '환수의 알을 부화시켜 동행하거나 파견을 보냅니다. 동행 중인 사역마는 능력치를 올려 줍니다.']],
+    alch: [['.page-head', '연금 공방', '재료와 마나로 물약을 즉시 만듭니다. 물약 효과는 마신 뒤 현실 시간으로 흐르며, 마신 뒤 시작하는 수업 · 원정부터 적용됩니다.']],
+    fam: [['.page-head', '환수 사역장', '환수의 알을 부화시켜 동행하거나 파견을 보냅니다. 동행 중인 사역마는 능력치를 올려 줍니다.']],
     shop: [['.page-head', '매점', '별조각과 ' + CUR + '로 환수의 알 · 가방 확장 · 휘장 원석 등을 구입합니다.']],
     rec: [['h:업적', '기록실', '업적 · 칭호 도감 · 몬스터 도감 · 통계를 확인합니다. 업적을 달성하면 별조각을 받습니다.']]
   };
@@ -4899,7 +4900,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102137;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102138;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
