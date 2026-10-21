@@ -35,10 +35,10 @@ with sync_playwright() as p:
     # 별의 탑
     pg.evaluate("() => __ACT.nav('party')"); pg.wait_for_timeout(500); pg.fill('#pt-name', '탑' + sfx[:3]); pg.click('[data-act=pop][data-a=create]'); pg.wait_for_timeout(2500)
     check(pg.query_selector('.tower') is not None, 'tower card missing')
-    pg.click('[data-act=twgo][data-a=real]'); pg.wait_for_timeout(300); pg.click('[data-act=twgo][data-a=real]'); pg.wait_for_timeout(2500)   # 실전: 한 번 더 눌러야 시작
+    pg.click('[data-act=twgo][data-a=real]'); pg.wait_for_timeout(300); pg.click('[data-act=twgo][data-a=real]'); pg.wait_for_timeout(18000)   # 실전 준비: 한 번 더 눌러 준비 · 혼자 파티라 15초 뒤 출발
     check(pg.query_selector('.twjournal.live #twlines .el') is not None, 'tower journal not streaming')
     pg.screenshot(path=f'{OUT}/tower-journal.png')
-    pg.click('[data-act=twskip]'); pg.wait_for_timeout(1500); pg.screenshot(path=f'{OUT}/tower-result.png')
+    pg.wait_for_selector('#modal:not([hidden]) h2', timeout=600000); pg.screenshot(path=f'{OUT}/tower-result.png')   # 실전은 건너뛸 수 없어 끝날 때까지 기다린다
     check(pg.query_selector('#modal:not([hidden]) h2') is not None, 'tower result missing')
     pg.click('#modal [data-act=modal-close]'); pg.wait_for_timeout(1500)
     # 밝은 테마

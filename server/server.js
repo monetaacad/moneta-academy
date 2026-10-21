@@ -880,10 +880,11 @@ function setPartyN(P) { const p = partyOf.get(P.id), n = p ? (partySize.get(p) |
 function refreshParty(party) {   // 메모리에 있는 파티원들의 보너스를 바로 갱신
   dbx.q.partyMembers.all(party).forEach((m) => { const P = store.peek(m.id); if (P && setPartyN(P)) store.markDirty(m.id); });
 }
-function joinParty(pid, party) { dbx.q.partyJoin.run(pid, party, Math.floor(Date.now() / 1000)); partyOf.set(pid, party); partySize.set(party, (partySize.get(party) || 0) + 1); }
+function joinParty(pid, party) { dbx.q.partyJoin.run(pid, party, Math.floor(Date.now() / 1000)); partyOf.set(pid, party); partySize.set(party, (partySize.get(party) || 0) + 1); if (towerLobby.has(party)) twLobbyEval(party); }   // 새 파티원은 준비 전이라 별의 탑 출발 대기가 멈춘다
 function leaveParty(pid) {
   const party = partyOf.get(pid); if (!party) return null;
   dbx.q.partyLeave.run(pid); partyOf.delete(pid);
+  const lob = towerLobby.get(party); if (lob) { lob.ready.delete(pid); if (lob.timer) { clearTimeout(lob.timer); lob.timer = null; lob.at = null; } setTimeout(() => twLobbyEval(party), 0); }   // 별의 탑 출발 대기: 다시 판정
   const n = (partySize.get(party) || 1) - 1;
   const P = store.peek(pid); if (P && setPartyN(P)) store.markDirty(pid);
   if (n <= 0) { partySize.delete(party); dbx.tx(() => { dbx.q.partyDelete.run(party); dbx.q.partyInviteDelParty.run(party); dbx.q.towerDel.run(party); }); chat.dropParty(party); return { party, gone: true }; }
@@ -1354,9 +1355,11 @@ function towerView(me, now) {
   // 실전이 흐르는 동안은 그 실전 전의 기록을 보여 준다 (결과가 대본보다 먼저 새지 않게)
   const prev = live && live.kind === 'real' ? live.prev || {} : {};
   const best = (Q) => (Q.id in prev ? prev[Q.id] : R.twBest(Q, now)), used = ps.filter((Q) => R.twUsed(Q, now));
+  const lob = twLobbyOf(party);
   return { party, name: pa ? pa.name : '', leader: pa ? pa.leader : '', week: R.weekId(now), weekEnd: R.weekStart(R.weekId(now) + 1), now: Date.now() / 1000,
     start: R.twStart(ps.map(best)), used: used.map((Q) => Q.name), myUsed: !!P && R.twUsed(P, now), myBest: P ? best(P) : 0, myPos: P ? R.twPos(P) : 'van', posOk: P ? R.expPositions(P) : ['van'],
-    members: R.twMeta(ms).map((m) => { const Q = ps.find((x) => x.id === m.id); return Object.assign(m, { me: m.id === me, best: Q ? best(Q) : null, used: !!Q && R.twUsed(Q, now) }); }),
+    members: R.twMeta(ms).map((m) => { const Q = ps.find((x) => x.id === m.id); return Object.assign(m, { me: m.id === me, best: Q ? best(Q) : null, used: !!Q && R.twUsed(Q, now), ready: m.npc || (!!lob && lob.ready.has(m.id)) }); }),
+    lobby: lob ? { mode: lob.mode, by: lob.byName, at: lob.at, notReady: ps.filter((Q) => !lob.ready.has(Q.id)).map((Q) => Q.name) } : null, readyTtl: TW_READY_TTL, count: TW_COUNT,
     runs: runs.slice().reverse() };
 }
 // 모집 카드에 보이는 층: 파티원 이번 주 기록 중 가장 낮은 층
@@ -1372,43 +1375,46 @@ routes['GET /api/tower'] = (req, res) => {
   send(req, res, 200, v);
 };
 // mode: real(실전) · party(파티 연습) · solo(혼자 연습) · stop(파티 연습 중단) · pos(내 포지션)
-routes['POST /api/tower'] = async (req, res) => {
-  const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
-  if (store.isBanned(me)) return fail(req, res, 403, '이용이 정지된 계정입니다');
-  if (limited('twp:' + me, 0.5, 4)) return fail(req, res, 429, '잠시 후 다시 시도');
-  const b = await readJson(req, 256), mode = String(b.mode || '');
-  const party = partyOf.get(me); if (!party) return fail(req, res, 400, '파티에 들어가 있어야 별의 탑에 오를 수 있습니다');
-  const now = nowSec(), P = loadPlayer(me, now); if (!P) return fail(req, res, 401, '학생 정보를 찾을 수 없습니다');
-  if (mode === 'pos') {
-    const pos = String(b.pos || ''); if (!R.EXP_POS[pos]) return fail(req, res, 400, '포지션 선택 필요');
-    if (R.expPositions(P).indexOf(pos) < 0) return fail(req, res, 400, R.EXP_POS[pos].name + ' 포지션은 ' + R.EXP_POS[pos].desc.split(' · ')[0]);
-    P.opt.twPos = pos; store.markDirty(me);
-    return send(req, res, 200, towerView(me, now));
+// 출발 대기: 파티 → { mode(real · party), by, byName, ready: Map(학생 → 누른 실제 시각), at(출발 예정 실제 시각), timer }
+// 누군가 「실전 준비」 · 「파티 연습 준비」를 누르면 출발 종류가 정해지고, 사람 파티원(NPC 제외)이 모두 「준비 완료」하면 15초 뒤 자동으로 출발한다.
+// 그 사이 한 명이라도 준비를 풀면 출발이 취소되고, 다시 모두 준비하면 15초부터 다시 센다. 준비는 15분이 지나면 풀린다.
+const towerLobby = new Map(), TW_READY_TTL = 900, TW_COUNT = 15;
+function twLobbyOf(party) {
+  const L = towerLobby.get(party); if (!L) return null; const real = Date.now() / 1000;
+  L.ready.forEach((t, k) => { if (real - t > TW_READY_TTL) L.ready.delete(k); });
+  return L;
+}
+function twLobbyEval(party) {
+  const L = twLobbyOf(party); if (!L) return;
+  const ids = dbx.q.partyMembers.all(party).map((m) => m.id), kind = L.mode === 'real' ? '실전' : '파티 연습';
+  if (!ids.length) { if (L.timer) clearTimeout(L.timer); towerLobby.delete(party); return; }   // 파티가 없어졌다
+  const all = !!L.mode && ids.length > 0 && ids.every((id) => L.ready.has(id)) && !towerLive(towerRuns(party));
+  if (all && !L.timer) {
+    L.at = Date.now() / 1000 + TW_COUNT; L.timer = setTimeout(() => twLobbyFire(party), TW_COUNT * 1000); L.timer.unref();
+    chat.system('party', '모든 파티원이 준비를 마쳤습니다. ' + TW_COUNT + '초 뒤 별의 탑 ' + kind + '을 시작합니다.', Date.now() / 1000, party); towerPing(party, { lobby: true });
+  } else if (!all && L.timer) {
+    clearTimeout(L.timer); L.timer = null; L.at = null;
+    chat.system('party', '준비가 풀려 별의 탑 ' + kind + ' 출발이 취소되었습니다. 모두 다시 준비하면 ' + TW_COUNT + '초 뒤 출발합니다.', Date.now() / 1000, party); towerPing(party, { lobby: true });
   }
-  if (mode === 'solo') {   // 혼자 연습: 지금 파티 그대로 돌려 보고 내 화면에서만 본다 (기록 · 보상 없음, 파티를 막지 않음)
-    const last = towerSolo.get(me) || 0; if (Date.now() - last < 5000) return fail(req, res, 429, '잠시 후 다시 시도');
-    towerSolo.set(me, Date.now());
-    const { ms, ps } = towerTeam(party, me, now), start = R.twStart(ps.map((Q) => R.twBest(Q, now)));
-    const run = Object.assign(R.twRun(ms, start, crypto.randomInt(1, 2147483647)), { id: crypto.randomBytes(6).toString('base64url'), kind: 'solo', by: P.name, pname: (dbx.q.partyGet.get(party) || {}).name || '', t0: Date.now() / 1000, ms: R.twMeta(ms) });
-    return send(req, res, 200, { run });
-  }
-  if (towerBusy.has(party)) return fail(req, res, 409, '파티원이 지금 도전을 시작하고 있습니다. 잠시 후 다시 시도');
+}
+function twLobbyFire(party) {
+  const L = towerLobby.get(party); if (!L) return; L.timer = null; L.at = null;
+  const ids = dbx.q.partyMembers.all(party).map((m) => m.id);
+  if (!ids.every((id) => L.ready.has(id))) { twLobbyEval(party); towerPing(party, { lobby: true }); return; }   // 그 사이 파티원이 바뀌었다
+  const starter = ids.indexOf(L.by) >= 0 ? L.by : ids[0], r = twStartRun(party, L.mode, starter);
+  if (r.error) { L.ready.clear(); chat.system('party', '별의 탑을 시작할 수 없습니다: ' + r.error, Date.now() / 1000, party); towerPing(party, { lobby: true }); return; }
+  towerLobby.delete(party);
+}
+// 실전 · 파티 연습 시작 (출발 대기의 15초가 끝났을 때). 실패하면 { error }
+function twStartRun(party, mode, starterId) {
+  if (towerBusy.has(party)) return { error: '파티원이 지금 도전을 시작하고 있습니다' };
   towerBusy.add(party);
   try {
-    const runs = towerRuns(party), live = towerLive(runs);
-    if (mode === 'stop') {
-      if (!live || live.kind !== 'party') return fail(req, res, 400, '중단할 파티 연습이 없습니다');
-      live.d = Math.max(0, Date.now() / 1000 - live.t0); live.stopped = P.name; towerSave(party, runs);
-      chat.system('party', P.name + ' 님이 별의 탑 파티 연습을 중단했습니다.', Date.now() / 1000, party); towerPing(party, { stop: true });
-      return send(req, res, 200, towerView(me, now));
-    }
-    if (mode !== 'real' && mode !== 'party') return fail(req, res, 400, '알 수 없는 요청입니다');
-    if (live) return fail(req, res, 409, live.by + ' 님이 시작한 ' + (live.kind === 'real' ? '실전' : '파티 연습') + '이 진행 중입니다. 함께 지켜보세요');
-    const { pa, ms, ps } = towerTeam(party, me, now);
-    if (mode === 'real') {
-      const used = ps.filter((Q) => R.twUsed(Q, now));
-      if (used.length) return fail(req, res, 400, '오늘 이미 실전에 도전한 파티원이 있습니다: ' + used.map((Q) => Q.name).join(', ') + ' (매일 KST 자정에 초기화)');
-    }
+    const now = nowSec(), runs = towerRuns(party), live = towerLive(runs);
+    if (live) return { error: live.by + ' 님이 시작한 ' + (live.kind === 'real' ? '실전' : '파티 연습') + '이 진행 중입니다' };
+    const P = loadPlayer(starterId, now); if (!P) return { error: '학생 정보를 찾을 수 없습니다' };
+    const { pa, ms, ps } = towerTeam(party, starterId, now);
+    if (mode === 'real') { const used = ps.filter((Q) => R.twUsed(Q, now)); if (used.length) return { error: '오늘 이미 실전에 도전한 파티원이 있습니다: ' + used.map((Q) => Q.name).join(', ') + ' (매일 KST 자정에 초기화)' }; }
     const start = R.twStart(ps.map((Q) => R.twBest(Q, now)));
     const run = Object.assign(R.twRun(ms, start, crypto.randomInt(1, 2147483647)), { id: crypto.randomBytes(6).toString('base64url'), kind: mode, by: P.name, pname: pa ? pa.name : '', t0: Math.round(Date.now() / 100) / 10, ms: R.twMeta(ms), day: R.dayKST(now) });
     const after = Math.round(run.d * 1000), later = (fn) => setTimeout(fn, after).unref(), pname = pa ? pa.name : '';
@@ -1430,10 +1436,59 @@ routes['POST /api/tower'] = async (req, res) => {
     }
     runs.slice(0, -1).forEach((r) => { delete r.floors; });   // 대본은 직전 실행과 이번 실행만 남긴다
     runs.push(run); towerSave(party, runs);
-    chat.system('party', P.name + ' 님이 별의 탑 ' + (mode === 'real' ? '실전' : '파티 연습') + '을 시작했습니다 (' + start + '층부터). 별의 탑 화면에서 함께 볼 수 있습니다.', Date.now() / 1000, party);
+    chat.system('party', '별의 탑 ' + (mode === 'real' ? '실전' : '파티 연습') + '을 시작했습니다 (' + start + '층부터). 별의 탑 화면에서 함께 볼 수 있습니다.', Date.now() / 1000, party);
     towerPing(party, { by: P.name, start: true }); later(() => towerPing(party, { end: true }));
-    send(req, res, 200, Object.assign(statePayload(P, now), { run }));
+    return { run };
   } finally { towerBusy.delete(party); }
+}
+routes['POST /api/tower'] = async (req, res) => {
+  const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
+  if (store.isBanned(me)) return fail(req, res, 403, '이용이 정지된 계정입니다');
+  if (limited('twp:' + me, 0.5, 4)) return fail(req, res, 429, '잠시 후 다시 시도');
+  const b = await readJson(req, 256), mode = String(b.mode || '');
+  const party = partyOf.get(me); if (!party) return fail(req, res, 400, '파티에 들어가 있어야 별의 탑에 오를 수 있습니다');
+  const now = nowSec(), P = loadPlayer(me, now); if (!P) return fail(req, res, 401, '학생 정보를 찾을 수 없습니다');
+  if (mode === 'pos') {
+    const pos = String(b.pos || ''); if (!R.EXP_POS[pos]) return fail(req, res, 400, '포지션 선택 필요');
+    if (R.expPositions(P).indexOf(pos) < 0) return fail(req, res, 400, R.EXP_POS[pos].name + ' 포지션은 ' + R.EXP_POS[pos].desc.split(' · ')[0]);
+    P.opt.twPos = pos; store.markDirty(me);
+    return send(req, res, 200, towerView(me, now));
+  }
+  // 출발 준비: kind를 주면 출발 종류를 정하고(바꾸면 진행 중인 15초는 처음부터) 준비 완료, on === false면 준비 취소
+  if (mode === 'ready' || mode === 'real' || mode === 'party') {
+    const kind = mode === 'ready' ? String(b.kind || '') : mode;
+    let L = twLobbyOf(party);
+    if (kind === 'real' || kind === 'party') {
+      const live = towerLive(towerRuns(party)); if (live) return fail(req, res, 409, live.by + ' 님이 시작한 ' + (live.kind === 'real' ? '실전' : '파티 연습') + '이 진행 중입니다. 함께 지켜보세요');
+      if (kind === 'real') { const used = towerTeam(party, me, now).ps.filter((Q) => R.twUsed(Q, now)); if (used.length) return fail(req, res, 400, '오늘 이미 실전에 도전한 파티원이 있습니다: ' + used.map((Q) => Q.name).join(', ') + ' (매일 KST 자정에 초기화)'); }
+      if (!L) { L = { mode: '', by: '', byName: '', ready: new Map(), at: null, timer: null }; towerLobby.set(party, L); }
+      if (L.mode !== kind) {
+        if (L.timer) { clearTimeout(L.timer); L.timer = null; L.at = null; }
+        L.mode = kind; L.by = me; L.byName = P.name; L.ready.clear();
+        chat.system('party', P.name + ' 님이 별의 탑 ' + (kind === 'real' ? '실전' : '파티 연습') + ' 출발을 준비합니다. 모두 「준비 완료」를 누르면 ' + TW_COUNT + '초 뒤 출발합니다.', Date.now() / 1000, party);
+      }
+    }
+    if (!L || !L.mode) return fail(req, res, 400, '먼저 「실전 준비」 또는 「파티 연습 준비」를 눌러 출발 종류를 정해야 합니다');
+    if (b.on === false) L.ready.delete(me); else L.ready.set(me, Date.now() / 1000);
+    if (b.on === false && !L.ready.size) towerLobby.delete(party);   // 아무도 준비하지 않으면 출발 대기를 닫는다
+    twLobbyEval(party); towerPing(party, { lobby: true });
+    return send(req, res, 200, towerView(me, now));
+  }
+  if (mode === 'solo') {   // 혼자 연습: 지금 파티 그대로 돌려 보고 내 화면에서만 본다 (기록 · 보상 없음, 파티를 막지 않음)
+    const last = towerSolo.get(me) || 0; if (Date.now() - last < 5000) return fail(req, res, 429, '잠시 후 다시 시도');
+    towerSolo.set(me, Date.now());
+    const { ms, ps } = towerTeam(party, me, now), start = R.twStart(ps.map((Q) => R.twBest(Q, now)));
+    const run = Object.assign(R.twRun(ms, start, crypto.randomInt(1, 2147483647)), { id: crypto.randomBytes(6).toString('base64url'), kind: 'solo', by: P.name, pname: (dbx.q.partyGet.get(party) || {}).name || '', t0: Date.now() / 1000, ms: R.twMeta(ms) });
+    return send(req, res, 200, { run });
+  }
+  if (mode === 'stop') {
+    const runs = towerRuns(party), live = towerLive(runs);
+    if (!live || live.kind !== 'party') return fail(req, res, 400, '중단할 파티 연습이 없습니다');
+    live.d = Math.max(0, Date.now() / 1000 - live.t0); live.stopped = P.name; towerSave(party, runs);
+    chat.system('party', P.name + ' 님이 별의 탑 파티 연습을 중단했습니다.', Date.now() / 1000, party); towerPing(party, { stop: true });
+    return send(req, res, 200, towerView(me, now));
+  }
+  fail(req, res, 400, '알 수 없는 요청입니다');
 };
 
 /* ───────── 별샘 의식 ─────────
