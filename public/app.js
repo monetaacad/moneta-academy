@@ -3708,10 +3708,19 @@
   ACT.invf = function (f) { S.invF = f; render(); };
   /* ── 소지품: 장비가 아닌 것(알 · 도전권 · 물약 · 망각의 차 등)을 한곳에. 칸 제한 없음, 바로 쓰기 · 바로가기 ── */
   function bagTabs(c) { var nn = invNew().length; return '<div class="tabs bagtabs" role="tablist" style="margin-bottom:8px"><button role="tab" class="' + (S.bagTab !== 'inv' ? 'on' : '') + '" data-act="bagtab" data-a="eq">장비 가방 <span class="num tiny">' + S.P.inv.length + ' / ' + c.bag + '</span></button><button role="tab" class="' + (S.bagTab === 'inv' ? 'on' : '') + '" data-act="bagtab" data-a="inv">소지품' + (nn ? ' <span class="tag br">NEW ' + nn + '</span>' : '') + '</button></div>'; }
+  // 소지품의 바로 부화: 마나가 든다는 것을 버튼에 적고, 한 번 더 눌러야 깨운다 (부화기의 「마나로 바로 깨우기」와 같은 동작)
+  function invEggBtn(P) {
+    var price = R.eggManaCost(P, wctx(), now()), armed = S.confirm.inveg > Date.now(), can = predMana() >= price;
+    return '<button class="btn sm ' + (armed ? 'danger' : 'primary') + '" data-act="inveggarm"' + (can ? '' : ' disabled title="마나가 부족합니다"') + '>' + (armed ? '한 번 더 누르면 마나 ' + fmt(price) + '을 사용해 깨웁니다' : '마나로 바로 깨우기 <span class="cost">마나 ' + fmt(price) + '</span>') + '</button>';
+  }
+  ACT.inveggarm = function () {
+    if (!(S.confirm.inveg > Date.now())) { S.confirm.inveg = Date.now() + 4000; render(); setTimeout(render, 4100); return; }
+    S.confirm.inveg = 0; ACT.do('egg');
+  };
   function invItems() {
     var P = S.P, tk = P.tok || {}, out = [], g3 = R.famOpen(P);
     function B(act, a, b, label, primary) { return '<button class="btn sm' + (primary ? ' primary' : ' ghost') + '" data-act="' + act + '"' + (a != null ? ' data-a="' + a + '"' : '') + (b != null ? ' data-b="' + b + '"' : '') + '>' + label + '</button>'; }
-    if (P.fam.eggs > 0) out.push({ k: 'egg', name: '환수의 알', n: P.fam.eggs, desc: (g3 ? '환수 사역장의 부화기에서 마나로 부화시켜 사역마로 키웁니다.' : R.FAM_OPEN_TEXT + '부터 환수 사역장에서 부화할 수 있습니다. 그때까지 여기에 보관됩니다.') + ' 지니고 있는 동안 알 품기로 경험치 +' + Math.round(R.EGG_HOLD_EACH * 100) + '%(' + R.EGG_HOLD_MAX + '개까지).', acts: (g3 && !P.fam.egg ? B('do', 'egg', null, '바로 부화', true) : '') + B('goto', 'work', 'fam', '부화기로') });
+    if (P.fam.eggs > 0) out.push({ k: 'egg', name: '환수의 알', n: P.fam.eggs, desc: (g3 ? '환수 사역장의 부화기에서 마나로 부화시켜 사역마로 키웁니다.' : R.FAM_OPEN_TEXT + '부터 환수 사역장에서 부화할 수 있습니다. 그때까지 여기에 보관됩니다.') + ' 지니고 있는 동안 알 품기로 경험치 +' + Math.round(R.EGG_HOLD_EACH * 100) + '%(' + R.EGG_HOLD_MAX + '개까지).', acts: (g3 && !P.fam.egg ? invEggBtn(P) : '') + B('goto', 'work', 'fam', '부화기로') });
     if (P.wb.tickets + (P.wb.extra || 0) > 0) out.push({ k: 'ticket', name: '토벌 도전권', n: P.wb.tickets + (P.wb.extra || 0), desc: '충전 도전권 ' + P.wb.tickets + ' / ' + R.K.WB_TICKET_MAX + (P.wb.extra > 0 ? ' · 추가 도전권 ' + P.wb.extra + '장 (이번 주 ' + R.wbExtraLeft(P, now()) + '번 더 사용 가능)' : '') + '. 월드 보스에 한 번 도전할 때 1장씩 사용합니다. 충전 도전권은 8시간마다 3장까지 차고, 매점 · 우편으로 받은 추가 도전권은 충전 도전권을 다 사용한 뒤 한 주에 ' + R.K.WB_EXTRA_USE + '번까지 사용할 수 있으며 남은 것은 다음 주로 넘어갑니다.', acts: B('goto', 'world', null, '월드 보스로', true) });
     if (tk.respec > 0) out.push({ k: 'respec', name: '망각의 차', n: tk.respec, desc: '마시면 분배한 능력치 포인트를 모두 돌려받고 자동 분배가 꺼집니다.', acts: B('respecuse', null, null, S.confirm.rsp > Date.now() ? '한 번 더 누르면 마십니다' : '바로 마시기', true) + B('goto', 'gear', 'alloc', '능력치 칸으로') });
     D.POTIONS.forEach(function (p) { if (P.shelf[p.id] > 0) out.push({ k: 'pot:' + p.id, name: p.name, n: P.shelf[p.id], desc: p.desc, dot: p.color, acts: B('do', 'drink', p.id, '바로 마시기', true) + B('goto', 'alch', '', '연금 공방으로') }); });
@@ -5025,7 +5034,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102154;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102175;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
