@@ -2110,7 +2110,7 @@ routes['GET /api/admin/growth'] = (req, res) => {
   const u = new URL(req.url, 'http://x'), days = Math.max(1, Math.min(400, Number(u.searchParams.get('days')) || 30));
   if (u.searchParams.get('now') === '1') growthSnap(true);
   const from = kstDay(Math.floor(Date.now() / 1000) - (days - 1) * 86400), rows = dbx.q.growthFrom.all(from);
-  const cols = ['d', 'house', 'cls', 'lvl', 'power', 'grade', 'stage', 'ctM', 'ctK', 'cup', 'act'].concat(GROWTH_ST), anon = (id) => crypto.createHash('sha256').update('growth:' + id).digest('hex').slice(0, 10);
+  const cols = ['d', 'house', 'cls', 'lvl', 'power', 'grade', 'stage', 'ctM', 'ctK', 'cup', 'act'].concat(GROWTH_ST, GROWTH_GEAR), anon = (id) => crypto.createHash('sha256').update('growth:' + id).digest('hex').slice(0, 10);
   const lines = [['date', 'student'].concat(cols).join(',')];
   rows.forEach((r) => { let o = {}; try { o = JSON.parse(r.data); } catch (e) { } lines.push([String(r.day).replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3'), anon(r.pid)].concat(cols.map((k) => o[k] == null ? '' : String(o[k]).replace(/[,\n]/g, ' '))).join(',')); });
   send(req, res, 200, { csv: lines.join('\n'), rows: rows.length, days: dbx.q.growthDays.all().slice(0, days) });
@@ -2538,6 +2538,22 @@ server.requestTimeout = 30000;
 /* ───────── 주기 작업 ───────── */
 // 성장 스냅샷: 한국 날짜가 바뀌면(서버를 켤 때 오늘 것이 없어도) 학생마다 한 줄. 정지 · 게스트 · 초기화로 남은 캐릭터는 뺀다
 const kstDay = (t) => { const d = new Date(t * 1000 + 9 * 3600000); return d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate(); };
+// 성장 기록 · 장비: 칸마다 장비 레벨 · 등급 · 강화, 휘장, 전투력 구성(장비 몫), 과목 레벨 합, 능력치 분배 (2026-10-21부터 쌓인다)
+const GROWTH_SLOTS = ['staff', 'robe', 'hat', 'charm', 'tome'];
+const GROWTH_GEAR = [].concat(...GROWTH_SLOTS.map((s) => [s + 'Lv', s + 'R', s + 'Enh'])).concat(['gearLv', 'powNow', 'powNoGear', 'gearPct', 'bdgGem', 'bdgLv', 'bdgQ', 'subjSum']).concat(R.STATS.map((k) => 'al_' + k));
+function growthGear(P, now) {
+  const o = {}, eq = P.eq || {}; let sum = 0, n = 0;
+  GROWTH_SLOTS.forEach((s) => { const it = eq[s]; if (it) { o[s + 'Lv'] = it.ilvl; o[s + 'R'] = it.r; o[s + 'Enh'] = it.enh || 0; sum += it.ilvl; n++; } });
+  o.gearLv = n ? Math.round(sum / n * 10) / 10 : 0;
+  try {   // 장비 몫: 장비를 모두 뺀 전투력과 비교 (P를 건드리지 않게 얕은 복사)
+    const W = world.ctx(now), t = Math.min(now, P.at || now), full = R.calc(P, W, t).power, bare = R.calc(Object.assign({}, P, { eq: {} }), W, t).power;
+    o.powNow = Math.round(full); o.powNoGear = Math.round(bare); o.gearPct = full > 0 ? Math.round((1 - bare / full) * 1000) / 10 : 0;
+  } catch (e) { }
+  const bw = R.badgeWorn(P); if (bw) { o.bdgGem = bw.gem; o.bdgLv = bw.lv; o.bdgQ = Math.round((bw.q || 1) * 1000) / 1000; }
+  o.subjSum = Object.keys(P.subj || {}).reduce((a, k) => a + ((P.subj[k] || {}).lv || 0), 0);
+  R.STATS.forEach((k) => { o['al_' + k] = (P.alloc || {})[k] || 0; });
+  return o;
+}
 const GROWTH_ST = ['kills', 'lecHours', 'lecJobs', 'expJobs', 'bosses', 'bossTries', 'researchDone', 'brews', 'dispatches', 'tasksDone', 'duelWins', 'wbAttacks', 'goldTotal', 'manaTotal', 'famKinds', 'epicFound', 'legendFound', 'maxEnh'];
 function growthSnap(force) {
   const real = Math.floor(Date.now() / 1000), day = kstDay(real);
@@ -2550,6 +2566,7 @@ function growthSnap(force) {
       const st = P.st || {}, o = { d: Math.floor((real - r.created) / 86400), house: r.house, cls: P.cls || '', lvl: P.lvl || r.lvl, power: Math.round(r.power), grade: P.grade || r.grade, stage: st.maxStageAll || 0,
         ctM: st.twM || 0, ctK: st.twK || 0, cup: Math.round((P.wk && P.wk.cup) || 0), act: real - r.last_seen < 86400 ? 1 : 0 };
       GROWTH_ST.forEach((k) => { o[k] = Math.round(st[k] || 0); });
+      Object.assign(o, growthGear(P, nowSec()));
       dbx.q.growthPut.run(day, r.id, JSON.stringify(o)); n++;
     });
     dbx.kvSet('growthDay', day);
