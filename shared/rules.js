@@ -939,7 +939,7 @@
     if (it.r === 3) P.st.epicFound++;
     if (it.r === 4) { P.st.legendFound++; log(P, t, '전설 장비 획득: ' + it.name + '!', 'legend'); }
     else if (it.r === 3) log(P, t, '영웅 장비 획득: ' + it.name, 'epic');
-    if (P.opt.autoEquip) {
+    if (P.opt.autoEquip && R.canWear(P, it)) {
       var cur = P.eq[it.slot];
       if (!cur || (!cur.lock && R.powerWith(P, it) > calc(P, null).power * 1.0001)) {
         if (cur) storeOrSell(P, cur, true);
@@ -949,6 +949,8 @@
     return storeOrSell(P, it, false);
   }
   R.gainItem = gainItem; R.MAILQ_MAX = 100;
+  // 착용 제한: 내 레벨 이하 장비만 장착할 수 있다 (이미 장착 중인 장비는 그대로 둔다)
+  R.canWear = function (P, it) { return !!it && (it.ilvl || 1) <= (P.lvl || 1); };
   function storeOrSell(P, it, wasEq) {
     var bag = calc(P, null).bag;
     if (!wasEq && P.rs.sorter && P.autoSell >= 0 && it.r <= P.autoSell && !it.lock) { if (P.autoDis) { dismantleGive(P, it); return 'dis'; } addGold(P, R.sellPrice(it)); return 'sold'; }
@@ -1830,6 +1832,7 @@
   };
   A.equip = function (P, W, now, a) {
     var u = str(a.u), i = P.inv.findIndex(function (x) { return x.u === u; }); if (i < 0) err('가방에 없는 장비입니다');
+    if (!R.canWear(P, P.inv[i])) err('레벨 ' + P.inv[i].ilvl + '부터 장착할 수 있습니다');
     var it = P.inv.splice(i, 1)[0], cur = P.eq[it.slot]; P.eq[it.slot] = it; if (cur) P.inv.push(cur); return { ok: true };
   };
   // 장비 프리셋 3칸: 지금 장착한 장비를 저장해 두었다가 한 번에 바꿔 낀다 (가방에 없으면 그 칸은 그대로)
@@ -1840,13 +1843,14 @@
     if (op === 'clear') { sets[i] = null; return { cleared: i }; }
     if (op !== 'load') err('잘못된 요청');
     var st = sets[i]; if (!st) err('저장된 프리셋이 없습니다');
-    var moved = 0, miss = 0;
+    var moved = 0, miss = 0, low = 0;
     D.SLOTS.forEach(function (sl) {
       var u = st.eq[sl.id]; if (!u || (P.eq[sl.id] && P.eq[sl.id].u === u)) return;
       var k = P.inv.findIndex(function (x) { return x.u === u; }); if (k < 0) { miss++; return; }
+      if (!R.canWear(P, P.inv[k])) { low++; return; }   // 레벨이 모자라는 장비는 그 칸을 그대로 둔다
       var it = P.inv.splice(k, 1)[0], cur = P.eq[sl.id]; P.eq[sl.id] = it; if (cur) P.inv.push(cur); moved++;
     });
-    return { moved: moved, miss: miss };
+    return { moved: moved, miss: miss, low: low };
   };
   A.unequip = function (P, W, now, a) {
     var s = str(a.slot); if (!SLOT[s] || !P.eq[s]) err('장착한 장비가 없습니다');

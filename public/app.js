@@ -1817,8 +1817,8 @@
       '<div class="filters" style="margin:8px 0">' + [['all', '전체']].concat(D.SLOTS.map(function (s) { return [s.id, s.name]; })).map(function (f) { return '<button class="btn sm ghost' + (S.invF === f[0] ? ' on' : '') + '" data-act="invf" data-a="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '</div>';
     if (!list.length) h += '<div class="empty">가방이 비어 있습니다. 원정에서 장비를 가져옵니다.</div>';
     else h += '<div class="inv">' + list.map(function (it) {
-      var up = R.powerWith(P, it) - c.power;
-      return '<button class="itm rb' + it.r + (S.sel === it.u ? ' sel' : '') + '" data-act="sel" data-a="' + it.u + '"><span class="in" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</span><span class="il">' + R.slotName(it) + ' · Lv ' + it.ilvl + presetTag(it.u) + '</span>' + (up > 0 ? '<span class="up">▲</span>' : '') + (it.lock ? '<span class="lk">잠금</span>' : '') + '</button>' + (S.sel === it.u ? '<div class="invdetail">' + detailCard() + '</div>' : '');
+      var wr = R.canWear(P, it), up = wr ? R.powerWith(P, it) - c.power : 0;
+      return '<button class="itm rb' + it.r + (wr ? '' : ' nowear') + (S.sel === it.u ? ' sel' : '') + '" data-act="sel" data-a="' + it.u + '"><span class="in" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</span><span class="il">' + R.slotName(it) + ' · Lv ' + it.ilvl + presetTag(it.u) + '</span>' + (up > 0 ? '<span class="up">▲</span>' : '') + (wr ? '' : '<span class="nw" title="레벨 ' + it.ilvl + '부터 장착할 수 있습니다">Lv ' + it.ilvl + ' 필요</span>') + (it.lock ? '<span class="lk">잠금</span>' : '') + '</button>' + (S.sel === it.u ? '<div class="invdetail">' + detailCard() + '</div>' : '');
     }).join('') + '</div>';
     h += '<hr class="sep"><div class="row small"><span class="muted">일괄 판매(잠금 제외)</span>' + D.RARITY.slice(0, 4).map(function (r) { return '<button class="btn sm ghost rk rk' + r.id + '" data-act="bulkask" data-a="sellBelow" data-b="' + r.id + '">' + r.name + ' 이하</button>'; }).join('') + '</div>' +
       '<div class="row small" style="margin-top:6px"><span class="muted">일괄 분해(잠금 제외)</span>' + D.RARITY.slice(0, 4).map(function (r) { return '<button class="btn sm ghost rk rk' + r.id + '" data-act="bulkask" data-a="dismantleBelow" data-b="' + r.id + '">' + r.name + ' 이하</button>'; }).join('') + '</div><p class="tiny faint" style="margin-top:4px">마석 <b class="num">' + fmt(P.res.stone) + '</b> · ' + dotImg('dust', 14) + ' 마석가루 <b class="num">' + fmt(P.res.dust || 0) + '</b> — 분해하면 ' + CUR + ' 대신 마석과 마석가루를 얻고, 가루는 재련에 사용합니다.</p>';
@@ -1934,7 +1934,7 @@
     var h = '<div class="card detail hl ' + (eqd ? 'eqsel' : 'bagsel') + '"><div class="tiny" style="color:' + rcol(it.r) + '">' + D.RARITY[it.r].name + ' ' + R.slotName(it) + ' · Lv ' + it.ilvl + (eqd ? ' · 장착 중' : '') + '</div><div class="nm" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</div><div style="margin-top:8px">' + statLines(it) + '</div>';
     if (!eqd) h += '<div class="small" style="margin-top:8px">장착 시 전투력 <b class="num ' + (delta >= 0 ? 'good' : 'bad') + '">' + (delta >= 0 ? '+' : '') + fmt(delta) + '</b></div>' + cmpLine(it, P.eq[it.slot]);
     h += '<hr class="sep"><div class="row small"><span class="muted">강화 +' + it.enh + ' → +' + (it.enh + 1) + '</span><span class="spacer"></span>' + (it.enh >= R.ENH_MAX ? '<span class="tag br">최대 강화</span>' : '<span>성공 확률 <b class="num">' + Math.round(ch * 100) + '%</b></span>') + '</div>' + enhPreview(it, eqd) + ownLine(P) + '<div class="row" style="margin-top:10px">';
-    h += eqd ? '<button class="btn sm" data-act="do" data-a="unequip" data-b="' + it.slot + '">해제</button>' : '<button class="btn sm primary" data-act="do" data-a="equip" data-b="' + it.u + '">장착</button>';
+    h += eqd ? '<button class="btn sm" data-act="do" data-a="unequip" data-b="' + it.slot + '">해제</button>' : R.canWear(P, it) ? '<button class="btn sm primary" data-act="do" data-a="equip" data-b="' + it.u + '">장착</button>' : '<button class="btn sm" disabled title="내 레벨 이하 장비만 장착할 수 있습니다">레벨 ' + it.ilvl + '부터 장착 가능</button>';
     if (it.enh < R.ENH_MAX && !it.lock) {
       var okc = P.res.gold >= cost.gold && P.res.stone >= cost.stone;
       h += '<button class="btn sm" data-act="enh" data-a="' + it.u + '"' + (okc ? '' : why(P.res.gold < cost.gold ? CUR + '가 부족합니다' : '마석이 부족합니다')) + '>강화 <span class="cost">' + fmt(cost.gold) + ' ' + CUR + ' · 마석 ' + cost.stone + '</span></button><button class="btn sm ghost" data-act="enh" data-a="' + it.u + '" data-b="until"' + (okc ? '' : why(P.res.gold < cost.gold ? CUR + '가 부족합니다' : '마석이 부족합니다')) + '>성공할 때까지</button>';
@@ -1977,7 +1977,7 @@
     S.confirm[k] = 0; act('gearSet', { op: 'save', i: +i }).then(function (r) { if (r) toast('프리셋 ' + (+i + 1) + '에 저장했습니다', '', 1600); gsRedraw(); });
   };
   ACT.gsclear = function (i) { act('gearSet', { op: 'clear', i: +i }).then(function (r) { if (r) toast('프리셋 ' + (+i + 1) + '을 비웠습니다', '', 1400); gsRedraw(); }); };
-  ACT.gsload = function (i) { act('gearSet', { op: 'load', i: +i }).then(function (r) { if (r) toast('프리셋 ' + (+i + 1) + ' 장착', r.moved + '칸을 바꿨습니다' + (r.miss ? ' · 가방에 없는 장비 ' + r.miss + '개는 그대로 두었습니다' : ''), 2400); render(); }); };
+  ACT.gsload = function (i) { act('gearSet', { op: 'load', i: +i }).then(function (r) { if (r) toast('프리셋 ' + (+i + 1) + ' 장착', r.moved + '칸을 바꿨습니다' + (r.miss ? ' · 가방에 없는 장비 ' + r.miss + '개는 그대로 두었습니다' : '') + (r.low ? ' · 레벨이 모자라는 장비 ' + r.low + '개는 장착하지 않았습니다' : ''), 2400); render(); }); };
   // 일괄 판매 · 분해 확인 (다시 보지 않기 · 설정에서 다시 켤 수 있음)
   ACT.bulkask = function (type, r) {
     if (S.P.opt.bulkAsk === false) { ACT['do'](type, r); return; }
@@ -4887,7 +4887,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102130;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102131;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

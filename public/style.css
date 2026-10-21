@@ -273,6 +273,8 @@ main { min-width: 0; container-type: inline-size; container-name: page; }
 .itm .in { font-size: 12.5px; line-height: 1.3; overflow-wrap: anywhere; }
 .itm .il { font-size: 11px; color: var(--faint); }
 .itm .up { position: absolute; right: 6px; top: 6px; font-size: 11px; color: var(--verd); font-family: var(--f-num); }
+.itm .nw { display: block; font-size: 10.5px; color: var(--rose); font-family: var(--f-num); }
+.itm.nowear .in { opacity: .6; }
 .itm .lk { position: absolute; right: 6px; bottom: 5px; font-size: 10px; color: var(--brass); }
 .itm.rb0 { border-left: 3px solid var(--r0); } .itm.rb1 { border-left: 3px solid var(--r1); } .itm.rb2 { border-left: 3px solid var(--r2); } .itm.rb3 { border-left: 3px solid var(--r3); } .itm.rb4 { border-left: 3px solid var(--r4); box-shadow: 0 0 12px rgba(242, 184, 75, .12); }
 .detail .nm { font-family: var(--f-display); font-size: 17px; }
