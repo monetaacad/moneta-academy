@@ -2076,7 +2076,7 @@
     return '<div class="bdgups">' +
       '<div class="bdgup"><div class="bdgut"><b class="small">닦기</b><span class="tiny faint">마석가루로 별빛을 채워 레벨을 올립니다</span></div>' + (full ? '<span class="tag br">완성</span>' : lk ? lkTag : '<span class="row" style="gap:8px;flex-wrap:nowrap"><span class="bdgdeal"><span class="tiny"><span class="faint">얻음</span> <b class="gold">별빛 +' + R.badgePolishXp(b) + '</b></span><span class="tiny"><span class="faint">소모</span> ' + fmt(pc.dust) + ' 마석가루 <span class="faint">(보유 ' + fmt(P.res.dust || 0) + ')</span> · ' + fmt(pc.gold) + ' ' + CUR + '</span></span><button class="btn sm primary" data-act="bpolish" data-a="' + b.u + '"' + (can ? '' : ' disabled') + '>닦기</button></span>') + '</div>' +
       '<div class="bdgup"><div class="bdgut"><b class="small">' + gterm('광내기') + '</b><span class="tiny faint">별조각으로 보석 품질을 올려 대표 효과를 키웁니다 · 지금 ' + (Math.round(q * 1000) / 10) + '% / 최대 ' + Math.round(R.BADGE_Q_MAX * 100) + '%</span></div>' + (qmax ? '<span class="tag br">최고 품질</span>' : lk ? lkTag : '<button class="btn sm" data-act="bshine" data-a="' + b.u + '"' + (sh >= sc ? '' : ' disabled') + '>품질 +' + (R.BADGE_Q_STEP * 100) + '% <span class="cost">' + sc + ' 별조각</span></button>') + '</div>' +
-      ((b.aff || []).length ? '<div class="bdgup"><div class="bdgut"><b class="small">' + gterm('세공 다시 새기기', '세공') + '</b><span class="tiny faint">별조각으로 선택한 세공 한 줄을 새로 굴립니다 (이름의 앞말은 첫 줄을 따릅니다)</span></div><span class="row bdgrc"><select id="brc-line" aria-label="다시 새길 세공">' + b.aff.map(function (a, i) { return '<option value="' + i + '"' + (i === li ? ' selected' : '') + '>' + (i + 1) + '. ' + (D.BONUS_NAMES[a.id] || a.id) + ' +' + pct(a.v) + '</option>'; }).join('') + '</select>' + (lk ? lkTag : '<button class="btn sm' + (armed ? ' primary' : '') + '" data-act="brecut" data-a="' + b.u + '"' + (sh >= rc ? '' : ' disabled') + '>' + (armed ? '한 번 더 누르면 새깁니다' : '새기기') + ' <span class="cost">' + rc + ' 별조각</span></button>') + '</span></div>' : '') +
+      ((b.aff || []).length ? '<div class="bdgup"><div class="bdgut"><b class="small">' + gterm('세공 다시 새기기', '세공') + '</b><span class="tiny faint">별조각으로 선택한 세공 한 줄을 새로 굴립니다 (다른 줄 · 대표 효과와 같은 옵션은 나오지 않음 · 이름의 앞말은 첫 줄을 따릅니다)</span></div><span class="row bdgrc"><select id="brc-line" aria-label="다시 새길 세공">' + b.aff.map(function (a, i) { return '<option value="' + i + '"' + (i === li ? ' selected' : '') + '>' + (i + 1) + '. ' + (D.BONUS_NAMES[a.id] || a.id) + ' +' + pct(a.v) + '</option>'; }).join('') + '</select>' + (lk ? lkTag : '<button class="btn sm' + (armed ? ' primary' : '') + '" data-act="brecut" data-a="' + b.u + '"' + (sh >= rc ? '' : ' disabled') + '>' + (armed ? '한 번 더 누르면 새깁니다' : '새기기') + ' <span class="cost">' + rc + ' 별조각</span></button>') + '</span></div>' : '') +
       '</div>';
   }
   ACT.bshine = function (u) { act('badgeShine', { u: u }).then(function (r) { if (r) { Snd.play('enh'); toast('광을 냈습니다', r.name + ' · 품질 ' + (Math.round(r.q * 1000) / 10) + '% · 별조각 -' + r.cost, 2200); } render(); }); };
@@ -4128,7 +4128,7 @@
   function affList(it) { return (it.aff || []).map(function (a) { var nm = D.BONUS_NAMES[a.id] || D.STAT_NAMES[a.id] || a.id, val = (a.id === 'atk' || a.id === 'hp' || a.id === 'def' || D.STAT_NAMES[a.id]) ? '+' + fmt(a.v) : '+' + pct(a.v); return '<div class="statline"><span>' + nm + '</span><span class="d">' + val + '</span></div>'; }).join('') || '<p class="tiny faint">옵션 없음</p>'; }
   ACT.reforge = function (u) {
     var it = R.findItem(S.P, u); if (!it) return; var rf = R.reforgeCost(it);
-    modal(mhead('재련', esc(it.name)) + '<p class="small"><b class="bad">지금 옵션은 사라지고</b> 새로 굴린 옵션으로 바뀝니다. 되돌릴 수 없습니다. 등급 · 레벨 · 강화 · 기본 능력치는 그대로입니다.</p>' +
+    modal(mhead('재련', esc(it.name)) + '<p class="small"><b class="bad">지금 옵션은 사라지고</b> 새로 굴린 옵션으로 바뀝니다. 되돌릴 수 없습니다. 등급 · 레벨 · 강화 · 기본 능력치는 그대로이며, 한 장비에 같은 옵션이 두 줄 붙지 않습니다.</p>' +
       '<div class="section-t" style="margin-top:10px">사라질 옵션</div><div class="rfold">' + affList(it) + '</div>' +
       '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn ghost" data-act="modal-close">취소</button><button class="btn primary" data-act="reforge-go" data-a="' + esc(u) + '">재련하기 <span class="cost">' + fmt(rf) + ' 마석가루</span></button></div>');
   };
@@ -5412,7 +5412,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102264;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102265;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
