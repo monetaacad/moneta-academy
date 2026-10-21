@@ -482,6 +482,7 @@ function open(dir) {
     mkAucBid: db.prepare(`UPDATE market SET bid = ?, bidder = ?, bidder_name = ?, bids = bids + 1, expires = ? WHERE id = ? AND status = 'open' AND auc = 1 AND bid = ? AND bidder = ?`),
     mkAucSold: db.prepare(`UPDATE market SET status = 'sold', buyer = ?, done_at = ?, price = ? WHERE id = ? AND status = 'open'`),
     mkAucEnded: db.prepare(`SELECT * FROM market WHERE status = 'open' AND auc = 1 AND expires <= ? LIMIT 200`),
+    mkReprice: db.prepare(`UPDATE market SET price = ? WHERE id = ? AND seller = ? AND status = 'open' AND auc = 0`),
     mkAucInit: db.prepare(`UPDATE market SET auc = 1, start_price = ? WHERE id = ?`),
     mkBidLog: db.prepare(`INSERT INTO market_bids (mid, pid, amount, t) VALUES (?, ?, ?, ?)`),
     mkMyBids: db.prepare(`SELECT m.*, COALESCE(p.name, m.seller_name) AS seller_name FROM market m LEFT JOIN players p ON p.id = m.seller WHERE m.auc = 1 AND m.id IN (SELECT mid FROM market_bids WHERE pid = ?) AND (m.status = 'open' OR m.done_at > ?) ORDER BY m.status = 'open' DESC, m.expires ASC LIMIT 30`),

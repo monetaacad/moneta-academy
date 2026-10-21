@@ -1204,6 +1204,16 @@ routes['POST /api/market'] = async (req, res) => {
     chat.pingAll('trade', mkTradeOut(Object.assign({}, r, { done_at: Math.floor(real) })));
     return send(req, res, 200, { ok: true, P: R.publicState(P), now });
   }
+  // 가격 수정: 판매 중인 고정가 물건만 (경매는 시작가 · 즉시 구매가를 바꿀 수 없다). 기한은 그대로
+  if (op === 'reprice') {
+    if (r.seller !== me) return fail(req, res, 403, '내 물건이 아닙니다');
+    if (r.auc) return fail(req, res, 400, '경매는 가격을 수정할 수 없습니다');
+    const price = Math.floor(Number(b.price)); if (!isFinite(price) || price < 1 || price > MK.MAX_PRICE) return fail(req, res, 400, '가격 확인 필요');
+    if (price === r.price) return fail(req, res, 400, '지금과 같은 가격입니다');
+    if (!dbx.q.mkReprice.run(price, id, me).changes) return fail(req, res, 409, '이미 팔렸거나 내려간 물건입니다');
+    R.log(P, now, '거래소: ' + r.name + (r.kind !== 'item' && r.kind !== 'badge' ? ' ' + r.qty + '개' : '') + ' 가격을 ' + R.fmt(r.price) + ' → ' + R.fmt(price) + ' ' + CUR + '로 수정했습니다', 'news'); store.markDirty(me);
+    return send(req, res, 200, { ok: true, P: R.publicState(P), now });
+  }
   if (op === 'bid') {
     if (!r.auc) return fail(req, res, 400, '경매 물건이 아닙니다');
     if (r.seller === me) return fail(req, res, 400, '내가 올린 경매에는 입찰할 수 없습니다');
