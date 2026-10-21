@@ -1325,6 +1325,8 @@ function towerLogOut(l) { return { t: l.t, name: l.name, f: l.f, win: l.win, pct
 function towerPlaying(st) { const l = st.log[st.log.length - 1], real = Date.now() / 1000; return l && l.sc && l.t + (l.d || 0) > real ? { name: l.name, f: l.f, left: Math.ceil(l.t + l.d - real) } : null; }
 function towerPing(party, data) { dbx.q.partyMembers.all(party).forEach((m) => chat.ping(m.id, 'tower', data)); }
 const towerBusy = new Set();
+// 별의 탑 운영 중지: 이 시각(실제 시간, 초)부터 도전을 막는다. 2026-10-22 00:00 KST. 환경변수 TOWER_CLOSE_AT=0이면 다시 연다
+const TOWER_CLOSE_AT = process.env.TOWER_CLOSE_AT != null ? +process.env.TOWER_CLOSE_AT || 0 : 1792594800;
 routes['GET /api/tower'] = (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
   if (limited('twg:' + me, 1, 10)) return fail(req, res, 429, '요청이 너무 잦습니다');
@@ -1332,6 +1334,7 @@ routes['GET /api/tower'] = (req, res) => {
 };
 routes['POST /api/tower'] = async (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
+  if (TOWER_CLOSE_AT && Date.now() / 1000 >= TOWER_CLOSE_AT) return fail(req, res, 403, '별의 탑은 현재 운영을 중지했습니다');
   if (store.isBanned(me)) return fail(req, res, 403, '이용이 정지된 계정입니다');
   if (limited('twp:' + me, 0.5, 4)) return fail(req, res, 429, '잠시 후 다시 시도');
   await readJson(req, 256);
