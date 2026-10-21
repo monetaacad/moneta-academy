@@ -823,7 +823,8 @@ var DATA = (function () {
     { id: 'retry', name: '쓰러져도 다시', stat: 'bossTries', n: 100, how: '보스 · 결투 도전 100번' },
     { id: 'raid30', name: '토벌대장', stat: 'wbKills', n: 30, how: '월드 보스 토벌 30번 참여' },
     { id: 'cup10', name: '대항전의 전설', stat: 'cupWins', n: 10, how: '기숙사 대항전 1위 10번' },
-    { id: 'alch300', name: '연금술사', stat: 'brews', n: 300, how: '물약 300병' },
+    { id: 'alch300', name: '연금술사', stat: 'brews', n: 200, how: '물약 200병' },   // id는 저장된 칭호와 맞추려고 그대로 둔다
+    { id: 'brew300', name: '마도학자', stat: 'brews', n: 300, how: '물약 300병' },
     { id: 'firefly3', name: '별빛 정원지기', stat: 'spirits', n: 300, how: '정령 300마리 풀어 주기' },
     { id: 'firefly10', name: '정령의 목소리', stat: 'spirits', n: 1000, how: '정령 1,000마리 풀어 주기' },
     { id: 'firefly30', name: '반딧불 숲의 주인', stat: 'spirits', n: 3000, how: '정령 3,000마리 풀어 주기' },
@@ -1090,6 +1091,7 @@ var DATA = (function () {
     { id: 'enh20', name: '신화의 대장장이', desc: '장비를 +20까지 강화', stat: 'maxEnh', n: 20, r: 80 },
     { id: 'brew10', name: '실습실 단골', desc: '물약 10개 양조', stat: 'brews', n: 10, r: 5 },
     { id: 'brew200', name: '연금술사', desc: '물약 200개 양조', stat: 'brews', n: 200, r: 25 },
+    { id: 'brew300', name: '마도학자', desc: '물약 300개 양조', stat: 'brews', n: 300, r: 35 },
     { id: 'fam3', name: '작은 동물원', desc: '사역마 3종 보유', stat: 'famKinds', n: 3, r: 8 },
     { id: 'fam8', name: '환수 사육사', desc: '사역마 8종 보유', stat: 'famKinds', n: 8, r: 25 },
     { id: 'fam12', name: '모든 생명의 친구', desc: '사역마 12종 모두 보유', stat: 'famKinds', n: 12, r: 60 },
