@@ -462,7 +462,7 @@ var DATA = (function () {
     { id: 'valor', name: '투지의 물약', unlock: 3, time: 1200, mana: 4000, mats: { dust: 4, moonherb: 4 }, dur: 7200, eff: { atkPct: 0.25 }, desc: '2시간 공격력 +25%', color: '#ff7a5a' },
     { id: 'guard', name: '수호의 물약', unlock: 4, time: 1200, mana: 4000, mats: { dust: 6, moonherb: 2 }, dur: 7200, eff: { hpPct: 0.25, defPct: 0.2 }, desc: '2시간 생명력 +25%, 방어력 +20%', color: '#8ad08a' },
     { id: 'gilded', name: '황금 물약', unlock: 6, time: 1800, mana: 12000, mats: { cog: 4, moonherb: 4 }, dur: 7200, eff: { goldPct: 0.4 }, desc: '2시간 ' + CUR + ' +40%', color: '#f2c84b' },
-    { id: 'sleep', name: '숙면의 차', unlock: 8, time: 3600, mana: 20000, mats: { moonherb: 8, crystal: 2 }, dur: 36000, eff: { dispPct: 0.4, manaPct: 0.3, offlineEff: 0.2 }, desc: '10시간 사역마 파견 보상 +40%, 마나 재생 +30%, 꿈길 보상 +20%', color: '#b8a8e8' },
+    { id: 'sleep', name: '숙면의 차', unlock: 8, time: 3600, mana: 20000, mats: { moonherb: 8, crystal: 2 }, dur: 36000, eff: { dispPct: 0.4, manaPct: 0.3, offlineEff: 0.2 }, desc: '사역마 파견 보상 +40%, 마나 재생 +30%, 꿈길 보상 +20%', color: '#b8a8e8' },
     { id: 'fortune', name: '행운의 물약', unlock: 10, time: 2400, mana: 30000, mats: { crystal: 4, moonherb: 6 }, dur: 7200, eff: { dropPct: 0.35, rarity: 0.3 }, desc: '2시간 전리품 확률 +35%, 등급 상승', color: '#c084fc' },
     { id: 'sage', name: '현자의 물약', unlock: 14, time: 3600, mana: 90000, mats: { ember: 4, crystal: 2 }, dur: 7200, eff: { xpPct: 0.6, knowPct: 0.4 }, desc: '2시간 경험치 +60%, 지식 +40%', color: '#e8e2d0' },
     { id: 'starlight', name: '별빛 영약', unlock: 20, time: 7200, mana: 400000, mats: { stardust: 4, voidink: 2 }, dur: 21600, eff: { atkPct: 0.2, hpPct: 0.2, goldPct: 0.2, knowPct: 0.2, lectureSpd: 0.2 }, desc: '6시간 공격력 · 생명력 · 아르크 · 지식 · 수업 효율 +20%', color: '#fff0a0' }
