@@ -1880,3 +1880,6 @@ mark.hl { color: inherit; background: linear-gradient(transparent 38%, color-mix
 @media (pointer: coarse) {
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea, select { font-size: max(16px, 1em) !important; }
 }
+/* 과목 카드: 이름은 낱말 단위로만 줄바꿈 (한 글자씩 세로로 쌓이지 않게), 복습 효과는 이름 아래 줄 */
+.subj .hd h3 { word-break: keep-all; min-width: 0; }
+.subj .revline { margin: 2px 0 4px; }
