@@ -428,8 +428,19 @@
     else S.chat.below += q.length;
     updNewBtn();
   }
-  function updNewBtn() { var b = $('#chatlog .chatnew'); if (!b) return; b.hidden = !S.chat.below; b.textContent = '새 글 ' + S.chat.below + '개 ↓'; }
-  ACT.chatbottom = function () { var log = $('#chatlog'); if (log) log.scrollTo({ top: log.scrollHeight, behavior: 'smooth' }); S.chat.stick = true; S.chat.below = 0; updNewBtn(); };
+  // 「최신 글로」 단추: 글 목록을 위로 200px 넘게 올려 보고 있거나, 올려 보는 사이 새 글이 오면 목록 하단에 뜬다 (채팅 탭 · 1:1 모두)
+  function curLog() { return $('#chatlog') || $('#dmlog'); }
+  function logAnc(log) { var y = log.scrollTop, a = [].find.call(log.querySelectorAll('[data-id]'), function (e) { return e.offsetTop + e.offsetHeight > y; }); return { top: y, id: a ? a.getAttribute('data-id') : null, off: a ? a.offsetTop - y : 0 }; }   // 보던 글 기준으로 기억 (윗부분 높이가 바뀌어도 같은 글이 같은 자리에)
+  function updNewBtn() {
+    var log = curLog(), b = log && log.querySelector('.chatnew'); if (!b) return;
+    var far = log.scrollHeight - log.scrollTop - log.clientHeight > 200;
+    b.hidden = S.chat.toBottom || !(S.chat.below || far); b.textContent = S.chat.below ? '↓ 새 글 ' + (S.chat.below > 99 ? '99+' : S.chat.below) + '개' : '↓ 최신 글로';
+  }
+  ACT.chatbottom = function () {
+    var log = curLog(); S.chat.stick = true; S.chat.below = 0; S.chat.toBottom = true; clearTimeout(S.chat.tbT);
+    S.chat.tbT = setTimeout(function () { S.chat.toBottom = false; var l = curLog(); if (l && S.chat.stick) l.scrollTop = l.scrollHeight; updNewBtn(); }, 900);
+    if (log) log.scrollTo({ top: log.scrollHeight, behavior: 'smooth' }); updNewBtn();
+  };
   document.addEventListener('visibilitychange', function () { if (S.P) wantWatch(); });
   function isOp() { return !!S.chat.op; }
   function chans() { var a = ['notice', 'recruit', 'rp', 'world']; if (S.party) a.push('party'); if (S.exr) a.push('exr'); ['guild', 'house', 'cls'].forEach(function (g) { if (gOn(g)) a.push(GTAB[g][0], GTAB[g][1]); }); a.push('dm'); a = chSort(a, function (k) { return GCH[k] || k; }); var hid = (typeof PREF !== 'undefined' && PREF.hideCh) || {}, v = a.filter(function (k) { return !hid[GCH[k] || k]; }); return v.length ? v : ['world']; }
@@ -497,6 +508,7 @@
     if (chans().indexOf(S.chat.ch) < 0) S.chat.ch = chans().indexOf('world') >= 0 ? 'world' : chans()[0];
     if (GCH[S.chat.ch]) S.chat.gsub[GCH[S.chat.ch]] = S.chat.ch;
     var c = S.chat, ch = c.ch, open = dockOpen(), info = CH_INFO[ch];
+    var ol = curLog(), okey = ch === 'dm' ? 'dm:' + S.dm.peer : ch; c.keepTop = ol && !c.stick && ol.getAttribute('data-k') === okey ? logAnc(ol) : null;   // 올려 보던 중 다시 그리면(모집 상태 갱신 등) 그 자리를 지킨다 (예전에는 맨 위로 튀었다)
     if (ch === 'recruit' && open && Date.now() - S.recAt > 15000) setTimeout(recLoad, 0);
     logQ = []; if (logRaf) { cancelAnimationFrame(logRaf); logRaf = 0; } if (c.stick) c.below = 0;
     wantWatch();
@@ -517,7 +529,7 @@
       return x + msgHtml(m);
     }).join('');
     if (ch === 'notice') pinList().forEach(function (pn) { var k = pinKey(pn), pf = pinFolded(k); h += '<div class="cpin' + (pf ? ' fold' : '') + '"' + (pf ? ' data-act="pinfold" data-a="' + esc(k) + '" title="펼쳐 보기"' : '') + '><span class="stag">고정 공지</span><mark class="hl">' + chatText(pn.text) + '</mark><button class="cpin-t" data-act="pinfold" data-a="' + esc(k) + '">' + (pf ? '펼치기' : '접기') + '</button></div>'; });   // 공지 탭 상단 고정 (경매 · 의식 소식이 쌓여도 묻히지 않게)
-    h += '<div id="chatlog" class="chatlog ch-' + ch + '" aria-live="polite">' +
+    h += '<div id="chatlog" class="chatlog ch-' + ch + '" data-k="' + ch + '" aria-live="polite">' +
       (c.more[ch] && API.mode === 'server' && c.msgs[ch].length >= 80 ? '<button class="btn sm ghost chatmore" data-act="chatmore">이전 대화 더 보기</button>' : '') +
       '<div class="chatdesc"><div class="chatmeta tiny"><span class="ondot" aria-hidden="true"></span><span class="gold" data-l="chatonline"></span>' + (c.loading === ch ? '<span class="faint">새 글 불러오는 중…</span>' : '') + (ch === 'world' && c.slow.world ? '<span class="tag br">슬로우 모드 ' + c.slow.world + '초</span>' : '') + (ch === 'world' && isOp() ? '<button class="btn sm ghost" data-act="slowset" style="padding:0 7px">슬로우 모드 설정</button>' : '') + '</div>' +
       (ch === 'hrp' ? houseRoom(S.chHouse) : '') + '<p class="tiny faint">' + info.desc + (API.mode === 'local' && ch !== 'notice' ? '<br><span class="gold">데모: 같은 페이지를 연 사람끼리만 보이고, 기록은 이 브라우저에만 남습니다.</span>' : '') + '</p></div>' +
@@ -596,12 +608,20 @@
     return '<div class="cm' + (me ? ' mine' : '') + '" data-id="' + m.id + '"><span class="ct num">' + time + '</span><span class="cx">' + name + ' <span class="cb">' + chatText(m.text) + '</span></span></div>';
   }
   function chatAfterRender() {
-    var log = $('#chatlog'), inp = $('#chatinput');
+    var log = curLog(), inp = $('#chatinput');
     if (log) {
-      var nl = log.querySelector('.newline');
-      if (nl && !S.chat.stuckOnce) { log.scrollTop = nl.offsetTop - 40; S.chat.stick = false; S.chat.stuckOnce = true; }
-      else if (S.chat.stick) log.scrollTop = log.scrollHeight;
-      log.addEventListener('scroll', function () { S.chat.stick = log.scrollHeight - log.scrollTop - log.clientHeight < 40; if (S.chat.stick && S.chat.below) { S.chat.below = 0; updNewBtn(); } });
+      // 탭을 열면 항상 최신 글(하단)부터. 「여기부터 새 글」 줄은 그어 두되 그 자리로 끌어올리지 않는다
+      // (예전에는 안 읽은 첫 글로 올려 보내서 글이 많이 쌓인 모집 · 월드 탭이 맨 위 근처에서 열렸다)
+      if (S.chat.stick) log.scrollTop = log.scrollHeight;
+      else if (S.chat.keepTop) { var k = S.chat.keepTop, ae = k.id != null && log.querySelector('[data-id="' + k.id + '"]'); log.scrollTop = ae ? ae.offsetTop - k.off : k.top; }
+      S.chat.keepTop = null;
+      log.addEventListener('scroll', function () {
+        var d = log.scrollHeight - log.scrollTop - log.clientHeight;
+        if (S.chat.toBottom) { if (d < 4) { S.chat.toBottom = false; clearTimeout(S.chat.tbT); } else return; }
+        S.chat.stick = d < 40; if (S.chat.stick) S.chat.below = 0; updNewBtn();
+      }, { passive: true });
+      // 모바일에서 채팅창이 열리며 높이가 바뀌거나 자판이 올라와도 하단에 붙어 있게
+      if (S.chat.ro) S.chat.ro.disconnect(); if (window.ResizeObserver) { S.chat.ro = new ResizeObserver(function () { if (S.chat.stick && log.isConnected) log.scrollTop = log.scrollHeight; updNewBtn(); }); S.chat.ro.observe(log); }
       updNewBtn();
     }
     if (!inp) return;
@@ -676,7 +696,7 @@
         else { S.dm.threads.unshift({ peer: m.peer, last: m.id, t: m.t, from: m.from, text: m.text.slice(0, 60), name: m.from === S.P.id ? S.dm.peerName : m.name, online: true, friend: true }); }
         var viewing = dockOpen() && S.chat.ch === 'dm' && S.dm.peer === m.peer;
         if (m.from !== S.P.id && !(viewing && !document.hidden && document.hasFocus())) chatAlert('dm', m.name);
-        if (viewing) { var log = $('#dmlog'); if (log) { log.insertAdjacentHTML('beforeend', dmMsgHtml(m)); log.scrollTop = log.scrollHeight; } markRead('dm'); }
+        if (viewing) { var log = $('#dmlog'); if (log) { var em = log.querySelector('.empty'); if (em) em.remove(); var nb = log.querySelector('.chatnew'), mine = m.from === S.P.id; if (nb) nb.insertAdjacentHTML('beforebegin', dmMsgHtml(m)); else log.insertAdjacentHTML('beforeend', dmMsgHtml(m)); if (S.chat.stick || mine) { log.scrollTop = log.scrollHeight; S.chat.below = 0; } else S.chat.below++; updNewBtn(); } markRead('dm'); }
         else { S.chat.unread.dm = countUnread('dm'); if (m.from !== S.P.id && !(dockOpen() && S.chat.ch === 'dm')) toast((m.name || '친구') + '의 1:1', m.text.slice(0, 60), 3500); if (dockOpen() && S.chat.ch === 'dm' && !S.dm.peer) renderDock(); }
         updateUnread();
       },
@@ -725,7 +745,7 @@
       var msgs = S.dm.msgs[S.dm.peer];
       return '<div class="dmhead"><button class="btn sm ghost" data-act="dmback">← 목록</button><b>' + esc(S.dm.peerName) + '</b><span class="spacer"></span>' + (S.dm.peer === 'staff' ? '<span class="tag br">운영진</span>' : '<button class="btn sm ghost" data-act="prof" data-a="' + esc(S.dm.peer) + '">정보</button>') + '</div>' +
         (S.dm.peer === 'staff' ? '<p class="tiny faint" style="margin:4px 10px 0">운영진과의 1:1 대화입니다. 답장은 운영진에게만 전달됩니다.</p>' : '') +
-        '<div id="dmlog" class="chatlog">' + (msgs ? (msgs.length ? msgs.map(dmMsgHtml).join('') : '<div class="empty">아직 메시지가 없습니다.</div>') : '<div class="empty">불러오는 중…</div>') + '</div>' + chatInput('dm');
+        '<div id="dmlog" class="chatlog" data-k="dm:' + esc(S.dm.peer) + '">' + (msgs ? (msgs.length ? msgs.map(dmMsgHtml).join('') : '<div class="empty">아직 메시지가 없습니다.</div>') : '<div class="empty">불러오는 중…</div>') + '<button class="chatnew" data-act="chatbottom" hidden></button></div>' + chatInput('dm');
     }
     var th = S.dm.threads, fr = S.dm.friends;
     var h = '<div class="chatlog"><p class="tiny faint chatdesc">' + CH_INFO.dm.desc + (API.mode === 'local' ? ' <span class="gold">데모에는 친구가 없어 사용할 수 없습니다.</span>' : '') + '</p>';
@@ -734,9 +754,9 @@
     else if (!fr && API.friends) API.friends().then(function (j) { S.dm.friends = j.friends || []; if (S.chat.ch === 'dm' && !S.dm.peer && dockOpen()) renderDock(); });
     return h + '</div>';
   }
-  function dmAfterRender() { var log = $('#dmlog'); if (log) log.scrollTop = log.scrollHeight; chatAfterRender(); }
+  function dmAfterRender() { chatAfterRender(); }
   ACT.dmopen = function (peer, name) {
-    S.chat.ch = 'dm'; S.dm.peer = peer; S.dm.peerName = name || '친구';
+    S.chat.ch = 'dm'; S.dm.peer = peer; S.dm.peerName = name || '친구'; S.chat.stick = true; S.chat.below = 0;
     if (!dockOpen()) { S.chat.open = true; try { localStorage.setItem('arc_dock', '1'); } catch (e) { } document.body.classList.add('dock-open'); }
     if (S.modal) closeModal();
     renderDock();
@@ -3930,12 +3950,12 @@
     if (GTAB[k]) k = S.chat.gsub[k] || GTAB[k][0];
     if (S.chat.ch === k && dockOpen() && !(k === 'dm' && S.dm.peer)) return;
     if (k === 'dm') { S.dm.peer = null; S.dm.friends = null; if (!S.dm.loaded) loadDmThreads(); }
-    S.divider[k] = null; S.chat.stuckOnce = false;
+    S.divider[k] = null; S.chat.below = 0;
     S.chat.ch = k; S.chat.stick = true; try { localStorage.setItem('arc_dockch', k); } catch (e) { }
     if (!dockOpen()) { S.chat.open = true; try { localStorage.setItem('arc_dock', '1'); } catch (e) { } document.body.classList.add('dock-open'); }
     renderDock(); var i = $('#chatinput'); if (i && window.innerWidth > 900) i.focus();
   };
-  ACT['dock-toggle'] = function () { S.chat.open = !dockOpen(); if (S.P && API.act && S.P.opt && !!S.P.opt.dockClosed === S.chat.open) { S.P.opt.dockClosed = !S.chat.open; API.act('opt', { k: 'dockClosed', v: !S.chat.open }); } S.chat.stick = true; S.divider[S.chat.ch] = null; S.chat.stuckOnce = false; try { localStorage.setItem('arc_dock', S.chat.open ? '1' : '0'); } catch (e) { } renderDock(); document.body.classList.toggle('dock-open', S.chat.open); };
+  ACT['dock-toggle'] = function () { S.chat.open = !dockOpen(); if (S.P && API.act && S.P.opt && !!S.P.opt.dockClosed === S.chat.open) { S.P.opt.dockClosed = !S.chat.open; API.act('opt', { k: 'dockClosed', v: !S.chat.open }); } S.chat.stick = true; S.divider[S.chat.ch] = null; try { localStorage.setItem('arc_dock', S.chat.open ? '1' : '0'); } catch (e) { } renderDock(); document.body.classList.toggle('dock-open', S.chat.open); };
   // 고른 글자를 *행동*으로 감싸거나, 커서 자리에 ** 를 넣는다
   ACT.chatact = function () {
     var i = $('#chatinput'); if (!i) return; var a = i.selectionStart, b = i.selectionEnd, v = i.value;
