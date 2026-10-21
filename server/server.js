@@ -1029,7 +1029,7 @@ function mkPaySeller(r, price, buyerName, now, how) {
   const SP = store.get(r.seller); if (!SP) return;
   const got = Math.floor(price * (1 - MK.FEE)), nm = r.name + (r.kind !== 'item' && r.kind !== 'badge' ? ' ' + r.qty + '개' : '');
   addNote(r.seller, 'market', '거래소에서 ' + R.josa(nm, '이', '가') + ' ' + (how || '팔렸습니다') + ' · ' + R.fmt(got) + ' ' + CUR + ' (' + buyerName + ' 님)', { view: 'market' });
-  R.advance(SP, world.ctx(now), now); SP.res.gold += got; SP.st.goldTotal = (SP.st.goldTotal || 0) + got;
+  R.advance(SP, world.ctx(now), now); SP.res.gold += got; SP.st.goldTotal = (SP.st.goldTotal || 0) + got; SP.st.mkSold = (SP.st.mkSold || 0) + 1;   // 칭호 「거래소 큰손」
   R.log(SP, now, '거래소: ' + nm + ' 판매 +' + R.fmt(got) + ' ' + CUR + ' (수수료 ' + Math.round(MK.FEE * 100) + '%)', 'good'); store.markDirty(r.seller);
 }
 // 마감된 경매 정리: 입찰이 있으면 최고 입찰자에게 넘기고(맡겨 둔 아르크로 값을 치른다), 없으면 판매자에게 돌려준다
@@ -1037,7 +1037,7 @@ function mkAucSettle(r, now) {
   const real = Math.floor(Date.now() / 1000), W = r.bidder ? store.get(r.bidder) : null;
   if (!W) { if (dbx.q.mkSetStatus.run('expired', '', real, r.id).changes) mkReturn(r, r.bidder ? '낙찰자를 찾을 수 없어 돌아왔습니다' : '입찰 없이 경매가 끝나 돌아왔습니다', now); return; }
   if (!dbx.q.mkAucSold.run(r.bidder, real, r.bid, r.id).changes) return;
-  R.advance(W, world.ctx(now), now); mkGive(W, r);
+  R.advance(W, world.ctx(now), now); mkGive(W, r); W.st.aucWon = (W.st.aucWon || 0) + 1;   // 칭호 「경매의 승자」
   R.log(W, now, '거래소 경매: ' + R.josa(r.name, '을', '를') + ' ' + R.fmt(r.bid) + ' ' + CUR + '에 낙찰받았습니다', 'good'); store.markDirty(r.bidder);
   addNote(r.bidder, 'market', '경매에서 ' + R.josa(r.name, '을', '를') + ' ' + R.fmt(r.bid) + ' ' + CUR + '에 낙찰받았습니다', { view: 'market' });
   try { push.direct(r.bidder, 'mkwon', '거래소 경매', R.josa(r.name, '을', '를') + ' ' + R.fmt(r.bid) + ' ' + CUR + '에 낙찰받았습니다.', 'mkwon-' + r.id); } catch (e) { }
@@ -1207,7 +1207,7 @@ routes['POST /api/market'] = async (req, res) => {
     if (!(r.auc ? dbx.q.mkAucSold.run(me, Math.floor(real), r.price, id) : dbx.q.mkSetStatus.run('sold', me, Math.floor(real), id)).changes) return fail(req, res, 409, '방금 다른 학생이 샀습니다');
     P.res.gold -= r.price - held;
     if (r.auc && r.bidder && r.bidder !== me) mkRefund(r.bidder, r.bid, r.name, '즉시 구매로 경매가 끝나');
-    mkGive(P, r);
+    mkGive(P, r); if (r.auc) P.st.aucWon = (P.st.aucWon || 0) + 1;   // 경매 즉시 구매도 낙찰로 센다
     R.log(P, now, '거래소에서 ' + R.josa(r.name + (r.kind !== 'item' ? ' ' + r.qty + '개' : ''), '을', '를') + ' ' + R.fmt(r.price) + ' ' + CUR + '에 샀습니다', 'good');
     store.markDirty(me);
     if (String(r.seller).startsWith('npc:')) setImmediate(() => { try { npcMarketTick(); } catch (e) { } });   // NPC 매물이 팔리면 바로 채운다
@@ -1431,7 +1431,7 @@ function aucTick(now) {
     if (!dbx.q.aucDone.run(r.id).changes) return;
     if (r.bidder && !String(r.bidder).startsWith('npc:')) {
       let it = null; try { it = JSON.parse(r.item); } catch (e) { }
-      try { const Q = loadPlayer(r.bidder, nowSec()); if (Q) { R.cupAdd(Q, R.CUP_AUC, 'auc'); store.markDirty(r.bidder); } } catch (e) { log('낙찰 대항전 점수 실패', e); }   // 대항전 점수 (거울관 특기)
+      try { const Q = loadPlayer(r.bidder, nowSec()); if (Q) { R.cupAdd(Q, R.CUP_AUC, 'auc'); Q.st.wandWon = (Q.st.wandWon || 0) + 1; store.markDirty(r.bidder); } } catch (e) { log('낙찰 대항전 점수 실패', e); }   // 대항전 점수 (거울관 특기)
       if (it) sendMail(r.bidder, '떠돌이 상인', '낙찰: ' + r.name, r.bidder_name + ' 님, ' + R.fmt(r.price) + ' ' + CUR + '에 낙찰되었습니다. 좋은 주인을 만나 다행이군요.\n— 떠돌이 상인', { items: [it] }, Math.floor(Date.now() / 1000) + 14 * 86400, true);
       chat.system('notice', '떠돌이 상인: ' + r.bidder_name + ' 님이 ' + R.josa('「' + r.name + '」', '을', '를') + ' ' + R.fmt(r.price) + ' ' + CUR + '에 낙찰받았습니다.', Date.now() / 1000);
     }
@@ -1532,7 +1532,7 @@ routes['POST /api/board'] = async (req, res) => {
   if (limited('bdp:' + me, 1, 10)) return fail(req, res, 429, '잠시 후 다시 시도');
   try {
     let id = null;
-    if (op === 'write') id = board.write(me, b, now);
+    if (op === 'write') { id = board.write(me, b, now); if (!b.priv) { const BP = store.get(me); if (BP) { BP.st.posts = (BP.st.posts || 0) + 1; store.markDirty(me); } } }   // 칭호 「게시판 터줏대감」 (관리자만 보기 글 제외)
     else if (op === 'edit') id = board.edit(me, b, now);
     else if (op === 'del') board.del(me, b.id);
     else if (op === 'comment') id = board.comment(me, b.id, b.text, now, b.parent);
@@ -1847,6 +1847,7 @@ routes['POST /api/guild'] = async (req, res) => {
   if (op === 'checkin') {
     if (!dbx.q.gCheckin.run(day, R.GUILD_CHECKIN, me, day).changes) return fail(req, res, 400, '오늘은 이미 동아리 출석을 했습니다');
     gXp(mine, R.GUILD_CHECKIN); gLog(mine, P.name + ' 님 출석 (+' + R.GUILD_CHECKIN + ')');
+    P.st.gCheckin = (P.st.gCheckin || 0) + 1; store.markDirty(me);   // 칭호 「동아리의 기둥」
     return ok({ got: R.GUILD_CHECKIN });
   }
   R.advance(P, world.ctx(gnow), gnow);
