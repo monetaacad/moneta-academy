@@ -276,7 +276,7 @@
     if (SIDE_OPEN) {
       h += '<div class="spb"><div class="spn"><button class="spname" data-act="mycard" title="다른 학생에게 보이는 내 학생 카드">' + inkName(P.name, R.decoView(P).ink) + '</button><span class="tiny faint">' + (P.grade >= 8 ? '마스터' : P.grade + '학년') + ' · Lv ' + P.lvl + ' · ' + clsDot(R.clsOf(P).id, 14) + ' ' + R.clsOf(P).name + '</span>' + xpBar(P, 4) + '</div>' +
         '<button class="sphouse" data-tip="house" tabindex="0" aria-label="기숙사 혜택 보기">' + houseDot(P.house, 16) + '<span>' + house().name + '</span><span class="tiny faint">' + house().latin + '</span></button>' +
-        '<dl class="spk"><dt>전투력</dt><dd class="gold">' + fmt(c.power) + (S.rank ? ' <span class="tiny faint">· ' + S.rank + '위</span>' : '') + '</dd><dt>초당 피해</dt><dd>' + fmt(c.totalDps) + '</dd><dt>생명력</dt><dd>' + fmt(c.hp) + '</dd><dt>방어력</dt><dd>' + fmt(c.def) + '</dd></dl>' +
+        '<dl class="spk"><dt>전투력</dt><dd class="gold">' + fmt(c.power) + (S.rank && !P.opt.hideRank ? ' <span class="tiny faint">· ' + S.rank + '위</span>' : '') + '</dd><dt>초당 피해</dt><dd>' + fmt(c.totalDps) + '</dd><dt>생명력</dt><dd>' + fmt(c.hp) + '</dd><dt>방어력</dt><dd>' + fmt(c.def) + '</dd></dl>' +
         '<div class="spstat">' + R.STATS.map(function (k) { return '<span><i>' + D.STAT_NAMES[k] + '</i><b class="num">' + fmt(c.stat[k]) + '</b></span>'; }).join('') + '</div>' +
         (P.pts > 0 ? '<button class="spbtn gold" data-act="nav" data-a="gear">남은 능력치 ' + P.pts + '점 나누기</button>' : '') +
         '<div class="speq">' + D.SLOTS.map(function (sl) { var it = P.eq[sl.id]; return '<button data-act="' + (it ? 'eqgo' : 'nav') + '" data-a="' + (it ? it.u : 'gear') + '" title="' + sl.name + (it ? ' · ' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + ' · ' + D.RARITY[it.r].name + ' · Lv ' + it.ilvl : ' · 비어 있음') + '"><i>' + sl.name + '</i><span class="ell" style="' + (it ? 'color:' + rcol(it.r) : '') + '">' + (it ? esc(it.name) : '—') + '</span>' + (it && it.enh ? '<b class="num speh">+' + it.enh + '</b>' : '') + '</button>'; }).join('') + '</div>' +
@@ -1152,7 +1152,7 @@
     var h = '<div class="card mecard"><div class="row" style="gap:12px;flex-wrap:nowrap"><button class="avbtn" id="mecard-av" data-act="me" data-a="view" aria-label="내 정보 편집">' + avatarHtml(me, 64) + '</button>' +
       '<div style="flex:1;min-width:0">' + (P.title ? '<div class="pttl">' + esc(R.titleName(P, P.title)) + '</div>' : '') + '<div class="row" style="gap:6px"><h3 style="margin:0">' + esc(P.name) + '</h3><span class="tiny faint">' + R.gradeLabel(P) + ' · Lv ' + P.lvl + '</span></div>' +
       '<div class="small mestatus">' + (me.status ? esc(me.status) : '<span class="faint">한 줄 소개 없음</span>') + '</div>' +
-      '<div class="tiny muted" style="margin-top:2px"><span data-tip="power" tabindex="0" class="tipline">전투력 <b class="num gold" data-l="power"></b></span> · ' + S.rank + '위</div></div></div>' +
+      '<div class="tiny muted" style="margin-top:2px"><span data-tip="power" tabindex="0" class="tipline">전투력 <b class="num gold" data-l="power"></b></span>' + (S.rank && !P.opt.hideRank ? ' · ' + S.rank + '위' : '') + '</div></div></div>' +
       xpBar(P, 10) +
       (P.pts > 0 ? '<div class="row" style="margin-top:10px"><span class="small gold">분배할 능력치 ' + P.pts + '점</span><span class="spacer"></span><button class="btn sm primary" data-act="nav" data-a="gear">분배하기</button></div>' : '') + '</div>';
     return h;
@@ -4135,6 +4135,7 @@
       '<div class="row small"><span class="muted" style="width:72px">글씨 크기</span><div class="filters">' + FONTS.map(function (f) { return '<button class="btn sm ghost' + (PREF.font === f[0] ? ' on' : '') + '" data-act="setfont" data-a="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '</div></div>' +
       '<div class="row small"><span class="muted">채팅창 크기는 가장자리를 끌어서 바꿉니다</span><span class="spacer"></span><button class="btn sm ghost" data-act="dock-reset">처음 크기로</button></div>' +
       '<label class="tog"><input type="checkbox" id="opt-rf" data-act="opt" data-a="reduceFx"' + (P.opt.reduceFx ? ' checked' : '') + '> 전투 효과 줄이기 (배터리 절약)</label>' +
+      '<label class="tog"><input type="checkbox" id="opt-hr" data-act="opt" data-a="hideRank"' + (P.opt.hideRank ? ' checked' : '') + '> 좌측 내 정보에서 전투력 옆 순위 숨기기</label>' +
       '<label class="tog"><input type="checkbox" data-act="opt" data-a="bulkAsk"' + (P.opt.bulkAsk !== false ? ' checked' : '') + '> 장비 일괄 판매 · 분해 전에 확인 창 띄우기</label></div>';
     h += '<div class="setsec"' + st('소리') + '><div class="section-t">소리</div>' +
       '<label class="tog"><input type="checkbox" id="opt-snd" data-act="opt" data-a="sound"' + (P.opt.sound ? ' checked' : '') + '> 효과음</label>' +
@@ -4892,7 +4893,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102134;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102135;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
