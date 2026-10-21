@@ -793,8 +793,8 @@ var DATA = (function () {
   D.TITLES = [
     { id: 'fresh', name: '신입생', how: '처음부터' },
     { id: 'g2', name: '2학년 선배', grade: 2, how: '2학년 진급' },
-    { id: 'g4', name: '중견 학생', grade: 4, how: '4학년 진급' },
-    { id: 'g6', name: '상급생', grade: 6, how: '6학년 진급' },
+    { id: 'g4', name: '메아리를 새긴 자', grade: 4, how: '4학년 진급' },
+    { id: 'g6', name: '별의 종에 다가선 자', grade: 6, how: '6학년 진급' },
     { id: 'g8', name: '별의 종을 울린 자', grade: 8, how: '졸업 시험 합격' },
     { id: 'lamp', name: '등불 아래 서생', stat: 'lecHours', n: 100, how: '수업 100시간' },
     { id: 'owl', name: '밤샘 올빼미', stat: 'nightJobs', n: 30, how: '0~6시에 끝난 작업 30번' },
