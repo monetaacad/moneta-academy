@@ -1325,18 +1325,23 @@
   // 과목 카드: 다음에 열리는 것 (주문 · 물약 · 시험 기준 · 학기 이야기 목표)
   // 강의계획서: 잠긴 과목도 미리 본다 (능력치 · 레벨당 효과 · 레벨별 보상 · 교수 과제 · 기말시험)
   // 레벨당 효과는 rules.js 계산식과 같은 값을 적어 둔 것 (syntax · alch · beast · rune)
-  var SUBJ_PASSIVE = { syntax: '주문 위력 +2%', alch: '물약 조제 속도 +1%', beast: '사역마 효과 +3% · 파견 보상 +2% · 부화 속도 +1%', rune: '장비 강화 성공 확률 +0.4%p' };
+  var SUBJ_PASSIVE = { alch: '물약 조제 속도 +1%', beast: '사역마 효과 +3% · 파견 보상 +2% · 부화 속도 +1%', rune: '장비 강화 성공 확률 +0.4%p' };
+  // 과목 종류 · 수업 효율 능력치 한 줄 (「마법사 전공 · 지원 · 수업 효율: 지력」)
+  var LST_NAME = { int: '지력', vit: '체력', main: '주 능력치(마법사 지력 · 기사 체력)' };
+  function subjKind(S2) { return (S2.cls ? R.CLS[S2.cls].name + ' 전공' : '공용') + (S2.sup ? ' · 지원' : ''); }
+  function subjPassive(S2) { var a = []; if (S2.lv) a.push(R.effText(S2.lv)); if (SUBJ_PASSIVE[S2.id]) a.push(SUBJ_PASSIVE[S2.id]); return a.join(' · '); }
   function syllabusBody(sid) {
     var P = S.P, S2 = R.SUBJ[sid], sj = P.subj[sid] || { lv: 0 }, lv = sj.lv, cls = P.cls || 'mage', open = S2.unlock <= Math.min(P.grade, 7);
-    var st = function (c) { var x = R.subjStats({ cls: c }, S2); return D.STAT_NAMES[x[0]] + ' +1.2 · ' + D.STAT_NAMES[x[1]] + ' +0.6'; };
-    var h = '<p class="small">' + esc(S2.prof) + ' · ' + S2.unlock + '학년부터' + (S2.cls ? ' · ' + R.CLS[S2.cls].name + ' 전용' : ' · 공용') + ' · 지금 <b class="num">Lv ' + lv + '</b>' + (open ? '' : ' <span class="tag br">아직 수강 불가</span>') + '</p>' +
-      '<p class="small muted" style="margin-top:4px">' + esc(S2.desc) + '</p>';
-    h += '<div class="section-t" style="margin-top:12px">레벨당 효과</div><p class="small">' + (S2.kstat ? '마법사 ' + st('mage') + ' / 기사 ' + st('knight') : st(cls)) + (SUBJ_PASSIVE[sid] ? ' · ' + SUBJ_PASSIVE[sid] : '') + '</p>' +
-      '<p class="tiny faint">이 과목으로 배우는 주문은 과목 레벨마다 위력 +3%</p>';
+    var st = function (c) { var x = R.subjStats({ cls: c }, S2); return D.STAT_NAMES[x[0]] + ' +1.2 · ' + D.STAT_NAMES[x[1]] + ' +0.6'; }, both = S2.stat === 'main' || S2.stat2 === 'main', pv = subjPassive(S2);
+    var h = '<p class="small">' + esc(S2.prof) + ' · ' + subjKind(S2) + (S2.pair ? ' (짝: ' + R.SUBJ[S2.pair].name + ')' : '') + ' · 지금 <b class="num">Lv ' + lv + '</b>' + (open ? '' : ' <span class="tag br">아직 수강 불가</span>') + '</p>' +
+      '<p class="small muted" style="margin-top:4px">' + esc(S2.desc) + '</p>' + (S2.pair ? '<p class="tiny gold" style="margin-top:4px">전과하면 ' + R.SUBJ[S2.pair].name + '과 같은 레벨로 이어집니다.</p>' : '');
+    h += '<div class="section-t" style="margin-top:12px">레벨당 효과</div><p class="small">' + (both ? '마법사 ' + st('mage') + ' / 기사 ' + st('knight') : st(cls)) + (pv ? ' · ' + esc(pv) : '') + '</p>' +
+      '<p class="tiny faint">수업 효율은 ' + LST_NAME[S2.lst || 'int'] + '을 따릅니다 · 이 과목으로 배우는 주문은 과목 레벨마다 위력 +3%</p>';
     var rows = [];
     D.SPELLS.forEach(function (sp) { if (sp.req && sp.req[0] === sid) rows.push([sp.req[1], '주문 「' + sp.name + '」 — ' + sp.desc + (sp.cls ? '' : ''), sp.cls && sp.cls.indexOf(cls) < 0]); });
     if (sid === 'alch') { D.POTIONS.forEach(function (p) { rows.push([p.unlock, '물약 「' + p.name + '」 조제 — ' + p.desc]); }); rows.push([10, '가마솥 2개']); rows.push([20, '가마솥 3개']); }
     if (sid === 'beast') rows.push([R.FAM_SUBJ, '사역마 · 첫 환수의 알 (또는 레벨 ' + R.FAM_LV + ' · 3학년)']);
+    (S2.perk || []).forEach(function (pk) { rows.push([pk[0], '레벨 보상 — ' + R.effText(pk[1])]); });
     rows.sort(function (a, b) { return a[0] - b[0]; });
     h += '<div class="section-t" style="margin-top:12px">레벨별 보상</div>' + (rows.length ? '<div class="stack" style="gap:4px">' + rows.map(function (r) { var got = lv >= r[0]; return '<div class="row small" style="gap:8px' + (r[2] ? ';opacity:.5' : '') + '"><b class="num" style="width:48px;flex:none">Lv ' + r[0] + '</b><span style="flex:1;min-width:0">' + esc(r[1]) + (r[2] ? ' <span class="tiny faint">(다른 학과 전용)</span>' : '') + '</span>' + (got && !r[2] ? '<span class="tag ok">달성</span>' : '') + '</div>'; }).join('') + '</div>' : '<p class="small muted">레벨별 보상이 없는 과목입니다. 레벨당 능력치가 오릅니다.</p>');
     var tk = D.TASKS[sid] || [], done = P.tasks[sid] || 0;
@@ -1351,8 +1356,9 @@
     D.SPELLS.forEach(function (sp) { if (sp.req && sp.req[0] === sid && lv < sp.req[1] && (!sp.cls || sp.cls.indexOf(cls) >= 0)) a.push([sp.req[1], '주문 「' + sp.name + '」']); });
     if (sid === 'alch') D.POTIONS.forEach(function (p) { if (lv < p.unlock) a.push([p.unlock, '물약 「' + p.name + '」']); });
     if (sid === 'beast' && !R.famOpen(P)) a.push([R.FAM_SUBJ, '사역마 · 첫 환수의 알']);
+    (R.SUBJ[sid].perk || []).forEach(function (pk) { if (lv < pk[0]) a.push([pk[0], R.effText(pk[1])]); });
     if (ex && P.grade < 8 && lv < ex.req) { if (ex.subj.indexOf(sid) >= 0) a.push([ex.req, '기말 기준']); else if (R.examOpt(P, ex) === sid) a.push([ex.req, '기말 선택 과목']); }
-    var s = R.mqStep(P); if (s) s.st.g.forEach(function (q) { if (q.k === 'subj' && q.s === sid && lv < q.n) a.push([q.n, '학기 이야기']); });
+    var s = R.mqStep(P); if (s) s.st.g.forEach(function (q) { if (q.k === 'subj' && R.subjFor(P, q.s) === sid && lv < q.n) a.push([q.n, '학기 이야기']); });
     a.sort(function (x, y) { return x[0] - y[0]; });
     return a.length ? '<div class="tiny gold submile">다음 · ' + a.slice(0, 2).map(function (x) { return 'Lv ' + x[0] + ' ' + x[1]; }).join(' · ') + '</div>' : '';
   }
@@ -1486,7 +1492,7 @@
   }
   V.lecture = function () {
     var P = S.P, c = C(), ex = R.examFor(P);
-    var h = pageHead('일곱 과목, 일곱 해', '강의실', '수업 효율 <b class="num gold">×' + c.lecSpd.toFixed(2) + '</b> <span class="muted">경험치 · 지식 획득량</span>');
+    var h = pageHead('일곱 과목, 일곱 해', '강의실', '전공 수업 효율 <b class="num gold">×' + c.lecSpd.toFixed(2) + '</b> <span class="muted">경험치 · 지식 획득량 · 과목마다 지력 또는 체력을 따릅니다</span>');
     h += potBar(['lectureSpd', 'knowPct', 'xpPct', 'offlineEff']) + gsQuick();
     R.lecQ(P); h += ttCard(c);
     var nL = 0; for (var i0 = 0; i0 < 3; i0++) { if (i0 >= c.lecSlots && !P.lec[i0]) break; nL++; }
@@ -1507,7 +1513,7 @@
         h += '<div class="card slotcard' + (ot ? ' hl' : '') + '" data-anchor="lslot' + i + '"><span class="tiny gold">수업 슬롯 ' + (i + 1) + ' · 비어 있음</span>' + (ot ? '<div class="small good">' + gterm('제때 입실') + ' · 지금 들으면 과목 경험치 +' + Math.round(R.ONTIME_BONUS * 100) + '% <span class="tiny faint">(<span data-l="left:' + (P.lecEnd[i] + R.ONTIME_WIN) + '"></span> 남음)</span></div>' : '') +
           '<div class="field"><div class="row" style="gap:6px"><label class="small muted" for="ls' + i + '">과목</label><span class="spacer"></span>' + (sel ? '<button class="btn sm ghost" data-act="subjgo" data-a="' + sel + '">과목 보기 ›</button>' : '') + '</div><select id="ls' + i + '" data-act="pick-sel" data-a="ls' + i + '">' + subs.map(function (s) { return '<option value="' + s.id + '"' + (s.id === sel ? ' selected' : '') + '>' + s.name + ' (Lv ' + P.subj[s.id].lv + ')' + (clsN(s.id) ? ' · ' + clsN(s.id) + '명 듣는 중' : '') + '</option>'; }).join('') + '</select>' + (ex && P.grade < 8 && sel && ex.subj.indexOf(sel) >= 0 ? '<span class="tiny gold">기말시험에 나오는 과목입니다</span>' : '') + '</div>' +
           durPicker('ld' + i, D.DURATIONS, '1h') +
-          (pv ? '<div class="small">예상: 과목 경험치 <b class="num">+' + fmt(pv.xp * (1 + R.peerBonus(clsN(sel)))) + '</b> ' + lvGuess(sel, pv.xp * (1 + R.peerBonus(clsN(sel)))) + ' · 지식 +' + fmt(pv.know) + '</div>' : '') + (sel ? '<div class="tiny classmates">' + classInfo(sel) + '</div>' : '') +
+          (pv ? '<div class="small">예상: 과목 경험치 <b class="num">+' + fmt(pv.xp * (1 + R.peerBonus(clsN(sel)))) + '</b> ' + lvGuess(sel, pv.xp * (1 + R.peerBonus(clsN(sel)))) + ' · 지식 +' + fmt(pv.know) + ' <span class="tiny faint">수업 효율 ×' + pv.lecSpd.toFixed(2) + '</span></div>' : '') + (sel ? '<div class="tiny classmates">' + classInfo(sel) + '</div>' : '') +
           (R.dreaming(P, now()) ? '<p class="tiny gold">꿈길 중에는 수업을 들을 수 없습니다. <span data-l="left:' + P.dream.end + '"></span> 뒤에 깹니다.</p><button class="btn primary"' + why('꿈길 중에는 수업을 들을 수 없습니다') + '>' + d.label + ' 수업 시작</button></div>' : '<button class="btn primary" data-act="lec-start" data-a="' + i + '"' + (sel ? '' : why('과목 선택 필요')) + '>' + d.label + ' 수업 시작</button></div>');
       }
     }
@@ -1515,11 +1521,11 @@
     var lecFull = true; for (var li = 0; li < c.lecSlots; li++) if (!P.lec[li]) lecFull = false;   // 빈 수업 슬롯이 없으면 과목 카드의 「수업 듣기」는 흐리게
     h += '<div class="grid gauto">' + D.SUBJECTS.filter(function (x) { return R.subjVisible(P, x); }).map(function (S2) {
       var sj = P.subj[S2.id], open = S2.unlock <= Math.min(P.grade, 7);
-      var on = P.lec.some(function (x) { return x && x.s === S2.id; }), inEx = ex && P.grade < 8 && (ex.subj.indexOf(S2.id) >= 0 || (ex.opt || []).indexOf(S2.id) >= 0);
+      var on = P.lec.some(function (x) { return x && x.s === S2.id; }), inEx = ex && P.grade < 8 && R.examSubjs(P, ex).indexOf(S2.id) >= 0;   // 시험에 반영되는 과목만 (선택 과목은 지금 반영되는 1과목)
       var nextSp = D.SPELLS.filter(function (sp) { return sp.req && sp.req[0] === S2.id && sj.lv < sp.req[1]; })[0];
-      var h2 = '<div class="card subj' + (on ? ' active' : '') + (open ? '' : ' lockd') + '" data-anchor="subj-' + S2.id + '"><div class="hd"><h3>' + S2.name + '</h3><button class="btn sm ghost sylbtn" data-act="syllabus" data-a="' + S2.id + '" title="강의계획서: 레벨별 보상 · 교수 과제 · 기말시험을 미리 봅니다" aria-label="' + S2.name + ' 강의계획서">?</button>' + '<span class="lv">' + sj.lv + '</span>' + (inEx ? '<span class="tag ' + (sj.lv >= ex.req ? 'ok' : 'br') + '">시험 ' + ex.req + '</span>' : '') + '</div><div class="prof">' + S2.prof + (open && clsN(S2.id, true) ? ' · <span class="classmates">지금 ' + clsN(S2.id, true) + '명 수강 중</span>' : '') + '</div>' + (R.reviewOn(P, S2.id, now()) ? '<div class="revline"><span class="tag ok" title="복습하는 꿈에서 깬 뒤 3시간 안에 이 과목 수업을 시작하면 경험치 +' + Math.round(R.REVIEW_BONUS * 100) + '%">복습 효과 ~' + clock(P.review.until) + '</span></div>' : '');   // 복습 효과는 과목 이름 아래 줄 (제목 줄에 두면 이름이 세로로 줄었다)
+      var h2 = '<div class="card subj' + (on ? ' active' : '') + (open ? '' : ' lockd') + '" data-anchor="subj-' + S2.id + '"><div class="hd"><h3>' + S2.name + '</h3><button class="btn sm ghost sylbtn" data-act="syllabus" data-a="' + S2.id + '" title="강의계획서: 레벨별 보상 · 교수 과제 · 기말시험을 미리 봅니다" aria-label="' + S2.name + ' 강의계획서">?</button>' + '<span class="lv">' + sj.lv + '</span>' + (inEx ? '<span class="tag ' + (sj.lv >= ex.req ? 'ok' : 'br') + '">시험 ' + ex.req + '</span>' : '') + '</div><div class="prof">' + S2.prof + ' · ' + subjKind(S2) + (open && clsN(S2.id, true) ? ' · <span class="classmates">지금 ' + clsN(S2.id, true) + '명 수강 중</span>' : '') + '</div>' + (R.reviewOn(P, S2.id, now()) ? '<div class="revline"><span class="tag ok" title="복습하는 꿈에서 깬 뒤 3시간 안에 이 과목 수업을 시작하면 경험치 +' + Math.round(R.REVIEW_BONUS * 100) + '%">복습 효과 ~' + clock(P.review.until) + '</span></div>' : '');   // 복습 효과는 과목 이름 아래 줄 (제목 줄에 두면 이름이 세로로 줄었다)
       if (!open) return h2 + '<p class="small muted">' + S2.unlock + '학년부터 수강할 수 있습니다.</p></div>';
-      return h2 + '<div class="bar"><b style="width:' + (sj.xp / R.subjXpNeed(sj.lv) * 100).toFixed(1) + '%"></b></div><div class="row tiny faint"><span>과목 경험치 ' + fmt(sj.xp) + ' / ' + fmt(R.subjXpNeed(sj.lv)) + '</span><span class="spacer"></span><span>레벨당 ' + D.STAT_NAMES[R.subjStats(P, S2)[0]] + ' +1.2, ' + D.STAT_NAMES[R.subjStats(P, S2)[1]] + ' +0.6</span></div>' +
+      return h2 + '<div class="bar"><b style="width:' + (sj.xp / R.subjXpNeed(sj.lv) * 100).toFixed(1) + '%"></b></div><div class="row tiny faint"><span>과목 경험치 ' + fmt(sj.xp) + ' / ' + fmt(R.subjXpNeed(sj.lv)) + '</span><span class="spacer"></span><span>레벨당 ' + D.STAT_NAMES[R.subjStats(P, S2)[0]] + ' +1.2, ' + D.STAT_NAMES[R.subjStats(P, S2)[1]] + ' +0.6 · 수업 효율 ×' + R.lecSpdOf(P, c, S2.id).toFixed(2) + '(' + D.STAT_NAMES[R.lecStat(P, S2.id)] + ')</span></div>' +
         '<p class="small muted">' + S2.desc + '</p><blockquote>' + S2.line + '</blockquote>' + subjMiles(S2.id) + taskBox(S2.id) +
         '<div class="row" style="margin-top:8px">' + (on ? '<span class="tag ok">수강 중</span>' : '<button class="btn sm primary"' + (lecFull ? why('이미 듣고 있는 수업이 있습니다. 수업이 끝나면 들을 수 있습니다') : ' data-act="lecpick" data-a="' + S2.id + '"') + '>수업 듣기</button>') + '</div></div>';
     }).join('') + '</div>';
@@ -5503,7 +5509,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102274;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102275;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
