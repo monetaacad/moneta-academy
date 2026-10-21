@@ -1062,7 +1062,7 @@
       '<div class="small" data-l="jartxt" data-html="1" style="margin-top:8px"></div><div class="tiny faint" style="margin-top:2px">40분마다 한 마리, 최대 ' + R.jarMax(S.P) + '마리(연구 「정령 병 확장」으로 늘릴 수 있습니다). 가득 차면 더 모이지 않습니다.</div></div>';
   }
 
-  /* ── 광장 풍경: 도트 그림 한 장 (192×64). 실제 시각에 따라 하늘이 바뀌고, 하늘 이벤트 · 반딧불 병 · 동행 사역마 · 떠돌이 상인이 그 자리에 나온다 ── */
+  /* ── 광장 풍경: 도트 그림 한 장 (192×64). 실제 시각에 따라 하늘이 바뀌고, 하늘 이벤트 · 반딧불 병 · 떠돌이 상인이 그 자리에 나온다 ── */
   function newbie() { var P = S.P; return !P || !P.created || now() - P.created < 3 * 86400; }   // 입학 사흘 동안만 설명문을 보여 준다
   function skyPhase(t) { var h = ((t + R.K.TZ) % 86400) / 3600; return h >= 20 || h < 5 ? 'night' : h < 7 ? 'dawn' : h < 17 ? 'day' : 'dusk'; }
   // 하늘 색 (위 → 아래)
@@ -1139,7 +1139,7 @@
   };
   function plazaScene() {
     var P = S.P, t = now(), ph = skyPhase(t), sp = SKY_PAL[ph], dark = ph === 'night' || ph === 'dusk', cal = R.calendar(wctx(), t), leaf = LEAF[cal.mi] || LEAF[0];
-    var ev = R.skyAt(t), au = S.auc, j = jar(), fam = P.fam && P.fam.act && R.FAM[P.fam.act], o = '', hr = ((t + R.K.TZ) % 86400) / 3600;
+    var ev = R.skyAt(t), au = S.auc, j = jar(), o = '', hr = ((t + R.K.TZ) % 86400) / 3600;
     var wx = R.weatherAt(wctx(), t), wid = wx.id, gloomy = wid !== 'clear' && wid !== 'fog';   // 날씨: 흐리거나 비 · 눈이면 해 · 흰 구름을 그리지 않는다
     var defs = '<defs><linearGradient id="scSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + sp[0] + '"/><stop offset=".6" stop-color="' + sp[1] + '"/><stop offset="1" stop-color="' + sp[2] + '"/></linearGradient>' +
       '<radialGradient id="scGlow"><stop offset="0" stop-color="#fff3a0" stop-opacity=".9"/><stop offset="1" stop-color="#fff3a0" stop-opacity="0"/></radialGradient>' +
@@ -1191,7 +1191,7 @@
     var h = '<div class="scene sc-' + ph + (P.opt && P.opt.reduceFx ? ' nofx' : '') + '" data-anchor="care"><div class="sc-art">' + svg +
       '<div class="sc-chip sc-tl">' + skyTxt + '</div>' + blessTxt + '</div><div class="sc-bar">' +
       '<div class="sc-chip"><span data-l="jarchip" data-html="1"></span> <button class="sc-btn" data-act="spirit" data-can="spirit">풀어 주기</button></div>' +
-      (au && au.active ? '<button class="sc-chip sc-go" data-act="nav" data-a="auction">떠돌이 상인 · 경매 중 ›</button>' : fam ? '<span class="sc-chip faint">' + josa(fam.name, '과', '와') + ' 산책 중</span>' : '') + '</div></div>';
+      (au && au.active ? '<button class="sc-chip sc-go" data-act="nav" data-a="auction">떠돌이 상인 · 경매 중 ›</button>' : '') + '</div></div>';
     return h;
   }
 
@@ -5171,7 +5171,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102229;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102230;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
