@@ -3777,11 +3777,17 @@
       if (el.style.width !== w) el.style.width = w; });
     $$('[data-can]').forEach(function (el) { var ok = !!callKey(CAN, el.dataset.can); if (el.disabled === ok) el.disabled = !ok; });
   }
+  // 지금 바로 시작할 수 있는(열려 있고 · 최대 단계가 아니고 · 진행 중이 아니고 · 마나와 지식이 충분한) 연구가 하나라도 있는지
+  function resAffordable(P) {
+    return D.RESEARCH.some(function (r) { if (!R.resAvailable(P, r.id) || R.resQueued(P, r.id) || (P.rs[r.id] || 0) >= r.max) return false; var co = R.resCost(P, r.id); return predMana() >= co.mana && P.res.know >= co.know; });
+  }
   function updateBadges() {
     if (!S.P) return;
     var P = S.P, c = C(), b = {};
-    var il = 0; for (var i = 0; i < c.lecSlots; i++) if (!P.lec[i]) il++;
-    var ie = 0, ed = 0; for (var k = 0; k < c.expSlots; k++) { if (!P.exp[k]) ie++; else if (expDone(P.exp[k])) ed++; }
+    // 「빈 슬롯」은 지금 실제로 채울 수 있을 때만: 꿈길 중에는 수업 · 원정을 시작할 수 없고, 연구는 비용을 낼 수 있는 항목이 있어야 한다
+    var dz = R.dreaming(P, now());
+    var il = 0; if (!dz) for (var i = 0; i < c.lecSlots; i++) if (!P.lec[i]) il++;
+    var ie = 0, ed = 0; for (var k = 0; k < c.expSlots; k++) { if (!P.exp[k]) { if (!dz) ie++; } else if (expDone(P.exp[k])) ed++; }
     b.lecture = il ? '빈 슬롯' : ''; b.explore = ed ? '완료' : S.erInv ? '초대 ' + S.erInv : ie ? '빈 슬롯' : '';
     b.home = P.mq && R.mqReady(P) ? '이야기' : jar().n >= R.jarMax(S.P) ? '정령' : (P.daily.login || P.daily.q.some(function (q) { return !q.done && R.dailyProg(P, q) >= q.goal; })) ? '보상' : '';
     b.lore = storyUnread() ? '새 글' : '';
@@ -3789,7 +3795,7 @@
     b.gear = P.pts > 0 ? P.pts + '점' : invNew().length ? '새 소지품' : '';
     b.party = S.pinv ? '초대 ' + S.pinv : '';
     b.friends = S.fr ? '신청 ' + S.fr : '';
-    var ir = 0; for (var r = 0; r < c.resSlots; r++) if (!P.rsq[r]) ir++; b.lib = ir ? '빈 슬롯' : '';
+    var ir = 0; for (var r = 0; r < c.resSlots; r++) if (!P.rsq[r]) ir++; b.lib = ir && resAffordable(P) ? '빈 슬롯' : '';
     if ((P.wkPrev && !P.wkPrev.claimed) || (R.wbCanAttack(P, now()) && S.W && S.W.boss && !S.W.boss.killedAt && wbSeen() !== wbKey())) b.world = P.wkPrev && !P.wkPrev.claimed ? '보상' : '도전권';
     VIEWS.forEach(function (v) { if (!viewOpen(v)) b[v.id] = ''; var el = $('[data-tbadge="' + v.id + '"]'); if (el) { var t = b[v.id] || ''; el.hidden = !t; if (el.textContent !== t) el.textContent = t; } });
     GROUPS.forEach(function (g) {
@@ -5503,7 +5509,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102274;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102275;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
