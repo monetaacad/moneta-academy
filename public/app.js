@@ -4932,6 +4932,7 @@
       var x = R.DECO[t], xb = '<span class="cx" data-act="decoundo" data-a="' + sl.id + '" role="button" aria-label="' + sl.name + ' 미리보기 빼기" title="빼기">×</span>';
       if (!t) acts.push('<button class="btn sm ghost cartbtn" data-act="decoset" data-a="' + sl.id + '" data-b="">' + sl.name + ' 빼기' + xb + '</button>');
       else if (d.own[t]) acts.push('<button class="btn sm cartbtn" data-act="decoset" data-a="' + sl.id + '" data-b="' + t + '">' + esc(x.name) + ' 달기' + xb + '</button>');
+      else if (x.need) acts.push('<button class="btn sm ghost cartbtn" disabled title="' + esc(x.needText) + '을 달성하면 지급됩니다">' + esc(x.name) + ' · ' + esc(x.needText) + ' 달성 시 지급' + xb + '</button>');   // 살 수 없는 전용 꾸미기
       else { cart.push(x); var armed = S.confirm['deco' + t] > Date.now(); acts.push('<button class="btn sm primary cartbtn' + (armed ? ' armed' : '') + '" data-act="decobuy" data-a="' + t + '"' + (P.res.gold >= x.price ? '' : ' aria-disabled="true" title="' + CUR + '가 모자랍니다"') + '>' + (armed ? '한 번 더 누르면 삽니다 · ' : esc(x.name) + ' ' + sl.name + ' · ') + MONEY(x.price) + xb + '</button>'); }
     });
     if (cart.length > 1) {
@@ -4944,7 +4945,7 @@
     h += '<div class="dchips"><button class="dchip' + (!tr[slot] ? ' on' : '') + '" data-act="decotry" data-a="' + slot + '" data-b=""><span class="dsw none">없음</span><span class="dn">없음</span><span class="dp">&nbsp;</span></button>' +
       D.DECO.filter(function (x) { return x.slot === slot && (!x.house || x.house === P.house || d.own[x.id]); }).map(function (x) {   // 기숙사 문장은 자기 기숙사 것만
         var own = !!d.own[x.id], on = worn[slot] === x.id;
-        return '<button class="dchip' + (tr[slot] === x.id ? ' on' : '') + '" data-act="decotry" data-a="' + slot + '" data-b="' + x.id + '" title="' + esc(x.name) + (own ? '' : ' · ' + MONEY(x.price)) + '">' + decoSwatch(x) + '<span class="dn">' + esc(x.name) + '</span><span class="dp' + (on ? ' worn' : own ? ' own' : '') + '">' + (on ? '다는 중' : own ? '가짐' : fmt(x.price)) + '</span></button>';
+        return '<button class="dchip' + (tr[slot] === x.id ? ' on' : '') + '" data-act="decotry" data-a="' + slot + '" data-b="' + x.id + '" title="' + esc(x.name) + (own ? '' : ' · ' + (x.need ? esc(x.needText) + ' 달성 시 지급' : MONEY(x.price))) + '">' + decoSwatch(x) + '<span class="dn">' + esc(x.name) + '</span><span class="dp' + (on ? ' worn' : own ? ' own' : '') + '">' + (on ? '다는 중' : own ? '가짐' : x.need ? esc(x.needText.replace('기말시험 ', '')) : fmt(x.price)) + '</span></button>';
       }).join('') + '</div>';
     return h;
   }
@@ -4959,7 +4960,7 @@
   };
   // 입어 본 것 중 안 산 것을 한 번에 (하나씩 차례로 사고, 모자라면 거기서 멈춘다)
   ACT.decobuyall = function () {
-    var d = S.P.deco || { own: {} }, tr = S.decoTry || {}, list = D.DECO_SLOTS.map(function (sl) { return tr[sl.id]; }).filter(function (id) { return id && !d.own[id]; });
+    var d = S.P.deco || { own: {} }, tr = S.decoTry || {}, list = D.DECO_SLOTS.map(function (sl) { return tr[sl.id]; }).filter(function (id) { return id && !d.own[id] && R.DECO[id] && !R.DECO[id].need; });   // 전용 꾸미기는 살 수 없다
     if (!list.length || !decoArm('decoAll')) return;
     var got = [], i = 0;
     (function next() {
@@ -5479,7 +5480,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102270;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102271;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

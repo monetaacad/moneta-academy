@@ -294,7 +294,7 @@
     if (P.tfV == null && P.subj) { P.tfV = 1; if (P.created && P.created < R.EXAM_OPT_AT) { var tkf = P.tok || (P.tok = {}); tkf.transfer = (tkf.transfer || 0) + R.TRANSFER_GIVE; if (P.log) log(P, P.at || P.created, '선택 과목 도입 전에 입학한 학생에게 학점 이전 증서 ' + R.TRANSFER_GIVE + '장이 지급되었습니다. 소지품에서 사용할 수 있습니다', 'story'); } }
     if (!P.badges) P.badges = [];
     if (P.grade >= 3 && !P.badgeGot && P.res && P.log) { P.badgeGot = 1; gainBadge(P, makeBadge(P), P.at || 0, '아카데미 휘장 수여'); }
-    if (P.st && P.st.aGrades == null) P.st.aGrades = Object.keys(P.scores || {}).filter(function (g) { var l = P.scores[g].letter; return l === 'S' || l === 'A'; }).length;
+    if (P.st && P.scores) { R.gradeTally(P); R.decoGrant(P); }   // 기말 등급 횟수(A · B · B 이상) · S 횟수 전용 꾸미기: 예전 성적으로도 채운다
     if (P.spells && P.cls) P.spells = P.spells.map(function (sid) { return sid && R.spellUnlocked(P, sid) ? sid : null; });
     return P;
   };
@@ -2246,10 +2246,22 @@
   A.famAct = function (P, W, now, a) { var id = str(a.id); if (!P.fam.own[id]) err('없는 사역마입니다'); if (P.fam.disp[id]) err('파견 중입니다'); P.fam.act = id; return { ok: true }; };
   /* ── 정보 카드 꾸미기 (아르크로 산다) ── */
   var DECO = R.DECO = idx(D.DECO);
+  // 기말 등급 횟수: aGrades = A 이상, bPlus = B 이상, gA · gB = 그 등급을 받은 횟수 (학년마다 한 번 남는 성적 P.scores로 센다)
+  R.gradeTally = function (P) {
+    var L = Object.keys(P.scores || {}).map(function (g) { return P.scores[g].letter; }), n = function (f) { return L.filter(f).length; };
+    P.st.aGrades = n(function (l) { return l === 'S' || l === 'A'; }); P.st.bPlus = n(function (l) { return l === 'S' || l === 'A' || l === 'B'; });
+    P.st.gA = n(function (l) { return l === 'A'; }); P.st.gB = n(function (l) { return l === 'B'; });
+  };
+  // 조건(need)을 채운 전용 꾸미기를 지급한다 (살 수 없는 꾸미기). now가 있으면 일지에 남긴다
+  R.decoGrant = function (P, now) {
+    var d = decoOf(P);
+    D.DECO.forEach(function (x) { if (!x.need || d.own[x.id] || (P.st[x.need.stat] || 0) < x.need.n) return; d.own[x.id] = 1; if (now != null && P.log) log(P, now, x.needText + ' 달성! 전용 꾸미기 「' + x.name + '」' + R.josa(x.name, '을', '를').slice(x.name.length) + ' 받았습니다 (내 정보 → 꾸미기)', 'epic'); });
+  };
   function decoOf(P) { if (!P.deco) P.deco = { own: {}, on: {} }; return P.deco; }
   R.decoView = function (P) { var d = P && P.deco, o = {}; if (!d) return o; D.DECO_SLOTS.forEach(function (s) { var id = d.on[s.id]; if (id && DECO[id] && d.own[id]) o[s.id] = id; }); return o; };
   A.decoBuy = function (P, W, now, a) {
     var id = str(a.id), x = DECO[id]; if (!x) err('없는 꾸미기입니다'); var d = decoOf(P); if (d.own[id]) err('이미 가지고 있습니다');
+    if (x.need) err('살 수 없는 꾸미기입니다. ' + x.needText + '을 달성하면 지급됩니다');
     if (x.house && x.house !== P.house) err(HOUSE[x.house].name + ' 학생만 살 수 있습니다');   // 기숙사 문장 테두리
     if (P.res.gold < x.price) err(CUR + '가 부족합니다');
     P.res.gold -= x.price; d.own[id] = 1; d.on[x.slot] = id; log(P, now, R.josa('꾸미기 「' + x.name + '」', '을', '를') + ' 샀습니다 (' + R.fmt(x.price) + ' ' + CUR + ')', 'news');
@@ -2346,7 +2358,7 @@
     P.px = null;
     if (res.pass) {
       P.scores[run.grade] = { total: total, letter: L }; if (L === 'S') P.st.sGrades++;
-      P.st.aGrades = Object.keys(P.scores).filter(function (g) { var l = P.scores[g].letter; return l === 'S' || l === 'A'; }).length;
+      R.gradeTally(P); R.decoGrant(P, now);
       var rw = R.EXAM_REWARD[L] || R.EXAM_REWARD.C, mult = rw.mult, shard = Math.round((8 + run.grade * 4) * mult);
       var gold = Math.floor(400 * K.KILL_GOLD * Math.pow(K.G_GOLD, ex.duel) * mult); P.res.shard += shard; addGold(P, gold);
       var minR = rw.minR;
