@@ -1948,7 +1948,7 @@ table.sjtop .sjmeta { white-space: nowrap; }
 /* 텃밭 3×3 */
 .gdgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; max-width: 460px; margin: 0 auto; }
 .gdcell { position: relative; aspect-ratio: 1 / 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 6px 4px; border-radius: 12px; border: 1px solid var(--line2); color: var(--ink); text-align: center; font: inherit; min-width: 0;
-  background: radial-gradient(ellipse 74% 22% at 50% 70%, rgba(120, 84, 48, .5), rgba(90, 60, 34, .32) 70%, transparent 72%), var(--sunk); }
+  background: radial-gradient(ellipse 70% 16% at 50% 88%, rgba(120, 84, 48, .45), rgba(90, 60, 34, .28) 70%, transparent 72%), var(--sunk); }
 .gdcell .nm { font-size: 12px; line-height: 1.2; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gdcell.empty { cursor: pointer; border-style: dashed; color: var(--muted); }
 .gdcell.empty .plus { font-size: 22px; line-height: 1; color: var(--brass); }
@@ -2029,4 +2029,5 @@ button.lzitem { cursor: pointer; } button.lzitem:hover { border-color: var(--lin
 .lzcatch { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-top: 6px; }
 .lzc { display: inline-flex; align-items: center; gap: 2px; padding: 2px 6px 2px 2px; border-radius: 8px; background: var(--sunk); border: 1px solid var(--line2); font-size: 12px; }
 .lzc.new { border-color: var(--brass); }
+.lzorder { border-color: var(--line); } .lzorder.done { opacity: .75; }
 @media (prefers-reduced-motion: reduce) { .spr.bob, .fxwater, .fxbob, .fxshadow, .gdcell.ripe::after, .btn.fxbtn.bite { animation: none !important; } }

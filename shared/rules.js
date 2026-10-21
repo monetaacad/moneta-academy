@@ -1185,6 +1185,7 @@
     P.at = now;
     if (W) { R.ensureWeek(P, W, now); R.ensureDaily(P, now); }
     R.famGift(P, now);   // 이미 레벨이 닿은 학생도 다음 접속 때 첫 알
+    if ((P.fsh || P.gdn) && (!P.lzo || P.lzo.d !== R.dayKST(now))) P.lzo = { d: R.dayKST(now), o: R.lzOrdersFor(P, now), done: {} };   // 오늘의 주문: 그날 처음 들를 때 정해 두어 하루 동안 바뀌지 않게
     checkAch(P, now);
     return P;
   };
@@ -2616,7 +2617,7 @@
     P_WEED: 0.14, P_LOOT: 0.03, P_RARE: 0.012, P_LEG: 0.002, PERFECT_RARE: 2,
     LV_MAX: 30, XP_A: 25, XP_G: 1.2,
     FISH_XP: [2, 3, 5, 9], CROP_XP: [4, 8, 16, 32],
-    PRICE_FISH: [0.5, 1, 2.5, 7], PRICE_WEED: 0.25, PRICE_CROP: [0.3, 0.8, 2, 5], RARE_GOLD: 20, LEG_GOLD: 80, RARE_SHARD: 5, LEG_SHARD: 20,
+    PRICE_FISH: [0.5, 1, 2.5, 7], PRICE_WEED: 0.25, PRICE_CROP: [0.3, 0.8, 2, 5], RARE_GOLD: 20, LEG_GOLD: 80, RARE_SHARD: 3, LEG_SHARD: 10,
     COMPOST: 3
   };
   // 도감 단계마다 영구 보너스 (도감 · 랭킹이 고르게 오르도록 작게)
@@ -2732,7 +2733,7 @@
     D.FAIRIES.forEach(function (f) {
       if (f.likes !== res || !R.lzCond(W, now, f.c) || rnd(P) >= LZ.FAIRY_P) return;
       var first = !g.fy[f.id]; g.fy[f.id] = (g.fy[f.id] || 0) + 1; P.st.fairies = (P.st.fairies || 0) + 1;
-      var gift; if (first) { P.res.shard += 3; gift = { shard: 3 }; } else if (rnd(P) < 0.5) { g.fert++; gift = { fert: 1 }; } else { var sd = pick(P, GD_GIFT).id; gdSeedAdd(g, sd, 1); gift = { seed: sd }; }   // 처음 온 요정만 별조각
+      var gift; if (first) { P.res.shard += 2; gift = { shard: 2 }; } else if (rnd(P) < 0.5) { g.fert++; gift = { fert: 1 }; } else { var sd = pick(P, GD_GIFT).id; gdSeedAdd(g, sd, 1); gift = { seed: sd }; }   // 처음 온 요정만 별조각
       out.fairy = { id: f.id, first: first, gift: gift };
     });
     out.first = !g.cdx[res]; g.cdx[res] = (g.cdx[res] || 0) + 1;
@@ -2910,6 +2911,32 @@
   };
   A.fshUse = function (P, W, now, a) { fgNeed(W); var f = fshOf(P, now), b = fshBaitPick(P, a); f.use = b; if (a.spot) f.spot = fshSpot(P, a); return { ok: true }; };
   // 보낼 때 숨길 값: 던진 낚싯줄에 걸린 것 · 찌 낚시에서 아직 낚지 않은 것 · 자라는 작물의 변이 주사위
+  /* ── 오늘의 주문: 하루 두 가지(물고기 · 작물), 한국 시간 0시에 바뀐다. 도감을 거의 채운 뒤에도 매일 할 일이 남도록.
+     그날 처음 볼 때 숙련도 · 도감에 맞춰 정해 두고(P.lzo), 가진 것을 납품하면 숙련도 경험치 · 미끼 또는 비료 · 별조각 1 ── */
+  function strHash(s) { var h = 2166136261; s = String(s); for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+  R.lzOrdersFor = function (P, now) {
+    var d = R.dayKST(now), h = hash32((strHash(P.id) ^ Math.imul(d, 2654435761)) >>> 0), f = P.fsh, g = P.gdn, flv = (f && f.lv) || 1, glv = (g && g.lv) || 1;
+    // 이미 도감에 있는 것 중에서 (씨앗 · 낚시터를 가진 것만 나오게): 낚시 8레벨부터 귀함, 원예 10레벨부터 귀함 작물
+    var fl = D.FISH.filter(function (x) { return !x.weed && !x.c && x.t <= (flv >= 8 ? 2 : 1) && flv >= SPOT[x.at].lv && f && f.cdx[x.id]; });
+    var cl = D.GARDEN.filter(function (x) { return g && g.cdx[x.id] && x.t <= (glv >= 10 ? 2 : 1); });
+    if (!fl.length) fl = D.FISH.filter(function (x) { return x.at === 'pond' && x.t === 0; });
+    if (!cl.length) cl = ['pansy', 'tulip', 'mint', 'blueberry'].map(function (id) { return GD[id]; });
+    var fx = fl[h % fl.length], cx = cl[(h >>> 11) % cl.length];
+    return [{ k: 'fish', id: fx.id, n: [3, 2, 1][fx.t] }, { k: 'crop', id: cx.id, n: [4, 2, 1][cx.t] }];
+  };
+  R.lzOrders = function (P, now) { var o = P.lzo; return o && o.d === R.dayKST(now) ? o : { d: R.dayKST(now), o: R.lzOrdersFor(P, now), done: {} }; };
+  R.LZ_ORDER_XP = 0.3;   // 지금 레벨 필요 경험치의 30%
+  A.lzOrder = function (P, W, now, a) {
+    fgNeed(W); var k = str(a.k, 8), od = P.lzo = R.lzOrders(P, now), o = od.o.filter(function (x) { return x.k === k; })[0]; if (!o) err('없는 주문입니다');
+    if (od.done[k]) err('오늘은 이미 납품했습니다');
+    var f = fshOf(P, now), g = gdOf(P), bag = k === 'fish' ? f.bag : g.crops; if (!((bag[o.id] || 0) >= o.n)) err('납품할 수량이 부족합니다');
+    bag[o.id] -= o.n; if (!bag[o.id]) delete bag[o.id]; od.done[k] = 1;
+    var sk = k === 'fish' ? f : g, xp = Math.max(10, Math.floor(R.lzXpNeed(sk.lv) * R.LZ_ORDER_XP)), lv0 = sk.lv, out = { k: k, xp: xp, shard: 1 };
+    lzAddXp(sk, xp); if (sk.lv > lv0) out.lv = sk.lv; P.res.shard += 1;
+    if (k === 'fish') { g.fert += 2; out.fert = 2; } else { var bb = ['petal', 'berry', 'herb'][Math.floor(rnd(P) * 3)]; f.bt[bb] = (f.bt[bb] || 0) + 3; out.bait = bb; out.baitN = 3; }
+    P.st.lzOrders = (P.st.lzOrders || 0) + 1;
+    return out;
+  };
   R.lzPublic = function (P, o) {
     if (P.fsh) { var f = P.fsh, c = f.cast, j = f.job; o.fsh = Object.assign({}, f, { cast: c ? { d: c.d, win: c.win, sh: c.sh, spot: c.spot, bait: c.bait } : null, job: j ? Object.assign({}, j, { c: j.c.map(function (k) { return k.at <= P.at ? k : { at: k.at }; }) }) : null }); }
     if (P.gdn) o.gdn = Object.assign({}, P.gdn, { plots: P.gdn.plots.map(function (pl) { if (!pl || pl.end <= P.at) return pl; var q = Object.assign({}, pl); delete q.u; return q; }) });

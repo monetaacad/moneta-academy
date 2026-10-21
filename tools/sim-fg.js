@@ -16,7 +16,7 @@ function run(key) {
   var P = R.newPlayer('sim', '봇', 'lanterna', t, 777 + SEED * 13); R.fixState(P);
   P.maxStage = 40; P.st.maxStageAll = 40; P.grade = 4;
   var seedR = 99991 * SEED; function rr() { seedR = (seedR * 16807) % 2147483647; return seedR / 2147483647; }
-  var U = R.lzUnit(P), stat = { gold: 0, shard: 0, catches: 0, hand: 0, perfect: 0, miss: 0, rare: 0, leg: 0, legNames: [], rareNames: [], mut: 0, cross: 0, fairy: 0, harvest: 0, visits: 0 };
+  var dayOrd = {}, U = R.lzUnit(P), stat = { gold: 0, shard: 0, catches: 0, hand: 0, perfect: 0, miss: 0, rare: 0, leg: 0, legNames: [], rareNames: [], mut: 0, cross: 0, fairy: 0, harvest: 0, visits: 0, orders: 0 };
   var daily = [];
   function act(type, a) { W.now = t; try { return R.act(P, W, t, type, a || {}); } catch (e) { if (e.game) return null; throw e; } }
   function known(id) { return P.gdn && P.gdn.cdx[id]; }
@@ -35,7 +35,10 @@ function run(key) {
     while (free.length) {
       var opts = Object.keys(g.seeds).filter(function (s) { return g.seeds[s] > 0; }); if (!opts.length) break;
       opts.sort(function (a, b) {
-        function sc(s) { var x = R.GD[s], end = t + x.g, m = R.gdMutChance(W, { s: s, end: end }); return (m && !known(m.to) ? 100 : 0) + (known(s) ? 0 : 50) + x.t * 5 + (g.seeds[s] > 4 ? 3 : 0); }
+        function sc(s) { var x = R.GD[s], end = t + x.g, m = R.gdMutChance(W, { s: s, end: end }), fy = D.FAIRIES.filter(function (f) { return f.likes === s && !g.fy[f.id]; }).length;
+          var same = g.plots.filter(function (pl) { return pl && pl.s === s; }).length;   // 한 종류로 밭을 채우지 않는다
+          var od = R.lzOrders(P, t), co = od.o[1], want = !od.done.crop && co.id === s && (g.crops[s] || 0) < co.n ? 60 : 0;
+          return want + (m && !known(m.to) ? 100 : 0) + (known(s) ? 0 : 50) + fy * 40 + x.t * 5 + (g.seeds[s] > 4 ? 3 : 0) - same * 30; }
         return sc(b) - sc(a);
       });
       act('gdPlant', { i: free.shift(), s: opts[0] });
@@ -43,9 +46,10 @@ function run(key) {
   }
   function bestBait() { var f = P.fsh, order = ['abyss', 'gold', 'star', 'moon', 'petal', 'berry', 'herb']; for (var i = 0; i < order.length; i++) if (f && f.bt[order[i]] > 0) return order[i]; return ''; }
   function bestSpot() { var s = 'pond'; D.FISH_SPOTS.forEach(function (x) { if (R.spotOpen(P, x.id)) s = x.id; }); return s; }
-  function spotFor() {   // 아직 못 낚은 것이 많은 낚시터 (열린 곳 중)
-    var best = 'pond', bs = -1, f = R.fshOf(P, t);
-    D.FISH_SPOTS.forEach(function (x, i) { if (!R.spotOpen(P, x.id)) return; var miss = D.FISH.filter(function (q) { return q.at === x.id && !f.cdx[q.id]; }).length + R.rareAt(W, x.id, t).filter(function (r) { return !f.rare[r.id]; }).length * 3; var sc = miss * 10 + i; if (sc > bs) { bs = sc; best = x.id; } });
+  function spotFor() {   // 오늘의 주문 낚시터 → 아직 못 낚은 것이 많은 낚시터 (열린 곳 중)
+    var od = R.lzOrders(P, t), fo = od.o[0], f = R.fshOf(P, t); if (!od.done.fish && (f.bag[fo.id] || 0) < fo.n) return R.FISH[fo.id].at;
+    var best = 'pond', bs = -1;
+    D.FISH_SPOTS.forEach(function (x, i) { if (!R.spotOpen(P, x.id)) return; var miss = D.FISH.filter(function (q) { return q.at === x.id && !f.cdx[q.id]; }).length + R.rareAt(W, x.id, t).filter(function (r) { return !f.rare[r.id]; }).length * 12; var sc = miss * 10 + i; if (sc > bs) { bs = sc; best = x.id; } });
     return best;
   }
   function onGot(g) {
@@ -80,24 +84,28 @@ function run(key) {
     }
     var dk = nextGap >= 43200 ? '12h' : nextGap >= 28800 ? '8h' : nextGap >= 14400 ? '4h' : nextGap >= 7200 ? '2h' : '1h';
     var bb = bestBait(); act('fshSet', { spot: bestSpot(), d: dk, bait: bb && P.fsh.bt[bb] >= R.fshIdleBait(dk) ? bb : '' });
+    // 오늘의 주문 납품 (가진 것이 있으면)
+    var od0 = R.lzOrders(P, t); if (act('lzOrder', { k: 'fish' })) { stat.orders++; dayOrd[R.dayKST(t)] = 1; } if (act('lzOrder', { k: 'crop' })) { stat.orders++; dayOrd[R.dayKST(t)] = 1; }
     // 물고기는 진귀 아래 모두 판다
-    if (P.fsh && Object.keys(P.fsh.bag).length) act('lzSell', { k: 'fish', tier: 2 });
+    var keep = R.lzOrders(P, t); if (P.fsh && Object.keys(P.fsh.bag).length) { var kf = keep.o[0], hold = !keep.done.fish ? P.fsh.bag[kf.id] || 0 : 0; if (hold) P.fsh.bag[kf.id] = 0; act('lzSell', { k: 'fish', tier: 2 }); if (hold) P.fsh.bag[kf.id] = hold; }   // 주문 물고기는 남겨 둔다
     stat.gold += P.res.gold - g0; stat.shard += P.res.shard - s0;
   }
   var times = [];
   for (var d = 0; d < DAYS; d++) ty.visits.forEach(function (h) { times.push(EPOCH + 3 * 86400 + d * 86400 + Math.round(h * 3600) + Math.round((rr() - 0.5) * 1200)); });
   times.sort(function (a, b) { return a - b; });
-  var lastDisc = 0, prevDay = -1, gaps = [];
+  var lastDisc = 0, prevDay = -1, gaps = [], dayDisc = {};
   times.forEach(function (tt, i) {
     t = tt; W.ms = tt * 1000;
     var before = disc(P);
     visit((times[i + 1] || tt + 86400) - tt);
     var after = disc(P); if (after > before) { if (lastDisc) gaps.push(tt - lastDisc); lastDisc = tt; }
+    var dd = Math.floor((tt - EPOCH) / 86400) - 3; dayDisc[dd] = (dayDisc[dd] || 0) + (after - before);
     var day = Math.floor((tt - EPOCH) / 86400) - 3;
     if (day !== prevDay && [0, 1, 2, 4, 6, 9, 13, 20, 29, 44, 59].indexOf(day) >= 0) { prevDay = day; }
     daily[day] = { d: day + 1, disc: disc(P), cdx: cdx(P), flv: P.fsh ? P.fsh.lv : 1, glv: P.gdn ? P.gdn.lv : 1, rare: stat.rare, leg: stat.leg, gold: stat.gold, shard: stat.shard, catches: stat.catches };
   });
-  return { key: key, ty: ty, P: P, stat: stat, daily: daily, gaps: gaps, U: U };
+  var dry = 0, idle = 0, d0 = R.dayKST(EPOCH + 3 * 86400 + 3600); for (var q = 7; q < DAYS; q++) { if (!dayDisc[q]) dry++; if (!dayDisc[q] && !dayOrd[d0 + q]) idle++; }
+  return { key: key, ty: ty, P: P, stat: stat, daily: daily, gaps: gaps, U: U, dry: dry, idle: idle };
 }
 function disc(P) { var n = 0; if (P.gdn) n += Object.keys(P.gdn.cdx).length + Object.keys(P.gdn.fy).length; if (P.fsh) n += Object.keys(P.fsh.cdx).length + Object.keys(P.fsh.rare).length; return n; }
 function cdx(P) { return { plant: P.gdn ? Object.keys(P.gdn.cdx).length : 0, fairy: P.gdn ? Object.keys(P.gdn.fy).length : 0, fish: P.fsh ? Object.keys(P.fsh.cdx).length : 0, rare: P.fsh ? Object.keys(P.fsh.rare).length : 0 }; }
@@ -113,7 +121,8 @@ Object.keys(TYPES).filter(function (k) { return ONLY === 'all' || ONLY === k; })
     console.log('| ' + d + ' | ' + x.disc + ' | ' + x.cdx.plant + '/' + TOT.plant + ' | ' + x.cdx.fairy + '/' + TOT.fairy + ' | ' + x.cdx.fish + '/' + TOT.fish + ' | ' + x.cdx.rare + '/' + TOT.rare + ' | ' + x.flv + ' | ' + x.glv + ' | ' + x.rare + '/' + x.leg + ' | ' + Math.round(x.gold / o.U) + ' | ' + x.shard + ' |');
   });
   var g = o.gaps.slice().sort(function (a, b) { return a - b; }), med = g[Math.floor(g.length / 2)] || 0, p90 = g[Math.floor(g.length * 0.9)] || 0, mx = g[g.length - 1] || 0;
-  console.log('- 접속 ' + s.visits + '번 · 낚음 ' + s.catches + ' (손낚시 ' + s.hand + ', 완벽 ' + pct(s.perfect, s.hand) + ', 놓침 ' + pct(s.miss, s.hand) + ') · 수확 ' + s.harvest + ' (변이 ' + s.mut + ', 교배 씨앗 ' + s.cross + ', 요정 ' + s.fairy + ')');
+  console.log('- 접속 ' + s.visits + '번 · 낚음 ' + s.catches + ' (손낚시 ' + s.hand + ', 완벽 ' + pct(s.perfect, s.hand) + ', 놓침 ' + pct(s.miss, s.hand) + ') · 수확 ' + s.harvest + ' (변이 ' + s.mut + ', 교배 씨앗 ' + s.cross + ', 요정 ' + s.fairy + ') · 주문 납품 ' + s.orders + '/' + DAYS * 2);
+  console.log('- 8일째부터 새 발견이 없던 날: ' + o.dry + '일 · 그중 주문도 못 한 날(할 일이 없던 날): ' + o.idle + '일 / ' + Math.max(0, DAYS - 7) + '일');
   console.log('- 새 발견 사이 간격: 중간 ' + (med / 3600).toFixed(1) + '시간 · 90% ' + (p90 / 3600).toFixed(1) + '시간 · 최대 ' + (mx / 3600).toFixed(1) + '시간');
   console.log('- 하루 평균: 아르크 ' + Math.round(s.gold / o.U / DAYS) + 'U (일일 목표 보상의 ' + (s.gold / DAYS / R.dailyReward(o.P).gold).toFixed(2) + '배) · 별조각 ' + (s.shard / DAYS).toFixed(1));
   console.log('- 전설: ' + (s.legNames.join(', ') || '없음'));

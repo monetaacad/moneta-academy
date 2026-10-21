@@ -59,6 +59,17 @@ r = u.act('gdBuy', {'id': 'green'})
 if not r.get('error'): errs.append('별조각 없이 온실 꾸러미 구매')
 if not u.act('lzSell', {'k': 'crop', 'id': 'pansy', 'n': 5}).get('error'): errs.append('없는 작물 판매')
 if not u.act('lzBait', {'id': 'star', 'n': 1}).get('error'): errs.append('재료 없이 별빛 미끼')
+# 오늘의 주문: 하루 동안 고정, 수량이 모자라면 거절, 두 번 납품 불가
+st = u.req('GET', '/api/state'); lzo = st['P'].get('lzo') or {}
+if not lzo.get('o'): errs.append('오늘의 주문이 없음')
+else:
+    fo = [o for o in lzo['o'] if o['k'] == 'fish'][0]
+    have = st['P']['fsh']['bag'].get(fo['id'], 0)
+    r = u.act('lzOrder', {'k': 'fish'})
+    if have < fo['n'] and not r.get('error'): errs.append('수량이 모자란데 납품됨')
+    st2 = u.req('GET', '/api/state')
+    if st2['P']['lzo']['o'] != lzo['o']: errs.append('주문이 하루 중에 바뀜')
+    # 시험용: 운영실 우편 없이 직접 잡을 수 없으니 상태만 확인
 if OFF:
     v = new(OFF, '끔')
     if v.req('GET', '/api/state').get('fg'): errs.append('기능을 끈 서버가 fg=1')

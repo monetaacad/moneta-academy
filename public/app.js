@@ -2319,6 +2319,15 @@
     return '<div class="card"><h3>날씨 · 하늘 예보</h3><div class="lzfc">' + out + '</div><div class="tiny muted" style="margin-top:6px">하늘 이벤트: ' + (sk.length ? sk.map(function (e) { return '<span class="gold">' + e.name + '</span> ' + clock(e.start) + '~' + clock(e.end).replace(/^(내일 |모레 )/, ''); }).join(' · ') : '없음') + '</div><p class="tiny faint" style="margin-top:6px">날씨는 3시간마다 바뀌고 미리 정해져 있습니다. 변이는 다 자라는 시각, 희귀 생물은 낚는 시각의 날씨 · 시간대(새벽 4~8시 · 낮 8~17시 · 저녁 17~21시 · 밤 21~4시) · 하늘 이벤트를 따릅니다.</p></div>';
   }
 
+  // 오늘의 주문 (한국 시간 0시에 바뀜): 텃밭에는 작물, 낚시터에는 물고기
+  function lzOrderCard(k) {
+    var od = R.lzOrders(S.P, now()), o = od.o.filter(function (x) { return x.k === k; })[0], fish = k === 'fish', x = fish ? R.FISH[o.id] : R.GD[o.id];
+    var have = fish ? (fsg().bag[o.id] || 0) : (gdg().crops[o.id] || 0), done = od.done[k], ok = have >= o.n;
+    return '<div class="card lzorder' + (done ? ' done' : '') + '"><div class="row between"><h3>오늘의 주문</h3><span class="tiny faint">' + clock(R.nextMidnight(now())) + '에 바뀜</span></div><div class="row" style="gap:10px;margin-top:6px">' + spr(x.sp, 48, done ? '' : 'bob') +
+      '<div style="flex:1"><b>' + esc(x.name) + ' ' + o.n + (fish ? '마리' : '개') + '</b> <span class="tiny faint">' + (fish ? R.SPOT[x.at].name : '텃밭') + '</span><div class="tiny muted">보유 <b class="num ' + (ok ? 'good' : '') + '">' + Math.min(have, o.n) + ' / ' + o.n + '</b> · 보상: ' + (fish ? '낚시' : '원예') + ' 경험치 · ' + (fish ? '비료 2' : '미끼 3') + ' · 별조각 1</div></div>' +
+      (done ? '<span class="tag ok">납품 완료</span>' : '<button class="btn sm primary" data-act="lzorder" data-a="' + k + '"' + (ok ? '' : why((fish ? '어망' : '수확물') + '에 ' + o.n + (fish ? '마리' : '개') + '가 필요합니다')) + '>납품</button>') + '</div></div>';
+  }
+  ACT.lzorder = function (k) { act('lzOrder', { k: k }).then(function (r) { if (!r) return; Snd.play('ach'); toast('주문을 납품했습니다', (k === 'fish' ? '낚시' : '원예') + ' 경험치 +' + fmt(r.xp) + (r.fert ? ' · 비료 +' + r.fert : '') + (r.bait ? ' · ' + R.BAIT[r.bait].name + ' +' + r.baitN : '') + ' · 별조각 +1' + (r.lv ? ' · ' + r.lv + '레벨 달성' : ''), 3000); render(); }); };
   /* ── 텃밭 ── */
   V.garden = function () {
     var g = gdg(), C0 = R.lzCdxTiers(S.P), h = pageHead('온실 뒤뜰', '아카데미 텃밭', '<span class="small">원예 숙련도 <b class="num gold">Lv ' + g.lv + '</b></span>');
@@ -2326,7 +2335,7 @@
     var tab = S.lzTab.garden || 'plot';
     if (tab === 'plant') return h + plantCodex(C0);
     if (tab === 'fairy') return h + fairyCodex(C0);
-    return h + '<div class="grid g2"><div class="stack">' + gdPlotCard(g) + lzForecast() + '</div><div class="stack">' + gdSeedCard(g) + gdCropCard(g) + gdShopCard() + '</div></div>';
+    return h + '<div class="grid g2"><div class="stack">' + gdPlotCard(g) + lzForecast() + '</div><div class="stack">' + lzOrderCard('crop') + gdSeedCard(g) + gdCropCard(g) + gdShopCard() + '</div></div>';
   };
   function gdPlotCard(g) {
     var t = now(), ripe = g.plots.filter(function (pl) { return pl && pl.end <= t; }).length, dry = g.plots.filter(function (pl) { return pl && !pl.wet && pl.end > t; }).length;
@@ -2461,7 +2470,7 @@
   };
   function fairyCodex(C0) {
     var g = gdg();
-    return cdxHead('fairy', Object.keys(g.fy).length, D.FAIRIES.length, C0.fairy) + '<div class="cdxgrid big">' + D.FAIRIES.map(function (f) { var n = g.fy[f.id] || 0; return cdxCell(f.sp, 48, n, f.name.split(' ').pop(), n ? stars(n, R.LZ_CDX.fairy.tiers) : (g.cdx[f.likes] ? esc(R.GD[f.likes].name) : ''), 'cdxfairy', f.id); }).join('') + '</div><p class="tiny faint">요정은 좋아하는 식물을 수확할 때 ' + Math.round(R.LZ.FAIRY_P * 100) + '% 확률로 찾아옵니다. 처음 찾아온 요정은 별조각 3개를 두고 갑니다.</p>';
+    return cdxHead('fairy', Object.keys(g.fy).length, D.FAIRIES.length, C0.fairy) + '<div class="cdxgrid big">' + D.FAIRIES.map(function (f) { var n = g.fy[f.id] || 0; return cdxCell(f.sp, 48, n, f.name.split(' ').pop(), n ? stars(n, R.LZ_CDX.fairy.tiers) : (g.cdx[f.likes] ? esc(R.GD[f.likes].name) : ''), 'cdxfairy', f.id); }).join('') + '</div><p class="tiny faint">요정은 좋아하는 식물을 수확할 때 ' + Math.round(R.LZ.FAIRY_P * 100) + '% 확률로 찾아옵니다. 처음 찾아온 요정은 별조각 2개를 두고 갑니다.</p>';
   }
   ACT.cdxfairy = function (id) {
     var g = gdg(), f = R.FAIRY[id], n = g.fy[id] || 0;
@@ -2476,7 +2485,7 @@
     var tab = S.lzTab.fish || 'spot';
     if (tab === 'fish') return h + fishCodex(C0);
     if (tab === 'rare') return h + rareCodex(C0);
-    return h + '<div class="grid g2"><div class="stack">' + fxCard(f) + lzForecast() + '</div><div class="stack">' + idleCard(f) + bagCard(f) + '</div></div>';
+    return h + '<div class="grid g2"><div class="stack">' + fxCard(f) + lzForecast() + '</div><div class="stack">' + lzOrderCard('fish') + idleCard(f) + bagCard(f) + '</div></div>';
   };
   function fxSpot() { var f = fsg(), s = S.fx.spot || f.spot || 'pond'; return R.spotOpen({ fsh: f }, s) ? s : 'pond'; }
   function fxBait() { var f = fsg(), b = S.fx.bait != null ? S.fx.bait : f.use || ''; return b && f.bt[b] > 0 ? b : ''; }
@@ -4104,7 +4113,7 @@
     b.lecture = il ? '빈 슬롯' : ''; b.explore = ed ? '완료' : S.erInv ? '초대 ' + S.erInv : ie ? '빈 슬롯' : '';
     b.home = P.mq && R.mqReady(P) ? '이야기' : jar().n >= R.jarMax(S.P) ? '정령' : (P.daily.login || P.daily.q.some(function (q) { return !q.done && R.dailyProg(P, q) >= q.goal; })) ? '보상' : '';
     b.lore = storyUnread() ? '새 글' : '';
-    if (S.fg) { var rp = P.gdn ? P.gdn.plots.filter(function (pl) { return pl && pl.end <= now(); }).length : 0, fj = P.fsh && P.fsh.job; b.garden = rp ? '수확 ' + rp : ''; b.fish = fj && fj.end <= now() ? '그물' : !fj ? '찌' : ''; }
+    if (S.fg) { var rp = P.gdn ? P.gdn.plots.filter(function (pl) { return pl && pl.end <= now(); }).length : 0, fj = P.fsh && P.fsh.job; var od = R.lzOrders(P, now()); b.garden = rp ? '수확 ' + rp : !od.done.crop && P.gdn && (P.gdn.crops[od.o[1].id] || 0) >= od.o[1].n ? '주문' : ''; b.fish = fj && fj.end <= now() ? '그물' : !od.done.fish && P.fsh && (P.fsh.bag[od.o[0].id] || 0) >= od.o[0].n ? '주문' : ''; }   // 하지 않는 학생에게 배지가 늘 뜨지 않게: 수확 · 그물 · 납품 준비만
     var ex = R.examFor(P); if (ex && P.grade < 8 && P.examCd <= now() && R.examEligible(P, ex)) b.exam = '응시';
     b.gear = P.pts > 0 ? P.pts + '점' : invNew().length ? '새 소지품' : '';
     b.party = S.pinv ? '초대 ' + S.pinv : '';

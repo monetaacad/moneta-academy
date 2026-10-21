@@ -33,6 +33,7 @@ with sync_playwright() as p:
         if not pg.query_selector(f'#modal:not([hidden]) [data-act=gdplant][data-b={s}]'): errs.append('심기 창에 ' + s + ' 없음'); close(pg); continue
         if i == 1 and '교배' not in pg.inner_text('#modal'): errs.append('튤립 심기 창에 교배 안내 없음')
         pg.click(f'#modal [data-act=gdplant][data-b={s}]'); pg.wait_for_timeout(400)
+    if not pg.query_selector('.lzorder [data-act=lzorder], .lzorder .tag.ok'): errs.append('텃밭에 오늘의 주문 없음')
     grow = pg.locator('.gdcell.grow').count()
     if grow != 4: errs.append('자라는 칸 %d' % grow)
     pg.click('[data-act=gdwater]'); pg.wait_for_timeout(400)
@@ -76,6 +77,7 @@ with sync_playwright() as p:
             if pg.evaluate("() => window.__S.fx.phase") == 'idle': break
             pg.wait_for_timeout(100)
     f = pg.evaluate("() => window.__S.P.fsh")
+    if not pg.query_selector('.lzorder'): errs.append('낚시터에 오늘의 주문 없음')
     if f['n'] < 3: errs.append('손낚시로 낚은 수 %d' % f['n'])
     # 너무 일찍 당기기
     pg.wait_for_timeout(1800); pg.click('[data-act=fxcast]'); pg.wait_for_timeout(400); pg.click('[data-act=fxreel]'); pg.wait_for_timeout(700)
