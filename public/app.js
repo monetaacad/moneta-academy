@@ -1905,6 +1905,10 @@
     var P = S.P, W = S.W || {}, MR = myRanks();
     if (!S.lastWorld || Date.now() - S.lastWorld > 30000) refreshWorld();
     var h = pageHead('아카데미의 기록', '랭킹', '학생 ' + fmt(W.players || 0) + '명');
+    if (API.subjRanks) {   // 전투 순위 | 과목 수석
+      h += '<div class="tabs" role="tablist">' + [['fight', '전투 순위'], ['subj', '과목 수석']].map(function (t) { var on = (S.rankTab || 'fight') === t[0]; return '<button role="tab" class="' + (on ? 'on' : '') + '" aria-selected="' + on + '" data-act="ranktab" data-a="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
+      if (S.rankTab === 'subj') return h + subjRankCard();
+    }
     h += '<div class="grid g2"><div class="stack">';
     h += '<div class="card">' + rkHead('전투력 순위', '장비 · 능력치 · 주문을 모두 반영한 전투력입니다. 물약 · 의식 같은 시간제 효과는 순위에서 제외합니다.', MR.power || S.rank) + rankList((W.topPower || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: fmt(r.power), sub: R.gradeLabel({ grade: r.grade }) + ' · Lv ' + r.lvl }; }), 'power', { rank: MR.power || S.rank, v: fmt(C().power), sub: '' }) + '</div>';
     h += '<div class="card">' + rkHead('레벨 순위', '학생 레벨 순위입니다. 같은 레벨이면 원정 최고 단계, 그다음 전투력이 높은 학생이 앞섭니다. 이름 옆에 학년과 원정 최고 단계를 함께 표시합니다.', MR.lvl) + rankList((W.topLvl || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: 'Lv ' + r.lvl, sub: R.gradeLabel({ grade: r.grade }) + ' · 원정 ' + r.stage + '단계' }; }), 'lvl', { rank: MR.lvl, v: 'Lv ' + P.lvl, sub: R.gradeLabel({ grade: P.grade }) + ' · 원정 ' + P.maxStage + '단계' }) + '</div>';
@@ -1914,7 +1918,6 @@
     var gr = gRankData('lv');
     h += '<div class="card"><div class="row between"><h3>동아리 순위</h3><button class="btn sm ghost" data-act="grall">전체 보기</button></div>' + (!gr ? '<div class="empty">불러오는 중…</div>' : gr.list.length ? (gr.mine ? '<p class="small" style="margin-top:4px">우리 동아리 <b class="num gold">' + gr.mine.rank + '위</b></p>' : '') + gRankRows(gr.list.slice(0, 10), true, gr.mine && gr.mine.id, 'lv') : '<div class="empty" style="margin-top:8px">아직 동아리가 없습니다.</div>') + '</div>';
     h += '</div></div>';
-    h += subjRankCard();
     return h;
   };
   /* 순위 목록: 10위까지, 「더보기」로 50위까지. 내가 보이는 범위 밖이면 맨 아래에 내 순위를 같은 모양으로 한 줄 더 */
@@ -1938,7 +1941,7 @@
   function subjRankCard() {
     if (!API.subjRanks) return '';
     var d = subjRankData(), P = S.P;
-    var h = '<div class="card" style="margin-top:14px">' + rkHead('과목 수석', '과목마다 레벨이 가장 높은 학생(수석)과 두 번째 학생(차석)입니다. 같은 레벨이면 그 레벨에서 쌓은 경험치가 많은 학생이 앞섭니다. 학과 전용 과목은 그 학과 학생끼리 겨루며, 순위는 5분마다 갱신됩니다.', null);
+    var h = '<div class="card">' + rkHead('과목 수석', '과목마다 레벨이 가장 높은 학생(수석)과 두 번째 학생(차석)입니다. 같은 레벨이면 그 레벨에서 쌓은 경험치가 많은 학생이 앞섭니다. 학과 전용 과목은 그 학과 학생끼리 겨루며, 순위는 5분마다 갱신됩니다.', null);
     if (!d) return h + '<div class="empty">불러오는 중…</div></div>';
     function who(r) { if (!r) return '<span class="faint">—</span>'; var hh = R.HOUSE[r.house]; return '<span style="color:' + (hh ? hh.color : 'inherit') + '">●</span> <a class="rnk-name' + (r.id === P.id ? ' me' : '') + '" data-act="prof" data-a="' + esc(r.id) + '">' + esc(r.name) + '</a> <span class="sjmeta"><span class="tiny faint">' + R.gradeLabel({ grade: r.grade }) + '</span> <span class="num tiny gold">Lv ' + r.lv + '</span></span>'; }
     h += '<table class="sjtop"><thead><tr><th>과목</th><th>수석</th><th>차석</th></tr></thead><tbody>' + D.SUBJECTS.map(function (sj) { var t = d.tops[sj.id] || []; return '<tr><th scope="row">' + sj.name + '</th><td>' + who(t[0]) + '</td><td>' + who(t[1]) + '</td></tr>'; }).join('') + '</tbody></table></div>';
@@ -1952,6 +1955,7 @@
     }).join('') + '</div>';
     return h;
   }
+  ACT.ranktab = function (t) { S.rankTab = t === 'subj' ? 'subj' : 'fight'; render(); };
   ACT.sjfold = function () { S.sjFold = !S.sjFold; render(); };
   // 내 순위들 (랭킹 화면을 볼 때만, 30초 캐시)
   function myRanks() {
