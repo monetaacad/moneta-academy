@@ -1274,7 +1274,7 @@
     var qDone = P.daily.q.filter(function (q) { return q.done; }).length;
     var dailyH = fold('daily', '일일 목표', dq, true, '<span class="tag br daily-st">출석 ' + P.daily.streak + '일째</span>' + (P.daily.login || claim ? '<span class="tag ok">받을 보상</span>' : ''), '', '<b class="num">' + qDone + '/' + P.daily.q.length + '</b>' + (qDone >= P.daily.q.length ? ' 완료' : ''), 'daily');
     // 내 정보 · 능력치 · 기숙사는 왼쪽 「내 정보」에, 하늘 · 오늘의 축복은 풍경 위에. 잠자리 · 꿈길은 평소엔 볼 일이 없어 맨 아래
-    h += '<div class="grid g2 hm"><div class="stack">' + storyH + ttH + goalsH + logH + '</div><div class="stack">' + eventsCard() + dailyH + '</div></div>';
+    h += '<div class="grid g2 hm"><div class="stack">' + storyH + ttH + famCard() + goalsH + logH + '</div><div class="stack">' + eventsCard() + dailyH + '</div></div>';
     h += '<div class="hm-bottom">' + dreamCard(false) + '</div>';
     return h;
   };
@@ -1295,12 +1295,18 @@
       var btns = Object.keys(cnt).map(function (x) { var blocked = dz && x !== 'lib'; return '<button class="btn sm' + (blocked ? ' ghost' : ' primary') + '" data-act="nav" data-a="' + x + '"' + (blocked ? ' disabled title="꿈길 중에는 시작할 수 없습니다"' : '') + '>' + nm[x] + (cnt[x] > 1 ? ' ' + cnt[x] : '') + '</button>'; }).join('');
       rows.push('<div class="tl idle idlesum"><span class="tli">대기</span><div class="tlb"><div class="small">빈 슬롯 · ' + Object.keys(cnt).map(function (x) { return nm[x]; }).join(' · ') + '</div>' + (ot ? '<div class="tiny good">' + gterm('제때 입실') + ' · 지금 수업을 들으면 +' + Math.round(R.ONTIME_BONUS * 100) + '%</div>' : dz ? '<div class="tiny">꿈길 중 · 연구만 시작할 수 있습니다</div>' : '') + '</div><span class="row" style="gap:4px;flex-wrap:wrap;justify-content:flex-end">' + btns + '</span></div>');
     }
-    if (R.famOpen(P)) {
-      var idle = Object.keys(P.fam.own).filter(function (id) { return id !== P.fam.act && !P.fam.disp[id]; }).length;
-      Object.keys(P.fam.disp).forEach(function (id) { rows.push(tline('파견', R.FAM[id].name + ' 파견', P.fam.disp[id], 'work:fam')); });
-      if (idle) rows.push(tline('파견', '쉬고 있는 사역마 ' + idle + '마리', null, 'work:fam', '파견 보낼 수 있습니다'));
-    }
     return rows.join('');
+  }
+  // 사역마 파견은 시간표와 따로 접을 수 있는 칸으로 (사역마가 많으면 길어진다). 접혀 있어도 요약 줄에 마릿수 · 다음 귀환
+  function famCard() {
+    var P = S.P; if (!R.famOpen(P)) return '';
+    var ids = Object.keys(P.fam.disp), idle = Object.keys(P.fam.own).filter(function (id) { return id !== P.fam.act && !P.fam.disp[id]; }).length;
+    if (!ids.length && !idle) return '';
+    var rows = ids.map(function (id) { return tline('파견', R.FAM[id].name + ' 파견', P.fam.disp[id], 'work:fam'); });
+    if (idle) rows.push(tline('파견', '쉬고 있는 사역마 ' + idle + '마리', null, 'work:fam', '파견 보낼 수 있습니다'));
+    var next = ids.reduce(function (m, id) { return Math.min(m, P.fam.disp[id].end); }, Infinity);
+    var sum = (ids.length ? '파견 ' + ids.length + (isFinite(next) ? ' · 다음 귀환 ' + clock(next) : '') : '') + (idle ? (ids.length ? ' · ' : '') + '대기 ' + idle : '');
+    return fold('famdisp', '사역마 파견', '<div class="timetable" style="margin-top:8px">' + rows.join('') + '</div>', false, '', '', sum);
   }
   function goals() {
     var P = S.P, out = [], c = C(), ex = R.examFor(P);
@@ -4887,7 +4893,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102131;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102132;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
