@@ -175,6 +175,7 @@ function create(store, cfg, log) {
         topStage: q.topStage.all(50).map(pub), topLvl: q.topLvl.all(50).map(pub),
         topTwK: q.topCt.all('$.st.twK', '$.st.twK', 50).map((r) => ({ id: r.id, name: r.name, house: r.house, f: r.f })),
         topTwM: q.topCt.all('$.st.twM', '$.st.twM', 50).map((r) => ({ id: r.id, name: r.name, house: r.house, f: r.f })),
+        topTwP: q.twRankTop.all(week, 50).map((r) => { let ms = []; try { ms = JSON.parse(r.members); } catch (e) { } return { party: r.party, name: r.name, members: ms, f: r.floor }; }),
         topDmg: q.topDmg.all(week, 50).map((r) => ({ id: r.pid, name: r.name, house: r.house, dmg: Math.floor(r.dmg) })),
         wbStats: q.sumDmg.get(week),
         players: Number(q.countPlayers.get().n)
@@ -184,7 +185,7 @@ function create(store, cfg, log) {
     return {
       epoch: W.epoch, now, week: R.weekId(now), weekEnd: R.weekStart(R.weekId(now) + 1),
       boss: b ? { id: b.id, name: b.name, maxHp: b.maxHp, hp: b.hp, killedAt: b.killedAt, round: b.round || 1, kills: (b.kills || 0) + (b.killedAt ? 1 : 0), participants: Number(cache.wbStats.n) || 0 } : null,
-      cup: cache.cup, hpts: W.hpts, hfull: W.hfull, topPower: cache.topPower, topStage: cache.topStage, topLvl: cache.topLvl, topTwK: cache.topTwK, topTwM: cache.topTwM, topDmg: cache.topDmg,
+      cup: cache.cup, hpts: W.hpts, hfull: W.hfull, topPower: cache.topPower, topStage: cache.topStage, topLvl: cache.topLvl, topTwK: cache.topTwK, topTwM: cache.topTwM, topTwP: cache.topTwP, topDmg: cache.topDmg,
       notices: W.notices.slice(0, 8), news: W.news.slice(0, 20), players: cache.players, online: online || 0,
       lastWeek: W.results[R.weekId(now) - 1] || null
     };

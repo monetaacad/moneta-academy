@@ -493,11 +493,40 @@ routes['GET /api/state'] = (req, res) => {
   send(req, res, 200, statePayload(P, now));
 };
 // 세계: 내용이 같으면 304 (ETag는 본문 해시). 접속자 수가 바뀌면 본문도 바뀐다.
+/* ───────── 과목 수석: 과목마다 레벨 → 그 레벨 안의 경험치 순 (5분 캐시) ───────── */
+const subjRank = { at: 0, tops: {} };
+function subjTops() {
+  if (Date.now() - subjRank.at < 5 * 60000) return subjRank.tops;
+  const tops = {};
+  D.SUBJECTS.forEach((sj) => {
+    const lp = '$.subj.' + sj.id + '.lv', xp = '$.subj.' + sj.id + '.xp';
+    tops[sj.id] = dbx.db.prepare(`SELECT id, name, house, grade, CAST(json_extract(state, ?) AS INTEGER) AS lv, CAST(json_extract(state, ?) AS REAL) AS xp FROM players WHERE banned = 0 AND CAST(json_extract(state, ?) AS INTEGER) > 0 ORDER BY lv DESC, xp DESC, created ASC LIMIT 10`)
+      .all(lp, xp, lp).map((r) => ({ id: r.id, name: r.name, house: r.house, grade: r.grade, lv: r.lv, xp: Math.floor(r.xp || 0) }));
+  });
+  subjRank.at = Date.now(); subjRank.tops = tops;
+  return tops;
+}
+function subjHeads(id, n) { const t = subjTops(), out = []; for (const k in t) if (t[k][n || 0] && t[k][n || 0].id === id) out.push(k); return out; }   // 이 학생이 1위(n=0) · 2위(n=1)인 과목들
+routes['GET /api/subjranks'] = (req, res) => {
+  const pid = authed(req); if (!pid) return fail(req, res, 401, '로그인이 필요합니다');
+  if (limited('sr:' + pid, 2, 10)) return fail(req, res, 429, '요청이 너무 잦습니다');
+  const P = store.get(pid), tops = subjTops(), mine = {};
+  if (P && P.subj) for (const k in tops) {
+    const sj = P.subj[k]; if (!sj || !(sj.lv > 0)) continue;
+    const i = tops[k].findIndex((r) => r.id === pid);   // 10위 안이면 그대로, 밖이면 따로 센다
+    if (i >= 0) { mine[k] = i + 1; continue; }
+    const lp = '$.subj.' + k + '.lv', xp = '$.subj.' + k + '.xp';
+    mine[k] = Number(dbx.db.prepare(`SELECT COUNT(*) + 1 AS r FROM players WHERE banned = 0 AND id != ? AND (CAST(json_extract(state, ?) AS INTEGER) > ? OR (CAST(json_extract(state, ?) AS INTEGER) = ? AND CAST(json_extract(state, ?) AS REAL) > ?))`).get(pid, lp, sj.lv, lp, sj.lv, xp, sj.xp || 0).r);
+  }
+  send(req, res, 200, { tops, mine });
+};
 routes['GET /api/myranks'] = (req, res) => {
   const pid = authed(req); if (!pid) return fail(req, res, 401, '로그인이 필요합니다');
   if (limited('mr:' + pid, 2, 10)) return fail(req, res, 429, '요청이 너무 잦습니다');
   const now = nowSec(), P = loadPlayer(pid, now); if (!P) return fail(req, res, 401, '학생 정보를 찾을 수 없습니다');
-  send(req, res, 200, { ranks: world.myRanks(P, R.summary(P, world.W, now).power, now) });
+  const ranks = world.myRanks(P, R.summary(P, world.W, now).power, now), party = partyOf.get(pid), tr = party && dbx.q.twRankGet.get(R.weekId(now), party);
+  ranks.twp = tr ? Number(dbx.q.twRankOf.get(R.weekId(now), tr.floor, tr.floor, tr.t).r) : null; ranks.twpF = tr ? tr.floor : 0;   // 우리 파티의 이번 주 별의 탑 순위
+  send(req, res, 200, { ranks });
 };
 routes['GET /api/world'] = (req, res) => {
   const pid = authed(req); if (!pid) return fail(req, res, 401, '로그인이 필요합니다');
@@ -679,6 +708,7 @@ routes['GET /api/profile'] = (req, res) => {
     const fa = DP && DP.opt && DP.opt.showFam && DP.fam && DP.fam.act, fo = fa && DP.fam.own[fa]; if (fo && R.FAM[fa]) out.fam = { id: fa, lv: fo.lv, nm: fo.nm || '' }; }   // 동행 사역마 (학생이 공개를 켰을 때만)   // 정보 카드 꾸미기
   const fs = self ? null : friendState(me, id), can = (v) => self || v === 'all' || (v === 'friend' && fs === 'ok');
   if (can(pr.visLv)) Object.assign(out, { lvl, power, rank: world.rankOf(power) });
+  { const hd = subjHeads(id), h2 = subjHeads(id, 1); if (hd.length) out.heads = hd; if (h2.length) out.seconds = h2; }   // 과목 수석 (순위표에 공개되는 정보라 공개 범위와 관계없이)
   if (can(pr.visFull)) { const DP = LP || store.get(id); if (DP) try { out.full = R.fullStats(DP, world.ctx(nowSec()), Math.min(nowSec(), DP.at)); } catch (e) { } }   // 전체 능력치 (기본은 나만 보기)
   if (can(pr.visBadge)) { const DP = LP || store.get(id), bw = DP && R.badgeWorn(DP); if (bw) out.badgeD = { gem: bw.gem, lv: bw.lv, name: bw.name, q: bw.q, aff: bw.aff || [] }; }   // 착용 휘장 상세 (장비 칸 옆에 표시)
   if (can(pr.visStat) || can(pr.visEq)) {
@@ -850,10 +880,11 @@ function setPartyN(P) { const p = partyOf.get(P.id), n = p ? (partySize.get(p) |
 function refreshParty(party) {   // 메모리에 있는 파티원들의 보너스를 바로 갱신
   dbx.q.partyMembers.all(party).forEach((m) => { const P = store.peek(m.id); if (P && setPartyN(P)) store.markDirty(m.id); });
 }
-function joinParty(pid, party) { dbx.q.partyJoin.run(pid, party, Math.floor(Date.now() / 1000)); partyOf.set(pid, party); partySize.set(party, (partySize.get(party) || 0) + 1); }
+function joinParty(pid, party) { dbx.q.partyJoin.run(pid, party, Math.floor(Date.now() / 1000)); partyOf.set(pid, party); partySize.set(party, (partySize.get(party) || 0) + 1); if (towerLobby.has(party)) twLobbyEval(party); }   // 새 파티원은 준비 전이라 별의 탑 출발 대기가 멈춘다
 function leaveParty(pid) {
   const party = partyOf.get(pid); if (!party) return null;
   dbx.q.partyLeave.run(pid); partyOf.delete(pid);
+  const lob = towerLobby.get(party); if (lob) { lob.ready.delete(pid); if (lob.timer) { clearTimeout(lob.timer); lob.timer = null; lob.at = null; } setTimeout(() => twLobbyEval(party), 0); }   // 별의 탑 출발 대기: 다시 판정
   const n = (partySize.get(party) || 1) - 1;
   const P = store.peek(pid); if (P && setPartyN(P)) store.markDirty(pid);
   if (n <= 0) { partySize.delete(party); dbx.tx(() => { dbx.q.partyDelete.run(party); dbx.q.partyInviteDelParty.run(party); dbx.q.towerDel.run(party); }); chat.dropParty(party); return { party, gone: true }; }
@@ -939,7 +970,7 @@ routes['POST /api/party'] = async (req, res) => {
     if (partyCount(mine) >= PARTY_MAX) return fail(req, res, 400, '파티 자리가 가득 찼습니다');
     const real = Date.now() / 1000, last = partyRec.get(mine) || 0; if (real - last < 300) return fail(req, res, 400, Math.ceil((300 - (real - last)) / 60) + '분 뒤에 다시 모집할 수 있습니다');
     partyRec.set(mine, real);
-    chat.recruit(P, { type: 'party', party: mine, name: pa.name, n: partyCount(mine), max: PARTY_MAX, floor: towerState(mine, nowSec()).floor, note: recNote(b.note) }, real);
+    chat.recruit(P, { type: 'party', party: mine, name: pa.name, n: partyCount(mine), max: PARTY_MAX, floor: towerFloor(mine, nowSec()), note: recNote(b.note) }, real);
     return send(req, res, 200, { ok: true });
   }
   if (op === 'joinRec') {   // 모집 알림을 보고 들어가기
@@ -979,6 +1010,15 @@ routes['POST /api/party'] = async (req, res) => {
       list.push(k); dbx.q.partySetNpcs.run(JSON.stringify(list), mine); chat.npcSay(mine, NPCS[k], NPCS[k].hello || '잘 부탁해!', now);
     } else { list = list.filter((x) => x !== k); dbx.q.partySetNpcs.run(JSON.stringify(list), mine); chat.system('party', NPCS[k].name + ' 님이 파티에서 나갔습니다.', now, mine); }
     chat.partyChanged(me); return send(req, res, 200, { ok: true, party: partyView(me) });
+  }
+  if (op === 'rename') {   // 파티 이름 바꾸기 (파티장만)
+    const pa = mine && dbx.q.partyGet.get(mine); if (!pa || pa.leader !== me) return fail(req, res, 403, '파티장만 이름을 바꿀 수 있습니다');
+    const name = String(b.name || '').replace(/\s+/g, ' ').trim();
+    if (!PARTY_NAME_RE.test(name)) return fail(req, res, 400, '파티 이름은 한글·영문·숫자 2~12자만 가능');
+    if (R.badName(name)) return fail(req, res, 400, '사용할 수 없는 단어가 포함된 이름입니다');
+    if (name === pa.name) return send(req, res, 200, { ok: true, party: partyView(me) });
+    dbx.q.partyRename.run(name, mine); chat.system('party', P.name + ' 님이 파티 이름을 「' + name + '」' + R.josa(name, '으로', '로').slice(name.length) + ' 바꾸었습니다.', now, mine); chat.partyChanged(me);
+    return send(req, res, 200, { ok: true, party: partyView(me) });
   }
   if (op === 'allgo') {   // 파티 설정: 파티원도 함께 원정에 파티를 데려갈 수 있게
     const pa = mine && dbx.q.partyGet.get(mine); if (!pa || pa.leader !== me) return fail(req, res, 403, '파티장만 바꿀 수 있습니다');
@@ -1070,6 +1110,7 @@ function mkSearch(f, now) {
   else if (f.kind !== 'badge' && f.slot === 'tome') { where.push(`m.slot = 'tome' AND m.data NOT LIKE '%"wk":"manual"%'`); }   // 마도서 칸 중 마도서
   else if (f.kind !== 'badge' && f.slot && R.SLOT[f.slot]) { where.push('m.slot = ?'); args.push(f.slot); }
   if (f.r >= 0 && f.r <= 4) { where.push('m.rarity = ?'); args.push(f.r); }
+  (f.aff || []).forEach((id) => { where.push('m.data LIKE ?'); args.push('%"id":"' + id + '"%'); });   // 부옵션 검색 (고른 옵션을 모두 가진 장비 · 휘장)
   if (f.wear > 0) { where.push(`(m.kind <> 'item' OR m.ilvl <= ?)`); args.push(f.wear); }   // 착용 가능만: 장비는 내 레벨 이하만 (휘장 · 재료 등은 레벨 제한이 없어 그대로)
   if (f.mat && MAT_NAMES[f.mat]) { where.push('m.data = ?'); args.push(f.mat); }
   if (f.pot && R.POT[f.pot]) { where.push('m.data = ?'); args.push(f.pot); }
@@ -1101,7 +1142,7 @@ routes['GET /api/market'] = (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
   if (limited('mk:' + me, 2, 15)) return fail(req, res, 429, '요청이 너무 잦습니다');
   const u = new URL(req.url, 'http://x'), g = (k) => u.searchParams.get(k) || '', now = Date.now() / 1000;
-  const f = { kind: g('kind'), slot: g('slot'), r: g('r') === '' ? -1 : Number(g('r')), mat: g('mat'), pot: g('pot'), tok: g('tok'), gem: g('gem'), q: g('q').slice(0, 20), sort: g('sort'), auc: g('auc') === '1', nobid: g('nobid') === '1', wear: 0 };
+  const f = { kind: g('kind'), slot: g('slot'), r: g('r') === '' ? -1 : Number(g('r')), mat: g('mat'), pot: g('pot'), tok: g('tok'), gem: g('gem'), q: g('q').slice(0, 20), aff: g('aff').split(',').filter((x, i, a) => R.AFF[x] && a.indexOf(x) === i).slice(0, 3), sort: g('sort'), auc: g('auc') === '1', nobid: g('nobid') === '1', wear: 0 };
   if (g('wear') === '1') { const P = store.get(me); f.wear = Math.max(1, (P && P.lvl) || 1); }   // 레벨은 서버가 아는 값으로
   send(req, res, 200, { list: mkSearch(f, now).map((r) => mkOut(r, me)), mine: dbx.q.mkMine.all(me, Math.floor(now) - 3 * 86400).map((r) => mkOut(Object.assign({ seller_name: '' }, r, { seller: me }), me)), myBids: dbx.q.mkMyBids.all(me).map((r) => mkOut(r, me)),
     fee: MK.FEE, days: MK.DAYS, maxOpen: MK.MAX_OPEN, grade: MK.GRADE, auc: { max: MK_AUC.MAX, hours: MK_AUC.HOURS, up: MK_AUC.MIN_UP, buyoutX: MK_AUC.BUYOUT_X } });
@@ -1293,82 +1334,161 @@ mkSweep(); npcMarketTick(true);
 
 
 /* ───────── 별의 탑 (파티 콘텐츠) ─────────
-   파티가 한 주 동안 함께 층을 쌓는다. 도전은 학생마다 하루 3번, 도전한 학생의 전투에 파티원 모두의 힘을 싣는다(접속하지 않아도).
-   층을 처음 넘을 때마다 그때의 파티원 모두에게 우편(7일)으로 보상. 매주 월요일에 0층부터 다시. */
-function towerState(party, now) {
-  const week = R.weekId(now), row = dbx.q.towerGet.get(party);
-  let x = { base: null, log: [] }; if (row) { try { x = JSON.parse(row.log); } catch (e) { } }
-  if (!row || row.week !== week) return { week, floor: 0, base: null, log: [] };
-  return { week, floor: row.floor, base: x.base || null, log: x.log || [] };
-}
+   파티가 함께 실시간으로 오른다 (규칙은 shared/rules.js 「별의 탑」). 실전은 파티 단위 하루 1번, 연습은 언제나(파티 연습 · 혼자 연습).
+   파티 실행(실전 · 파티 연습)은 tower 표의 log에 { runs: [...] }로 남기고, 파티원 모두가 같은 시각에 같은 장면을 본다(실제 시간 기준).
+   실전 결과(기록 · 보상 우편)는 누른 순간 정하고, 알림은 대본이 끝난 뒤에 보낸다. */
+const TW_RUNS = 4;   // 파티마다 남겨 두는 최근 실행
+function towerRuns(party) { const row = dbx.q.towerGet.get(party); if (!row) return []; try { const x = JSON.parse(row.log); return Array.isArray(x.runs) ? x.runs : []; } catch (e) { return []; } }
+function towerLive(runs) { const real = Date.now() / 1000, r = runs[runs.length - 1]; return r && r.t0 + r.d > real ? r : null; }
+function towerSave(party, runs) { if (runs.length > TW_RUNS) runs.splice(0, runs.length - TW_RUNS); dbx.q.towerPut.run(party, R.weekId(nowSec()), 0, JSON.stringify({ runs })); }
+// 파티원 전투 정보: 사람 파티원은 각자 정한 포지션, 동행 친구는 시작한 학생 힘의 30%
 function towerTeam(party, me, now) {
-  const pa = dbx.q.partyGet.get(party), ctx = world.ctx(now), out = [];
-  const meP = store.get(me), c0 = R.calc(meP, ctx, now);
-  dbx.q.partyMembers.all(party).forEach((m) => { const Q = m.id === me ? meP : store.get(m.id); if (!Q) return; const c = m.id === me ? c0 : R.calc(Q, ctx, now); out.push({ id: m.id, name: Q.name, house: Q.house, dps: c.totalDps, hp: c.hp, def: c.def, stage: Q.maxStage, me: m.id === me }); });
-  const f = R.NPC_FRAC.tower; partyNpcs(pa).forEach((k) => { const n = NPCS[k]; out.push({ id: 'npc:' + k, name: n.name, house: n.house, npc: true, dps: c0.totalDps * f, hp: c0.hp * f, def: c0.def }); });
-  return { team: out, c0 };
+  const pa = dbx.q.partyGet.get(party), ctx = world.ctx(now), ms = [], ps = [];
+  dbx.q.partyMembers.all(party).forEach((m) => { const Q = m.id === me ? loadPlayer(me, now) : store.get(m.id); if (!Q) return; ps.push(Q); ms.push(R.twMember(Q, ctx, now)); });
+  const base = ms.find((m) => m.id === me) || ms[0];
+  if (base) partyNpcs(pa).forEach((k) => { const n = NPCS[k]; ms.push(R.twNpc(base, 'npc:' + k, n.name, n.house)); });
+  return { pa, ms, ps };
 }
 function towerView(me, now) {
   const party = partyOf.get(me); if (!party) return { party: null };
-  const st = towerState(party, now), { team, c0 } = towerTeam(party, me, now), P = store.get(me);
-  // 대본이 흐르는 동안은 도전 전 층을 보여 준다 (결과가 일지보다 먼저 새지 않게)
-  const pl = towerPlaying(st), last = st.log[st.log.length - 1], shown = pl && last.win ? st.floor - 1 : st.floor;
-  const base = st.base || R.towerBase(team.filter((m) => !m.npc).map((m) => m.stage)), f = shown + 1, foe = R.towerFoe(f, base), c2 = R.towerTeam(c0, team);
-  return { party, week: st.week, weekEnd: R.weekStart(st.week + 1), floor: shown, playing: pl, base, fixed: !!st.base, log: st.log.slice(-12).reverse().map(towerLogOut), now: Date.now() / 1000, left: R.towerLeft(P, now), tries: R.TOWER_TRIES, myBest: R.towerBest(P, now),
-    team: team.map((m) => ({ id: m.id, name: m.name, house: m.house, npc: !!m.npc, dps: m.dps, me: !!m.me })), teamDps: c2.totalDps, teamHp: c2.hp,
-    next: { floor: f, stage: foe.stage, name: foe.name, arch: foe.arch, c1: foe.c1, c2: foe.c2, hp: foe.hp, est: R.towerEstimate(c2, foe), reward: R.towerReward(f, base) } };
+  const { pa, ms, ps } = towerTeam(party, me, now), runs = towerRuns(party), live = towerLive(runs), P = ps.find((Q) => Q.id === me);
+  // 실전이 흐르는 동안은 그 실전 전의 기록을 보여 준다 (결과가 대본보다 먼저 새지 않게)
+  const prev = live && live.kind === 'real' ? live.prev || {} : {};
+  const best = (Q) => (Q.id in prev ? prev[Q.id] : R.twBest(Q, now)), used = ps.filter((Q) => R.twUsed(Q, now));
+  const lob = twLobbyOf(party);
+  return { party, name: pa ? pa.name : '', leader: pa ? pa.leader : '', week: R.weekId(now), weekEnd: R.weekStart(R.weekId(now) + 1), now: Date.now() / 1000,
+    start: R.twStart(ps.map(best)), used: used.map((Q) => Q.name), myUsed: !!P && R.twUsed(P, now), myBest: P ? best(P) : 0, myPos: P ? R.twPos(P) : 'van', posOk: P ? R.expPositions(P) : ['van'],
+    members: R.twMeta(ms).map((m) => { const Q = ps.find((x) => x.id === m.id); return Object.assign(m, { me: m.id === me, best: Q ? best(Q) : null, used: !!Q && R.twUsed(Q, now), ready: m.npc || (!!lob && lob.ready.has(m.id)) }); }),
+    lobby: lob ? { mode: lob.mode, by: lob.byName, at: lob.at, notReady: ps.filter((Q) => !lob.ready.has(Q.id)).map((Q) => Q.name) } : null, readyTtl: TW_READY_TTL, count: TW_COUNT,
+    runs: runs.slice().reverse() };
 }
-// 일지 한 줄: 최근 몇 번의 도전만 대본(sc)을 들고 있다
-function towerLogOut(l) { return { t: l.t, name: l.name, f: l.f, win: l.win, pct: l.pct, sc: l.sc || null, d: l.d || 0 }; }
-// 대본이 아직 흐르는 중인 도전 (그동안은 다른 파티원이 도전하지 않고 함께 지켜본다)
-function towerPlaying(st) { const l = st.log[st.log.length - 1], real = Date.now() / 1000; return l && l.sc && l.t + (l.d || 0) > real ? { name: l.name, f: l.f, left: Math.ceil(l.t + l.d - real) } : null; }
+// 모집 카드에 보이는 층: 파티원 이번 주 기록 중 가장 낮은 층
+function towerFloor(party, now) { const bs = dbx.q.partyMembers.all(party).map((m) => store.get(m.id)).filter(Boolean).map((Q) => R.twBest(Q, now)); return bs.length ? Math.min.apply(null, bs) : 0; }
 function towerPing(party, data) { dbx.q.partyMembers.all(party).forEach((m) => chat.ping(m.id, 'tower', data)); }
-const towerBusy = new Set();
+const towerBusy = new Set(), towerSolo = new Map();   // 혼자 연습: 학생 → 마지막으로 돌린 실제 시각
 routes['GET /api/tower'] = (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
   if (limited('twg:' + me, 1, 10)) return fail(req, res, 429, '요청이 너무 잦습니다');
-  send(req, res, 200, towerView(me, nowSec()));
+  // have: 화면이 이미 대본을 들고 있는 실행 (그 실행은 대본을 빼고 보낸다)
+  const have = (new URL(req.url, 'http://x').searchParams.get('have') || '').split(',').filter(Boolean), v = towerView(me, nowSec());
+  if (v.runs) v.runs = v.runs.map((r) => (have.indexOf(r.id) >= 0 && r.floors ? Object.assign({}, r, { floors: undefined, held: true }) : r));
+  send(req, res, 200, v);
 };
+// mode: real(실전) · party(파티 연습) · solo(혼자 연습) · stop(파티 연습 중단) · pos(내 포지션)
+// 출발 대기: 파티 → { mode(real · party), by, byName, ready: Map(학생 → 누른 실제 시각), at(출발 예정 실제 시각), timer }
+// 누군가 「실전 준비」 · 「파티 연습 준비」를 누르면 출발 종류가 정해지고, 사람 파티원(NPC 제외)이 모두 「준비 완료」하면 15초 뒤 자동으로 출발한다.
+// 그 사이 한 명이라도 준비를 풀면 출발이 취소되고, 다시 모두 준비하면 15초부터 다시 센다. 준비는 15분이 지나면 풀린다.
+const towerLobby = new Map(), TW_READY_TTL = 900, TW_COUNT = 15;
+function twLobbyOf(party) {
+  const L = towerLobby.get(party); if (!L) return null; const real = Date.now() / 1000;
+  L.ready.forEach((t, k) => { if (real - t > TW_READY_TTL) L.ready.delete(k); });
+  return L;
+}
+function twLobbyEval(party) {
+  const L = twLobbyOf(party); if (!L) return;
+  const ids = dbx.q.partyMembers.all(party).map((m) => m.id), kind = L.mode === 'real' ? '실전' : '파티 연습';
+  if (!ids.length) { if (L.timer) clearTimeout(L.timer); towerLobby.delete(party); return; }   // 파티가 없어졌다
+  const all = !!L.mode && ids.length > 0 && ids.every((id) => L.ready.has(id)) && !towerLive(towerRuns(party));
+  if (all && !L.timer) {
+    L.at = Date.now() / 1000 + TW_COUNT; L.timer = setTimeout(() => twLobbyFire(party), TW_COUNT * 1000); L.timer.unref();
+    chat.system('party', '모든 파티원이 준비를 마쳤습니다. ' + TW_COUNT + '초 뒤 별의 탑 ' + kind + '을 시작합니다.', Date.now() / 1000, party); towerPing(party, { lobby: true });
+  } else if (!all && L.timer) {
+    clearTimeout(L.timer); L.timer = null; L.at = null;
+    chat.system('party', '준비가 풀려 별의 탑 ' + kind + ' 출발이 취소되었습니다. 모두 다시 준비하면 ' + TW_COUNT + '초 뒤 출발합니다.', Date.now() / 1000, party); towerPing(party, { lobby: true });
+  }
+}
+function twLobbyFire(party) {
+  const L = towerLobby.get(party); if (!L) return; L.timer = null; L.at = null;
+  const ids = dbx.q.partyMembers.all(party).map((m) => m.id);
+  if (!ids.every((id) => L.ready.has(id))) { twLobbyEval(party); towerPing(party, { lobby: true }); return; }   // 그 사이 파티원이 바뀌었다
+  const starter = ids.indexOf(L.by) >= 0 ? L.by : ids[0], r = twStartRun(party, L.mode, starter);
+  if (r.error) { L.ready.clear(); chat.system('party', '별의 탑을 시작할 수 없습니다: ' + r.error, Date.now() / 1000, party); towerPing(party, { lobby: true }); return; }
+  towerLobby.delete(party);
+}
+// 실전 · 파티 연습 시작 (출발 대기의 15초가 끝났을 때). 실패하면 { error }
+function twStartRun(party, mode, starterId) {
+  if (towerBusy.has(party)) return { error: '파티원이 지금 도전을 시작하고 있습니다' };
+  towerBusy.add(party);
+  try {
+    const now = nowSec(), runs = towerRuns(party), live = towerLive(runs);
+    if (live) return { error: live.by + ' 님이 시작한 ' + (live.kind === 'real' ? '실전' : '파티 연습') + '이 진행 중입니다' };
+    const P = loadPlayer(starterId, now); if (!P) return { error: '학생 정보를 찾을 수 없습니다' };
+    const { pa, ms, ps } = towerTeam(party, starterId, now);
+    if (mode === 'real') { const used = ps.filter((Q) => R.twUsed(Q, now)); if (used.length) return { error: '오늘 이미 실전에 도전한 파티원이 있습니다: ' + used.map((Q) => Q.name).join(', ') + ' (매일 KST 자정에 초기화)' }; }
+    const start = R.twStart(ps.map((Q) => R.twBest(Q, now)));
+    const run = Object.assign(R.twRun(ms, start, crypto.randomInt(1, 2147483647)), { id: crypto.randomBytes(6).toString('base64url'), kind: mode, by: P.name, pname: pa ? pa.name : '', t0: Math.round(Date.now() / 100) / 10, ms: R.twMeta(ms), day: R.dayKST(now) });
+    const after = Math.round(run.d * 1000), later = (fn) => setTimeout(fn, after).unref(), pname = pa ? pa.name : '';
+    if (mode === 'real') {
+      run.prev = {};
+      if (run.cleared > 0) dbx.q.twRankPut.run(R.weekId(now), party, pname, JSON.stringify(run.ms.map((m) => ({ name: m.name, house: m.house, npc: m.npc || undefined }))), run.cleared, Math.floor(Date.now() / 1000));
+      ps.forEach((Q) => {
+        R.twUse(Q, now); const old = R.twRecord(Q, now, run.cleared); run.prev[Q.id] = old;
+        if (run.cleared > old) {
+          const rw = R.twRewardSum(old + 1, run.cleared), exp = Math.floor(Date.now() / 1000) + 7 * 86400;
+          sendMail(Q.id, '별의 탑', '별의 탑 ' + run.cleared + '층 기록', '파티 「' + pname + '」의 실전에서 별의 탑 ' + run.cleared + '층까지 올랐습니다.\n이번 주에 처음 넘은 ' + (old + 1) + '~' + run.cleared + '층의 보상입니다.', rw, exp, true, after);
+        }
+        store.markDirty(Q.id);
+      });
+      later(() => {
+        chat.system('party', '✦ 별의 탑 실전 종료 — ' + run.start + '층에서 시작해 ' + (run.cleared >= run.start ? run.cleared + '층까지 올랐습니다.' : '첫 층을 넘지 못했습니다.') + ' 각자의 이번 주 기록에 반영되었습니다.', Date.now() / 1000, party);
+        ps.forEach((Q) => { const X = store.get(Q.id); if (X) { R.log(X, nowSec(), '별의 탑 실전: ' + run.cleared + '층까지 기록', 'good'); store.markDirty(Q.id); } });
+      });
+    }
+    runs.slice(0, -1).forEach((r) => { delete r.floors; });   // 대본은 직전 실행과 이번 실행만 남긴다
+    runs.push(run); towerSave(party, runs);
+    chat.system('party', '별의 탑 ' + (mode === 'real' ? '실전' : '파티 연습') + '을 시작했습니다 (' + start + '층부터). 별의 탑 화면에서 함께 볼 수 있습니다.', Date.now() / 1000, party);
+    towerPing(party, { by: P.name, start: true }); later(() => towerPing(party, { end: true }));
+    return { run };
+  } finally { towerBusy.delete(party); }
+}
 routes['POST /api/tower'] = async (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
   if (store.isBanned(me)) return fail(req, res, 403, '이용이 정지된 계정입니다');
   if (limited('twp:' + me, 0.5, 4)) return fail(req, res, 429, '잠시 후 다시 시도');
-  await readJson(req, 256);
+  const b = await readJson(req, 256), mode = String(b.mode || '');
   const party = partyOf.get(me); if (!party) return fail(req, res, 400, '파티에 들어가 있어야 별의 탑에 오를 수 있습니다');
-  if (towerBusy.has(party)) return fail(req, res, 409, '파티원이 지금 도전하고 있습니다. 잠시 후 다시 시도');
-  towerBusy.add(party);
-  try {
-    const now = nowSec(), P = loadPlayer(me, now); if (!P) return fail(req, res, 401, '학생 정보를 찾을 수 없습니다');
-    if (R.towerLeft(P, now) <= 0) return fail(req, res, 400, '오늘 도전 횟수를 다 썼습니다 (매일 자정에 ' + R.TOWER_TRIES + '번으로 돌아옵니다)');
-    const st = towerState(party, now), { team, c0 } = towerTeam(party, me, now);
-    const pl = towerPlaying(st); if (pl) return fail(req, res, 409, pl.name + ' 님이 ' + pl.f + '층에 도전하는 중입니다. 함께 지켜보세요 (' + pl.left + '초 남음)');
-    const base = st.base || R.towerBase(team.filter((m) => !m.npc).map((m) => m.stage)), f = st.floor + 1, foe = R.towerFoe(f, base), c2 = R.towerTeam(c0, team);
-    R.towerUse(P, now);
-    const r = R.towerFight(P, c2, foe), pa = dbx.q.partyGet.get(party);
-    const sc = R.towerScript({ name: P.name, f, foe, team, r, hp: c2.hp }), t0 = Math.round(Date.now() / 100) / 10, after = Math.round(sc.d * 1000);
-    st.log.forEach((l, i) => { if (i < st.log.length - 4) { delete l.sc; delete l.d; } });
-    st.log.push({ t: t0, name: P.name, f, win: !!r.win, pct: Math.round((1 - r.mHp) * 100), sc: sc.lines, d: sc.d }); if (st.log.length > 30) st.log.splice(0, st.log.length - 30);
-    // 결과(파티 채팅 알림·우편 알림)는 대본이 끝난 뒤에 알린다 → 지켜보는 동안 결과가 먼저 새지 않게
-    const later = (fn) => setTimeout(fn, after).unref();
-    let reward = null;
-    if (r.win) {
-      reward = R.towerReward(f, base);
-      const exp = Math.floor(Date.now() / 1000) + 7 * 86400, body = P.name + ' 님이 파티 「' + (pa ? pa.name : '') + '」의 힘을 모아 별의 탑 ' + f + '층의 ' + R.josa(foe.name, '을', '를') + ' 쓰러뜨렸습니다.\n그때 파티에 있던 모두에게 보내는 보상입니다.';
-      const skipped = [];
-      team.filter((m) => !m.npc).forEach((m) => { const Q = m.id === me ? P : store.get(m.id); if (!Q) return; if (R.towerClaim(Q, now, f)) { sendMail(m.id, '별의 탑', '별의 탑 ' + f + '층 돌파', body, reward, exp, true, after); store.markDirty(m.id); } else skipped.push(Q.name); });
-      later(() => {
-        if (skipped.length) chat.system('party', skipped.join(', ') + ' 님은 이번 주에 다른 파티에서 이미 ' + f + '층 이상의 보상을 받아 이번 보상은 건너뜁니다.', Date.now() / 1000, party);
-        chat.system('party', '✦ ' + P.name + ' 님이 별의 탑 ' + f + '층을 넘었습니다! 파티원 모두에게 보상 우편이 갔습니다.', Date.now() / 1000, party);
-      });
-      later(() => { const Q = store.get(me); if (Q) { R.log(Q, nowSec(), '별의 탑 ' + f + '층 돌파', 'good'); store.markDirty(me); } });   // 활동 기록도 대본이 끝난 뒤에
-    } else {
-      later(() => chat.system('party', P.name + ' 님이 별의 탑 ' + f + '층에 도전했지만 물러났습니다 (' + Math.round((1 - r.mHp) * 100) + '%)', Date.now() / 1000, party));
+  const now = nowSec(), P = loadPlayer(me, now); if (!P) return fail(req, res, 401, '학생 정보를 찾을 수 없습니다');
+  if (mode === 'pos') {
+    const pos = String(b.pos || ''); if (!R.EXP_POS[pos]) return fail(req, res, 400, '포지션 선택 필요');
+    if (R.expPositions(P).indexOf(pos) < 0) return fail(req, res, 400, R.EXP_POS[pos].name + ' 포지션은 ' + R.EXP_POS[pos].desc.split(' · ')[0]);
+    P.opt.twPos = pos; store.markDirty(me);
+    return send(req, res, 200, towerView(me, now));
+  }
+  // 출발 준비: kind를 주면 출발 종류를 정하고(바꾸면 진행 중인 15초는 처음부터) 준비 완료, on === false면 준비 취소
+  if (mode === 'ready' || mode === 'real' || mode === 'party') {
+    const kind = mode === 'ready' ? String(b.kind || '') : mode;
+    let L = twLobbyOf(party);
+    if (kind === 'real' || kind === 'party') {
+      const live = towerLive(towerRuns(party)); if (live) return fail(req, res, 409, live.by + ' 님이 시작한 ' + (live.kind === 'real' ? '실전' : '파티 연습') + '이 진행 중입니다. 함께 지켜보세요');
+      if (kind === 'real') { const used = towerTeam(party, me, now).ps.filter((Q) => R.twUsed(Q, now)); if (used.length) return fail(req, res, 400, '오늘 이미 실전에 도전한 파티원이 있습니다: ' + used.map((Q) => Q.name).join(', ') + ' (매일 KST 자정에 초기화)'); }
+      if (!L) { L = { mode: '', by: '', byName: '', ready: new Map(), at: null, timer: null }; towerLobby.set(party, L); }
+      if (L.mode !== kind) {
+        if (L.timer) { clearTimeout(L.timer); L.timer = null; L.at = null; }
+        L.mode = kind; L.by = me; L.byName = P.name; L.ready.clear();
+        chat.system('party', P.name + ' 님이 별의 탑 ' + (kind === 'real' ? '실전' : '파티 연습') + ' 출발을 준비합니다. 모두 「준비 완료」를 누르면 ' + TW_COUNT + '초 뒤 출발합니다.', Date.now() / 1000, party);
+      }
     }
-    dbx.q.towerPut.run(party, st.week, r.win ? f : st.floor, JSON.stringify({ base, log: st.log }));
-    store.markDirty(me);
-    towerPing(party, { by: P.name, f, start: true }); later(() => towerPing(party, { by: P.name, f, end: true }));
-    send(req, res, 200, Object.assign(statePayload(P, now), { r: { win: !!r.win, ev: r.ev, mHp: r.mHp, dead: !!r.dead, floor: f, foe: { name: foe.name, arch: foe.arch, c1: foe.c1, c2: foe.c2, id: foe.id }, maxHp: foe.hp, reward: reward ? R.rewardText(reward) : '', sc: sc.lines, d: sc.d, t0 } }));
-  } finally { towerBusy.delete(party); }
+    if (!L || !L.mode) return fail(req, res, 400, '먼저 「실전 준비」 또는 「파티 연습 준비」를 눌러 출발 종류를 정해야 합니다');
+    if (b.on === false) L.ready.delete(me); else L.ready.set(me, Date.now() / 1000);
+    if (b.on === false && !L.ready.size) towerLobby.delete(party);   // 아무도 준비하지 않으면 출발 대기를 닫는다
+    twLobbyEval(party); towerPing(party, { lobby: true });
+    return send(req, res, 200, towerView(me, now));
+  }
+  if (mode === 'solo') {   // 혼자 연습: 지금 파티 그대로 돌려 보고 내 화면에서만 본다 (기록 · 보상 없음, 파티를 막지 않음)
+    const last = towerSolo.get(me) || 0; if (Date.now() - last < 5000) return fail(req, res, 429, '잠시 후 다시 시도');
+    towerSolo.set(me, Date.now());
+    const { ms, ps } = towerTeam(party, me, now), start = R.twStart(ps.map((Q) => R.twBest(Q, now)));
+    const run = Object.assign(R.twRun(ms, start, crypto.randomInt(1, 2147483647)), { id: crypto.randomBytes(6).toString('base64url'), kind: 'solo', by: P.name, pname: (dbx.q.partyGet.get(party) || {}).name || '', t0: Date.now() / 1000, ms: R.twMeta(ms) });
+    return send(req, res, 200, { run });
+  }
+  if (mode === 'stop') {
+    const runs = towerRuns(party), live = towerLive(runs);
+    if (!live || live.kind !== 'party') return fail(req, res, 400, '중단할 파티 연습이 없습니다');
+    live.d = Math.max(0, Date.now() / 1000 - live.t0); live.stopped = P.name; towerSave(party, runs);
+    chat.system('party', P.name + ' 님이 별의 탑 파티 연습을 중단했습니다.', Date.now() / 1000, party); towerPing(party, { stop: true });
+    return send(req, res, 200, towerView(me, now));
+  }
+  fail(req, res, 400, '알 수 없는 요청입니다');
 };
 
 /* ───────── 별샘 의식 ─────────
@@ -1742,6 +1862,9 @@ function gwqView(members, P, now) {
   const w = R.weekId(now), Qs = members.map((m) => store.get(m.id)).filter(Boolean);
   return { wk: w, end: R.weekStart(w + 1), list: R.GWQ.map((q) => ({ id: q.id, name: q.name, unit: q.unit, goal: q.goal, need: R.gwqNeed(q), prog: Qs.reduce((a, Q) => a + R.gwqMine(Q, q, w), 0), mine: R.gwqMine(P, q, w), got: !!(P && P.gwq && P.gwq.wk === w && P.gwq.got[q.id]) })), reward: P ? R.gwqReward(P) : null };
 }
+// 동아리를 스스로 탈퇴하면 24시간(현실 시간) 동안 다른 동아리에 가입 · 신청 · 창설할 수 없다
+const G_REJOIN = 24 * 3600;
+function gRejoinMsg(pid) { const Q = store.get(pid), left = Q && Q.gLeftAt ? Q.gLeftAt + G_REJOIN - Date.now() / 1000 : 0; return left > 0 ? '동아리 탈퇴 후 24시간 동안은 가입할 수 없습니다 (' + Math.ceil(left / 3600) + '시간 남음)' : ''; }
 function gJoin(pid, gid, role) { dbx.q.gJoin.run(pid, gid, role, Math.floor(Date.now() / 1000)); dbx.q.gAppDelAll.run(pid); dbx.q.ginvDelPid.run(pid); guildOf.set(pid, gid); guildRole.set(pid, role); if (!guildLv.has(gid)) guildLv.set(gid, (dbx.q.gGet.get(gid) || {}).lv || 1); chat.guildChanged(pid); const P = store.peek(pid); if (P && setGuildLv(P)) store.markDirty(pid); }
 function gLeave(pid) { const g = guildOf.get(pid); dbx.q.gLeave.run(pid); guildOf.delete(pid); guildRole.delete(pid); chat.guildChanged(pid); const P = store.peek(pid); if (P && setGuildLv(P)) store.markDirty(pid); return g; }
 function gSys(gid, text) { const now = Date.now() / 1000; chat.system('grp', text, now, gid); chat.system('gooc', text, now, gid); }
@@ -1804,6 +1927,7 @@ routes['POST /api/guild'] = async (req, res) => {
   const target = String(b.pid || ''), tRole = guildRole.get(target), sameG = target && guildOf.get(target) === mine;
   const ok = (extra) => send(req, res, 200, Object.assign({ ok: true, guild: mine || guildOf.get(me) ? gView(me, guildOf.get(me), true) : null }, extra || {}));
   const nameOf = (pid) => { const w = dbx.q.getProfile.get(pid); return w ? w.name : '학생'; };
+  if ((op === 'join' || op === 'create' || op === 'inviteAccept') && !mine && gRejoinMsg(me)) return fail(req, res, 400, gRejoinMsg(me));
   if (op === 'create') {
     if (meta.guest) return fail(req, res, 403, '게스트는 동아리를 만들 수 없습니다. 정식 학생 등록 필요');
     if (mine) return fail(req, res, 400, '이미 동아리에 들어가 있습니다');
@@ -1866,6 +1990,7 @@ routes['POST /api/guild'] = async (req, res) => {
     dbx.q.gAppDel.run(target, mine);
     if (op === 'accept') {
       if (guildOf.get(target)) return fail(req, res, 400, '이미 다른 동아리에 들어간 학생입니다');
+      if (gRejoinMsg(target)) return fail(req, res, 400, '탈퇴 후 24시간이 지나지 않은 학생입니다');
       if (gCount(mine) >= R.guildCap(g.lv)) return fail(req, res, 400, '정원이 가득 찼습니다');
       gJoin(target, mine, 'member'); gSys(mine, nameOf(target) + ' 님이 동아리에 들어왔습니다.'); gLog(mine, nameOf(target) + ' 님 가입 (' + P.name + ' 님이 승인)');
       addNote(target, 'guild', '동아리 「' + g.name + '」 가입이 승인되었습니다', { view: 'guild' });
@@ -1879,7 +2004,7 @@ routes['POST /api/guild'] = async (req, res) => {
   if (op === 'leave') {
     if (role === 'owner' && gCount(mine) > 1) return fail(req, res, 400, '부원이 있으면 회장은 나갈 수 없습니다. 먼저 회장 위임 필요');
     if (role === 'owner') return fail(req, res, 400, '혼자 남은 회장은 「동아리 해체」로 정리 필요');
-    gLeave(me); gSys(mine, P.name + ' 님이 동아리에서 나갔습니다.'); gLog(mine, P.name + ' 님 탈퇴');
+    gLeave(me); P.gLeftAt = Math.floor(Date.now() / 1000); store.markDirty(me); gSys(mine, P.name + ' 님이 동아리에서 나갔습니다.'); gLog(mine, P.name + ' 님 탈퇴');
     return send(req, res, 200, { ok: true, guild: null });
   }
   if (op === 'kick') {
@@ -1894,21 +2019,21 @@ routes['POST /api/guild'] = async (req, res) => {
     const nr = b.role === 'officer' ? 'officer' : 'member';
     if (nr === 'officer' && tRole !== 'officer' && dbx.q.gMembers.all(mine).filter((m) => m.role === 'officer').length >= GUILD_OFFICERS) return fail(req, res, 400, '부회장은 ' + GUILD_OFFICERS + '명까지입니다');
     dbx.q.gRole.run(nr, target); dbx.q.gSetRank.run('', target); guildRole.set(target, nr);
-    gLog(mine, nameOf(target) + ' 님 → ' + (nr === 'officer' ? '부회장' : ranks.base.name)); if (nr === 'officer') gSys(mine, nameOf(target) + ' 님이 부회장이 되었습니다.');
+    gLog(mine, nameOf(target) + ' 님 → ' + (nr === 'officer' ? ranks.officer || '부회장' : ranks.base.name)); if (nr === 'officer') gSys(mine, nameOf(target) + ' 님이 ' + R.josa(ranks.officer || '부회장', '이', '가') + ' 되었습니다.');
     return ok();
   }
   if (op === 'setrank') {
-    if (!staff || !sameG) return fail(req, res, 403, '회장·부회장만 계급을 정할 수 있습니다');
-    if (tRole !== 'member') return fail(req, res, 400, '회장·부회장에게는 계급을 줄 수 없습니다');
-    const rk = String(b.rank || ''); if (rk && !ranks.list.some((x) => x.id === rk)) return fail(req, res, 400, '없는 계급입니다');
+    if (!staff || !sameG) return fail(req, res, 403, '회장·부회장만 역할을 정할 수 있습니다');
+    if (tRole !== 'member') return fail(req, res, 400, '회장·부회장에게는 부원 역할을 줄 수 없습니다');
+    const rk = String(b.rank || ''); if (rk && !ranks.list.some((x) => x.id === rk)) return fail(req, res, 400, '없는 역할입니다');
     dbx.q.gSetRank.run(rk, target); gLog(mine, nameOf(target) + ' 님 → ' + R.guildRankName(ranks, 'member', rk) + ' (' + P.name + ')');
     return ok();
   }
   if (op === 'ranks') {
-    if (role !== 'owner') return fail(req, res, 403, '회장만 계급을 고칠 수 있습니다');
+    if (role !== 'owner') return fail(req, res, 403, '회장만 역할을 고칠 수 있습니다');
     const nr = R.guildCleanRanks(b.ranks, R.guildRanksMax(g.lv || 1)); dbx.q.gRanks.run(JSON.stringify(nr), mine);
     ranks.list.forEach((x) => { if (!nr.list.some((y) => y.id === x.id)) dbx.q.gClearRank.run(mine, x.id); });
-    gLog(mine, P.name + ' 님이 계급을 고쳤습니다 (' + [nr.base.name].concat(nr.list.map((x) => x.name)).join(' · ') + ')');
+    gLog(mine, P.name + ' 님이 역할을 고쳤습니다 (' + [nr.owner, nr.officer, nr.base.name].concat(nr.list.map((x) => x.name)).join(' · ') + ')');
     return ok();
   }
   if (op === 'transfer') {
@@ -2053,10 +2178,9 @@ routes['GET /api/admin/stats'] = (req, res) => {
     chatConnections: chat.connections(), chatOnline: chat.online(), inviteRequired: cfg.inviteRequired, boss: world.W.boss, epoch: world.W.epoch, wbForecast: Math.floor(world.wbForecast(Math.floor(nowSec()))), wbAttacks: R.wbAttacksLeft(nowSec())
   });
 };
-// 공지 탭 상단 고정 공지: 최대 2개 (새로 고정하면 가장 오래된 것이 빠진다). 예전 한 개짜리(pinNotice)는 첫 칸으로 이어받는다
-const PIN_MAX = 2;
-function pinList() { let l = dbx.kvGet('pinNotices', null); if (!Array.isArray(l)) { const o = dbx.kvGet('pinNotice', null); l = o && o.text ? [o] : []; } return l.slice(0, PIN_MAX); }
-function pinSave(l) { l = l.slice(0, PIN_MAX); dbx.kvSet('pinNotices', l); dbx.kvSet('pinNotice', l[0] || null); chat.pingAll('pin', { pin: l[0] || null, pins: l }); return l; }
+// 공지 탭 상단 고정 공지: 개수 제한 없음 (새 것이 위). 예전 한 개짜리(pinNotice)는 첫 칸으로 이어받는다
+function pinList() { let l = dbx.kvGet('pinNotices', null); if (!Array.isArray(l)) { const o = dbx.kvGet('pinNotice', null); l = o && o.text ? [o] : []; } return l; }
+function pinSave(l) { dbx.kvSet('pinNotices', l); dbx.kvSet('pinNotice', l[0] || null); chat.pingAll('pin', { pin: l[0] || null, pins: l }); return l; }
 routes['POST /api/admin/notice'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
   const b = await readJson(req, 4096);
@@ -2082,6 +2206,21 @@ routes['POST /api/admin/grant'] = async (req, res) => {
   const P = store.get(row.id), shard = Math.max(0, Math.min(100000, Number(b.shard) || 0));
   P.res.shard += shard; R.log(P, nowSec(), '아카데미에서 별조각 ' + shard + '개를 보냈습니다' + (b.reason ? ' (' + String(b.reason).slice(0, 60) + ')' : ''), 'news');
   store.markDirty(row.id); send(req, res, 200, { ok: true, shard: P.res.shard });
+};
+// 운영실: 학생 카드 (공개 범위 설정과 관계없이 · 두상은 데이터 URL로)
+routes['GET /api/admin/pcard'] = (req, res) => {
+  if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
+  const q = new URL(req.url, 'http://x').searchParams, nm = String(q.get('name') || '').trim(), pid = String(q.get('id') || '');
+  const key = nm ? dbx.q.playerByKey.get(nameKey(nm)) : null, id = key ? key.id : /^[A-Za-z0-9_-]{4,40}$/.test(pid) ? pid : '';
+  const row = id && dbx.q.getProfile.get(id); if (!row) return fail(req, res, 404, '없는 학생입니다');
+  const pr = profileOf(row.profile), P = store.peek(id) || store.get(id), meta = dbx.db.prepare('SELECT role, last_seen FROM players WHERE id = ?').get(id) || {};
+  let av = ''; try { const a = dbx.q.getAvatar.get(id); if (a && a.avatar) av = 'data:' + (a.avatar_type === 'image/png' ? 'image/png' : 'image/jpeg') + ';base64,' + sec.decBuf(a.avatar).toString('base64'); } catch (e) { }
+  const s = P ? R.summary(P, world.W, Math.min(nowSec(), P.at)) : { lvl: row.lvl, grade: row.grade, power: row.power };
+  const tg = guildOf.get(id), tgr = tg && dbx.q.gGet.get(tg), mr = tgr ? dbx.q.gMember.get(id) || {} : null;
+  oplog('admin', '관리자', 'pcard', row.name + ' 학생 카드 확인');
+  send(req, res, 200, { id, name: row.name, house: (R.HOUSE[row.house] || {}).name || row.house, grade: s.grade, lvl: s.lvl, power: s.power, cls: P && R.CLS[P.cls] ? R.CLS[P.cls].name : '',
+    title: P ? R.titleName(P, P.title) : row.title || '', status: pr.status || '', bio: pr.bio || '', fav: pr.fav || '', av, created: row.created, seen: meta.last_seen || 0, online: isOnline(id),
+    role: meta.role === 'chief' ? '학생회장' : meta.role === 'admin' ? '학생회' : '', banned: !!row.banned, deleted: !!row.deleted, guild: tgr ? tgr.name + (mr ? ' · ' + R.guildRankName(gRanksOf(tgr), mr.role, mr.rank) : '') : '' });
 };
 // 운영실: 자원 회수 (잘못 지급 · 장비 복구 시 분해로 얻은 것 등). 가진 만큼만 빼고(0 아래로 내리지 않음) 학생 일지에 사유와 함께 남긴다
 const RECLAIM = [['stone', '마석'], ['dust', '마석가루'], ['gold', CUR], ['shard', '별조각'], ['mana', '마나'], ['know', '지식']];
@@ -2270,6 +2409,50 @@ routes['POST /api/admin/reset'] = async (req, res) => {
   const r = resetCharacter(row.id); if (!r) return fail(req, res, 400, '초기화할 수 없습니다');
   send(req, res, 200, { ok: true, name: r.name });
 };
+/* ───────── 시즌 초기화 (운영실) ─────────
+   점검 중에만. 먼저 백업하고(실패하면 중단) 모든 학생을 「새 학생 만들기」 상태로 되돌린다.
+   남기는 것: 계정(아이디 · 비밀번호 · 운영 등급), 학생 이름(같은 계정만 다시 사용 가능), 프로필, 초대코드, 운영 기록, 신고된 채팅, 운영진 1:1.
+   지우는 것: 친구 · 동아리 · 파티 · 게시판 · 1:1 대화 · 거래소 · 경매 · 우편 · 탑 · 주간 기록 · 성장 기록 · 월드 보스 · 소식.
+   끝나면 서버를 내려 systemd가 다시 켠다(메모리의 동아리 · 파티 · 채팅 캐시를 비우기 위해). */
+const SEASON_WIPE = ['auction', 'board_comments', 'board_posts', 'friends', 'growth', 'guild_apps', 'guild_invites', 'guild_items', 'guild_log', 'guild_members', 'guild_stock', 'guilds', 'mail', 'mail_state', 'market', 'market_bids', 'notes', 'parties', 'party_members', 'party_invites', 'tower', 'tower_rank', 'weekly'];
+const SEASON_KV = ['boss', 'results', 'news', 'hbase', 'exprooms', 'growthSlot', 'ritual', 'profline'];
+let SEASON_RESETTING = false;
+routes['POST /api/admin/season-reset'] = async (req, res) => {
+  if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
+  const b = await readJson(req, 1024), tag = String(b.legacy || 'gen1').replace(/[^a-z0-9]/g, '').slice(0, 12) || 'gen1';
+  if (!MAINT.on) return fail(req, res, 400, '점검을 먼저 시작해야 합니다');
+  if (String(b.confirm || '') !== '시즌 초기화') return fail(req, res, 400, '확인 문구가 맞지 않습니다');
+  if (SEASON_RESETTING) return fail(req, res, 409, '이미 진행 중입니다');
+  SEASON_RESETTING = true;
+  let file;
+  try { file = backup(); } catch (e) { SEASON_RESETTING = false; log('시즌 초기화 전 백업 실패', e); return fail(req, res, 500, '백업에 실패하여 중단했습니다'); }
+  const now = nowSec(), have = new Set(dbx.db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map((r) => r.name));
+  let n = 0, tagged = 0;
+  try {
+    timers.forEach((t) => clearInterval(t));   // 다시 켤 때까지 월드 · 거래소 · 저장 타이머가 지운 기록을 다시 쓰지 않게
+    try { chat.closeAll(); } catch (e) { }   // 쌓인 채팅 글을 먼저 기록한 뒤 지운다
+    store.clearAll();
+    dbx.tx(() => {
+      const D = (sql, ...a) => dbx.db.prepare(sql).run(...a);
+      SEASON_WIPE.forEach((t) => { if (have.has(t)) D('DELETE FROM ' + t); });
+      D("DELETE FROM dm WHERE a != 'staff' AND b != 'staff'");   // 운영진 1:1은 남긴다
+      D('DELETE FROM chat WHERE id NOT IN (SELECT msg_id FROM reports)');   // 신고된 글은 남긴다
+      SEASON_KV.concat(b.epoch ? ['epoch'] : []).forEach((k) => D('DELETE FROM kv WHERE k = ?', k));
+      const up = dbx.db.prepare("UPDATE players SET state = ?, legacy = ?, power = 0, lvl = 1, grade = 1, max_stage = 9, wb_dps = 0, title = '' WHERE id = ?");
+      dbx.db.prepare('SELECT id, name, house, state, legacy FROM players WHERE deleted = 0').all().forEach((r) => {
+        let old = {}; try { old = JSON.parse(r.state) || {}; } catch (e) { }
+        const lg = String(r.legacy || '').split(',').filter(Boolean);
+        if (!old.needCreate && lg.indexOf(tag) < 0) { lg.push(tag); tagged++; }   // 캐릭터가 있던 학생에게 기념 표시
+        const P = R.newPlayer(r.id, r.name, r.house, now, crypto.randomInt(1, 2147483647));
+        P.needCreate = 1; P.seasonNew = 1; P.legacy = lg;
+        up.run(JSON.stringify(P), lg.join(','), r.id); n++;
+      });
+    });
+  } catch (e) { log('시즌 초기화 실패', e); send(req, res, 500, { error: '초기화 중 오류가 발생했습니다. 서버를 다시 시작합니다 (백업 ' + file + ')' }); res.on('finish', () => process.exit(1)); return; }
+  oplog('admin', '관리자', 'season', `시즌 초기화 · ${n}명 · 기념 표시 ${tagged}명(${tag}) · 백업 ${file}`);
+  send(req, res, 200, { ok: true, players: n, tagged, backup: file });
+  res.on('finish', () => { log('시즌 초기화 완료: 서버를 다시 시작합니다'); setTimeout(() => process.exit(0), 200); });
+};
 // 초기화된 계정: 학생 이름 · 기숙사 · 학과를 새로 정해 입학한다
 routes['POST /api/recreate'] = async (req, res) => {
   const pid = authed(req); if (!pid) return fail(req, res, 401, '로그인이 필요합니다');
@@ -2279,8 +2462,9 @@ routes['POST /api/recreate'] = async (req, res) => {
   if (R.badName(name)) return fail(req, res, 400, '사용할 수 없는 단어가 포함된 이름입니다');
   if (!R.HOUSE[house]) return fail(req, res, 400, '기숙사 선택 필요');
   if (!R.CLS[cls]) return fail(req, res, 400, '학과 선택 필요');
-  if (dbx.q.playerByKey.get(nameKey(name))) return fail(req, res, 409, '이미 사용 중인 이름입니다');
+  const taken = dbx.q.playerByKey.get(nameKey(name)); if (taken && taken.id !== pid) return fail(req, res, 409, '이미 사용 중인 이름입니다');   // 시즌 초기화 뒤에는 자기 이름을 다시 사용할 수 있다
   const now = nowSec(), P = R.newPlayer(pid, name, house, now, crypto.randomInt(1, 2147483647)); R.clsStart(P, cls);
+  if (P0.legacy && P0.legacy.length) P.legacy = P0.legacy.slice();
   R.advance(P, world.ctx(now), now); syncOp(P);
   try { dbx.db.prepare('UPDATE players SET name = ?, name_key = ?, house = ?, created = ?, state = ? WHERE id = ?').run(name, nameKey(name), house, Math.floor(now), JSON.stringify(P), pid); }
   catch (e) { return fail(req, res, 409, '이미 사용 중인 이름입니다'); }
@@ -2421,14 +2605,14 @@ routes['GET /api/admin/dist'] = (req, res) => {
         for (const k in cat) { const v = cat[k]; h.sum[k] = Math.round((h.sum[k] || 0) + v); if (sp && sp.cats.indexOf(k) >= 0) h.specExtra = Math.round(h.specExtra + v * (1 - 1 / R.CUP_SPEC_MULT)); }
       }
       detail.push({ cls: P.cls === 'knight' ? 'knight' : 'mage', grade: P.grade, house: r.house, dps: c.totalDps, basic: c.dps, spell: c.spellDps, fam: c.famDps, spellShare: c.totalDps > 0 ? c.spellDps / c.totalDps : 0,
-        patk: c.patk, matk: c.matk, hp: c.hp, def: c.def, critC: c.critC, aps: c.aps, power: c.power, lvl: P.lvl, twK: st.twK || 0, twM: st.twM || 0 });
+        patk: c.patk, matk: c.matk, hp: c.hp, def: c.def, critC: c.critC, aps: c.aps, power: c.power, lvl: P.lvl, twK: st.twK || 0, twM: st.twM || 0, tw: R.twBest(P, nowSec()) });
     } catch (e) { }
   });
   const KEYS = ['dps', 'basic', 'spell', 'fam', 'spellShare', 'patk', 'matk', 'hp', 'def', 'critC', 'aps', 'power', 'lvl'];
   const group = (key) => { const g = {}; detail.forEach((d) => { (g[d[key]] = g[d[key]] || []).push(d); }); const o = {}; for (const k in g) { o[k] = { n: g[k].length }; KEYS.forEach((f) => { o[k][f] = pct(g[k].map((d) => d[f])); }); } return o; };
   const all = { n: detail.length }; KEYS.forEach((f) => { all[f] = pct(detail.map((d) => d[f])); });
   const clsGrade = {}; detail.forEach((d) => { const k = d.cls + ':' + d.grade; (clsGrade[k] = clsGrade[k] || []).push(d); }); const cg = {}; for (const k in clsGrade) cg[k] = { n: clsGrade[k].length, dps: pct(clsGrade[k].map((d) => d.dps)), hp: pct(clsGrade[k].map((d) => d.hp)), power: pct(clsGrade[k].map((d) => d.power)) };
-  const towers = { infKnight: pct(detail.filter((d) => d.twK > 0).map((d) => d.twK)), infMage: pct(detail.filter((d) => d.twM > 0).map((d) => d.twM)), starTowerWeek: pct(db.prepare('SELECT floor FROM tower WHERE week = ? AND floor > 0').all(wk).map((r) => r.floor)) };
+  const towers = { infKnight: pct(detail.filter((d) => d.twK > 0).map((d) => d.twK)), infMage: pct(detail.filter((d) => d.twM > 0).map((d) => d.twM)), starTowerWeek: pct(detail.filter((d) => d.tw > 0).map((d) => d.tw)) };   // 별의 탑 이번 주 개인 기록
   oplog('admin', '관리자', 'dist', '분포 통계 복사');
   send(req, res, 200, { at: now, week: wk, students: { all: players.length, active7d: act.length, gradeActive7d: grades }, fightActive7d: fight(act), fightAll: fight(players), weekly: cup, cupSource: { note: '이번 주 점수 출처(특기 1.3배 포함 합계). before=나눠 적기 전(배포 전)에 쌓인 몫, kill=원정 처치, exam=진급 시험, etc=그 밖', byHouse: cupCat },
     detailActive7d: { note: 'dps=초당 피해 합계(basic 평타 + spell 주문 + fam 사역마), spellShare=주문 비중, patk/matk=물리/주문 공격력, critC=치명타 확률, aps=초당 공격 횟수', all, byCls: group('cls'), byGrade: group('grade'), byClsGrade: cg }, towers });
@@ -2631,6 +2815,7 @@ function shutdown(sig) {
   server.close();
   // 학생 상태 · 월드 보스 체력 · 소식/공지 · 채팅 글 번호를 모두 DB에 쓴 뒤 닫는다 (경매·거래소·채팅 글은 이미 DB에 바로 기록됨)
   try { store.flushAll(); world.tick(nowSec()); world.saveAll(); chat.saveSeq(); exprooms.persist(); } catch (e) { log('종료 중 저장 오류', e); }
+  try { push.saveLast(); } catch (e) { }
   try { dbx.close(); } catch (e) { log('종료 중 오류', e); }
   process.exit(0);
 }
