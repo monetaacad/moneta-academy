@@ -157,6 +157,7 @@ function open(dir) {
   if (cols.indexOf('login_key') < 0) db.exec(`ALTER TABLE players ADD COLUMN login_key TEXT NOT NULL DEFAULT ''`);
   if (cols.indexOf('login_enc') < 0) db.exec(`ALTER TABLE players ADD COLUMN login_enc TEXT NOT NULL DEFAULT ''`);   // 아이디 (암호화 · 운영실 확인용)
   if (cols.indexOf('pw_temp') < 0) db.exec(`ALTER TABLE players ADD COLUMN pw_temp INTEGER NOT NULL DEFAULT 0`);   // 운영실이 발급한 임시 비밀번호 (바꾸면 0)
+  if (cols.indexOf('legacy') < 0) db.exec(`ALTER TABLE players ADD COLUMN legacy TEXT NOT NULL DEFAULT ''`);   // 시즌 초기화 때 남기는 기념 표시 (예: 'gen1' = 1기 학생, 쉼표로 여러 개)
   if (cols.indexOf('deleted') < 0) db.exec(`ALTER TABLE players ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0`);   // 캐릭터 초기화로 남은 예전 캐릭터
   db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS players_login ON players(login_key) WHERE login_key <> ''`);
   const ccols = db.prepare(`PRAGMA table_info(chat)`).all().map((c) => c.name);

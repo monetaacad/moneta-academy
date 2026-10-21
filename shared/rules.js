@@ -1263,6 +1263,7 @@
     if (t.op) return opLv(P) >= t.op;
     if (t.grade) return P.grade >= t.grade || (P.st.maxGrade || 1) >= t.grade;
     if (t.stat) return (P.st[t.stat] || 0) >= t.n;
+    if (t.legacy) return (P.legacy || []).indexOf(t.legacy) >= 0;   // 시즌 기념 칭호 (예: 1기 학생)
     return true;
   };
   // 보상 미리보기 (화면에 보여 주는 값과 실제 지급이 같은 식)

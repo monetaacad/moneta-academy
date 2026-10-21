@@ -5043,7 +5043,8 @@
     if (tabs.length > 1) h += '<div class="tabs" role="tablist">' + tabs.map(function (t) { return '<button role="tab" class="' + (tab === t[0] ? 'on' : '') + '" data-act="authtab" data-a="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
     h += '<form id="authform" class="card stack" style="gap:12px" autocomplete="on">';
     if (tab === 'guest') h += '<p class="small muted">이름과 기숙사만 정하면 바로 시작합니다.</p>';
-    if (tab === 'recreate') h += '<p class="small">운영진이 캐릭터를 초기화했습니다. 아이디와 비밀번호는 그대로이며, 학생 이름 · 기숙사 · 학과를 새로 정해 처음부터 입학합니다.</p>' + nameField();
+    if (tab === 'recreate' && S.P.seasonNew && !S.authName) S.authName = S.P.name || '';   // 시즌 초기화: 예전 이름을 그대로 사용할 수 있다
+    if (tab === 'recreate') h += (S.P.seasonNew ? '<p class="small">새 시즌이 시작되었습니다. 아이디와 비밀번호는 그대로이며, 기숙사 · 학과를 새로 선택하여 처음부터 입학합니다. 학생 이름은 예전 이름을 그대로 사용하거나 새로 정할 수 있습니다.</p>' : '<p class="small">운영진이 캐릭터를 초기화했습니다. 아이디와 비밀번호는 그대로이며, 학생 이름 · 기숙사 · 학과를 새로 정해 처음부터 입학합니다.</p>') + nameField();
     // 아이디는 가입 · 로그인에만 쓰고 게임 안에는 나오지 않는다. 학생 이름은 따로
     if (tab === 'login' || tab === 'signup') h += '<div class="field"><label for="a-id">아이디</label><input id="a-id" maxlength="20" placeholder="' + (tab === 'login' ? '' : '영문·숫자·밑줄(_) 4~20자') + '" autocomplete="username" autocapitalize="none" spellcheck="false" value="' + esc(S.authId || '') + '">' + (tab === 'signup' ? '<span class="tiny faint">아이디는 로그인에만 쓰이며, 게임 안에서 다른 학생에게 보이지 않습니다. 학생 이름과 다르게 정해 주세요.</span>' : '') + '</div>';
     if (tab === 'login' || tab === 'signup') h += '<div class="field"><label for="a-pw">비밀번호</label><input id="a-pw" type="password" maxlength="72" placeholder="' + (tab === 'login' ? '' : '8자 이상, 글자와 숫자 섞어서') + '" autocomplete="' + (tab === 'login' ? 'current-password' : 'new-password') + '"></div>';

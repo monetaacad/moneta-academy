@@ -2286,6 +2286,50 @@ routes['POST /api/admin/reset'] = async (req, res) => {
   const r = resetCharacter(row.id); if (!r) return fail(req, res, 400, '초기화할 수 없습니다');
   send(req, res, 200, { ok: true, name: r.name });
 };
+/* ───────── 시즌 초기화 (운영실) ─────────
+   점검 중에만. 먼저 백업하고(실패하면 중단) 모든 학생을 「새 학생 만들기」 상태로 되돌린다.
+   남기는 것: 계정(아이디 · 비밀번호 · 운영 등급), 학생 이름(같은 계정만 다시 사용 가능), 프로필, 초대코드, 운영 기록, 신고된 채팅, 운영진 1:1.
+   지우는 것: 친구 · 동아리 · 파티 · 게시판 · 1:1 대화 · 거래소 · 경매 · 우편 · 탑 · 주간 기록 · 성장 기록 · 월드 보스 · 소식.
+   끝나면 서버를 내려 systemd가 다시 켠다(메모리의 동아리 · 파티 · 채팅 캐시를 비우기 위해). */
+const SEASON_WIPE = ['auction', 'board_comments', 'board_posts', 'friends', 'growth', 'guild_apps', 'guild_invites', 'guild_items', 'guild_log', 'guild_members', 'guild_stock', 'guilds', 'mail', 'mail_state', 'market', 'market_bids', 'notes', 'parties', 'party_members', 'party_invites', 'tower', 'weekly'];
+const SEASON_KV = ['boss', 'results', 'news', 'hbase', 'exprooms', 'growthSlot', 'ritual', 'profline'];
+let SEASON_RESETTING = false;
+routes['POST /api/admin/season-reset'] = async (req, res) => {
+  if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
+  const b = await readJson(req, 1024), tag = String(b.legacy || 'gen1').replace(/[^a-z0-9]/g, '').slice(0, 12) || 'gen1';
+  if (!MAINT.on) return fail(req, res, 400, '점검을 먼저 시작해야 합니다');
+  if (String(b.confirm || '') !== '시즌 초기화') return fail(req, res, 400, '확인 문구가 맞지 않습니다');
+  if (SEASON_RESETTING) return fail(req, res, 409, '이미 진행 중입니다');
+  SEASON_RESETTING = true;
+  let file;
+  try { file = backup(); } catch (e) { SEASON_RESETTING = false; log('시즌 초기화 전 백업 실패', e); return fail(req, res, 500, '백업에 실패하여 중단했습니다'); }
+  const now = nowSec(), have = new Set(dbx.db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map((r) => r.name));
+  let n = 0, tagged = 0;
+  try {
+    timers.forEach((t) => clearInterval(t));   // 다시 켤 때까지 월드 · 거래소 · 저장 타이머가 지운 기록을 다시 쓰지 않게
+    try { chat.closeAll(); } catch (e) { }   // 쌓인 채팅 글을 먼저 기록한 뒤 지운다
+    store.clearAll();
+    dbx.tx(() => {
+      const D = (sql, ...a) => dbx.db.prepare(sql).run(...a);
+      SEASON_WIPE.forEach((t) => { if (have.has(t)) D('DELETE FROM ' + t); });
+      D("DELETE FROM dm WHERE a != 'staff' AND b != 'staff'");   // 운영진 1:1은 남긴다
+      D('DELETE FROM chat WHERE id NOT IN (SELECT msg_id FROM reports)');   // 신고된 글은 남긴다
+      SEASON_KV.concat(b.epoch ? ['epoch'] : []).forEach((k) => D('DELETE FROM kv WHERE k = ?', k));
+      const up = dbx.db.prepare("UPDATE players SET state = ?, legacy = ?, power = 0, lvl = 1, grade = 1, max_stage = 9, wb_dps = 0, title = '' WHERE id = ?");
+      dbx.db.prepare('SELECT id, name, house, state, legacy FROM players WHERE deleted = 0').all().forEach((r) => {
+        let old = {}; try { old = JSON.parse(r.state) || {}; } catch (e) { }
+        const lg = String(r.legacy || '').split(',').filter(Boolean);
+        if (!old.needCreate && lg.indexOf(tag) < 0) { lg.push(tag); tagged++; }   // 캐릭터가 있던 학생에게 기념 표시
+        const P = R.newPlayer(r.id, r.name, r.house, now, crypto.randomInt(1, 2147483647));
+        P.needCreate = 1; P.seasonNew = 1; P.legacy = lg;
+        up.run(JSON.stringify(P), lg.join(','), r.id); n++;
+      });
+    });
+  } catch (e) { log('시즌 초기화 실패', e); send(req, res, 500, { error: '초기화 중 오류가 발생했습니다. 서버를 다시 시작합니다 (백업 ' + file + ')' }); res.on('finish', () => process.exit(1)); return; }
+  oplog('admin', '관리자', 'season', `시즌 초기화 · ${n}명 · 기념 표시 ${tagged}명(${tag}) · 백업 ${file}`);
+  send(req, res, 200, { ok: true, players: n, tagged, backup: file });
+  res.on('finish', () => { log('시즌 초기화 완료: 서버를 다시 시작합니다'); setTimeout(() => process.exit(0), 200); });
+};
 // 초기화된 계정: 학생 이름 · 기숙사 · 학과를 새로 정해 입학한다
 routes['POST /api/recreate'] = async (req, res) => {
   const pid = authed(req); if (!pid) return fail(req, res, 401, '로그인이 필요합니다');
@@ -2295,8 +2339,9 @@ routes['POST /api/recreate'] = async (req, res) => {
   if (R.badName(name)) return fail(req, res, 400, '사용할 수 없는 단어가 포함된 이름입니다');
   if (!R.HOUSE[house]) return fail(req, res, 400, '기숙사 선택 필요');
   if (!R.CLS[cls]) return fail(req, res, 400, '학과 선택 필요');
-  if (dbx.q.playerByKey.get(nameKey(name))) return fail(req, res, 409, '이미 사용 중인 이름입니다');
+  const taken = dbx.q.playerByKey.get(nameKey(name)); if (taken && taken.id !== pid) return fail(req, res, 409, '이미 사용 중인 이름입니다');   // 시즌 초기화 뒤에는 자기 이름을 다시 사용할 수 있다
   const now = nowSec(), P = R.newPlayer(pid, name, house, now, crypto.randomInt(1, 2147483647)); R.clsStart(P, cls);
+  if (P0.legacy && P0.legacy.length) P.legacy = P0.legacy.slice();
   R.advance(P, world.ctx(now), now); syncOp(P);
   try { dbx.db.prepare('UPDATE players SET name = ?, name_key = ?, house = ?, created = ?, state = ? WHERE id = ?').run(name, nameKey(name), house, Math.floor(now), JSON.stringify(P), pid); }
   catch (e) { return fail(req, res, 409, '이미 사용 중인 이름입니다'); }

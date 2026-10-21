@@ -55,7 +55,7 @@ function create(dbx, log) {
   function online(windowMs) { const now = Date.now(); let n = 0; cache.forEach((e) => { if (now - e.touched < windowMs) n++; }); return n; }
   function peek(pid) { const e = cache.get(pid); return e ? e.P : null; }
   function seen(pid) { const e = cache.get(pid); return e ? e.touched : 0; }
-  const api = { get, peek, seen, put, markDirty, touch, flushAll, evictIdle, online, isBanned, size: () => cache.size, setWorld(w) { worldRef = w; }, drop(pid) { cache.delete(pid); } };
+  const api = { get, peek, seen, put, markDirty, touch, flushAll, evictIdle, online, isBanned, size: () => cache.size, setWorld(w) { worldRef = w; }, drop(pid) { cache.delete(pid); }, clearAll() { cache.clear(); } };
   return api;
 }
 module.exports = { create };
