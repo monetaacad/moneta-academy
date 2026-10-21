@@ -317,7 +317,7 @@ main { min-width: 0; container-type: inline-size; container-name: page; }
 
 /* 토스트 · 모달 · 정령 */
 #toasts { position: fixed; z-index: 210; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); display: flex; flex-direction: column; gap: 8px; width: min(320px, calc(100vw - 32px)); pointer-events: none; }
-.toast { background: var(--toastbg); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; font-size: 13px; box-shadow: 0 8px 24px rgba(0,0,0,.35); animation: tin .25s ease-out; pointer-events: auto; }
+.toast { background: var(--toastbg); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; font-size: 13px; box-shadow: 0 8px 24px rgba(0,0,0,.35); animation: tin .25s ease-out; pointer-events: none; }   /* 알림은 누르는 기능이 없다: 아래 버튼(거래소 「한 번 더 누르면 구매」 등)을 가리지 않게 눌림을 통과시킨다 */
 .toast.out { animation: tout .3s ease-in forwards; }
 .toast b { font-family: var(--f-display); color: var(--brass2); display: block; font-size: 13.5px; }
 @keyframes tin { from { opacity: 0; transform: translateY(-6px); } }
