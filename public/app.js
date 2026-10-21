@@ -1024,14 +1024,28 @@
       toast(j.memo ? '메모를 저장했습니다' : '메모를 지웠습니다', '', 1400);
     });
   };
+  // 친구 끊기는 잘못 누르기 쉬워 확인 창을 먼저 띄운다 (학생 정보 창에서 눌렀으면 취소 · 완료 뒤 그 창으로 돌아간다)
   ACT.fop = function (op, id) {
+    if (op === 'remove') {
+      var btn = $('[data-act="fop"][data-a="remove"][data-b="' + id + '"]'), row = btn && btn.closest('.frow'), nmEl = row ? row.querySelector('.cn') : $('#pbox .pnm');
+      var nm = nmEl ? nmEl.textContent.trim() : '이 학생', fromProf = !!(S.modal && S.profId === id && $('#pbox'));
+      S.fopBack = fromProf ? id : null;
+      modal(mhead('친구 끊기', esc(nm)) + '<p class="small"><b>' + esc(nm) + '</b> 님과 친구를 끊습니다. 다시 친구가 되려면 새로 친구 신청을 보내야 합니다.</p>' +
+        '<div class="row" style="justify-content:flex-end;margin-top:14px;gap:6px"><button class="btn" data-act="fopno" autofocus>취소</button><button class="btn danger" data-act="fopgo" data-a="' + esc(id) + '">친구 끊기</button></div>');
+      return;
+    }
+    fopRun(op, id);
+  };
+  ACT.fopno = function () { var id = S.fopBack; S.fopBack = null; closeModal(); if (id) openProfile(id, S.profMsg); };
+  ACT.fopgo = function (id) { var back = S.fopBack; S.fopBack = null; closeModal(); fopRun('remove', id, back); };
+  function fopRun(op, id, back) {
     API.friendOp(op, id).then(function (j) {
       if (j.error) { toast('할 수 없습니다', j.error); return; }
       toast({ add: j.state === 'ok' ? '친구가 되었습니다' : '친구 신청을 보냈습니다', accept: '친구가 되었습니다', decline: '거절했습니다', cancel: '신청을 취소했습니다', remove: '친구를 끊었습니다' }[op] || '완료', '', 1800);
-      if (S.modal && S.profId === id && $('#pbox')) openProfile(id, S.profMsg); if ($('#flist')) loadFriends();
+      if (back || (S.modal && S.profId === id && $('#pbox'))) openProfile(id, S.profMsg); if ($('#flist')) loadFriends();
       sync(true);
     });
-  };
+  }
 
   /* ── 바로 가기: 의뢰·업적·가이드에서 그것을 할 수 있는 곳으로 ── */
   var GO = {
@@ -5429,7 +5443,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102266;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102268;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
