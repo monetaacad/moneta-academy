@@ -199,6 +199,30 @@
       });
     },
     // 학생 활동 기록: 게임 안 기록 최근 50줄(같은 일이 이어지면 ×횟수)과 영웅 · 전설 장비 보유 현황
+    // 백업과 비교: 백업 시점의 가방 · 장착 장비와 지금을 비교 (사라진 장비 · 새로 생긴 장비 · 자원 변화)
+    bklist: function () {
+      var n = $('#un').value.trim(); if (!n) { $('#umsg').textContent = '학생 이름 입력 필요'; return; }
+      api('GET', '/api/admin/backups').then(function (j) {
+        var fs = j.files || []; if (!fs.length) { $('#bkbox').innerHTML = '<p class="small faint" style="margin-top:8px">서버에 백업이 없습니다.</p>'; return; }
+        $('#bkbox').innerHTML = '<div class="form" style="margin-top:10px"><label>비교할 백업<select id="bkfile">' + fs.map(function (f) { return '<option value="' + esc(f.file) + '">' + whenS(f.t) + ' · ' + Math.round(f.size / 1024) + 'KB</option>'; }).join('') + '</select></label><button class="btn primary" data-a="bkgo">비교</button><span class="tiny faint">백업은 12시간마다 만들어지며 최근 14개(약 7일)를 보관합니다. 비교에는 몇 초 걸릴 수 있습니다.</span></div><div id="bkres"></div>';
+      });
+    },
+    bkgo: function () {
+      var n = $('#un').value.trim(), f = $('#bkfile') && $('#bkfile').value; if (!n || !f) return;
+      $('#bkres').innerHTML = '<p class="small faint" style="margin-top:8px">비교 중입니다…</p>';
+      api('POST', '/api/admin/bkcompare', { name: n, file: f }).then(function (j) {
+        if (j.error) { $('#bkres').innerHTML = '<p class="small" style="margin-top:8px">' + esc(j.error) + '</p>'; return; }
+        var RC = ['#b9bccb', '#7cc68a', '#6aa8ff', '#c084fc', '#f2b84b'], d = j.diff;
+        var tb = function (list, why) { return '<div class="scroll" style="margin-top:6px;max-height:300px"><table><thead><tr><th>장비</th><th>등급</th><th>Lv</th><th>종류</th><th>당시 위치</th>' + (why ? '<th>추정</th>' : '') + '</tr></thead><tbody>' + (list.map(function (x) { return '<tr><td style="color:' + RC[x.r] + '">' + esc(x.name) + (x.lock ? ' <span class="tiny faint">(잠금)</span>' : '') + '</td><td>' + esc(x.rn) + '</td><td class="num">' + x.ilvl + '</td><td>' + esc(x.slot) + '</td><td>' + esc(x.at) + '</td>' + (why ? '<td class="small">' + esc(x.why) + '</td>' : '') + '</tr>'; }).join('') || '<tr><td colspan="6" class="faint">없음</td></tr>') + '</tbody></table></div>'; };
+        var sg = function (v) { return (v > 0 ? '+' : '') + Number(v).toLocaleString(); };
+        window.__bkJson = JSON.stringify(j);
+        $('#bkres').innerHTML = '<p class="small" style="margin-top:10px"><b>「' + esc(j.name) + '」 · ' + whenS(j.bkT) + ' 백업 → 지금</b></p>' +
+          '<p class="small">분해 횟수 <b>' + sg(d.dismantled) + '</b> · 마석 ' + sg(d.stone) + ' · 마석가루 ' + sg(d.dust) + ' · 아르크 ' + sg(d.gold) + ' · 얻은 영웅 ' + sg(d.epicFound) + ' · 레벨 ' + sg(d.lvl) + (j.auto ? ' · 분류 마법 자동 처분: 당시 ' + esc(j.auto.then) + ' → 지금 ' + esc(j.auto.now) : ' · 분류 마법 연구 전') + '</p>' +
+          '<p class="small" style="margin-top:8px"><b>사라진 장비 ' + j.gone.length + '개</b> <span class="tiny faint">(거래소 판매 · 등록은 거래 기록과 대조해 표시. 나머지는 분해 · 매점 판매 · 자동 처분 중 하나이며, 「분해 횟수」 변화로 분해 개수를 가늠할 수 있습니다)</span></p>' + tb(j.gone, true) +
+          '<p class="small" style="margin-top:10px"><b>새로 생긴 장비 ' + j.got.length + '개</b></p>' + tb(j.got, false) +
+          '<p class="tiny faint" style="margin-top:6px">백업과 백업 사이에 들어왔다가 바로 사라진 장비는 어느 백업에도 없어 이 비교에 나오지 않습니다. 앞으로의 처분은 「활동 기록 → 장비 처분 기록」에 남습니다.</p>';
+      });
+    },
     plogcopy: function () { var t = window.__plogJson || ''; if (!t) return; (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () { $('#umsg').textContent = '분석용 기록을 복사했습니다'; }, function () { prompt('아래 내용을 복사하십시오', t); }); },
     plog: function () {
       var n = $('#un').value.trim(); if (!n) { $('#umsg').textContent = '학생 이름 입력 필요'; return; }
