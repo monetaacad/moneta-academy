@@ -2054,10 +2054,9 @@ routes['GET /api/admin/stats'] = (req, res) => {
     chatConnections: chat.connections(), chatOnline: chat.online(), inviteRequired: cfg.inviteRequired, boss: world.W.boss, epoch: world.W.epoch, wbForecast: Math.floor(world.wbForecast(Math.floor(nowSec()))), wbAttacks: R.wbAttacksLeft(nowSec())
   });
 };
-// 공지 탭 상단 고정 공지: 최대 2개 (새로 고정하면 가장 오래된 것이 빠진다). 예전 한 개짜리(pinNotice)는 첫 칸으로 이어받는다
-const PIN_MAX = 2;
-function pinList() { let l = dbx.kvGet('pinNotices', null); if (!Array.isArray(l)) { const o = dbx.kvGet('pinNotice', null); l = o && o.text ? [o] : []; } return l.slice(0, PIN_MAX); }
-function pinSave(l) { l = l.slice(0, PIN_MAX); dbx.kvSet('pinNotices', l); dbx.kvSet('pinNotice', l[0] || null); chat.pingAll('pin', { pin: l[0] || null, pins: l }); return l; }
+// 공지 탭 상단 고정 공지: 개수 제한 없음 (새 것이 위). 예전 한 개짜리(pinNotice)는 첫 칸으로 이어받는다
+function pinList() { let l = dbx.kvGet('pinNotices', null); if (!Array.isArray(l)) { const o = dbx.kvGet('pinNotice', null); l = o && o.text ? [o] : []; } return l; }
+function pinSave(l) { dbx.kvSet('pinNotices', l); dbx.kvSet('pinNotice', l[0] || null); chat.pingAll('pin', { pin: l[0] || null, pins: l }); return l; }
 routes['POST /api/admin/notice'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
   const b = await readJson(req, 4096);
