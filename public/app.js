@@ -281,7 +281,7 @@
   // 모바일: 하단 안내도의 실제 높이를 재서 채팅창 · 토스트 · 본문 여백이 그 위에 오게 한다 (--navh)
   function syncNavH() {
     var n = $('#nav'), tb = $('.top-row .topbtns'), root = document.documentElement;
-    if (!n || innerWidth > 900) { root.style.removeProperty('--navh'); root.style.removeProperty('--tbw'); return; }
+    if (!n || !mobNav()) { root.style.removeProperty('--navh'); root.style.removeProperty('--tbw'); return; }
     root.style.setProperty('--navh', n.offsetHeight + 'px'); if (tb) root.style.setProperty('--tbw', (tb.offsetWidth + 8) + 'px');   // 우측 상단 버튼 폭만큼 이름 칸을 비운다
   }
   var navRO = null;
@@ -494,6 +494,8 @@
     saveRead(); S.chat.unread[ch] = countUnread(ch);
   }
   function wide() { return window.innerWidth >= 1280; }
+  // 모바일 배치(하단 안내도): 좁은 화면, 또는 터치 화면이 1000px 이하일 때 (가로로 돌린 모바일 · 모바일 브라우저의 데스크톱 모드). style.css의 미디어 쿼리와 같은 조건
+  function mobNav() { return window.matchMedia ? matchMedia('(max-width: 900px), (pointer: coarse) and (max-width: 1000px)').matches : window.innerWidth <= 900; }
   // 채팅창 크기: 가장자리를 끌어서 조절, 브라우저에 기억 (넓은 화면 = 폭, 중간 화면 = 폭·높이, 휴대폰 = 높이)
   var DSZ = { w: 340, fw: 380, fh: 560, mh: 0 };
   try { var dz = JSON.parse(localStorage.getItem('arc_dock_size') || 'null'); if (dz) for (var dk2 in DSZ) if (typeof dz[dk2] === 'number') DSZ[dk2] = dz[dk2]; } catch (e) { }
@@ -509,7 +511,7 @@
     var drag = null;
     document.addEventListener('pointerdown', function (e) {
       var g = e.target.closest && e.target.closest('[data-grip]'); if (!g) return;
-      var d = $('#chatdock'), r = d.getBoundingClientRect(), mode = window.innerWidth <= 900 ? 'm' : (wide() && document.body.classList.contains('dock-open')) ? 'w' : 'f';
+      var d = $('#chatdock'), r = d.getBoundingClientRect(), mode = mobNav() ? 'm' : (wide() && document.body.classList.contains('dock-open')) ? 'w' : 'f';
       drag = { g: g.dataset.grip, mode: mode, x: e.clientX, y: e.clientY, w: r.width, h: r.height, id: e.pointerId };
       try { g.setPointerCapture(e.pointerId); } catch (er) { } document.body.classList.add('dock-resizing'); e.preventDefault();
     });
@@ -1082,7 +1084,7 @@
   // ▲ ▼: 같은 열 안에서 자리를 바꾸고, 열 끝에서는 다른 열로 넘어간다 (모바일은 한 줄이라 그냥 앞뒤)
   ACT.hbmove = function (id, d) {
     var ho = homeOrder(), i = ho.o.indexOf(id); d = +d; if (i < 0) return;
-    if (innerWidth > 900 && d > 0 && i === ho.s - 1) ho.s--; else if (innerWidth > 900 && d < 0 && i === ho.s) ho.s++;
+    if (!mobNav() && d > 0 && i === ho.s - 1) ho.s--; else if (!mobNav() && d < 0 && i === ho.s) ho.s++;
     else { var j = i + d; if (j < 0 || j >= ho.o.length) return; ho.o[i] = ho.o[j]; ho.o[j] = id; }
     PREF.homeOrder = ho; savePref(); render();
   };
@@ -4253,7 +4255,7 @@
     S.divider[k] = null; S.chat.below = 0;
     S.chat.ch = k; S.chat.stick = true; try { localStorage.setItem('arc_dockch', k); } catch (e) { }
     if (!dockOpen()) { S.chat.open = true; try { localStorage.setItem('arc_dock', '1'); } catch (e) { } document.body.classList.add('dock-open'); }
-    renderDock(); var i = $('#chatinput'); if (i && window.innerWidth > 900) i.focus();
+    renderDock(); var i = $('#chatinput'); if (i && !mobNav()) i.focus();
   };
   ACT['dock-toggle'] = function () { S.chat.open = !dockOpen(); if (S.P && API.act && S.P.opt && !!S.P.opt.dockClosed === S.chat.open) { S.P.opt.dockClosed = !S.chat.open; API.act('opt', { k: 'dockClosed', v: !S.chat.open }); } S.chat.stick = true; S.divider[S.chat.ch] = null; try { localStorage.setItem('arc_dock', S.chat.open ? '1' : '0'); } catch (e) { } renderDock(); document.body.classList.toggle('dock-open', S.chat.open); };
   // 고른 글자를 *행동*으로 감싸거나, 커서 자리에 ** 를 넣는다
@@ -5503,7 +5505,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102274;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102275;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
