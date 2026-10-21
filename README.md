@@ -38,6 +38,7 @@ node server/server.js
 | `EXPECTED_PLAYERS` | 500 | 첫 주 월드 보스 체력 계산에 쓰는 예상 인원 |
 | `TIME_SCALE` | 1 | **테스트 전용.** 시간 배속. 운영에서는 절대 바꾸지 마세요 |
 | `TEST_MODE` | 0 | **테스트 전용.** IP별 입학·로그인 제한을 끕니다 |
+| `FEATURE_FG` | 0 | **2차 베타.** `1`이면 텃밭 · 낚시를 엽니다. 꺼 두면 화면에 나타나지 않고 행동도 받지 않습니다 (설계: `docs/fishing-garden.md`) |
 
 ## 3. 실제 서비스 배포 (리눅스 VPS 예시)
 

@@ -1181,6 +1181,318 @@ var DATA = (function () {
     { id: 'respec', name: '망각의 차', desc: '능력치 포인트 초기화 · 소지품에 보관했다가 원할 때 마십니다 (마시면 자동 분배가 꺼집니다)', cur: 'shard', price: 5 }
   ];
 
+  /* ───────── 텃밭 · 낚시 (2차 베타 · 서버 FEATURE_FG=1일 때만 열림) ─────────
+     그림: public/sprites/ (g 텃밭 · f 물고기·수초·요정 · s 바다 생물 · w 물가 · r 희귀 생물). sp: '시트:번호' (왼쪽 위부터 가로로 셈)
+     조건 c: { w: [날씨 id], h: 시간대 id, sky: 1(하늘 이벤트 중) } — 모두 맞아야 한다. 한국 시간 기준 */
+  D.LZ_SHEETS = {
+    g: { src: 'sprites/garden.png', c: 16, cols: 8, w: 128, h: 128 },
+    f: { src: 'sprites/fish.png', c: 16, cols: 8, w: 128, h: 128 },
+    s: { src: 'sprites/sea.png', c: 16, cols: 8, w: 128, h: 128 },
+    w: { src: 'sprites/water.png', c: 32, cols: 8, w: 256, h: 256 },
+    r: { src: 'sprites/rare.png', c: 72, cols: 6, w: 432, h: 360 }
+  };
+  D.HOUR_BANDS = [
+    { id: 'dawn', name: '새벽', from: 4, to: 8 }, { id: 'day', name: '낮', from: 8, to: 17 },
+    { id: 'eve', name: '저녁', from: 17, to: 21 }, { id: 'night', name: '밤', from: 21, to: 4 }
+  ];
+  D.GD_TIERS = [{ name: '흔함', color: '#b9bccb' }, { name: '보통', color: '#6fd08a' }, { name: '귀함', color: '#6aa8ff' }, { name: '진귀', color: '#f2b84b' }];
+  D.GD_CATS = { herb: '약초', flower: '꽃', berry: '열매', root: '뿌리' };
+  D.GD_STAGE = ['g:56', 'g:63'];   // 갓 심은 씨앗 · 자라는 줄기
+  // t: 등급 0~3 · g: 자라는 시간(초) · mut: 이 식물이 조건 속에서 다 자라면 바뀌는 식물 · mat: 수확할 때 연금 재료
+  D.GARDEN = [
+    { id: 'moss', name: '이끼 덤불', sp: 'g:0', t: 0, cat: 'herb', g: 1800, desc: '돌담 그늘에서 자라는 폭신한 이끼. 요정들이 낮잠 자리로 쓴다.' },
+    { id: 'fern', name: '고사리 새순', sp: 'g:1', t: 0, cat: 'herb', g: 2400, desc: '돌돌 말린 새순. 안개 낀 새벽에 펴지면 정령이 깃든다는 이야기가 있다.', mut: [{ to: 'spiritfern', c: { w: ['fog'] }, p: 0.3 }] },
+    { id: 'sprout', name: '어린 잎사귀', sp: 'g:2', t: 0, cat: 'herb', g: 1800, desc: '무엇이 될지 아직 정하지 못한 어린잎. 하늘이 반짝이는 순간을 기다린다.', mut: [{ to: 'goldsprout', c: { sky: 1 }, p: 0.5 }] },
+    { id: 'witchvine', name: '마녀 덩굴', sp: 'g:3', t: 1, cat: 'herb', g: 7200, desc: '빗자루 손잡이에 감아 두면 비행이 한결 부드러워진다.' },
+    { id: 'shadeleaf', name: '그림자 잎', sp: 'g:4', t: 2, cat: 'herb', g: 14400, desc: '밤에만 짙어지는 잎. 손에 쥐면 그림자가 한 뼘 길어진다.', mut: [{ to: 'obsidian', c: { w: ['storm'] }, p: 0.35 }] },
+    { id: 'goldleaf', name: '황금 잎', sp: 'g:5', t: 2, cat: 'herb', g: 14400, desc: '맑은 한낮의 햇빛을 머금고 굳은 잎. 금박처럼 얇다.' },
+    { id: 'lavender', name: '라벤더', sp: 'g:6', t: 0, cat: 'herb', g: 3000, desc: '기숙사 베갯속에 넣는 향초. 눈을 맞으면 서리풀로 바뀐다.', mut: [{ to: 'frostherb', c: { w: ['snow', 'blizzard'] }, p: 0.35 }], mat: { id: 'moonherb', p: 0.15 } },
+    { id: 'frostherb', name: '서리풀', sp: 'g:7', t: 1, cat: 'herb', g: 9000, desc: '잎끝에 녹지 않는 서리가 맺힌다. 열을 내리는 물약에 쓴다.', mat: { id: 'crystal', p: 0.2 } },
+    { id: 'rose', name: '붉은 장미', sp: 'g:8', t: 1, cat: 'flower', g: 7200, desc: '정원의 여왕. 비와 천둥에 따라 전혀 다른 색으로 피어난다.', mut: [{ to: 'blackrose', c: { w: ['storm'], h: 'night' }, p: 0.4 }, { to: 'bluerose', c: { w: ['rain', 'storm'] }, p: 0.3 }] },
+    { id: 'starflower', name: '푸른 별꽃', sp: 'g:9', t: 0, cat: 'flower', g: 2400, desc: '다섯 갈래 꽃잎이 별 모양으로 펼쳐진다.' },
+    { id: 'bellflower', name: '보라 초롱꽃', sp: 'g:10', t: 0, cat: 'flower', g: 2400, desc: '바람이 불면 아주 작은 종소리가 난다고 한다.' },
+    { id: 'pansy', name: '노란 팬지', sp: 'g:11', t: 0, cat: 'flower', g: 1800, desc: '사람 얼굴을 닮은 꽃. 신입생이 가장 먼저 키우는 꽃이다.' },
+    { id: 'tulip', name: '분홍 튤립', sp: 'g:12', t: 0, cat: 'flower', g: 2400, desc: '꽃잎을 닫고 잠드는 튤립. 다른 꽃과 나란히 두면 금세 친해진다.' },
+    { id: 'flamelily', name: '불꽃 백합', sp: 'g:13', t: 1, cat: 'flower', g: 9000, desc: '꽃잎 끝이 불꽃처럼 일렁인다. 만지면 따뜻하다.', mat: { id: 'ember', p: 0.25 } },
+    { id: 'violet', name: '제비꽃', sp: 'g:14', t: 0, cat: 'flower', g: 2400, desc: '수줍은 보랏빛 꽃. 비 오는 밤에는 연꽃으로 피어나기도 한다.', mut: [{ to: 'nightlotus', c: { w: ['rain', 'storm'], h: 'night' }, p: 0.35 }] },
+    { id: 'bluerose', name: '물빛 장미', sp: 'g:15', t: 2, cat: 'flower', g: 14400, desc: '빗방울을 꽃잎에 가둔 장미. 소용돌이 무늬가 천천히 돈다.' },
+    { id: 'currant', name: '붉은 까치밥', sp: 'g:16', t: 0, cat: 'berry', g: 3000, desc: '새콤한 작은 열매. 까치가 먼저 찾아낸다.' },
+    { id: 'blueberry', name: '블루베리', sp: 'g:17', t: 0, cat: 'berry', g: 3000, desc: '시험 기간에 기숙사에서 가장 빨리 사라지는 간식.', mut: [{ to: 'dewberry', c: { w: ['rain', 'storm'] }, p: 0.3 }] },
+    { id: 'blackberry', name: '블랙베리', sp: 'g:18', t: 1, cat: 'berry', g: 7200, desc: '가시 사이에 숨은 검은 열매. 밤에 익으면 맛이 깊어진다.', mut: [{ to: 'duskberry', c: { h: 'night' }, p: 0.25 }] },
+    { id: 'duskberry', name: '밤그늘 열매', sp: 'g:19', t: 1, cat: 'berry', g: 9000, desc: '해가 진 뒤에만 익는 열매. 껍질에 별무늬가 비친다.' },
+    { id: 'goldberry', name: '황금 열매', sp: 'g:20', t: 2, cat: 'berry', g: 18000, desc: '맑은 한낮의 햇빛이 열매가 되었다. 연금술사들이 탐낸다.' },
+    { id: 'sunsetberry', name: '노을 열매', sp: 'g:21', t: 1, cat: 'berry', g: 7200, desc: '해 질 녘 하늘색을 닮은 주황 열매 송이.' },
+    { id: 'cherry', name: '체리', sp: 'g:22', t: 0, cat: 'berry', g: 3600, desc: '꼭지가 둘씩 붙어 다니는 단짝 열매.' },
+    { id: 'fairyberry', name: '요정 열매', sp: 'g:23', t: 1, cat: 'berry', g: 9000, desc: '요정들이 가장 좋아하는 분홍 열매. 한 알에 하나씩 소원이 들어 있다.' },
+    { id: 'edelweiss', name: '설백화', sp: 'g:24', t: 1, cat: 'flower', g: 9000, desc: '높은 산에서 온 흰 꽃. 함박눈 속에서 수정꽃이 된다.', mut: [{ to: 'iceflower', c: { w: ['blizzard'] }, p: 0.5 }, { to: 'iceflower', c: { w: ['snow'] }, p: 0.2 }] },
+    { id: 'nightlotus', name: '밤 연꽃', sp: 'g:25', t: 2, cat: 'flower', g: 18000, desc: '빗소리를 들으며 밤에만 피는 연꽃.' },
+    { id: 'marigold', name: '금잔화', sp: 'g:26', t: 0, cat: 'flower', g: 2400, desc: '작은 해를 닮은 꽃. 데이지와 나란히 두면 키가 쑥 자란다.' },
+    { id: 'blackrose', name: '검은 장미', sp: 'g:27', t: 3, cat: 'flower', g: 28800, desc: '천둥 치는 밤에 피어난 장미. 하늘이 갈라지는 밤에는 더 깊은 색이 된다.', mut: [{ to: 'abyssrose', c: { sky: 1, h: 'night' }, p: 0.4 }] },
+    { id: 'bellvine', name: '푸른 방울덩굴', sp: 'g:28', t: 1, cat: 'flower', g: 7200, desc: '방울 같은 꽃이 줄줄이 매달리는 덩굴.' },
+    { id: 'daisy', name: '노란 데이지', sp: 'g:29', t: 0, cat: 'flower', g: 1800, desc: '어디에서나 잘 자라는 꽃. 화단의 단골손님이다.' },
+    { id: 'orchid', name: '보라 난초', sp: 'g:30', t: 1, cat: 'flower', g: 9000, desc: '라벤더 향과 제비꽃 색을 이어받은 난초. 맑은 밤을 좋아한다.', mut: [{ to: 'moonorchid', c: { w: ['clear'], h: 'night' }, p: 0.3 }] },
+    { id: 'cosmos', name: '분홍 코스모스', sp: 'g:31', t: 0, cat: 'flower', g: 2400, desc: '가을바람에 흔들리는 꽃. 나비 요정이 즐겨 앉는다.' },
+    { id: 'mandrake', name: '맨드레이크', sp: 'g:32', t: 2, cat: 'root', g: 21600, desc: '뽑을 때 비명을 지르는 뿌리. 다행히 텃밭용은 작게 투덜거리기만 한다.' },
+    { id: 'turnip', name: '순무', sp: 'g:33', t: 0, cat: 'root', g: 3600, desc: '식당 수프의 단골 재료. 뿌리 미끼로도 쓴다.' },
+    { id: 'ginseng', name: '인삼', sp: 'g:34', t: 1, cat: 'root', g: 10800, desc: '사람 모양 뿌리. 오래 키울수록 기운이 세진다.' },
+    { id: 'clover', name: '네잎클로버', sp: 'g:35', t: 2, cat: 'herb', g: 14400, desc: '행운의 잎. 박하와 어린잎 사이에서 가끔 태어난다.' },
+    { id: 'thornroot', name: '가시뿌리', sp: 'g:36', t: 0, cat: 'root', g: 3000, desc: '말라 보이지만 속은 촉촉한 뿌리. 천둥을 맞으면 그림자 가시가 된다.', mut: [{ to: 'thorn', c: { w: ['storm'] }, p: 0.3 }] },
+    { id: 'goldsprout', name: '황금 새싹', sp: 'g:37', t: 3, cat: 'herb', g: 28800, desc: '하늘 이벤트의 빛을 받고 금빛으로 돋은 새싹. 별빛 미끼의 재료다.' },
+    { id: 'obsidian', name: '흑요 잎', sp: 'g:38', t: 3, cat: 'herb', g: 28800, desc: '번개를 맞고 돌처럼 굳은 그림자 잎. 심연 미끼의 재료다.' },
+    { id: 'ivy', name: '담쟁이', sp: 'g:39', t: 0, cat: 'herb', g: 2400, desc: '아카데미 벽을 타고 오르는 덩굴. 밤에 자라면 잎이 어두워진다.', mut: [{ to: 'shadeleaf', c: { h: 'night' }, p: 0.25 }] },
+    { id: 'raspberry', name: '라즈베리', sp: 'g:40', t: 0, cat: 'berry', g: 3000, desc: '오돌토돌한 붉은 열매. 블루베리와 사이가 좋다.' },
+    { id: 'grape', name: '푸른 머루', sp: 'g:41', t: 1, cat: 'berry', g: 9000, desc: '덩굴에 맺히는 푸른 열매. 하늘이 반짝이는 때 별빛 꼬투리를 맺는다.', mut: [{ to: 'starpod', c: { sky: 1 }, p: 0.35 }] },
+    { id: 'gooseberry', name: '구스베리', sp: 'g:42', t: 1, cat: 'berry', g: 7200, desc: '초록 줄무늬 열매. 박하 향이 살짝 난다.' },
+    { id: 'lantern', name: '등불 꽈리', sp: 'g:43', t: 1, cat: 'berry', g: 9000, desc: '주머니 속에 불빛을 품은 열매. 맑은 한낮에는 황금 열매가 된다.', mut: [{ to: 'goldberry', c: { w: ['clear'], h: 'day' }, p: 0.2 }] },
+    { id: 'iceflower', name: '얼음 수정꽃', sp: 'g:44', t: 2, cat: 'flower', g: 18000, desc: '꽃잎이 얇은 수정으로 된 꽃. 눈이 그쳐도 녹지 않는다.', mat: { id: 'crystal', p: 0.6 } },
+    { id: 'nightgrape', name: '밤포도', sp: 'g:45', t: 1, cat: 'berry', g: 9000, desc: '머루와 블랙베리를 닮은 짙은 포도송이.' },
+    { id: 'plum', name: '자두', sp: 'g:46', t: 1, cat: 'berry', g: 10800, desc: '체리와 까치밥 사이에서 태어난 통통한 열매.' },
+    { id: 'dewberry', name: '물방울 열매', sp: 'g:47', t: 1, cat: 'berry', g: 7200, desc: '빗방울을 머금고 부풀어 오른 블루베리. 물방울 요정의 간식이다.' },
+    { id: 'beet', name: '보랏빛 순무', sp: 'g:48', t: 0, cat: 'root', g: 3600, desc: '단면이 보랏빛 나이테처럼 보이는 뿌리.' },
+    { id: 'sunflower', name: '해바라기', sp: 'g:49', t: 1, cat: 'flower', g: 10800, desc: '해를 따라 고개를 돌리는 큰 꽃. 해님 요정의 집이다.' },
+    { id: 'redlily', name: '붉은 나리', sp: 'g:50', t: 1, cat: 'flower', g: 9000, desc: '장미의 색과 튤립의 모양을 닮은 나리꽃.' },
+    { id: 'moonorchid', name: '월하 난초', sp: 'g:51', t: 2, cat: 'flower', g: 18000, desc: '맑은 밤 달빛 아래에서만 피어난 난초. 달빛 미끼의 재료다.', mat: { id: 'moonherb', p: 1 } },
+    { id: 'peony', name: '작약', sp: 'g:52', t: 1, cat: 'flower', g: 9000, desc: '팬지와 튤립 사이에서 피어난 탐스러운 꽃.' },
+    { id: 'starbell', name: '별초롱', sp: 'g:53', t: 1, cat: 'flower', g: 9000, desc: '별꽃과 초롱꽃이 만나 피운 꽃. 밤이면 희미하게 빛난다.' },
+    { id: 'abyssrose', name: '심연 장미', sp: 'g:54', t: 3, cat: 'flower', g: 36000, desc: '하늘이 갈라진 밤, 검은 장미가 한 번 더 피어난 모습. 심연 미끼의 재료다.' },
+    { id: 'rubybud', name: '루비 꽃봉오리', sp: 'g:55', t: 2, cat: 'flower', g: 14400, desc: '보석처럼 단단한 꽃봉오리. 영영 피지 않는다고 한다.' },
+    { id: 'starpod', name: '별빛 꼬투리', sp: 'g:57', t: 3, cat: 'berry', g: 28800, desc: '안에 작은 별이 든 꼬투리. 별빛 미끼의 재료다.' },
+    { id: 'thorn', name: '그림자 가시', sp: 'g:58', t: 2, cat: 'root', g: 18000, desc: '천둥을 맞고 검게 뻗은 가시덤불.' },
+    { id: 'witchbloom', name: '마녀의 독꽃', sp: 'g:59', t: 2, cat: 'flower', g: 18000, desc: '마녀 덩굴과 제비꽃 사이에서 핀 점박이 꽃. 맨손으로 만지지 않는다.' },
+    { id: 'spiritfern', name: '정령 고사리', sp: 'g:60', t: 3, cat: 'herb', g: 28800, desc: '안개 낀 새벽에 정령이 깃든 고사리. 잎에 룬 무늬가 떠오른다.' },
+    { id: 'mint', name: '박하', sp: 'g:61', t: 0, cat: 'herb', g: 1800, desc: '시원한 향의 잎. 맑은 한낮에는 황금 잎이 되기도 한다.', mut: [{ to: 'goldleaf', c: { w: ['clear'], h: 'day' }, p: 0.15 }] },
+    { id: 'bulb', name: '작은 알뿌리', sp: 'g:62', t: 0, cat: 'root', g: 2400, desc: '흙 속에서 동그랗게 웅크린 알뿌리. 무엇이든 잘 버틴다.' }
+  ];
+  // 이웃 교배: 두 식물이 상하좌우로 붙어 있으면 수확할 때 씨앗을 얻을 수 있다 [부모, 부모, 자식]
+  D.GD_CROSS = [
+    ['pansy', 'tulip', 'peony'], ['blueberry', 'raspberry', 'blackberry'], ['cherry', 'currant', 'plum'], ['marigold', 'daisy', 'sunflower'],
+    ['starflower', 'bellflower', 'starbell'], ['turnip', 'thornroot', 'ginseng'], ['ginseng', 'beet', 'mandrake'], ['mint', 'sprout', 'clover'],
+    ['ivy', 'fern', 'witchvine'], ['cosmos', 'cherry', 'fairyberry'], ['lavender', 'violet', 'orchid'], ['bellflower', 'ivy', 'bellvine'],
+    ['currant', 'mint', 'gooseberry'], ['sunsetberry', 'daisy', 'lantern'], ['grape', 'blackberry', 'nightgrape'], ['rose', 'tulip', 'redlily'],
+    ['rose', 'redlily', 'rubybud'], ['witchvine', 'violet', 'witchbloom']
+  ];
+  // 씨앗 꾸러미: gold = 아르크(학생 진도에 맞춘 단위 × price) · shard = 별조각
+  D.GD_PACKS = [
+    { id: 'wild', name: '들꽃 씨앗 꾸러미', desc: '흔한 씨앗 3개 (무작위)', cur: 'gold', price: 8, n: 3, tier: 0 },
+    { id: 'green', name: '온실 씨앗 꾸러미', desc: '보통 씨앗 2개 (장미 · 불꽃 백합 · 노을 열매 · 설백화 · 푸른 머루 중)', cur: 'shard', price: 4, n: 2, pool: ['rose', 'flamelily', 'sunsetberry', 'edelweiss', 'grape'] }
+  ];
+
+  // 정원 요정: 좋아하는 식물을 수확할 때 찾아와 선물을 두고 간다
+  D.FAIRIES = [
+    { id: 'sole', name: '해님 요정 솔레', sp: 'f:40', likes: 'sunflower', c: { h: 'day' }, desc: '해바라기 꽃잎을 망토처럼 두르고 다닌다.' },
+    { id: 'pio', name: '물방울 요정 피오', sp: 'f:41', likes: 'dewberry', desc: '빗방울 하나에 하나씩 노래를 붙여 부른다.' },
+    { id: 'lira', name: '꽃잎 요정 리라', sp: 'f:42', likes: 'tulip', desc: '튤립 속에서 잠들었다가 꽃이 열리면 깨어난다.' },
+    { id: 'eva', name: '들불 요정 에바', sp: 'f:43', likes: 'flamelily', desc: '손끝에 작은 불꽃을 달고 다니지만 아무것도 태우지 않는다.' },
+    { id: 'lulu', name: '금잔 요정 루루', sp: 'f:44', likes: 'marigold', desc: '금잔화 꽃잔에 이슬을 받아 마신다.' },
+    { id: 'bella', name: '초롱 요정 벨라', sp: 'f:45', likes: 'bellflower', desc: '초롱꽃을 흔들어 친구들을 부른다.' },
+    { id: 'miel', name: '햇살 요정 미엘', sp: 'f:46', likes: 'daisy', desc: '데이지 꽃밭에서 꿀 냄새를 따라다닌다.' },
+    { id: 'noa', name: '밤하늘 요정 노아', sp: 'f:47', likes: 'nightlotus', c: { h: 'night' }, desc: '밤 연꽃 위에서 별자리를 센다.' },
+    { id: 'tia', name: '숲 요정 티아', sp: 'f:48', likes: 'fern', desc: '고사리 새순을 하나하나 펴 주며 아침을 연다.' },
+    { id: 'viol', name: '제비꽃 요정 비올', sp: 'f:49', likes: 'violet', desc: '수줍음이 많아 제비꽃 뒤에 숨어 있다.' },
+    { id: 'sera', name: '노을 요정 세라', sp: 'f:50', likes: 'sunsetberry', c: { h: 'eve' }, desc: '해 질 녘에만 날개가 주황빛으로 물든다.' },
+    { id: 'lavi', name: '라벤더 요정 라비', sp: 'f:51', likes: 'lavender', desc: '라벤더 향을 머리카락에 묻히고 다닌다.' },
+    { id: 'minty', name: '박하 요정 민티', sp: 'f:52', likes: 'mint', desc: '숨을 내쉴 때마다 시원한 바람이 분다.' },
+    { id: 'sylph', name: '바람 요정 실프', sp: 'f:53', likes: 'starflower', desc: '별꽃 꽃잎을 바람개비처럼 돌리며 논다.' },
+    { id: 'fros', name: '서리 요정 프로스', sp: 'f:54', likes: 'frostherb', desc: '서리풀 잎끝의 서리를 하나씩 다듬는다.' },
+    { id: 'luna', name: '달빛 요정 루나', sp: 'f:55', likes: 'moonorchid', c: { h: 'night' }, desc: '월하 난초가 피는 밤에만 모습을 드러낸다.' },
+    { id: 'stella', name: '별꽃 요정 스텔라', sp: 'f:56', likes: 'starbell', desc: '별초롱의 불빛을 등불 삼아 밤길을 다닌다.' },
+    { id: 'rosa', name: '장미 요정 로사', sp: 'f:57', likes: 'rose', desc: '장미 가시를 다듬어 바늘로 쓰는 재봉사.' },
+    { id: 'pia', name: '작약 요정 피아', sp: 'f:58', likes: 'peony', desc: '작약 꽃잎으로 치마를 지어 입는다.' },
+    { id: 'mong', name: '꿈 요정 몽', sp: 'f:59', likes: 'orchid', desc: '난초 향을 맡은 학생에게 좋은 꿈을 놓고 간다.' },
+    { id: 'clov', name: '행운 요정 클로', sp: 'f:60', likes: 'clover', desc: '네잎클로버를 찾아낸 학생 곁에 한동안 머문다.' },
+    { id: 'par', name: '나비 요정 파르', sp: 'f:61', likes: 'cosmos', desc: '코스모스 사이를 나비처럼 팔랑이며 난다.' },
+    { id: 'kris', name: '수정 요정 크리스', sp: 'f:62', likes: 'iceflower', desc: '얼음 수정꽃을 깨뜨리지 않고 걷는 법을 안다.' },
+    { id: 'ether', name: '정령 요정 에테르', sp: 'f:63', likes: 'spiritfern', desc: '정령 고사리의 룬을 읽을 줄 아는 유일한 요정.' }
+  ];
+
+  /* 낚시터: lv = 낚시 숙련도 · pm = 판매가 배율. 물고기마다 at(낚시터)과 t(등급 0~3)가 있다 */
+  D.FISH_SPOTS = [
+    { id: 'pond', name: '아카데미 연못', sp: 'w:33', lv: 1, pm: 1, desc: '본관 앞 수련 연못. 신입생 낚시는 모두 여기서 시작한다.' },
+    { id: 'marsh', name: '갈대 습지', sp: 'w:35', lv: 3, pm: 1.15, desc: '속삭이는 숲 가장자리의 습지. 비가 오면 물고기가 들뜬다.' },
+    { id: 'fountain', name: '분수 정원', sp: 'w:46', lv: 6, pm: 1.3, desc: '별샘 물을 끌어 온 분수. 엉뚱한 것이 떠오르기도 한다.' },
+    { id: 'crystal', name: '수정 샘', sp: 'w:38', lv: 9, pm: 1.5, desc: '수정 동굴에서 솟는 차가운 샘. 눈 오는 날 물빛이 바뀐다.' },
+    { id: 'moonlake', name: '달빛 호수', sp: 'w:36', lv: 13, pm: 1.7, desc: '밤이면 수면에 달이 두 개 뜨는 호수.' },
+    { id: 'coral', name: '산호 여울', sp: 'w:37', lv: 17, pm: 1.9, desc: '바다로 이어진 여울. 산호 사이로 화려한 물고기가 숨어 있다.' },
+    { id: 'starwell', name: '별샘 소용돌이', sp: 'w:1', lv: 21, pm: 2.2, desc: '별빛이 가라앉아 소용돌이치는 샘. 하늘 이벤트 때 가장 붐빈다.' },
+    { id: 'abyss', name: '심연 소용돌이', sp: 'w:56', lv: 26, pm: 2.6, desc: '바닥이 보이지 않는 소용돌이. 무엇이 올라올지 아무도 모른다.' }
+  ];
+  D.FISH_TIERS = [{ name: '흔함', color: '#b9bccb', w: 60 }, { name: '보통', color: '#6fd08a', w: 28 }, { name: '귀함', color: '#6aa8ff', w: 10 }, { name: '진귀', color: '#c084fc', w: 2 }];
+  // 물고기 · 바다 생물 · 수초 (z: 보통 크기 cm, 0.6~1.4배로 잡힌다) · weed: 수초 (낚시터마다 둘)
+  D.FISH = [
+    // 아카데미 연못
+    { id: 'crucian', name: '꼬마 붕어', sp: 'f:0', at: 'pond', t: 0, z: 12, desc: '연못에서 가장 흔한 붕어. 첫 입질은 대개 이 녀석이다.' },
+    { id: 'minnow', name: '물방울 송사리', sp: 'f:1', at: 'pond', t: 0, z: 5, desc: '물방울처럼 동그란 송사리. 떼 지어 다닌다.' },
+    { id: 'redfin', name: '붉은 금붕어', sp: 'f:18', at: 'pond', t: 0, z: 9, desc: '누군가 연못에 풀어 준 금붕어의 후손.' },
+    { id: 'goldfish', name: '불꽃 금붕어', sp: 's:0', at: 'pond', t: 0, z: 10, desc: '꼬리가 불꽃처럼 펄럭이는 금붕어.' },
+    { id: 'carp', name: '주홍 잉어', sp: 'f:2', at: 'pond', t: 1, z: 45, desc: '등지느러미가 돛처럼 솟은 잉어.' },
+    { id: 'ranchu', name: '황금 난주', sp: 's:3', at: 'pond', t: 1, z: 15, desc: '머리에 혹이 난 귀한 금붕어. 연못의 터줏대감.' },
+    { id: 'silkfish', name: '비단 금붕어', sp: 's:26', at: 'pond', t: 1, z: 14, desc: '꼬리가 비단처럼 길게 늘어진다.' },
+    { id: 'mossbass', name: '이끼 꺽지', sp: 'f:8', at: 'pond', t: 1, z: 20, desc: '이끼 낀 돌 틈에 숨어 사는 물고기.' },
+    { id: 'spotdace', name: '점박이 버들치', sp: 'f:9', at: 'pond', t: 2, z: 14, desc: '맑은 날 수면 가까이 올라와 반짝인다.', c: { w: ['clear', 'cloud'] } },
+    { id: 'rainbowfish', name: '무지개 물고기', sp: 's:61', at: 'pond', t: 2, z: 11, desc: '비늘마다 다른 색이 비친다.' },
+    { id: 'koi', name: '별무늬 비단잉어', sp: 'f:11', at: 'pond', t: 3, z: 60, desc: '등에 별자리 무늬가 있는 비단잉어. 비 오는 날에만 모습을 보인다.', c: { w: ['rain', 'storm'] } },
+    { id: 'pw_lily', name: '별 이끼 수초', sp: 'f:24', at: 'pond', weed: 1, z: 30, desc: '하얀 점이 별처럼 박힌 수초.' },
+    { id: 'pw_fork', name: '갈래 물풀', sp: 'f:26', at: 'pond', weed: 1, z: 40, desc: '세 갈래로 뻗는 연못 물풀.' },
+    // 갈대 습지
+    { id: 'violetcrucian', name: '자줏빛 붕어', sp: 'f:16', at: 'marsh', t: 0, z: 13, desc: '습지 물빛을 닮아 자줏빛이 된 붕어.' },
+    { id: 'catfish', name: '밤 메기', sp: 'f:4', at: 'marsh', t: 0, z: 40, desc: '어두운 진흙 바닥에서 수염으로 길을 찾는다.' },
+    { id: 'herring', name: '푸른 청어', sp: 's:33', at: 'marsh', t: 0, z: 25, desc: '바다에서 길을 잃고 습지까지 올라온 청어.' },
+    { id: 'watersnake', name: '물뱀', sp: 's:16', at: 'marsh', t: 0, z: 70, desc: '물에서 사는 순한 뱀. 놀라면 낚싯줄을 감는다.' },
+    { id: 'whiskercat', name: '수염 메기', sp: 'f:6', at: 'marsh', t: 1, z: 55, desc: '긴 수염이 네 가닥. 습지의 할아버지.' },
+    { id: 'sculpin', name: '가시 둑중개', sp: 'f:13', at: 'marsh', t: 1, z: 15, desc: '뿔 같은 가시를 세우고 바닥에 붙어 있다.' },
+    { id: 'kelphorse', name: '해초 해마', sp: 's:23', at: 'marsh', t: 1, z: 12, desc: '해초를 꼭 붙잡고 사는 해마.' },
+    { id: 'sardine', name: '은빛 정어리', sp: 's:43', at: 'marsh', t: 1, z: 18, desc: '빛을 받으면 은빛으로 번쩍인다.' },
+    { id: 'hermit', name: '소라게', sp: 's:13', at: 'marsh', t: 2, z: 8, desc: '남이 버린 소라 껍데기를 집 삼아 이사 다닌다.' },
+    { id: 'swamptopus', name: '늪 문어', sp: 'f:21', at: 'marsh', t: 2, z: 30, desc: '습지 진흙 속에 숨어 사는 작은 문어.' },
+    { id: 'lanternhorse', name: '등불 해마', sp: 'f:12', at: 'marsh', t: 3, z: 14, desc: '꼬리 끝이 등불처럼 빛나는 해마. 안개 속에서만 보인다.', c: { w: ['fog'] } },
+    { id: 'mw_violet', name: '보라 물풀', sp: 'f:25', at: 'marsh', weed: 1, z: 35, desc: '보랏빛 잎이 하늘거리는 물풀.' },
+    { id: 'mw_thread', name: '실 물풀', sp: 'f:27', at: 'marsh', weed: 1, z: 50, desc: '실처럼 가는 줄기가 엉켜 자란다.' },
+    // 분수 정원
+    { id: 'hornminnow', name: '뿔 피라미', sp: 'f:5', at: 'fountain', t: 0, z: 10, desc: '이마에 작은 뿔이 난 피라미.' },
+    { id: 'bubblepuff', name: '물방울 복어', sp: 's:1', at: 'fountain', t: 0, z: 12, desc: '분수 물방울을 먹고 동그랗게 부푼다.' },
+    { id: 'foamfish', name: '물거품 방울이', sp: 's:6', at: 'fountain', t: 0, z: 9, desc: '몸에서 거품이 보글보글 솟는다.' },
+    { id: 'pearlpuff', name: '진주 복어', sp: 'f:14', at: 'fountain', t: 0, z: 14, desc: '진주처럼 하얗게 빛나는 복어.' },
+    { id: 'yellowpuff', name: '노랑 복어', sp: 's:19', at: 'fountain', t: 1, z: 16, desc: '화가 나면 노랗게 빛난다.' },
+    { id: 'skyflyer', name: '하늘 날치', sp: 'f:3', at: 'fountain', t: 1, z: 22, desc: '분수 물줄기를 타고 하늘로 뛰어오른다.' },
+    { id: 'blueskin', name: '청비늘 고기', sp: 's:14', at: 'fountain', t: 1, z: 25, desc: '푸른 비늘이 겹겹이 덮인 물고기.' },
+    { id: 'gourami', name: '오색 버들붕어', sp: 'f:15', at: 'fountain', t: 1, z: 12, desc: '분수 햇살 아래에서 다섯 가지 색으로 빛난다.' },
+    { id: 'moonsun', name: '달빛 개복치', sp: 's:20', at: 'fountain', t: 2, z: 60, desc: '둥글고 납작한 몸으로 수면에 누워 쉰다.' },
+    { id: 'bluepuff', name: '푸른 복섬', sp: 'f:22', at: 'fountain', t: 2, z: 18, desc: '찬물을 좋아하는 푸른 복어.' },
+    { id: 'sunsetcarp', name: '노을 잉어', sp: 'f:10', at: 'fountain', t: 3, z: 50, desc: '노을이 질 때만 분수 위로 뛰어오르는 잉어.', c: { h: 'eve' } },
+    { id: 'fw_drop', name: '물방울 수초', sp: 'f:29', at: 'fountain', weed: 1, z: 25, desc: '잎끝에 물방울이 맺힌 수초.' },
+    { id: 'fw_willow', name: '물버들', sp: 'f:32', at: 'fountain', weed: 1, z: 45, desc: '버드나무처럼 늘어지는 물풀.' },
+    // 수정 샘
+    { id: 'tealperch', name: '청록 쏘가리', sp: 'f:7', at: 'crystal', t: 0, z: 30, desc: '수정 빛을 받아 청록색이 된 쏘가리.' },
+    { id: 'bluestar', name: '푸른 별고기', sp: 'f:19', at: 'crystal', t: 0, z: 18, desc: '몸 한가운데 별 무늬가 있다.' },
+    { id: 'frostfish', name: '서리 물고기', sp: 's:56', at: 'crystal', t: 0, z: 20, desc: '지느러미에 서리가 맺혀 있다.' },
+    { id: 'violetsweet', name: '보랏빛 은어', sp: 'f:17', at: 'crystal', t: 0, z: 20, desc: '찬 샘물에서만 사는 은어.' },
+    { id: 'pipefish', name: '줄무늬 실고기', sp: 'f:20', at: 'crystal', t: 1, z: 25, desc: '가늘고 긴 몸에 줄무늬가 있다.' },
+    { id: 'wingfish', name: '물빛 날개고기', sp: 's:12', at: 'crystal', t: 1, z: 24, desc: '지느러미가 날개처럼 넓다.' },
+    { id: 'crystalwing', name: '수정 날개고기', sp: 's:15', at: 'crystal', t: 1, z: 20, desc: '날개 지느러미가 수정처럼 투명하다.' },
+    { id: 'waveray', name: '물결 가오리', sp: 'f:23', at: 'crystal', t: 1, z: 40, desc: '바닥 모래에 물결무늬를 남기고 지나간다.' },
+    { id: 'iceray', name: '얼음 가오리', sp: 's:32', at: 'crystal', t: 2, z: 50, desc: '얼음 조각처럼 반짝이는 가오리.' },
+    { id: 'otter', name: '물빛 해달', sp: 's:60', at: 'crystal', t: 2, z: 70, desc: '배 위에 조개를 올려 두고 수정을 깨 먹는다.' },
+    { id: 'frostdrake', name: '서리 비늘 해룡', sp: 's:59', at: 'crystal', t: 3, z: 70, desc: '눈 내리는 날 샘 위로 푸른 비늘을 드러내는 해룡.', c: { w: ['snow', 'blizzard'] } },
+    { id: 'cw_mist', name: '안개 수초', sp: 'f:28', at: 'crystal', weed: 1, z: 30, desc: '물속에서 안개처럼 퍼지는 수초.' },
+    { id: 'cw_coral', name: '푸른 산호초', sp: 'f:31', at: 'crystal', weed: 1, z: 25, desc: '수정 샘 바닥에 붙어 자라는 푸른 산호.' },
+    // 달빛 호수
+    { id: 'ghostjelly', name: '유령 해파리', sp: 's:17', at: 'moonlake', t: 0, z: 20, desc: '달빛을 받으면 몸이 투명해진다.' },
+    { id: 'boxjelly', name: '상자 해파리', sp: 's:30', at: 'moonlake', t: 0, z: 15, desc: '네모난 갓을 쓴 해파리.' },
+    { id: 'nightpuff', name: '밤빛 복어', sp: 's:4', at: 'moonlake', t: 0, z: 14, desc: '밤하늘 색 점이 박힌 복어.' },
+    { id: 'violetscorp', name: '보라 쏨뱅이', sp: 's:21', at: 'moonlake', t: 0, z: 25, desc: '가시를 세운 보라색 물고기. 조심해서 잡아야 한다.' },
+    { id: 'squid', name: '보라 오징어', sp: 's:40', at: 'moonlake', t: 1, z: 35, desc: '먹물 대신 반짝이 가루를 뿜는다.' },
+    { id: 'seacucumber', name: '안개 해삼', sp: 's:50', at: 'moonlake', t: 1, z: 25, desc: '물렁물렁한 몸이 안개처럼 흐릿하다.' },
+    { id: 'violetsnake', name: '보라 바다뱀', sp: 's:51', at: 'moonlake', t: 1, z: 90, desc: '물결을 따라 S자로 헤엄친다.' },
+    { id: 'pearlclam', name: '진주 조개', sp: 's:62', at: 'moonlake', t: 1, z: 12, desc: '달빛을 모아 진주를 키우는 조개.' },
+    { id: 'babywhale', name: '아기 고래', sp: 's:37', at: 'moonlake', t: 2, z: 300, desc: '호수에 길을 잃고 들어온 아기 고래. 곧 바다로 돌려보낸다.' },
+    { id: 'waterdrake', name: '물빛 해룡', sp: 's:49', at: 'moonlake', t: 2, z: 80, desc: '갈기 같은 지느러미를 가진 작은 해룡.' },
+    { id: 'silverdrake', name: '은빛 해룡', sp: 's:63', at: 'moonlake', t: 3, z: 120, desc: '보름 같은 밤에만 수면 위로 은빛 등을 보인다.', c: { h: 'night' } },
+    { id: 'lw_dark', name: '그늘 수초', sp: 'f:30', at: 'moonlake', weed: 1, z: 35, desc: '달그림자 아래에서 자라는 검푸른 수초.' },
+    { id: 'lw_ring', name: '보라 고리 산호', sp: 'f:34', at: 'moonlake', weed: 1, z: 30, desc: '고리 모양으로 감긴 보라 산호.' },
+    // 산호 여울
+    { id: 'clown', name: '흰동가리', sp: 's:27', at: 'coral', t: 0, z: 10, desc: '말미잘 사이를 집 삼아 산다.' },
+    { id: 'pinkcoral', name: '분홍 산호', sp: 's:7', at: 'coral', t: 0, z: 20, desc: '산호 조각이 통째로 걸려 올라왔다.' },
+    { id: 'urchin', name: '붉은 성게', sp: 's:10', at: 'coral', t: 0, z: 10, desc: '가시투성이 성게. 장갑을 끼고 다룬다.' },
+    { id: 'redcrab', name: '붉은 게', sp: 's:36', at: 'coral', t: 0, z: 15, desc: '집게를 번쩍 들고 올라온다.' },
+    { id: 'coralhorse', name: '산호 해마', sp: 's:9', at: 'coral', t: 1, z: 15, desc: '산호와 똑같은 분홍빛 해마.' },
+    { id: 'stripebream', name: '노랑 줄돔', sp: 's:34', at: 'coral', t: 1, z: 30, desc: '노란 줄무늬가 선명한 돔.' },
+    { id: 'patchfish', name: '조각보 물고기', sp: 's:45', at: 'coral', t: 1, z: 25, desc: '천 조각을 이어 붙인 듯한 무늬.' },
+    { id: 'scallop', name: '붉은 가리비', sp: 's:48', at: 'coral', t: 1, z: 12, desc: '부채꼴 껍데기를 여닫으며 헤엄친다.' },
+    { id: 'pinklion', name: '분홍 쏠배감펭', sp: 's:24', at: 'coral', t: 2, z: 30, desc: '화려한 지느러미 뒤에 독가시를 숨겼다.' },
+    { id: 'violetstar', name: '보라 불가사리', sp: 's:22', at: 'coral', t: 2, z: 20, desc: '팔 하나가 떨어져도 다시 자란다.' },
+    { id: 'kelp', name: '바다 다시마', sp: 's:28', at: 'coral', t: 3, z: 200, desc: '여울 깊은 곳의 오래된 다시마 숲 한 줄기. 흐린 날에만 끊어져 떠오른다.', c: { w: ['cloud'] } },
+    { id: 'rw_kelp', name: '청록 다시마', sp: 'f:33', at: 'coral', weed: 1, z: 80, desc: '여울을 따라 길게 흔들리는 다시마.' },
+    { id: 'rw_flame', name: '푸른 불꽃 산호', sp: 'f:35', at: 'coral', weed: 1, z: 30, desc: '불꽃처럼 일렁이는 푸른 산호.' },
+    // 별샘 소용돌이
+    { id: 'leafdragon', name: '나뭇잎 해룡', sp: 's:2', at: 'starwell', t: 0, z: 30, desc: '나뭇잎으로 위장한 해룡.' },
+    { id: 'blueray', name: '푸른 가오리', sp: 's:5', at: 'starwell', t: 0, z: 80, desc: '소용돌이를 타고 빙글빙글 돈다.' },
+    { id: 'bluehorse', name: '푸른 해마', sp: 's:35', at: 'starwell', t: 0, z: 15, desc: '별빛을 받아 노란 점이 빛나는 해마.' },
+    { id: 'pinkpipe', name: '분홍 실고기', sp: 's:46', at: 'starwell', t: 0, z: 30, desc: '실처럼 가는 분홍 물고기.' },
+    { id: 'orangedrake', name: '주황 해룡', sp: 's:11', at: 'starwell', t: 1, z: 40, desc: '꼬리를 말아 별을 붙잡는 해룡.' },
+    { id: 'flowercrab', name: '꽃 장식 게', sp: 's:18', at: 'starwell', t: 1, z: 15, desc: '등딱지에 꽃을 심고 다니는 게.' },
+    { id: 'spinypuff', name: '주황 가시복', sp: 's:41', at: 'starwell', t: 1, z: 25, desc: '부풀면 가시가 별처럼 뻗는다.' },
+    { id: 'anemone', name: '말미잘', sp: 's:52', at: 'starwell', t: 1, z: 20, desc: '촉수 사이에 작은 별빛을 품는다.' },
+    { id: 'violetray', name: '보라 가오리', sp: 's:38', at: 'starwell', t: 2, z: 120, desc: '날개를 펼치면 작은 은하처럼 보인다.' },
+    { id: 'nautilus', name: '앵무조개', sp: 's:44', at: 'starwell', t: 2, z: 20, desc: '나선 껍데기 속에 지난 별빛을 기록한다.' },
+    { id: 'amethyststar', name: '자수정 불가사리', sp: 's:53', at: 'starwell', t: 3, z: 35, desc: '하늘 이벤트 때 소용돌이 위로 떠오르는 보석 불가사리.', c: { sky: 1 } },
+    { id: 'sw_willow', name: '연꽃 물풀', sp: 'f:38', at: 'starwell', weed: 1, z: 30, desc: '작은 연꽃이 피는 물풀.' },
+    { id: 'sw_lamp', name: '노을 꽃 산호', sp: 'f:37', at: 'starwell', weed: 1, z: 25, desc: '주황 꽃이 핀 산호.' },
+    // 심연 소용돌이
+    { id: 'octopus', name: '보라 문어', sp: 's:8', at: 'abyss', t: 0, z: 60, desc: '깊은 곳에서 올라온 문어. 빨판으로 낚싯대를 붙잡는다.' },
+    { id: 'tealoctopus', name: '청록 문어', sp: 's:39', at: 'abyss', t: 0, z: 50, desc: '몸빛을 주변과 똑같이 바꾼다.' },
+    { id: 'sandhorse', name: '모래 해마', sp: 's:31', at: 'abyss', t: 0, z: 25, desc: '모래색 몸으로 바닥에 숨는다.' },
+    { id: 'sandcrab', name: '모래 게', sp: 's:54', at: 'abyss', t: 0, z: 20, desc: '심연 바닥을 옆으로 걷는 게.' },
+    { id: 'blueangler', name: '푸른 아귀', sp: 's:42', at: 'abyss', t: 1, z: 40, desc: '머리 위 초롱으로 먹이를 꾄다.' },
+    { id: 'nightspine', name: '밤 쏠치', sp: 's:47', at: 'abyss', t: 1, z: 30, desc: '빛이 닿지 않는 곳에서 가시를 세운다.' },
+    { id: 'bumblefish', name: '호박벌 고기', sp: 's:58', at: 'abyss', t: 1, z: 20, desc: '검고 노란 줄무늬. 소리를 내며 헤엄친다.' },
+    { id: 'graysh', name: '회색 상어', sp: 's:25', at: 'abyss', t: 1, z: 180, desc: '심연을 순찰하는 상어. 생각보다 얌전하다.' },
+    { id: 'orca', name: '꼬마 범고래', sp: 's:29', at: 'abyss', t: 2, z: 250, desc: '흑백 무늬의 영리한 고래. 낚싯줄을 장난감으로 안다.' },
+    { id: 'bluedragon', name: '푸른 용치', sp: 's:55', at: 'abyss', t: 2, z: 60, desc: '용의 얼굴을 한 물고기.' },
+    { id: 'nightwhale', name: '밤바다 고래', sp: 's:57', at: 'abyss', t: 3, z: 900, desc: '뇌우가 치는 날 심연 위로 숨을 쉬러 올라온다.', c: { w: ['storm', 'rain'] } },
+    { id: 'aw_black', name: '검은 미역', sp: 'f:36', at: 'abyss', weed: 1, z: 60, desc: '빛을 모두 삼키는 검은 미역.' },
+    { id: 'aw_gold', name: '황금 산호', sp: 'f:39', at: 'abyss', weed: 1, z: 40, desc: '심연 바닥에서 홀로 빛나는 황금 산호.' }
+  ];
+  // 희귀 생물 (도감 따로): leg 1 = 전설. 낚시터와 조건이 맞을 때만 걸린다
+  D.RARE = [
+    { id: 'wingedgold', name: '날개 금붕어', sp: 'r:0', at: ['pond'], c: { w: ['clear'], h: 'day' }, z: 18, desc: '맑은 낮, 연못 위를 잠자리처럼 날아다니는 금붕어.' },
+    { id: 'starpuffer', name: '별빛 복어', sp: 'r:1', at: ['fountain'], c: { sky: 1 }, z: 20, desc: '하늘 이벤트의 별빛을 마시고 부풀어 오른 복어.' },
+    { id: 'witchtopus', name: '마녀 모자 문어', sp: 'r:2', at: ['moonlake'], c: { h: 'night' }, z: 40, desc: '어느 졸업생이 잃어버린 마녀 모자를 쓰고 산다.' },
+    { id: 'goldhorse', name: '황금 해마', sp: 'r:3', at: ['coral'], c: { w: ['clear'] }, z: 20, desc: '맑은 날 햇빛을 받으면 온몸이 금으로 빛난다.' },
+    { id: 'crystalturtle', name: '수정 거북', sp: 'r:4', at: ['crystal'], z: 50, desc: '등딱지에 수정이 자라는 거북. 수정 샘의 주인이다.' },
+    { id: 'goldcrab', name: '황금 집게 게', sp: 'r:5', at: ['coral', 'marsh'], c: { w: ['storm'] }, z: 25, desc: '천둥이 치면 황금 집게를 번쩍 든다.' },
+    { id: 'lavjelly', name: '보랏빛 해파리', sp: 'r:6', at: ['moonlake'], c: { w: ['fog'] }, z: 30, desc: '안개 속에서 등불처럼 떠다니는 해파리.' },
+    { id: 'hornshark', name: '뿔 상어', sp: 'r:7', at: ['abyss'], z: 150, desc: '이마에 외뿔이 난 작은 상어.' },
+    { id: 'nightstar', name: '밤하늘 불가사리', sp: 'r:8', at: ['starwell'], c: { h: 'night' }, z: 30, desc: '밤하늘 조각이 떨어져 불가사리가 되었다.' },
+    { id: 'nebularay', name: '성운 가오리', sp: 'r:9', at: ['starwell'], c: { sky: 1 }, z: 140, desc: '날개에 성운을 담은 가오리.' },
+    { id: 'flameclown', name: '불꽃 흰동가리', sp: 'r:10', at: ['coral'], z: 14, desc: '줄무늬가 불꽃처럼 타오르는 흰동가리.' },
+    { id: 'rainee', name: '물빛 장어', sp: 'r:11', at: ['marsh'], c: { w: ['rain', 'storm'] }, z: 90, desc: '빗물을 타고 습지로 올라오는 푸른 장어.' },
+    { id: 'coralpuff', name: '산호 복어', sp: 'r:12', at: ['coral'], c: { w: ['cloud'] }, z: 30, desc: '온몸에 산호가 자란 복어.' },
+    { id: 'starslug', name: '별빛 갯민숭이', sp: 'r:13', at: ['starwell', 'moonlake'], c: { w: ['clear'], h: 'night' }, z: 10, desc: '맑은 밤 별빛을 등에 지고 기어 다닌다.' },
+    { id: 'icejelly', name: '얼음 해파리', sp: 'r:14', at: ['crystal'], c: { w: ['snow', 'blizzard'] }, z: 25, desc: '눈송이를 촉수에 매달고 다니는 해파리.' },
+    { id: 'goldstar', name: '황금 불가사리', sp: 'r:15', at: ['fountain', 'pond'], c: { h: 'day' }, z: 25, desc: '분수 바닥의 동전을 모아 만든 불가사리라는 소문이 있다.' },
+    { id: 'tinyangler', name: '꼬마 초롱아귀', sp: 'r:16', at: ['abyss'], c: { h: 'night' }, z: 15, desc: '자기 초롱보다 작은 아귀.' },
+    { id: 'violethorse', name: '보라 해마', sp: 'r:17', at: ['marsh', 'moonlake'], c: { w: ['fog'] }, z: 18, desc: '안개 속에서 물방울을 띄우며 춤춘다.' },
+    { id: 'galaxyserpent', name: '은하 바다뱀', sp: 'r:18', leg: 1, at: ['starwell'], c: { sky: 1, h: 'night' }, z: 600, desc: '하늘이 열린 밤, 별샘에서 은하를 두르고 올라온다는 전설의 바다뱀.' },
+    { id: 'starnarwhal', name: '일각 별고래', sp: 'r:19', leg: 1, at: ['moonlake'], c: { w: ['clear'], h: 'night' }, z: 800, desc: '맑은 밤 달빛 호수에 두 번째 달을 띄우는 고래.' },
+    { id: 'goldarowana', name: '황금 용어', sp: 'r:20', leg: 1, at: ['pond', 'fountain'], c: { w: ['storm'] }, z: 120, desc: '천둥이 치는 날 연못 깊은 곳에서 깨어나는 황금 물고기. 아카데미 개교 때부터 살았다고 한다.' },
+    { id: 'reefturtle', name: '수정 산호 거북', sp: 'r:21', leg: 1, at: ['crystal'], c: { w: ['blizzard'] }, z: 200, desc: '함박눈이 내리는 날에만 등의 수정 숲을 드러내는 거북.' },
+    { id: 'abyssmanta', name: '심연 만타', sp: 'r:22', leg: 1, at: ['abyss'], z: 700, desc: '심연의 어둠을 날개로 가르며 나는 거대한 가오리.' },
+    { id: 'glowtopus', name: '등불 대왕문어', sp: 'r:23', leg: 1, at: ['abyss'], c: { w: ['rain', 'storm'], h: 'night' }, z: 500, desc: '비 오는 밤 머리의 등불로 심연을 밝힌다.' },
+    { id: 'azuredragon', name: '청룡', sp: 'r:24', leg: 1, at: ['abyss', 'starwell'], c: { w: ['storm'] }, z: 1200, desc: '뇌우와 함께 소용돌이 위로 솟구치는 푸른 용.' },
+    { id: 'rainbowlion', name: '무지개 쏠배감펭', sp: 'r:25', leg: 1, at: ['coral'], c: { w: ['rain'] }, z: 60, desc: '비가 그칠 무렵 무지개를 지느러미에 걸고 나타난다.' },
+    { id: 'abyssangler', name: '심연 아귀', sp: 'r:26', leg: 1, at: ['abyss'], c: { h: 'night' }, z: 300, desc: '밤의 심연 끝에서 초롱 하나로 모든 것을 끌어당긴다.' },
+    { id: 'crystallobster', name: '수정 바닷가재', sp: 'r:27', leg: 1, at: ['crystal'], c: { h: 'night' }, z: 90, desc: '밤의 수정 샘 바닥을 걷는 바닷가재. 집게가 수정으로 되어 있다.' },
+    { id: 'skyfin', name: '하늘 날개고기', sp: 'r:28', leg: 1, at: ['fountain'], c: { w: ['clear'], h: 'day' }, z: 80, desc: '맑은 낮 분수 물줄기를 타고 하늘 높이 날아오른다.' },
+    { id: 'moonbetta', name: '달빛 천녀어', sp: 'r:29', leg: 1, at: ['moonlake', 'starwell'], c: { h: 'night', sky: 1 }, z: 70, desc: '하늘 이벤트가 걸린 밤에만 달빛 옷자락을 끌며 헤엄친다.' }
+  ];
+  // 건져 올린 물건: give 키 — gold(진도 단위 배수) · shard · stone · mana(분) · bait(무작위 미끼 수) · seed(흔함/보통 씨앗 수) · fert
+  D.FISH_LOOT = [
+    { id: 'hat', name: '젖은 마녀 모자', sp: 'w:48', w: 24, give: { gold: 4 } },
+    { id: 'quill', name: '물 먹은 깃펜', sp: 'w:55', w: 18, give: { gold: 3 } },
+    { id: 'redvial', name: '붉은 물약병', sp: 'w:49', w: 16, give: { mana: 30 } },
+    { id: 'violetvial', name: '보라 물약병', sp: 'w:50', w: 12, give: { bait: 2 } },
+    { id: 'seedvial', name: '씨앗이 든 병', sp: 'w:51', w: 12, give: { seed: 2 } },
+    { id: 'orb', name: '자수정 구슬', sp: 'w:53', w: 8, give: { stone: 3 } },
+    { id: 'crystalball', name: '흐린 수정구', sp: 'w:54', w: 6, give: { fert: 2 } },
+    { id: 'fallstar', name: '떨어진 별 조각', sp: 'w:52', w: 3, give: { shard: 1 } },
+    { id: 'chest', name: '가라앉은 보물 상자', sp: 'w:58', w: 1, give: { shard: 5, stone: 5, seed: 2, gold: 10 } }
+  ];
+  // 미끼 (텃밭 수확물로 만든다): need — 종류(cat)나 식물 id → 개수, make — 만들어지는 수
+  D.BAITS = [
+    { id: 'herb', name: '약초 미끼', sp: 'w:8', need: { cat: 'herb', n: 3 }, make: 4, eff: { speed: 0.25, weed: 0.5 }, text: '입질이 빨라지고 찌 낚시에서 더 많이 낚음 · 수초가 덜 걸림' },
+    { id: 'petal', name: '꽃잎 미끼', sp: 'w:9', need: { cat: 'flower', n: 3 }, make: 4, eff: { tier: 1.6 }, text: '귀함 · 진귀 물고기가 잘 걸림' },
+    { id: 'berry', name: '열매 미끼', sp: 'w:10', need: { cat: 'berry', n: 3 }, make: 4, eff: { size: 0.12, rare: 1.2 }, text: '더 큰 물고기가 걸림 · 희귀 생물 조금 증가' },
+    { id: 'root', name: '뿌리 미끼', sp: 'w:11', need: { cat: 'root', n: 2 }, make: 4, eff: { loot: 2.5 }, text: '물건을 건질 확률 증가' },
+    { id: 'moon', name: '달빛 미끼', sp: 'w:12', need: { ids: ['moonorchid', 'nightlotus'], n: 1 }, make: 3, eff: { rare: 1.6, night: 1.6 }, text: '희귀 생물 증가 · 밤에는 더 크게' },
+    { id: 'star', name: '별빛 미끼', sp: 'w:13', need: { ids: ['goldsprout', 'starpod'], n: 1 }, make: 3, eff: { rare: 2.2, leg: 1.3 }, text: '희귀 생물이 크게 증가' },
+    { id: 'gold', name: '황금 미끼', sp: 'w:14', need: { ids: ['goldleaf', 'goldberry'], n: 1 }, make: 3, eff: { leg: 2, size: 0.15 }, text: '전설 생물 증가 · 더 큰 물고기' },
+    { id: 'abyss', name: '심연 미끼', sp: 'w:15', need: { ids: ['abyssrose', 'obsidian', 'spiritfern'], n: 1 }, make: 3, eff: { leg: 3 }, text: '전설 생물이 크게 증가' }
+  ];
+  D.FISH_DUR = [
+    { k: '1h', s: 3600, eff: 1.00, label: '1시간' }, { k: '2h', s: 7200, eff: 0.95, label: '2시간' }, { k: '4h', s: 14400, eff: 0.88, label: '4시간' },
+    { k: '8h', s: 28800, eff: 0.80, label: '8시간 ☾' }, { k: '12h', s: 43200, eff: 0.72, label: '12시간 ☾' }
+  ];
+
   /* ───────── 업데이트 노트 (상단 「업데이트 노트」) ─────────
      새 노트를 맨 앞에 넣는다. id는 1부터 하나씩 올린다 (서버가 공지 채널에 한 번 알리고, 화면은 읽지 않은 노트에 점 표시).
      { id, date, title, groups: [{ h: '분류', items: ['문장', { t: '문장', sub: ['세부', '세부'] }] }] } — 정리 방법은 docs/patch-notes.md */

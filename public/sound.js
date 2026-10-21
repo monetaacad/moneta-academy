@@ -70,6 +70,10 @@ var Snd = (function () {
   // 수업 종: 딩동댕동 (미-도-레-솔, 그리고 솔-레-미-도)
   SEQ.bell = { rev: 0.75, n: [[659.3, 0, 1.4, 'sine', 0.04, 0.004, 'b'], [523.3, 0.42, 1.4, 'sine', 0.04, 0.004, 'b'], [587.3, 0.84, 1.4, 'sine', 0.04, 0.004, 'b'], [392, 1.26, 2, 'sine', 0.045, 0.004, 'b'], [392, 2.1, 1.4, 'sine', 0.035, 0.004, 'b'], [587.3, 2.52, 1.4, 'sine', 0.035, 0.004, 'b'], [659.3, 2.94, 1.4, 'sine', 0.035, 0.004, 'b'], [523.3, 3.36, 2.4, 'sine', 0.04, 0.004, 'b']] };
   S.KEYS.splice(2, 0, ['bell', '수업 종소리']);
+  // 낚시: 퐁 하고 찌가 잠기는 입질 · 낚아 올렸을 때 짧은 상승음
+  SEQ.bite = { rev: 0.3, n: [[620, 0, 0.14, 'sine', 0.045, 0.003, '', 0.5], [930, 0.08, 0.12, 'sine', 0.03, 0.003, '', 0.6]] };
+  SEQ.catch = { rev: 0.45, sp: 3, ss: 0.18, n: [[392, 0, 0.25, 'triangle', 0.035, 0.005, 'b'], [587.3, 0.07, 0.3, 'triangle', 0.035, 0.005, 'b'], [784, 0.14, 0.5, 'sine', 0.032, 0.005, 'b']] };
+  S.KEYS.push(['bite', '낚시 입질'], ['catch', '낚시 성공']);
   S.setOff = function (k, off) { if (off) S.off[k] = true; else delete S.off[k]; };
   S.vol = function (v) { S.sfxVol = Math.max(0, Math.min(1, v)); if (S.ctx && sfxBus) sfxBus.gain.setTargetAtTime(S.sfxVol, S.ctx.currentTime, 0.05); };
   S.preview = function () { var was = S.on; S.on = true; S.play('level'); S.on = was; };

@@ -33,7 +33,8 @@ const cfg = {
   houseFull: +(process.env.HOUSE_FULL || 0),             // 기숙사 효과가 100%가 되는 누적 점수 (0이면 R.HOUSE_FULL)
   sessionDays: 30,
   timeScale: +(process.env.TIME_SCALE || 1), // 테스트 전용: 시간을 빠르게
-  testMode: process.env.TEST_MODE === '1'   // 테스트 전용: IP별 입학·로그인 제한 끄기
+  testMode: process.env.TEST_MODE === '1',   // 테스트 전용: IP별 입학·로그인 제한 끄기
+  fg: process.env.FEATURE_FG === '1'         // 2차 베타: 텃밭 · 낚시 (기본 꺼짐 — 운영 서버에 합쳐도 켜기 전에는 열리지 않는다)
 };
 if (cfg.epoch !== null && !isFinite(cfg.epoch)) { console.error('SERVER_EPOCH 형식이 잘못되었습니다. 예: 2026-11-02T00:00:00+09:00'); process.exit(1); }
 if (cfg.adminToken && cfg.adminToken.length < 24) { console.error('ADMIN_TOKEN이 너무 짧아 관리자 API를 끕니다. 24자 이상 무작위 문자열을 쓰세요 (예: openssl rand -base64 32)'); cfg.adminToken = ''; }
@@ -359,7 +360,7 @@ store.beforeWrite = drainMailQ;
 function statePayload(P, now) {
   drainMailQ(P);
   let mrow;
-  return { now, scale: cfg.timeScale, P: R.publicState(P), W: world.publicView(now, store.online(120000)), rank: world.rankOf(R.summary(P, world.W, now).power), fr: Number(dbx.q.friendIncomingCount.get(P.id).n), pinv: Number(dbx.q.partyInviteCount.get(P.id).n), party: partyOf.get(P.id) || null, guild: guildOf.get(P.id) || null, mailN: (mrow = mailNewRow(P.id), Number(mrow.n)), mailTop: Number(mrow.top), cls: classView(now), rit: ritView(P, now), auc: aucBrief(now), erInv: exprooms.invN(P.id), noteN: Number(dbx.q.noteUnread.get(P.id).n) };
+  return { now, scale: cfg.timeScale, P: R.publicState(P), W: world.publicView(now, store.online(120000)), rank: world.rankOf(R.summary(P, world.W, now).power), fr: Number(dbx.q.friendIncomingCount.get(P.id).n), pinv: Number(dbx.q.partyInviteCount.get(P.id).n), party: partyOf.get(P.id) || null, guild: guildOf.get(P.id) || null, mailN: (mrow = mailNewRow(P.id), Number(mrow.n)), mailTop: Number(mrow.top), cls: classView(now), rit: ritView(P, now), auc: aucBrief(now), erInv: exprooms.invN(P.id), noteN: Number(dbx.q.noteUnread.get(P.id).n), fg: cfg.fg ? 1 : 0 };
 }
 
 /* ───────── API ───────── */
@@ -555,8 +556,9 @@ routes['POST /api/act'] = async (req, res) => {
   try {
     const before = P.wk.dmg;
     setPartyN(P); setGuildLv(P);
-    const W0 = world.ctx(now); W0.lecPeers = type === 'lecStart' || type === 'ttApply' ? lecCounts(now) : null;
-    r = R.act(P, W0, now, type, a); W0.lecPeers = null; questNotes(P);
+    const W0 = world.ctx(now); W0.lecPeers = type === 'lecStart' || type === 'ttApply' ? lecCounts(now) : null; W0.fg = cfg.fg; W0.ms = Date.now();   // ms: 손낚시 챔질 판정용 실제 시각 (시간 배율과 무관)
+    try { r = R.act(P, W0, now, type, a); } finally { W0.lecPeers = null; delete W0.fg; delete W0.ms; }
+    questNotes(P);
     if (type === 'lecStart' || type === 'lecCancel' || type === 'ttApply') { lecSync(P); if (type === 'lecStart' || type === 'ttApply') { const j = P.lec[type === 'ttApply' ? 0 : Number(a.slot)]; if (j) lecStarted(P, j.s, now); } }
     if (type === 'exam' && r && r.pass) {
       if (r.letter === 'S') {   // S등급 진급: 학년 소식을 돋보이게 + 공지 채팅 알림. 1 · 3 · 5 · 7번째 S면 받은 칭호도 함께
@@ -570,6 +572,7 @@ routes['POST /api/act'] = async (req, res) => {
     if (leavePa) expLeft(P, leavePa, now);
     if (type === 'inboxAck' || type === 'expCancel' || type === 'expClaim') setImmediate(() => { try { chat.exrChanged(pid); } catch (e) { } });   // 결과를 받으면 원정 채팅 탭을 닫는다
     if ((type === 'exam' && r && r.pass) || (type === 'useGradeUp' && r && r.grade)) addNote(pid, 'grade', (P.grade >= 8 ? '졸업 시험을 통과해 마스터 과정이 되었습니다' : P.grade + '학년으로 진급했습니다') + ' · 새로 열린 것 보기', { grade: P.grade });
+    if ((type === 'fshReel' || type === 'fshClaim') && r) { const legs = (type === 'fshReel' ? [r.got] : r.list || []).filter((g) => g && g.k === 'rare' && g.leg); legs.forEach((g) => world.addNews('[전설의 낚시] ' + P.name + ' 학생이 ' + R.SPOT[r.spot].name + '에서 ' + R.josa(R.RARE[g.id].name, '을', '를') + ' 낚았습니다' + (g.sz ? ' (' + g.sz + 'cm)' : '') + '.', now)); }
     if (type === 'wbAttack') { const killed = world.applyDamage(pid, P.wk.dmg - before, now); r.killed = killed; world.invalidate(); }
   } catch (e) {
     if (e.game) { store.markDirty(pid); return send(req, res, 400, { error: e.message, P: R.publicState(P), now }); }

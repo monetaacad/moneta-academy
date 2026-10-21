@@ -5,7 +5,7 @@
   function MONEY(n, sign) { return (sign || '') + fmt(n) + ' ' + CUR; }   // 금액 표기: 1,200 아르크
   var API = null;
   var S = { P: null, W: null, off: 0, rank: 0, view: 'home', recTab: 'ach', workTab: 'alch', invF: 'all', sel: null, drops: [], modal: false,
-    pick: {}, confirm: {}, syncing: false, meta: {},
+    pick: {}, confirm: {}, syncing: false, meta: {}, fg: 0, lzTab: {}, fx: { auto: (function () { try { return localStorage.getItem('arc_fxauto') !== '0'; } catch (e) { return true; } })() },
     loreTab: 'story', meTab: 'profile', me: null, fr: 0, party: null, guild: null, pinv: 0, partyD: null, partyAt: 0,
     mk: { tab: 'buy', kind: 'item', slot: '', r: '', mat: '', q: '', sort: 'price', data: null, at: 0 },
     chat: { ch: 'rp', msgs: { rp: [], world: [], party: [] }, unread: { rp: 0, world: 0, party: 0 }, online: 0, on: false, conn: null, draft: { rp: '', world: '', party: '' }, stick: true, blocked: [], more: { rp: true, world: true, party: true }, open: null }, lastSync: 0, lastWorld: 0, exam: null, busy: false };
@@ -84,13 +84,13 @@
   function icon(k) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IC[k] + '</svg>'; }
   var VIEWS = [
     { id: 'home', name: '아카데미 광장' }, { id: 'lecture', name: '강의실' }, { id: 'explore', name: '원정' }, { id: 'tower', name: '별의 탑' }, { id: 'ctower', name: '무한의 탑' }, { id: 'exam', name: '시험·결투' },
-    { id: 'world', name: '월드 보스' }, { id: 'party', name: '파티' }, { id: 'guild', name: '동아리' }, { id: 'friends', name: '친구' }, { id: 'board', name: '게시판' }, { id: 'idea', name: '건의함' }, { id: 'auction', name: '떠돌이 상인' }, { id: 'market', name: '거래소' }, { id: 'gear', name: '장비·능력' }, { id: 'alch', name: '연금 공방', grade: 2 }, { id: 'fam', name: '환수 사역장', fam: true }, { id: 'lib', name: '연구' },
+    { id: 'world', name: '월드 보스' }, { id: 'party', name: '파티' }, { id: 'guild', name: '동아리' }, { id: 'friends', name: '친구' }, { id: 'board', name: '게시판' }, { id: 'idea', name: '건의함' }, { id: 'auction', name: '떠돌이 상인' }, { id: 'market', name: '거래소' }, { id: 'gear', name: '장비·능력' }, { id: 'alch', name: '연금 공방', grade: 2 }, { id: 'fam', name: '환수 사역장', fam: true }, { id: 'garden', name: '텃밭', fg: 1 }, { id: 'fish', name: '낚시터', fg: 1 }, { id: 'lib', name: '연구' },
     { id: 'shop', name: '매점' }, { id: 'lore', name: '세계관' }, { id: 'rec', name: '기록실' }, { id: 'rank', name: '랭킹' }, { id: 'hcup', name: '기숙사' }
   ];
-  function viewOpen(v) { return v.fam ? R.famOpen(S.P) : !v.grade || S.P.grade >= v.grade; }   // 환수 사역장은 사역마가 열리면(레벨)
+  function viewOpen(v) { if (v.fg) return !!S.fg; return v.fam ? R.famOpen(S.P) : !v.grade || S.P.grade >= v.grade; }   // 환수 사역장은 사역마가 열리면(레벨)
   // 안내도: 비슷한 곳끼리 묶고, 안에서 탭으로 옮겨 다닌다. short = 모바일 하단 바 이름 (모바일은 광장이 가운데: style.css의 order)
   var GROUPS = [
-    { id: 'home', name: '아카데미 광장', short: '광장', icon: 'home', tabs: ['home'] },
+    { id: 'home', name: '아카데미 광장', short: '광장', icon: 'home', tabs: ['home', 'garden', 'fish'] },   // 텃밭 · 낚시터: 2차 베타 (서버가 켰을 때만 탭이 보인다)
     { id: 'study', name: '수업·연구', short: '수업', icon: 'lecture', tabs: ['lecture', 'lib', 'exam'] },
     { id: 'adv', name: '원정·전투', short: '원정', icon: 'explore', tabs: ['explore', 'tower', 'ctower', 'world'] },
     { id: 'craft', name: '장비·공방', short: '장비', icon: 'gear', tabs: ['gear', 'alch', 'fam'] },
@@ -98,7 +98,7 @@
     { id: 'store', name: '상점', short: '상점', icon: 'shop', tabs: ['market', 'auction', 'shop'] },
     { id: 'book', name: '기록·랭킹', short: '기록', icon: 'lore', tabs: ['lore', 'rec', 'rank', 'hcup'] }
   ];
-  var TAB_NAMES = { auction: '떠돌이 상인', home: '광장', lecture: '강의실', lib: '연구', explore: '원정', tower: '별의 탑', ctower: '무한의 탑', exam: '시험 · 결투제', world: '월드 보스', rank: '랭킹', hcup: '기숙사', gear: '장비 · 능력치', alch: '연금 공방', fam: '환수 사역장', party: '파티', guild: '동아리', friends: '친구', board: '게시판', market: '거래소', shop: '매점', lore: '세계관', rec: '업적 · 도감' };
+  var TAB_NAMES = { garden: '텃밭', fish: '낚시터', auction: '떠돌이 상인', home: '광장', lecture: '강의실', lib: '연구', explore: '원정', tower: '별의 탑', ctower: '무한의 탑', exam: '시험 · 결투제', world: '월드 보스', rank: '랭킹', hcup: '기숙사', gear: '장비 · 능력치', alch: '연금 공방', fam: '환수 사역장', party: '파티', guild: '동아리', friends: '친구', board: '게시판', market: '거래소', shop: '매점', lore: '세계관', rec: '업적 · 도감' };
   S.gtab = {};
   var IDEA_GROUP = { id: 'idea', name: '건의함', tabs: ['idea'] };   // 건의함: 안내도 밖(상단 아이콘)에서 연다
   function groupOf(v) { return GROUPS.find(function (g) { return g.tabs.indexOf(v) >= 0; }) || (v === 'idea' ? IDEA_GROUP : GROUPS[0]); }
@@ -156,6 +156,7 @@
     if (j.pinv != null) { S.pinv = j.pinv; updateMeBadge(); }
     if (j.party !== undefined && j.party !== S.party) { S.party = j.party; S.partyAt = 0; if ($('#chatdock')) renderDock(); }
     if (j.cls) S.cls = j.cls;
+    if (j.fg != null && !!j.fg !== !!S.fg) { S.fg = j.fg ? 1 : 0; if ($('#nav')) setTimeout(function () { renderNav(); if (!S.fg && (S.view === 'garden' || S.view === 'fish')) ACT.nav('home'); }, 0); }
     if (j.rit) S.rit = j.rit;
     if (j.auc !== undefined) S.auc = j.auc;
     if (j.mailTop != null) S.mailTop = Math.max(S.mailTop || 0, j.mailTop);
@@ -218,6 +219,8 @@
     for (var k in P.fam.disp) t = Math.min(t, P.fam.disp[k].end);
     if (P.dream) t = Math.min(t, P.dream.end);                       // 꿈길도 깨는 시각에 바로 보고
     if (P.fam.egg) t = Math.min(t, P.fam.egg.end);                   // 알 부화
+    if (S.fg && P.gdn) P.gdn.plots.forEach(function (pl) { if (pl && pl.end > P.at) t = Math.min(t, pl.end); });   // 텃밭: 다 자라면 변이 결과를 받아 온다
+    if (S.fg && P.fsh && P.fsh.job && P.fsh.job.end > P.at) t = Math.min(t, P.fsh.job.end);
     P.brew.forEach(function (b) { if (b.done < b.n) t = Math.min(t, b.start + (b.done + 1) * b.each); });   // 다음 물약 한 병
     return t;
   }
@@ -314,8 +317,8 @@
     boxes.forEach(function (box) { if (box.__h !== h) { box.__h = h; box.innerHTML = h; } });
   }
   function groupTabs() {
-    var g = groupOf(S.view); if (g.tabs.length < 2) return '';
-    return '<div class="gtabs" role="tablist">' + g.tabs.map(function (t) { var v = VIEWS.find(function (x) { return x.id === t; }); return '<button role="tab" class="' + (S.view === t ? 'on' : '') + (v && !viewOpen(v) ? ' locked' : '') + '" data-act="nav" data-a="' + t + '">' + TAB_NAMES[t] + '<span class="tag br num" data-tbadge="' + t + '" hidden></span></button>'; }).join('') + '</div>';
+    var g = groupOf(S.view), tabs = g.tabs.filter(function (t) { var v = VIEWS.find(function (x) { return x.id === t; }); return !(v && v.fg && !S.fg); }); if (tabs.length < 2) return '';
+    return '<div class="gtabs" role="tablist">' + tabs.map(function (t) { var v = VIEWS.find(function (x) { return x.id === t; }); return '<button role="tab" class="' + (S.view === t ? 'on' : '') + (v && !viewOpen(v) ? ' locked' : '') + '" data-act="nav" data-a="' + t + '">' + TAB_NAMES[t] + '<span class="tag br num" data-tbadge="' + t + '" hidden></span></button>'; }).join('') + '</div>';
   }
 
   /* ───────── 렌더 ───────── */
@@ -2288,6 +2291,321 @@
     return h + (S.P.grade >= 2 ? alchView() : '<div class="card inset"><p class="small muted">연금 공방은 2학년부터 사용할 수 있습니다. 재료와 마나로 물약을 만들고, 거래소에 내다 팔 수도 있습니다.</p></div>');
   };
   V.fam = function () { return pageHead('환수 사육장', '환수 사역장', '') + potBar(['dispPct']) + famView(); };
+
+  /* ───────── 텃밭 · 낚시터 (2차 베타: 서버가 fg를 보낼 때만 보인다) ───────── */
+  // 도트 그림: D.LZ_SHEETS의 한 칸을 px 크기로 (16px 칸은 2 · 3배처럼 정수배로 쓰면 또렷하다)
+  function spr(code, px, cls, title) {
+    var p = String(code || '').split(':'), sh = D.LZ_SHEETS[p[0]]; if (!sh) return '';
+    var i = +p[1], k = px / sh.c, x = (i % sh.cols) * sh.c * k, y = Math.floor(i / sh.cols) * sh.c * k;
+    return '<span class="spr' + (cls ? ' ' + cls : '') + '" style="width:' + px + 'px;height:' + px + 'px;background-image:url(' + sh.src + ');background-size:' + sh.w * k + 'px ' + sh.h * k + 'px;background-position:-' + x + 'px -' + y + 'px"' + (title ? ' role="img" aria-label="' + esc(title) + '"' : ' aria-hidden="true"') + '></span>';
+  }
+  function gdg() { return S.P.gdn || { lv: 1, xp: 0, plots: [null, null, null, null, null, null, null, null, null], seeds: { pansy: 2, tulip: 2, mint: 2, blueberry: 2 }, crops: {}, cdx: {}, fy: {}, fert: 0, n: 0 }; }
+  function fsg() { return S.P.fsh || { lv: 1, xp: 0, sta: { n: R.LZ.STA_MAX, at: now() }, spot: 'pond', use: '', bt: { herb: 3 }, bag: {}, cdx: {}, best: {}, rare: {}, job: null, cast: null, n: 0 }; }
+  function lzSta() { var f = fsg(), s = f.sta, mx = R.LZ.STA_MAX + Math.floor(f.lv / 10), add = Math.floor((now() - s.at) / R.LZ.STA_EVERY), n = Math.min(mx, s.n + Math.max(0, add)); return { n: n, max: mx, next: n >= mx ? 0 : s.at + (Math.max(0, add) + 1) * R.LZ.STA_EVERY }; }
+  function lzLvBar(o) { var need = R.lzXpNeed(o.lv); return o.lv >= R.LZ.LV_MAX ? '<span class="tiny faint">최고 레벨</span>' : '<span class="lzxp"><b style="width:' + Math.min(100, o.xp / need * 100).toFixed(1) + '%"></b></span><span class="tiny faint num">' + fmt(o.xp) + ' / ' + fmt(need) + '</span>'; }
+  function tcol(t, list) { return t > 0 ? (list || D.GD_TIERS)[t].color : 'inherit'; }   // 흔함은 기본 글자색 (밝은 테마에서 회색이 흐림)
+  function tierTag(t, list) { var x = (list || D.GD_TIERS)[t]; return '<span class="tag lzt" style="color:' + x.color + ';border-color:' + x.color + '55">' + x.name + '</span>'; }
+  function lzTabs(view, tabs) { var cur = S.lzTab[view] || tabs[0][0]; return '<div class="tabs" role="tablist" style="margin-bottom:12px">' + tabs.map(function (t) { return '<button role="tab" class="' + (cur === t[0] ? 'on' : '') + '" data-act="lztab" data-a="' + view + '" data-b="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>'; }
+  ACT.lztab = function (v, t) { S.lzTab[v] = t; render(); };
+  // 지금 · 다음 날씨와 하늘 이벤트: 변이 · 희귀 생물 조건을 맞추려고 계획할 때 본다
+  function lzSkyNow() {
+    var t = now(), w = R.weatherAt(wctx(), t), hb = R.hourBand(t), sky = R.skyAt(t);
+    return '<span class="lzwx">' + (sky ? '<b class="gold">' + sky.name + '</b> · ' : '') + '<b>' + w.name + '</b> · ' + hb.name + '</span>';
+  }
+  function lzForecast() {
+    var W0 = wctx(), b0 = R.wxBlock(now()), out = '';
+    for (var k = 0; k < 8; k++) { var b = b0 + k, t = b * R.WX_BLOCK, w = R.WX[R.weatherOf(W0, b)]; out += '<span class="fc' + (k ? '' : ' now') + '"><i class="tiny faint">' + (k ? clock(t) : '지금') + '</i><b>' + w.name + '</b></span>'; }
+    var sk = R.skyToday(now()).concat(R.skyDay(R.dayKST(now()) + 1)).filter(function (e) { return e.end > now(); }).slice(0, 4);
+    return '<div class="card"><h3>날씨 · 하늘 예보</h3><div class="lzfc">' + out + '</div><div class="tiny muted" style="margin-top:6px">하늘 이벤트: ' + (sk.length ? sk.map(function (e) { return '<span class="gold">' + e.name + '</span> ' + clock(e.start) + '~' + clock(e.end).replace(/^(내일 |모레 )/, ''); }).join(' · ') : '없음') + '</div><p class="tiny faint" style="margin-top:6px">날씨는 3시간마다 바뀌고 미리 정해져 있습니다. 변이는 다 자라는 시각, 희귀 생물은 낚는 시각의 날씨 · 시간대(새벽 4~8시 · 낮 8~17시 · 저녁 17~21시 · 밤 21~4시) · 하늘 이벤트를 따릅니다.</p></div>';
+  }
+
+  /* ── 텃밭 ── */
+  V.garden = function () {
+    var g = gdg(), C0 = R.lzCdxTiers(S.P), h = pageHead('온실 뒤뜰', '아카데미 텃밭', '<span class="small">원예 숙련도 <b class="num gold">Lv ' + g.lv + '</b></span>');
+    h += lzTabs('garden', [['plot', '텃밭'], ['plant', '식물 도감 ' + Object.keys(g.cdx).length + '/' + D.GARDEN.length], ['fairy', '요정 도감 ' + Object.keys(g.fy).length + '/' + D.FAIRIES.length]]);
+    var tab = S.lzTab.garden || 'plot';
+    if (tab === 'plant') return h + plantCodex(C0);
+    if (tab === 'fairy') return h + fairyCodex(C0);
+    return h + '<div class="grid g2"><div class="stack">' + gdPlotCard(g) + lzForecast() + '</div><div class="stack">' + gdSeedCard(g) + gdCropCard(g) + gdShopCard() + '</div></div>';
+  };
+  function gdPlotCard(g) {
+    var t = now(), ripe = g.plots.filter(function (pl) { return pl && pl.end <= t; }).length, dry = g.plots.filter(function (pl) { return pl && !pl.wet && pl.end > t; }).length;
+    var h = '<div class="card" data-anchor="gdplots"><div class="row between"><h3>텃밭</h3><span class="row" style="gap:6px">' + lzLvBar(g) + '</span></div>' +
+      '<div class="row small" style="gap:8px;flex-wrap:wrap;margin:4px 0 10px"><span class="muted">지금</span>' + lzSkyNow() + '<span class="spacer"></span>' +
+      '<button class="btn sm ghost" data-act="gdwater"' + (dry ? '' : why('물을 줄 작물이 없습니다')) + '>모두 물 주기' + (dry ? ' (' + dry + ')' : '') + '</button>' +
+      '<button class="btn sm primary" data-act="gdharv" data-a="-1"' + (ripe ? '' : why('다 자란 작물이 없습니다')) + '>모두 수확' + (ripe ? ' (' + ripe + ')' : '') + '</button></div><div class="gdgrid">';
+    for (var i = 0; i < 9; i++) h += gdCell(g, i);
+    h += '</div><p class="tiny faint" style="margin-top:10px">물을 주면 남은 시간 −15% · 수확 +1, 비 · 눈이 오는 동안 심으면 저절로 물을 준 것으로 칩니다. 상하좌우로 붙은 두 식물은 수확할 때 <b>교배 씨앗</b>을 맺을 수 있고, 다 자라는 순간의 날씨 · 시간대 · 하늘 이벤트에 따라 <b>변이</b>합니다.</p></div>';
+    return h;
+  }
+  function gdCell(g, i) {
+    if (!R.gdPlotOpen({ gdn: g }, i)) return '<div class="gdcell lock"><span class="tiny faint">원예 Lv ' + R.gdPlotLv(i) + '</span></div>';
+    var pl = g.plots[i], t = now();
+    if (!pl) return '<button class="gdcell empty" data-act="gdpick" data-a="' + i + '"><span class="plus">+</span><span class="tiny">심기</span></button>';
+    var base = R.GD[pl.s];
+    if (pl.end <= t) {
+      var res = R.gdResult(wctx(), pl), sp = R.GD[res], mut = res !== pl.s;
+      return '<button class="gdcell ripe' + (mut ? ' mut' : '') + '" data-act="gdharv" data-a="' + i + '" title="' + esc(sp.name) + ' 수확">' + spr(sp.sp, 48, 'bob') + '<span class="nm">' + esc(sp.name) + '</span>' + (mut ? '<span class="tag gold">변이!</span>' : '<span class="tag ok">수확</span>') + '</button>';
+    }
+    var pr = (t - pl.at) / Math.max(1, pl.end - pl.at), mc = R.gdMutChance(wctx(), pl);
+    return '<div class="gdcell grow" data-act="gdinfo" data-a="' + i + '" role="button" tabindex="0">' + spr(D.GD_STAGE[pr < 0.4 ? 0 : 1], 48) + '<span class="nm">' + esc(base.name) + '</span>' +
+      '<span class="tiny num" data-l="left:' + pl.end + '">' + left(pl.end) + '</span><span class="bar thin"><b data-b="prog:' + pl.at + ':' + pl.end + '"></b></span>' +
+      '<span class="gdic">' + (pl.wet ? '<i title="물을 주었습니다" class="wet">물</i>' : '') + (pl.fert ? '<i title="비료를 주었습니다" class="fert">비료</i>' : '') + (mc ? '<i class="mc" title="다 자라는 시각에 변이 조건이 맞습니다">변이 기회</i>' : '') + '</span></div>';
+  }
+  function gdSeedCard(g) {
+    var ids = Object.keys(g.seeds).filter(function (s) { return g.seeds[s] > 0 && R.GD[s]; }).sort(function (a, b) { return R.GD[b].t - R.GD[a].t || D.GARDEN.indexOf(R.GD[a]) - D.GARDEN.indexOf(R.GD[b]); });
+    var empty = 0; for (var i = 0; i < 9; i++) if (R.gdPlotOpen({ gdn: g }, i) && !g.plots[i]) empty++;
+    return '<div class="card"><div class="row between"><h3>씨앗 주머니</h3><span class="tiny faint">빈 밭 ' + empty + '칸 · 비료 <b class="num">' + g.fert + '</b></span></div>' +
+      (ids.length ? '<div class="lzlist">' + ids.map(function (s) { var x = R.GD[s]; return '<button class="lzitem" data-act="gdseed" data-a="' + s + '" title="' + esc(x.name) + ' 씨앗 · 자라는 시간 ' + R.fmtTime(x.g) + '">' + spr(x.sp, 32) + '<span class="nm" style="color:' + tcol(x.t) + '">' + esc(x.name) + '</span><b class="num">×' + g.seeds[s] + '</b></button>'; }).join('') + '</div>' : '<p class="small muted">씨앗이 없습니다. 아래 씨앗 꾸러미를 구매하거나 수확으로 얻을 수 있습니다.</p>') +
+      '<p class="tiny faint" style="margin-top:8px">씨앗을 누르면 빈 밭에 심을 곳을 선택합니다. 수확하면 씨앗을 돌려받습니다(흔함 1~2개 · 보통 1~2개 · 귀함 이상은 확률).</p></div>';
+  }
+  function gdCropCard(g) {
+    var ids = Object.keys(g.crops).filter(function (c) { return g.crops[c] > 0 && R.GD[c]; }).sort(function (a, b) { return R.GD[b].t - R.GD[a].t; });
+    var h = '<div class="card"><h3>수확물 · 미끼 만들기</h3>';
+    h += ids.length ? '<div class="lzlist">' + ids.map(function (c) { var x = R.GD[c]; return '<span class="lzitem">' + spr(x.sp, 32) + '<span class="nm">' + esc(x.name) + '</span><b class="num">×' + g.crops[c] + '</b><button class="btn sm ghost" data-act="lzsellc" data-a="' + c + '" title="한 개 ' + MONEY(R.cropPrice(S.P, c)) + ' · 모두 ' + MONEY(R.cropPrice(S.P, c) * g.crops[c]) + '">판매</button></span>'; }).join('') + '</div>' : '<p class="small muted">아직 수확물이 없습니다.</p>';
+    h += '<div class="section-t" style="margin-top:12px">미끼 만들기 <span class="tiny faint">낚시터에서 사용합니다</span></div><div class="stack" style="gap:6px">' + D.BAITS.map(function (b) {
+      var mx = R.baitMax(S.P, b.id), need = b.need.cat ? D.GD_CATS[b.need.cat] + ' ' + b.need.n + '개' : b.need.ids.map(function (id) { return R.GD[id].name; }).join(' · ') + ' 중 ' + b.need.n + '개';
+      return '<div class="row lzbait">' + spr(b.sp, 32) + '<span><b>' + b.name + '</b> <span class="tiny faint">' + need + ' → ' + b.make + '개 · 보유 ' + ((fsg().bt[b.id]) || 0) + '</span><br><span class="tiny muted">' + b.text + '</span></span><span class="spacer"></span><button class="btn sm" data-act="lzbait" data-a="' + b.id + '" data-b="1"' + (mx ? '' : why('재료가 부족합니다')) + '>만들기</button>' + (mx > 1 ? '<button class="btn sm ghost" data-act="lzbait" data-a="' + b.id + '" data-b="' + mx + '">' + mx + '번</button>' : '') + '</div>';
+    }).join('') + '</div></div>';
+    return h;
+  }
+  function gdShopCard() {
+    var U = R.lzUnit(S.P);
+    return '<div class="card"><h3>씨앗 꾸러미</h3><div class="stack" style="gap:8px">' + D.GD_PACKS.map(function (pk) {
+      var cost = pk.cur === 'gold' ? pk.price * U : pk.price, have = pk.cur === 'gold' ? S.P.res.gold : S.P.res.shard, lbl = pk.cur === 'gold' ? MONEY(cost) : '별조각 ' + cost;
+      return '<div class="row">' + spr(pk.cur === 'gold' ? 'g:56' : 'g:63', 32) + '<span><b>' + pk.name + '</b><br><span class="tiny muted">' + pk.desc + '</span></span><span class="spacer"></span><button class="btn sm primary" data-act="gdbuy" data-a="' + pk.id + '"' + (have >= cost ? '' : why((pk.cur === 'gold' ? CUR + '가' : '별조각이') + ' 부족합니다')) + '>' + lbl + '</button></div>';
+    }).join('') + '</div></div>';
+  }
+  // 심을 곳 · 심을 씨앗 선택: 다 자라는 시각의 날씨로 변이 조건이 맞는지, 이웃과 교배가 되는지 미리 보여 준다
+  function gdPreview(g, i, s) {
+    var x = R.GD[s], t = now(), wet = R.gdWet(wctx(), t), end = t + Math.round(x.g * (wet ? 1 - R.LZ.WATER_CUT : 1)), pl = { s: s, end: end }, out = [];
+    var mc = R.gdMutChance(wctx(), pl); if (mc) out.push('<span class="gold">변이 조건 충족 · ' + (g.cdx[mc.to] ? esc(R.GD[mc.to].name) : '???') + '</span>');
+    if (i != null) R.gdNeighbors(i).forEach(function (j) { var nb = g.plots[j], ch = nb && R.gdCrossOf(s, nb.s); if (ch) out.push('<span class="good">' + esc(R.GD[nb.s].name) + '와 교배 · ' + (g.cdx[ch] ? esc(R.GD[ch].name) : '???') + '</span>'); });
+    return '<span class="tiny faint">' + R.fmtTime(end - t) + ' · ' + clock(end) + ' 수확' + (wet ? ' (비 · 눈 · 물 준 것으로 침)' : '') + '</span>' + (out.length ? '<br><span class="tiny">' + out.join(' · ') + '</span>' : '');
+  }
+  ACT.gdpick = function (i) {
+    var g = gdg(), ids = Object.keys(g.seeds).filter(function (s) { return g.seeds[s] > 0 && R.GD[s]; }).sort(function (a, b) { return R.GD[b].t - R.GD[a].t; });
+    if (!ids.length) { toast('씨앗이 없습니다', '씨앗 꾸러미를 구매하십시오'); return; }
+    modal(mhead('씨앗 심기', '밭 ' + (+i + 1) + '번 칸') + '<div class="stack" style="gap:6px;max-height:60vh;overflow:auto">' + ids.map(function (s) {
+      var x = R.GD[s]; return '<div class="row lzpick">' + spr(x.sp, 32) + '<span><b style="color:' + tcol(x.t) + '">' + esc(x.name) + '</b> <span class="tiny faint">×' + g.seeds[s] + '</span><br>' + gdPreview(g, +i, s) + '</span><span class="spacer"></span><button class="btn sm primary" data-act="gdplant" data-a="' + i + '" data-b="' + s + '">심기</button></div>';
+    }).join('') + '</div>');
+  };
+  ACT.gdseed = function (s) {
+    var g = gdg(), x = R.GD[s], free = []; for (var i = 0; i < 9; i++) if (R.gdPlotOpen({ gdn: g }, i) && !g.plots[i]) free.push(i);
+    var mut = (x.mut || []).map(function (m) { return R.lzCondText(m.c) + ' → ' + (g.cdx[m.to] ? esc(R.GD[m.to].name) : '???') + ' (' + Math.round(m.p * 100) + '%)'; });
+    modal(mhead(x.name + ' 씨앗', '보유 ' + g.seeds[s] + '개 · ' + D.GD_TIERS[x.t].name + ' · 자라는 시간 ' + R.fmtTime(x.g)) +
+      '<div class="row" style="gap:12px;align-items:flex-start">' + spr(x.sp, 64) + '<div class="small">' + (g.cdx[s] ? esc(x.desc) : '아직 수확해 본 적이 없는 식물입니다.') + (mut.length ? '<p class="tiny muted" style="margin-top:6px">변이: ' + mut.join(' · ') + '</p>' : '') + '</div></div>' +
+      (free.length ? '<div class="section-t" style="margin-top:12px">심을 칸</div><div class="stack" style="gap:6px">' + free.map(function (i) { return '<div class="row lzpick"><b>' + (i + 1) + '번 칸</b><span>' + gdPreview(g, i, s) + '</span><span class="spacer"></span><button class="btn sm primary" data-act="gdplant" data-a="' + i + '" data-b="' + s + '">심기</button></div>'; }).join('') + '</div>' +
+        (free.length > 1 && g.seeds[s] > 1 ? '<div class="row" style="justify-content:flex-end;margin-top:10px"><button class="btn primary" data-act="gdplantall" data-a="' + s + '">빈 밭 모두 심기 (' + Math.min(free.length, g.seeds[s]) + '칸)</button></div>' : '') : '<p class="small muted" style="margin-top:10px">빈 밭이 없습니다.</p>'));
+  };
+  ACT.gdplant = function (i, s) { act('gdPlant', { i: +i, s: s }).then(function (r) { if (!r) return; Snd.play('click'); closeModal(); toast(R.josa(R.GD[s].name, '을', '를') + ' 심었습니다', r.wet ? '비 · 눈이 내리는 중이라 물을 준 것으로 칩니다' : '', 1800); }); };
+  ACT.gdplantall = function (s) { act('gdPlantAll', { s: s }).then(function (r) { if (!r) return; Snd.play('click'); closeModal(); toast(R.GD[s].name + ' ' + r.n + '칸을 심었습니다', r.wet ? '비 · 눈이 내리는 중이라 물을 준 것으로 칩니다' : '', 1800); }); };
+  ACT.gdwater = function () { act('gdWater').then(function (r) { if (r) { Snd.play('drink'); toast('물을 주었습니다', r.n + '칸 · 남은 시간 −15% · 수확 +1', 1800); render(); } }); };
+  ACT.gdbuy = function (id) { act('gdBuy', { id: id }).then(function (r) { if (!r) return; Snd.play('enh'); toast('씨앗 꾸러미', Object.keys(r.got).map(function (s) { return R.GD[s].name + ' ' + r.got[s]; }).join(' · '), 2600); render(); }); };
+  ACT.lzbait = function (id, n) { act('lzBait', { id: id, n: +n || 1 }).then(function (r) { if (!r) return; Snd.play('enh'); toast(R.BAIT[id].name + ' ' + r.n + '개를 만들었습니다', '사용: ' + Object.keys(r.used).map(function (c) { return R.GD[c].name + ' ' + r.used[c]; }).join(' · '), 2400); render(); }); };
+  ACT.lzsellc = function (id) {
+    var k = 'lzs' + id, g = gdg(); if (!(S.confirm[k] > Date.now())) { S.confirm[k] = Date.now() + 4000; toast(R.GD[id].name + ' ' + g.crops[id] + '개', '한 번 더 누르면 모두 판매합니다 (' + MONEY(R.cropPrice(S.P, id) * g.crops[id]) + ')', 2600); return; }
+    S.confirm[k] = 0; act('lzSell', { k: 'crop', id: id }).then(function (r) { if (r) { toast('판매했습니다', r.n + '개 · ' + MONEY(r.gold, '+'), 1800); render(); } });
+  };
+  ACT.gdinfo = function (i) {
+    var g = gdg(), pl = g.plots[+i]; if (!pl) return; var x = R.GD[pl.s], mc = R.gdMutChance(wctx(), pl), t = now(), arm = S.confirm['gdc' + i] > Date.now();
+    modal(mhead(x.name, (+i + 1) + '번 칸 · ' + clock(pl.end) + ' 수확') +
+      '<div class="row" style="gap:12px">' + spr(x.sp, 64) + '<div class="small"><div>남은 시간 <b class="num" data-l="left:' + pl.end + '">' + left(pl.end) + '</b></div>' +
+      '<div class="tiny muted">' + (pl.wet ? '물 줌 · ' : '') + (pl.fert ? '비료 줌 · ' : '') + '수확 예상 ' + (1 + (x.t <= 1 ? 0.5 : 0) + (pl.wet ? 1 : 0) + (pl.fert ? 1 : 0)) + '개 안팎</div>' +
+      (mc ? '<div class="tiny gold" style="margin-top:4px">다 자라는 시각의 조건(' + R.lzCondText(mc.c) + ')이 맞아 ' + Math.round(mc.p * 100) + '% 확률로 ' + R.josa(g.cdx[mc.to] ? esc(R.GD[mc.to].name) : '???', '으로', '로') + ' 변이합니다</div>' : x.mut ? '<div class="tiny faint" style="margin-top:4px">변이 조건: ' + x.mut.map(function (m) { return R.lzCondText(m.c); }).join(' / ') + '</div>' : '') + '</div></div>' +
+      '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px;flex-wrap:wrap">' + (!pl.wet && pl.end > t ? '<button class="btn sm" data-act="gdwater">물 주기</button>' : '') +
+      (!pl.fert && pl.end > t ? '<button class="btn sm" data-act="gdfert" data-a="' + i + '"' + (g.fert > 0 ? '' : why('비료가 없습니다. 낚시터에서 수초 · 흔한 물고기로 만듭니다')) + '>비료 주기 (−40% · 보유 ' + g.fert + ')</button>' : '') +
+      '<button class="btn sm ' + (arm ? 'danger' : 'ghost') + '" data-act="gdclear" data-a="' + i + '">' + (arm ? '한 번 더 누르면 뽑습니다 (씨앗 잃음)' : '뽑기') + '</button></div>');
+  };
+  ACT.gdfert = function (i) { act('gdFert', { i: +i }).then(function (r) { if (r) { Snd.play('drink'); closeModal(); toast('비료를 주었습니다', '남은 시간 −40% · 수확 +1 · ' + clock(r.end) + ' 수확', 2000); } }); };
+  ACT.gdclear = function (i) { var k = 'gdc' + i; if (!(S.confirm[k] > Date.now())) { S.confirm[k] = Date.now() + 4000; ACT.gdinfo(i); return; } S.confirm[k] = 0; act('gdClear', { i: +i }).then(function (r) { if (r) { closeModal(); toast('작물을 뽑았습니다', '', 1400); } }); };
+  ACT.gdharv = function (i) {
+    act('gdHarvest', { i: +i }).then(function (r) {
+      if (!r) return; Snd.play(r.list.some(function (x) { return x.first || x.mut || x.fairy; }) ? 'ach' : 'level');
+      var rows = r.list.map(function (x) {
+        var sp = R.GD[x.id], tags = (x.first ? '<span class="tag gold">새로 발견!</span>' : '') + (x.mut ? '<span class="tag gold">변이 · ' + esc(R.GD[x.s].name) + '에서</span>' : '');
+        var ext = []; if (x.seed) ext.push('씨앗 ' + x.seed); if (x.mut) ext.push(esc(R.GD[x.s].name) + ' 씨앗 1'); if (x.mat) ext.push(D.MATS[x.mat].name + ' 1');
+        x.cross.forEach(function (c) { ext.push('<b class="good">교배 씨앗 · ' + esc(R.GD[c].name) + '</b>'); });
+        var fy = x.fairy ? (function (f) { var F = R.FAIRY[f.id], gv = f.gift.shard ? '별조각 ' + f.gift.shard : f.gift.fert ? '비료 1' : esc(R.GD[f.gift.seed].name) + ' 씨앗'; return '<div class="row lzfairy">' + spr(F.sp, 48, 'bob') + '<span class="small"><b>' + esc(F.name) + '</b>' + (f.first ? ' <span class="tag gold">첫 방문!</span>' : '') + '<br><span class="tiny muted">요정이 찾아와 선물을 두고 갔습니다 · ' + gv + '</span></span></div>'; })(x.fairy) : '';
+        return '<div class="lzres">' + spr(sp.sp, 48) + '<div><b style="color:' + tcol(sp.t) + '">' + esc(sp.name) + '</b> ×' + x.n + ' ' + tags + '<div class="tiny muted">' + ext.join(' · ') + ' · 원예 경험치 +' + x.xp + '</div>' + fy + '</div></div>';
+      }).join('');
+      modal(mhead('수확', r.list.length + '칸 · 원예 Lv ' + r.lv) + '<div class="stack" style="gap:8px;max-height:62vh;overflow:auto">' + rows + '</div><div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>');
+    });
+  };
+  // 도감 칸: 찾지 못한 것은 그림자로
+  function cdxCell(sp, px, got, name, sub, act, a, color) { return '<button class="cdx' + (got ? '' : ' un') + '" data-act="' + act + '" data-a="' + a + '">' + spr(sp, px) + '<span class="nm"' + (got && color ? ' style="color:' + color + '"' : '') + '>' + (got ? esc(name) : '???') + '</span>' + (sub ? '<span class="tiny faint num">' + sub + '</span>' : '') + '</button>'; }
+  function stars(n, tiers) { var o = ''; for (var i = 0; i < tiers.length; i++) o += n >= tiers[i] ? '★' : '☆'; return '<span class="lzst">' + o + '</span>'; }
+  function cdxHead(kind, got, tot, n) { var C = R.LZ_CDX[kind]; return '<div class="card inset" style="margin-bottom:12px"><div class="row between"><b>' + C.name + ' <span class="num gold">' + got + ' / ' + tot + '</span></b><span class="tiny faint">단계 ' + n + ' · ' + C.tiers.map(function (x) { return x + '번'; }).join(' / ') + '마다 ★</span></div><div class="tiny muted" style="margin-top:4px">영구 보너스: ' + Object.keys(C.eff).map(function (k) { return D.BONUS_NAMES[k] + ' +' + R.fmtPct(C.eff[k] * n, 2); }).join(' · ') + ' <span class="faint">(단계마다 ' + Object.keys(C.eff).map(function (k) { return R.fmtPct(C.eff[k], 2); }).join(' · ') + ')</span></div></div>'; }
+  function plantCodex(C0) {
+    var g = gdg(), list = D.GARDEN.slice().sort(function (a, b) { return a.t - b.t || D.GARDEN.indexOf(a) - D.GARDEN.indexOf(b); });
+    return cdxHead('plant', Object.keys(g.cdx).length, D.GARDEN.length, C0.plant) + [0, 1, 2, 3].map(function (t) {
+      return '<div class="section-t">' + tierTag(t) + '</div><div class="cdxgrid">' + list.filter(function (x) { return x.t === t; }).map(function (x) { var n = g.cdx[x.id] || 0; return cdxCell(x.sp, 32, n, x.name, n ? stars(n, R.LZ_CDX.plant.tiers) : '', 'cdxplant', x.id, tcol(x.t)); }).join('') + '</div>';
+    }).join('');
+  }
+  function gdHowText(id) {
+    var g = gdg(), x = R.GD[id], how = R.gdHowGet(id), nm = function (s) { return g.cdx[s] ? esc(R.GD[s].name) : '???'; };
+    if (how === 'wild') return '들꽃 씨앗 꾸러미';
+    if (how === 'green') return '온실 씨앗 꾸러미';
+    if (how === 'mut') { var src = D.GARDEN.filter(function (p) { return (p.mut || []).some(function (m) { return m.to === id; }); })[0], m = src.mut.filter(function (q) { return q.to === id; })[0]; return g.cdx[src.id] ? '변이 · ' + R.josa(nm(src.id), '이', '가') + ' ' + R.lzCondText(m.c) + '에 다 자라면' : '변이 · 어떤 식물이 특별한 때에 다 자라면'; }
+    var c = D.GD_CROSS.filter(function (q) { return q[2] === id; })[0]; return '이웃 교배 · ' + (g.cdx[c[0]] || g.cdx[c[1]] ? nm(c[0]) + ' + ' + nm(c[1]) : '어떤 두 식물을 나란히 심으면') + ' (' + Math.round(R.LZ.CROSS_P * 100) + '%)';
+  }
+  ACT.cdxplant = function (id) {
+    var g = gdg(), x = R.GD[id], n = g.cdx[id] || 0, fy = D.FAIRIES.filter(function (f) { return f.likes === id; })[0];
+    var mut = (x.mut || []).map(function (m) { return R.lzCondText(m.c) + ' → ' + (g.cdx[m.to] ? esc(R.GD[m.to].name) : '???'); });
+    var kids = D.GD_CROSS.filter(function (c) { return c[0] === id || c[1] === id; }).filter(function (c) { return g.cdx[c[0]] && g.cdx[c[1]]; }).map(function (c) { return esc(R.GD[c[0] === id ? c[1] : c[0]].name) + '와 → ' + (g.cdx[c[2]] ? esc(R.GD[c[2]].name) : '???'); });
+    modal(mhead(n ? x.name : '???', D.GD_TIERS[x.t].name + ' · ' + D.GD_CATS[x.cat] + ' · 자라는 시간 ' + R.fmtTime(x.g)) + '<div class="row" style="gap:14px;align-items:flex-start">' + spr(x.sp, 96, n ? '' : 'sil') + '<div class="small stack" style="gap:4px">' +
+      '<div>' + (n ? esc(x.desc) : '아직 수확해 본 적이 없는 식물입니다.') + '</div><div class="tiny muted">얻는 법: ' + gdHowText(id) + '</div>' +
+      (n ? '<div class="tiny muted">수확 ' + n + '번 ' + stars(n, R.LZ_CDX.plant.tiers) + ' · 판매가 ' + MONEY(R.cropPrice(S.P, id)) + (x.mat ? ' · 수확할 때 ' + D.MATS[x.mat.id].name + ' ' + Math.round(x.mat.p * 100) + '%' : '') + '</div>' : '') +
+      (n && mut.length ? '<div class="tiny gold">변이: ' + mut.join(' · ') + '</div>' : '') + (kids.length ? '<div class="tiny good">교배: ' + kids.join(' · ') + '</div>' : '') +
+      (fy ? '<div class="tiny muted">' + (g.fy[fy.id] ? R.josa(esc(fy.name), '이', '가') + ' 좋아하는 식물입니다' : '어떤 요정이 좋아하는 식물입니다') + '</div>' : '') + '</div></div>');
+  };
+  function fairyCodex(C0) {
+    var g = gdg();
+    return cdxHead('fairy', Object.keys(g.fy).length, D.FAIRIES.length, C0.fairy) + '<div class="cdxgrid big">' + D.FAIRIES.map(function (f) { var n = g.fy[f.id] || 0; return cdxCell(f.sp, 48, n, f.name.split(' ').pop(), n ? stars(n, R.LZ_CDX.fairy.tiers) : (g.cdx[f.likes] ? esc(R.GD[f.likes].name) : ''), 'cdxfairy', f.id); }).join('') + '</div><p class="tiny faint">요정은 좋아하는 식물을 수확할 때 ' + Math.round(R.LZ.FAIRY_P * 100) + '% 확률로 찾아옵니다. 처음 찾아온 요정은 별조각 3개를 두고 갑니다.</p>';
+  }
+  ACT.cdxfairy = function (id) {
+    var g = gdg(), f = R.FAIRY[id], n = g.fy[id] || 0;
+    modal(mhead(n ? f.name : '???', n ? '방문 ' + n + '번' : '아직 만나지 못한 요정') + '<div class="row" style="gap:14px;align-items:flex-start">' + spr(f.sp, 96, n ? 'bob' : 'sil') + '<div class="small stack" style="gap:4px"><div>' + (n ? esc(f.desc) : '정원 어딘가에서 좋아하는 식물을 기다리고 있습니다.') + '</div>' +
+      '<div class="tiny muted">좋아하는 식물: ' + (g.cdx[f.likes] ? esc(R.GD[f.likes].name) : '???') + (f.c ? ' · ' + R.lzCondText(f.c) + '에만' : '') + '</div></div></div>');
+  };
+
+  /* ── 낚시터 ── */
+  V.fish = function () {
+    var f = fsg(), C0 = R.lzCdxTiers(S.P), h = pageHead('별샘 낚시터', '낚시터', '<span class="small">낚시 숙련도 <b class="num gold">Lv ' + f.lv + '</b></span>');
+    h += lzTabs('fish', [['spot', '낚시'], ['fish', '물고기 도감 ' + Object.keys(f.cdx).length + '/' + D.FISH.length], ['rare', '희귀 생물 도감 ' + Object.keys(f.rare).length + '/' + D.RARE.length]]);
+    var tab = S.lzTab.fish || 'spot';
+    if (tab === 'fish') return h + fishCodex(C0);
+    if (tab === 'rare') return h + rareCodex(C0);
+    return h + '<div class="grid g2"><div class="stack">' + fxCard(f) + lzForecast() + '</div><div class="stack">' + idleCard(f) + bagCard(f) + '</div></div>';
+  };
+  function fxSpot() { var f = fsg(), s = S.fx.spot || f.spot || 'pond'; return R.spotOpen({ fsh: f }, s) ? s : 'pond'; }
+  function fxBait() { var f = fsg(), b = S.fx.bait != null ? S.fx.bait : f.use || ''; return b && f.bt[b] > 0 ? b : ''; }
+  function fxCard(f) {
+    var spot = fxSpot(), bait = fxBait(), st = lzSta(), here = R.rareAt(wctx(), spot, now());
+    var h = '<div class="card" data-anchor="fxcard"><div class="row between"><h3>손낚시</h3><span class="row" style="gap:6px">' + lzLvBar(f) + '</span></div>';
+    h += '<div class="lzspots">' + D.FISH_SPOTS.map(function (x) { var op = R.spotOpen({ fsh: f }, x.id); return '<button class="lzspot' + (x.id === spot ? ' on' : '') + '" data-act="fxspot" data-a="' + x.id + '"' + (op ? '' : why('낚시 숙련도 ' + x.lv + '레벨부터 열립니다')) + '>' + spr(x.sp, 32) + '<span>' + x.name + '</span>' + (op ? '' : '<i class="tiny faint">Lv ' + x.lv + '</i>') + '</button>'; }).join('') + '</div>';
+    h += '<div class="lzbaits"><button class="chipb' + (!bait ? ' on' : '') + '" data-act="fxbait" data-a="">미끼 없음</button>' + D.BAITS.filter(function (b) { return f.bt[b.id] > 0; }).map(function (b) { return '<button class="chipb' + (bait === b.id ? ' on' : '') + '" data-act="fxbait" data-a="' + b.id + '" title="' + esc(b.text) + '">' + spr(b.sp, 16) + b.name + ' <b class="num">' + f.bt[b.id] + '</b></button>'; }).join('') + '</div>';
+    h += '<div id="fxscene">' + fxScene() + '</div>';
+    h += '<div class="row small" style="gap:10px;flex-wrap:wrap;margin-top:8px"><span>기운 <b class="num gold" data-l="fsta">' + st.n + '/' + st.max + '</b></span><span class="tiny faint" data-l="fstanext">' + (st.next ? '다음 +1 ' + left(st.next) : '가득') + '</span><span class="spacer"></span><label class="tog small"><input type="checkbox" data-act="fxauto"' + (S.fx.auto ? ' checked' : '') + '> 계속 던지기</label></div>';
+    h += '<div class="tiny muted" style="margin-top:6px">' + esc(R.SPOT[spot].desc) + ' 지금 ' + lzSkyNow() + '</div>';
+    h += '<div class="tiny" style="margin-top:4px">지금 여기서 낚을 수 있는 희귀 생물: ' + (here.length ? here.map(function (r) { return f.rare[r.id] ? '<span class="' + (r.leg ? 'gold' : 'good') + '">' + esc(r.name) + '</span>' : '<span class="faint">' + (r.leg ? '전설 ???' : '???') + '</span>'; }).join(' · ') : '<span class="faint">없음 (날씨 · 시간대 · 하늘 이벤트가 바뀌면 나타납니다)</span>') + '</div>';
+    h += '<p class="tiny faint" style="margin-top:8px">던지고 찌가 크게 가라앉는 「입질!」 순간에 챔질하십시오. 빨리 누를수록 <b>완벽한 챔질</b>(크기 +10% · 희귀 생물 확률 추가)이 됩니다. 스페이스 키로도 챔질할 수 있습니다.</p></div>';
+    return h;
+  }
+  function fxScene() {
+    var x = S.fx, spot = R.SPOT[fxSpot()], ph = x.phase || 'idle', pop = x.pop && x.pop.until > Date.now() ? x.pop : null, sh = x.sh || 1;
+    var btn = ph === 'wait' || ph === 'bite' ? '<button class="btn fxbtn' + (ph === 'bite' ? ' bite primary' : '') + '" data-act="fxreel">' + (ph === 'bite' ? '챔질!' : '기다리는 중… (지금 당기면 놓칩니다)') + '</button>' : ph === 'reel' ? '<button class="btn fxbtn" disabled>당기는 중…</button>' : '<button class="btn fxbtn primary" data-act="fxcast"' + (lzSta().n > 0 ? '' : why('낚시 기운이 부족합니다 (10분마다 1씩 찹니다)')) + '>던지기 · 기운 1</button>';
+    return '<div class="fxscene ' + ph + '"><div class="fxwater"></div>' + spr(spot.sp, 128, 'fxspot') +
+      (ph === 'wait' || ph === 'bite' ? '<span class="fxshadow s' + sh + '"></span><span class="fxbob"></span>' + (ph === 'bite' ? spr('w:40', 64, 'fxsplash') : '') : '') +
+      (pop ? '<div class="fxpop">' + pop.html + '</div>' : '') + '</div>' + btn;
+  }
+  function fxDraw() { var el = $('#fxscene'); if (el && S.view === 'fish') el.innerHTML = fxScene(); }
+  function fxClear() { clearTimeout(S.fx.tm); clearTimeout(S.fx.tm2); (S.fx.nib || []).forEach(clearTimeout); S.fx.nib = []; }
+  function fxStart(r) {
+    fxClear(); var x = S.fx; x.phase = 'wait'; x.d = r.d; x.win = r.win; x.sh = r.sh; x.t0 = performance.now();
+    x.nib = [0.3, 0.55, 0.8].filter(function () { return Math.random() < 0.7; }).map(function (k) { return setTimeout(function () { var b = $('.fxbob'); if (b) { b.classList.add('nib'); setTimeout(function () { b.classList.remove('nib'); }, 260); } }, r.d * k); });
+    x.tm = setTimeout(function () { if (x.phase !== 'wait') return; if (S.view !== 'fish' || document.hidden) { fxClear(); x.phase = 'idle'; return; }   // 화면을 떠났으면 그만 (기운을 헛쓰지 않게)
+      x.phase = 'bite'; x.tb = performance.now(); Snd.play('bite'); fxDraw(); x.tm2 = setTimeout(function () { if (x.phase === 'bite') fxSend(x.win + 600); }, x.win + 300); }, r.d);
+    fxDraw();
+  }
+  function fxPop(html, ms) { S.fx.pop = { html: html, until: Date.now() + (ms || 1800) }; fxDraw(); setTimeout(fxDraw, (ms || 1800) + 30); }
+  function fxGotHtml(r) {
+    var g = r.got; if (!g) return '<b class="bad">' + (r.res === 'early' ? '너무 일찍 당겨 놓쳤습니다' : '놓쳤습니다') + '</b><span class="tiny faint">' + (r.sh >= 5 ? '거대한 그림자였습니다…' : r.sh >= 3 ? '꽤 큰 그림자였습니다' : '') + '</span>';
+    var tag = (r.res === 'perfect' ? '<span class="tag gold">완벽한 챔질</span>' : '') + (g.first ? '<span class="tag gold">새로 발견!</span>' : '') + (g.record ? '<span class="tag ok">최고 기록!</span>' : '');
+    if (g.k === 'loot') { var L = D.FISH_LOOT.filter(function (q) { return q.id === g.id; })[0]; return spr(L.sp, 48) + '<b>' + R.josa(esc(L.name), '을', '를') + ' 건졌습니다</b><span class="tiny">' + lootText(g.give) + '</span>' + tag; }
+    if (g.k === 'rare') { var Rr = R.RARE[g.id]; return spr(Rr.sp, 72, 'bob') + '<b class="' + (g.leg ? 'gold' : 'good') + '">' + (g.leg ? '전설! ' : '희귀 생물! ') + esc(Rr.name) + '</b><span class="tiny num">' + g.sz + 'cm' + (g.shard ? ' · 별조각 +' + g.shard : g.gold ? ' · ' + MONEY(g.gold, '+') : '') + '</span>' + tag; }
+    var F = R.FISH[g.id]; return spr(F.sp, 48, 'bob') + '<b style="color:' + (F.weed ? '#7fa58a' : tcol(F.t, D.FISH_TIERS)) + '">' + esc(F.name) + '</b><span class="tiny num">' + g.sz + 'cm · 경험치 +' + g.xp + '</span>' + tag;
+  }
+  function lootText(gv) { var o = []; if (gv.gold) o.push(MONEY(gv.gold, '+')); if (gv.shard) o.push('별조각 +' + gv.shard); if (gv.stone) o.push('마석 +' + gv.stone); if (gv.mana) o.push('마나 +' + fmt(gv.mana)); if (gv.fert) o.push('비료 +' + gv.fert); if (gv.bait) o.push(R.BAIT[gv.bait].name + ' +' + gv.baitN); if (gv.seed) Object.keys(gv.seed).forEach(function (s) { o.push(R.GD[s].name + ' 씨앗 +' + gv.seed[s]); }); return o.join(' · '); }
+  function fxSend(rt) {
+    var x = S.fx; if (x.phase !== 'wait' && x.phase !== 'bite') return; fxClear(); x.phase = 'reel'; fxDraw();
+    act('fshReel', { rt: Math.round(rt), again: x.auto && S.view === 'fish' && !document.hidden ? 1 : 0 }).then(function (r) {
+      if (!r) { x.phase = 'idle'; fxDraw(); return; }
+      Snd.play(r.got ? (r.got.k === 'rare' || r.got.first ? 'ach' : 'catch') : 'fail');
+      if (r.got && r.got.k === 'rare' && r.got.leg) toast('전설의 생물을 낚았습니다', R.RARE[r.got.id].name + ' · ' + r.got.sz + 'cm', 5000);
+      if (r.got && r.got.lv) toast('낚시 숙련도 ' + r.got.lv + '레벨', '새 낚시터가 열렸는지 확인하십시오', 2600);
+      fxPop(fxGotHtml(r), r.got && (r.got.k === 'rare' || r.got.first) ? 2600 : 1600);
+      if (r.next) fxStart(r.next); else { x.phase = 'idle'; fxDraw(); }
+      if (S.view === 'fish' && !S.modal) render();
+    });
+  }
+  ACT.fxcast = function () {
+    var x = S.fx; if (x.phase === 'wait' || x.phase === 'bite' || x.phase === 'reel') return;
+    x.phase = 'reel'; fxDraw();
+    act('fshCast', { spot: fxSpot(), bait: fxBait() }).then(function (r) { if (!r) { x.phase = 'idle'; fxDraw(); return; } Snd.play('click'); fxStart(r); updateLive(); });
+  };
+  ACT.fxreel = function () { var x = S.fx; if (x.phase === 'wait') fxSend(-1); else if (x.phase === 'bite') fxSend(performance.now() - x.tb); };
+  ACT.fxspot = function (id) { if (S.fx.phase === 'wait' || S.fx.phase === 'bite') return; S.fx.spot = id; render(); };
+  ACT.fxbait = function (id) { S.fx.bait = id || ''; render(); };
+  ACT.fxauto = function (a, b, el) { S.fx.auto = !!el.checked; try { localStorage.setItem('arc_fxauto', S.fx.auto ? '1' : '0'); } catch (e) { } };
+  document.addEventListener('keydown', function (e) { if (S.view !== 'fish' || S.modal || (e.key !== ' ' && e.code !== 'Space')) return; var tg = e.target && e.target.tagName; if (tg === 'INPUT' || tg === 'TEXTAREA') return; if (S.fx.phase === 'wait' || S.fx.phase === 'bite') { e.preventDefault(); ACT.fxreel(); } else if (S.fx.phase === 'idle' || !S.fx.phase) { e.preventDefault(); ACT.fxcast(); } });
+  function idleCard(f) {
+    var j = f.job, spot = fxSpot(), bait = fxBait();
+    var h = '<div class="card" data-anchor="fxidle"><div class="row between"><h3>찌 낚시</h3><span class="tiny faint">맡겨 두면 혼자 낚습니다 · 시간당 약 ' + R.LZ.IDLE_RATE + '마리</span></div>';
+    if (j) {
+      var got = j.c.filter(function (k) { return k.k; }), done = now() >= j.end;
+      h += '<div class="row" style="gap:10px;margin-top:6px">' + spr(R.SPOT[j.spot].sp, 48) + '<div style="flex:1"><b>' + R.SPOT[j.spot].name + '</b> <span class="tiny faint">' + (j.bait ? R.BAIT[j.bait].name + ' · ' : '') + j.c.length + '번 입질 예정</span>' +
+        '<div class="bar"><b data-b="prog:' + j.start + ':' + j.end + '"></b></div><div class="tiny muted">' + (done ? '<b class="gold">끝났습니다 · 그물을 걷으십시오</b>' : '남은 시간 <span class="num" data-l="left:' + j.end + '">' + left(j.end) + '</span> · ' + clock(j.end) + ' 끝') + '</div></div></div>';
+      if (got.length) h += '<div class="lzcatch">' + got.slice(-14).map(function (k) { var sp = k.k === 'rare' ? R.RARE[k.id].sp : k.k === 'loot' ? D.FISH_LOOT.filter(function (q) { return q.id === k.id; })[0].sp : R.FISH[k.id].sp; return spr(sp, k.k === 'rare' ? 36 : 32, '', ''); }).join('') + (got.length > 14 ? '<span class="tiny faint">외 ' + (got.length - 14) + '</span>' : '') + '</div>';
+      h += '<div class="row" style="justify-content:flex-end;margin-top:8px"><button class="btn sm ' + (done ? 'primary' : 'ghost') + '" data-act="fxclaim">' + (done ? '그물 걷기' : '일찍 걷기 (지금까지 낚은 것만)') + '</button></div>';
+    } else {
+      var need = function (d) { return R.fshIdleBait(d); };
+      h += '<p class="small" style="margin:6px 0">' + spr(R.SPOT[spot].sp, 32) + ' <b>' + R.SPOT[spot].name + '</b>에 ' + (bait ? '<b>' + R.BAIT[bait].name + '</b>(1시간에 1개)' : '미끼 없이') + ' 찌를 드리웁니다.</p><div class="filters">' + D.FISH_DUR.map(function (d) {
+        var ok = !bait || (f.bt[bait] || 0) >= need(d.k); return '<button class="btn sm" data-act="fxset" data-a="' + d.k + '"' + (ok ? '' : why(R.BAIT[bait].name + ' ' + need(d.k) + '개가 필요합니다')) + '>' + d.label + ' <span class="tiny faint">약 ' + Math.round(R.fshIdleN(S.P, d.k, bait)) + '마리</span></button>';
+      }).join('') + '</div><p class="tiny faint" style="margin-top:6px">찌 낚시는 희귀 생물이 걸릴 확률이 손낚시의 절반입니다. 낚시터와 미끼는 손낚시에서 선택한 것을 사용합니다.</p>';
+    }
+    return h + '</div>';
+  }
+  ACT.fxset = function (d) { act('fshSet', { spot: fxSpot(), d: d, bait: fxBait() }).then(function (r) { if (r) { Snd.play('click'); toast('찌를 드리웠습니다', R.FDUR[d].label.replace(' ☾', '') + ' · 약 ' + r.n + '번 입질 예정', 2000); render(); } }); };
+  ACT.fxclaim = function () {
+    act('fshClaim').then(function (r) {
+      if (!r) return; var by = {}, rares = [], firsts = 0, gold = 0, loot = [];
+      r.list.forEach(function (g) { if (g.first) firsts++; if (g.k === 'rare') rares.push(g); else if (g.k === 'loot') loot.push(g); else by[g.id] = (by[g.id] || 0) + 1; if (g.gold) gold += g.gold; });
+      Snd.play(rares.length || firsts ? 'ach' : 'level');
+      rares.filter(function (g) { return g.leg; }).forEach(function (g) { toast('전설의 생물을 낚았습니다', R.RARE[g.id].name + ' · ' + g.sz + 'cm', 5000); });
+      var rows = rares.map(function (g) { return '<div class="lzres">' + spr(R.RARE[g.id].sp, 72, 'bob') + '<div><b class="' + (g.leg ? 'gold' : 'good') + '">' + (g.leg ? '전설 · ' : '희귀 · ') + esc(R.RARE[g.id].name) + '</b> <span class="num tiny">' + g.sz + 'cm</span> ' + (g.first ? '<span class="tag gold">새로 발견!</span>' : '') + '</div></div>'; }).join('') +
+        '<div class="lzcatch">' + Object.keys(by).sort(function (a, b) { return (R.FISH[b].t || 0) - (R.FISH[a].t || 0); }).map(function (id) { var F = R.FISH[id], nw = r.list.some(function (g) { return g.id === id && g.first; }); return '<span class="lzc' + (nw ? ' new' : '') + '" title="' + esc(F.name) + (nw ? ' · 새로 발견' : '') + '">' + spr(F.sp, 32) + '<b class="num">' + by[id] + '</b></span>'; }).join('') + '</div>' +
+        (loot.length ? '<div class="tiny muted">건진 물건: ' + loot.map(function (g) { return D.FISH_LOOT.filter(function (q) { return q.id === g.id; })[0].name + ' (' + lootText(g.give) + ')'; }).join(' · ') + '</div>' : '');
+      modal(mhead('그물 걷기', R.SPOT[r.spot].name + ' · ' + r.list.length + '번 낚음' + (r.early ? ' (일찍 걷음)' : '')) + '<div class="stack" style="gap:8px">' + (r.list.length ? rows : '<p class="small muted">아직 아무것도 낚지 못했습니다.</p>') + (firsts ? '<p class="small gold">새로 발견 ' + firsts + '종</p>' : '') + '</div><div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>');
+    });
+  };
+  function bagCard(f) {
+    var ids = Object.keys(f.bag).filter(function (id) { return f.bag[id] > 0 && R.FISH[id]; }).sort(function (a, b) { var A0 = R.FISH[a], B0 = R.FISH[b]; return (B0.weed ? -1 : B0.t) - (A0.weed ? -1 : A0.t); });
+    var cm = R.compostMax({ fsh: f }), tot = 0; ids.forEach(function (id) { tot += f.bag[id]; });
+    var h = '<div class="card"><div class="row between"><h3>어망</h3><span class="tiny faint">' + tot + '마리</span></div>';
+    h += ids.length ? '<div class="lzlist">' + ids.map(function (id) { var F = R.FISH[id]; return '<span class="lzitem" title="' + esc(F.name) + ' · ' + MONEY(R.fishPrice(S.P, id)) + '">' + spr(F.sp, 32) + '<span class="nm" style="color:' + (F.weed ? '#7fa58a' : tcol(F.t, D.FISH_TIERS)) + '">' + esc(F.name) + '</span><b class="num">×' + f.bag[id] + '</b><button class="btn sm ghost" data-act="lzsellf" data-a="' + id + '">판매</button></span>'; }).join('') + '</div>' : '<p class="small muted">어망이 비어 있습니다.</p>';
+    h += '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:10px"><button class="btn sm" data-act="lzsellt" data-a="0"' + (ids.length ? '' : ' disabled') + '>수초 · 흔함 모두 판매</button><button class="btn sm" data-act="lzsellt" data-a="1"' + (ids.length ? '' : ' disabled') + '>보통 이하 모두 판매</button><span class="spacer"></span><button class="btn sm primary" data-act="lzcomp" data-a="' + cm + '"' + (cm ? '' : why('수초 · 흔한 물고기 ' + R.LZ.COMPOST + '마리가 필요합니다')) + '>비료 만들기' + (cm ? ' ×' + cm : '') + '</button></div>';
+    return h + '<p class="tiny faint" style="margin-top:6px">비료는 텃밭 작물의 남은 시간을 40% 줄이고 수확량을 1 늘립니다 (수초 · 흔한 물고기 ' + R.LZ.COMPOST + '마리 → 비료 1).</p></div>';
+  }
+  ACT.lzsellf = function (id) {
+    var k = 'lzf' + id, f = fsg(); if (!(S.confirm[k] > Date.now())) { S.confirm[k] = Date.now() + 4000; toast(R.FISH[id].name + ' ' + f.bag[id] + '마리', '한 번 더 누르면 모두 판매합니다 (' + MONEY(R.fishPrice(S.P, id) * f.bag[id]) + ')', 2600); return; }
+    S.confirm[k] = 0; act('lzSell', { k: 'fish', id: id }).then(function (r) { if (r) { toast('판매했습니다', r.n + '마리 · ' + MONEY(r.gold, '+'), 1800); render(); } });
+  };
+  ACT.lzsellt = function (t) {
+    var k = 'lzt' + t; if (!(S.confirm[k] > Date.now())) { S.confirm[k] = Date.now() + 4000; toast(+t ? '보통 이하 물고기 · 수초' : '흔한 물고기 · 수초', '한 번 더 누르면 모두 판매합니다 (도감 기록은 남습니다)', 2600); return; }
+    S.confirm[k] = 0; act('lzSell', { k: 'fish', tier: +t }).then(function (r) { if (r) { toast('판매했습니다', r.n + '마리 · ' + MONEY(r.gold, '+'), 1800); render(); } });
+  };
+  ACT.lzcomp = function (n) { act('lzCompost', { n: +n }).then(function (r) { if (r) { Snd.play('enh'); toast('비료 ' + r.n + '개를 만들었습니다', '텃밭 작물에 줄 수 있습니다', 2000); render(); } }); };
+  function fishCodex(C0) {
+    var f = fsg();
+    return cdxHead('fish', Object.keys(f.cdx).length, D.FISH.length, C0.fish) + D.FISH_SPOTS.map(function (sp) {
+      var list = D.FISH.filter(function (x) { return x.at === sp.id; }).sort(function (a, b) { return (a.weed ? 9 : a.t) - (b.weed ? 9 : b.t); }), got = list.filter(function (x) { return f.cdx[x.id]; }).length;
+      return '<div class="section-t">' + spr(sp.sp, 32) + ' ' + sp.name + ' <span class="tiny faint">' + got + '/' + list.length + (R.spotOpen({ fsh: f }, sp.id) ? '' : ' · 낚시 Lv ' + sp.lv) + '</span></div><div class="cdxgrid">' + list.map(function (x) { var n = f.cdx[x.id] || 0; return cdxCell(x.sp, 32, n, x.name, n ? (f.best[x.id] ? f.best[x.id] + 'cm' : '') : x.c ? R.lzCondText(x.c) : '', 'cdxfish', x.id, x.weed ? '#7fa58a' : tcol(x.t, D.FISH_TIERS)); }).join('') + '</div>';
+    }).join('');
+  }
+  ACT.cdxfish = function (id) {
+    var f = fsg(), x = R.FISH[id], n = f.cdx[id] || 0;
+    modal(mhead(n ? x.name : '???', R.SPOT[x.at].name + ' · ' + (x.weed ? '수초' : D.FISH_TIERS[x.t].name) + (x.c ? ' · ' + R.lzCondText(x.c) : '')) + '<div class="row" style="gap:14px;align-items:flex-start">' + spr(x.sp, 96, n ? 'bob' : 'sil') + '<div class="small stack" style="gap:4px"><div>' + (n ? esc(x.desc) : '아직 낚지 못했습니다.') + '</div>' +
+      (n ? '<div class="tiny muted">낚은 수 ' + n + ' ' + stars(n, R.LZ_CDX.fish.tiers) + ' · 최고 기록 <b class="num">' + (f.best[id] || '-') + 'cm</b> (보통 ' + x.z + 'cm)</div><div class="tiny muted">판매가 ' + MONEY(R.fishPrice(S.P, id)) + '</div>' : '') + '</div></div>');
+  };
+  function rareCodex(C0) {
+    var f = fsg(), cell = function (x) { var n = f.rare[x.id] || 0; return '<button class="rcard' + (n ? '' : ' un') + (x.leg ? ' leg' : '') + '" data-act="cdxrare" data-a="' + x.id + '">' + spr(x.sp, 72, n ? '' : 'sil') + '<b>' + (n ? esc(x.name) : x.leg ? '전설 ???' : '???') + '</b><span class="tiny faint">' + x.at.map(function (s) { return R.SPOT[s].name; }).join(' · ') + '</span><span class="tiny ' + (x.c ? 'gold' : 'faint') + '">' + R.lzCondText(x.c) + '</span>' + (n ? '<span class="tiny num">' + f.best[x.id] + 'cm · ' + n + '번</span>' : '') + '</button>'; };
+    return cdxHead('rare', Object.keys(f.rare).length, D.RARE.length, C0.rare) + '<div class="section-t">희귀</div><div class="rgrid">' + D.RARE.filter(function (x) { return !x.leg; }).map(cell).join('') + '</div><div class="section-t">전설</div><div class="rgrid">' + D.RARE.filter(function (x) { return x.leg; }).map(cell).join('') + '</div><p class="tiny faint">희귀 생물은 낚시터 · 날씨 · 시간대 · 하늘 이벤트가 맞을 때만 걸립니다. 처음 낚으면 별조각(희귀 ' + R.LZ.RARE_SHARD + ' · 전설 ' + R.LZ.LEG_SHARD + ')을 받습니다. 달빛 · 별빛 · 황금 · 심연 미끼는 텃밭의 귀한 수확물로 만듭니다.</p>';
+  }
+  ACT.cdxrare = function (id) {
+    var f = fsg(), x = R.RARE[id], n = f.rare[id] || 0;
+    modal(mhead(n ? x.name : (x.leg ? '전설 ???' : '???'), (x.leg ? '전설 생물' : '희귀 생물') + ' · ' + x.at.map(function (s) { return R.SPOT[s].name; }).join(' · ') + ' · ' + R.lzCondText(x.c)) + '<div class="row" style="gap:14px;align-items:flex-start;flex-wrap:wrap">' + spr(x.sp, 144, n ? 'bob' : 'sil') + '<div class="small stack" style="gap:4px;flex:1;min-width:160px"><div>' + (n ? esc(x.desc) : '아직 아무도 본 적이 없다는 소문만 무성합니다.') + '</div>' + (n ? '<div class="tiny muted">낚은 수 ' + n + ' ' + stars(n, R.LZ_CDX.rare.tiers) + ' · 최고 기록 <b class="num">' + f.best[id] + 'cm</b></div>' : '') + '</div></div>');
+  };
   function matTag(m, need) { var have = S.P.mats[m] || 0; return '<span class="tag ' + (have >= need ? 'ok' : 'no') + '">' + D.MATS[m].name + ' ' + fmt(have) + '/' + need + '</span>'; }
   function alchView() {
     var P = S.P, c = C(), cnt = +(S.pick.bn || 1);
@@ -3716,6 +4034,7 @@
     chatonline: function () { return (S.chat.on ? '접속 ' + S.chat.online + '명' : '연결 중…'); },
     jarsvg: function () { var j = jar(); return sceneJar(j.n, j.max); },
     jarchip: function () { var j = jar(); return gterm('반딧불 정령 병', '반딧불 정령 병') + ' <b class="num">' + j.n + '</b>/' + j.max + '마리' + (j.n >= j.max ? ' · 가득' : ' · 다음 ' + left(j.next)) + ''; },
+    fsta: function () { var s = lzSta(); return s.n + '/' + s.max; }, fstanext: function () { var s = lzSta(); return s.next ? '다음 +1 ' + left(s.next) : '가득'; },
     jardots: function () { var j = jar(), o = ''; for (var i = 0; i < j.max; i++) o += '<i class="' + (i < j.n ? 'on' : '') + '"></i>'; return o; },
     jartxt: function () { var j = jar(); return j.n >= j.max ? '<b class="gold">병이 가득 찼습니다</b>' : '<b class="num">' + j.n + '</b> / ' + j.max + '마리 · 다음 ' + left(j.next) + ' · 가득 ' + clock(j.full); },
     expk: function (i) { var j = S.P.exp[+i]; return j ? fmt(Math.floor(j.kps * j.dur * j.eff * Math.min(1, (now() - j.start) / j.dur))) : '0'; },
@@ -3785,6 +4104,7 @@
     b.lecture = il ? '빈 슬롯' : ''; b.explore = ed ? '완료' : S.erInv ? '초대 ' + S.erInv : ie ? '빈 슬롯' : '';
     b.home = P.mq && R.mqReady(P) ? '이야기' : jar().n >= R.jarMax(S.P) ? '정령' : (P.daily.login || P.daily.q.some(function (q) { return !q.done && R.dailyProg(P, q) >= q.goal; })) ? '보상' : '';
     b.lore = storyUnread() ? '새 글' : '';
+    if (S.fg) { var rp = P.gdn ? P.gdn.plots.filter(function (pl) { return pl && pl.end <= now(); }).length : 0, fj = P.fsh && P.fsh.job; b.garden = rp ? '수확 ' + rp : ''; b.fish = fj && fj.end <= now() ? '그물' : !fj ? '찌' : ''; }
     var ex = R.examFor(P); if (ex && P.grade < 8 && P.examCd <= now() && R.examEligible(P, ex)) b.exam = '응시';
     b.gear = P.pts > 0 ? P.pts + '점' : invNew().length ? '새 소지품' : '';
     b.party = S.pinv ? '초대 ' + S.pinv : '';
@@ -3977,7 +4297,7 @@
   /* ───────── 행동 ───────── */
   ACT.nav = function (a) { if (String(a).indexOf(':') > 0) { var sp = String(a).split(':'); ACT.goto(sp[0], sp[1]); return; }   // 'work:fam' = 공방 사역마 탭처럼 탭까지 지정
     if (a === 'work') a = S.P && S.P.grade >= 2 ? 'alch' : 'fam';   // 예전 「공방」
-    if (!VIEWS.some(function (v) { return v.id === a; })) a = 'home'; if (a !== S.view) histView(a); S.gtab[groupOf(a).id] = a; S.view = a; S.sel = S.view === 'gear' ? S.sel : null; renderNav(); render(); window.scrollTo(0, 0); viewTut(a); if (a === 'world') refreshWorld(); };
+    if (!VIEWS.some(function (v) { return v.id === a && !(v.fg && !S.fg); })) a = 'home'; if (a !== S.view) histView(a); S.gtab[groupOf(a).id] = a; S.view = a; S.sel = S.view === 'gear' ? S.sel : null; renderNav(); render(); window.scrollTo(0, 0); viewTut(a); if (a === 'world') refreshWorld(); };
   ACT.loretab = function (t) { S.loreTab = t; render(); };
   ACT['modal-close'] = function () { if (S.modalLocked) return; tryClose(); };
   // 내 정보에서 저장하지 않은 변경(글·두상)이 있으면 닫기 전에 한 번 묻는다. 닫으면 변경은 버린다.
@@ -5503,7 +5823,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102274;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102275;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
