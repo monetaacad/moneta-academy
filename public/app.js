@@ -22,6 +22,12 @@
   function rcol(r) { return D.RARITY[r].color; }
   function pct(v) { return R.fmtPct(v, v < 0.1 ? 1 : 0); }
   function house(id) { return R.HOUSE[id || S.P.house]; }
+  // 일지 · 기록 줄의 시각: 24시간제로 짧게 (오늘은 「23:56」, 다른 날은 「10/21 23:56」)
+  function logClock(t) {
+    var d = new Date(t * 1000), n = new Date(now() * 1000), m = d.getMinutes();
+    var today = d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate();
+    return (today ? '' : (d.getMonth() + 1) + '/' + d.getDate() + ' ') + d.getHours() + ':' + (m < 10 ? '0' : '') + m;
+  }
   function clock(t) {
     var d = new Date(t * 1000), n = new Date(now() * 1000);
     var day = Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - new Date(n.getFullYear(), n.getMonth(), n.getDate())) / 86400000);
@@ -2758,7 +2764,7 @@
     }).join('') + '</div>' : '<div class="empty" style="margin-top:8px">' + (stock.length ? '보관된 장비가 없습니다.' : '창고가 비어 있습니다.') + '</div>';
     return h + '</div>';
   }
-  function gLogTab(g) { return '<div class="card"><h3>동아리 기록</h3>' + (g.log && g.log.length ? '<div class="logbox" style="max-height:420px;margin-top:6px">' + g.log.map(function (l) { return '<div class="ln"><span class="lt">' + clock(l.t).replace(/^(오전|오후) /, '') + '</span><span>' + esc(l.text) + '</span></div>'; }).join('') + '</div>' : '<div class="empty">아직 기록이 없습니다.</div>') + '</div>'; }
+  function gLogTab(g) { return '<div class="card"><h3>동아리 기록</h3>' + (g.log && g.log.length ? '<div class="logbox" style="max-height:420px;margin-top:6px">' + g.log.map(function (l) { return '<div class="ln"><span class="lt">' + logClock(l.t) + '</span><span>' + esc(l.text) + '</span></div>'; }).join('') + '</div>' : '<div class="empty">아직 기록이 없습니다.</div>') + '</div>'; }
   function gAdminTab(g) {
     var owner = g.myRole === 'owner', staff = owner || g.myRole === 'officer', p = g.perms || {}, h = '<div class="grid g2"><div class="stack">';
     if (p.invite) {
@@ -3491,7 +3497,7 @@
       var tr = document.querySelector('.top-row'); if (tr) tr.classList.toggle('metarow', out.length >= 3);   // PC: 효과가 많으면 날짜 · 효과 줄을 두상 ~ 재화 아래 한 줄로
       return out.join(' '); },
     power: function () { return fmt(C().power); },
-    log: function () { return S.P.log.map(function (l) { return '<div class="ln k-' + l.k + '"><span class="lt">' + clock(l.t).replace(/^(오전|오후) /, '') + '</span><span>' + esc(l.m) + (l.n > 1 ? ' <span class="faint">×' + l.n + '</span>' : '') + '</span></div>'; }).join(''); },
+    log: function () { return S.P.log.map(function (l) { return '<div class="ln k-' + l.k + '"><span class="lt">' + logClock(l.t) + '</span><span>' + esc(l.m) + (l.n > 1 ? ' <span class="faint">×' + l.n + '</span>' : '') + '</span></div>'; }).join(''); },
     left: function (t) { return left(+t); },
     endat: function (s) { return clock(now() + +s); },
     exambtn: function () { var ex = R.examFor(S.P); return S.P.examCd > now() ? '재응시 ' + left(S.P.examCd) + ' 후' : ex && !R.examEligible(S.P, ex) ? '응시 자격 부족' : '시험 응시하기'; },
@@ -5241,7 +5247,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102250;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102251;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
