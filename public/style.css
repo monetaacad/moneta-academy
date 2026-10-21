@@ -222,7 +222,7 @@ main { min-width: 0; container-type: inline-size; container-name: page; }
 .goal .step { font-family: var(--f-num); color: var(--brass); font-size: 12px; border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; flex: none; margin-top: 2px; }
 .logbox { max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; font-size: 13px; padding-right: 4px; }
 .logbox .ln { display: flex; gap: 8px; }
-.logbox .ln .lt { color: var(--faint); font-family: var(--f-num); font-size: 11px; flex: none; padding-top: 2px; min-width: 44px; }
+.logbox .ln .lt { color: var(--faint); font-family: var(--f-num); font-size: 11px; flex: none; padding-top: 2px; min-width: 44px; white-space: nowrap; }
 .ln.k-good { color: var(--goodt); } .ln.k-bad { color: var(--badt); } .ln.k-story { color: var(--brass2); } .ln.k-legend { color: var(--r4); } .ln.k-epic { color: var(--r3); } .ln.k-ach { color: var(--brass2); } .ln.k-news { color: var(--news); }
 .quest { display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; align-items: center; }
 
@@ -1899,3 +1899,14 @@ mark.hl { color: inherit; background: linear-gradient(transparent 38%, color-mix
 /* 과목 카드: 이름은 낱말 단위로만 줄바꿈 (한 글자씩 세로로 쌓이지 않게), 복습 효과는 이름 아래 줄 */
 .subj .hd h3 { word-break: keep-all; min-width: 0; }
 .subj .revline { margin: 2px 0 4px; }
+
+/* 과목 수석 */
+table.sjtop { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 14px; table-layout: fixed; }
+table.sjtop th, table.sjtop td { padding: 5px 4px; text-align: left; border-bottom: 1px dashed var(--line2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+table.sjtop thead th { font-size: 12px; color: var(--muted); font-weight: 500; }
+table.sjtop th[scope=row] { width: 6.5em; font-weight: 600; }
+table.sjtop .rnk-name.me { font-weight: 700; }
+@media (max-width: 520px) { table.sjtop th[scope=row] { width: 5.6em; } table.sjtop { font-size: 13px; } table.sjtop td { white-space: normal; word-break: keep-all; vertical-align: top; } table.sjtop .sjmeta { display: block; padding-left: 1.1em; } }
+table.sjtop .sjmeta { white-space: nowrap; }
+.pheads { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.phead { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--brass); color: var(--brass); background: color-mix(in srgb, var(--brass) 10%, transparent); white-space: nowrap; }
