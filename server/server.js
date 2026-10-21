@@ -1350,7 +1350,7 @@ function towerTeam(party, me, now) {
   return { pa, ms, ps };
 }
 function towerView(me, now) {
-  const party = partyOf.get(me); if (!party) return { party: null };
+  const party = partyOf.get(me); if (!party) { const Q = store.get(me); return { party: null, pend: twPendView(Q) }; }
   const { pa, ms, ps } = towerTeam(party, me, now), runs = towerRuns(party), live = towerLive(runs), P = ps.find((Q) => Q.id === me);
   // 실전이 흐르는 동안은 그 실전 전의 기록을 보여 준다 (결과가 대본보다 먼저 새지 않게)
   const prev = live && live.kind === 'real' ? live.prev || {} : {};
@@ -1359,6 +1359,7 @@ function towerView(me, now) {
   return { party, name: pa ? pa.name : '', leader: pa ? pa.leader : '', week: R.weekId(now), weekEnd: R.weekStart(R.weekId(now) + 1), now: Date.now() / 1000,
     start: R.twStart(ps.map(best)), used: used.map((Q) => Q.name), myUsed: !!P && R.twUsed(P, now), myBest: P ? best(P) : 0, myPos: P ? R.twPos(P) : 'van', posOk: P ? R.expPositions(P) : ['van'],
     members: R.twMeta(ms).map((m) => { const Q = ps.find((x) => x.id === m.id); return Object.assign(m, { me: m.id === me, best: Q ? best(Q) : null, used: !!Q && R.twUsed(Q, now), ready: m.npc || (!!lob && lob.ready.has(m.id)) }); }),
+    pend: twPendView(P),
     lobby: lob ? { mode: lob.mode, by: lob.byName, at: lob.at, notReady: ps.filter((Q) => !lob.ready.has(Q.id)).map((Q) => Q.name) } : null, readyTtl: TW_READY_TTL, count: TW_COUNT,
     runs: runs.slice().reverse() };
 }
@@ -1375,6 +1376,16 @@ routes['GET /api/tower'] = (req, res) => {
   send(req, res, 200, v);
 };
 // mode: real(실전) · party(파티 연습) · solo(혼자 연습) · stop(파티 연습 중단) · pos(내 포지션)
+// 별의 탑 실전 보상 맡겨 두기: P.twPend = { id, end(실제 시각), from, to, pname }. 끝난 뒤 「보상 받기」로 우편 발송
+function twPendMail(Q) {
+  const p = Q.twPend; if (!p) return; delete Q.twPend;
+  sendMail(Q.id, '별의 탑', '별의 탑 ' + p.to + '층 기록', '파티 「' + p.pname + '」의 실전에서 별의 탑 ' + p.to + '층까지 올랐습니다.\n이번 주에 처음 넘은 ' + p.from + '~' + p.to + '층의 보상입니다.', R.twRewardSum(p.from, p.to), Math.floor(Date.now() / 1000) + 7 * 86400, true);
+  store.markDirty(Q.id);
+}
+// 화면에 보이는 보상 대기: 끝나기 전에는 층 · 보상을 숨긴다
+function twPendView(Q) { const p = Q && Q.twPend; if (!p) return null; return Date.now() / 1000 >= p.end - 1 ? { id: p.id, end: p.end, from: p.from, to: p.to, reward: R.rewardText(R.twRewardSum(p.from, p.to)) } : { id: p.id, end: p.end }; }
+// 받지 않은 채 다음 실전을 시작하면, 끝난 지난 보상은 먼저 보낸다
+function twPendFlush(Q) { if (Q.twPend && Date.now() / 1000 >= Q.twPend.end) twPendMail(Q); }
 // 출발 대기: 파티 → { mode(real · party), by, byName, ready: Map(학생 → 누른 실제 시각), at(출발 예정 실제 시각), timer }
 // 누군가 「실전 준비」 · 「파티 연습 준비」를 누르면 출발 종류가 정해지고, 사람 파티원(NPC 제외)이 모두 「준비 완료」하면 15초 뒤 자동으로 출발한다.
 // 그 사이 한 명이라도 준비를 풀면 출발이 취소되고, 다시 모두 준비하면 15초부터 다시 센다. 준비는 15분이 지나면 풀린다.
@@ -1423,10 +1434,9 @@ function twStartRun(party, mode, starterId) {
       if (run.cleared > 0) dbx.q.twRankPut.run(R.weekId(now), party, pname, JSON.stringify(run.ms.map((m) => ({ name: m.name, house: m.house, npc: m.npc || undefined }))), run.cleared, Math.floor(Date.now() / 1000));
       ps.forEach((Q) => {
         R.twUse(Q, now); const old = R.twRecord(Q, now, run.cleared); run.prev[Q.id] = old;
-        if (run.cleared > old) {
-          const rw = R.twRewardSum(old + 1, run.cleared), exp = Math.floor(Date.now() / 1000) + 7 * 86400;
-          sendMail(Q.id, '별의 탑', '별의 탑 ' + run.cleared + '층 기록', '파티 「' + pname + '」의 실전에서 별의 탑 ' + run.cleared + '층까지 올랐습니다.\n이번 주에 처음 넘은 ' + (old + 1) + '~' + run.cleared + '층의 보상입니다.', rw, exp, true, after);
-        }
+        // 보상은 맡겨 두었다가 실전이 끝난 뒤 「보상 받기」를 누르면 우편으로 보낸다 (진행 중에 결과가 새지 않게, 원정 귀환처럼)
+        twPendFlush(Q);
+        if (run.cleared > old) Q.twPend = { id: run.id, end: run.t0 + run.d, from: old + 1, to: run.cleared, pname };
         store.markDirty(Q.id);
       });
       later(() => {
@@ -1446,8 +1456,14 @@ routes['POST /api/tower'] = async (req, res) => {
   if (store.isBanned(me)) return fail(req, res, 403, '이용이 정지된 계정입니다');
   if (limited('twp:' + me, 0.5, 4)) return fail(req, res, 429, '잠시 후 다시 시도');
   const b = await readJson(req, 256), mode = String(b.mode || '');
-  const party = partyOf.get(me); if (!party) return fail(req, res, 400, '파티에 들어가 있어야 별의 탑에 오를 수 있습니다');
   const now = nowSec(), P = loadPlayer(me, now); if (!P) return fail(req, res, 401, '학생 정보를 찾을 수 없습니다');
+  if (mode === 'claim') {   // 실전이 끝난 뒤 보상 받기 (파티를 나갔어도 받을 수 있게 아래 파티 확인보다 먼저)
+    const p = P.twPend; if (!p) return fail(req, res, 400, '받을 별의 탑 보상이 없습니다');
+    if (Date.now() / 1000 < p.end - 1) return fail(req, res, 400, '실전이 아직 진행 중입니다. 끝난 뒤에 받을 수 있습니다');
+    const to = p.to; twPendMail(P);
+    return send(req, res, 200, Object.assign(towerView(me, now), { claimed: to, pend: null }));
+  }
+  const party = partyOf.get(me); if (!party) return fail(req, res, 400, '파티에 들어가 있어야 별의 탑에 오를 수 있습니다');
   if (mode === 'pos') {
     const pos = String(b.pos || ''); if (!R.EXP_POS[pos]) return fail(req, res, 400, '포지션 선택 필요');
     if (R.expPositions(P).indexOf(pos) < 0) return fail(req, res, 400, R.EXP_POS[pos].name + ' 포지션은 ' + R.EXP_POS[pos].desc.split(' · ')[0]);

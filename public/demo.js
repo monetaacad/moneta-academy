@@ -297,18 +297,20 @@
     var runs = so.tower.runs, last = runs[runs.length - 1], live = last && last.t0 + last.d > Date.now() / 1000 ? last : null;
     return { so: so, pa: pa, ms: ms, runs: runs, live: live };
   };
+  LocalApi.prototype._twPendMail = function (P) { var p = P.twPend; if (!p) return; delete P.twPend; this._sendMail('별의 탑', '별의 탑 ' + p.to + '층 기록', '파티 「' + p.pname + '」의 실전에서 별의 탑 ' + p.to + '층까지 올랐습니다.\n이번 주에 처음 넘은 ' + p.from + '~' + p.to + '층의 보상입니다.', Rules.twRewardSum(p.from, p.to), 7, 50); };
   LocalApi.prototype.tower = function () {
     var now = this._now(), P = this.d.P, x = this._towerCore(now); if (!x) return Promise.resolve({ party: null });
     var prev = x.live && x.live.kind === 'real' && x.live.prev ? x.live.prev : {}, best = P.id in prev ? prev[P.id] : Rules.twBest(P, now);
     return Promise.resolve({ party: 'demo-party', name: x.pa.name || '파티', leader: P.id, week: Rules.weekId(now), weekEnd: Rules.weekStart(Rules.weekId(now) + 1), now: Date.now() / 1000, demo: true,
       start: best + 1, used: Rules.twUsed(P, now) ? [P.name] : [], myUsed: Rules.twUsed(P, now), myBest: best, myPos: Rules.twPos(P), posOk: Rules.expPositions(P),
-      members: Rules.twMeta(x.ms).map(function (m) { return Object.assign(m, { me: m.id === P.id, best: m.npc ? null : best, used: !m.npc && Rules.twUsed(P, now), ready: m.npc || !!this._twLob }); }, this), runs: x.runs.slice().reverse(), lobby: this._twLob ? { mode: this._twLob.mode, by: P.name, at: this._twLob.at, notReady: [] } : null, count: 15, readyTtl: 900 });
+      members: Rules.twMeta(x.ms).map(function (m) { return Object.assign(m, { me: m.id === P.id, best: m.npc ? null : best, used: !m.npc && Rules.twUsed(P, now), ready: m.npc || !!this._twLob }); }, this), runs: x.runs.slice().reverse(), pend: P.twPend ? (Date.now() / 1000 >= P.twPend.end - 1 ? { id: P.twPend.id, end: P.twPend.end, from: P.twPend.from, to: P.twPend.to, reward: Rules.rewardText(Rules.twRewardSum(P.twPend.from, P.twPend.to)) } : { id: P.twPend.id, end: P.twPend.end }) : null, lobby: this._twLob ? { mode: this._twLob.mode, by: P.name, at: this._twLob.at, notReady: [] } : null, count: 15, readyTtl: 900 });
   };
   LocalApi.prototype.towerOp = function (o) {
     o = o || {}; var now = this._now(), P = this.d.P, self = this; Rules.advance(P, this._world(now), now); var x = this._towerCore(now); if (!x) return Promise.resolve({ error: '파티에 들어가 있어야 별의 탑에 오를 수 있습니다' });
     var mk = function (kind) { return Object.assign(Rules.twRun(x.ms, Rules.twBest(P, now) + 1, Math.floor(Math.random() * 2147483646) + 1), { id: String(Date.now()), kind: kind, by: P.name, pname: x.pa.name || '', t0: Date.now() / 1000, ms: Rules.twMeta(x.ms), day: Rules.dayKST(now) }); };
     if (o.mode === 'pos') { if (Rules.expPositions(P).indexOf(o.pos) < 0) return Promise.resolve({ error: '선택할 수 없는 포지션입니다' }); P.opt.twPos = o.pos; this._save(); return this.tower(); }
     if (o.mode === 'solo') return Promise.resolve({ run: mk('solo') });
+    if (o.mode === 'claim') { var pd = P.twPend; if (!pd) return Promise.resolve({ error: '받을 별의 탑 보상이 없습니다' }); if (Date.now() / 1000 < pd.end - 1) return Promise.resolve({ error: '실전이 아직 진행 중입니다. 끝난 뒤에 받을 수 있습니다' }); this._twPendMail(P); this._save(); return this.tower().then(function (v) { return Object.assign(v, { claimed: pd.to, pend: null }); }); }
     if (o.mode === 'ready') {   // 데모의 출발 대기: 파티원이 나와 NPC뿐이라 준비하면 곧바로 15초를 센다
       if (this._twTimer) { clearTimeout(this._twTimer); this._twTimer = null; }
       if (o.on === false) { this._twLob = null; return this.tower(); }
@@ -326,7 +328,8 @@
     var run = mk(o.mode), after = run.d * 1000;
     if (o.mode === 'real') {
       Rules.twUse(P, now); var old = Rules.twRecord(P, now, run.cleared); run.prev = {}; run.prev[P.id] = old;
-      if (run.cleared > old) this._sendMail('별의 탑', '별의 탑 ' + run.cleared + '층 기록', '파티 「' + (x.pa.name || '') + '」의 실전에서 별의 탑 ' + run.cleared + '층까지 올랐습니다.\n이번 주에 처음 넘은 ' + (old + 1) + '~' + run.cleared + '층의 보상입니다.', Rules.twRewardSum(old + 1, run.cleared), 7, after);
+      if (P.twPend && Date.now() / 1000 >= P.twPend.end) this._twPendMail(P);   // 받지 않은 지난 보상은 먼저
+      if (run.cleared > old) P.twPend = { id: run.id, end: run.t0 + run.d, from: old + 1, to: run.cleared, pname: x.pa.name || '' };   // 보상은 끝난 뒤 「보상 받기」로
       setTimeout(function () { self._sys('party', '✦ 별의 탑 실전 종료 — ' + run.start + '층에서 시작해 ' + (run.cleared >= run.start ? run.cleared + '층까지 올랐습니다.' : '첫 층을 넘지 못했습니다.')); }, after);
     }
     x.runs.slice(0, -1).forEach(function (r) { delete r.floors; }); x.runs.push(run); if (x.runs.length > 4) x.runs.shift();
