@@ -863,11 +863,14 @@
   R.subjStats = function (P, s) { return P && P.cls === 'knight' && s.kstat ? [s.kstat, s.kstat2 || s.stat2] : [s.stat, s.stat2]; };   // 과목이 올려 주는 능력치 (원소역학은 학과마다 다르다)
   R.subjVisible = function (P, s) { return !s.cls || s.cls === (P.cls || 'mage'); };   // 학과 전용 수업은 그 학과에게만
   R.availableSubjects = function (P) { return D.SUBJECTS.filter(function (s) { return s.unlock <= Math.min(P.grade, 7) && R.subjVisible(P, s); }); };
+  // 학년별 수업 경험치 배율 (1학년부터 · 8 = 마스터 과정)
+  R.LEC_GRADE = [1.08, 1.16, 1.24, 1.32, 1.4, 1.48, 1.56, 1.64];
+  R.lecGradeMul = function (g) { return R.LEC_GRADE[clamp(g | 0, 1, R.LEC_GRADE.length) - 1]; };
   R.lecPreview = function (P, W, sid, durK, t0) {
     var d = DUR[durK] || DUR['1h']; t0 = t0 || P.at;
     var c = calc(P, W, t0, t0 + d.s), h = d.s / 3600;
     var L = P.subj[sid].lv;
-    return { dur: d.s, eff: d.eff, xp: K.LEC_XP * c.lecSpd * (1 + P.grade * 0.08) * h * d.eff, know: (K.LEC_KNOW + L * K.LEC_KNOW_LV) * c.know * c.lecSpd * h * d.eff };
+    return { dur: d.s, eff: d.eff, xp: K.LEC_XP * c.lecSpd * R.lecGradeMul(P.grade) * h * d.eff, know: (K.LEC_KNOW + L * K.LEC_KNOW_LV) * c.know * c.lecSpd * h * d.eff };
   };
   function subjGain(P, sid, xp, t) {
     var sj = P.subj[sid], ups = 0; sj.xp += xp;
@@ -2098,7 +2101,7 @@
     var d = DRDUR[durK] || DRDUR['8h']; t0 = t0 || P.at;
     var h = d.s / 3600, c = calc(P, W, t0, t0 + d.s), out = { dur: d.s };
     var subs = R.availableSubjects(P), top = subs.slice().sort(function (a, b) { return P.subj[b.id].lv - P.subj[a.id].lv; })[0];
-    function lec(id) { var L = P.subj[id].lv; return { xp: K.LEC_XP * c.lecSpd * (1 + P.grade * 0.08), know: (K.LEC_KNOW + L * K.LEC_KNOW_LV) * c.know * c.lecSpd }; }
+    function lec(id) { var L = P.subj[id].lv; return { xp: K.LEC_XP * c.lecSpd * R.lecGradeMul(P.grade), know: (K.LEC_KNOW + L * K.LEC_KNOW_LV) * c.know * c.lecSpd }; }
     if (kind === 'study') { var one = lec(SUBJ[sid] ? sid : top.id); out.xp = one.xp * h * R.DREAM_STUDY; out.know = one.know * h * 0.25; }
     else if (kind === 'stars') { out.shard = Math.floor(h * 0.6); out.know = lec(top.id).know * h * 0.3; out.egg = h * 0.004; }
     else { var z = R.zoneOf(Math.min(P.maxStage, R.stageCap(P))); out.mat = z.mat; out.mats = Math.floor(h * 3.5); out.stones = Math.floor(h * 0.45); out.gold = Math.floor(h * 22 * K.KILL_GOLD * Math.pow(K.G_GOLD, z.from - 1) * (1 + (c.b.goldPct || 0))); }
