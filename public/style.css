@@ -131,7 +131,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .chip i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
 .chip .lbl { color: var(--muted); font-size: 11.5px; }
 .chip .rate { color: var(--faint); font-size: 11px; }
-.icon-btn { background: var(--sunk); border: 1px solid var(--line2); border-radius: 8px; width: 34px; height: 34px; display: grid; place-items: center; cursor: pointer; }
+.icon-btn { background: var(--sunk); border: 1px solid var(--line2); border-radius: 8px; width: 34px; height: 34px; display: grid; place-items: center; cursor: pointer; padding: 0; }
 .icon-btn:hover { border-color: var(--line); }
 .icon-btn svg { width: 18px; height: 18px; }
 
@@ -600,7 +600,7 @@ details[open] > summary .chev { transform: rotate(-135deg) translate(-2px, -2px)
 .gitem p { margin-top: 6px; line-height: 1.7; }
 mark { background: rgba(240, 207, 138, .28); color: var(--ink); border-radius: 3px; padding: 0 1px; }
 @media (max-width: 480px) { .top-row .topbtns { gap: 4px; } .top-row .topbtns .icon-btn { width: 30px; height: 30px; } }   /* 버튼 5개라 이름 칸이 좁아지지 않게 */
-@media (max-width: 480px) { .guidebtn span { display: none; } .guidebtn { padding: 6px 8px; } }
+@media (max-width: 480px) { .guidebtn span { display: none; } }
 
 /* ───────── 거래소 ───────── */
 .mklist { display: flex; flex-direction: column; gap: 8px; }
