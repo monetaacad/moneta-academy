@@ -1491,6 +1491,7 @@
   };
   R.letter = function (s) { return s >= 95 ? 'S' : s >= 85 ? 'A' : s >= 75 ? 'B' : s >= 60 ? 'C' : 'F'; };
   // 등급별 합격 보상 (화면 표와 실제 지급이 같은 표). 합격하면 바로 다음 학년이라 같은 시험은 다시 볼 수 없다.
+  R.EXAM_S_LEGEND = 0.01;   // S 보상 장비: 전설 확률 추가 (기본 약 0.6% → 약 1.6%)
   R.EXAM_REWARD = {
     S: { mult: 2, minR: 3, egg: 1, text: '별조각·' + CUR + ' 2배 · 영웅 이상 장비 · 환수의 알' },
     A: { mult: 1.5, minR: 2, egg: 0, text: '별조각·' + CUR + ' 1.5배 · 희귀 이상 장비' },
@@ -2052,7 +2053,10 @@
       var rw = R.EXAM_REWARD[L] || R.EXAM_REWARD.C, mult = rw.mult, shard = Math.round((8 + run.grade * 4) * mult);
       var gold = Math.floor(400 * K.KILL_GOLD * Math.pow(K.G_GOLD, ex.duel) * mult); P.res.shard += shard; addGold(P, gold);
       var minR = rw.minR;
-      var it = makeItem(P, pick(P, D.SLOTS).id, ex.duel + 4, Math.max(minR, rollRarity(P, 0.5)), minR);
+      // 장비 레벨: 지금 연 원정 단계 ±3 (학년 상한을 넘어도 됨). S는 전설 확률 +1%p
+      var ilv = Math.max(1, Math.min(P.maxStage, R.stageCap(P)) + Math.floor(rnd(P) * 7) - 3), rr = Math.max(minR, rollRarity(P, 0.5));
+      if (L === 'S' && rr < 4 && rndL(P) < R.EXAM_S_LEGEND) rr = 4;
+      var it = makeItem(P, pick(P, D.SLOTS).id, ilv, rr, minR);
       if (rw.egg) P.fam.eggs += rw.egg;
       res.reward = { shard: shard, gold: gold, egg: rw.egg, item: { name: it.name, r: it.r, res: gainItem(P, it, now) } };
       P.grade = run.grade + 1; if (P.grade > P.st.maxGrade) P.st.maxGrade = P.grade;
