@@ -444,7 +444,7 @@
   document.addEventListener('visibilitychange', function () { if (S.P) wantWatch(); });
   function isOp() { return !!S.chat.op; }
   function chans() { var a = ['notice', 'recruit', 'rp', 'world']; if (S.party) a.push('party'); if (S.exr) a.push('exr'); ['guild', 'house', 'cls'].forEach(function (g) { if (gOn(g)) a.push(GTAB[g][0], GTAB[g][1]); }); a.push('dm'); a = chSort(a, function (k) { return GCH[k] || k; }); var hid = (typeof PREF !== 'undefined' && PREF.hideCh) || {}, v = a.filter(function (k) { return !hid[GCH[k] || k]; }); return v.length ? v : ['world']; }
-  try { S.chat.blocked = JSON.parse(localStorage.getItem('arc_blocked') || '[]'); } catch (e) { }
+  try { S.chat.blocked = JSON.parse(localStorage.getItem('arc_blocked') || '[]'); S.chat.blockedN = JSON.parse(localStorage.getItem('arc_blockedN') || '{}'); } catch (e) { }   // blockedN: 가린 학생 이름 (설정에서 목록으로 보여 주고 한 명씩 해제)
   try { var dk = localStorage.getItem('arc_dock'); if (dk) S.chat.open = dk === '1'; var dc = localStorage.getItem('arc_dockch'); if (CH_INFO[dc]) S.chat.ch = dc; } catch (e) { }
   // 읽은 위치 (학생마다, 이 브라우저에 저장)
   S.read = null; S.divider = {};
@@ -543,7 +543,7 @@
     return '<div class="chatin"><div class="chatrow"><div class="chatbox"><textarea id="chatinput" rows="1" data-max="' + chatMax(ch) + '" placeholder="' + (ch === 'world' ? '메시지 · Enter 보내기, Shift+Enter 줄바꿈' : ch === 'dm' ? '메시지 · Enter 보내기' : ch === 'gooc' ? '오너로서 하는 이야기 · Enter 보내기' : '대사를 입력하고 *행동*은 별표 사이에') + '">' + esc(c.draft[ch === 'dm' ? 'dm:' + S.dm.peer : ch] || '') + '</textarea><span class="chatcnt num" id="chatcount" aria-live="polite"></span></div>' +
       '<button class="btn sm primary chatsendbtn" data-act="chatsend">보내기</button></div>' +
       '<div class="row chatmeta"><span class="spacer"></span><span class="tiny bad" id="chatmsg"></span></div>' +
-      (c.blocked.length && ch !== 'dm' ? '<p class="tiny faint">가린 학생 ' + c.blocked.length + '명 · <button class="btn sm ghost" data-act="unblockall">모두 다시 보기</button></p>' : '') + '</div>';
+      '</div>';   // 가린 학생 목록 · 해제는 설정 → 채팅
   }
   // 접힌 채팅창: 지금 고른 탭의 최근 글 한 줄 (글이 없으면 우측에 「채팅 열기」)
   function peekText() {
@@ -947,7 +947,7 @@
       if (p.friend === 'ok') h += '<button class="btn sm ghost" data-act="fop" data-a="remove" data-b="' + pid + '">친구 끊기</button>';
     }
     h += '</div>';
-    if (m && !p.self) h += '<hr class="sep"><p class="small muted msgq">' + chatText(m.text) + '</p><div class="row" style="margin-top:8px"><button class="btn sm" data-act="cblock" data-a="' + esc(m.pid) + '">이 학생 가리기</button><button class="btn sm danger" data-act="creportform" data-a="' + m.id + '">이 메시지 신고</button></div><div id="crp-box"></div><p class="tiny faint" style="margin-top:6px">가리기는 내 화면에서만 적용됩니다. 신고는 운영진에게 전달되며, 운영진은 신고된 메시지와 앞뒤 대화를 함께 확인합니다.</p>';
+    if (m && !p.self) h += '<hr class="sep"><p class="small muted msgq">' + chatText(m.text) + '</p><div class="row" style="margin-top:8px"><button class="btn sm" data-act="cblock" data-b="' + esc(p.name || m.name || '') + '" data-a="' + esc(m.pid) + '">이 학생 가리기</button><button class="btn sm danger" data-act="creportform" data-a="' + m.id + '">이 메시지 신고</button></div><div id="crp-box"></div><p class="tiny faint" style="margin-top:6px">가리기는 내 화면에서만 적용됩니다. 신고는 운영진에게 전달되며, 운영진은 신고된 메시지와 앞뒤 대화를 함께 확인합니다.</p>';
     return h;
   }
   function openProfile(pid, m) {
@@ -4050,8 +4050,18 @@
       var log = $('#chatlog'), h0 = log ? log.scrollHeight : 0; renderDock(); var l2 = $('#chatlog'); if (l2) l2.scrollTop = l2.scrollHeight - h0;
     });
   };
-  ACT.cblock = function (pid) { if (S.chat.blocked.indexOf(pid) < 0) S.chat.blocked.push(pid); try { localStorage.setItem('arc_blocked', JSON.stringify(S.chat.blocked)); } catch (e) { } closeModal(); renderDock(); toast('이 학생을 가렸습니다', '이제 이 학생의 메시지가 보이지 않습니다', 1800); };
-  ACT.unblockall = function () { S.chat.blocked = []; try { localStorage.removeItem('arc_blocked'); } catch (e) { } renderDock(); };
+  function saveBlocked() { try { localStorage.setItem('arc_blocked', JSON.stringify(S.chat.blocked)); localStorage.setItem('arc_blockedN', JSON.stringify(S.chat.blockedN || {})); } catch (e) { } }
+  ACT.cblock = function (pid, name) { if (S.chat.blocked.indexOf(pid) < 0) S.chat.blocked.push(pid); S.chat.blockedN = S.chat.blockedN || {}; if (name) S.chat.blockedN[pid] = name; saveBlocked(); closeModal(); renderDock(); toast('이 학생을 가렸습니다', '이 학생의 메시지가 보이지 않습니다. 설정 → 채팅에서 다시 보이게 할 수 있습니다', 2400); };
+  ACT.unblock = function (pid) { S.chat.blocked = S.chat.blocked.filter(function (x) { return x !== pid; }); if (S.chat.blockedN) delete S.chat.blockedN[pid]; saveBlocked(); renderDock(); var el = $('[data-blk="' + pid + '"]'); if (el) el.remove(); var n = $('#blk-n'); if (n) n.textContent = S.chat.blocked.length; toast('가리기 해제', '이 학생의 메시지가 다시 보입니다', 1600); };
+  ACT.unblockall = function () { S.chat.blocked = []; S.chat.blockedN = {}; saveBlocked(); renderDock(); var b = $('#blk-box'); if (b) b.innerHTML = '<p class="tiny faint">가린 학생이 없습니다.</p>'; var n = $('#blk-n'); if (n) n.textContent = 0; };
+  // 설정 → 채팅: 가린 학생 목록 (이름을 모르는 예전 기록은 불러와서 채운다)
+  function blockedList() {
+    var c = S.chat, bn = c.blockedN || (c.blockedN = {});
+    if (!c.blocked.length) return '<p class="tiny faint">가린 학생이 없습니다.</p>';
+    c.blocked.forEach(function (pid) { if (!bn[pid] && API.profile) API.profile(pid).then(function (j) { if (j && j.name) { bn[pid] = j.name; saveBlocked(); var el = $('[data-blk="' + pid + '"] b'); if (el) el.textContent = j.name; } }); });
+    return c.blocked.map(function (pid) { return '<div class="row small" data-blk="' + esc(pid) + '" style="gap:8px;margin-top:4px"><b>' + esc(bn[pid] || '불러오는 중') + '</b><span class="spacer"></span><button class="btn sm ghost" data-act="unblock" data-a="' + esc(pid) + '">다시 보기</button></div>'; }).join('') +
+      (c.blocked.length > 1 ? '<div class="row" style="justify-content:flex-end;margin-top:6px"><button class="btn sm ghost" data-act="unblockall">모두 다시 보기</button></div>' : '');
+  }
   // 신고: 사유 입력칸을 연 뒤 「신고 보내기」로 전달 (사유는 선택, 200자까지)
   ACT.creportform = function (id) { var box = $('#crp-box'); if (!box) return ACT.creport(id); if (box.innerHTML) { $('#crp-reason') && $('#crp-reason').focus(); return; }
     box.innerHTML = '<label class="small" style="display:block;margin-top:10px">신고 사유 <span class="tiny faint">(선택 · 200자 이내)</span><textarea id="crp-reason" maxlength="200" rows="3" style="width:100%;margin-top:4px" placeholder="예: 욕설, 도배, 개인정보 노출"></textarea></label><div class="row" style="justify-content:flex-end;margin-top:6px"><button class="btn sm danger" data-act="creport" data-a="' + esc(String(id)) + '">신고 보내기</button></div>';
@@ -4430,7 +4440,7 @@
       (perm === 'none' ? '<p class="tiny faint">이 브라우저(또는 이 화면)에서는 알림을 사용할 수 없습니다.</p>' : perm === 'denied' ? '<p class="tiny bad">브라우저에서 알림이 막혀 있습니다. 주소창 좌측의 사이트 설정에서 알림을 허용해야 합니다.</p>' : '') +
       pushRow() + '<div class="sfxlist' + (PREF.notify || PREF.push ? '' : ' off') + '">' + [['lec', '수업'], ['exp', '원정'], ['res', '연구'], ['disp', '사역마 파견'], ['jar', '정령 병이 가득 참'], ['sky', '하늘 이벤트 시작'], ['auc', '떠돌이 상인 도착'], ['aucbid', '경매 입찰 (밀림 · 마감 5분 전)']].map(function (t) { return '<label class="tog"><input type="checkbox" data-act="ntone" data-a="' + t[0] + '"' + (ntOn(t[0]) ? ' checked' : '') + '> ' + t[1] + '</label>'; }).join('') + '</div></div>';
     h += '<div class="setsec"' + st('채팅') + '><div class="section-t">채팅</div><p class="tiny faint">새 메시지 알림: 효과음, 다른 탭을 보고 있을 때 브라우저 알림(위 알림을 켠 경우), 게임을 닫아 두었을 때 푸시(푸시를 켠 기기). 알림에는 메시지 내용이 표시되지 않습니다.</p>' + [['chexr', '원정 채팅'], ['chparty', '파티 채팅'], ['chdm', '1:1 채팅']].map(function (t) { return '<label class="tog"><input type="checkbox" data-act="ntone" data-a="' + t[0] + '"' + (ntOn(t[0]) ? ' checked' : '') + '> ' + t[1] + ' 새 메시지 알림</label>'; }).join('') + '<label class="tog"><input type="checkbox" id="opt-hmt" data-act="opt" data-a="hideMyTitle"' + (P.opt.hideMyTitle ? ' checked' : '') + '> 채팅에서 내 칭호 숨기기</label>' +
-      '<label class="tog"><input type="checkbox" id="opt-hot" data-act="opt" data-a="hideOtherTitle"' + (P.opt.hideOtherTitle ? ' checked' : '') + '> 채팅에서 다른 학생 칭호 숨기기</label>' + '<div class="small muted" style="margin-top:6px">기숙사 사감 한마디</div><label class="tog"><input type="checkbox" data-act="headoff" data-a="welcome"' + (PREF.headOff ? ' checked' : '') + (PREF.headOff === 'all' ? ' disabled' : '') + '> 환영 인사 숨기기</label><label class="tog"><input type="checkbox" data-act="headoff" data-a="all"' + (PREF.headOff === 'all' ? ' checked' : '') + '> 모두 숨기기</label><p class="tiny faint">정보창에는 칭호가 그대로 보입니다.</p></div>';
+      '<label class="tog"><input type="checkbox" id="opt-hot" data-act="opt" data-a="hideOtherTitle"' + (P.opt.hideOtherTitle ? ' checked' : '') + '> 채팅에서 다른 학생 칭호 숨기기</label>' + '<div class="small muted" style="margin-top:6px">가린 학생 <b class="num" id="blk-n">' + S.chat.blocked.length + '</b>명 <span class="tiny faint">(채팅의 학생 정보에서 「이 학생 가리기」를 누른 학생 · 이 기기에만 적용)</span></div><div id="blk-box">' + blockedList() + '</div>' + '<div class="small muted" style="margin-top:6px">기숙사 사감 한마디</div><label class="tog"><input type="checkbox" data-act="headoff" data-a="welcome"' + (PREF.headOff ? ' checked' : '') + (PREF.headOff === 'all' ? ' disabled' : '') + '> 환영 인사 숨기기</label><label class="tog"><input type="checkbox" data-act="headoff" data-a="all"' + (PREF.headOff === 'all' ? ' checked' : '') + '> 모두 숨기기</label><p class="tiny faint">정보창에는 칭호가 그대로 보입니다.</p></div>';
     h += '<div class="setsec"' + st('게임') + '><div class="section-t">게임</div><label class="tog"><input type="checkbox" id="opt-ae2" data-act="opt" data-a="autoEquip"' + (P.opt.autoEquip ? ' checked' : '') + '> 더 좋은 장비 자동 장착</label>' +
       '<label class="tog"><input type="checkbox" id="opt-aa2" data-act="opt" data-a="autoAlloc"' + (P.opt.autoAlloc ? ' checked' : '') + '> 능력치 자동 분배</label>' +
       '<label class="tog"><input type="checkbox" id="opt-sf2" data-act="opt" data-a="showFam"' + (P.opt.showFam ? ' checked' : '') + '> 동행 중인 사역마를 내 정보에 공개</label></div>';
@@ -5171,7 +5181,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102230;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102231;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

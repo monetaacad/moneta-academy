@@ -7,6 +7,8 @@
   // 운영실 학생 기록: 장비 · 능력치 전체 (학생의 공개 범위 설정과 관계없음)
   var SLOTN = { staff: '무기', robe: '로브', hat: '모자', charm: '장신구', tome: '마도서' }, STN = { int: '지력', wil: '의지', agi: '민첩', vit: '체력', luk: '행운' };
   function fx(v) { v = Number(v) || 0; return Math.abs(v) >= 1000 ? Math.round(v).toLocaleString() : String(Math.round(v * 1000) / 1000); }
+  // 학생 이름 → 누르면 학생 카드 (운영실 전용 · 공개 범위와 관계없음)
+  function pl(name, id) { return name ? '<button class="plink" data-a="pcard" data-n="' + esc(name) + '"' + (id ? ' data-p="' + esc(id) + '"' : '') + ' title="학생 카드 보기">' + esc(name) + '</button>' : '—'; }
   // 재지급할 수 있는 장비 목록 (백업 비교 · 처분 기록 · 구매 기록에서 같이 쓴다). 버튼의 data-c = 이 목록의 번호
   var RE = [], BKNAME = '';
   function reBtn(x) { RE.push(x); return '<button class="btn sm ghost" data-a="bkre" data-c="' + (RE.length - 1) + '">재지급</button>'; }
@@ -60,9 +62,9 @@
   // 사용한 학생: 여러 명이면 앞 2명만 보이고 「외 N명」으로 펼친다
   function ubCell(i) {
     var names = String(i.used_by || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
-    if (names.length <= 2) return '<td class="iub" title="' + esc(names.join(', ')) + '">' + esc(names.join(', ')) + '</td>';
+    if (names.length <= 2) return '<td class="iub" title="' + esc(names.join(', ')) + '">' + names.map(function (n) { return pl(n); }).join(', ') + '</td>';
     var open = UBOPEN[i.code];
-    return '<td class="iub' + (open ? ' open' : '') + '">' + esc((open ? names : names.slice(0, 2)).join(', ')) + '<button class="ubm" data-a="ubmore" data-c="' + esc(i.code) + '">' + (open ? '접기' : '외 ' + (names.length - 2) + '명') + '</button></td>';
+    return '<td class="iub' + (open ? ' open' : '') + '">' + (open ? names : names.slice(0, 2)).map(function (n) { return pl(n); }).join(', ') + '<button class="ubm" data-a="ubmore" data-c="' + esc(i.code) + '">' + (open ? '접기' : '외 ' + (names.length - 2) + '명') + '</button></td>';
   }
   // 메모 칸 너비: 경계를 끌어서 조절 (이 브라우저에 기억)
   (function () {
@@ -120,7 +122,7 @@
       var s = bdstate(p), tag = s.fresh ? '<span class="small gold">새 댓글</span>' : !s.answered ? '<span class="small gold">새 문의</span>' : '<span class="small" style="color:#74bfa9">답변함</span>';
       var stTag = ST[p.st] ? ' <span class="small" style="color:' + (p.st === 'done' ? '#6fcf97' : '#6aa8ff') + '">' + ST[p.st] + '</span>' : '';
       var stBtns = [['review', '검토 중'], ['wip', '확인 중'], ['done', '해결 완료'], ['no', '반영 안 함'], ['norepro', '재현 안 됨'], ['', '표시 없음']].map(function (o) { return '<button class="btn sm' + ((p.st || '') === o[0] ? ' primary' : ' ghost') + '" data-a="bdst" data-c="' + p.id + '" data-s="' + o[0] + '">' + o[1] + '</button>'; }).join('');
-      return '<details class="bdq"' + (s.answered && !s.fresh ? '' : ' open') + '><summary><b>' + esc(p.title) + '</b> <span class="small faint">' + esc(p.author) + ' · ' + when(p.created) + ' · 댓글 ' + p.comments.length + '</span> ' + tag + stTag + '</summary>' +
+      return '<details class="bdq"' + (s.answered && !s.fresh ? '' : ' open') + '><summary><b>' + esc(p.title) + '</b> <span class="small faint">' + pl(p.author) + ' · ' + when(p.created) + ' · 댓글 ' + p.comments.length + '</span> ' + tag + stTag + '</summary>' +
         '<div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap"><span class="tiny faint">처리 상태 (게시판과 연동)</span>' + stBtns + '</div>' +
         '<div class="msgtext" style="white-space:pre-wrap;margin:8px 0">' + esc(p.body) + '</div>' +
         p.comments.map(function (c) { return '<div class="small" style="margin:4px 0;padding:6px 8px;border-radius:6px;background:rgba(255,255,255,.04)"><b>' + esc(c.author) + '</b>' + (c.op ? ' <span class="gold">운영진</span>' : '') + ' <span class="faint">' + when(c.created) + '</span> <button class="btn sm ghost" data-a="bdcdel" data-c="' + c.id + '">지우기</button><div style="white-space:pre-wrap;margin-top:2px">' + esc(c.body) + '</div></div>'; }).join('') +
@@ -132,7 +134,7 @@
   function rctxHtml(j) {
     if (j.error) return '<p class="small faint">' + esc(j.error) + '</p>';
     return '<div class="scroll" style="max-height:340px"><table><tbody>' + j.list.map(function (m) {
-      return '<tr' + (m.me ? ' style="background:rgba(224,124,114,.16)"' : '') + '><td class="tiny" style="white-space:nowrap">' + whenS(m.t) + '</td><td style="white-space:nowrap">' + (m.me ? '<b>' + esc(m.name) + '</b>' : esc(m.name)) + '</td><td class="msgtext">' + (m.kind === 'act' ? '<i>' : '') + (m.deleted ? '<s class="faint">' + esc(m.text) + '</s> <span class="tiny faint">(삭제됨)</span>' : esc(m.text)) + (m.kind === 'act' ? '</i>' : '') + '</td></tr>';
+      return '<tr' + (m.me ? ' style="background:rgba(224,124,114,.16)"' : '') + '><td class="tiny" style="white-space:nowrap">' + whenS(m.t) + '</td><td style="white-space:nowrap">' + (m.me ? '<b>' + pl(m.name) + '</b>' : pl(m.name)) + '</td><td class="msgtext">' + (m.kind === 'act' ? '<i>' : '') + (m.deleted ? '<s class="faint">' + esc(m.text) + '</s> <span class="tiny faint">(삭제됨)</span>' : esc(m.text)) + (m.kind === 'act' ? '</i>' : '') + '</td></tr>';
     }).join('') + '</tbody></table></div><p class="tiny faint" style="margin-top:4px">같은 채널의 앞 10건 · 뒤 10건입니다. 붉은 줄이 신고된 메시지입니다.</p>';
   }
   // 운영진 1:1: 대화 목록 · 고른 학생과의 대화
@@ -156,8 +158,9 @@
   function reports() {
     api('GET', '/api/admin/reports' + ($('#showres').checked ? '?resolved=1' : '')).then(function (j) {
       $('#reports').innerHTML = (j.reports || []).map(function (r) {
-        return '<tr><td>' + when(r.t) + '</td><td>' + esc(r.chName || r.ch) + '</td><td>' + esc(r.author) + '</td><td class="msgtext">' + (r.deleted ? '<s class="faint">' + esc(r.text) + '</s>' : esc(r.text)) + '</td><td>' + esc(r.reporter) + '</td><td class="msgtext">' + (r.reason ? esc(r.reason) : '<span class="faint">—</span>') + '</td><td><div class="row" style="gap:4px">' +
+        return '<tr><td>' + when(r.t) + '</td><td>' + esc(r.chName || r.ch) + '</td><td>' + pl(r.author, r.author_id) + '</td><td class="msgtext">' + (r.deleted ? '<s class="faint">' + esc(r.text) + '</s>' : esc(r.text)) + '</td><td>' + pl(r.reporter, r.reporter_id) + '</td><td class="msgtext">' + (r.reason ? esc(r.reason) : '<span class="faint">—</span>') + '</td><td><div class="row" style="gap:4px">' +
           '<button class="btn sm ghost" data-a="rctx" data-c="' + r.msg_id + '">앞뒤 대화</button>' +
+          (r.author_id ? '<button class="btn sm ghost" data-a="sdmgo" data-p="' + esc(r.author_id) + '" data-n="' + esc(r.author) + '">작성자 1:1</button>' : '') +
           (r.reporter_id ? '<button class="btn sm ghost" data-a="sdmgo" data-p="' + esc(r.reporter_id) + '" data-n="' + esc(r.reporter) + '">신고자 1:1</button>' : '') +
           (r.deleted ? '' : '<button class="btn sm danger" data-a="del" data-c="' + r.msg_id + '" data-r="' + r.id + '">메시지 삭제</button>') +
           '<button class="btn sm" data-a="rmute" data-p="' + esc(r.author_id) + '" data-r="' + r.id + '" data-m="1440">작성자 1일 채팅 금지</button>' +
@@ -251,6 +254,24 @@
         ['stone', 'dust', 'gold', 'shard'].forEach(function (k) { $('#rc-' + k).value = ''; }); oplog();
       });
     },
+    // 학생 카드 창
+    pcard: function (el) {
+      var q = el.dataset.p ? 'id=' + encodeURIComponent(el.dataset.p) : 'name=' + encodeURIComponent(el.dataset.n || '');
+      api('GET', '/api/admin/pcard?' + q).then(function (j) {
+        if (j.error) { toast(j.error); return; }
+        var box = $('#pcmodal') || (function () { var d = document.createElement('div'); d.id = 'pcmodal'; d.className = 'pcm'; document.body.appendChild(d); d.addEventListener('click', function (e) { if (e.target === d) d.hidden = true; }); return d; })();
+        var row = function (k, v) { return v ? '<div class="row small" style="gap:8px;margin-top:3px"><span class="faint" style="width:64px;flex:none">' + k + '</span><span>' + v + '</span></div>' : ''; };
+        box.innerHTML = '<div class="card pcmb"><div class="row" style="gap:12px;align-items:center">' + (j.av ? '<img src="' + j.av + '" alt="" style="width:64px;height:64px;border-radius:50%;object-fit:cover">' : '<span class="pcav">' + esc(j.name.slice(0, 1)) + '</span>') +
+          '<div style="flex:1;min-width:0"><div class="small faint">' + esc(j.title || '') + '</div><h3 style="margin:2px 0">' + esc(j.name) + (j.online ? ' <span class="tiny" style="color:#5fc59a">● 접속 중</span>' : '') + '</h3><div class="small">' + esc(j.house + ' · ' + j.grade + '학년 · Lv ' + j.lvl + (j.cls ? ' · ' + j.cls : '')) + '</div></div><button class="btn sm ghost" data-a="pcclose">닫기</button></div>' +
+          (j.banned ? '<p class="small" style="color:#e07c72;margin-top:6px">이용 정지된 계정입니다</p>' : '') + (j.deleted ? '<p class="small faint" style="margin-top:6px">초기화로 남은 예전 캐릭터입니다</p>' : '') +
+          '<div style="margin-top:10px">' + row('전투력', Number(j.power || 0).toLocaleString()) + row('동아리', esc(j.guild)) + row('운영 등급', esc(j.role)) + row('상태', esc(j.status)) + row('좋아하는 것', esc(j.fav)) + row('입학', whenS(j.created)) + row('마지막 접속', j.seen ? whenS(j.seen) : '') + '</div>' +
+          (j.bio ? '<div class="small" style="margin-top:8px;white-space:pre-wrap;padding:8px;border-radius:6px;background:rgba(255,255,255,.05)">' + esc(j.bio) + '</div>' : '') +
+          '<div class="row" style="gap:6px;margin-top:12px;flex-wrap:wrap;justify-content:flex-end"><button class="btn sm ghost" data-a="pcgo" data-c="plog" data-n="' + esc(j.name) + '">활동 기록</button><button class="btn sm ghost" data-a="sdmgo" data-p="' + esc(j.id) + '" data-n="' + esc(j.name) + '">1:1</button></div></div>';
+        box.hidden = false;
+      });
+    },
+    pcclose: function () { var b = $('#pcmodal'); if (b) b.hidden = true; },
+    pcgo: function (el) { var b = $('#pcmodal'); if (b) b.hidden = true; $('#un').value = el.dataset.n; A[el.dataset.c](); $('#un').scrollIntoView({ behavior: 'smooth', block: 'center' }); },
     bkrno: function () { $('#rebox').innerHTML = ''; },
     bkrgo: function (el) {
       var x = RE[+el.dataset.c]; if (!x || el.disabled) return; el.disabled = true;
@@ -364,7 +385,7 @@
     bddel: function (el) { if (!confirm('이 글을 지울까요?')) return; api('POST', '/api/admin/board', { op: 'del', id: +el.dataset.c }).then(function (j) { if (j.error) return toast(j.error); bdshow(j); }); },
     bdcdel: function (el) { api('POST', '/api/admin/board', { op: 'cdel', cid: +el.dataset.c }).then(function (j) { if (j.error) return toast(j.error); bdshow(j); }); },
     sdmload: function () { sdmThreads(); sdmView(); },
-    sdmgo: function (el) { SDM.peer = el.dataset.p; SDM.name = el.dataset.n || ''; sdmThreads(); sdmView(); $('#sdmcard').scrollIntoView({ behavior: 'smooth', block: 'start' }); },
+    sdmgo: function (el) { var pb = $('#pcmodal'); if (pb) pb.hidden = true; SDM.peer = el.dataset.p; SDM.name = el.dataset.n || ''; sdmThreads(); sdmView(); $('#sdmcard').scrollIntoView({ behavior: 'smooth', block: 'start' }); },
     sdmopen: function () { var n = $('#sdmname').value.trim(); if (!n) return; api('GET', '/api/admin/dm?name=' + encodeURIComponent(n)).then(function (j) { if (j.error) { toast(j.error); return; } SDM.peer = j.peer; SDM.name = j.name; sdmThreads(); sdmView(); }); },
     sdmsend: function () {
       var tx = $('#sdmtext').value.trim(); if (!tx) return;

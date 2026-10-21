@@ -64,6 +64,13 @@ with sync_playwright() as p:
         if not any(m['me'] for m in ctx['list']) or len(ctx['list']) < 3: errs.append('report ctx wrong: ' + str(ctx)[:200])
     G.locator('#chatlog .cm .cn', has_text='에이' + sfx).last.click(); G.wait_for_timeout(300); G.click('[data-act=cblock]'); G.wait_for_timeout(300)
     if any(('에이' + sfx) in x for x in texts(G)): errs.append('blocked user still visible')
+    # 설정 → 채팅에서 가린 학생 목록 · 해제
+    G.evaluate("() => window.__ACT.settings()"); G.wait_for_timeout(500)
+    if not G.query_selector('[data-blk] b') or ('에이' + sfx) not in G.inner_text('#blk-box'): errs.append('blocked list missing in settings: ' + (G.inner_text('#blk-box') if G.query_selector('#blk-box') else 'no box'))
+    else:
+        G.evaluate("() => document.querySelector('[data-act=unblock]').click()"); G.wait_for_timeout(300)
+        G.evaluate("()=>document.querySelectorAll('.mbox [data-act=modal-close]').forEach(c=>c.click())"); G.wait_for_timeout(300)
+        if not any(('에이' + sfx) in x for x in texts(G)): errs.append('unblocked user still hidden')
     # 운영진 1:1: 운영실이 신고자(G)에게 보냄 → G가 1:1 목록에서 열고 답장 → 운영실에서 답장 확인
     if reps:
         rq = urllib.request.Request(B + '/api/admin/dm', data=json.dumps({'pid': reps[0]['reporter_id'], 'text': '신고를 확인했습니다.'}).encode(), headers={'content-type': 'application/json', 'x-admin-token': 'test-admin-token-0123456789abcdef'})
