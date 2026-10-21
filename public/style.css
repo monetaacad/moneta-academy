@@ -1041,6 +1041,8 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 .bthud .bar { margin-top: 3px; }
 .btjournal .twlines { height: 240px; }
 .btjournal:not(.live) .livedot { display: none; }
+.rpres { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line2); }
+.rpres h3 { font-size: 17px; }
 .explog .el.kloot { color: var(--ink); }
 .grank li { align-items: center; } .grank .rn { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0; } .grank .rv { margin-left: auto; }
 :root[data-skintone="light"] .twlines .el.kp { color: #6a3fc0; }
