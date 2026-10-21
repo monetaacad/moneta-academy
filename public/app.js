@@ -2223,7 +2223,7 @@
       // 사역마 효과 안내: 보유 효과(모두 · 항상)와 동행 효과(한 마리)
       '<div class="card inset" style="margin-bottom:12px"><h4>사역마 효과</h4><ul class="small" style="margin:6px 0 0 18px;line-height:1.7">' +
       '<li><b>보유 효과</b> · 가지고 있는 모든 사역마의 능력 보너스(각 카드에 표시된 수치)는 동행 · 파견 여부와 관계없이 항상 적용됩니다.</li>' +
-      '<li><b>동행 효과</b> · 동행 중인 사역마 한 마리는 원정 · 보스 · 탑 · 결투 · 월드 보스 전투에서 함께 공격하며(초당 피해에 포함), 수업 · 원정 · 연구 등 활동할 때마다 경험치를 얻어 성장합니다. 광장 풍경에도 함께 나타납니다.</li>' +
+      '<li><b>동행 효과</b> · 동행 중인 사역마 한 마리는 원정 · 보스 · 탑 · 결투 · 월드 보스 전투에서 함께 공격하며(초당 피해에 포함), 수업 · 원정 · 연구 등 활동할 때마다 경험치를 얻어 성장합니다.</li>' +
       '<li><b>파견</b> · 동행하지 않는 사역마는 파견을 보내 재료 · 마석 · ' + CUR + ' 등을 얻을 수 있으며, 돌아올 때 파견 시간만큼 경험치를 얻습니다(동행보다 적음).</li></ul></div>' +
       '<label class="tog small" style="margin:0 0 10px"><input type="checkbox" data-act="opt" data-a="showFam"' + (P.opt.showFam ? ' checked' : '') + '> 동행 중인 사역마를 내 정보에 공개 (다른 학생이 정보창에서 볼 수 있습니다)</label><div class="grid gauto">';
     var dk = S.pick.dd || '8h';
@@ -5171,7 +5171,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102228;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102229;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
