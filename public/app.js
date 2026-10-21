@@ -2573,7 +2573,9 @@
   function twAt(r, el) {
     var fs = r.floors || [], i = 0; while (i + 1 < fs.length && fs[i + 1].t <= el) i++;
     var fl = fs[i]; if (!fl) return null;
-    var rel = el - fl.t, S0 = fl.S, sn = S0[0]; for (var k = 0; k < S0.length && S0[k][0] <= rel; k++) sn = S0[k];
+    var rel = el - fl.t, S0 = fl.S, k = 0; while (k + 1 < S0.length && S0[k + 1][0] <= rel) k++;
+    var a = S0[k], b = S0[k + 1], sn = a;
+    if (b && b[0] > a[0]) { var w = Math.max(0, Math.min(1, (rel - a[0]) / (b[0] - a[0]))); sn = a.map(function (v, j) { return j ? v + (b[j] - v) * w : rel; }); }   // 체력 기록(몇 초마다) 사이는 이어서 그린다
     return { fl: fl, rel: rel, sn: sn, gap: rel > fl.d, done: el >= r.d - 2 };
   }
   var TW_KIND = { real: '실전', party: '파티 연습', solo: '혼자 연습' };
@@ -2582,11 +2584,12 @@
   function twStageTop(r) {
     var el = twEl(r), a = twAt(r, el); if (!a) return '';
     var fl = a.fl, sn = a.sn, foe = fl.foe, h = '';
-    h += '<div class="row between" style="gap:8px;flex-wrap:wrap"><div class="row" style="gap:8px"><div class="twf num">' + fl.f + '<span>층</span></div><div><b>' + (fl.rest ? '별샘의 쉼터' : esc(foe.name)) + '</b><div class="tiny faint">' + (fl.rest ? '휴식층 · 모두 회복합니다' : foe.stage + '단계 수준 · 체력 ' + fmt(foe.hp)) + '</div></div></div>' +
+    var trl = foe && foe.trial ? R.TW_TRIALS.filter(function (x) { return x.id === foe.trial; })[0] : null;
+    h += '<div class="row between" style="gap:8px;flex-wrap:wrap"><div class="row" style="gap:8px"><div class="twf num">' + fl.f + '<span>층</span></div><div><b' + (trl ? ' class="gold"' : '') + '>' + (fl.rest ? '별샘의 쉼터' : esc(foe.name)) + '</b><div class="tiny faint">' + (fl.rest ? '휴식층 · 모두 회복합니다' : foe.stage + '단계 수준 · 체력 ' + fmt(foe.hp)) + (trl ? ' · <span class="bad">시련: ' + trl.name + '</span>' : '') + '</div></div></div>' +
       '<span class="tiny faint num">' + (a.done ? '종료' : a.gap ? '다음 층으로 이동 중' : (fl.rest ? '휴식 중' : '전투 ' + R.fmtTime(Math.floor(a.rel)))) + '</span></div>';
-    if (!fl.rest) h += '<div style="margin-top:8px">' + twBar(sn[1], 'violet thick') + '<div class="tiny faint num" style="text-align:right">' + (Math.round(sn[1] * 10) / 10) + '%</div></div>';
+    if (!fl.rest) h += '<div style="margin-top:8px">' + twBar(sn[1], 'violet thick') + '<div class="tiny faint num" style="text-align:right">' + (Math.round(sn[1] * 10) / 10) + '%</div></div>' + (trl ? '<p class="tiny" style="margin-top:2px"><span class="bad">시련의 층 「' + trl.name + '」</span> <span class="faint">' + esc(trl.desc) + '</span></p>' : '');
     h += '<div class="twms">' + r.ms.map(function (m, i) {
-      var p = sn[2 + i], pos = R.EXP_POS[m.pos];
+      var p = Math.round(sn[2 + i]), pos = R.EXP_POS[m.pos];
       return '<div class="twm2' + (p <= 0 ? ' down' : '') + '"><div class="row small" style="gap:6px"><span class="tag' + (m.pos === 'van' ? ' br' : m.pos === 'sup' ? ' ok' : '') + '">' + (pos ? pos.name : '') + '</span><span class="ell" style="flex:1;min-width:0;color:' + (R.HOUSE[m.house] ? R.HOUSE[m.house].color : 'inherit') + '">' + esc(m.name) + (m.npc ? ' <span class="tag npc">NPC</span>' : '') + '</span><span class="tiny num ' + (p <= 0 ? 'bad' : 'faint') + '">' + (p <= 0 ? '쓰러짐' : p + '%') + '</span></div>' + twBar(p, p > 50 ? '' : p > 25 ? 'brass' : 'rose') + '</div>';
     }).join('') + '</div>';
     return h;
@@ -2594,7 +2597,7 @@
   // 한 층의 대본 줄: 요약(L) + 전체 기록(E). upto = 층 시작 기준 몇 초까지, max = 끝에서 몇 줄. [층 시작 기준 초, 글, 종류]
   function twFloorLines(r, fl, full, upto, max) {
     var cut = function (a) { var lo = 0, hi = a.length; while (lo < hi) { var mid = (lo + hi) >> 1; if (a[mid][0] <= upto) lo = mid + 1; else hi = mid; } return a.slice(max ? Math.max(0, lo - max) : 0, lo); };
-    var L = cut(fl.L).filter(function (x) { return !full || !fl.E || x[2] === 's' || x[2] === 'm' || x[2] === 'x'; }).map(function (x, i) { return [x[0], x[1], x[2], i]; });
+    var L = cut(fl.L).filter(function (x) { return !full || !fl.E || x[2] === 's' || x[2] === 'm' || x[2] === 'x' || x[2] === 't'; }).map(function (x, i) { return [x[0], x[1], x[2], i]; });
     var foe = fl.foe ? fl.foe.name : '', E = full && fl.E ? cut(fl.E).map(function (e, i) { var w = R.twEvText(e, r.ms, foe); return [e[0], w[0], w[1], 1e6 + i]; }) : [];
     var out = L.concat(E).sort(function (a, b) { return a[0] - b[0] || a[3] - b[3]; });
     return max ? out.slice(-max) : out;
@@ -2730,8 +2733,9 @@
       '<div class="row" style="margin-top:12px;gap:6px;flex-wrap:wrap"><button class="btn primary" data-act="twgo" data-a="real"' + (realWhy ? why(realWhy) : '') + '>실전 ' + t.start + '층부터 <span class="cost">오늘 1회</span></button>' +
       '<button class="btn" data-act="twgo" data-a="party"' + (live ? why(realWhy) : '') + '>파티 연습</button><button class="btn ghost" data-act="twgo" data-a="solo">혼자 연습</button></div>' +
       '<p class="tiny faint" style="margin-top:8px">실전은 파티 단위로 하루 1번이며, 누르는 순간 파티원 모두의 오늘 기회를 사용합니다(KST 자정 초기화 · 결과가 자정을 넘겨 끝나도 누른 날의 기회로 계산합니다). 파티원 중 한 명이라도 오늘 실전을 했다면 시작할 수 없습니다. ' +
-      '실전은 파티원 기록 중 가장 낮은 층의 다음 층부터 시작해, 파티가 모두 쓰러질 때까지 이어집니다(전투 시간 제한 없음 · 한 층이 10분을 넘기면 물러남). 마지막으로 넘은 층이 각자의 이번 주 기록이 되며(더 높을 때만), 처음 넘은 층의 보상은 우편으로 전달됩니다. ' +
-      '층 사이에 최대 생명력의 ' + Math.round(R.TW.HEAL * 100) + '%를 회복하고(쓰러진 파티원도 일어납니다), ' + R.TW.REST + '층마다 휴식층에서 모두 회복합니다. 적은 선봉 한 명을 집중해서 노리고, ' + R.TW.AOE + '초마다 파티 전체를 공격합니다. ' +
+      '실전은 파티원 기록 중 가장 낮은 층의 다음 층부터 시작해, 파티가 모두 쓰러질 때까지 이어집니다(전투 시간 제한 없음 · 한 층이 ' + Math.round(R.TW.TIME * R.TW.PACE / 60) + '분을 넘기면 물러남). 마지막으로 넘은 층이 각자의 이번 주 기록이 되며(더 높을 때만), 처음 넘은 층의 보상은 우편으로 전달됩니다. ' +
+      '층 사이에 최대 생명력의 ' + Math.round(R.TW.HEAL * 100) + '%를 회복하고(쓰러진 파티원도 일어납니다), ' + R.TW.REST + '층마다 휴식층에서 모두 회복합니다. 적은 선봉 한 명을 집중해서 노리며 공격을 여러 번으로 나눠 치고, 주기적으로 파티 전체를 공격합니다. ' +
+      '탑에서는 방어력의 효과가 크고, 선봉은 생명력 +' + Math.round(R.TW.VAN_HP * 100) + '% · 받는 피해 −' + Math.round((1 - R.TW.VAN_TAKE) * 100) + '%를 받습니다. 치유 · 보호막 주문은 재사용 대기가 짧아지며, 동료가 쓰러질 공격을 맞기 직전에 준비돼 있으면 먼저 끼어듭니다. ' + R.TW.TRIAL + '층마다 특수한 기믹이 있는 시련의 층이 나옵니다. ' +
       '연습은 언제든 할 수 있고 기록 · 보상에 반영되지 않습니다. 파티 연습은 파티원 모두가 함께 보고, 혼자 연습은 내 화면에서만 진행됩니다.</p></div>';
     return h;
   }
