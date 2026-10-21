@@ -210,6 +210,7 @@ function open(dir) {
       parent INTEGER NOT NULL DEFAULT 0    -- 답글이면 원래 댓글 id
     );
     CREATE INDEX IF NOT EXISTS board_com ON board_comments(post, id);
+    CREATE TABLE IF NOT EXISTS board_mute (post INTEGER NOT NULL, pid TEXT NOT NULL, PRIMARY KEY (post, pid));   -- 이 글의 알림 받지 않기
   `);
   { const gc = db.prepare(`PRAGMA table_info(guilds)`).all().map((c) => c.name); if (gc.length && gc.indexOf('icon') < 0) db.exec(`ALTER TABLE guilds ADD COLUMN icon TEXT NOT NULL DEFAULT ''`); }   // 동아리 아이콘 (D.GUILD_ICONS id)
   { const bp = db.prepare(`PRAGMA table_info(board_posts)`).all().map((c) => c.name); if (bp.indexOf('st') < 0) db.exec(`ALTER TABLE board_posts ADD COLUMN st TEXT NOT NULL DEFAULT ''`); }   // 건의 처리 상태: '' · wip(적용 중) · done(해결 완료)
@@ -482,6 +483,7 @@ function open(dir) {
     mkAucBid: db.prepare(`UPDATE market SET bid = ?, bidder = ?, bidder_name = ?, bids = bids + 1, expires = ? WHERE id = ? AND status = 'open' AND auc = 1 AND bid = ? AND bidder = ?`),
     mkAucSold: db.prepare(`UPDATE market SET status = 'sold', buyer = ?, done_at = ?, price = ? WHERE id = ? AND status = 'open'`),
     mkAucEnded: db.prepare(`SELECT * FROM market WHERE status = 'open' AND auc = 1 AND expires <= ? LIMIT 200`),
+    mkReprice: db.prepare(`UPDATE market SET price = ? WHERE id = ? AND seller = ? AND status = 'open' AND auc = 0`),
     mkAucInit: db.prepare(`UPDATE market SET auc = 1, start_price = ? WHERE id = ?`),
     mkBidLog: db.prepare(`INSERT INTO market_bids (mid, pid, amount, t) VALUES (?, ?, ?, ?)`),
     mkMyBids: db.prepare(`SELECT m.*, COALESCE(p.name, m.seller_name) AS seller_name FROM market m LEFT JOIN players p ON p.id = m.seller WHERE m.auc = 1 AND m.id IN (SELECT mid FROM market_bids WHERE pid = ?) AND (m.status = 'open' OR m.done_at > ?) ORDER BY m.status = 'open' DESC, m.expires ASC LIMIT 30`),
@@ -570,6 +572,9 @@ function open(dir) {
     noteReadAll: db.prepare(`UPDATE notes SET read = 1 WHERE pid = ? AND read = 0`),
     notePrune: db.prepare(`DELETE FROM notes WHERE t < ?`),
     noteDelBy: db.prepare(`DELETE FROM notes WHERE pid = ?`),
+    bdMuteAll: db.prepare(`SELECT post, pid FROM board_mute`),
+    bdMuteOn: db.prepare(`INSERT OR IGNORE INTO board_mute (post, pid) VALUES (?, ?)`),
+    bdMuteOff: db.prepare(`DELETE FROM board_mute WHERE post = ? AND pid = ?`),
     bdComs: db.prepare(`SELECT * FROM board_comments WHERE post = ? AND deleted = 0 ORDER BY id ASC LIMIT 300`),
     bdComGet: db.prepare(`SELECT * FROM board_comments WHERE id = ?`),
     bdComInsert: db.prepare(`INSERT INTO board_comments (post, pid, op, body, created, parent) VALUES (?, ?, ?, ?, ?, ?)`),

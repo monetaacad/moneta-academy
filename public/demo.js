@@ -150,7 +150,7 @@
     if (!id || id === 'local' || id === P.id) {
       var pr = this.d.prof || {}, now = this._now(), s = Rules.summary(P, this.d.W, now);
       return Promise.resolve({ id: P.id, name: P.name, house: P.house, cls: P.cls, grade: P.grade, lvl: s.lvl, power: s.power, rank: 1, deco: Rules.decoView(P), badge: (function (b) { return b ? { gem: b.gem, lv: b.lv, name: b.name } : null; })(Rules.badgeWorn(P)), created: P.created, av: this.d.av ? 1 : 0,
-        status: pr.status || '', bio: pr.bio || '', fav: pr.fav || '', avcredit: pr.avcredit || '', showStats: pr.showStats !== false, visLv: pr.visLv, visStat: pr.visStat, visEq: pr.visEq, allowFriend: pr.allowFriend !== false, online: true, self: true,
+        status: pr.status || '', bio: pr.bio || '', fav: pr.fav || '', avcredit: pr.avcredit || '', showStats: pr.showStats !== false, visLv: pr.visLv, visStat: pr.visStat, visEq: pr.visEq, visBadge: pr.visBadge, badgeD: Rules.badgeWorn(P), allowFriend: pr.allowFriend !== false, online: true, self: true,
         stats: (function (c) { var st = {}; Rules.STATS.forEach(function (k) { st[k] = Math.round(c.stat[k]); }); return { st: st, dps: Math.round(c.totalDps), hp: Math.round(c.hp), def: Math.round(c.def) }; })(Rules.calc(P, this.d.W, now)), eq: P.eq });
     }
     var nk = /^npc:(\d+)$/.exec(id || ''), nn = nk ? npcs()[+nk[1]] : null;   // 아카데미 친구(NPC): 검색 결과에서 정보창을 열 때
@@ -164,7 +164,7 @@
     if (o.bio !== undefined) pr.bio = String(o.bio).trim().slice(0, 300);
     if (o.avcredit !== undefined) pr.avcredit = String(o.avcredit).replace(/\s+/g, ' ').trim().slice(0, 60);
     if (o.fav !== undefined) pr.fav = o.fav;
-    ['visLv', 'visStat', 'visEq'].forEach(function (k) { if (o[k]) pr[k] = o[k]; }); if (o.visLv) pr.showStats = o.visLv !== 'none';
+    ['visLv', 'visStat', 'visEq', 'visBadge'].forEach(function (k) { if (o[k]) pr[k] = o[k]; }); if (o.visLv) pr.showStats = o.visLv !== 'none';
     if (o.showStats !== undefined) pr.showStats = !!o.showStats;
     if (o.allowFriend !== undefined) pr.allowFriend = !!o.allowFriend;
     this._save(); this._announce(); return Promise.resolve({ ok: true });

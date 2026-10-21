@@ -865,6 +865,7 @@ button.mkn:hover { text-decoration: underline; }
 .mkab input.mkbid { width: 110px; padding: 5px 8px; }
 .mkaf { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; flex-basis: 100%; padding: 6px 8px; margin-top: 4px; border-radius: 8px; background: rgba(214, 173, 95, .08); }
 .mkaf label { display: inline-flex; gap: 4px; align-items: center; }
+.mkedit { padding: 6px 12px 10px; background: rgba(214, 173, 95, .06); border-bottom: 1px solid var(--line2); }   /* 내 물건 · 가격 수정 칸 */
 .mkaf input { width: 120px; }
 .mkaf select { width: auto; padding: 5px 8px; }
 @media (max-width: 480px) { .mkauc .mkap { margin-left: auto; } .mkab { max-width: none; flex-basis: 100%; } .mkaf label { flex: 1 1 45%; } .mkaf input { width: 100%; min-width: 0; } }
@@ -920,6 +921,7 @@ button.mkn:hover { text-decoration: underline; }
 .peqt i { font-style: normal; font-size: 10.5px; color: var(--faint); }
 .peqt .pn { font-size: 12px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: keep-all; }
 .peqt .pe { position: absolute; top: 4px; right: 5px; font-size: 10.5px; color: var(--brass2); }
+.peq.peq6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 .peqt.empty { cursor: default; opacity: .6; font-size: 12px; }
 .peqt.sel { border-color: var(--brass); box-shadow: 0 0 0 1px var(--brass) inset; }
 .peqd { margin-top: 8px; padding: 10px; border-radius: 9px; background: var(--sunk); }
@@ -927,7 +929,7 @@ button.mkn:hover { text-decoration: underline; }
 .peqcols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .peqd.cmp .peqcols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 .peqmine { border-left: 1px dashed var(--line2); padding-left: 10px; }
-@media (max-width: 480px) { .pstats, .peq { grid-template-columns: repeat(3, minmax(0, 1fr)); } .peqd.cmp .peqcols { gap: 8px; } .peqd .statline { font-size: 11.5px; } }
+@media (max-width: 480px) { .pstats, .peq, .peq.peq6 { grid-template-columns: repeat(3, minmax(0, 1fr)); } .peqd.cmp .peqcols { gap: 8px; } .peqd .statline { font-size: 11.5px; } }
 .invdetail .card.detail { margin: 2px 0 4px; }
 @media (max-width: 900px) { .gearcols > .stack { display: contents; } .gearcols > .stack > [data-anchor="alloc"] { order: 2; } .invdetail, .eqdetail { display: block; } .gearcols > .stack > .detail.bagsel, .gearcols > .stack > .detail.eqsel { display: none; } }
 @container page (max-width: 720px) { .gearcols > .stack { display: contents; } .gearcols > .stack > [data-anchor="alloc"] { order: 2; } .invdetail, .eqdetail { display: block; } .gearcols > .stack > .detail.bagsel, .gearcols > .stack > .detail.eqsel { display: none; } }
@@ -1416,6 +1418,8 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 .bdcform.reply { margin: 6px 0 4px; }
 .cm.rcm .cx { display: block; padding: 5px 9px; border: 1px solid var(--line2); border-radius: 8px; background: color-mix(in srgb, var(--brass) 6%, transparent); font-size: 13px; line-height: 1.5; }
 .cm.rcm .rchead { display: block; }
+.cm.rcm.rcdone .cx { opacity: .5; }   /* 출정했거나 닫힌 방 · 인원 마감 · 모집 종료 */
+.cm.rcm .tag.rcst { font-size: 11px; }
 .cm.rcm .rcpos { display: inline-flex; flex-wrap: wrap; gap: 3px; align-items: center; margin-left: 6px; vertical-align: 1px; }
 .cm.rcm .rcpos .postag { font-size: 10.5px; padding: 0 5px; line-height: 1.6; }
 .cm.rcm .rcfoot { display: flex; align-items: center; gap: 8px; margin-top: 3px; }
@@ -1812,3 +1816,5 @@ mark.hl { color: inherit; background: linear-gradient(transparent 38%, color-mix
 .mksell .mkwarn:empty { display: none; }
 @media (max-width: 600px) { .mksr { flex-wrap: wrap; } .mksr input.mkunit { flex: 1; width: auto; min-width: 0; } }
 .el.ksum { color: var(--brass2); border-top: 1px dashed var(--line2); padding-top: 3px; margin-top: 2px; }   /* 원정 일지 10분 요약 */
+
+.bdpost .bdmute { margin-left: auto; }   /* 게시글: 알림 받지 않기 (우측) */

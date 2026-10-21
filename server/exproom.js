@@ -222,6 +222,8 @@ function create(o) {
   function chatKey(pid) { const r = rooms.get(roomOf.get(pid)); if (!r) return null; if (!r.ck) r.ck = Date.now().toString(36) + '-' + r.id; return r.ck; }
   // 같은 방 사람들 (방에 있을 때만)
   function peers(pid) { const r = rooms.get(roomOf.get(pid)); return r ? people(r).map((m) => m.id) : null; }
-  return { inRoom: (pid) => roomOf.has(pid), chatKey, peers, persist: () => { savedJson = ''; persist(); }, list, op, tick, peek, forget: (pid) => { leaveAny(pid); invites.delete(pid); }, invN: (pid) => myInvites(pid).length, size: () => rooms.size };
+  // 모집 탭: 방의 지금 인원 (없으면 출정했거나 닫힌 방)
+  function status(id) { const r = rooms.get(String(id || '')); return r ? { n: r.members.length, max: R.EXP_PARTY_MAX } : null; }
+  return { status, inRoom: (pid) => roomOf.has(pid), chatKey, peers, persist: () => { savedJson = ''; persist(); }, list, op, tick, peek, forget: (pid) => { leaveAny(pid); invites.delete(pid); }, invN: (pid) => myInvites(pid).length, size: () => rooms.size };
 }
 module.exports = { create };

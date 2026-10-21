@@ -10,6 +10,7 @@ function create(dbx, sec, opts) {
   const isOp = opts.isOp, sendMail = opts.sendMail || (() => {}), log = opts.log || (() => {});
   const posts = new Map();   // id → {id, pid, tag, priv, title, body, created, updated, last, ncom}
   dbx.q.bdAll.all().forEach((r) => { try { posts.set(r.id, { id: r.id, pid: r.pid, tag: r.tag, priv: !!r.priv, title: sec.dec(r.title), body: sec.dec(r.body), created: r.created, updated: r.updated, last: r.last, ncom: r.ncom, st: r.st || '' }); } catch (e) { } });
+  const mutes = new Set(); dbx.q.bdMuteAll.all().forEach((r) => mutes.add(r.post + ':' + r.pid));   // 「알림 받지 않기」한 글 (글 id : 학생)
   const names = new Map();
   function nameOf(pid) {
     if (pid === 'staff') return '운영진';
@@ -47,10 +48,10 @@ function create(dbx, sec, opts) {
   }
   function comOut(c, me) { return { id: c.id, author: nameOf(c.pid), aid: c.pid, op: !!c.op, badge: c.pid === 'staff' ? '' : (opts.badgeOf || (() => ''))(c.pid), mine: c.pid === me, body: sec.dec(c.body), created: c.created, parent: c.parent || 0 }; }
   // 알림: 내 글에 댓글 · 내 댓글에 답글이 달리면 알림 칸에 (우편은 보내지 않는다)
-  function note(to, text, post) { if (!to || to === 'staff') return; (opts.note || (() => {}))(to, 'board', text, { view: 'board', post: post }); }
+  function note(to, text, post) { if (!to || to === 'staff' || mutes.has(post + ':' + to)) return; (opts.note || (() => {}))(to, 'board', text, { view: 'board', post: post }); }
   function get(me, id) {
     const p = posts.get(Number(id) | 0); if (!p || !canSee(me, p)) return null;
-    return Object.assign(brief(p, me), { body: p.body, canEdit: p.pid === me, canDel: p.pid === me || isOp(me), canStatus: stOk(me, p), comments: dbx.q.bdComs.all(p.id).map((c) => comOut(c, me)) });
+    return Object.assign(brief(p, me), { body: p.body, canEdit: p.pid === me, canDel: p.pid === me || isOp(me), canStatus: stOk(me, p), muted: mutes.has(p.id + ':' + me), comments: dbx.q.bdComs.all(p.id).map((c) => comOut(c, me)) });
   }
   /* 건의 처리 상태(검토 중 · 확인 중 · 해결 완료 · 반영 안 함 · 재현 안 됨): 건의 말머리나 관리자만 보기 글에, 학생회장만 붙인다. 바뀌면 쓴 학생에게 알림 */
   const ST = { '': '', review: '검토 중', wip: '확인 중', done: '해결 완료', no: '반영 안 함', norepro: '재현 안 됨' };
@@ -105,6 +106,12 @@ function create(dbx, sec, opts) {
     if (op && p.priv && p.pid !== me) sendMail(p.pid, '운영진', '문의에 답변이 달렸습니다', '「' + p.title + '」\n\n' + body.slice(0, 600) + '\n\n교류 › 게시판 › 내 글에서 이어서 볼 수 있습니다.', {}, now + 30 * 86400);
     return p.id;
   }
+  // 이 글의 알림 받지 않기 (내 글 댓글 · 내 댓글 답글 · 건의 처리 상태 알림 모두)
+  function mute(me, id, on) {
+    const p = posts.get(Number(id) | 0); if (!p || !canSee(me, p)) fail('없는 글입니다');
+    const k = p.id + ':' + me; if (on) { mutes.add(k); dbx.q.bdMuteOn.run(p.id, me); } else { mutes.delete(k); dbx.q.bdMuteOff.run(p.id, me); }
+    return p.id;
+  }
   function cdel(me, cid) {
     const c = dbx.q.bdComGet.get(Number(cid) | 0); if (!c || c.deleted) fail('없는 댓글입니다');
     if (!(c.pid === me || isOp(me) || me === 'staff')) fail('지울 수 없는 댓글입니다');
@@ -123,6 +130,6 @@ function create(dbx, sec, opts) {
     }).join('\n\n---\n\n');
   }
   function deleteBy(pid) { [...posts.values()].filter((p) => p.pid === pid).forEach((p) => { dbx.q.bdDel.run(p.id); posts.delete(p.id); }); }
-  return { list, get, write, edit, del, setStatus, exportIdeas, comment, cdel, adminList, deleteBy, forgetName: (pid) => names.delete(pid), LIM };
+  return { list, get, write, edit, del, mute, setStatus, exportIdeas, comment, cdel, adminList, deleteBy, forgetName: (pid) => names.delete(pid), LIM };
 }
 module.exports = { create };
