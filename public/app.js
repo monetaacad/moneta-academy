@@ -3399,7 +3399,7 @@
       act += '<button class="btn sm primary' + (armed ? ' armed' : '') + '" data-act="mkbuyout" data-a="' + x.id + '"' + (canBuy ? '' : why(low ? '학년이 낮아 살 수 없습니다' : CUR + '가 부족합니다')) + '>' + (armed ? '한 번 더 누르면 구매' : '즉시 구매') + '</button>';
     }
     return '<div class="mkrow mkauc' + (open ? ' open' : '') + '"><div class="mki' + (tap ? ' tap" data-act="mkopen" data-a="' + x.id + '" role="button" tabindex="0" aria-expanded="' + !!open + '"' : '"') + '>' + info +
-      '<div class="tiny faint ell">' + sub + (x.seller ? ' · ' + esc(x.seller) : '') + (ended ? '' : ' · ' + (left > 0 ? R.fmtTime(left) + ' 남음' : '마감 처리 중')) + '</div>' + (open && x.item ? '<div class="mkst">' + statLines(x.item) + '</div>' + cmpBlock(x.item) : '') + '</div>' +
+      '<div class="tiny faint mksub"><span class="ell">' + sub + '</span>' + (x.seller ? '<span class="ell mksel">· ' + esc(x.seller) + '</span>' : '') + (ended ? '' : '<span class="mkleft">· ' + (left > 0 ? R.fmtTime(left) + ' 남음' : '마감 처리 중') + '</span>') + '</div>' + (open && x.item ? '<div class="mkst">' + statLines(x.item) + '</div>' + cmpBlock(x.item) : '') + '</div>' +
       '<div class="mkap"><div class="tiny faint">' + (x.bids ? '현재가 · 입찰 ' + x.bids + '건' : '시작가 · 입찰 없음') + '</div><b class="num gold">' + fmt(x.bids ? x.bid : x.start) + '</b><div class="tiny faint">즉시 구매가 <b class="num">' + fmt(x.price) + '</b></div></div>' +
       '<div class="mkab">' + st + act + '</div></div>';
   }
@@ -5503,7 +5503,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102274;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102275;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

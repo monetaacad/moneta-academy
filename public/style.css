@@ -885,6 +885,10 @@ button.mkn:hover { text-decoration: underline; }
 .mkauc .mkap b.gold { font-size: 15px; }
 .mkab { display: flex; gap: 6px; align-items: center; flex: none; flex-wrap: wrap; justify-content: flex-end; max-width: 300px; }
 .mkab input.mkbid { width: 110px; padding: 5px 8px; }
+.mksub { display: flex; flex-wrap: wrap; column-gap: 4px; min-width: 0; white-space: nowrap; }   /* 경매 줄: 설명 · 판매자 이름이 길면 다음 줄로 내리고, 남은 시간은 항상 보인다 */
+.mksub .ell { flex: 0 1 auto; min-width: 0; max-width: 100%; }
+.mksub .mksel { max-width: calc(100% - 110px); }
+.mksub .mkleft { flex: none; }
 .mkaf { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; flex-basis: 100%; padding: 6px 8px; margin-top: 4px; border-radius: 8px; background: rgba(214, 173, 95, .08); }
 .mkaf label { display: inline-flex; gap: 4px; align-items: center; white-space: nowrap; }
 .mkedit { padding: 6px 12px 10px; background: rgba(214, 173, 95, .06); border-bottom: 1px solid var(--line2); }   /* 내 물건 · 가격 수정 칸 */
