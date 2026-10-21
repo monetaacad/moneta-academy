@@ -1867,8 +1867,8 @@
       var wr = R.canWear(P, it), up = wr ? R.powerWith(P, it) - c.power : 0;
       return '<button class="itm rb' + it.r + (wr ? '' : ' nowear') + (S.sel === it.u ? ' sel' : '') + '" data-act="sel" data-a="' + it.u + '"><span class="in" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</span><span class="il">' + R.slotName(it) + ' · Lv ' + it.ilvl + presetTag(it.u) + '</span>' + (up > 0 ? '<span class="up">▲</span>' : '') + (wr ? '' : '<span class="nw" title="레벨 ' + it.ilvl + '부터 장착할 수 있습니다">Lv ' + it.ilvl + ' 필요</span>') + (it.lock ? '<span class="lk">잠금</span>' : '') + '</button>' + (S.sel === it.u ? '<div class="invdetail">' + detailCard() + '</div>' : '');
     }).join('') + '</div>';
-    h += '<hr class="sep"><div class="row small"><span class="muted">일괄 판매(잠금 제외)</span>' + D.RARITY.slice(0, 4).map(function (r) { return '<button class="btn sm ghost rk rk' + r.id + '" data-act="bulkask" data-a="sellBelow" data-b="' + r.id + '">' + r.name + ' 이하</button>'; }).join('') + '</div>' +
-      '<div class="row small" style="margin-top:6px"><span class="muted">일괄 분해(잠금 제외)</span>' + D.RARITY.slice(0, 4).map(function (r) { return '<button class="btn sm ghost rk rk' + r.id + '" data-act="bulkask" data-a="dismantleBelow" data-b="' + r.id + '">' + r.name + ' 이하</button>'; }).join('') + '</div><p class="tiny faint" style="margin-top:4px">마석 <b class="num">' + fmt(P.res.stone) + '</b> · ' + dotImg('dust', 14) + ' 마석가루 <b class="num">' + fmt(P.res.dust || 0) + '</b> — 분해하면 ' + CUR + ' 대신 마석과 마석가루를 얻고, 가루는 재련에 사용합니다.</p>';
+    h += '<hr class="sep"><div class="row small"><span class="muted">일괄 판매(잠금 · 프리셋 제외)</span>' + D.RARITY.slice(0, 4).map(function (r) { return '<button class="btn sm ghost rk rk' + r.id + '" data-act="bulkask" data-a="sellBelow" data-b="' + r.id + '">' + r.name + ' 이하</button>'; }).join('') + '</div>' +
+      '<div class="row small" style="margin-top:6px"><span class="muted">일괄 분해(잠금 · 프리셋 제외)</span>' + D.RARITY.slice(0, 4).map(function (r) { return '<button class="btn sm ghost rk rk' + r.id + '" data-act="bulkask" data-a="dismantleBelow" data-b="' + r.id + '">' + r.name + ' 이하</button>'; }).join('') + '</div><p class="tiny faint" style="margin-top:4px">마석 <b class="num">' + fmt(P.res.stone) + '</b> · ' + dotImg('dust', 14) + ' 마석가루 <b class="num">' + fmt(P.res.dust || 0) + '</b> — 분해하면 ' + CUR + ' 대신 마석과 마석가루를 얻고, 가루는 재련에 사용합니다.</p>';
     if (P.rs.sorter) h += '<div class="row small" style="margin-top:8px"><label class="muted" for="autosell">자동 판매</label><select id="autosell" data-act="autosell" style="width:auto">' + [[-1, '사용 안 함']].concat(D.RARITY.slice(0, 4).map(function (r) { return [r.id, r.name + ' 이하']; })).map(function (o) { return '<option value="' + o[0] + '"' + (P.autoSell === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select><select id="automode" data-act="automode" style="width:auto" aria-label="자동 처리 방식"><option value="sell"' + (P.autoDis ? '' : ' selected') + '>판매 (' + CUR + ')</option><option value="dis"' + (P.autoDis ? ' selected' : '') + '>분해 (마석·가루)</option></select></div>';
     else h += '<p class="tiny faint" style="margin-top:8px">서고의 「분류 마법」을 연구하면 자동 판매를 사용할 수 있습니다.</p>';
     h += '<label class="tog" style="margin-top:8px"><input type="checkbox" id="opt-ae" data-act="opt" data-a="autoEquip"' + (P.opt.autoEquip ? ' checked' : '') + '> 더 좋은 장비 자동 장착</label></div></div>';
@@ -2050,16 +2050,19 @@
   ACT.gsclear = function (i) { act('gearSet', { op: 'clear', i: +i }).then(function (r) { if (r) toast('프리셋 ' + (+i + 1) + '을 비웠습니다', '', 1400); gsRedraw(); }); };
   ACT.gsload = function (i) { act('gearSet', { op: 'load', i: +i }).then(function (r) { if (r) toast('프리셋 ' + (+i + 1) + ' 장착', r.moved + '칸을 바꿨습니다' + (r.miss ? ' · 가방에 없는 장비 ' + r.miss + '개는 그대로 두었습니다' : '') + (r.low ? ' · 레벨이 모자라는 장비 ' + r.low + '개는 장착하지 않았습니다' : ''), 2400); render(); }); };
   // 일괄 판매 · 분해 확인 (다시 보지 않기 · 설정에서 다시 켤 수 있음)
+  // 일괄 판매 · 분해 확인: 「다시 보지 않기」를 켜 두어도 영웅 이상 · 강화한 장비가 들어 있으면 반드시 한 번 더 확인한다
   ACT.bulkask = function (type, r) {
-    if (S.P.opt.bulkAsk === false) { ACT['do'](type, r); return; }
-    var P = S.P, rr = +r, its = P.inv.filter(function (it) { return !it.lock && it.r <= rr; }), sell = type === 'sellBelow';
-    if (!its.length) { toast(sell ? '일괄 판매' : '일괄 분해', D.RARITY[rr].name + ' 이하 장비가 없습니다 (잠금 제외)'); return; }
+    var P = S.P, rr = +r, its = R.bulkTargets(P, rr), sell = type === 'sellBelow';
+    var hi = its.filter(function (it) { return it.r >= 3; }).length, en = its.filter(function (it) { return it.enh > 0; }).length, risky = hi + en > 0;
+    if (S.P.opt.bulkAsk === false && !risky && its.length) { ACT['do'](type, r); return; }
+    if (!its.length) { toast(sell ? '일괄 판매' : '일괄 분해', D.RARITY[rr].name + ' 이하 장비가 없습니다 (잠금 · 프리셋 제외)'); return; }
     var gain = sell ? fmt(its.reduce(function (a, it) { return a + R.sellPrice(it); }, 0)) + ' ' + CUR : (function () { var s = 0, d = 0; its.forEach(function (it) { var y = R.dismantleYield(it); s += y.stone; d += y.dust; }); return '마석 ' + fmt(s) + ' · 마석가루 ' + fmt(d); })();
     var best = its.slice().sort(function (a, b) { return b.r - a.r || b.ilvl - a.ilvl; }).slice(0, 3).map(function (it) { return '<b style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</b>'; }).join(', ');
-    modal(mhead(sell ? '일괄 판매' : '일괄 분해', D.RARITY[rr].name + ' 이하 · 잠금 제외') +
+    modal(mhead(sell ? '일괄 판매' : '일괄 분해', D.RARITY[rr].name + ' 이하 · 잠금 · 프리셋 제외') +
       '<p>가방의 장비 <b class="num">' + its.length + '</b>개를 ' + (sell ? '판매' : '분해') + '합니다. 받는 것: <b class="gold">' + gain + '</b></p>' +
+      (risky ? '<p class="small bad" style="margin-top:6px"><b>주의</b> · ' + [hi ? '영웅 이상 장비 ' + hi + '개' : '', en ? '강화한 장비 ' + en + '개' : ''].filter(Boolean).join(' · ') + '가 포함되어 있습니다. ' + (sell ? '판매' : '분해') + '하면 되돌릴 수 없습니다.</p>' : '') +
       '<p class="small muted" style="margin-top:6px">포함: ' + best + (its.length > 3 ? ' 외 ' + (its.length - 3) + '개' : '') + '</p>' +
-      '<label class="tog small" style="margin-top:12px"><input type="checkbox" id="bulk-never"> 다시 보지 않기 (설정 → 화면에서 다시 켤 수 있습니다)</label>' +
+      (risky ? '<p class="tiny faint" style="margin-top:8px">영웅 이상 · 강화한 장비가 포함되면 「다시 보지 않기」를 켜 두어도 이 확인 창이 표시됩니다. 남기고 싶은 장비는 잠가 두면 제외됩니다.</p>' : '<label class="tog small" style="margin-top:12px"><input type="checkbox" id="bulk-never"> 다시 보지 않기 (설정 → 화면에서 다시 켤 수 있습니다)</label>') +
       '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn ghost" data-act="modal-close">취소</button><button class="btn ' + (sell ? 'danger' : 'primary') + '" data-act="bulkgo" data-a="' + type + '" data-b="' + rr + '">' + (sell ? '판매' : '분해') + '</button></div>');
   };
   ACT.bulkgo = function (type, r) {

@@ -1931,9 +1931,12 @@
     if (P.inv[i].lock) err('잠긴 장비입니다');
     var p = R.sellPrice(P.inv[i]); dlog(P, '판매', [P.inv[i]]); P.inv.splice(i, 1); addGold(P, p); return { gold: p };
   };
+  // 일괄 판매 · 분해 대상: 잠기지 않았고 장비 프리셋에 저장되지 않은 가방 장비 (프리셋 장비가 일괄 처분으로 사라지지 않게)
+  R.presetUids = function (P) { var m = {}; (P.gearSets || []).forEach(function (st) { if (st && st.eq) for (var k in st.eq) m[st.eq[k]] = 1; }); return m; };
+  R.bulkTargets = function (P, r) { var ps = R.presetUids(P); return P.inv.filter(function (it) { return !it.lock && !ps[it.u] && it.r <= r; }); };
   A.sellBelow = function (P, W, now, a) {
     var r = int(a.r, 0, 4), tot = 0, n = 0;
-    var gone = []; P.inv = P.inv.filter(function (it) { if (!it.lock && it.r <= r) { tot += R.sellPrice(it); n++; gone.push(it); return false; } return true; });
+    var gone = [], ps = R.presetUids(P); P.inv = P.inv.filter(function (it) { if (!it.lock && !ps[it.u] && it.r <= r) { tot += R.sellPrice(it); n++; gone.push(it); return false; } return true; });
     if (gone.length) dlog(P, '일괄 판매', gone, D.RARITY[r].name + ' 이하');
     addGold(P, tot); return { n: n, gold: tot };
   };
@@ -1947,7 +1950,7 @@
   };
   A.dismantleBelow = function (P, W, now, a) {
     var r = int(a.r, 0, 4), o = { n: 0, stone: 0, dust: 0 };
-    var gone = []; P.inv = P.inv.filter(function (it) { if (!it.lock && it.r <= r) { var y = dismantleGive(P, it); o.n++; o.stone += y.stone; o.dust += y.dust; gone.push(it); return false; } return true; });
+    var gone = [], ps = R.presetUids(P); P.inv = P.inv.filter(function (it) { if (!it.lock && !ps[it.u] && it.r <= r) { var y = dismantleGive(P, it); o.n++; o.stone += y.stone; o.dust += y.dust; gone.push(it); return false; } return true; });
     if (gone.length) dlog(P, '일괄 분해', gone, D.RARITY[r].name + ' 이하');
     return o;
   };

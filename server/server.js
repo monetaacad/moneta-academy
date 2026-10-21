@@ -2416,7 +2416,10 @@ routes['POST /api/admin/bkcompare'] = async (req, res) => {
   if (!O) return fail(req, res, 404, '이 백업에는 해당 학생이 없습니다 (백업 뒤에 입학)');
   const RN = ['일반', '고급', '희귀', '영웅', '전설'];
   const gear = (S) => { const m = new Map(); (S.inv || []).forEach((it) => it && it.u && m.set(it.u, { it, at: '가방' })); Object.keys(S.eq || {}).forEach((k) => { const it = S.eq[k]; if (it && it.u) m.set(it.u, { it, at: '장착' }); }); (S.mailQ || []).forEach((it) => it && it.u && m.set(it.u, { it, at: '우편 대기' })); return m; };
-  const out1 = (x, why) => ({ name: x.it.name + (x.it.enh ? ' +' + x.it.enh : ''), r: x.it.r, rn: RN[x.it.r], ilvl: x.it.ilvl, slot: R.slotName(x.it), at: x.at, lock: !!x.it.lock, why: why || '' });
+  const optText = (it) => { const D = R.D, f = (k, v) => (D.STAT_NAMES[k] || D.BONUS_NAMES[k] || k) + ' +' + (D.STAT_NAMES[k] ? Math.round(v * 10) / 10 : Math.round(v * 1000) / 10 + '%');
+    return (it.aff || []).map((a) => f(a.id, a.v)).concat(it.eng ? [((D.ENGRAVES.find((e) => e.id === it.eng.id) || {}).name || it.eng.id) + ' ' + (it.eng.id === 'killMana' ? it.eng.v : Math.round(it.eng.v * 1000) / 10 + '%')] : []).join(' · ') + ' · 품질 ' + Math.round((it.q || 1) * 1000) / 10 + '%'; };
+  const out1 = (x, why) => { const item = Object.assign({}, x.it); delete item.u; delete item.lock;   // 재지급용 (우편으로 그대로 보낼 수 있는 장비 정보)
+    return { name: x.it.name + (x.it.enh ? ' +' + x.it.enh : ''), r: x.it.r, rn: RN[x.it.r], ilvl: x.it.ilvl, slot: R.slotName(x.it), at: x.at, lock: !!x.it.lock, why: why || '', opt: optText(x.it), item }; };
   const then = gear(O), cur = gear(P), bkT = Math.floor(fs.statSync(path.join(bkDir(), file)).mtimeMs / 1000);
   const open = dbx.db.prepare(`SELECT data FROM market WHERE seller = ? AND status = 'open' AND kind = 'item'`).all(row.id).map((r) => { try { return JSON.parse(r.data); } catch (e) { return null; } }).filter(Boolean);
   const sold = dbx.db.prepare(`SELECT name, rarity, ilvl, price, done_at FROM market WHERE seller = ? AND status = 'sold' AND kind = 'item' AND done_at > ?`).all(row.id, bkT);
