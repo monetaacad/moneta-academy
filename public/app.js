@@ -3705,6 +3705,7 @@
     if (tk.respec > 0) out.push({ k: 'respec', name: '망각의 차', n: tk.respec, desc: '마시면 분배한 능력치 포인트를 모두 돌려받고 자동 분배가 꺼집니다.', acts: B('respecuse', null, null, S.confirm.rsp > Date.now() ? '한 번 더 누르면 마십니다' : '바로 마시기', true) + B('goto', 'gear', 'alloc', '능력치 칸으로') });
     D.POTIONS.forEach(function (p) { if (P.shelf[p.id] > 0) out.push({ k: 'pot:' + p.id, name: p.name, n: P.shelf[p.id], desc: p.desc, dot: p.color, acts: B('do', 'drink', p.id, '바로 마시기', true) + B('goto', 'alch', '', '연금 공방으로') }); });
     if (tk.rsDone > 0) out.push({ k: 'rsDone', name: '연구 즉시 완료 물약', n: tk.rsDone, desc: '진행 중인 연구 하나를 바로 끝냅니다. 서고에서 사용합니다.', acts: B('goto', 'lib', null, '연구로', true) });
+    if (tk.transfer > 0) out.push({ k: 'transfer', name: '학점 이전 증서', n: tk.transfer, desc: '한 과목에 쌓은 수업 경험치를 지금 들을 수 있는 다른 과목으로 모두 옮깁니다. 보내는 과목은 0레벨이 됩니다.', acts: B('tfopen', null, null, '사용하기', true) });
     if (tk.gradeUp > 0) out.push({ k: 'gradeUp', name: '학년 진급 물약', n: tk.gradeUp, desc: '마시면 한 학년 진급합니다. 시험장에서 사용합니다.', acts: B('goto', 'exam', null, '시험장으로', true) });
     return out;
   }
@@ -3719,6 +3720,27 @@
       return '<div class="invrow' + (nw[x.k] ? ' new' : '') + '"><div class="invh">' + (x.dot ? '<span class="pot-ic" style="background:' + x.dot + '"></span>' : '') + '<b>' + esc(x.name) + '</b> <span class="num gold">×' + x.n + '</span>' + (nw[x.k] ? ' <span class="tag br">NEW</span>' : '') + '</div><div class="tiny muted">' + esc(x.desc) + '</div><div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap">' + x.acts + '</div></div>';
     }).join('') + '</div><p class="tiny faint" style="margin-top:8px">장비 상자 · 휘장 원석 · 재료 상자는 받는 순간 열립니다. 재료는 연금 공방의 재료 보관함, 아카데미 휘장은 휘장 보관함에서 봅니다.</p>';
   }
+  // 학점 이전 증서: 보내는 과목 → 받는 과목을 고르고 미리 본 뒤, 한 번 더 눌러 사용
+  function tfBody() {
+    var P = S.P, d = S.tf || (S.tf = {}), own = D.SUBJECTS.filter(function (s) { return P.subj[s.id] && R.subjTotalXp(P.subj[s.id]) > 0; }), av = R.availableSubjects(P);
+    if (!own.some(function (s) { return s.id === d.from; })) d.from = own[0] && own[0].id;
+    if (!av.some(function (s) { return s.id === d.to && s.id !== d.from; })) { var t0 = av.filter(function (s) { return s.id !== d.from; })[0]; d.to = t0 && t0.id; }
+    var opt = function (list, cur) { return list.map(function (s) { return '<option value="' + s.id + '"' + (s.id === cur ? ' selected' : '') + '>' + esc(s.name) + ' (Lv ' + P.subj[s.id].lv + ')</option>'; }).join(''); };
+    var h = '<p class="small">남은 학점 이전 증서 <b class="num gold">' + ((P.tok || {}).transfer || 0) + '</b>장 · 보내는 과목의 수업 경험치를 받는 과목으로 모두 옮깁니다 (보내는 과목은 0레벨, 그 과목으로 배운 주문은 주문 칸에서 빠집니다).</p>' +
+      '<div class="row small" style="margin-top:10px;gap:8px;flex-wrap:wrap"><label>보내는 과목 <select data-act="tfpick" data-a="from">' + opt(own, d.from) + '</select></label><label>받는 과목 <select data-act="tfpick" data-a="to">' + opt(av.filter(function (s) { return s.id !== d.from; }), d.to) + '</select></label></div>';
+    if (!d.from || !d.to) return h + '<p class="small muted" style="margin-top:8px">옮길 수 있는 과목이 없습니다.</p>';
+    var pv = R.subjTransferPreview(P, d.from, d.to), why = R.subjTransferCheck(P, d.from, d.to), armed = S.confirm.tf > Date.now();
+    return h + '<p class="small" style="margin-top:10px">' + esc(R.SUBJ[d.from].name) + ' Lv ' + P.subj[d.from].lv + ' → <b>0</b> · ' + esc(R.SUBJ[d.to].name) + ' Lv ' + P.subj[d.to].lv + ' → <b class="gold">Lv ' + pv.lv + '</b> <span class="tiny faint">(경험치 ' + fmt(Math.floor(pv.xp)) + ')</span></p>' +
+      '<p class="tiny faint">과목 레벨은 높을수록 다음 레벨까지 필요한 경험치가 커서, 낮은 레벨 과목끼리 합치면 레벨이 그대로 더해지지는 않습니다.</p>' +
+      '<div class="row" style="justify-content:flex-end;margin-top:12px;gap:8px"><button class="btn" data-act="modal-close">닫기</button><button class="btn ' + (armed ? 'danger' : 'primary') + '" data-act="tfgo"' + (why ? ' disabled title="' + esc(why) + '"' : '') + '>' + (armed ? '한 번 더 누르면 옮깁니다' : '학점 이전 증서 사용') + '</button></div>';
+  }
+  function tfRedraw() { var b = $('#tfbox'); if (b) b.innerHTML = tfBody(); }
+  ACT.tfopen = function () { S.tf = {}; modal(mhead('학점 이전 증서', '수업 경험치를 다른 과목으로 옮깁니다') + '<div id="tfbox">' + tfBody() + '</div>'); };
+  ACT.tfpick = function (k, b, el) { (S.tf = S.tf || {})[k] = el.value; S.confirm.tf = 0; tfRedraw(); };
+  ACT.tfgo = function () {
+    if (!(S.confirm.tf > Date.now())) { S.confirm.tf = Date.now() + 4000; tfRedraw(); setTimeout(tfRedraw, 4100); return; }
+    S.confirm.tf = 0; act('subjTransfer', { from: S.tf.from, to: S.tf.to }).then(function (r) { if (!r) { tfRedraw(); return; } closeModal(); toast('학점 이전 증서', r.from + ' → ' + r.to + ' Lv ' + r.lt + ' → ' + r.lv, 2800); render(); });
+  };
   ACT.bagtab = function (t) { S.bagTab = t === 'inv' ? 'inv' : 'eq'; render(); };
   ACT.invjump = function (slot) { S.bagTab = 'bag'; S.invF = slot; ACT.goto('gear', 'bag'); };   // 장비 화면 상단 칸 이름 → 가방에서 그 칸만
   ACT.invgo = function () { S.bagTab = 'inv'; ACT.goto('gear', 'bag'); };
@@ -4982,7 +5004,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102147;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102148;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
@@ -5122,6 +5144,7 @@
     var el = e.target;
     if (el.dataset.act === 'pick-sel') { S.pick[el.dataset.a] = el.value; render(); }
     else if (el.dataset.act === 'exampick') act('examPick', { s: el.value }).then(function (r) { if (r) { toast('선택 과목', el.value ? R.SUBJ[el.value].name + ' 과목으로 응시합니다' : '가장 레벨이 높은 과목이 자동으로 반영됩니다'); render(); } });
+    else if (el.dataset.act === 'tfpick') ACT.tfpick(el.dataset.a, null, el);
     else if (el.dataset.act === 'famzone') act('famZone', { id: el.dataset.a, z: el.value }).then(function (r) { if (r) { toast('파견 지역', (el.value ? R.dispZoneOf(S.P, el.dataset.a, el.value).name : '갈 수 있는 가장 높은 지역') + '으로 정했습니다. 다음 파견부터 적용됩니다'); render(); } });
     else if (el.dataset.act === 'autosell') ACT.autosell();
     else if (el.dataset.act === 'automode') ACT.automode();

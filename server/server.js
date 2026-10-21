@@ -1645,6 +1645,11 @@ routes['POST /api/admin/mail'] = async (req, res) => {
   if (!isFinite(exp) || exp <= real) return fail(req, res, 400, '만료일 확인 필요');
   const rw = R.cleanRewards(b.rewards);
   if (b.to === '*' || !b.to) { const id = sendMail('*', '운영진', title, b.body, rw, exp, b.newcomers !== false); log('우편(전체) #' + id + ' ' + title); return send(req, res, 200, { ok: true, ids: [id], n: 'all' }); }
+  if (b.to === '@tf') {   // 학점 이전 증서를 받은 학생 = 기말시험 선택 과목 도입 전 입학생 (정지 · 게스트 · 삭제 제외). dry면 인원만
+    const rows = dbx.db.prepare('SELECT id FROM players WHERE created < ? AND banned = 0 AND guest = 0 AND deleted = 0').all(R.EXAM_OPT_AT);
+    if (b.dry) return send(req, res, 200, { ok: true, n: rows.length });
+    const ids = rows.map((r) => sendMail(r.id, '운영진', title, b.body, rw, exp, true)); log('우편(학점 이전 증서 대상 ' + ids.length + '명) ' + title); return send(req, res, 200, { ok: true, ids, n: ids.length });
+  }
   const names = String(b.to).split(/[,\n]/).map((x) => x.trim()).filter(Boolean).slice(0, 200), ids = [], missing = [];
   names.forEach((n) => { const row = dbx.q.playerByKey.get(nameKey(n)); if (row) ids.push(sendMail(row.id, '운영진', title, b.body, rw, exp, true)); else missing.push(n); });
   log('우편(' + ids.length + '명) ' + title); send(req, res, 200, { ok: true, ids, missing });
