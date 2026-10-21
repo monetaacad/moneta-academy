@@ -188,7 +188,7 @@
   }
   function setConn(ok) { var b = $('#conn'); if (b) b.hidden = ok; if (!ok) downHint(); }
   function afterSync() {
-    if (S.P.inbox && S.P.inbox.length && !S.modal) inboxReport();
+    if (inboxPend().length && !S.modal) inboxReport();
     else if (S.P.econC === 1 && !S.modal) econNotice();
     mqNotify(); softRender();
   }
@@ -234,8 +234,13 @@
     return arr.slice(0, 3).map(nm).join(', ') + (arr.length > 3 ? '<span class="exmore"> 외 ' + (arr.length - 3) + '개 <button class="exmb" data-act="exmore" aria-expanded="false" title="나머지 장비 보기">+</button><span class="exrest" hidden>: ' + arr.slice(3).map(nm).join(', ') + '</span></span>' : '');
   }
   function expReportLine(o) { return '<li><b>' + o.s + '단계 원정</b> ' + (o.fell ? '<span class="bad">쓰러져 귀환 (80%)</span>' : '귀환') + ' — ' + fmt(o.kills) + '마리, ' + MONEY(o.gold, '+') + (o.items.length ? ', 장비 ' + itemNames(o.items) + (o.items.some(function (it) { return it.res === 'mail'; }) ? ' <span class="tiny gold">(가방이 가득 차 ' + o.items.filter(function (it) { return it.res === 'mail'; }).length + '개는 우편함으로)</span>' : '') : '') + '</li>'; }
+  // 이미 확인(inboxAck)을 보낸 보고는 다시 띄우지 않는다: 확인 직전에 보낸 상태 받기 응답이 확인보다 늦게 와서
+  // 지난 보고함을 되돌려 놓아도(창 이동 직후 등) 같은 보고가 한 번 더 뜨지 않게
+  function inboxPend() { var a = S.inboxAcked; return (S.P && S.P.inbox || []).filter(function (o) { return a == null || (o.t || 0) > a; }); }
+  function inboxAcked(upto) { if (upto != null && isFinite(upto)) S.inboxAcked = Math.max(S.inboxAcked == null ? -Infinity : S.inboxAcked, upto); }
   function inboxReport() {
-    var items = S.P.inbox.slice(), lines = [];
+    var items = inboxPend(), lines = [];
+    if (!items.length) return;
     S.inboxUpto = items.reduce(function (m, o) { return Math.max(m, o.t || 0); }, 0);
     var sumExp = { kills: 0, gold: 0, xp: 0, items: 0 };
     items.forEach(function (o) {
@@ -247,7 +252,7 @@
       else if (o.k === 'dream') { var dn = R.DREAM[o.kind]; lines.push('<li><b>' + (dn ? dn.name : '꿈') + '</b>에서 깼습니다' + (o.lucid ? ' <span class="gold">(자각몽 · 1.5배)</span>' : '') + (o.review && R.SUBJ[o.s] ? ' <span class="gold">· 복습 효과: ' + clock(o.review) + '까지 ' + R.SUBJ[o.s].name + ' 수업 경험치 +' + Math.round(R.REVIEW_BONUS * 100) + '%</span>' : '') + ' — ' + [o.xp ? R.SUBJ[o.s].name + ' 경험치 +' + fmt(o.xp) + (o.to > o.from ? ' <span class="gold">(Lv ' + o.from + '→' + o.to + ')</span>' : '') : '', o.know ? '지식 +' + fmt(o.know) : '', o.shard ? '별조각 +' + o.shard : '', o.gold ? MONEY(o.gold, '+') : '', o.mats ? D.MATS[o.mat].name + ' ' + o.mats : '', o.stones ? '마석 ' + o.stones : '', o.egg ? '<span class="gold">환수의 알</span>' : ''].filter(Boolean).join(', ') + (o.line != null && D.DREAM_LINES[o.line] ? '<div class="tiny muted">꿈 일기: “' + D.DREAM_LINES[o.line] + '”</div>' : '') + '</li>'); }
       else if (o.k === 'ach') { var a = D.ACH.find(function (x) { return x.id === o.id; }); if (a) lines.push('<li><b>업적</b> — ' + a.name + ' (별조각 +' + a.r + ')</li>'); }
     });
-    if (!lines.length) { act('inboxAck', { upto: S.inboxUpto }); return; }
+    if (!lines.length) { inboxAcked(S.inboxUpto); act('inboxAck', { upto: S.inboxUpto }); return; }
     if (!items.every(function (o) { return (o.t || 0) <= (S.chimedT || 0) || (o.k === 'lec' && o.tt); })) Snd.play(items.some(function (o) { return o.k === 'lec'; }) ? 'bell' : 'level');   // 창이 떠 있어 소리를 먼저 낸 보고 · 시간표 교시 보고(종은 「제때 입실」에서 울린다)는 다시 울리지 않는다
     // 끝난 작업마다 바로가기: 확인하고 그 화면으로 가서 다음 연구 · 수업 · 원정을 바로 시작한다
     var GO = [['res', 'lib', '연구로'], ['lec', 'lecture', '강의실로'], ['exp', 'explore', '원정으로'], ['disp', 'fam', '사역장으로'], ['hatch', 'fam', '사역장으로']], seen = {};
@@ -3991,8 +3996,8 @@
   ACT['mc-no'] = function () { var c = $('#mconfirm'); if (c) c.remove(); };
   ACT['mc-yes'] = function () { S.peDraft = null; S.peAv = undefined; closeModal(); };
   ACT.pick = function (k, v) { S.pick[k] = v; render(); };
-  ACT['inbox-ok'] = function () { var upto = S.inboxUpto; closeModal(); act('inboxAck', { upto: upto }).then(function () { render(); if (S.P.inbox.length) inboxReport(); }); };
-  ACT['inbox-go'] = function (view) { var upto = S.inboxUpto; closeModal(); ACT.nav(view); act('inboxAck', { upto: upto }).then(function () { render(); }); };
+  ACT['inbox-ok'] = function () { var upto = S.inboxUpto; inboxAcked(upto); closeModal(); act('inboxAck', { upto: upto }).then(function () { render(); if (inboxPend().length && !S.modal) inboxReport(); }); };
+  ACT['inbox-go'] = function (view) { var upto = S.inboxUpto; inboxAcked(upto); closeModal(); ACT.nav(view); act('inboxAck', { upto: upto }).then(function () { render(); }); };
   ACT.cancel = function (key, type, el) {
     if (S.confirm[key] && S.confirm[key] > Date.now()) { S.confirm[key] = 0; act(type, JSON.parse(el.dataset.c)).then(function (r) { if (r) { if (type === 'expCancel') toast(r.leave ? '혼자 먼저 귀환했습니다 (모은 것의 ' + Math.round(R.EXP_LEAVE_KEEP * 100) + '%)' : '원정에서 귀환했습니다', fmt(r.kills || 0) + '마리 · ' + MONEY(r.gold || 0, '+') + (r.items && r.items.length ? ' · 장비 ' + r.items.length + '개' : '') + ' — 모은 것을 모두 받았습니다', 2800); else toast('작업을 취소했습니다', '지난 시간의 절반만큼 받았습니다'); } render(); }); }
     else { S.confirm[key] = Date.now() + 4000; render(); setTimeout(render, 4100); }
@@ -4657,7 +4662,7 @@
   }
   applyTheme();
   if (window.matchMedia) try { matchMedia('(prefers-color-scheme: light)').addEventListener('change', function () { if (PREF.theme === 'auto') { applyTheme(); if (S.P && !S.modal) { shell(); renderNav(); render(); renderDock(); updateMeBadge(); updateMailBadge(); } else if (S.P) { renderNav(); renderDock(); } } }); } catch (e) { }
-  ACT.cheat = function (op) { API.cheat(op).then(function (j) { if (j.error) { toast('테스트 도구', j.error); return; } absorb(j); toast('테스트 도구', j.msg, 1800); renderNav(); render(); if (S.P.inbox && S.P.inbox.length) { closeModal(); inboxReport(); } }); };
+  ACT.cheat = function (op) { API.cheat(op).then(function (j) { if (j.error) { toast('테스트 도구', j.error); return; } absorb(j); toast('테스트 도구', j.msg, 1800); renderNav(); render(); if (inboxPend().length) { closeModal(); inboxReport(); } }); };
   ACT.paper = function () { PREF.paper = PREF.paper === false; savePref(); applyTheme(); ACT.settings(); };
   ACT.settheme = function (id) { PREF.theme = id; savePref(); applyTheme(); if (S.P) { shell(); renderNav(); render(); renderDock(); updateMeBadge(); updateMailBadge(); } ACT.settings(); };
   /* ── 웹앱으로 설치 (PWA): 서버판에서만. 브라우저 주소창 없이 앱처럼 열린다 ── */
@@ -5300,7 +5305,7 @@
     ACT['avc-cancel'] = function () { ACT.me('profile'); };
   }
   ACT.pw = function () { API.password($('#pw-old').value, $('#pw-new').value).then(function (j) { $('#pw-msg').textContent = j.error || '비밀번호가 변경되었습니다'; }); };
-  ACT.logout = function () { API.logout().then(function () { S.P = null; chatDisconnect(); closeModal(); authScreen(); }); };
+  ACT.logout = function () { API.logout().then(function () { S.P = null; S.inboxAcked = null; chatDisconnect(); closeModal(); authScreen(); }); };
   ACT['demo-reset'] = function () { if (S.resetArm > Date.now()) { API.reset(); S.P = null; closeModal(); authScreen(); return; } S.resetArm = Date.now() + 4000; ACT.settings(); };
   // 입학 · 로그인
 
@@ -5503,7 +5508,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102274;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102275;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
