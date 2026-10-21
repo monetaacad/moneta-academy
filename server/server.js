@@ -1409,7 +1409,7 @@ function aucTick(now) {
   if (v && v.active && !dbx.q.aucByVisit.all(v.id).length) {
     const stages = dbx.db.prepare(`SELECT max_stage FROM players WHERE last_seen > ? AND banned = 0 ORDER BY max_stage`).all(Math.floor(Date.now() / 1000) - 7 * 86400).map((r) => r.max_stage);
     const at = (p) => stages.length ? stages[Math.min(stages.length - 1, Math.floor(stages.length * p))] : 10, dummy = { rng: crypto.randomInt(1, 2147483647) };
-    // 구간마다 3점: 신입생(하위 25%) · 중급(중간값) · 상급(상위 12%) 단계 + 3. 영웅 2점 + 영웅/전설(50%) 1점
+    // 구간마다 3점: 신입생(하위 10%) · 중급(중간값) · 상급(상위 12%) 단계 + 3. 영웅 2점 + 영웅/전설(50%) 1점
     R.AUC_TIERS.forEach((tp, tier) => {
       const lv = Math.max(1, at(tp.p) + 3);
       [3, 3, Math.random() < 0.5 ? 4 : 3].forEach((r) => {
