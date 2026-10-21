@@ -1070,6 +1070,7 @@ function mkSearch(f, now) {
   else if (f.kind !== 'badge' && f.slot === 'tome') { where.push(`m.slot = 'tome' AND m.data NOT LIKE '%"wk":"manual"%'`); }   // 마도서 칸 중 마도서
   else if (f.kind !== 'badge' && f.slot && R.SLOT[f.slot]) { where.push('m.slot = ?'); args.push(f.slot); }
   if (f.r >= 0 && f.r <= 4) { where.push('m.rarity = ?'); args.push(f.r); }
+  (f.aff || []).forEach((id) => { where.push('m.data LIKE ?'); args.push('%"id":"' + id + '"%'); });   // 부옵션 검색 (고른 옵션을 모두 가진 장비 · 휘장)
   if (f.wear > 0) { where.push(`(m.kind <> 'item' OR m.ilvl <= ?)`); args.push(f.wear); }   // 착용 가능만: 장비는 내 레벨 이하만 (휘장 · 재료 등은 레벨 제한이 없어 그대로)
   if (f.mat && MAT_NAMES[f.mat]) { where.push('m.data = ?'); args.push(f.mat); }
   if (f.pot && R.POT[f.pot]) { where.push('m.data = ?'); args.push(f.pot); }
@@ -1101,7 +1102,7 @@ routes['GET /api/market'] = (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
   if (limited('mk:' + me, 2, 15)) return fail(req, res, 429, '요청이 너무 잦습니다');
   const u = new URL(req.url, 'http://x'), g = (k) => u.searchParams.get(k) || '', now = Date.now() / 1000;
-  const f = { kind: g('kind'), slot: g('slot'), r: g('r') === '' ? -1 : Number(g('r')), mat: g('mat'), pot: g('pot'), tok: g('tok'), gem: g('gem'), q: g('q').slice(0, 20), sort: g('sort'), auc: g('auc') === '1', nobid: g('nobid') === '1', wear: 0 };
+  const f = { kind: g('kind'), slot: g('slot'), r: g('r') === '' ? -1 : Number(g('r')), mat: g('mat'), pot: g('pot'), tok: g('tok'), gem: g('gem'), q: g('q').slice(0, 20), aff: g('aff').split(',').filter((x, i, a) => R.AFF[x] && a.indexOf(x) === i).slice(0, 3), sort: g('sort'), auc: g('auc') === '1', nobid: g('nobid') === '1', wear: 0 };
   if (g('wear') === '1') { const P = store.get(me); f.wear = Math.max(1, (P && P.lvl) || 1); }   // 레벨은 서버가 아는 값으로
   send(req, res, 200, { list: mkSearch(f, now).map((r) => mkOut(r, me)), mine: dbx.q.mkMine.all(me, Math.floor(now) - 3 * 86400).map((r) => mkOut(Object.assign({ seller_name: '' }, r, { seller: me }), me)), myBids: dbx.q.mkMyBids.all(me).map((r) => mkOut(r, me)),
     fee: MK.FEE, days: MK.DAYS, maxOpen: MK.MAX_OPEN, grade: MK.GRADE, auc: { max: MK_AUC.MAX, hours: MK_AUC.HOURS, up: MK_AUC.MIN_UP, buyoutX: MK_AUC.BUYOUT_X } });
