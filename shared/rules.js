@@ -2025,6 +2025,11 @@
     var inc = P.fam.inc; if (!inc) err('품고 있는 알이 없습니다'); if (inc.prog < inc.need) err('아직 깨어날 준비가 되지 않았습니다');
     P.fam.inc = null; return hatch(P, now);
   };
+  // 품기 취소: 품던 알을 보관함으로 되돌린다. 진행도는 사라진다(소모한 자원이 없고, 종은 깨어날 때 정해지므로 다시 품어도 얻는 것이 없다)
+  A.eggCancel = function (P, W, now) {
+    var inc = P.fam.inc; if (!inc) err('품고 있는 알이 없습니다');
+    P.fam.inc = null; P.fam.eggs++; return { lost: Math.floor(inc.prog), need: inc.need };
+  };
   A.feed = function (P, W, now, a) {
     var id = str(a.id), o = P.fam.own[id]; if (!o) err('없는 사역마입니다'); if (o.lv >= 20) err('최대 레벨입니다');
     var cost = R.feedCost(P, id); if (P.res.gold < cost) err(CUR + '가 부족합니다'); P.res.gold -= cost; o.lv++; return { lv: o.lv };
