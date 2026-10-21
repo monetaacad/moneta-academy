@@ -2083,6 +2083,21 @@ routes['POST /api/admin/grant'] = async (req, res) => {
   P.res.shard += shard; R.log(P, nowSec(), '아카데미에서 별조각 ' + shard + '개를 보냈습니다' + (b.reason ? ' (' + String(b.reason).slice(0, 60) + ')' : ''), 'news');
   store.markDirty(row.id); send(req, res, 200, { ok: true, shard: P.res.shard });
 };
+// 운영실: 학생 카드 (공개 범위 설정과 관계없이 · 두상은 데이터 URL로)
+routes['GET /api/admin/pcard'] = (req, res) => {
+  if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
+  const q = new URL(req.url, 'http://x').searchParams, nm = String(q.get('name') || '').trim(), pid = String(q.get('id') || '');
+  const key = nm ? dbx.q.playerByKey.get(nameKey(nm)) : null, id = key ? key.id : /^[A-Za-z0-9_-]{4,40}$/.test(pid) ? pid : '';
+  const row = id && dbx.q.getProfile.get(id); if (!row) return fail(req, res, 404, '없는 학생입니다');
+  const pr = profileOf(row.profile), P = store.peek(id) || store.get(id), meta = dbx.db.prepare('SELECT role, last_seen FROM players WHERE id = ?').get(id) || {};
+  let av = ''; try { const a = dbx.q.getAvatar.get(id); if (a && a.avatar) av = 'data:' + (a.avatar_type === 'image/png' ? 'image/png' : 'image/jpeg') + ';base64,' + sec.decBuf(a.avatar).toString('base64'); } catch (e) { }
+  const s = P ? R.summary(P, world.W, Math.min(nowSec(), P.at)) : { lvl: row.lvl, grade: row.grade, power: row.power };
+  const tg = guildOf.get(id), tgr = tg && dbx.q.gGet.get(tg), mr = tgr ? dbx.q.gMember.get(id) || {} : null;
+  oplog('admin', '관리자', 'pcard', row.name + ' 학생 카드 확인');
+  send(req, res, 200, { id, name: row.name, house: (R.HOUSE[row.house] || {}).name || row.house, grade: s.grade, lvl: s.lvl, power: s.power, cls: P && R.CLS[P.cls] ? R.CLS[P.cls].name : '',
+    title: P ? R.titleName(P, P.title) : row.title || '', status: pr.status || '', bio: pr.bio || '', fav: pr.fav || '', av, created: row.created, seen: meta.last_seen || 0, online: isOnline(id),
+    role: meta.role === 'chief' ? '학생회장' : meta.role === 'admin' ? '학생회' : '', banned: !!row.banned, deleted: !!row.deleted, guild: tgr ? tgr.name + (mr ? ' · ' + R.guildRankName(gRanksOf(tgr), mr.role, mr.rank) : '') : '' });
+};
 // 운영실: 자원 회수 (잘못 지급 · 장비 복구 시 분해로 얻은 것 등). 가진 만큼만 빼고(0 아래로 내리지 않음) 학생 일지에 사유와 함께 남긴다
 const RECLAIM = [['stone', '마석'], ['dust', '마석가루'], ['gold', CUR], ['shard', '별조각'], ['mana', '마나'], ['know', '지식']];
 routes['POST /api/admin/reclaim'] = async (req, res) => {
