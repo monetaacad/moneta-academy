@@ -1987,7 +1987,9 @@
     if (it.enh >= R.ENH_MAX) return '';
     var nx = Object.assign({}, it, { enh: it.enh + 1 }), a = R.itemStats(it), b = R.itemStats(nx), Sx = R.slotDef(it);
     var rows = [Sx.main].concat(Sx.sub ? [Sx.sub] : []).map(function (k) {
-      var rd = function (v) { return v >= 10 ? Math.round(v) : Math.round(v * 10) / 10; }, x = rd(a[k]), y = rd(b[k]), d = Math.round((y - x) * 10) / 10, nm = D.STAT_NAMES[k] || D.BONUS_NAMES[k] || k; if (!(b[k] > a[k])) return '';   // 보이는 숫자끼리 빼서 「16 → 18 (+2)」가 맞게
+      var nm = D.STAT_NAMES[k] || D.BONUS_NAMES[k] || k; if (!(b[k] > a[k])) return '';
+      if (!(k === 'atk' || k === 'hp' || k === 'def' || D.STAT_NAMES[k])) return '<div class="statline"><span>' + nm + '</span><span class="d num">' + pct(a[k]) + ' → <b class="good">' + pct(b[k]) + '</b></span></div>';   // 치명타 확률 · 수업 효율 같은 % 옵션
+      var rd = function (v) { return v >= 10 ? Math.round(v) : Math.round(v * 10) / 10; }, x = rd(a[k]), y = rd(b[k]), d = Math.round((y - x) * 10) / 10;   // 보이는 숫자끼리 빼서 「16 → 18 (+2)」가 맞게
       return '<div class="statline"><span>' + nm + '</span><span class="d num">' + fmt(x) + ' → <b class="good">' + fmt(y) + '</b>' + (d > 0 ? ' <span class="tiny good">(+' + fmt(d) + ')</span>' : '') + '</span></div>';
     }).join('');
     var pw = eqd ? R.powerWith(S.P, nx) - C().power : 0;
@@ -4980,7 +4982,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102146;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102147;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
