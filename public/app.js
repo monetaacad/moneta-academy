@@ -2053,25 +2053,33 @@
     var miss = keys.filter(function (s) { var u = st.eq[s]; return !(P.eq[s] && P.eq[s].u === u) && !P.inv.some(function (x) { return x.u === u; }); }).length + (st.badge && !bd ? 1 : 0);
     var names = D.SLOTS.map(function (sl) { var u = st.eq[sl.id], it = u && R.findItem(P, u); return it ? '<span style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</span>' : null; }).filter(Boolean);
     if (bd) names.push('<span>' + esc(bd.name) + ' ' + badgeSvg(bd) + '</span>');   // 휘장
-    return { st: st, on: on, miss: miss, n: keys.length, names: names };
+    return { st: st, on: on, miss: miss, n: keys.length, names: names, nm: st.name || '' };
   }
   function gearSetRow() {
     var b = '';
-    for (var i = 0; i < R.GEARSET_N; i++) { var g = gsInfo(i); b += '<button class="btn sm' + (g.on ? ' primary' : '') + '" data-act="gsload" data-a="' + i + '"' + (g.st && !g.on ? ' title="프리셋 ' + (i + 1) + ' 장착"' : g.on ? ' title="지금 장착 중"' : ' disabled title="비어 있음 · 편집에서 저장"') + '>' + (i + 1) + '</button>'; }
+    for (var i = 0; i < R.GEARSET_N; i++) { var g = gsInfo(i); b += '<button class="btn sm' + (g.on ? ' primary' : '') + '" data-act="gsload" data-a="' + i + '"' + (g.st && !g.on ? ' title="프리셋 ' + (i + 1) + (g.nm ? ' · ' + esc(g.nm) : '') + ' 장착"' : g.on ? ' title="지금 장착 중"' : ' disabled title="비어 있음 · 편집에서 저장"') + '>' + (g.nm ? esc(g.nm) : i + 1) + '</button>'; }
     return '<div class="gsrow" data-anchor="gsets"><span class="small muted">장비 프리셋</span>' + b + '<button class="btn sm ghost" data-act="gsedit">편집</button></div>';
   }
   function gsEditBody() {
     var out = '';
     for (var i = 0; i < R.GEARSET_N; i++) {
       var g = gsInfo(i), armed = S.confirm['gs' + i] > Date.now();
-      out += '<div class="gset' + (g.on ? ' on' : '') + '"><div class="gsn"><b>프리셋 ' + (i + 1) + '</b>' + (g.on ? ' <span class="tag ok">장착 중</span>' : '') + (g.miss ? ' <span class="tag bad">없는 장비 ' + g.miss + '</span>' : '') +
+      out += '<div class="gset' + (g.on ? ' on' : '') + '"><div class="gsn"><b>' + (g.nm ? esc(g.nm) + ' <span class="tiny faint">프리셋 ' + (i + 1) + '</span>' : '프리셋 ' + (i + 1)) + '</b>' + (g.st ? ' <button class="btn sm ghost" data-act="gsname" data-a="' + i + '">이름 변경</button>' : '') + (g.on ? ' <span class="tag ok">장착 중</span>' : '') + (g.miss ? ' <span class="tag bad">없는 장비 ' + g.miss + '</span>' : '') +
         '<div class="small" style="margin-top:2px">' + (g.st ? g.names.join(' · ') || '<span class="faint">저장된 장비가 모두 사라졌습니다</span>' : '<span class="faint">비어 있음</span>') + '</div></div>' +
         '<span class="gsb"><button class="btn sm ' + (armed ? 'danger' : 'primary') + '" data-act="gssave" data-a="' + i + '">' + (armed ? '한 번 더 누르면 덮어씁니다' : '현재 장비 저장') + '</button>' + (g.st ? '<button class="btn sm ghost" data-act="gsclear" data-a="' + i + '">비우기</button>' : '') + '</span></div>';
     }
     return '<div class="gslist">' + out + '</div>';
   }
+  ACT.gsname = function (i) {
+    var st = (S.P.gearSets || [])[+i]; if (!st) return;
+    var box = $('#gsedit'); if (!box) return;
+    box.innerHTML = '<p class="small">프리셋 ' + (+i + 1) + ' 이름 (최대 10자, 비우면 번호로 표시)</p><div class="row" style="gap:6px;margin-top:6px"><input id="gs-nm" maxlength="10" value="' + esc(st.name || '') + '" placeholder="예: 보스용" style="flex:1;min-width:0"><button class="btn sm primary" data-act="gsnamesave" data-a="' + i + '">저장</button><button class="btn sm ghost" data-act="gsnameback">취소</button></div>';
+    setTimeout(function () { var x = $('#gs-nm'); if (x) { x.focus(); x.select(); } }, 30);
+  };
+  ACT.gsnamesave = function (i) { var x = $('#gs-nm'); act('gearSet', { op: 'name', i: +i, name: x ? x.value : '' }).then(function (r) { if (r) toast('프리셋 이름', r.name ? R.josa('「' + r.name + '」', '으로', '로') + ' 바꿨습니다' : '번호로 표시합니다', 1600); gsRedraw(); }); };
+  ACT.gsnameback = function () { gsRedraw(); };
   function gsRedraw() { var b = $('#gsedit'); if (b) b.innerHTML = gsEditBody(); render(); }
-  ACT.gsedit = function () { modal(mhead('장비 프리셋', '지금 장착한 장비와 휘장을 칸에 저장하고, 장비 화면의 1 · 2 · 3으로 한 번에 바꿔 낍니다') + '<div id="gsedit">' + gsEditBody() + '</div><div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn" data-act="modal-close">닫기</button></div>'); };
+  ACT.gsedit = function () { modal(mhead('장비 프리셋', '지금 장착한 장비와 휘장을 칸에 저장하고, 장비 화면의 1 · 2 · 3으로 한 번에 바꿔 낍니다') + '<div id="gsedit">' + gsEditBody() + '</div>'); };
   ACT.gssave = function (i) {
     var st = (S.P.gearSets || [])[+i], k = 'gs' + i;
     if (st && !(S.confirm[k] > Date.now())) { S.confirm[k] = Date.now() + 4000; gsRedraw(); setTimeout(gsRedraw, 4100); return; }
@@ -3344,6 +3352,7 @@
         bs = pots; var soon = Math.min.apply(null, bs.map(function (k) { return S.P.buffs[k].end; }));
         out.push('<span class="buffpill merged" data-act="buffinfo" role="button" data-tip="buffall" tabindex="0">' + bs.slice(0, 3).map(function (k) { return '<i style="background:' + (S.P.buffs[k].color || '#e8c36a') + '"></i>'; }).join('') + '<span class="bn">물약</span> <b class="num">' + bs.length + '</b> <span class="num">' + left(soon) + '</span></span>');
       } else bs.forEach(function (k) { var b = S.P.buffs[k]; out.push('<span class="buffpill" data-act="buffinfo" role="button" data-tip="buff:' + k + '" tabindex="0"><i style="background:' + (b.color || '#e8c36a') + '"></i><span class="bn">' + esc(b.name) + '</span> <span class="num">' + left(b.end) + '</span></span>'); });
+      var tr = document.querySelector('.top-row'); if (tr) tr.classList.toggle('metarow', out.length >= 3);   // PC: 효과가 많으면 날짜 · 효과 줄을 두상 ~ 재화 아래 한 줄로
       return out.join(' '); },
     power: function () { return fmt(C().power); },
     log: function () { return S.P.log.map(function (l) { return '<div class="ln k-' + l.k + '"><span class="lt">' + clock(l.t).replace(/^(오전|오후) /, '') + '</span><span>' + esc(l.m) + (l.n > 1 ? ' <span class="faint">×' + l.n + '</span>' : '') + '</span></div>'; }).join(''); },
