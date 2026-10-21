@@ -292,7 +292,7 @@ var DATA = (function () {
     { id: 'martial', name: '전투체술학', prof: '브란 오스틴 교관', unlock: 1, kind: 'common', lst: 'vit', stat: 'main', stat2: 'agi', lv: { hpPct: 0.005 },
       desc: '무기와 맨손으로 싸우는 전투의 기본. 마법이 닿지 않는 순간을 위한 수업. 기사과 · 마법과 공용.',
       line: '주문이 끊겨도 주먹은 남는다. 그러니 주먹부터 바로 쥐어라.' },
-    { id: 'flight', name: '체술·비행', prof: '카야 린 교관', unlock: 1, kind: 'common', lst: 'vit', stat: 'agi', stat2: 'main', lv: { aps: 0.005 }, perk: [[14, { critC: 0.02 }], [22, { cdr: 0.05 }]],
+    { id: 'flight', name: '체술·비행', prof: '카야 린 교관', unlock: 1, kind: 'common', lst: 'vit', stat: 'agi', stat2: 'main', lv: { aps: 0.003 }, perk: [[14, { critC: 0.02 }], [22, { cdr: 0.05 }]],
       desc: '빗자루, 바람발판, 낙하 제어. 그리고 넘어지는 법. 의무실이 가장 가까운 강의실이다.',
       line: '떨어지는 건 괜찮아. 착지를 못 하는 게 문제지!' },
     { id: 'alch', name: '연금화학', prof: '세라핀 루 교수', unlock: 1, kind: 'common', lst: 'vit', stat: 'wil', stat2: 'luk',
