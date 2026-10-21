@@ -1339,7 +1339,7 @@
       '<p class="tiny faint">수업 효율은 ' + LST_NAME[S2.lst || 'int'] + '을 따릅니다 · 이 과목으로 배우는 주문은 과목 레벨마다 위력 +3%</p>';
     var rows = [];
     D.SPELLS.forEach(function (sp) { if (sp.req && sp.req[0] === sid) rows.push([sp.req[1], '주문 「' + sp.name + '」 — ' + sp.desc + (sp.cls ? '' : ''), sp.cls && sp.cls.indexOf(cls) < 0]); });
-    if (sid === 'alch') { D.POTIONS.forEach(function (p) { rows.push([p.unlock, '물약 「' + p.name + '」 조제 — ' + p.desc]); }); rows.push([10, '가마솥 2개']); rows.push([20, '가마솥 3개']); }
+    if (sid === 'alch') { D.POTIONS.forEach(function (p) { rows.push([p.unlock, '물약 「' + p.name + '」 조제 — ' + p.desc]); }); rows.push([0, '연금 공방(물약 조제)은 2학년부터 사용할 수 있습니다']); rows.push([10, '가마솥 2개']); rows.push([20, '가마솥 3개']); }
     if (sid === 'beast') rows.push([R.FAM_SUBJ, '사역마 · 첫 환수의 알 (또는 레벨 ' + R.FAM_LV + ' · 3학년)']);
     (S2.perk || []).forEach(function (pk) { rows.push([pk[0], '레벨 보상 — ' + R.effText(pk[1])]); });
     rows.sort(function (a, b) { return a[0] - b[0]; });
@@ -1354,7 +1354,7 @@
   function subjMiles(sid) {
     var P = S.P, lv = P.subj[sid].lv, a = [], ex = R.examFor(P), cls = P.cls || 'mage';
     D.SPELLS.forEach(function (sp) { if (sp.req && sp.req[0] === sid && lv < sp.req[1] && (!sp.cls || sp.cls.indexOf(cls) >= 0)) a.push([sp.req[1], '주문 「' + sp.name + '」']); });
-    if (sid === 'alch') D.POTIONS.forEach(function (p) { if (lv < p.unlock) a.push([p.unlock, '물약 「' + p.name + '」']); });
+    if (sid === 'alch') D.POTIONS.forEach(function (p) { if (lv < p.unlock) a.push([p.unlock, '물약 「' + p.name + '」' + (P.grade < 2 ? '(연금 공방 2학년부터)' : '')]); });
     if (sid === 'beast' && !R.famOpen(P)) a.push([R.FAM_SUBJ, '사역마 · 첫 환수의 알']);
     (R.SUBJ[sid].perk || []).forEach(function (pk) { if (lv < pk[0]) a.push([pk[0], R.effText(pk[1])]); });
     if (ex && P.grade < 8 && lv < ex.req) { if (ex.subj.indexOf(sid) >= 0) a.push([ex.req, '기말 기준']); else if (R.examOpt(P, ex) === sid) a.push([ex.req, '기말 선택 과목']); }
