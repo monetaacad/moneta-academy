@@ -2006,7 +2006,7 @@
       '<div class="filters" style="margin:8px 0">' + [['all', '전체']].concat(D.SLOTS.map(function (s) { return [s.id, s.name]; })).map(function (f) { return '<button class="btn sm ghost' + (S.invF === f[0] ? ' on' : '') + '" data-act="invf" data-a="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '</div>';
     if (!list.length) h += '<div class="empty">가방이 비어 있습니다. 원정에서 장비를 가져옵니다.</div>';
     else h += '<div class="inv">' + list.map(function (it) {
-      var wr = R.canWear(P, it), up = wr ? R.powerWith(P, it) - c.power : 0;
+      var wr = R.canWear(P, it), up = wr ? R.powerWith(P, it, wctx(), now()) - c.power : 0;
       return '<button class="itm rb' + it.r + (wr ? '' : ' nowear') + (S.sel === it.u ? ' sel' : '') + '" data-act="sel" data-a="' + it.u + '"><span class="in" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</span><span class="il">' + R.slotName(it) + ' · Lv ' + it.ilvl + presetTag(it.u) + '</span>' + (up > 0 ? '<span class="up">▲</span>' : '') + (wr ? '' : '<span class="nw" title="레벨 ' + it.ilvl + '부터 장착할 수 있습니다">Lv ' + it.ilvl + ' 필요</span>') + (it.lock ? '<span class="lk">잠금</span>' : '') + '</button>' + (S.sel === it.u ? '<div class="invdetail">' + detailCard() + '</div>' : '');
     }).join('') + '</div>';
     h += '<hr class="sep"><div class="row small"><span class="muted">일괄 판매(잠금 · 프리셋 제외)</span>' + D.RARITY.slice(0, 4).map(function (r) { return '<button class="btn sm ghost rk rk' + r.id + '" data-act="bulkask" data-a="sellBelow" data-b="' + r.id + '">' + r.name + ' 이하</button>'; }).join('') + '</div>' +
@@ -2121,7 +2121,7 @@
   }
   // 거래소 · 떠돌이 상인 · 부실 창고: 장착 시 전투력 + 지금 장비와 한 줄 비교
   function cmpBlock(it) {
-    var P = S.P, delta = R.powerWith(P, it) - C().power;
+    var P = S.P, delta = R.powerWith(P, it, wctx(), now()) - C().power;
     return '<div class="cmpblk"><span class="small">장착 시 전투력 <b class="num ' + (delta >= 0 ? 'good' : 'bad') + '">' + (delta >= 0 ? '+' : '') + fmt(delta) + '</b></span>' + cmpLine(it, P.eq[it.slot]) + '</div>';
   }
   // 강화하면 오르는 능력치: 「생명력 19 → 24 (+5)」 · 장착 중이면 전투력 변화도
@@ -2134,7 +2134,7 @@
       var rd = function (v) { return v >= 10 ? Math.round(v) : Math.round(v * 10) / 10; }, x = rd(a[k]), y = rd(b[k]), d = Math.round((y - x) * 10) / 10;   // 보이는 숫자끼리 빼서 「16 → 18 (+2)」가 맞게
       return '<div class="statline"><span>' + nm + '</span><span class="d num">' + fmt(x) + ' → <b class="good">' + fmt(y) + '</b>' + (d > 0 ? ' <span class="tiny good">(+' + fmt(d) + ')</span>' : '') + '</span></div>';
     }).join('');
-    var pw = eqd ? R.powerWith(S.P, nx) - C().power : 0;
+    var pw = eqd ? R.powerWith(S.P, nx, wctx(), now()) - C().power : 0;
     return rows ? '<div class="enhpv" style="margin-top:6px">' + rows + (pw > 0 ? '<div class="statline"><span class="tiny muted">성공하면 전투력</span><span class="d num good">+' + fmt(pw) + '</span></div>' : '') + '</div>' : '';
   }
   // 강화 · 재련 · 분해 바로 위에 지금 가진 재화 (마석가루는 상단 자원 막대에 없어서 여기서 확인한다)
@@ -2142,7 +2142,7 @@
   function detailCard() {
     var P = S.P, it = S.sel && R.findItem(P, S.sel);
     if (!it) return '<div class="card detail"><h3>장비 살펴보기</h3><p class="small muted">장착 칸이나 가방의 장비를 누르면 능력치와 강화 정보를 볼 수 있습니다. 초록 ▲는 지금보다 전투력이 오르는 장비입니다.</p></div>';
-    var eqd = P.eq[it.slot] && P.eq[it.slot].u === it.u, c = C(), cost = R.enhCost(P, it), ch = R.enhChance(P, it), delta = eqd ? 0 : R.powerWith(P, it) - c.power;
+    var eqd = P.eq[it.slot] && P.eq[it.slot].u === it.u, c = C(), cost = R.enhCost(P, it), ch = R.enhChance(P, it), delta = eqd ? 0 : R.powerWith(P, it, wctx(), now()) - c.power;
     var h = '<div class="card detail hl ' + (eqd ? 'eqsel' : 'bagsel') + '"><div class="tiny" style="color:' + rcol(it.r) + '">' + D.RARITY[it.r].name + ' ' + R.slotName(it) + ' · Lv ' + it.ilvl + (eqd ? ' · 장착 중' : '') + '</div><div class="nm" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</div><div style="margin-top:8px">' + statLines(it) + '</div>';
     if (!eqd) h += '<div class="small" style="margin-top:8px">장착 시 전투력 <b class="num ' + (delta >= 0 ? 'good' : 'bad') + '">' + (delta >= 0 ? '+' : '') + fmt(delta) + '</b></div>' + cmpLine(it, P.eq[it.slot]);
     h += '<hr class="sep"><div class="row small"><span class="muted">강화 +' + it.enh + ' → +' + (it.enh + 1) + '</span><span class="spacer"></span>' + (it.enh >= R.ENH_MAX ? '<span class="tag br">최대 강화</span>' : '<span>성공 확률 <b class="num">' + Math.round(ch * 100) + '%</b></span>') + '</div>' + enhPreview(it, eqd) + ownLine(P) + '<div class="row" style="margin-top:10px">';
@@ -2517,7 +2517,7 @@
     h += '<div class="card inset" style="margin-bottom:12px"><p class="small">' + (v && v.active ? '<b class="gold">상인이 와 있습니다.</b> <span data-l="left:' + v.end + '"></span> 뒤에 떠납니다. 끝나기 2분 안에 값을 부르면 경매가 2분 늘어납니다. 낙찰품은 우편으로 보내 드립니다.' : '상인은 지금 다른 섬을 돌고 있습니다. 다음 방문은 <b>' + (v ? clock(v.start) : '—') + '</b>, 1시간 동안 신입생 · 중급 · 상급 구간마다 귀한 장비 세 점씩 경매에 붙입니다.') + (d.demo ? ' <span class="gold">데모: NPC 학생들이 시간이 갈수록 값을 올립니다.</span>' : '') + '</p></div>';
     // 구간별(신입생 · 중급 · 상급) 머리글 + 접기. 입찰할 수 없는 구간은 처음에 접어 둔다 (펼친 상태는 이 기기에 기억)
     function lotHtml(l) {
-      var up = l.item ? R.powerWith(P, l.item) - c.power : 0, live = !l.done && l.ends > now(), no = l.cap && P.maxStage > l.cap;   // no: 이 구간에는 입찰할 수 없음
+      var up = l.item ? R.powerWith(P, l.item, wctx(), now()) - c.power : 0, live = !l.done && l.ends > now(), no = l.cap && P.maxStage > l.cap;   // no: 이 구간에는 입찰할 수 없음
       return '<div class="card mkrow auclot' + (l.mine ? ' mine' : '') + '"><div style="flex:1;min-width:0"><div class="mkn" style="color:' + rcol(l.r) + '">' + esc(l.name) + '</div><div class="tiny faint">' + D.RARITY[l.r].name + ' ' + R.slotName(l.item || l) + ' · Lv ' + l.ilvl + (up > 0 ? ' · <span class="good">장착하면 전투력 +' + fmt(up) + '</span>' : '') + '</div>' + (l.item ? '<div class="mkst">' + statLines(l.item) + '</div>' + cmpBlock(l.item) : '') + '</div>' +
         '<div class="mkp"><span class="tiny faint">' + (l.price ? '지금 가장 높은 값' : '시작가') + '</span><b class="num gold">' + fmt(l.price || l.min) + '</b><span class="tiny ' + (l.mine ? 'good' : 'faint') + '">' + (l.price ? (l.mine ? '내가 가장 높음' : esc(l.bidder) + (l.npc ? ' (NPC)' : '')) + ' · ' + l.bids + '번' : '아직 아무도 안 부름') + '</span>' +
         (live ? '<span class="tiny faint"><span data-l="left:' + l.ends + '"></span> 남음</span>' + (l.mine ? '' : no ? '<span class="tag">원정 최고 단계 ' + l.cap + '단계 이하만 입찰</span>' : '<div class="row" style="gap:4px;flex-wrap:nowrap"><input type="number" class="aucamt" id="auc-' + l.id + '" min="' + l.need + '" value="' + l.need + '" data-fmt="1" style="width:110px"><button class="btn sm primary" data-act="bid" data-a="' + l.id + '"' + (P.res.gold >= l.need ? '' : ' disabled title="' + CUR + '가 모자랍니다"') + '>부르기</button></div><span class="tiny faint mkfmt"></span>') : '<span class="tag">끝남</span>') + '</div></div>';
@@ -3106,7 +3106,7 @@
         var can = !x.mine && !low && P.res.gold >= x.price, armed = S.confirm['mk' + x.id] > Date.now(), open = m.open[x.id], info, sub;
         var bw = x.mine ? null : mkWarn(x.kind === 'badge' && x.badge ? 'badge:' + x.badge.gem + ':' + x.badge.lv : pKey(x), x.qty > 1 ? x.price / x.qty : x.price);   // 시세와 많이 다르면 표시
         if (x.kind === 'item' && x.item) {
-          var up = R.powerWith(P, x.item) - c.power;
+          var up = R.powerWith(P, x.item, wctx(), now()) - c.power;
           info = '<span class="mkn ell" style="color:' + rcol(x.r) + '">' + esc(x.name) + '</span><span class="mkchev tiny faint">' + (open ? '접기 ▴' : '옵션 ▾') + '</span>';
           sub = R.slotName(x.item || x) + mkLv(x) + ' · ' + itemBrief(x.item) + (up > 0 ? ' · <span class="good">▲' + fmt(up) + '</span>' : '');
         } else if (x.kind === 'badge' && x.badge && R.GEM[x.badge.gem]) {
@@ -3193,7 +3193,7 @@
   function aucRow(x, low) {
     var P = S.P, open = S.mk.open[x.id], left = x.expires - Date.now() / 1000, ended = x.status && x.status !== 'open', info, sub = '';
     if (x.kind === 'item' && x.item) {
-      var up = R.powerWith(P, x.item) - C().power;
+      var up = R.powerWith(P, x.item, wctx(), now()) - C().power;
       info = '<span class="mkn ell" style="color:' + rcol(x.r) + '">' + esc(x.name) + '</span><span class="mkchev tiny faint">' + (open ? '접기 ▴' : '옵션 ▾') + '</span>';
       sub = R.slotName(x.item || x) + mkLv(x) + ' · ' + itemBrief(x.item) + (up > 0 ? ' · <span class="good">▲' + fmt(up) + '</span>' : '');
     } else if (x.kind === 'badge' && x.badge && R.GEM[x.badge.gem]) {
@@ -5294,7 +5294,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102262;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102263;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

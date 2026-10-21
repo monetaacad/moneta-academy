@@ -986,7 +986,8 @@
     if (P.inv.length >= bag) { if (!wasEq && !R.noMailQ && (P.mailQ || (P.mailQ = [])).length < R.MAILQ_MAX) { P.mailQ.push(it); return 'mail'; } addGold(P, R.sellPrice(it)); return 'sold'; }   // 가방이 가득 차면 우편으로 (서버가 P.mailQ를 우편으로 보낸다)
     P.inv.push(it); return 'bag';
   }
-  R.powerWith = function (P, it) { var old = P.eq[it.slot]; P.eq[it.slot] = it; var p = calc(P, null).power; P.eq[it.slot] = old; return p; };
+  // it을 장착했을 때 전투력. 화면에서 지금 전투력(W · 지금 시각)과 빼서 보이므로 같은 W · 시각으로 계산해야 한다 (기숙사 · 달 축복 · 물약이 한쪽에만 들어가 차이가 틀어지던 문제)
+  R.powerWith = function (P, it, W, t) { var old = P.eq[it.slot]; P.eq[it.slot] = it; var p; try { p = calc(P, W || null, t).power; } finally { P.eq[it.slot] = old; } return p; };
   R.findItem = function (P, u) {
     for (var s in P.eq) if (P.eq[s] && P.eq[s].u === u) return P.eq[s];
     for (var i = 0; i < P.inv.length; i++) if (P.inv[i].u === u) return P.inv[i];
