@@ -1398,7 +1398,10 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 .bdgrow:last-child { border-bottom: 0; }
 .bdg { display: inline-block; line-height: 1; text-shadow: 0 0 4px currentColor; }
 .bdg.done { text-shadow: 0 0 6px currentColor, 0 0 10px rgba(255, 226, 140, .8); }
-@media (max-width: 480px) { .bdgrow { flex-wrap: wrap; } }
+/* 보관 중인 휘장: 이름 칸이 버튼에 밀려 한 글자 폭으로 줄지 않게, 좁으면 버튼을 아랫줄로 */
+.bdgrow { flex-wrap: wrap; row-gap: 6px; }
+.bdgrow > div:first-child { min-width: min(180px, 100%); }
+@media (max-width: 700px) { .bdgrow > div:first-child { flex-basis: 100% !important; } .bdgrow > .frbtns { flex-wrap: wrap; } }
 /* ── 휘장 강화 · 진급 안내 ── */
 .bdgups { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
 .bdgup { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 7px 9px; border: 1px solid var(--line2); border-radius: 8px; background: var(--sunk); }
