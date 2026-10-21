@@ -116,7 +116,9 @@ function create(dbx, sec, opts) {
   function unsubscribe(pid, endpoint) { q.delKey.run(sec.index('push:' + String(endpoint || '')), pid); subsCache = null; }
 
   // ── 보낼 때가 된 일 찾기 (30초마다) ──
-  const last = new Map();      // pid → 마지막으로 살펴본 시각 (게임 시각)
+  // pid → 마지막으로 알린 시각 (게임 시각). 서버를 다시 켜도 같은 일을 다시 알리지 않게 종료할 때 저장해 둔다
+  const last = new Map(Object.entries(dbx.kvGet('pushLast', {}) || {}));
+  function saveLast() { dbx.kvSet('pushLast', Object.fromEntries(last)); }
   const held = new Map();      // 기기 id → 방해 금지 시간 동안 모아 둔 일
   const startAt = nowSec();
   function quietNow(o) { if (!o.quiet) return false; const h = new Date((Date.now() / 1000 + 9 * 3600) * 1000).getUTCHours(); return QUIET[0] > QUIET[1] ? h >= QUIET[0] || h < QUIET[1] : h >= QUIET[0] && h < QUIET[1]; }
@@ -135,7 +137,8 @@ function create(dbx, sec, opts) {
         if (quietNow(d.opts)) { if (mine.length) held.set(d.id, (held.get(d.id) || []).concat(mine).slice(-20)); return; }
         const h = held.get(d.id) || []; held.delete(d.id);
         if (h.length) { const m = R.notifyBundle(h, '자는 동안 · '); send(d, d.sub, { title: m.title, body: m.body, tag: 'mq-night', url: '/' }); }
-        if (mine.length) { const m = R.notifyBundle(mine); send(d, d.sub, { title: m.title, body: m.body, tag: 'mq-' + Math.round(now), url: '/' }); }
+        // 태그는 일마다 고정: 같은 일이 두 번 보내져도(기기 · 화면 알림과 겹쳐도) 알림 하나로 바뀌어 다시 울리지 않는다
+        if (mine.length) { const m = R.notifyBundle(mine); send(d, d.sub, { title: m.title, body: m.body, tag: 'mq-' + mine.map((e) => e.kind + '-' + Math.round(e.t)).join('_').slice(0, 120), url: '/' }); }
       });
     });
   }
@@ -145,6 +148,6 @@ function create(dbx, sec, opts) {
   }
   const timer = setInterval(() => { try { tick(); } catch (e) { log('푸시 확인 실패', e); } }, 30000); timer.unref();
 
-  return { publicKey: pub, subscribe, unsubscribe, tick, direct, encrypt, vapidAuth, validEndpoint, count: () => subs().length, stop() { clearInterval(timer); } };
+  return { publicKey: pub, subscribe, unsubscribe, tick, direct, saveLast, encrypt, vapidAuth, validEndpoint, count: () => subs().length, stop() { clearInterval(timer); } };
 }
 module.exports = { create };
