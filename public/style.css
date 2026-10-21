@@ -1063,7 +1063,11 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 @keyframes decoAur { 0%, 100% { box-shadow: 0 0 0 2px #7cf0c0, 0 0 16px rgba(124, 240, 192, .4); } 50% { box-shadow: 0 0 0 2px #9fb8ff, 0 0 16px rgba(159, 184, 255, .45); } }
 @keyframes decoSpr { 0%, 100% { box-shadow: 0 0 0 2px #ff7a5a, 0 0 18px rgba(255, 122, 90, .35); } 17% { box-shadow: 0 0 0 2px #f2c84b, 0 0 18px rgba(242, 200, 75, .35); } 34% { box-shadow: 0 0 0 2px #8ad08a, 0 0 18px rgba(138, 208, 138, .35); } 51% { box-shadow: 0 0 0 2px #7fc8ff, 0 0 18px rgba(127, 200, 255, .35); } 68% { box-shadow: 0 0 0 2px #b8a8e8, 0 0 18px rgba(184, 168, 232, .35); } 85% { box-shadow: 0 0 0 2px #c084fc, 0 0 18px rgba(192, 132, 252, .35); } }
 /* 이름 잉크: 그라데이션은 글자에만, 반짝이는 잉크는 천천히 흐른다 */
-.ink { -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
+/* 글자 색(color)은 app.js가 잉크 첫 색으로 넣어 둔다: 그라데이션 글자를 못 그리는 브라우저 · 고대비 모드에서는 그 단색으로 보인다. 브라우저 강제 다크 모드는 index.html의 color-scheme 메타로 막는다.
+   inline-block: 줄 안 인라인 요소에서 background-clip:text가 그려지지 않는 모바일 브라우저 대비 */
+.ink { display: inline-block; }
+@supports ((-webkit-background-clip: text) or (background-clip: text)) { .ink { -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; } }
+@media (forced-colors: active) { .ink { -webkit-text-fill-color: currentColor; background-image: none !important; } }
 .ink.anim { background-size: 220% 100%; animation: inkFlow 5s linear infinite; }
 @keyframes inkFlow { from { background-position: 0% 50%; } to { background-position: 220% 50%; } }
 .fr-pulse { animation: decoPulse 3.2s ease-in-out infinite; }   /* 숨 쉬는 별빛: 빛이 천천히 커졌다 작아진다 */
