@@ -1902,7 +1902,8 @@ mark.hl { color: inherit; background: linear-gradient(transparent 38%, color-mix
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea, select { font-size: max(16px, 1em) !important; }
 }
 /* 과목 카드: 이름은 낱말 단위로만 줄바꿈 (한 글자씩 세로로 쌓이지 않게), 복습 효과는 이름 아래 줄 */
-.subj .hd h3 { word-break: keep-all; min-width: 0; }
+.subj .hd { flex-wrap: wrap; row-gap: 4px; }   /* 칸이 좁으면 레벨 · 시험 표시가 다음 줄로 내려가고, 과목 이름은 줄지 않는다 (시험 표시 · 강의계획서 버튼과 겹치던 문제) */
+.subj .hd h3 { white-space: nowrap; flex: none; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .subj .revline { margin: 2px 0 4px; }
 
 /* 고서 열람실: 책 한 권 = 한 줄 (모바일에서는 버튼이 다음 줄로) */
