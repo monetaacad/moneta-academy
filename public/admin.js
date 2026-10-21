@@ -345,11 +345,11 @@
     growthdl: function () {
       api('GET', '/api/admin/growth?days=30').then(function (j) {
         if (j.error) { toast(j.error); return; }
-        if (!j.rows) { toast('아직 모인 성장 기록이 없습니다. 하루 한 번(한국 날짜 기준) 저장됩니다'); return; }
+        if (!j.rows) { toast('아직 모인 성장 기록이 없습니다. 12시간마다(한국 시각 0시 · 12시 구간) 저장됩니다'); return; }
         var blob = new Blob(['\ufeff' + j.csv], { type: 'text/csv;charset=utf-8' }), a = document.createElement('a');
         a.href = URL.createObjectURL(blob); a.download = 'moneta-growth-' + new Date().toISOString().slice(0, 10) + '.csv'; document.body.appendChild(a); a.click();
         setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-        toast('성장 데이터 ' + j.rows + '줄 · ' + j.days.length + '일치를 받았습니다');
+        toast('성장 데이터 ' + j.rows + '줄 · 저장 ' + j.days.length + '회분을 받았습니다');
       });
     },
     ideacopy: function () {

@@ -271,6 +271,13 @@ function open(dir) {
       t INTEGER NOT NULL
     );
     CREATE INDEX IF NOT EXISTS guild_items_g ON guild_items(guild);
+    CREATE TABLE IF NOT EXISTS guild_stock (   -- 동아리 창고 재료 · 물약 (종류마다 한 줄, 수량)
+      guild TEXT NOT NULL,
+      kind TEXT NOT NULL,             -- 'm' 재료 · 'p' 물약
+      key TEXT NOT NULL,
+      n INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (guild, kind, key)
+    );
     CREATE TABLE IF NOT EXISTS guild_log (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       guild TEXT NOT NULL,
@@ -358,8 +365,9 @@ function open(dir) {
   try { fs.chmodSync(dir, 0o700); } catch (e) { }
   const q = {
     growthPut: db.prepare(`INSERT OR REPLACE INTO growth (day, pid, data) VALUES (?, ?, ?)`),
-    growthFrom: db.prepare(`SELECT day, pid, data FROM growth WHERE day >= ? ORDER BY day, pid`),
-    growthDays: db.prepare(`SELECT day, COUNT(*) AS n FROM growth GROUP BY day ORDER BY day DESC LIMIT 400`),
+    // day: 예전 기록은 YYYYMMDD(하루 한 번), 2026-10-21부터는 YYYYMMDDHH(한국 시각 0시 · 12시 구간마다 한 번). 비교할 때는 예전 것을 ×100 해서 맞춘다
+    growthFrom: db.prepare(`SELECT day, pid, data FROM growth WHERE (CASE WHEN day < 1000000000 THEN day * 100 ELSE day END) >= ? ORDER BY (CASE WHEN day < 1000000000 THEN day * 100 ELSE day END), pid`),
+    growthDays: db.prepare(`SELECT (CASE WHEN day < 1000000000 THEN day * 100 ELSE day END) AS day, COUNT(*) AS n FROM growth GROUP BY 1 ORDER BY 1 DESC LIMIT 800`),
     insertPlayer: db.prepare(`INSERT INTO players (id, name, name_key, house, pass, created, last_seen, state) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`),
     playerByKey: db.prepare(`SELECT id, name, pass, banned FROM players WHERE name_key = ?`),
     playerSearch: db.prepare(`SELECT id, name, house, grade, lvl, avatar_v, title, last_seen FROM players WHERE name_key LIKE ? ESCAPE '\\' AND banned = 0 AND guest = 0 ORDER BY (name_key = ?) DESC, last_seen DESC LIMIT 20`),
@@ -514,6 +522,13 @@ function open(dir) {
     giGet: db.prepare(`SELECT * FROM guild_items WHERE id = ? AND guild = ?`),
     giDel: db.prepare(`DELETE FROM guild_items WHERE id = ? AND guild = ?`),
     giDelGuild: db.prepare(`DELETE FROM guild_items WHERE guild = ?`),
+    gsList: db.prepare(`SELECT kind, key, n FROM guild_stock WHERE guild = ? AND n > 0 ORDER BY kind, key`),
+    gsCount: db.prepare(`SELECT COUNT(*) AS n FROM guild_stock WHERE guild = ? AND n > 0`),
+    gsGet: db.prepare(`SELECT n FROM guild_stock WHERE guild = ? AND kind = ? AND key = ?`),
+    gsAdd: db.prepare(`INSERT INTO guild_stock (guild, kind, key, n) VALUES (?, ?, ?, ?) ON CONFLICT(guild, kind, key) DO UPDATE SET n = n + excluded.n`),
+    gsTake: db.prepare(`UPDATE guild_stock SET n = n - ? WHERE guild = ? AND kind = ? AND key = ? AND n >= ?`),
+    gsClean: db.prepare(`DELETE FROM guild_stock WHERE guild = ? AND n <= 0`),
+    gsDelGuild: db.prepare(`DELETE FROM guild_stock WHERE guild = ?`),
     glAdd: db.prepare(`INSERT INTO guild_log (guild, t, text) VALUES (?, ?, ?)`),
     glList: db.prepare(`SELECT t, text FROM guild_log WHERE guild = ? ORDER BY id DESC LIMIT ?`),
     glPrune: db.prepare(`DELETE FROM guild_log WHERE guild = ? AND id <= (SELECT id FROM guild_log WHERE guild = ? ORDER BY id DESC LIMIT 1 OFFSET 200)`),
