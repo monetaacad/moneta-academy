@@ -2654,13 +2654,13 @@
       (other ? '<div class="row tiny" style="margin-top:4px;gap:6px"><span class="faint">' + (r.kind === 'solo' ? '파티의 ' + (other.kind === 'real' ? '실전' : '연습') + '도 진행 중입니다.' : '혼자 연습도 진행 중입니다.') + '</span><button class="btn sm ghost" data-act="twwatch" data-a="' + (r.kind === 'solo' ? 'party' : 'solo') + '">그쪽 보기</button></div>' : '') +
       '<div id="twstage" data-tw="' + r.id + '" style="margin-top:10px">' + twStageTop(r) + '</div>' +
       '<div class="logw" style="margin-top:10px"><div class="explog twlines" id="twlines" data-tw="' + r.id + '" aria-live="polite">' + twLinesHtml(r) + '</div><button class="lognew" hidden></button></div>' +
-      '<div class="row tiny faint" style="margin-top:6px;gap:6px;flex-wrap:wrap"><span>' + (r.kind === 'real' ? '결과는 대본이 끝나면 알려 드립니다.' : '연습은 기록 · 보상에 반영되지 않습니다.') + '</span><span class="spacer"></span>' +
+      '<div class="row tiny faint" style="margin-top:6px;gap:6px;flex-wrap:wrap"><span>' + (r.kind === 'real' ? '실전은 건너뛸 수 없으며, 결과는 대본이 끝나면 알려 드립니다.' : r.kind === 'party' ? '파티 연습은 건너뛸 수 없으며, 기록 · 보상에 반영되지 않습니다.' : '연습은 기록 · 보상에 반영되지 않습니다.') + '</span><span class="spacer"></span>' +
       '<button class="btn sm ghost" data-act="twfull">' + (S.twFull === false ? '전체 기록 보기' : '요약만 보기') + '</button>' +
       (r.kind === 'party' ? '<button class="btn sm ghost" data-act="twstop">연습 중단</button>' : '') + (r.kind === 'solo' ? '<button class="btn sm ghost" data-act="twclose">연습 닫기</button>' : '') +
-      (twEl(r) >= r.d ? '<button class="btn sm ghost" data-act="twexport" data-a="' + r.id + '">기록 내보내기</button>' : '<button class="btn sm ghost" data-act="twskip" data-a="' + r.id + '">끝까지 보기</button>') + '</div></div>';
+      (twEl(r) >= r.d ? '<button class="btn sm ghost" data-act="twexport" data-a="' + r.id + '">기록 내보내기</button>' : r.kind === 'solo' ? '<button class="btn sm ghost" data-act="twskip" data-a="' + r.id + '">끝까지 보기</button>' : '') + '</div></div>';   // 실전 · 파티 연습은 건너뛸 수 없다 (파티가 끝까지 함께 본다)
   }
   ACT.twwatch = function (w) { S.twWatch = w; render(); };
-  ACT.twskip = function (id) { (S.twSkip || (S.twSkip = {}))[id] = 1; twTick(true); render(); };
+  ACT.twskip = function (id) { var r = twRunById(id); if (!r || r.kind !== 'solo') return; (S.twSkip || (S.twSkip = {}))[id] = 1; twTick(true); render(); };   // 혼자 연습만
   ACT.twclose = function () { if (S.twSolo) S.twSolo.closed = true; S.twSolo = null; render(); };
   ACT.twstop = function () { API.towerOp({ mode: 'stop' }).then(function (j) { if (j.error) { toast('별의 탑', j.error); return; } S.towerAt = 0; loadTower(); }); };
   // 0.25초마다: 보고 있는 실행의 장면을 고치고, 끝나는 순간 결과를 알린다
@@ -4435,7 +4435,7 @@
       ['[data-anchor="tower"] .filters', '내 포지션', '선봉은 적의 공격을 집중해서 받으며 탑에서 생명력 +30% · 받는 피해 −20%를 받습니다. 후열은 공격 주문, 지원은 치유 · 보호막 주문을 장착해야 선택할 수 있습니다. 지원의 치유 · 보호막은 동료가 쓰러질 공격을 맞기 직전에 먼저 끼어들어 막아 냅니다. 장착 주문은 「원정·전투 → 원정」에서 바꿉니다.'],
       ['[data-act="twgo"][data-a="real"]', '실전', '파티 단위로 하루 1번입니다. 누르는 순간 파티원 모두의 오늘 기회를 사용하며, 파티원 중 한 명이라도 오늘 실전을 했다면 시작할 수 없습니다. 마지막으로 넘은 층이 각자의 이번 주 기록이 되고, 처음 넘은 층의 보상은 우편으로 전달됩니다. 파티 기록은 랭킹의 「별의 탑 파티 순위」에 파티 이름과 함께 남습니다.'],
       ['[data-act="twgo"][data-a="party"]', '연습', '「파티 연습」은 파티원 모두가 함께 보고, 「혼자 연습」은 내 화면에서만 진행됩니다. 오늘 실전을 마친 뒤에도 할 수 있어 포지션 · 주문 · 물약 조합을 시험하기 좋습니다.'],
-      ['[data-anchor="twlog"]', '진행 화면', '적과 파티원의 체력이 실시간으로 표시되고, 모든 공격 · 치유 · 보호막이 대본으로 올라옵니다. 「요약만 보기」로 주요 장면만 볼 수 있고, 끝난 기록은 「기록 내보내기」로 저장할 수 있습니다. 5층마다 휴식층, 30층마다 특수 기믹이 있는 시련의 층이 나옵니다.']
+      ['[data-anchor="twlog"]', '진행 화면', '적과 파티원의 체력이 실시간으로 표시되고, 모든 공격 · 치유 · 보호막이 대본으로 올라옵니다. 실전과 파티 연습은 건너뛸 수 없어 파티가 끝까지 함께 봅니다(혼자 연습만 「끝까지 보기」 가능). 「요약만 보기」로 주요 장면만 볼 수 있고, 끝난 기록은 「기록 내보내기」로 저장할 수 있습니다. 5층마다 휴식층, 30층마다 특수 기믹이 있는 시련의 층이 나옵니다.']
     ],
     guild: [['#view .card', '동아리', '동아리를 찾아 가입하거나 직접 만들 수 있습니다. 출석과 기부로 동아리 레벨을 올리면 부원 모두가 혜택을 받습니다.']],
     friends: [['.page-head', '친구', '이름으로 친구를 신청하거나 채팅에서 이름을 눌러 신청합니다. 친구와는 1:1 대화와 파티 초대를 바로 할 수 있습니다.']],
@@ -5429,7 +5429,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102266;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102267;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
