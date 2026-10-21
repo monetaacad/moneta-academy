@@ -4337,7 +4337,13 @@
     });
   };
   function saveBlocked() { try { localStorage.setItem('arc_blocked', JSON.stringify(S.chat.blocked)); localStorage.setItem('arc_blockedN', JSON.stringify(S.chat.blockedN || {})); } catch (e) { } }
-  ACT.cblock = function (pid, name) { if (S.chat.blocked.indexOf(pid) < 0) S.chat.blocked.push(pid); S.chat.blockedN = S.chat.blockedN || {}; if (name) S.chat.blockedN[pid] = name; saveBlocked(); closeModal(); renderDock(); toast('이 학생을 가렸습니다', '이 학생의 메시지가 보이지 않습니다. 설정 → 채팅에서 다시 보이게 할 수 있습니다', 2400); };
+  // 학생 가리기: 확인 팝업을 먼저 띄운다
+  ACT.cblock = function (pid, name) {
+    var nm = name || '이 학생';
+    modal(mhead('학생 가리기', esc(nm)) + '<p class="small"><b>' + esc(nm) + '</b> 님을 가립니다. 이 학생의 채팅 메시지가 더 이상 보이지 않습니다. 설정 → 채팅에서 다시 보이게 할 수 있습니다.</p>' +
+      '<div class="row" style="justify-content:flex-end;margin-top:14px;gap:6px"><button class="btn" data-act="modal-close" autofocus>취소</button><button class="btn danger" data-act="cblockgo" data-a="' + esc(pid) + '" data-b="' + esc(name || '') + '">가리기</button></div>');
+  };
+  ACT.cblockgo = function (pid, name) { if (S.chat.blocked.indexOf(pid) < 0) S.chat.blocked.push(pid); S.chat.blockedN = S.chat.blockedN || {}; if (name) S.chat.blockedN[pid] = name; saveBlocked(); closeModal(); renderDock(); toast('이 학생을 가렸습니다', '이 학생의 메시지가 보이지 않습니다. 설정 → 채팅에서 다시 보이게 할 수 있습니다', 2400); };
   ACT.unblock = function (pid) { S.chat.blocked = S.chat.blocked.filter(function (x) { return x !== pid; }); if (S.chat.blockedN) delete S.chat.blockedN[pid]; saveBlocked(); renderDock(); var el = $('[data-blk="' + pid + '"]'); if (el) el.remove(); var n = $('#blk-n'); if (n) n.textContent = S.chat.blocked.length; toast('가리기 해제', '이 학생의 메시지가 다시 보입니다', 1600); };
   ACT.unblockall = function () { S.chat.blocked = []; S.chat.blockedN = {}; saveBlocked(); renderDock(); var b = $('#blk-box'); if (b) b.innerHTML = '<p class="tiny faint">가린 학생이 없습니다.</p>'; var n = $('#blk-n'); if (n) n.textContent = 0; };
   // 설정 → 채팅: 가린 학생 목록 (이름을 모르는 예전 기록은 불러와서 채운다)
@@ -5503,7 +5509,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102275;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102276;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

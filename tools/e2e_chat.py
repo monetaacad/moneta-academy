@@ -63,6 +63,11 @@ with sync_playwright() as p:
         ctx = admin('/api/admin/reports/ctx?id=' + str(reps[0]['msg_id']))
         if not any(m['me'] for m in ctx['list']) or len(ctx['list']) < 3: errs.append('report ctx wrong: ' + str(ctx)[:200])
     G.locator('#chatlog .cm .cn', has_text='에이' + sfx).last.click(); G.wait_for_timeout(300); G.click('[data-act=cblock]'); G.wait_for_timeout(300)
+    # 가리기 확인 팝업: 확인 전에는 아직 보이고, 「가리기」를 눌러야 가려진다
+    if not G.query_selector('[data-act=cblockgo]'): errs.append('block confirm popup missing')
+    G.screenshot(path=f'{OUT}/chat-G-block-confirm.png')
+    if not any(('에이' + sfx) in x for x in texts(G)): errs.append('blocked before confirm')
+    G.click('[data-act=cblockgo]'); G.wait_for_timeout(300)
     if any(('에이' + sfx) in x for x in texts(G)): errs.append('blocked user still visible')
     # 설정 → 채팅에서 가린 학생 목록 · 해제
     G.evaluate("() => window.__ACT.settings()"); G.wait_for_timeout(500)
