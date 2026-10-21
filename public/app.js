@@ -1326,9 +1326,11 @@
     function dots(v, max) { var n = Math.max(0, Math.min(4, Math.round(v / max * 4))); return '<span class="rdots" aria-label="4칸 중 ' + n + '칸">' + [0, 1, 2, 3].map(function (k) { return '<i class="' + (k < n ? 'on' : '') + '"></i>'; }).join('') + '</span>'; }
     function row(name, d, body, btn) { return '<div class="rrow"><b class="small rname">' + name + '</b>' + d + '<div class="small rbody">' + body + '</div>' + (btn || '') + '</div>'; }
     var chips = xs.map(function (s) { var lv = P.subj[s].lv; return '<span class="tag ' + (lv >= ex.req ? 'ok' : 'br') + '"' + (s === xo ? ' title="선택 과목: ' + esc(R.examSubjText(P, ex).split(' + ')[1] || '') + ' (가장 레벨이 높은 과목이 반영됩니다)"' : '') + '>' + R.SUBJ[s].name + (s === xo ? '(선택)' : '') + ' ' + lv + '/' + ex.req + '</span>'; }).join(' ');
+    var okN = xs.filter(function (s) { return P.subj[s].lv >= ex.req; }).length;
     return '<div class="rready">' +
+      '<div class="small" style="padding-bottom:8px;border-bottom:1px solid var(--line)"><b>시험 과목</b> ' + chips + (xo ? examPickHtml(P, ex, xo) : '') + '<span class="faint tiny">필기 · 실기 모두 이 과목들의 레벨로 채점합니다.</span></div>' +
       row('필기', dots(th, 30), '시험 과목 평균 Lv <b class="num">' + avg.toFixed(1) + '</b> <span class="faint">· 기준보다 3 높으면 만점</span>', th < 29.5 ? '<button class="btn sm ghost" data-act="nav" data-a="lecture">수업 가기</button>' : '') +
-      row('실기', dots(pr, 40), chips + (xo ? examPickHtml(P, ex, xo) : '') + ' <span class="faint tiny">· 기준을 채우면 절반 이상, 평균이 기준 +4면 만점</span>', pr < 39.5 ? '<button class="btn sm ghost" data-act="nav" data-a="lecture">수업 가기</button>' : '') +
+      row('실기', dots(pr, 40), '기준 Lv ' + ex.req + ' 달성 <b class="num">' + okN + '/' + xs.length + '</b> <span class="faint">· 모두 채우면 절반 이상, 평균이 기준 +4면 만점</span>', pr < 39.5 ? '<button class="btn sm ghost" data-act="nav" data-a="lecture">수업 가기</button>' : '') +
       row('대련', dots(du.win ? 30 : 30 * du.frac * 0.85, 30), (du.win ? '<span class="good">승산 있음</span> · 약 ' + du.ttk.toFixed(1) + '초' : '<span class="bad">버거움</span> · 시험관 체력의 약 ' + Math.round(du.frac * 100) + '%까지') + ' <span class="faint">· ' + esc(ex.examiner) + '</span>', du.win ? '' : '<button class="btn sm ghost" data-act="nav" data-a="gear">장비 가기</button>') +
       '</div>';
   }
@@ -4080,7 +4082,7 @@
   // 기말시험: 문제 풀이 없이 버튼 하나로 채점 (이론 30 · 실기 40 · 대련 30)
   ACT.exam = function () {
     var ex = R.examFor(S.P), th = R.examTheory(S.P, ex), pr = R.examPractical(S.P, ex), pv = R.examPredict(S.P, wctx(), now());
-    modal(mhead(ex.title, '이론·실기는 시험 과목 레벨로, 대련은 시험관과의 전투로 채점합니다.') + '<dl class="kv"><dt>예상 이론</dt><dd>' + th.toFixed(1) + ' / 30</dd><dt>예상 실기</dt><dd>' + pr.toFixed(1) + ' / 40</dd><dt>대련</dt><dd>시험관 ' + ex.examiner + (pv ? ' · ' + (pv.duelWin ? '승리 예상' : '패배 위험') : '') + '</dd>' + (pv ? '<dt>예상 등급</dt><dd><b class="gold">' + pv.letter + '</b> · 약 ' + pv.total + '점</dd>' : '') + '</dl>' +
+    modal(mhead(ex.title, '이론·실기는 시험 과목 레벨로, 대련은 시험관과의 전투로 채점합니다.') + '<dl class="kv"><dt>예상 이론</dt><dd>' + th.toFixed(1) + ' / 30</dd><dt>예상 실기</dt><dd>' + pr.toFixed(1) + ' / 40</dd><dt>예상 대련</dt><dd>' + (pv ? pv.duel.toFixed(1) + ' / 30 · ' + (pv.duelWin ? '승리 예상' : '패배 위험') + ' · ' : '') + '시험관 ' + ex.examiner + '</dd>' + (pv && pv.bonus ? '<dt>추가 점수</dt><dd>+' + (Math.round(pv.bonus * 10) / 10) + '</dd>' : '') + (pv ? '<dt>예상 등급</dt><dd><b class="gold">' + pv.letter + '</b> · 약 ' + pv.total + '점</dd>' : '') + '</dl>' +
       (pv && pv.letter !== 'S' ? '<p class="small" style="margin-top:8px">' + examHint(pv) + '</p><p class="tiny faint">합격하면 이 시험은 다시 볼 수 없습니다. S 보상: ' + R.EXAM_REWARD.S.text + '</p>' : '') +
       '<p class="small muted" style="margin-top:8px">60점 이상이면 진급합니다. 떨어지면 1시간 뒤 다시 볼 수 있습니다.</p><div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn ghost" data-act="modal-close">나중에</button><button class="btn primary" data-act="exam-go" autofocus>응시</button></div>');
   };
@@ -5190,7 +5192,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102240;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102241;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
