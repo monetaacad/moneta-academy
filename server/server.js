@@ -116,7 +116,7 @@ const exprooms = ExpRoom.create({ loadPlayer: (pid, now) => loadPlayer(pid, now)
   recruit: (P, data) => chat.recruit(P, data, Date.now() / 1000),
   note: (...a) => addNote(...a),
   partyInfo: (pid) => { const id = partyOf.get(pid); if (!id) return null; const pa = dbx.q.partyGet.get(id); if (!pa) return null; return { id, leader: pa.leader, allgo: !!pa.allgo, members: dbx.q.partyMembers.all(id).map((m) => m.id) }; },
-  canInvite: (a, b) => friendState(a, b) === 'ok' || (guildOf.get(a) && guildOf.get(a) === guildOf.get(b)),
+  canInvite: (a, b) => friendState(a, b) === 'ok' || (guildOf.get(a) && guildOf.get(a) === guildOf.get(b)) || (partyOf.get(a) && partyOf.get(a) === partyOf.get(b)),   // 친구 · 같은 동아리 · 같은 파티
   nameOf: (pid) => { const r = dbx.q.getProfile.get(pid); return r ? r.name : ''; } });
 // 새 업데이트 노트가 배포되면 공지 · 월드 채널에 한 번 알린다
 { const pn = R.D.PATCH && R.D.PATCH[0]; if (pn && dbx.kvGet('patchPosted', 0) < pn.id) { const t = '새 업데이트 노트가 게시되었습니다: 「' + pn.title + '」. 상단의 업데이트 노트 버튼에서 확인할 수 있습니다.'; chat.system('notice', t, Date.now() / 1000); chat.system('world', t, Date.now() / 1000); dbx.kvSet('patchPosted', pn.id); } }
