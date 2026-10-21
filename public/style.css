@@ -1904,3 +1904,4 @@ table.sjtop .rnk-name.me { font-weight: 700; }
 table.sjtop .sjmeta { white-space: nowrap; }
 .pheads { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .phead { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--brass); color: var(--brass); background: color-mix(in srgb, var(--brass) 10%, transparent); white-space: nowrap; }
+.phead.two { border-color: var(--line); color: var(--muted); background: transparent; }
