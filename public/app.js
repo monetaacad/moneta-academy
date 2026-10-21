@@ -1960,9 +1960,10 @@
   // 장비 프리셋: 한 줄에 [1] [2] [3] (누르면 장착) + 편집(팝업에서 지금 장비 저장 · 비우기)
   function gsInfo(i) {
     var P = S.P, st = (P.gearSets || [])[i]; if (!st) return { st: null };
-    var keys = Object.keys(st.eq), on = keys.every(function (s) { return P.eq[s] && P.eq[s].u === st.eq[s]; });
-    var miss = keys.filter(function (s) { var u = st.eq[s]; return !(P.eq[s] && P.eq[s].u === u) && !P.inv.some(function (x) { return x.u === u; }); }).length;
+    var keys = Object.keys(st.eq), bd = st.badge && R.badgeFind(P, st.badge), on = keys.every(function (s) { return P.eq[s] && P.eq[s].u === st.eq[s]; }) && (!st.badge || P.badgeOn === st.badge);
+    var miss = keys.filter(function (s) { var u = st.eq[s]; return !(P.eq[s] && P.eq[s].u === u) && !P.inv.some(function (x) { return x.u === u; }); }).length + (st.badge && !bd ? 1 : 0);
     var names = D.SLOTS.map(function (sl) { var u = st.eq[sl.id], it = u && R.findItem(P, u); return it ? '<span style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</span>' : null; }).filter(Boolean);
+    if (bd) names.push('<span>' + esc(bd.name) + ' ' + badgeSvg(bd) + '</span>');   // 휘장
     return { st: st, on: on, miss: miss, n: keys.length, names: names };
   }
   function gearSetRow() {
@@ -1981,7 +1982,7 @@
     return '<div class="gslist">' + out + '</div>';
   }
   function gsRedraw() { var b = $('#gsedit'); if (b) b.innerHTML = gsEditBody(); render(); }
-  ACT.gsedit = function () { modal(mhead('장비 프리셋', '지금 장착한 장비를 칸에 저장하고, 장비 화면의 1 · 2 · 3으로 한 번에 바꿔 낍니다') + '<div id="gsedit">' + gsEditBody() + '</div><div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn" data-act="modal-close">닫기</button></div>'); };
+  ACT.gsedit = function () { modal(mhead('장비 프리셋', '지금 장착한 장비와 휘장을 칸에 저장하고, 장비 화면의 1 · 2 · 3으로 한 번에 바꿔 낍니다') + '<div id="gsedit">' + gsEditBody() + '</div><div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn" data-act="modal-close">닫기</button></div>'); };
   ACT.gssave = function (i) {
     var st = (S.P.gearSets || [])[+i], k = 'gs' + i;
     if (st && !(S.confirm[k] > Date.now())) { S.confirm[k] = Date.now() + 4000; gsRedraw(); setTimeout(gsRedraw, 4100); return; }
@@ -4899,7 +4900,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102137;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102138;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

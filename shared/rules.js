@@ -1840,7 +1840,7 @@
   R.GEARSET_N = 3;
   A.gearSet = function (P, W, now, a) {
     var i = int(a.i, 0, R.GEARSET_N - 1), op = str(a.op), sets = P.gearSets || (P.gearSets = []);
-    if (op === 'save') { var eq = {}; for (var s in P.eq) if (P.eq[s]) eq[s] = P.eq[s].u; if (!Object.keys(eq).length) err('장착한 장비가 없습니다'); sets[i] = { eq: eq, at: now }; return { saved: i }; }
+    if (op === 'save') { var eq = {}; for (var s in P.eq) if (P.eq[s]) eq[s] = P.eq[s].u; var bw = R.badgeWorn(P); if (!Object.keys(eq).length && !bw) err('장착한 장비가 없습니다'); sets[i] = { eq: eq, badge: bw ? bw.u : '', at: now }; return { saved: i }; }   // 달고 있는 휘장도 함께
     if (op === 'clear') { sets[i] = null; return { cleared: i }; }
     if (op !== 'load') err('잘못된 요청');
     var st = sets[i]; if (!st) err('저장된 프리셋이 없습니다');
@@ -1851,6 +1851,7 @@
       if (!R.canWear(P, P.inv[k])) { low++; return; }   // 레벨이 모자라는 장비는 그 칸을 그대로 둔다
       var it = P.inv.splice(k, 1)[0], cur = P.eq[sl.id]; P.eq[sl.id] = it; if (cur) P.inv.push(cur); moved++;
     });
+    if (st.badge && st.badge !== P.badgeOn) { if (R.badgeFind(P, st.badge)) { P.badgeOn = st.badge; moved++; } else miss++; }   // 휘장 (예전에 저장한 프리셋 · 휘장 없이 저장한 프리셋은 지금 휘장을 그대로 둔다)
     return { moved: moved, miss: miss, low: low };
   };
   A.unequip = function (P, W, now, a) {
@@ -1869,7 +1870,7 @@
     addGold(P, tot); return { n: n, gold: tot };
   };
   // 분해: 장비를 마석과 마석가루로. 마석가루는 재련(옵션 다시 굴리기)에 쓴다
-  R.dismantleYield = function (it) { return { stone: 1 + it.r + Math.floor(it.ilvl / 15) + Math.floor((it.enh || 0) / 2), dust: Math.floor((it.r + 1) * (it.r + 1) * (2 + it.ilvl / 10)) }; };
+  R.dismantleYield = function (it) { return { stone: 1 + it.r + Math.floor(it.ilvl / 15) + Math.floor((it.enh || 0) / 2), dust: Math.max(1, Math.floor((it.r + 1) * (it.r + 1) * (1 + it.ilvl / 6))) }; };   // 마석가루: 등급(제곱) × 장비 레벨에 비례 (Lv 20 근처는 예전과 같고, 낮으면 적게 · 높으면 많이)
   function dismantleGive(P, it) { var y = R.dismantleYield(it); P.res.stone += y.stone; P.res.dust = (P.res.dust || 0) + y.dust; P.st.dismantled = (P.st.dismantled || 0) + 1; return y; }
   A.dismantle = function (P, W, now, a) {
     var u = str(a.u), i = P.inv.findIndex(function (x) { return x.u === u; }); if (i < 0) err('가방에 없는 장비입니다');
