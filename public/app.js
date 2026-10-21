@@ -664,7 +664,7 @@
       },
       party: function (d) { S.party = d.party; S.chat.msgs.party = d.msgs || []; if (S.read && S.read.party == null) { S.read.party = 0; saveRead(); } S.chat.more.party = (d.msgs || []).length >= 80; S.partyAt = 0; renderDock(); if (S.view === 'party' && !S.modal) loadParty(); },
       init: function (d) {
-        S.pin = d.pin || null; S.pins = d.pins || null;   // 운영진이 공지 탭 상단에 고정한 공지 (최대 2개)
+        S.pin = d.pin || null; S.pins = d.pins || null;   // 운영진이 공지 탭 상단에 고정한 공지
         if (d.party !== undefined) S.party = d.party;
         if (d.exr !== undefined) S.exr = d.exr;
         if (d.guild !== undefined) S.guild = d.guild;
@@ -970,7 +970,7 @@
   ACT.cprof = function (id) { var m = findMsg(id); if (m) openProfile(m.pid, m); };
   ACT.prof = function (pid) { openProfile(pid, null); };
   // 고정 공지 접기: 접은 공지(고정 시각)를 이 기기에 기억한다. 새 공지가 고정되면 다시 펼쳐 보인다
-  function pinList() { return (S.pins || (S.pin ? [S.pin] : [])).filter(function (p) { return p && p.text; }).slice(0, 2); }
+  function pinList() { return (S.pins || (S.pin ? [S.pin] : [])).filter(function (p) { return p && p.text; }); }
   function pinKey(p) { return p ? String(p.id || p.t) : ''; }
   // 접어 둔 고정 공지: 공지마다 따로 (예전 저장값은 문자열 하나)
   function pinFoldSet() { var v = null; try { v = localStorage.getItem('arc_pinfold'); } catch (e) { } if (v == null) return S.pinFold || {}; try { var o = JSON.parse(v); if (o && typeof o === 'object') return o; } catch (e) { } var x = {}; x[v] = 1; return x; }
@@ -5190,7 +5190,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102238;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102239;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
