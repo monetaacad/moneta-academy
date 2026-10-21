@@ -141,9 +141,9 @@ function create(o) {
       recruitPost(P, { room: r.id, s: r.s, d: r.d, zone: R.zoneOf(r.s).name, n: r.members.length, max: R.EXP_PARTY_MAX, pos: r.members.map((m) => m.pos), note });
       return { ok: true };
     }
-    if (k === 'invite') {   // 친구 · 같은 동아리원 한 명에게 초대
+    if (k === 'invite') {   // 친구 · 같은 동아리원 · 같은 파티원 한 명에게 초대
       const to = String(b.to || ''); if (!to || to === me) fail('초대할 학생 선택 필요');
-      if (!canInvite(me, to)) fail('친구나 같은 동아리원만 초대할 수 있습니다');
+      if (!canInvite(me, to)) fail('친구 · 같은 동아리원 · 같은 파티원만 초대할 수 있습니다');
       if (r.members.length >= R.EXP_PARTY_MAX) fail('방이 이미 가득 찼습니다');
       if (r.members.some((m) => m.id === to)) fail('이미 방에 있는 학생입니다');
       const a = (invites.get(to) || []).filter((x) => x.room !== r.id); if (a.length >= 20) a.shift();

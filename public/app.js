@@ -901,6 +901,8 @@
       h += p.friend === 'ok' ? '<button class="btn sm" data-act="dmopen" data-a="' + pid + '" data-b="' + esc(p.name) + '">1:1 대화</button>' : '<button class="btn sm" disabled title="1:1 대화는 친구끼리 할 수 있습니다">1:1 대화</button>';
       // 파티
       h += p.sameParty ? '<span class="tag ok">같은 파티</span>' : '<button class="btn sm" data-act="pinvite" data-a="' + pid + '">파티 초대</button>';
+      // 함께 원정 (파티와 따로: 파티가 가득 차 있어도 지금 들어가 있는 원정 방으로 초대)
+      h += '<button class="btn sm" data-act="erinvp" data-a="' + pid + '" title="내가 들어가 있는 함께 원정 방으로 초대합니다 (친구 · 같은 동아리원 · 같은 파티원)">원정 초대</button>';
       // 동아리 (초대 권한이 있을 때만)
       if (p.canGuildInvite) h += '<button class="btn sm" data-act="ginvite" data-a="" data-b="' + pid + '">동아리 초대</button>';
       if (p.friend === 'ok') h += '<button class="btn sm ghost" data-act="fop" data-a="remove" data-b="' + pid + '">친구 끊기</button>';
@@ -1649,12 +1651,13 @@
   ACT.erpos2 = function (k, id) { S.erPos = k; ACT.erpeek(id); };
   function erPartyToast(j) { if (!j.added && !j.skipped) return; toast('파티로 함께 원정', (j.added.length ? j.added.join(', ') + ' 님과 함께 들어갔습니다' : '함께 간 파티원이 없습니다') + (j.skipped.length ? ' · 빠진 파티원: ' + j.skipped.join(', ') : ''), 6000); }
   ACT.erjoin2 = function (id, wp) { API.expRoom({ op: 'join', id: id, pos: erPos(), withParty: wp === 'party' }).then(function (j) { if (j.error) { toast('함께 원정', j.error); return; } closeModal(); if (wp === 'party') erPartyToast(j); else toast('함께 원정', '방에 들어갔습니다'); erAbsorb(j); if (S.view !== 'explore') ACT.goto('explore', 'exproom'); else render(); }); };
-  // 초대: 친구 · 같은 동아리원 중 한 명씩 골라 보낸다 (검색 가능, 한꺼번에 보내기 없음)
+  // 초대: 친구 · 같은 동아리원 · 같은 파티원 중 한 명씩 골라 보낸다 (검색 가능, 한꺼번에 보내기 없음)
   ACT.erinvite = function () {
-    modal(mhead('함께 원정에 초대', '친구와 같은 동아리원 중에서 한 명씩 선택해 초대합니다') + '<input id="eri-q" type="search" placeholder="이름으로 찾기" autocomplete="off" style="margin-bottom:10px"><div id="eri-list" class="stack" style="gap:6px"><p class="small muted">불러오는 중…</p></div>');
+    modal(mhead('함께 원정에 초대', '친구 · 같은 동아리원 · 같은 파티원 중에서 한 명씩 선택해 초대합니다') + '<input id="eri-q" type="search" placeholder="이름으로 찾기" autocomplete="off" style="margin-bottom:10px"><div id="eri-list" class="stack" style="gap:6px"><p class="small muted">불러오는 중…</p></div>');
     var q = $('#eri-q'); if (q) { q.addEventListener('input', erInvList); setTimeout(function () { q.focus(); }, 40); }
-    Promise.all([API.friends ? API.friends() : Promise.resolve({}), S.guild && API.guild ? API.guild() : Promise.resolve({})]).then(function (r) {
+    Promise.all([API.friends ? API.friends() : Promise.resolve({}), S.guild && API.guild ? API.guild() : Promise.resolve({}), S.party && API.party ? API.party() : Promise.resolve({})]).then(function (r) {
       var seen = {}, list = [];
+      (((r[2] && r[2].party) || {}).members || []).forEach(function (m) { if (m.id && m.id !== S.P.id && !seen[m.id]) { seen[m.id] = 1; list.push({ id: m.id, name: m.name, tag: '파티', online: !!m.online, grade: m.grade, lvl: m.lvl }); } });
       ((r[0] && r[0].friends) || []).forEach(function (f) { if (!seen[f.id]) { seen[f.id] = 1; list.push({ id: f.id, name: f.name, tag: '친구', online: !!f.online, grade: f.grade, lvl: f.lvl }); } });
       (((r[1] && r[1].guild) || {}).members || []).forEach(function (m) { if (m.id !== S.P.id && !seen[m.id]) { seen[m.id] = 1; list.push({ id: m.id, name: m.name, tag: '동아리', online: !!m.online, grade: m.grade, lvl: m.lvl }); } });
       S.erInvList = list.sort(function (a, b) { return (b.online - a.online) || a.name.localeCompare(b.name); }); erInvList();
@@ -1666,6 +1669,7 @@
     box.innerHTML = a.length ? a.map(function (x) { return '<div class="row erprow"><span class="odot' + (x.online ? ' on' : '') + '"></span><b>' + esc(x.name) + '</b><span class="tag">' + x.tag + '</span><span class="tiny faint">' + (x.grade ? x.grade + '학년' : '') + (x.lvl ? ' · Lv ' + x.lvl : '') + '</span><span class="spacer"></span>' + (sent[x.id] ? '<span class="tiny gold">보냄</span>' : '<button class="btn sm" data-act="erinv1" data-a="' + esc(x.id) + '">초대</button>') + '</div>'; }).join('')
       : '<p class="small muted">' + (S.erInvList.length ? '「' + esc(q) + '」에 맞는 학생이 없습니다.' : '친구나 동아리원이 없습니다. 「모집 알림」으로 사람을 모아 보세요.') + '</p>';
   }
+  ACT.erinvp = function (id) { API.expRoom({ op: 'invite', to: id }).then(function (j) { if (j.error) { if (/들어가 있는 방이 없습니다/.test(j.error)) { toast('원정 초대', '먼저 원정 화면의 「함께 원정」에서 방을 만들거나 들어간 뒤 초대할 수 있습니다', 3200); return; } toast('원정 초대', j.error); return; } toast('원정 초대', (j.invited || '학생') + ' 님에게 함께 원정 초대를 보냈습니다', 2200); }); };   // 학생 정보 카드에서
   ACT.erinv1 = function (id) { API.expRoom({ op: 'invite', to: id }).then(function (j) { if (j.error) { toast('초대', j.error); return; } (S.erSent || (S.erSent = {}))[id] = 1; toast('초대', (j.invited || '학생') + ' 님에게 초대를 보냈습니다'); erInvList(); }); };
   ACT.ernpcdel = function (k) { erOp({ op: 'npcdel', k: +k }); };
   // 1초마다: 출발까지 남은 시간만 고치고, 3초마다 목록을 새로 받는다 (원정 화면이거나 방에 들어가 있을 때만)
@@ -5117,7 +5121,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102183;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102213;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
