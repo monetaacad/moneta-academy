@@ -2349,7 +2349,8 @@ routes['POST /api/admin/plog'] = async (req, res) => {
     const bon = {}; for (const k in c.b) if (typeof c.b[k] === 'number' && c.b[k]) bon[k] = n2(c.b[k], 4);
     const eq = Object.keys(P.eq || {}).filter((k) => P.eq[k]).map((k) => { const it = P.eq[k], is = R.itemStats(it), ist = {}; for (const x in is) ist[x] = n2(is[x], 4);
       return { slot: k, name: it.name, r: it.r, ilvl: it.ilvl, enh: it.enh || 0, q: it.q, wk: it.wk || '', aff: it.aff || [], eng: it.eng || null, stats: ist }; });
-    card = { cls: P.cls, lvl: P.lvl, grade: P.grade, maxStage: P.maxStage, power: c.power, st, sg, bon,
+    const keyNm = Object.assign({}, R.D.BONUS_NAMES, R.D.STAT_NAMES); R.D.ENGRAVES.forEach((e) => { keyNm['eng:' + e.id] = e.name; });   // 운영실 화면이 효과 키 대신 이름을 보이도록
+    card = { cls: P.cls, lvl: P.lvl, grade: P.grade, maxStage: P.maxStage, power: c.power, st, sg, bon, nm: keyNm,
       fight: { atk: n2(c.atk), patk: n2(c.patk), matk: n2(c.matk), hp: n2(c.hp), def: n2(c.def), aps: n2(c.aps, 2), critC: n2(c.critC, 3), critD: n2(c.critD, 2), spell: n2(c.spell, 3), skill: n2(c.skill, 3), dps: n2(c.dps), spellDps: n2(c.spellDps), famDps: n2(c.famDps), totalDps: n2(c.totalDps) },
       eq, subj: Object.keys(P.subj || {}).map((k) => (R.SUBJ[k] ? R.SUBJ[k].name : k) + ' ' + P.subj[k].lv).join(' · '),
       rs: Object.keys(P.rs || {}).filter((k) => P.rs[k] && R.RES[k]).map((k) => R.RES[k].name + ' ' + P.rs[k]).join(' · '),
