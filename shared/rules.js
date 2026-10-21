@@ -536,7 +536,7 @@
   function subVal(it) {
     var S = SLOT[it.slot]; if (!S.sub) return 0;
     var rm = D.RARITY[it.r].mult;
-    if (S.sub === 'critC') return S.subBase * rm * (1 + it.enh * 0.05);
+    if (S.sub === 'critC' || S.sub === 'lectureSpd') return S.subBase * rm * (1 + it.enh * 0.05);
     return S.subBase * Math.pow(1.12, it.ilvl - 1) * rm * it.q * (1 + it.enh * 0.1);
   }
   function itemStats(it) {
