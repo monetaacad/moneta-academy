@@ -302,13 +302,23 @@
     var prev = x.live && x.live.kind === 'real' && x.live.prev ? x.live.prev : {}, best = P.id in prev ? prev[P.id] : Rules.twBest(P, now);
     return Promise.resolve({ party: 'demo-party', name: x.pa.name || '파티', leader: P.id, week: Rules.weekId(now), weekEnd: Rules.weekStart(Rules.weekId(now) + 1), now: Date.now() / 1000, demo: true,
       start: best + 1, used: Rules.twUsed(P, now) ? [P.name] : [], myUsed: Rules.twUsed(P, now), myBest: best, myPos: Rules.twPos(P), posOk: Rules.expPositions(P),
-      members: Rules.twMeta(x.ms).map(function (m) { return Object.assign(m, { me: m.id === P.id, best: m.npc ? null : best, used: !m.npc && Rules.twUsed(P, now) }); }), runs: x.runs.slice().reverse() });
+      members: Rules.twMeta(x.ms).map(function (m) { return Object.assign(m, { me: m.id === P.id, best: m.npc ? null : best, used: !m.npc && Rules.twUsed(P, now), ready: m.npc || !!this._twLob }); }, this), runs: x.runs.slice().reverse(), lobby: this._twLob ? { mode: this._twLob.mode, by: P.name, at: this._twLob.at, notReady: [] } : null, count: 15, readyTtl: 900 });
   };
   LocalApi.prototype.towerOp = function (o) {
     o = o || {}; var now = this._now(), P = this.d.P, self = this; Rules.advance(P, this._world(now), now); var x = this._towerCore(now); if (!x) return Promise.resolve({ error: '파티에 들어가 있어야 별의 탑에 오를 수 있습니다' });
     var mk = function (kind) { return Object.assign(Rules.twRun(x.ms, Rules.twBest(P, now) + 1, Math.floor(Math.random() * 2147483646) + 1), { id: String(Date.now()), kind: kind, by: P.name, pname: x.pa.name || '', t0: Date.now() / 1000, ms: Rules.twMeta(x.ms), day: Rules.dayKST(now) }); };
     if (o.mode === 'pos') { if (Rules.expPositions(P).indexOf(o.pos) < 0) return Promise.resolve({ error: '선택할 수 없는 포지션입니다' }); P.opt.twPos = o.pos; this._save(); return this.tower(); }
     if (o.mode === 'solo') return Promise.resolve({ run: mk('solo') });
+    if (o.mode === 'ready') {   // 데모의 출발 대기: 파티원이 나와 NPC뿐이라 준비하면 곧바로 15초를 센다
+      if (this._twTimer) { clearTimeout(this._twTimer); this._twTimer = null; }
+      if (o.on === false) { this._twLob = null; return this.tower(); }
+      var kind = o.kind || (this._twLob && this._twLob.mode); if (kind !== 'real' && kind !== 'party') return Promise.resolve({ error: '먼저 「실전 준비」 또는 「파티 연습 준비」를 눌러 출발 종류를 정해야 합니다' });
+      if (x.live) return Promise.resolve({ error: x.live.by + ' 님이 시작한 ' + (x.live.kind === 'real' ? '실전' : '파티 연습') + '이 진행 중입니다. 함께 지켜보세요' });
+      if (kind === 'real' && Rules.twUsed(P, now)) return Promise.resolve({ error: '오늘 이미 실전에 도전한 파티원이 있습니다: ' + P.name + ' (매일 KST 자정에 초기화)' });
+      this._twLob = { mode: kind, at: Date.now() / 1000 + 15 };
+      this._twTimer = setTimeout(function () { self._twLob = null; self._twTimer = null; self.towerOp({ mode: kind }).then(function () { var h = self._chat && self._chat.h; if (h && h.tower) h.tower({ start: true }); }); }, 15000);
+      return this.tower();
+    }
     if (o.mode === 'stop') { if (!x.live || x.live.kind !== 'party') return Promise.resolve({ error: '중단할 파티 연습이 없습니다' }); x.live.d = Math.max(0, Date.now() / 1000 - x.live.t0); x.live.stopped = P.name; this._save(); return this.tower(); }
     if (o.mode !== 'real' && o.mode !== 'party') return Promise.resolve({ error: '알 수 없는 요청입니다' });
     if (x.live) return Promise.resolve({ error: x.live.by + ' 님이 시작한 ' + (x.live.kind === 'real' ? '실전' : '파티 연습') + '이 진행 중입니다. 함께 지켜보세요', _status: 409 });

@@ -172,6 +172,7 @@
       if (j._status === 401) { toast('다시 로그인이 필요합니다', ''); authScreen(); return null; }
       absorb(j);
       if (j.error) { toast('할 수 없습니다', j.error); render(); return null; }
+      if (S.view === 'tower' && /^(spell|gearSet|drink|equip|unequip|badgeWear)$/.test(type)) S.towerAt = 0;   // 별의 탑: 바뀐 장비 · 주문 · 물약으로 파티원 전투력을 다시 불러온다
       return j.r || {};
     }, function () { S.busy = false; toast('연결 오류', '잠시 후 다시 시도'); return null; });
   }
@@ -746,7 +747,7 @@
       // 파티원이 별의 탑에 도전하면 일지를 함께 본다
       tower: function (d) {
         if (!d) return; S.towerAt = 0;
-        if (d.start && d.by !== (S.P && S.P.name)) { if (S.view !== 'tower') toast('별의 탑', d.by + ' 님이 별의 탑을 시작했습니다 · 별의 탑에서 함께 볼 수 있습니다', 4000); S.twWatch = 'party'; }
+        if (d.start) { if (S.view !== 'tower') toast('별의 탑', '별의 탑 출발! 별의 탑에서 함께 볼 수 있습니다', 4000); S.twWatch = 'party'; }
         loadTower();
       },
       seq: function (d) {
@@ -1472,10 +1473,11 @@
 
   /* ── 강의실 ── */
   /* 콘텐츠 화면의 물약 줄: 그 화면에 효과가 있는 물약(effs가 null이면 전부) 중 가진 것을 바로 마신다. 마시는 중이면 남은 시간 */
-  function potBar(effs) {
+  // always: 가진 물약이 없어도 줄을 보이고 구하는 곳을 안내한다 (별의 탑 전투 준비)
+  function potBar(effs, always) {
     var P = S.P, n = now(), list = D.POTIONS.filter(function (p) { return !effs || Object.keys(p.eff).some(function (k) { return effs.indexOf(k) >= 0; }); });
     var items = list.filter(function (p) { var bf = P.buffs['p_' + p.id]; return (P.shelf[p.id] || 0) > 0 || (bf && bf.end > n); });
-    if (!items.length) return '';
+    if (!items.length) return always ? '<div class="potbar"><span class="small faint">가진 전투 물약이 없습니다. 연금 공방에서 만들거나 거래소에서 살 수 있습니다.</span><span class="spacer"></span>' + (P.grade >= 2 ? '<button class="btn sm ghost" data-act="nav" data-a="alch">연금 공방</button>' : '') + '<button class="btn sm ghost" data-act="nav" data-a="market">거래소</button></div>' : '';
     return '<div class="potbar">' + items.map(function (p) {
       var k = P.shelf[p.id] || 0, bf = P.buffs['p_' + p.id], on = bf && bf.end > n;
       return '<span class="potb"><span class="pot-ic" style="background:' + p.color + '"></span><span class="small" title="' + esc(p.desc) + '">' + p.name + (on ? ' <span class="tiny good">' + R.fmtTime(bf.end - n) + '</span>' : '') + '</span>' +
@@ -1485,7 +1487,7 @@
   V.lecture = function () {
     var P = S.P, c = C(), ex = R.examFor(P);
     var h = pageHead('일곱 과목, 일곱 해', '강의실', '수업 효율 <b class="num gold">×' + c.lecSpd.toFixed(2) + '</b> <span class="muted">경험치 · 지식 획득량</span>');
-    h += potBar(['lectureSpd', 'knowPct', 'xpPct', 'offlineEff']);
+    h += potBar(['lectureSpd', 'knowPct', 'xpPct', 'offlineEff']) + gsQuick();
     R.lecQ(P); h += ttCard(c);
     var nL = 0; for (var i0 = 0; i0 < 3; i0++) { if (i0 >= c.lecSlots && !P.lec[i0]) break; nL++; }
     h += '<div class="grid gauto' + (nL === 1 ? ' one' : '') + '" style="margin-bottom:16px">';   // 한 자리면 가로로 넓게
@@ -1776,7 +1778,7 @@
     var P = S.P, c = C(), cap = Math.min(P.maxStage, R.stageCap(P));
     var shown = P.exp.find(Boolean), z = R.zoneOf(shown ? shown.s : (S.pick.es0 || R.bestStage(P, wctx())));
     var gcap = R.gradeCap(P), h = pageHead(z.name, '원정', '열린 단계 <b class="num gold">1–' + cap + '</b>' + (cap > gcap ? ' <span class="tag br" title="학년 상한 ' + gcap + '단계 너머를 레벨로 열었습니다">레벨로 +' + (cap - gcap) + '</span>' : ''));
-    h += potBar(null);   // 원정 화면은 물약 전부
+    h += potBar(null) + gsQuick();   // 원정 화면은 물약 전부
     var running = P.exp.map(function (j, i) { return j ? i : -1; }).filter(function (i) { return i >= 0; });
     h += '<div class="grid ' + (running.length > 1 ? 'g2' : '') + '">' + (running.length ? running.map(function (i) { var j = P.exp[i]; return '<div class="card explogcard"><div class="row between"><h3>원정 일지 <span class="small muted">' + j.s + '단계 · ' + R.zoneOf(j.s).name + '</span></h3><span class="tiny faint num" data-l="left:' + j.end + '"></span></div><div class="row tiny muted" style="margin-top:2px;gap:12px"><span>처치 약 <b class="num" data-l="expk:' + i + '"></b></span><span>' + CUR + ' 약 <b class="num gold" data-l="expg:' + i + '"></b></span></div><div class="logw"><div class="explog" data-explog="' + i + '" aria-live="off"></div><button class="lognew" hidden></button></div></div>'; }).join('')
       : '<div class="card inset"><p class="small muted">출정하면 이곳에 원정 일지가 몇십 초마다 한 줄씩 적힙니다. 창을 닫아 두어도 원정은 그대로 진행됩니다.</p></div>') + '</div>';
@@ -1897,7 +1899,7 @@
     wbMarkSeen();
     var P = S.P, W = S.W || {}, b = W.boss;
     var h = pageHead('종소리가 멎기 전에', '월드', (W.demo ? '<span class="tag br">데모</span> ' : '') + '학생 ' + fmt(W.players || 0) + '명 · 지금 접속 ' + fmt(W.online || 0) + '명');
-    h += potBar(['atkPct', 'hpPct', 'defPct']);   // 전투 물약
+    h += potBar(['atkPct', 'hpPct', 'defPct']) + gsQuick();   // 전투 물약 · 장비 프리셋
     // 지난주 보상
     if (P.wkPrev && !P.wkPrev.claimed) h += wkPrevCard(P);
     h += '<div class="stack">';
@@ -2196,6 +2198,8 @@
     if (bd) names.push('<span>' + esc(bd.name) + ' ' + badgeSvg(bd) + '</span>');   // 휘장
     return { st: st, on: on, miss: miss, n: keys.length, names: names, nm: st.name || '' };
   }
+  // 다른 화면(수업 · 원정 · 월드 보스)에서 쓰는 장비 프리셋 줄: 저장한 프리셋이 하나라도 있을 때만
+  function gsQuick() { return (S.P.gearSets || []).some(Boolean) ? '<div class="gsquick">' + gearSetRow() + '</div>' : ''; }
   function gearSetRow() {
     var b = '';
     for (var i = 0; i < R.GEARSET_N; i++) { var g = gsInfo(i); b += '<button class="btn sm' + (g.on ? ' primary' : '') + '" data-act="gsload" data-a="' + i + '"' + (g.st && !g.on ? ' title="프리셋 ' + (i + 1) + (g.nm ? ' · ' + esc(g.nm) : '') + ' 장착"' : g.on ? ' title="지금 장착 중"' : ' disabled title="비어 있음 · 편집에서 저장"') + '>' + (g.nm ? esc(g.nm) : i + 1) + '</button>'; }
@@ -2586,7 +2590,10 @@
       if (j.error) return; if (j.now) S.twOff = j.now - Date.now() / 1000;
       (j.runs || []).forEach(function (r) { if (r.floors) S.twCache[r.id] = r; else if (r.held && S.twCache[r.id]) { r.floors = S.twCache[r.id].floors; delete r.held; } });
       var keep = (j.runs || []).map(function (r) { return r.id; }); Object.keys(S.twCache).forEach(function (k) { if (keep.indexOf(k) < 0) delete S.twCache[k]; });
-      S.towerD = j; S.towerAt = Date.now(); if (S.view === 'tower' && !S.modal) render();
+      S.towerD = j; S.towerAt = Date.now();
+      // 실전이 진행 중이고 내가 그 파티원이면, 끝날 때 결과 창을 띄운다 (출발은 서버가 자동으로 하므로 누가 눌렀든)
+      var r0 = j.runs && j.runs[0]; if (r0 && r0.kind === 'real' && r0.floors && twEnd(r0) > twNow() && r0.ms.some(function (m) { return m.id === S.P.id; }) && S.twMineSeen !== r0.id) { S.twMineSeen = r0.id; S.twMine = r0; S.twWatch = 'party'; }
+      if (S.view === 'tower' && !S.modal) render();
     }, function () { S.twLoadP = null; }));
   }
   function twNow() { return Date.now() / 1000 + (S.twOff || 0); }
@@ -2682,6 +2689,7 @@
     var mine = S.twMine;
     if (mine && (twNow() >= mine.t0 + mine.d || twSkipped(mine))) { S.twMine = null; twResult(mine); }
     var solo = S.twSolo; if (solo && !solo.closed && !solo.doneSaid && twEl(solo) >= solo.d) { solo.doneSaid = true; toast('혼자 연습 종료', solo.cleared >= solo.start ? solo.cleared + '층까지 올랐습니다 (기록 · 보상 없음)' : '첫 층을 넘지 못했습니다 (기록 · 보상 없음)', 3600); if (S.view === 'tower') render(); }
+    var lob = S.towerD && S.towerD.lobby, ce = $('#twcount'); if (ce && lob) { var ct = twCountText(lob); if (ce.__h !== ct) { ce.__h = ct; ce.innerHTML = ct; } }
     var pl = S.towerD && S.towerD.runs && S.towerD.runs[0];
     if (pl && pl.floors && S.twEndSeen !== pl.id && twNow() >= twEnd(pl)) { S.twEndSeen = pl.id; S.towerAt = 0; loadTower(); }   // 파티 실행이 끝나면 한 번만 새로 불러온다
     if (S.view !== 'tower') return;
@@ -2704,6 +2712,7 @@
     var P = S.P, cl = R.ctCls(P), nm = R.CT_NAME[cl], best = R.ctBest(P, cl), f = best + 1, foe = R.ctFoe(f, cl), left = Infinity;
     var pv = R.duelPreview(P, wctx(), foe.stage, R.K.BOSS_HP * 0.6 * (foe.wall ? 1.8 : 1), R.K.BOSS_ATK * 3 * (foe.wall ? 1.4 : 1)), nextMile = Math.ceil(f / R.CT_MILE) * R.CT_MILE, mt = R.ctTitle(cl, nextMile), rw = R.ctReward(f);
     var h = pageHead('무한의 탑 · 혼자 오르는 ' + R.CLS[cl].name + ' 전용 탑', '<span class="phimg">' + clsDot(cl, 36) + nm + '</span>', '최고 <b class="num gold">' + best + '</b>층');
+    h += potBar(['atkPct', 'hpPct', 'defPct']) + gsQuick();   // 전투 물약 · 장비 프리셋
     h += '<div class="card hl"><div class="row between"><h3>' + nm + ' <span class="tag br">최고 ' + best + '층</span></h3><span class="tiny faint">도전 횟수 제한 없음</span></div>' +
       '<p class="tiny faint" style="margin-top:2px">끝없이 이어지는 ' + R.CLS[cl].name + ' 전용 탑입니다. 도전 횟수 제한 없이 한 층씩 싸우며, 전투력이 되는 만큼 오를 수 있습니다. 오른 층은 줄어들지 않습니다. 탑의 적은 공격이 매우 강해 화력만큼 생명력과 회복도 중요합니다(' + R.CT_TIME + '초 제한).</p>' +
       '<div class="twnext" style="margin-top:10px"><div class="twf num">' + f + '<span>층</span></div><div style="flex:1;min-width:0"><b' + (foe.wall ? ' class="gold"' : '') + '>' + esc(foe.name) + '</b><div class="tiny faint">' + foe.stage + '단계 수준 · 체력 ' + fmt(foe.hp) + (foe.wall ? ' · <span class="bad">시련의 층: 탑의 문지기가 지킵니다</span>' : '') + '</div>' +
@@ -2736,10 +2745,10 @@
     });
   };
   V.tower = function () {
-    var h = pageHead('파티와 함께 오르는 탑', '<span class="phimg">' + dotImg('tower', 40, '', 'twimg') + '별의 탑</span>', '실전 하루 1회 · 월요일 KST 0시 기록 초기화') + potBar(['atkPct', 'hpPct', 'defPct']);   // 전투 물약
+    var h = pageHead('파티와 함께 오르는 탑', '<span class="phimg">' + dotImg('tower', 40, '', 'twimg') + '별의 탑</span>', '실전 하루 1회 · 월요일 KST 0시 기록 초기화');
     if (!S.partyD || Date.now() - S.partyAt > 20000) { if (Date.now() - S.partyAt > 1500) loadParty(); }
     if (!S.party) return h + '<div class="card hl"><h3>파티와 함께 오르는 탑</h3><p class="small" style="margin-top:4px">별의 탑은 파티가 함께 1층부터 실시간으로 오르는 곳입니다. 실전은 파티 단위로 하루 1번이며, 파티가 쓰러질 때까지 층을 이어 오릅니다. 연습은 언제든 할 수 있습니다.</p><p class="small muted" style="margin-top:6px">파티에 들어가 있어야 도전할 수 있습니다. 혼자서도 파티를 만들 수 있고, 빈자리는 아카데미 친구(NPC)를 불러 채울 수 있습니다.</p><div class="row" style="margin-top:10px;gap:6px"><button class="btn primary" data-act="twparty">파티 만들기</button><button class="btn ghost" data-act="nav" data-a="party">파티 화면으로</button></div></div>';
-    return h + towerStage() + towerCard() + towerRuns() + '<div class="row" style="margin-top:10px"><span class="tiny faint">파티원 · 초대 · 아카데미 친구 · 파티 이름은 파티 화면에서 관리합니다.</span><span class="spacer"></span><button class="btn sm ghost" data-act="nav" data-a="party">파티 화면</button></div>';
+    return h + towerStage() + towerCard() + twPrep() + towerRuns() + '<div class="row" style="margin-top:10px"><span class="tiny faint">파티원 · 초대 · 아카데미 친구 · 파티 이름은 파티 화면에서 관리합니다.</span><span class="spacer"></span><button class="btn sm ghost" data-act="nav" data-a="party">파티 화면</button></div>';
   };
   ACT.twparty = function () { API.partyOp({ op: 'create', name: (S.P.name + '의 파티').slice(0, 12) }).then(function (j) { if (j.error) { toast('파티', j.error); return; } S.party = (j.party && j.party.id) || 'p'; S.partyAt = 0; S.towerAt = 0; S.towerD = null; renderDock(); toast('파티', '파티를 만들었습니다 · 이제 별의 탑에 도전할 수 있습니다', 2600); sync(true); render(); }); };
   function towerCard() {
@@ -2747,26 +2756,50 @@
     if (!t) return '<div class="card" data-anchor="tower"><h3>별의 탑</h3><p class="small muted">불러오는 중…</p></div>';
     if (!t.party) return '';
     var live = twPartyLive() || (t.runs[0] && t.runs[0].floors && twEnd(t.runs[0]) > twNow() ? t.runs[0] : null);
-    var realWhy = live ? (live.by + ' 님이 시작한 ' + TW_KIND[live.kind] + '이 진행 중입니다') : t.used.length ? '오늘 이미 실전에 도전한 파티원이 있습니다: ' + t.used.join(', ') : '';
+    var lob = t.lobby, nr = lob ? lob.notReady : [], meReady = (t.members.filter(function (m) { return m.me; })[0] || {}).ready;
+    var liveWhy = live ? live.by + ' 님이 시작한 ' + TW_KIND[live.kind] + '이 진행 중입니다' : '';
+    var realWhy = liveWhy || (t.used.length ? '오늘 이미 실전에 도전한 파티원이 있습니다: ' + t.used.join(', ') : '');
     var h = '<div class="card tower" data-anchor="tower"><div class="row between"><h3 class="twhead">' + dotImg('tower', 32, '', 'twimg') + '파티 「' + esc(t.name) + '」 <span class="tag br">내 기록 ' + t.myBest + '층</span></h3><span class="tiny faint">기록 초기화까지 ' + left(t.weekEnd) + '</span></div>' +
       '<div class="twteam">' + t.members.map(function (m) {
         var pos = R.EXP_POS[m.pos];
         return '<div class="twm"><span class="small ell" style="color:' + (R.HOUSE[m.house] ? R.HOUSE[m.house].color : 'inherit') + '">' + esc(m.name) + (m.npc ? ' <span class="tag npc">NPC</span>' : '') + (m.me ? ' <span class="tag">나</span>' : '') + '</span>' +
-          '<span class="tiny"><span class="tag' + (m.pos === 'van' ? ' br' : m.pos === 'sup' ? ' ok' : '') + '">' + (pos ? pos.name : '') + '</span> ' + (m.npc ? '<span class="faint">내 힘의 30%</span>' : '<span class="faint">기록</span> <b class="num">' + m.best + '층</b>' + (m.used ? ' · <span class="gold">오늘 실전 완료</span>' : '')) + '</span>' +
+          '<span class="tiny"><span class="tag' + (m.pos === 'van' ? ' br' : m.pos === 'sup' ? ' ok' : '') + '">' + (pos ? pos.name : '') + '</span> ' + (m.npc ? '<span class="faint">내 힘의 30%</span>' : '<span class="faint">기록</span> <b class="num">' + m.best + '층</b>' + (m.used ? ' · <span class="gold">오늘 실전 완료</span>' : '')) + ' ' + (lob ? (m.ready ? '<span class="tag ok">준비 완료</span>' : '<span class="tag">준비 중</span>') : '') + '</span>' +
           '<span class="tiny faint num">전투력 ' + fmt(m.power) + ' · 생명력 ' + fmt(m.hp) + '</span></div>';
       }).join('') + '</div>' +
       '<div style="margin-top:10px"><div class="small">내 포지션</div><div class="filters" style="margin-top:4px">' + ['van', 'rear', 'sup'].map(function (k) {
         var x = R.EXP_POS[k], ok = t.posOk.indexOf(k) >= 0;
         return '<button class="btn sm ghost' + (t.myPos === k ? ' on' : '') + '" data-act="twpos" data-a="' + k + '"' + (ok ? '' : why(x.name + ' 포지션은 ' + x.desc.split(' · ')[0])) + '>' + x.name + '</button>';
       }).join('') + '</div><p class="tiny faint" style="margin-top:4px">' + esc(R.EXP_POS[t.myPos].desc) + ' · 장착 주문은 「원정·전투 → 원정」에서 바꿀 수 있습니다.</p></div>' +
-      '<div class="row" style="margin-top:12px;gap:6px;flex-wrap:wrap"><button class="btn primary" data-act="twgo" data-a="real"' + (realWhy ? why(realWhy) : '') + '>실전 ' + t.start + '층부터 <span class="cost">오늘 1회</span></button>' +
-      '<button class="btn" data-act="twgo" data-a="party"' + (live ? why(realWhy) : '') + '>파티 연습</button><button class="btn ghost" data-act="twgo" data-a="solo">혼자 연습</button></div>' +
-      '<p class="tiny faint" style="margin-top:8px">실전은 파티 단위로 하루 1번이며, 누르는 순간 파티원 모두의 오늘 기회를 사용합니다(KST 자정 초기화 · 결과가 자정을 넘겨 끝나도 누른 날의 기회로 계산합니다). 파티원 중 한 명이라도 오늘 실전을 했다면 시작할 수 없습니다. ' +
-      '실전은 파티원 기록 중 가장 낮은 층의 다음 층부터 시작해, 파티가 모두 쓰러질 때까지 이어집니다(전투 시간 제한 없음 · 한 층이 ' + Math.round(R.TW.TIME * R.TW.PACE / 60) + '분을 넘기면 물러남). 마지막으로 넘은 층이 각자의 이번 주 기록이 되며(더 높을 때만), 처음 넘은 층의 보상은 우편으로 전달됩니다. ' +
-      '층 사이에 최대 생명력의 ' + Math.round(R.TW.HEAL * 100) + '%를 회복하고(쓰러진 파티원도 일어납니다), ' + R.TW.REST + '층마다 휴식층에서 모두 회복합니다. 적은 선봉 한 명을 집중해서 노리며 공격을 여러 번으로 나눠 치고, 주기적으로 파티 전체를 공격합니다. ' +
-      '탑에서는 방어력의 효과가 크고, 선봉은 생명력 +' + Math.round(R.TW.VAN_HP * 100) + '% · 받는 피해 −' + Math.round((1 - R.TW.VAN_TAKE) * 100) + '%를 받습니다. 치유 · 보호막 주문은 재사용 대기가 짧아지며, 동료가 쓰러질 공격을 맞기 직전에 준비돼 있으면 먼저 끼어듭니다. ' + R.TW.TRIAL + '층마다 특수한 기믹이 있는 시련의 층이 나옵니다. ' +
-      '연습은 언제든 할 수 있고 기록 · 보상에 반영되지 않습니다. 파티 연습은 파티원 모두가 함께 보고, 혼자 연습은 내 화면에서만 진행됩니다.</p></div>';
+      (lob && lob.mode ? '<div class="twlobby" style="margin-top:12px"><div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><b>출발 대기 · ' + (lob.mode === 'real' ? '실전 ' + t.start + '층부터' : '파티 연습') + '</b><span class="tiny faint">' + esc(lob.by) + ' 님이 준비</span><span class="spacer"></span><span class="small" id="twcount">' + twCountText(lob) + '</span></div>' +
+        '<div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap;align-items:center"><button class="btn ' + (meReady ? 'ghost' : 'primary') + '" data-act="twready" data-a="' + (meReady ? '0' : '1') + '">' + (meReady ? '준비 취소' : '준비 완료') + '</button>' +
+        '<button class="btn sm ghost" data-act="twgo" data-a="' + (lob.mode === 'real' ? 'party' : 'real') + '"' + (lob.mode === 'real' ? (liveWhy ? why(liveWhy) : '') : (realWhy ? why(realWhy) : '')) + '>' + (lob.mode === 'real' ? '파티 연습으로 바꾸기' : '실전으로 바꾸기') + '</button></div></div>' : '') +
+      '<div class="row" style="margin-top:' + (lob && lob.mode ? 8 : 12) + 'px;gap:6px;flex-wrap:wrap">' + (lob && lob.mode ? '' : '<button class="btn primary" data-act="twgo" data-a="real"' + (realWhy ? why(realWhy) : '') + '>실전 준비 <span class="cost">' + t.start + '층부터 · 오늘 1회</span></button>' +
+      '<button class="btn" data-act="twgo" data-a="party"' + (liveWhy ? why(liveWhy) : '') + '>파티 연습 준비</button>') + '<button class="btn ghost" data-act="twgo" data-a="solo">혼자 연습</button></div>' +
+      twRules(t) + '</div>';
     return h;
+  }
+  // 전투 준비: 장비 프리셋 · 장착 주문 · 전투 물약 (실전 · 연습을 누르는 순간의 상태가 그 실행 끝까지 반영된다)
+  function twPrep() {
+    var t = S.towerD; if (!t || !t.party) return '';
+    return '<div class="card" style="margin-top:14px" data-anchor="twprep"><div class="row between" style="gap:6px;flex-wrap:wrap"><h3>전투 준비</h3><span class="tiny faint">실전 · 연습을 누르는 순간의 장비 · 주문 · 물약이 그 실행 끝까지 반영됩니다</span></div>' +
+      gearSetRow() + '<div class="small" style="margin-top:12px">장착 주문</div>' + spellBar(S.P) + '<div class="small" style="margin-top:12px">전투 물약</div><div style="margin-top:6px">' + potBar(['atkPct', 'hpPct', 'defPct'], true) + '</div></div>';
+  }
+  // 별의 탑 규칙: 항목별로 나눠 접어 둔다 (펼친 상태는 기억)
+  function twRules(t) {
+    var n = t.count || 15, L = [
+      ['출발', '「실전 준비」 또는 「파티 연습 준비」를 누르면 출발 대기가 열립니다. 파티원(NPC 제외)이 모두 「준비 완료」를 누르면 ' + n + '초 뒤 자동으로 출발합니다.'],
+      ['출발 취소', '그 사이 한 명이라도 준비를 취소하면 출발이 취소되고, 다시 모두 준비하면 ' + n + '초부터 다시 셉니다. 준비는 ' + Math.round((t.readyTtl || 900) / 60) + '분이 지나면 풀립니다.'],
+      ['실전 횟수', '파티 단위로 하루 1번이며, 출발하는 순간 파티원 모두의 오늘 기회를 사용합니다(KST 자정 초기화 · 결과가 자정을 넘겨 끝나도 출발한 날의 기회로 계산). 파티원 중 한 명이라도 오늘 실전을 했다면 출발할 수 없습니다.'],
+      ['진행', '파티원 기록 중 가장 낮은 층의 다음 층부터 시작해 파티가 모두 쓰러질 때까지 이어집니다. 전투 시간 제한은 없으며, 한 층이 ' + Math.round(R.TW.TIME * R.TW.PACE / 60) + '분을 넘기면 물러납니다. 실전과 파티 연습은 건너뛸 수 없습니다.'],
+      ['기록 · 보상', '마지막으로 넘은 층이 각자의 이번 주 기록이 되며(더 높을 때만), 처음 넘은 층의 보상은 우편으로 전달됩니다. 파티 기록은 랭킹의 별의 탑 파티 순위에 남습니다.'],
+      ['회복', '층 사이에 최대 생명력의 ' + Math.round(R.TW.HEAL * 100) + '%를 회복하고(쓰러진 파티원도 일어납니다), ' + R.TW.REST + '층마다 휴식층에서 모두 회복합니다.'],
+      ['전투', '적은 선봉 한 명을 집중해서 노리며 공격을 여러 번으로 나눠 치고, 주기적으로 파티 전체를 공격합니다. 탑에서는 방어력의 효과가 크고, 선봉은 생명력 +' + Math.round(R.TW.VAN_HP * 100) + '% · 받는 피해 −' + Math.round((1 - R.TW.VAN_TAKE) * 100) + '%를 받습니다.'],
+      ['치유 · 보호막', '재사용 대기가 짧아지며, 동료가 쓰러질 공격을 맞기 직전에 준비돼 있으면 먼저 끼어듭니다.'],
+      ['시련의 층', R.TW.TRIAL + '층마다 특수한 기믹이 있는 시련의 층이 나옵니다.'],
+      ['연습', '언제든 할 수 있고 기록 · 보상에 반영되지 않습니다. 파티 연습은 파티원 모두가 함께 보고, 혼자 연습은 내 화면에서만 진행됩니다.']
+    ];
+    return '<details class="twrules" style="margin-top:10px"' + (FOLD.twrules ? ' open' : '') + ' data-fold="twrules"><summary class="small">별의 탑 규칙 보기</summary><ul class="tiny" style="margin:6px 0 0 16px;line-height:1.7">' +
+      L.map(function (x) { return '<li><b>' + x[0] + '</b> · <span class="faint">' + x[1] + '</span></li>'; }).join('') + '</ul></details>';
   }
   function towerRuns() {
     var t = S.towerD; if (!t || !t.party || !t.runs.length) return '';
@@ -2775,9 +2808,12 @@
       return '<div class="tiny row" style="gap:6px"><span><span class="faint num">' + clock(r.t0) + '</span> ' + esc(r.by) + ' · ' + TW_KIND[r.kind] + ' ' + r.start + '층부터 → ' + (r.stopped ? '<span class="faint">중단</span>' : r.cleared >= r.start ? '<span class="good">' + r.cleared + '층까지</span>' : '<span class="faint">첫 층에서 물러남</span>') + '</span>' + (r.floors ? '<span class="spacer"></span><button class="btn sm ghost" data-act="twexport" data-a="' + r.id + '">기록 내보내기</button>' : '') + '</div>';
     }).join('') + '</div></div>';
   }
+  ACT.twready = function (on) { API.towerOp({ mode: 'ready', on: on === '1' }).then(function (j) { if (j.error) { toast('별의 탑', j.error); return; } S.towerAt = 0; loadTower(); }); };
+  function twCountText(lob) { if (lob.at) { var left = Math.max(0, Math.ceil(lob.at - twNow())); return '<b class="gold">출발까지 ' + left + '초</b>'; } return lob.notReady.length ? '<span class="faint">대기: ' + esc(lob.notReady.join(', ')) + '</span>' : '<span class="good">모두 준비 완료</span>'; }
   ACT.twpos = function (k) { API.towerOp({ mode: 'pos', pos: k }).then(function (j) { if (j.error) { toast('별의 탑', j.error); return; } S.P.opt.twPos = k; S.towerAt = 0; loadTower(); }); };
   ACT.twgo = function (mode) {
-    if (mode === 'real' && !(S.confirm.twreal > Date.now())) { S.confirm.twreal = Date.now() + 4000; toast('별의 탑', '한 번 더 누르면 실전을 시작합니다 · 파티원 모두의 오늘 기회를 사용합니다', 3500); return; }
+    if (mode === 'real' && !(S.confirm.twreal > Date.now())) { S.confirm.twreal = Date.now() + 4000; toast('별의 탑', '한 번 더 누르면 실전 출발을 준비합니다 · 모두 준비 완료하면 ' + ((S.towerD && S.towerD.count) || 15) + '초 뒤 파티원 모두의 오늘 기회를 사용해 출발합니다', 4000); return; }
+    if (mode !== 'solo') { S.confirm.twreal = 0; API.towerOp({ mode: 'ready', kind: mode, on: true }).then(function (j) { if (j.error) { toast('별의 탑', j.error); return; } S.towerAt = 0; loadTower(); }); return; }
     S.confirm.twreal = 0; if (S.busy) return; S.busy = true;
     API.towerOp({ mode: mode }).then(function (j) {
       S.busy = false; if (j.error) { toast('별의 탑', j.error); S.towerAt = 0; loadTower(); return; }
@@ -4447,8 +4483,8 @@
       ['.potbar', '전투 물약', '실전 · 연습 버튼을 누르는 순간 켜져 있는 물약 효과가 전투에 반영되며, 진행 중에 물약 시간이 끝나도 그 실행이 끝날 때까지 유지됩니다.'],
       ['[data-anchor="tower"] .twteam', '파티원', '파티원마다 포지션 · 이번 주 기록 · 오늘 실전 여부가 표시됩니다. 실전은 파티원 기록 중 가장 낮은 층의 다음 층부터 시작합니다. 접속하지 않은 파티원도 함께 싸웁니다.'],
       ['[data-anchor="tower"] .filters', '내 포지션', '선봉은 적의 공격을 집중해서 받으며 탑에서 생명력 +30% · 받는 피해 −20%를 받습니다. 후열은 공격 주문, 지원은 치유 · 보호막 주문을 장착해야 선택할 수 있습니다. 지원의 치유 · 보호막은 동료가 쓰러질 공격을 맞기 직전에 먼저 끼어들어 막아 냅니다. 장착 주문은 「원정·전투 → 원정」에서 바꿉니다.'],
-      ['[data-act="twgo"][data-a="real"]', '실전', '파티 단위로 하루 1번입니다. 누르는 순간 파티원 모두의 오늘 기회를 사용하며, 파티원 중 한 명이라도 오늘 실전을 했다면 시작할 수 없습니다. 마지막으로 넘은 층이 각자의 이번 주 기록이 되고, 처음 넘은 층의 보상은 우편으로 전달됩니다. 파티 기록은 랭킹의 「별의 탑 파티 순위」에 파티 이름과 함께 남습니다.'],
-      ['[data-act="twgo"][data-a="party"]', '연습', '「파티 연습」은 파티원 모두가 함께 보고, 「혼자 연습」은 내 화면에서만 진행됩니다. 오늘 실전을 마친 뒤에도 할 수 있어 포지션 · 주문 · 물약 조합을 시험하기 좋습니다.'],
+      ['[data-act="twgo"][data-a="real"]', '실전', '파티 단위로 하루 1번입니다. 「실전 준비」를 누르면 출발 대기가 열리고, 파티원 모두가 「준비 완료」를 누르면 15초 뒤 자동으로 출발합니다(그 사이 한 명이라도 준비를 취소하면 출발이 취소됩니다). 출발하는 순간 파티원 모두의 오늘 기회를 사용하며, 파티원 중 한 명이라도 오늘 실전을 했다면 출발할 수 없습니다. 마지막으로 넘은 층이 각자의 이번 주 기록이 되고, 처음 넘은 층의 보상은 우편으로 전달됩니다. 파티 기록은 랭킹의 「별의 탑 파티 순위」에 파티 이름과 함께 남습니다.'],
+      ['[data-act="twgo"][data-a="party"]', '연습', '「파티 연습 준비」도 실전처럼 모두 준비 완료해야 출발하며 파티원 모두가 함께 보고, 「혼자 연습」은 내 화면에서만 진행됩니다. 오늘 실전을 마친 뒤에도 할 수 있어 포지션 · 주문 · 물약 조합을 시험하기 좋습니다.'],
       ['[data-anchor="twlog"]', '진행 화면', '적과 파티원의 체력이 실시간으로 표시되고, 모든 공격 · 치유 · 보호막이 대본으로 올라옵니다. 실전과 파티 연습은 건너뛸 수 없어 파티가 끝까지 함께 봅니다(혼자 연습만 「끝까지 보기」 가능). 「요약만 보기」로 주요 장면만 볼 수 있고, 끝난 기록은 「기록 내보내기」로 저장할 수 있습니다. 5층마다 휴식층, 30층마다 특수 기믹이 있는 시련의 층이 나옵니다.']
     ],
     guild: [['#view .card', '동아리', '동아리를 찾아 가입하거나 직접 만들 수 있습니다. 출석과 기부로 동아리 레벨을 올리면 부원 모두가 혜택을 받습니다.']],
@@ -5443,7 +5479,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102268;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102269;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

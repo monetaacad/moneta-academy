@@ -1006,6 +1006,8 @@ button.mkn:hover { text-decoration: underline; }
 .twms { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px 12px; margin-top: 10px; }
 .twm2 { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .twm2.down { opacity: .55; }
+.twlobby { padding: 10px 12px; border: 1px solid var(--brass); border-radius: 10px; background: var(--sunk); }
+.twrules summary { cursor: pointer; color: var(--muted); }
 .twlines { height: 210px; }
 .twlines .el.ks { color: var(--brass2); font-weight: 600; }
 .twlines .el.kp { color: #c4a5ff; }
@@ -1734,6 +1736,8 @@ mark.hl { color: inherit; background: linear-gradient(transparent 38%, color-mix
 @media (max-width: 600px) { .gmrow { align-items: flex-start; } .gmrow .frbtns { flex-direction: column; flex-wrap: nowrap; align-items: stretch; flex: 0 0 auto; max-width: 42%; } .gmrow .frbtns .btn, .gmrow .frbtns .gsel { width: 100%; white-space: nowrap; padding-left: 6px; padding-right: 6px; } }
 /* 장비 프리셋: 장비 화면에는 한 줄, 저장은 편집 팝업에서 */
 .gsrow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.gsquick { margin: -6px 0 12px; }
+.gsquick .gsrow { margin-top: 0; }
 .gsrow .btn[data-act="gsload"] { min-width: 32px; justify-content: center; }
 .gslist { display: flex; flex-direction: column; gap: 8px; }
 .gset { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 9px; background: var(--sunk); border: 1px solid var(--line2); min-width: 0; }
