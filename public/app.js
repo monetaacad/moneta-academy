@@ -1347,7 +1347,7 @@
   // 사역마 파견은 시간표와 따로 접을 수 있는 칸으로 (사역마가 많으면 길어진다). 접혀 있어도 요약 줄에 마릿수 · 다음 귀환
   function famCard() {
     var P = S.P; if (!R.famOpen(P)) return '';
-    var ids = Object.keys(P.fam.disp), idle = Object.keys(P.fam.own).filter(function (id) { return id !== P.fam.act && !P.fam.disp[id]; }).length;
+    var ids = Object.keys(P.fam.disp), idle = R.famIdle(P).length;
     if (!ids.length && !idle) return '';
     var rows = ids.map(function (id) { return tline('파견', R.FAM[id].name + ' 파견', P.fam.disp[id], 'work:fam'); });
     if (idle) rows.push(tline('파견', '쉬고 있는 사역마 ' + idle + '마리', null, 'work:fam', '파견 보낼 수 있습니다'));
@@ -2176,7 +2176,7 @@
     if (inc) { var ip = Math.min(1, inc.prog / inc.need); h += '<div class="incbox"><div class="row small"><b>품고 있는 알</b><span class="spacer"></span><span class="num">필요 기여도 ' + fmt(Math.floor(inc.prog)) + ' / ' + fmt(inc.need) + ' (' + Math.floor(ip * 100) + '%)</span></div><div class="bar brass" style="height:8px;margin-top:4px"><b style="width:' + (ip * 100).toFixed(1) + '%"></b></div><div class="tiny faint" style="margin-top:2px">부화 효율 ×' + C().hatchSpd.toFixed(2) + ' · 활동으로 얻는 기여도 × 부화 효율만큼 오릅니다</div></div>'; }
     h += '<div class="row" style="margin-top:10px;gap:6px">' + (inc ? (inc.prog >= inc.need ? '<button class="btn primary" data-act="do" data-a="eggHatch">부화시키기</button>' : '<button class="btn" data-act="do" data-a="egg" data-can="eggmana"' + (predMana() >= price ? '' : ' disabled') + '>마나로 바로 깨우기 <span class="cost">마나 ' + fmt(price) + '</span></button>') + (function () { var arm = S.confirm.iaeggCancel > Date.now(); return '<button class="btn' + (arm ? ' danger' : ' ghost') + '" style="white-space:normal;max-width:100%" data-act="itemarm" data-a="eggCancel" data-b="">' + (arm ? '한 번 더 누르면 품기를 취소합니다 · 진행도는 사라집니다' : '품기 취소') + '</button>'; })() :
       '<button class="btn primary" data-act="do" data-a="eggInc"' + (P.fam.eggs > 0 ? '' : ' disabled') + '>알 품기</button><button class="btn" data-act="do" data-a="egg" data-can="eggmana"' + (P.fam.eggs > 0 && predMana() >= price ? '' : ' disabled') + '>마나로 바로 깨우기 <span class="cost">마나 ' + fmt(price) + '</span></button>') + '</div>';
-    h += '</div><div class="card inset"><h4>파견</h4><p class="small muted" style="margin-top:4px">동행하지 않는 사역마를 정해진 시간 동안 내보내면 재료, 마석, ' + CUR + ', 가끔 알과 별조각을 물어 옵니다.</p>' + durPicker('dd', D.DISPATCH_DUR, '8h') + (function () { var idle = Object.keys(P.fam.own).filter(function (id) { return R.FAM[id] && !P.fam.disp[id] && P.fam.act !== id; }).length; return idle ? '<div class="row" style="margin-top:8px"><button class="btn sm primary" data-act="dispall">쉬고 있는 사역마 모두 파견 <span class="cost">' + idle + '마리 · ' + R.DDUR[S.pick.dd || '8h'].label + '</span></button></div>' : ''; })() + '<p class="tiny faint" style="margin-top:6px">파견에서 돌아온 사역마는 따로 받지 않아도 됩니다. 돌아오면 저절로 받아지고, 「끝난 작업 보고」에 한꺼번에 표시됩니다.</p></div></div>' +
+    h += '</div><div class="card inset"><h4>파견</h4><p class="small muted" style="margin-top:4px">동행하지 않는 사역마를 정해진 시간 동안 내보내면 재료, 마석, ' + CUR + ', 가끔 알과 별조각을 물어 옵니다.</p>' + durPicker('dd', D.DISPATCH_DUR, '8h') + (function () { var idle = R.famIdle(P).length; return idle ? '<div class="row" style="margin-top:8px"><button class="btn sm primary" data-act="dispall">쉬고 있는 사역마 모두 파견 <span class="cost">' + idle + '마리 · ' + R.DDUR[S.pick.dd || '8h'].label + '</span></button></div>' : ''; })() + '<p class="tiny faint" style="margin-top:6px">파견에서 돌아온 사역마는 따로 받지 않아도 됩니다. 돌아오면 저절로 받아지고, 「끝난 작업 보고」에 한꺼번에 표시됩니다.</p></div></div>' +
       // 사역마 효과 안내: 보유 효과(모두 · 항상)와 동행 효과(한 마리)
       '<div class="card inset" style="margin-bottom:12px"><h4>사역마 효과</h4><ul class="small" style="margin:6px 0 0 18px;line-height:1.7">' +
       '<li><b>보유 효과</b> · 가지고 있는 모든 사역마의 능력 보너스(각 카드에 표시된 수치)는 동행 · 파견 여부와 관계없이 항상 적용됩니다.</li>' +
@@ -2193,7 +2193,8 @@
         (act2 ? '' : (function () { var zs = R.dispZones(P), cur = P.fam.zone && P.fam.zone[f.id], top = zs[zs.length - 1];   // 파견 지역 (사역마마다 저장)
           return '<div class="row tiny" style="gap:6px;margin-top:6px"><span class="faint">파견 지역</span><select data-act="famzone" data-a="' + f.id + '" style="width:auto;flex:1;min-width:0"><option value=""' + (cur ? '' : ' selected') + '>자동 · ' + (top ? top.name : '') + '</option>' + zs.map(function (z) { return '<option value="' + z.id + '"' + (cur === z.id ? ' selected' : '') + '>' + z.name + ' · ' + D.MATS[z.mat].name + '</option>'; }).join('') + '</select></div>'; })()) +
         '<div class="row" style="margin-top:6px;gap:6px">' + (o.lv < 20 ? '<button class="btn sm primary" data-act="do" data-a="feed" data-b="' + f.id + '"' + (P.res.gold >= cost ? '' : ' disabled') + '>먹이 <span class="cost">' + fmt(cost) + ' ' + CUR + '</span></button>' : '<span class="tag br">최대 레벨</span>') +
-        (act2 ? '<span class="tag ok">동행 중</span>' : disp ? '' : '<button class="btn sm primary" data-act="do" data-a="famAct" data-b="' + f.id + '">동행</button><button class="btn sm primary" data-act="dispatch" data-a="' + f.id + '">' + R.DDUR[dk].label + ' 파견</button>') + '</div></div></div>';
+        (act2 ? '<span class="tag ok">동행 중</span>' : disp ? famRecallBtn(f.id) : '<button class="btn sm primary" data-act="do" data-a="famAct" data-b="' + f.id + '">동행</button>' + (o.lock ? '<span class="tag br" title="「모두 파견」에서 빠지며 따로 보낼 수도 없습니다">파견 잠금</span>' : '<button class="btn sm primary" data-act="dispatch" data-a="' + f.id + '">' + R.DDUR[dk].label + ' 파견</button>')) +
+        (act2 || disp ? '' : '<button class="btn sm ghost" data-act="famlock" data-a="' + f.id + '" title="잠그면 「모두 파견」에서 빠지고 따로 보낼 수도 없습니다">' + (o.lock ? '잠금 해제' : '파견 잠금') + '</button>') + '</div></div></div>';
     });
     return h + '</div>';
   }
@@ -3879,6 +3880,13 @@
   ACT.cttitles = function () { S.recTab = 'titles'; ACT.nav('rec'); };
   ACT.titleset = function (id) { act('title', { id: id || '' }).then(function (r) { if (!r) return; toast(id ? '칭호를 적용했습니다' : '칭호를 해제했습니다', r.title || '', 1800); loadMe(); render(); }); };
   ACT.brew = function (id) { act('brew', { id: id, n: +(S.pick.bn || 1) }).then(function (r) { if (r) { Snd.play('enh'); toast('물약이 완성되었습니다', R.POT[id].name + ' ' + r.n + '병 · 선반에 올렸습니다', 1800); } render(); }); };
+  // 파견 중인 사역마 하나 불러들이기 (한 번 더 눌러야) · 파견 잠금
+  function famRecallBtn(id) { var armed = S.confirm['frc' + id] > Date.now(); return '<button class="btn sm ' + (armed ? 'danger' : 'ghost') + '" data-act="disprecall" data-a="' + id + '" title="보낸 뒤 지난 시간만큼의 몫만 받습니다">' + (armed ? '한 번 더 누르면 지금 귀환합니다 · 지금까지 몫만 받습니다' : '귀환') + '</button>'; }
+  ACT.disprecall = function (id) {
+    var k = 'frc' + id; if (!(S.confirm[k] > Date.now())) { S.confirm[k] = Date.now() + 4000; render(); setTimeout(render, 4100); return; }
+    S.confirm[k] = 0; act('dispRecall', { id: id }).then(function (r) { if (r) toast(R.FAM[id].name + ' 귀환', D.MATS[r.mat].name + ' ' + fmt(r.mats || 0) + ' · 마석 ' + fmt(r.stones || 0) + ' · ' + MONEY(r.gold || 0, '+') + (r.egg ? ' · 환수의 알' : '') + (r.shard ? ' · 별조각 ' + r.shard : ''), 2600); render(); });
+  };
+  ACT.famlock = function (id) { act('famLock', { id: id }).then(function (r) { if (r) toast(r.lock ? '파견 잠금' : '파견 잠금 해제', r.lock ? '「모두 파견」에서 빠집니다' : '다시 파견을 보낼 수 있습니다', 1800); render(); }); };
   ACT.dispall = function () { var d = S.pick.dd || '8h'; act('dispatchAll', { d: d }).then(function (r) { if (r) toast('사역마 ' + r.n + '마리 파견', clock(now() + R.DDUR[d].s) + '에 돌아옵니다', 2200); render(); }); };
   ACT.dispatch = function (id) { var d = S.pick.dd || '8h'; act('dispatch', { id: id, d: d }).then(function (r) { if (r) toast(R.FAM[id].name + ' 파견', clock(now() + R.DDUR[d].s) + '에 돌아옵니다', 2000); render(); }); };
   // 장착 주문 칸 (보스 화면 · 무한의 탑에서 함께 사용). 누르면 그 칸의 주문을 고른다
@@ -5109,7 +5117,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102180;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102181;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
