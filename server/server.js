@@ -97,7 +97,7 @@ if (!dbx.kvGet('staffNoticeMig', 0)) {
     dbx.kvSet('staffNoticeMig', 1); if (n) log('예전 운영진 공지 ' + n + '건을 강조 표시로 바꿨습니다');
   } catch (e) { log('운영진 공지 이주 실패', e); }
 }
-const chat = Chat.create(dbx, log, { initExtra: (pid) => ({ build: BUILD.build, minBuild: BUILD.minBuild, maint: maintView(pid), pin: dbx.kvGet('pinNotice', null) }), sec, gzip: process.env.SSE_GZIP !== '0', isOp: (pid) => isChatOp(pid), slow: { world: dbx.kvGet('chat_slow', 0) }, partyOf: (pid) => partyOf.get(pid) || null, exrOf: (pid) => exprooms.chatKey(pid) || R.expChatKey(store.peek(pid)), guildOf: (pid) => guildOf.get(pid) || null, houseOf: (pid) => { const P = store.get(pid); return P && R.HOUSE[P.house] ? P.house : null; }, clsOf: (pid) => { const P = store.get(pid); return P && R.CLS[P.cls] ? P.cls : null; }, titleOf: (P) => R.titleName(P, P.title), inkOf: (P) => R.decoView(P).ink || '', canDm: (a, b) => friendState(a, b) === 'ok' });
+const chat = Chat.create(dbx, log, { initExtra: (pid) => ({ build: BUILD.build, minBuild: BUILD.minBuild, maint: maintView(pid), pin: pinList()[0] || null, pins: pinList() }), sec, gzip: process.env.SSE_GZIP !== '0', isOp: (pid) => isChatOp(pid), slow: { world: dbx.kvGet('chat_slow', 0) }, partyOf: (pid) => partyOf.get(pid) || null, exrOf: (pid) => exprooms.chatKey(pid) || R.expChatKey(store.peek(pid)), guildOf: (pid) => guildOf.get(pid) || null, houseOf: (pid) => { const P = store.get(pid); return P && R.HOUSE[P.house] ? P.house : null; }, clsOf: (pid) => { const P = store.get(pid); return P && R.CLS[P.cls] ? P.cls : null; }, titleOf: (P) => R.titleName(P, P.title), inkOf: (P) => R.decoView(P).ink || '', canDm: (a, b) => friendState(a, b) === 'ok' });
 const Board = require('./board.js');
 // 알림 기록: 우편과 따로, 일어난 일을 모아 보여 준다 (최근 100개, 30일)
 function pname(pid) { const w = dbx.q.getProfile.get(pid); return w ? w.name : '학생'; }
@@ -1933,15 +1933,19 @@ routes['GET /api/admin/stats'] = (req, res) => {
     chatConnections: chat.connections(), chatOnline: chat.online(), inviteRequired: cfg.inviteRequired, boss: world.W.boss, epoch: world.W.epoch, wbForecast: Math.floor(world.wbForecast(Math.floor(nowSec()))), wbAttacks: R.wbAttacksLeft(nowSec())
   });
 };
+// 공지 탭 상단 고정 공지: 최대 2개 (새로 고정하면 가장 오래된 것이 빠진다). 예전 한 개짜리(pinNotice)는 첫 칸으로 이어받는다
+const PIN_MAX = 2;
+function pinList() { let l = dbx.kvGet('pinNotices', null); if (!Array.isArray(l)) { const o = dbx.kvGet('pinNotice', null); l = o && o.text ? [o] : []; } return l.slice(0, PIN_MAX); }
+function pinSave(l) { l = l.slice(0, PIN_MAX); dbx.kvSet('pinNotices', l); dbx.kvSet('pinNotice', l[0] || null); chat.pingAll('pin', { pin: l[0] || null, pins: l }); return l; }
 routes['POST /api/admin/notice'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
   const b = await readJson(req, 4096);
-  if (b.unpin) { dbx.kvSet('pinNotice', null); chat.pingAll('pin', { pin: null }); oplog('admin', '관리자', 'notice', '상단 고정 해제'); return send(req, res, 200, { ok: true, pin: null }); }   // 고정 해제만
+  if (b.unpin) { const id = b.id != null ? String(b.id) : '', l = pinSave(id ? pinList().filter((p) => String(p.id) !== id) : []); oplog('admin', '관리자', 'notice', id ? '상단 고정 하나 해제' : '상단 고정 모두 해제'); return send(req, res, 200, { ok: true, pin: l[0] || null, pins: l }); }   // 고정 해제만 (id가 없으면 모두)
   if (!b.text) return fail(req, res, 400, 'text가 필요합니다');
   const text = String(b.text).slice(0, 500), t = Date.now() / 1000;
   world.addNotice(text, nowSec(), false); world.invalidate(); const m = chat.staffNotice(text, t);
-  if (b.pin) { const pin = { id: m.id, t, text }; dbx.kvSet('pinNotice', pin); chat.pingAll('pin', { pin }); }   // 공지 탭 상단에 고정
-  send(req, res, 200, { ok: true, pin: b.pin ? dbx.kvGet('pinNotice', null) : undefined });
+  if (b.pin) pinSave([{ id: m.id, t, text }].concat(pinList()));   // 공지 탭 상단에 고정 (새 것이 위)
+  send(req, res, 200, { ok: true, pin: b.pin ? pinList()[0] || null : undefined, pins: b.pin ? pinList() : undefined });
 };
 routes['POST /api/admin/wbsummon'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
@@ -2286,7 +2290,7 @@ routes['GET /api/admin/dist'] = (req, res) => {
     detailActive7d: { note: 'dps=초당 피해 합계(basic 평타 + spell 주문 + fam 사역마), spellShare=주문 비중, patk/matk=물리/주문 공격력, critC=치명타 확률, aps=초당 공격 횟수', all, byCls: group('cls'), byGrade: group('grade'), byClsGrade: cg }, towers });
 };
 routes['GET /api/admin/ideas'] = (req, res) => { if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다'); send(req, res, 200, { text: board.exportIdeas() }); };
-routes['GET /api/admin/sys'] = (req, res) => { if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다'); send(req, res, 200, { build: BUILD, maint: MAINT, pin: dbx.kvGet('pinNotice', null), epoch: world.W.epoch, cal: R.calendar(world.W, nowSec()) }); };
+routes['GET /api/admin/sys'] = (req, res) => { if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다'); send(req, res, 200, { build: BUILD, maint: MAINT, pin: pinList()[0] || null, pins: pinList(), epoch: world.W.epoch, cal: R.calendar(world.W, nowSec()) }); };
 // 개교일(아카데미력 서사달 1일이 되는 날, 한국 시간 날짜). 바꾸면 달력 · 달 축복 · 날씨가 그 날짜 기준으로 다시 계산된다
 routes['POST /api/admin/epoch'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');

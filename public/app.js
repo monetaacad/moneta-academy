@@ -515,7 +515,7 @@
       var x = ''; if (!drew && div != null && div > 0 && isNum(m.id) && m.id > div && m.pid !== S.P.id) { drew = true; x = '<div class="newline"><span>여기부터 새 글</span></div>'; }
       return x + msgHtml(m);
     }).join('');
-    if (ch === 'notice' && S.pin && S.pin.text) { var pf = pinFolded(); h += '<div class="cpin' + (pf ? ' fold' : '') + '"' + (pf ? ' data-act="pinfold" title="펼쳐 보기"' : '') + '><span class="stag">고정 공지</span><mark class="hl">' + chatText(S.pin.text) + '</mark><button class="cpin-t" data-act="pinfold">' + (pf ? '펼치기' : '접기') + '</button></div>'; }   // 공지 탭 상단 고정 (경매 · 의식 소식이 쌓여도 묻히지 않게)
+    if (ch === 'notice') pinList().forEach(function (pn) { var k = pinKey(pn), pf = pinFolded(k); h += '<div class="cpin' + (pf ? ' fold' : '') + '"' + (pf ? ' data-act="pinfold" data-a="' + esc(k) + '" title="펼쳐 보기"' : '') + '><span class="stag">고정 공지</span><mark class="hl">' + chatText(pn.text) + '</mark><button class="cpin-t" data-act="pinfold" data-a="' + esc(k) + '">' + (pf ? '펼치기' : '접기') + '</button></div>'; });   // 공지 탭 상단 고정 (경매 · 의식 소식이 쌓여도 묻히지 않게)
     h += '<div id="chatlog" class="chatlog ch-' + ch + '" aria-live="polite">' +
       (c.more[ch] && API.mode === 'server' && c.msgs[ch].length >= 80 ? '<button class="btn sm ghost chatmore" data-act="chatmore">이전 대화 더 보기</button>' : '') +
       '<div class="chatdesc"><div class="chatmeta tiny"><span class="ondot" aria-hidden="true"></span><span class="gold" data-l="chatonline"></span>' + (c.loading === ch ? '<span class="faint">새 글 불러오는 중…</span>' : '') + (ch === 'world' && c.slow.world ? '<span class="tag br">슬로우 모드 ' + c.slow.world + '초</span>' : '') + (ch === 'world' && isOp() ? '<button class="btn sm ghost" data-act="slowset" style="padding:0 7px">슬로우 모드 설정</button>' : '') + '</div>' +
@@ -624,7 +624,7 @@
       },
       party: function (d) { S.party = d.party; S.chat.msgs.party = d.msgs || []; if (S.read && S.read.party == null) { S.read.party = 0; saveRead(); } S.chat.more.party = (d.msgs || []).length >= 80; S.partyAt = 0; renderDock(); if (S.view === 'party' && !S.modal) loadParty(); },
       init: function (d) {
-        S.pin = d.pin || null;   // 운영진이 공지 탭 상단에 고정한 공지
+        S.pin = d.pin || null; S.pins = d.pins || null;   // 운영진이 공지 탭 상단에 고정한 공지 (최대 2개)
         if (d.party !== undefined) S.party = d.party;
         if (d.exr !== undefined) S.exr = d.exr;
         if (d.guild !== undefined) S.guild = d.guild;
@@ -673,7 +673,7 @@
         if (!d || d.ch !== 'world') return; var was = S.chat.slow.world; S.chat.slow.world = Math.max(0, +d.sec || 0);
         if (was !== S.chat.slow.world) { toast('채팅 안내', S.chat.slow.world ? '월드 채팅에 슬로우 모드가 걸렸습니다 · ' + S.chat.slow.world + '초에 한 번' : '월드 채팅의 슬로우 모드가 풀렸습니다', 3500); if (S.chat.ch === 'world' && dockOpen()) renderDock(); }
       },
-      pin: function (d) { S.pin = (d && d.pin) || null; if (S.chat.ch === 'notice') renderDock(); },
+      pin: function (d) { S.pin = (d && d.pin) || null; S.pins = (d && d.pins) || null; if (S.chat.ch === 'notice') renderDock(); },
       op: function (d) { S.chat.op = !!(d && d.op); if (S.chat.ch === 'world' && dockOpen()) renderDock(); },
       ver: function (d) { verCheck(d); },
       maint: function (d) { maintCheck(d); },
@@ -928,9 +928,12 @@
   ACT.cprof = function (id) { var m = findMsg(id); if (m) openProfile(m.pid, m); };
   ACT.prof = function (pid) { openProfile(pid, null); };
   // 고정 공지 접기: 접은 공지(고정 시각)를 이 기기에 기억한다. 새 공지가 고정되면 다시 펼쳐 보인다
-  function pinKey() { return S.pin ? String(S.pin.id || S.pin.t) : ''; }
-  function pinFolded() { try { return !!pinKey() && localStorage.getItem('arc_pinfold') === pinKey(); } catch (e) { return !!S.pinFold; } }
-  ACT.pinfold = function () { var f = !pinFolded(); S.pinFold = f; try { if (f) localStorage.setItem('arc_pinfold', pinKey()); else localStorage.removeItem('arc_pinfold'); } catch (e) { } renderDock(); };
+  function pinList() { return (S.pins || (S.pin ? [S.pin] : [])).filter(function (p) { return p && p.text; }).slice(0, 2); }
+  function pinKey(p) { return p ? String(p.id || p.t) : ''; }
+  // 접어 둔 고정 공지: 공지마다 따로 (예전 저장값은 문자열 하나)
+  function pinFoldSet() { var v = null; try { v = localStorage.getItem('arc_pinfold'); } catch (e) { } if (v == null) return S.pinFold || {}; try { var o = JSON.parse(v); if (o && typeof o === 'object') return o; } catch (e) { } var x = {}; x[v] = 1; return x; }
+  function pinFolded(k) { return !!k && !!pinFoldSet()[k]; }
+  ACT.pinfold = function (k) { var set = pinFoldSet(), keep = {}; pinList().forEach(function (p) { var pk = pinKey(p); if (set[pk]) keep[pk] = 1; }); if (keep[k]) delete keep[k]; else if (k) keep[k] = 1; S.pinFold = keep; try { localStorage.setItem('arc_pinfold', JSON.stringify(keep)); } catch (e) { } renderDock(); };
   // 친구 개인 메모: 나에게만 보인다 (상대 학생에게도 보이지 않음)
   function fmemoView(f) { var m = f.memo || ''; return '<button class="fmemo-b' + (m ? '' : ' empty') + '" data-act="fmemo" data-a="' + esc(f.id) + '" title="나에게만 보이는 개인 메모입니다">' + (m ? '📝 ' + esc(m) : '+ 개인 메모') + '</button>'; }
   ACT.fmemo = function (id) {
@@ -4887,7 +4890,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102131;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102132;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
