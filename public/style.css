@@ -1876,3 +1876,7 @@ mark.hl { color: inherit; background: linear-gradient(transparent 38%, color-mix
   .top-row.metarow .topmeta .seg[data-l="buffs"] { justify-content: flex-start; }
   .top-row.metarow .topmeta .buffpill .bn { display: inline; }
 }
+/* 모바일: 입력 칸 글자가 16px보다 작으면 누를 때 브라우저가 화면을 자동으로 확대한다 → 터치 기기에서는 입력 칸만 16px 이상 (설정의 글씨 크기와 무관) */
+@media (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea, select { font-size: max(16px, 1em) !important; }
+}
