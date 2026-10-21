@@ -1454,7 +1454,11 @@
   R.GUILD_MAX_LV = 10;
   R.guildXpNeed = function (lv) { return Math.floor(400 * Math.pow(1.65, lv - 1)); };
   R.guildCap = function (lv) { return Math.min(40, 28 + 2 * (lv || 1)); };   // 정원: 1레벨 30명 … 6레벨부터 40명
-  R.guildSlots = function (lv) { return 20 + 5 * (lv || 1); };        // 창고 장비 칸
+  R.guildSlots = function (lv) { return 20 + 5 * (lv || 1); };        // 창고 칸: 장비 1개 = 1칸, 재료 · 물약은 종류마다 1칸(수량 무관)
+  // 동아리 창고 재료 · 물약: k = 'm'(재료, P.mats) · 'p'(물약, P.shelf). 없는 종류면 null
+  R.gStockName = function (k, id) { return k === 'm' ? (Object.prototype.hasOwnProperty.call(D.MATS, id) ? D.MATS[id].name : null) : k === 'p' ? (Object.prototype.hasOwnProperty.call(POT, id) ? POT[id].name : null) : null; };
+  R.gStockBag = function (P, k) { return k === 'm' ? P.mats : k === 'p' ? P.shelf : null; };
+  R.GSTOCK_MAX = 1e9;   // 한 종류에 쌓을 수 있는 최대 수량
   R.guildBonus = function (lv) { return 0.005 * (lv || 0); };          // 부원 모두 아르크·경험치 +0.5%/레벨
   R.GUILD_PERMS = [['invite', '초대·가입 승인'], ['kick', '부원 내보내기'], ['notice', '공지·소개 수정'], ['take', '창고에서 꺼내기']];
   R.GUILD_RANKS_MAX = 5; R.GUILD_CHECKIN = 10; R.GUILD_DONATE_CAP = 200;
