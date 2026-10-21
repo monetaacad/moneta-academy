@@ -365,8 +365,9 @@ function open(dir) {
   try { fs.chmodSync(dir, 0o700); } catch (e) { }
   const q = {
     growthPut: db.prepare(`INSERT OR REPLACE INTO growth (day, pid, data) VALUES (?, ?, ?)`),
-    growthFrom: db.prepare(`SELECT day, pid, data FROM growth WHERE day >= ? ORDER BY day, pid`),
-    growthDays: db.prepare(`SELECT day, COUNT(*) AS n FROM growth GROUP BY day ORDER BY day DESC LIMIT 400`),
+    // day: 예전 기록은 YYYYMMDD(하루 한 번), 2026-10-21부터는 YYYYMMDDHH(한국 시각 0시 · 12시 구간마다 한 번). 비교할 때는 예전 것을 ×100 해서 맞춘다
+    growthFrom: db.prepare(`SELECT day, pid, data FROM growth WHERE (CASE WHEN day < 1000000000 THEN day * 100 ELSE day END) >= ? ORDER BY (CASE WHEN day < 1000000000 THEN day * 100 ELSE day END), pid`),
+    growthDays: db.prepare(`SELECT (CASE WHEN day < 1000000000 THEN day * 100 ELSE day END) AS day, COUNT(*) AS n FROM growth GROUP BY 1 ORDER BY 1 DESC LIMIT 800`),
     insertPlayer: db.prepare(`INSERT INTO players (id, name, name_key, house, pass, created, last_seen, state) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`),
     playerByKey: db.prepare(`SELECT id, name, pass, banned FROM players WHERE name_key = ?`),
     playerSearch: db.prepare(`SELECT id, name, house, grade, lvl, avatar_v, title, last_seen FROM players WHERE name_key LIKE ? ESCAPE '\\' AND banned = 0 AND guest = 0 ORDER BY (name_key = ?) DESC, last_seen DESC LIMIT 20`),
