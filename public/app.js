@@ -222,7 +222,7 @@
     if (!lines.length) { act('inboxAck', { upto: S.inboxUpto }); return; }
     Snd.play(items.some(function (o) { return o.k === 'lec'; }) ? 'bell' : 'level');
     // 끝난 작업마다 바로가기: 확인하고 그 화면으로 가서 다음 연구 · 수업 · 원정을 바로 시작한다
-    var GO = [['res', 'lib', '서고로'], ['lec', 'lecture', '강의실로'], ['exp', 'explore', '원정으로'], ['disp', 'work', '공방으로'], ['hatch', 'work', '공방으로']], seen = {};
+    var GO = [['res', 'lib', '서고로'], ['lec', 'lecture', '강의실로'], ['exp', 'explore', '원정으로'], ['disp', 'work:fam', '공방으로'], ['hatch', 'work:fam', '공방으로']], seen = {};
     var gos = GO.filter(function (g) { if (seen[g[1]] || !items.some(function (o) { return o.k === g[0]; })) return false; seen[g[1]] = 1; return true; });
     modal(mhead('끝난 작업 보고', items.length + '건') + '<ul class="report">' + lines.join('') + '</ul>' +
       (onTimeBtn(0) ? '<div class="row ontrow" style="margin-top:12px;gap:8px;align-items:center"><span class="small gold">시간표 다음 교시 ' + R.SUBJ[S.P.lec[0].s].name + ' 시작</span>' + onTimeBtn(0) + '</div>' : '') +
@@ -1295,15 +1295,15 @@
     }
     if (R.famOpen(P)) {
       var idle = Object.keys(P.fam.own).filter(function (id) { return id !== P.fam.act && !P.fam.disp[id]; }).length;
-      Object.keys(P.fam.disp).forEach(function (id) { rows.push(tline('파견', R.FAM[id].name + ' 파견', P.fam.disp[id], 'work')); });
-      if (idle) rows.push(tline('파견', '쉬고 있는 사역마 ' + idle + '마리', null, 'work', '파견 보낼 수 있습니다'));
+      Object.keys(P.fam.disp).forEach(function (id) { rows.push(tline('파견', R.FAM[id].name + ' 파견', P.fam.disp[id], 'work:fam')); });
+      if (idle) rows.push(tline('파견', '쉬고 있는 사역마 ' + idle + '마리', null, 'work:fam', '파견 보낼 수 있습니다'));
     }
     return rows.join('');
   }
   function goals() {
     var P = S.P, out = [], c = C(), ex = R.examFor(P);
     if (P.daily.login) out.push({ t: '출석 보상 받기', s: '연속 출석할수록 보상이 커집니다.', act: 'do-login', btn: '받기' });
-    if (P.fam.eggs > 0 && R.famOpen(P) && !P.fam.egg) out.push({ t: '환수의 알 ' + P.fam.eggs + '개', s: '공방 「사역마」에서 부화시킬 수 있습니다.', go: 'work' });
+    if (P.fam.eggs > 0 && R.famOpen(P) && !P.fam.egg) out.push({ t: '환수의 알 ' + P.fam.eggs + '개', s: '공방 「사역마」에서 부화시킬 수 있습니다.', go: 'work:fam' });
     var idleL = 0, idleE = 0, dz = R.dreaming(P, now());
     if (!dz) { for (var i = 0; i < c.lecSlots; i++) if (!P.lec[i]) idleL++; for (var k = 0; k < c.expSlots; k++) if (!P.exp[k]) idleE++; }
     if (idleL) out.push({ t: '비어 있는 수업 슬롯 ' + idleL + '개', s: '다시 접속할 시간에 맞춰 수업 길이 선택.', go: 'lecture' });
@@ -2063,7 +2063,7 @@
     if (inc) { var ip = Math.min(1, inc.prog / inc.need); h += '<div class="incbox"><div class="row small"><b>품고 있는 알</b><span class="spacer"></span><span class="num">필요 기여도 ' + fmt(Math.floor(inc.prog)) + ' / ' + fmt(inc.need) + ' (' + Math.floor(ip * 100) + '%)</span></div><div class="bar brass" style="height:8px;margin-top:4px"><b style="width:' + (ip * 100).toFixed(1) + '%"></b></div><div class="tiny faint" style="margin-top:2px">부화 효율 ×' + C().hatchSpd.toFixed(2) + ' · 활동으로 얻는 기여도 × 부화 효율만큼 오릅니다</div></div>'; }
     h += '<div class="row" style="margin-top:10px;gap:6px">' + (inc ? (inc.prog >= inc.need ? '<button class="btn primary" data-act="do" data-a="eggHatch">부화시키기</button>' : '<button class="btn" data-act="do" data-a="egg" data-can="eggmana"' + (predMana() >= price ? '' : ' disabled') + '>마나로 바로 깨우기 <span class="cost">마나 ' + fmt(price) + '</span></button>') :
       '<button class="btn primary" data-act="do" data-a="eggInc"' + (P.fam.eggs > 0 ? '' : ' disabled') + '>알 품기</button><button class="btn" data-act="do" data-a="egg" data-can="eggmana"' + (P.fam.eggs > 0 && predMana() >= price ? '' : ' disabled') + '>마나로 바로 깨우기 <span class="cost">마나 ' + fmt(price) + '</span></button>') + '</div>';
-    h += '</div><div class="card inset"><h4>파견</h4><p class="small muted" style="margin-top:4px">동행하지 않는 사역마를 정해진 시간 동안 내보내면 재료, 마석, ' + CUR + ', 가끔 알과 별조각을 물어 옵니다. 8·12시간 파견은 잠들기 전에 시작해 두는 장시간 방치용입니다.</p>' + durPicker('dd', D.DISPATCH_DUR, '8h') + (function () { var idle = Object.keys(P.fam.own).filter(function (id) { return R.FAM[id] && !P.fam.disp[id] && P.fam.act !== id; }).length; return idle ? '<div class="row" style="margin-top:8px"><button class="btn sm primary" data-act="dispall">쉬고 있는 사역마 모두 파견 <span class="cost">' + idle + '마리 · ' + R.DDUR[S.pick.dd || '8h'].label + '</span></button></div>' : ''; })() + '<p class="tiny faint" style="margin-top:6px">파견에서 돌아온 사역마는 따로 받지 않아도 됩니다. 돌아오면 저절로 받아지고, 「끝난 작업 보고」에 한꺼번에 표시됩니다.</p></div></div><label class="tog small" style="margin:0 0 10px"><input type="checkbox" data-act="opt" data-a="showFam"' + (P.opt.showFam ? ' checked' : '') + '> 동행 중인 사역마를 내 정보에 공개 (다른 학생이 정보창에서 볼 수 있습니다)</label><div class="grid gauto">';
+    h += '</div><div class="card inset"><h4>파견</h4><p class="small muted" style="margin-top:4px">동행하지 않는 사역마를 정해진 시간 동안 내보내면 재료, 마석, ' + CUR + ', 가끔 알과 별조각을 물어 옵니다.</p>' + durPicker('dd', D.DISPATCH_DUR, '8h') + (function () { var idle = Object.keys(P.fam.own).filter(function (id) { return R.FAM[id] && !P.fam.disp[id] && P.fam.act !== id; }).length; return idle ? '<div class="row" style="margin-top:8px"><button class="btn sm primary" data-act="dispall">쉬고 있는 사역마 모두 파견 <span class="cost">' + idle + '마리 · ' + R.DDUR[S.pick.dd || '8h'].label + '</span></button></div>' : ''; })() + '<p class="tiny faint" style="margin-top:6px">파견에서 돌아온 사역마는 따로 받지 않아도 됩니다. 돌아오면 저절로 받아지고, 「끝난 작업 보고」에 한꺼번에 표시됩니다.</p></div></div><label class="tog small" style="margin:0 0 10px"><input type="checkbox" data-act="opt" data-a="showFam"' + (P.opt.showFam ? ' checked' : '') + '> 동행 중인 사역마를 내 정보에 공개 (다른 학생이 정보창에서 볼 수 있습니다)</label><div class="grid gauto">';
     var dk = S.pick.dd || '8h';
     D.FAMILIARS.forEach(function (f) {
       var o = P.fam.own[f.id], fr = D.FAM_RARITY[f.r];
@@ -3473,7 +3473,8 @@
   }
 
   /* ───────── 행동 ───────── */
-  ACT.nav = function (a) { if (!VIEWS.some(function (v) { return v.id === a; })) a = 'home'; S.gtab[groupOf(a).id] = a; S.view = a; S.sel = S.view === 'gear' ? S.sel : null; renderNav(); render(); window.scrollTo(0, 0); viewTut(a); if (a === 'world') refreshWorld(); };
+  ACT.nav = function (a) { if (String(a).indexOf(':') > 0) { var sp = String(a).split(':'); ACT.goto(sp[0], sp[1]); return; }   // 'work:fam' = 공방 사역마 탭처럼 탭까지 지정
+    if (!VIEWS.some(function (v) { return v.id === a; })) a = 'home'; S.gtab[groupOf(a).id] = a; S.view = a; S.sel = S.view === 'gear' ? S.sel : null; renderNav(); render(); window.scrollTo(0, 0); viewTut(a); if (a === 'world') refreshWorld(); };
   ACT.loretab = function (t) { S.loreTab = t; render(); };
   ACT['modal-close'] = function () { if (S.modalLocked) return; tryClose(); };
   // 내 정보에서 저장하지 않은 변경(글·두상)이 있으면 닫기 전에 한 번 묻는다. 닫으면 변경은 버린다.
@@ -4444,7 +4445,7 @@
   var IDEA_ST = [['', '전체'], ['review', '검토 중'], ['wip', '확인 중'], ['done', '해결 완료'], ['no', '반영 안 함'], ['norepro', '재현 안 됨']];
   function boardView(idea) {
     var b = S.bd, d = b.data;
-    var h = idea ? pageHead('학생회 건의함', '건의함', '불편한 점 · 바라는 점 · 버그 제보') : pageHead('묻고 · 모이고 · 나누는 곳', '게시판', '질문 · 정보 · 모집 · 거래 · RP · 잡담 · 문의 <span class="tiny faint">· 건의는 상단 건의함에서</span>');
+    var h = idea ? pageHead('학생회 건의함', '건의함', '불편한 점 · 바라는 점 · 버그 제보') : pageHead('묻고 · 모이고 · 나누는 곳', '게시판', '질문 · 정보 · 토론 · 모집 · 거래 · RP · 잡담 · 문의 <span class="tiny faint">· 건의는 상단 건의함에서</span>');
     if (b.mode === 'write') return h + bdWrite();
     if (b.mode === 'post' && b.post) return h + bdPost(b.post);
     if (!d || Date.now() - b.at > 30000) { if (Date.now() - b.at > 1500) loadBoard(); }
@@ -4883,7 +4884,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102124;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102127;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
