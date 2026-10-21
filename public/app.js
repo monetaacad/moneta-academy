@@ -870,7 +870,7 @@
   function profileCard(p, m) {
     if (p.deleted) return '<div class="pcard"><p class="small muted" style="padding:18px 4px;text-align:center">삭제된 사용자입니다.</p></div>';
     var hh = R.HOUSE[p.house], dc = p.deco || {}, fr = decoFrame(dc.frame), bgs = decoBg(dc.bg), dk = dc.frame || dc.bg;
-    var h = (p.preview ? '<p class="tiny gold" style="margin-bottom:10px">미리보기 · 저장하지 않은 내용이 들어 있습니다</p>' : '') + '<div class="pcard' + (dk ? ' deco ' + fr.cls : '') + (dc.bg ? (decoDark(dc.bg) ? ' bgdark' : ' bglight') : '') + '"' + (dk ? ' style="' + fr.style + bgs + '"' : '') + '>' + (dc.stamp && R.DECO[dc.stamp] ? '<span class="pstamp" title="' + R.DECO[dc.stamp].name + '" aria-hidden="true">' + R.DECO[dc.stamp].glyph + '</span>' : '') + '<div class="pav">' + avatarHtml(p, 100) + (p.avcredit && (p.av || p.avData) ? '<span class="avcredit" title="두상 출처">' + esc(p.avcredit) + '</span>' : '') + '</div>' + '<div style="min-width:0">' + (p.title ? '<div class="pttl">' + (R.OP_TITLES[p.title] ? '<span class="ttl' + R.opTitleCls(p.title) + '">' + esc(p.title) + '</span>' : esc(p.title)) + '</div>' : '') + '<h2 class="pname">' + inkName(p.name, dc.ink, decoBgRef(dc.bg)) + (p.badge && R.GEM[p.badge.gem] ? ' <span class="pbdg" title="' + esc((p.badge.name || '') + ' · Lv ' + p.badge.lv) + '">' + badgeSvg(p.badge, 26) + '</span>' : '') + (p.online ? ' <span class="odot" title="접속 중"></span>' : '') + '</h2>' +
+    var h = (p.preview ? '<p class="tiny gold" style="margin-bottom:10px">미리보기 · 저장하지 않은 내용이 들어 있습니다</p>' : '') + '<div class="pcard' + (dk ? ' deco ' + fr.cls : '') + (dc.bg ? (decoDark(dc.bg) ? ' bgdark' : ' bglight') : '') + '"' + (dk ? ' style="' + fr.style + bgs + '"' : '') + '>' + (dc.stamp && R.DECO[dc.stamp] ? '<span class="pstamp" title="' + R.DECO[dc.stamp].name + '" aria-hidden="true">' + R.DECO[dc.stamp].glyph + '</span>' : '') + '<div class="pav">' + avatarHtml(p, 100) + (p.avcredit && (p.av || p.avData) ? '<span class="avcredit" title="두상 출처">' + esc(p.avcredit) + '</span>' : '') + '</div>' + '<div style="min-width:0">' + (p.title ? '<div class="pttl">' + (R.OP_TITLES[p.title] ? '<span class="ttl' + R.opTitleCls(p.title) + '">' + esc(p.title) + '</span>' : esc(p.title)) + '</div>' : '') + '<h2 class="pname"><span class="pnm">' + inkName(p.name, dc.ink, decoBgRef(dc.bg)) + '</span>' + (p.badge && R.GEM[p.badge.gem] ? ' <span class="pbdg" title="' + esc((p.badge.name || '') + ' · Lv ' + p.badge.lv) + '">' + badgeSvg(p.badge, 26) + '</span>' : '') + (p.online ? ' <span class="odot" title="접속 중"></span>' : '') + '</h2>' +
       '<div class="small">' + (hh ? houseDot(p.house, 16) + ' ' : '') + '<span style="color:' + (hh ? hh.color : 'inherit') + '">' + (hh ? hh.name : '') + '</span> · ' + (p.grade >= 8 ? '마스터 과정' : p.grade + '학년') + (p.lvl ? ' · Lv ' + p.lvl : '') + (R.CLS[p.cls] ? ' · <span class="pcls">' + clsDot(p.cls, 14) + ' ' + R.CLS[p.cls].name + '</span>' : '') + '</div>' +
       (p.guild ? '<div class="pguild">' + gEmblem(p.guild.color, p.guild.name, 20, p.guild.icon) + '<span class="pgt"><b class="pgn">' + esc(p.guild.name) + '</b><span class="pgm"><span class="tiny faint">Lv ' + (p.guild.lv || 1) + '</span>' + (p.guild.rank ? '<span class="tag' + (p.guild.role === 'owner' ? ' br' : p.guild.role === 'officer' ? ' ok' : '') + '">' + esc(p.guild.rank) + '</span>' : '') + '</span></span></div>' : '') +
       (p.fam && R.FAM[p.fam.id] ? '<div class="tiny pfam">동행 사역마 <b>' + esc(p.fam.nm || R.FAM[p.fam.id].name) + '</b>' + (p.fam.nm ? ' <span class="faint">' + R.FAM[p.fam.id].name + '</span>' : '') + ' <span class="num gold">Lv ' + p.fam.lv + '</span></div>' : '') +
@@ -988,6 +988,21 @@
   /* ── 접을 수 있는 칸 ── */
   var FOLD = {}; try { FOLD = JSON.parse(localStorage.getItem('arc_fold') || '{}') || {}; } catch (e) { }
   // sum: 접혀 있을 때만 제목 옆에 보이는 아주 짧은 한 줄 (얼마나 됐는지)
+  var HB_DEF = ['tt', 'fam', 'goals', 'events', 'daily', 'log'], HB_NAMES = { tt: '시간표', fam: '사역마 파견', goals: '다음 할 일', events: '오늘의 아카데미', daily: '일일 목표', log: '아카데미 일지' };
+  function homeOrder() {
+    var h = PREF.homeOrder, o = h && Array.isArray(h.o) ? h.o.filter(function (x, i, a) { return HB_DEF.indexOf(x) >= 0 && a.indexOf(x) === i; }) : HB_DEF.slice(), s = h && h.s != null ? +h.s : 3;
+    HB_DEF.forEach(function (x) { if (o.indexOf(x) < 0) o.push(x); }); return { o: o, s: Math.max(0, Math.min(o.length, s)) };
+  }
+  ACT.homeleft = function (a, b, el) { PREF.homeLeft = !!el.checked; savePref(); document.documentElement.classList.toggle('nav-homeleft', PREF.homeLeft); };
+  ACT.hbedit = function () { S.homeEdit = !S.homeEdit; render(); };
+  ACT.hbreset = function () { delete PREF.homeOrder; savePref(); render(); };
+  // ▲ ▼: 같은 열 안에서 자리를 바꾸고, 열 끝에서는 다른 열로 넘어간다 (모바일은 한 줄이라 그냥 앞뒤)
+  ACT.hbmove = function (id, d) {
+    var ho = homeOrder(), i = ho.o.indexOf(id); d = +d; if (i < 0) return;
+    if (innerWidth > 900 && d > 0 && i === ho.s - 1) ho.s--; else if (innerWidth > 900 && d < 0 && i === ho.s) ho.s++;
+    else { var j = i + d; if (j < 0 || j >= ho.o.length) return; ho.o[i] = ho.o[j]; ho.o[j] = id; }
+    PREF.homeOrder = ho; savePref(); render();
+  };
   function fold(id, title, body, def, aside, cls, sum, anchor) {
     var open = FOLD[id] == null ? def : FOLD[id];
     return '<details class="card fold' + (cls ? ' ' + cls : '') + '" data-fold="' + id + '"' + (anchor ? ' data-anchor="' + anchor + '"' : '') + (open ? ' open' : '') + '><summary><h3>' + title + '</h3>' + (aside || '') + (sum ? '<span class="foldsum tiny">' + sum + '</span>' : '') + '<span class="chev" aria-hidden="true"></span></summary><div class="fold-b">' + body + '</div></details>';
@@ -1278,8 +1293,13 @@
     var qDone = P.daily.q.filter(function (q) { return q.done; }).length;
     var dailyH = fold('daily', '일일 목표', dq, true, '<span class="tag br daily-st">출석 ' + P.daily.streak + '일째</span>' + (P.daily.login || claim ? '<span class="tag ok">받을 보상</span>' : ''), '', '<b class="num">' + qDone + '/' + P.daily.q.length + '</b>' + (qDone >= P.daily.q.length ? ' 완료' : ''), 'daily');
     // 내 정보 · 능력치 · 기숙사는 왼쪽 「내 정보」에, 하늘 · 오늘의 축복은 풍경 위에. 잠자리 · 꿈길은 평소엔 볼 일이 없어 맨 아래
-    h += '<div class="grid g2 hm"><div class="stack">' + storyH + ttH + famCard() + goalsH + '</div><div class="stack">' + eventsCard() + dailyH + logH + '</div></div>';   // 일지는 우측 열 맨 아래 (좌측 열이 길어서)
+    // 광장 카드 배치: 학생이 순서를 바꿀 수 있다 (PREF.homeOrder = { o: 순서, s: 좌측 열 개수 · 모바일은 순서대로 한 줄)
+    var blk = { tt: ttH, fam: famCard(), goals: goalsH, events: eventsCard(), daily: dailyH, log: logH }, ho = homeOrder(), ed = S.homeEdit;
+    var wrap = function (id, i) { if (!blk[id] && !ed) return ''; return ed ? '<div class="hblk ed" data-hb="' + id + '"><div class="hbtool"><b class="small">' + HB_NAMES[id] + '</b><span class="spacer"></span><button class="btn sm ghost" data-act="hbmove" data-a="' + id + '" data-b="-1"' + (i ? '' : ' disabled') + ' aria-label="위로">▲</button><button class="btn sm ghost" data-act="hbmove" data-a="' + id + '" data-b="1"' + (i < ho.o.length - 1 ? '' : ' disabled') + ' aria-label="아래로">▼</button></div>' + (blk[id] || '<p class="tiny faint">지금은 표시할 내용이 없습니다.</p>') + '</div>' : blk[id]; };
+    h += (ed ? '<div class="card inset hbbar"><div class="row between" style="gap:8px;flex-wrap:wrap"><span class="small"><b>광장 배치 편집</b> · ▲ ▼로 순서를 바꿉니다. PC에서는 좌측 열 끝에서 ▼를 누르면 우측 열로 옮겨집니다.</span><span class="row" style="gap:6px"><button class="btn sm ghost" data-act="hbreset">기본 배치로</button><button class="btn sm primary" data-act="hbedit">완료</button></span></div></div>' : '') +
+      '<div class="grid g2 hm"><div class="stack">' + storyH + ho.o.slice(0, ho.s).map(function (id, i) { return wrap(id, i); }).join('') + '</div><div class="stack">' + ho.o.slice(ho.s).map(function (id, i) { return wrap(id, ho.s + i); }).join('') + '</div></div>';
     h += '<div class="hm-bottom">' + dreamCard(false) + '</div>';
+    if (!ed) h += '<div class="row" style="justify-content:flex-end;margin-top:8px"><button class="btn sm ghost" data-act="hbedit">광장 배치 편집</button></div>';
     return h;
   };
   function tline(icon2, label, j, go, idleText) {
@@ -1450,8 +1470,10 @@
   // 같은 강의실: 지금 이 과목을 듣는 다른 학생 수 (나 빼고 / 나 포함)
   function clsN(sid, withMe) { var n = (S.cls && S.cls.n && S.cls.n[sid]) || 0, mine = S.P.lec.some(function (j) { return j && j.s === sid && j.end > now(); }); return withMe ? Math.max(n, mine ? 1 : 0) : Math.max(0, n - (mine ? 1 : 0)); }
   function classInfo(sid) { var n = clsN(sid), pl = S.cls && S.cls.prof && S.cls.prof[sid]; return (n ? '지금 이 강의실에 <b>' + n + '명</b> · 함께 들으면 과목 경험치 <b class="good">+' + Math.round(R.peerBonus(n) * 100) + '%</b>' : '지금 이 과목을 듣는 학생은 없습니다 · 함께 들으면 1명당 경험치 +1% (최대 +' + R.PEER_MAX + '%)') + (pl ? '<div class="profline">' + esc(R.SUBJ[sid].prof) + ': “' + esc(pl) + '”</div>' : ''); }
+  // 기본 과목: 마지막으로 들은 과목(PREF.lastLs) → 없으면 시험에 필요한 과목 중 가장 낮은 것 (수업이 끝날 때마다 과목이 바뀌어 잘못 고르던 문제)
   function defaultSubject(subs) {
     var P = S.P, ex = R.examFor(P);
+    if (PREF.lastLs && subs.some(function (s) { return s.id === PREF.lastLs; })) return PREF.lastLs;
     var xs = ex ? R.examSubjs(P, ex) : [], pri = subs.filter(function (s) { return ex && P.grade < 8 && xs.indexOf(s.id) >= 0 && P.subj[s.id].lv < ex.req; });
     var list = pri.length ? pri : subs;
     return list.length ? list.slice().sort(function (a, b) { return P.subj[a.id].lv - P.subj[b.id].lv; })[0].id : null;
@@ -1790,7 +1812,7 @@
     if (!S.lastWorld || Date.now() - S.lastWorld > 30000) refreshWorld();
     var h = pageHead('아카데미의 기록', '랭킹', '학생 ' + fmt(W.players || 0) + '명');
     h += '<div class="grid g2"><div class="stack">';
-    h += '<div class="card">' + rkHead('전투력 순위', '장비 · 능력치 · 주문을 모두 반영한 전투력입니다.', MR.power || S.rank) + rankList((W.topPower || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: fmt(r.power), sub: R.gradeLabel({ grade: r.grade }) + ' · Lv ' + r.lvl }; }), 'power', { rank: MR.power || S.rank, v: fmt(C().power), sub: '' }) + '</div>';
+    h += '<div class="card">' + rkHead('전투력 순위', '장비 · 능력치 · 주문을 모두 반영한 전투력입니다. 물약 · 의식 같은 시간제 효과는 순위에서 제외합니다.', MR.power || S.rank) + rankList((W.topPower || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: fmt(r.power), sub: R.gradeLabel({ grade: r.grade }) + ' · Lv ' + r.lvl }; }), 'power', { rank: MR.power || S.rank, v: fmt(C().power), sub: '' }) + '</div>';
     h += '<div class="card">' + rkHead('레벨 순위', '학생 레벨 순위입니다. 같은 레벨이면 원정 최고 단계, 그다음 전투력이 높은 학생이 앞섭니다. 이름 옆에 학년과 원정 최고 단계를 함께 표시합니다.', MR.lvl) + rankList((W.topLvl || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: 'Lv ' + r.lvl, sub: R.gradeLabel({ grade: r.grade }) + ' · 원정 ' + r.stage + '단계' }; }), 'lvl', { rank: MR.lvl, v: 'Lv ' + P.lvl, sub: R.gradeLabel({ grade: P.grade }) + ' · 원정 ' + P.maxStage + '단계' }) + '</div>';
     h += '<div class="card">' + rkHead('이번 주 월드 보스 피해 순위', '이번 주(월요일 KST 0시~) 월드 보스에 입힌 피해 합계입니다.', MR.dmg, P.wk.dmg > 0 ? '' : '이번 주 기록 없음') + rankList((W.topDmg || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: fmt(r.dmg) }; }), 'dmg', { rank: MR.dmg, v: fmt(P.wk.dmg) }) + '</div>';
     h += '</div><div class="stack">';
@@ -1825,7 +1847,8 @@
     var P = S.P, c = C();
     var wk = P.eq.staff && P.eq.staff.wk === 'sword' ? '검' : P.cls === 'knight' ? '검' : '지팡이';
     var tk = P.eq.tome ? R.slotName(P.eq.tome) : P.cls === 'knight' ? '전술서' : '마도서';
-    var h = pageHead(D.SLOTS.map(function (s) { return '<button class="eblink" data-act="invjump" data-a="' + s.id + '" title="가방에서 ' + (s.id === 'staff' ? '무기' : s.name) + '만 보기">' + (s.id === 'staff' ? wk : s.id === 'tome' ? tk : s.name) + '</button>'; }).join(' · '), '장비·능력', '전투력 <b class="num gold">' + fmt(c.power) + '</b>');
+    var hk = P.eq.hat ? R.slotName(P.eq.hat) : P.cls === 'knight' ? '투구' : '모자';
+    var h = pageHead(D.SLOTS.map(function (s) { return '<button class="eblink" data-act="invjump" data-a="' + s.id + '" title="가방에서 ' + (s.id === 'staff' ? '무기' : s.name) + '만 보기">' + (s.id === 'staff' ? wk : s.id === 'tome' ? tk : s.id === 'hat' ? hk : s.name) + '</button>'; }).join(' · '), '장비·능력', '전투력 <b class="num gold">' + fmt(c.power) + '</b>');
     h += '<div class="doll">' + D.SLOTS.map(function (s) {
       var it = P.eq[s.id];
       return '<button class="eqslot' + (it ? '' : ' empty') + (it && S.sel === it.u ? ' sel' : '') + '" data-act="sel" data-a="' + (it ? it.u : '') + '"><span class="sl">' + s.name + '</span>' +
@@ -1964,7 +1987,9 @@
     if (it.enh >= R.ENH_MAX) return '';
     var nx = Object.assign({}, it, { enh: it.enh + 1 }), a = R.itemStats(it), b = R.itemStats(nx), Sx = R.slotDef(it);
     var rows = [Sx.main].concat(Sx.sub ? [Sx.sub] : []).map(function (k) {
-      var rd = function (v) { return v >= 10 ? Math.round(v) : Math.round(v * 10) / 10; }, x = rd(a[k]), y = rd(b[k]), d = Math.round((y - x) * 10) / 10, nm = D.STAT_NAMES[k] || D.BONUS_NAMES[k] || k; if (!(b[k] > a[k])) return '';   // 보이는 숫자끼리 빼서 「16 → 18 (+2)」가 맞게
+      var nm = D.STAT_NAMES[k] || D.BONUS_NAMES[k] || k; if (!(b[k] > a[k])) return '';
+      if (!(k === 'atk' || k === 'hp' || k === 'def' || D.STAT_NAMES[k])) return '<div class="statline"><span>' + nm + '</span><span class="d num">' + pct(a[k]) + ' → <b class="good">' + pct(b[k]) + '</b></span></div>';   // 치명타 확률 · 수업 효율 같은 % 옵션
+      var rd = function (v) { return v >= 10 ? Math.round(v) : Math.round(v * 10) / 10; }, x = rd(a[k]), y = rd(b[k]), d = Math.round((y - x) * 10) / 10;   // 보이는 숫자끼리 빼서 「16 → 18 (+2)」가 맞게
       return '<div class="statline"><span>' + nm + '</span><span class="d num">' + fmt(x) + ' → <b class="good">' + fmt(y) + '</b>' + (d > 0 ? ' <span class="tiny good">(+' + fmt(d) + ')</span>' : '') + '</span></div>';
     }).join('');
     var pw = eqd ? R.powerWith(S.P, nx) - C().power : 0;
@@ -2123,7 +2148,9 @@
       if (!o) { h += '<div class="card famcard unk"><div><div class="small">???</div><div class="tiny" style="color:' + fr.color + '">' + fr.name + '</div><div class="tiny faint">' + D.BONUS_NAMES[f.bonus] + '</div></div></div>'; return; }
       var act2 = P.fam.act === f.id, disp = P.fam.disp[f.id], cost = o.lv < 20 ? R.feedCost(P, f.id) : 0;
       h += '<div class="card famcard' + (act2 ? ' act' : '') + '"><div style="flex:1;min-width:0"><div class="row" style="gap:6px;flex-wrap:wrap"><b>' + esc(o.nm || f.name) + '</b>' + (o.nm ? '<span class="tiny faint">' + f.name + '</span>' : '') + '<span class="num tiny gold">Lv ' + o.lv + '</span><button class="btn ghost sm famnm" data-act="famname" data-a="' + f.id + '">이름 짓기</button></div><div class="tiny" style="color:' + fr.color + '">' + fr.name + '</div>' +
-        '<div class="small">' + D.BONUS_NAMES[f.bonus] + ' +' + pct(R.famBonus(f, o.lv, P)) + '</div>' + famXpBar(f, o, act2, disp) + (disp ? '<div class="tiny gold">파견 중 · ' + clock(disp.end) + ' 귀환</div>' : '<div class="tiny faint">' + f.desc + '</div>') +
+        '<div class="small">' + D.BONUS_NAMES[f.bonus] + ' +' + pct(R.famBonus(f, o.lv, P)) + '</div>' + famXpBar(f, o, act2, disp) + (disp ? '<div class="tiny gold">파견 중 · ' + R.dispZoneOf(P, f.id, disp.z).name + ' · ' + clock(disp.end) + ' 귀환</div>' : '<div class="tiny faint">' + f.desc + '</div>') +
+        (act2 ? '' : (function () { var zs = R.dispZones(P), cur = P.fam.zone && P.fam.zone[f.id], top = zs[zs.length - 1];   // 파견 지역 (사역마마다 저장)
+          return '<div class="row tiny" style="gap:6px;margin-top:6px"><span class="faint">파견 지역</span><select data-act="famzone" data-a="' + f.id + '" style="width:auto;flex:1;min-width:0"><option value=""' + (cur ? '' : ' selected') + '>자동 · ' + (top ? top.name : '') + '</option>' + zs.map(function (z) { return '<option value="' + z.id + '"' + (cur === z.id ? ' selected' : '') + '>' + z.name + ' · ' + D.MATS[z.mat].name + '</option>'; }).join('') + '</select></div>'; })()) +
         '<div class="row" style="margin-top:6px;gap:6px">' + (o.lv < 20 ? '<button class="btn sm primary" data-act="do" data-a="feed" data-b="' + f.id + '"' + (P.res.gold >= cost ? '' : ' disabled') + '>먹이 <span class="cost">' + fmt(cost) + ' ' + CUR + '</span></button>' : '<span class="tag br">최대 레벨</span>') +
         (act2 ? '<span class="tag ok">동행 중</span>' : disp ? '' : '<button class="btn sm primary" data-act="do" data-a="famAct" data-b="' + f.id + '">동행</button><button class="btn sm primary" data-act="dispatch" data-a="' + f.id + '">' + R.DDUR[dk].label + ' 파견</button>') + '</div></div></div>';
     });
@@ -2873,7 +2900,7 @@
     else if (m.tab === 'buy') {
       h += '<div class="card mkfilt" style="margin-bottom:10px"><div class="row"><div class="filters"><button class="btn sm ghost' + (m.kind === 'item' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="item">장비</button><button class="btn sm ghost' + (m.kind === 'mat' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="mat">재료</button><button class="btn sm ghost' + (m.kind === 'pot' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="pot">물약</button><button class="btn sm ghost' + (m.kind === 'badge' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="badge">휘장</button><button class="btn sm ghost' + (m.kind === 'tok' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="tok">소지품</button></div><span class="spacer"></span>' +
         '<select id="mk-sort" data-act="mksel" data-a="sort" style="width:auto"><option value="price"' + (m.sort === 'price' ? ' selected' : '') + '>' + (m.kind !== 'item' ? '개당 가격 낮은 순' : '가격 낮은 순') + '</option><option value="high"' + (m.sort === 'high' ? ' selected' : '') + '>' + (m.kind !== 'item' ? '개당 가격 높은 순' : '가격 높은 순') + '</option><option value="new"' + (m.sort === 'new' ? ' selected' : '') + '>새로 올라온 순</option>' + (m.kind === 'item' ? '<option value="lvl"' + (m.sort === 'lvl' ? ' selected' : '') + '>장비 레벨 높은 순</option>' : '') + '</select></div>';
-      if (m.kind === 'item') h += '<div class="filters" style="margin-top:6px">' + [['', '전체'], ['staff', '지팡이'], ['sword', '검']].concat(D.SLOTS.filter(function (x) { return x.id !== 'staff'; }).map(function (x) { return [x.id, x.name]; }), [['manual', '전술서']]).map(function (f) { return '<button class="btn sm ghost' + (m.slot === f[0] ? ' on' : '') + '" data-act="mkf" data-a="slot" data-b="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '<span class="fsep"></span>' +
+      if (m.kind === 'item') h += '<div class="filters" style="margin-top:6px">' + [['', '전체'], ['staff', '지팡이'], ['sword', '검']].concat(D.SLOTS.filter(function (x) { return x.id !== 'staff'; }).map(function (x) { return [x.id, x.name]; }), [['helm', '투구'], ['manual', '전술서']]).map(function (f) { return '<button class="btn sm ghost' + (m.slot === f[0] ? ' on' : '') + '" data-act="mkf" data-a="slot" data-b="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '<span class="fsep"></span>' +
         [['', '모든 등급', 'inherit']].concat(D.RARITY.map(function (r) { return [String(r.id), r.name, r.color]; })).map(function (f) { return '<button class="btn sm ghost' + (String(m.r) === f[0] ? ' on' : '') + '" data-act="mkf" data-a="r" data-b="' + f[0] + '" style="color:' + f[2] + '">' + f[1] + '</button>'; }).join('') + '</div>' +
         '<div class="row" style="margin-top:6px"><input id="mk-q" maxlength="20" placeholder="이름 검색" value="' + esc(m.q) + '" style="flex:1;min-width:120px"><button class="btn sm" data-act="mkq">검색</button></div>';
       else if (m.kind === 'pot') h += '<div class="row" style="margin-top:6px"><select id="mk-pot" data-act="mksel" data-a="pot" style="width:auto"><option value="">모든 물약</option>' + D.POTIONS.map(function (p) { return '<option value="' + p.id + '"' + (m.pot === p.id ? ' selected' : '') + '>' + p.name + '</option>'; }).join('') + '</select></div>';
@@ -2962,7 +2989,7 @@
     var m = S.mk, ak = m.akind || 'item', h = '<div class="card mkfilt" style="margin-bottom:10px"><div class="row"><div class="filters">' + [['item', '장비'], ['badge', '휘장']].map(function (f) { return '<button class="btn sm ghost' + (ak === f[0] ? ' on' : '') + '" data-act="mkf" data-a="akind" data-b="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '</div><span class="spacer"></span>' +
       '<label class="tog tiny" style="margin-right:6px"><input type="checkbox" data-act="mknobid"' + (m.nobid ? ' checked' : '') + '> 입찰 없는 것만</label>' +
       '<select data-act="mksel" data-a="asort" style="width:auto" aria-label="정렬">' + AUC_SORTS.map(function (o) { return '<option value="' + o[0] + '"' + ((m.asort || 'end') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></div>';
-    if (ak === 'item') h += '<div class="filters" style="margin-top:6px">' + [['', '전체'], ['staff', '지팡이'], ['sword', '검']].concat(D.SLOTS.filter(function (x) { return x.id !== 'staff'; }).map(function (x) { return [x.id, x.name]; }), [['manual', '전술서']]).map(function (f) { return '<button class="btn sm ghost' + (m.slot === f[0] ? ' on' : '') + '" data-act="mkf" data-a="slot" data-b="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '</div><div class="filters" style="margin-top:6px">' +
+    if (ak === 'item') h += '<div class="filters" style="margin-top:6px">' + [['', '전체'], ['staff', '지팡이'], ['sword', '검']].concat(D.SLOTS.filter(function (x) { return x.id !== 'staff'; }).map(function (x) { return [x.id, x.name]; }), [['helm', '투구'], ['manual', '전술서']]).map(function (f) { return '<button class="btn sm ghost' + (m.slot === f[0] ? ' on' : '') + '" data-act="mkf" data-a="slot" data-b="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '</div><div class="filters" style="margin-top:6px">' +
       [['', '모든 등급', 'inherit']].concat(D.RARITY.map(function (r) { return [String(r.id), r.name, r.color]; })).map(function (f) { return '<button class="btn sm ghost' + (String(m.r) === f[0] ? ' on' : '') + '" data-act="mkf" data-a="r" data-b="' + f[0] + '" style="color:' + f[2] + '">' + f[1] + '</button>'; }).join('') + '</div>' +
       '<div class="row" style="margin-top:6px"><input id="mk-q" maxlength="20" placeholder="이름 검색" value="' + esc(m.q || '') + '" style="flex:1;min-width:120px"><button class="btn sm" data-act="mkq">검색</button></div>';
     else h += '<div class="row" style="margin-top:6px"><select data-act="mksel" data-a="gem" style="width:auto"><option value="">모든 보석</option>' + D.BADGE_GEMS.map(function (g) { return '<option value="' + g.id + '"' + (m.gem === g.id ? ' selected' : '') + '>' + g.name + ' · ' + D.BONUS_NAMES[g.bonus] + '</option>'; }).join('') + '</select></div>';
@@ -3569,7 +3596,7 @@
     S.pick['ls' + k] = sid; render();
     setTimeout(function () { var el = $('[data-anchor="lslot' + k + '"]'); if (!el) return; el.scrollIntoView({ block: 'center', behavior: 'smooth' }); el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }, 30);
   };
-  ACT['lec-start'] = function (i) { i = +i; var s = S.pick['ls' + i], d = curDur('ld' + i, '1h'); act('lecStart', { slot: i, s: s, d: d.k }).then(function (r) { if (r) { Snd.play('click'); toast(R.SUBJ[s].name + ' 수업 시작' + (r.ontime ? ' · 제때 입실!' : ''), clock(now() + d.s) + '에 끝납니다' + (r.ontime ? ' · 과목 경험치 +' + Math.round(R.ONTIME_BONUS * 100) + '%' : '') + (r.review ? ' · 복습 효과 +' + Math.round(R.REVIEW_BONUS * 100) + '%' : ''), 2200); } render(); }); };
+  ACT['lec-start'] = function (i) { i = +i; var s = S.pick['ls' + i], d = curDur('ld' + i, '1h'); act('lecStart', { slot: i, s: s, d: d.k }).then(function (r) { if (r) { PREF.lastLs = s; savePref(); Snd.play('click'); toast(R.SUBJ[s].name + ' 수업 시작' + (r.ontime ? ' · 제때 입실!' : ''), clock(now() + d.s) + '에 끝납니다' + (r.ontime ? ' · 과목 경험치 +' + Math.round(R.ONTIME_BONUS * 100) + '%' : '') + (r.review ? ' · 복습 효과 +' + Math.round(R.REVIEW_BONUS * 100) + '%' : ''), 2200); } render(); }); };
   ACT.es = function (i, d) { var cap = Math.min(S.P.maxStage, R.stageCap(S.P)), s = (S.pick['es' + i] || 1) + +d; if (R.isBoss(s)) s += +d; S.pick['es' + i] = Math.max(1, Math.min(cap, s)); if (R.isBoss(S.pick['es' + i])) S.pick['es' + i]--; render(); };
   ACT['es-best'] = function (i) { S.pick['es' + i] = R.bestStage(S.P, wctx()); render(); };
   // 끝난 원정: 끝나는 순간 다시 그리고(완료 단추), 학생이 눌러야 결과를 받는다
@@ -4142,7 +4169,7 @@
   function curTheme() { var id = PREF.theme; if (id === 'auto') id = window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches ? 'day' : 'night'; return THEMES.find(function (t) { return t.id === id; }) || THEMES[0]; }
   function mixDark(hex, k) { var c = parseInt(hex.slice(1), 16); return '#' + [16, 8, 0].map(function (sh) { var v = Math.round(((c >> sh) & 255) * (1 - k)); return (v < 16 ? '0' : '') + v.toString(16); }).join(''); }
   function applyTheme() {
-    var t = curTheme(), de = document.documentElement; de.dataset.paper = PREF.paper === false ? 'off' : 'on'; de.dataset.skin = t.id; de.dataset.skintone = t.dark ? 'dark' : 'light'; de.style.colorScheme = t.dark ? 'dark' : 'light';
+    var t = curTheme(), de = document.documentElement; de.classList.toggle('nav-homeleft', !!PREF.homeLeft); de.dataset.paper = PREF.paper === false ? 'off' : 'on'; de.dataset.skin = t.id; de.dataset.skintone = t.dark ? 'dark' : 'light'; de.style.colorScheme = t.dark ? 'dark' : 'light';
     var mt = document.querySelector('meta[name="theme-color"]'); if (!mt) { mt = document.createElement('meta'); mt.name = 'theme-color'; document.head.appendChild(mt); } mt.content = getComputedStyle(de).getPropertyValue('--night').trim() || (t.dark ? '#11152a' : '#f3ede1');
     // 밝은 바탕에서는 기숙사·등급 글자색을 조금 진하게 (그림에 쓰는 색도 같이)
     [D.HOUSES, D.RARITY, D.FAM_RARITY].forEach(function (arr) { arr.forEach(function (x) { if (!x._c0) x._c0 = x.color; x.color = t.dark ? x._c0 : mixDark(x._c0, 0.38); }); });
@@ -4219,6 +4246,7 @@
       '<label class="tog"><input type="checkbox" id="opt-rf" data-act="opt" data-a="reduceFx"' + (P.opt.reduceFx ? ' checked' : '') + '> 전투 효과 줄이기 (배터리 절약)</label>' +
       '<label class="tog"><input type="checkbox" id="opt-hr" data-act="opt" data-a="hideRank"' + (P.opt.hideRank ? ' checked' : '') + '> 좌측 내 정보에서 전투력 옆 순위 숨기기</label>' +
       '<label class="tog"><input type="checkbox" data-act="opt" data-a="bulkAsk"' + (P.opt.bulkAsk !== false ? ' checked' : '') + '> 장비 일괄 판매 · 분해 전에 확인 창 띄우기</label>' +
+      '<label class="tog"><input type="checkbox" data-act="homeleft"' + (PREF.homeLeft ? ' checked' : '') + '> 모바일 하단 안내도에서 광장 버튼을 맨 왼쪽에 두기 <span class="tiny faint">(위로 가기 버튼에 가려질 때)</span></label>' +
       '<label class="tog"><input type="checkbox" data-act="opt" data-a="buffMerge"' + (P.opt.buffMerge ? ' checked' : '') + '> 물약 효과 합치기 <span class="tiny faint">(상단에 하나로 표시 · 누르거나 마우스를 올리면 물약 · 효과 · 남은 시간)</span></label></div>';
     h += '<div class="setsec"' + st('소리') + '><div class="section-t">소리</div>' +
       '<label class="tog"><input type="checkbox" id="opt-snd" data-act="opt" data-a="sound"' + (P.opt.sound ? ' checked' : '') + '> 효과음</label>' +
@@ -4976,7 +5004,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102145;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102148;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
@@ -5117,6 +5145,7 @@
     if (el.dataset.act === 'pick-sel') { S.pick[el.dataset.a] = el.value; render(); }
     else if (el.dataset.act === 'exampick') act('examPick', { s: el.value }).then(function (r) { if (r) { toast('선택 과목', el.value ? R.SUBJ[el.value].name + ' 과목으로 응시합니다' : '가장 레벨이 높은 과목이 자동으로 반영됩니다'); render(); } });
     else if (el.dataset.act === 'tfpick') ACT.tfpick(el.dataset.a, null, el);
+    else if (el.dataset.act === 'famzone') act('famZone', { id: el.dataset.a, z: el.value }).then(function (r) { if (r) { toast('파견 지역', (el.value ? R.dispZoneOf(S.P, el.dataset.a, el.value).name : '갈 수 있는 가장 높은 지역') + '으로 정했습니다. 다음 파견부터 적용됩니다'); render(); } });
     else if (el.dataset.act === 'autosell') ACT.autosell();
     else if (el.dataset.act === 'automode') ACT.automode();
     else if (el.id === 'pe-file' && el.files && el.files[0]) onAvatarFile(el.files[0]);

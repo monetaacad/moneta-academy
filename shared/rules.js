@@ -502,16 +502,22 @@
   }
   function uid(P) { return (rnd(P) * 2176782336 | 0).toString(36) + (rnd(P) * 2176782336 | 0).toString(36); }
   // 장비 이름 바탕 · 종류 이름 (무기 칸은 지팡이 / 검)
-  R.baseName = function (it) { return D.ITEM_NAMES[it.slot === 'staff' && it.wk === 'sword' ? 'sword' : it.slot === 'tome' && it.wk === 'manual' ? 'manual' : it.slot][tierOf(it.ilvl)]; };
-  R.slotName = function (it) { return it && it.slot === 'staff' ? (it.wk === 'sword' ? '검' : '지팡이') : it && it.slot === 'tome' && it.wk === 'manual' ? '전술서' : it && SLOT[it.slot] ? SLOT[it.slot].name : ''; };
+  R.baseName = function (it) { return D.ITEM_NAMES[it.slot === 'staff' && it.wk === 'sword' ? 'sword' : it.slot === 'tome' && it.wk === 'manual' ? 'manual' : it.slot === 'hat' && it.wk === 'helm' ? 'helm' : it.slot][tierOf(it.ilvl)]; };
+  R.slotName = function (it) { return it && it.slot === 'staff' ? (it.wk === 'sword' ? '검' : '지팡이') : it && it.slot === 'tome' && it.wk === 'manual' ? '전술서' : it && it.slot === 'hat' && it.wk === 'helm' ? '투구' : it && SLOT[it.slot] ? SLOT[it.slot].name : ''; };
   // 장비의 칸 정의: 전술서는 마도서 칸이지만 주 능력치가 기술 위력(물리 주문 피해)
-  var MANUAL_SLOT = null;
-  R.slotDef = function (it) { if (it.slot === 'tome' && it.wk === 'manual') return MANUAL_SLOT || (MANUAL_SLOT = Object.assign({}, SLOT.tome, { main: 'skillPct' })); return SLOT[it.slot]; };
+  // 투구는 모자 칸이지만 주 능력치가 체력
+  var MANUAL_SLOT = null, HELM_SLOT = null;
+  R.slotDef = function (it) {
+    if (it.slot === 'tome' && it.wk === 'manual') return MANUAL_SLOT || (MANUAL_SLOT = Object.assign({}, SLOT.tome, { main: 'skillPct' }));
+    if (it.slot === 'hat' && it.wk === 'helm') return HELM_SLOT || (HELM_SLOT = Object.assign({}, SLOT.hat, { main: 'vit' }));
+    return SLOT[it.slot];
+  };
   function makeItem(P, slot, ilvl, r, minR) {
     if (r == null) r = 0; if (minR != null && r < minR) r = minR;
     var it = { u: uid(P), slot: slot, ilvl: Math.max(1, Math.round(ilvl)), r: r, enh: 0, q: Math.round((0.9 + rnd(P) * 0.2) * 1000) / 1000, aff: [], lock: false };
     if (slot === 'staff' && rnd(P) < (P.cls === 'knight' ? 0.7 : 0.3)) it.wk = 'sword';   // 무기: 기사는 검이, 마법사는 지팡이가 더 잘 나온다
     if (slot === 'tome' && rnd(P) < (P.cls === 'knight' ? 0.7 : 0.3)) it.wk = 'manual';   // 마도서 칸: 기사는 전술서가, 마법사는 마도서가 더 잘 나온다
+    if (slot === 'hat' && rnd(P) < (P.cls === 'knight' ? 0.7 : 0.3)) it.wk = 'helm';   // 모자 칸: 기사는 투구(체력)가, 마법사는 모자(지력)가 더 잘 나온다
     var pool = D.AFFIXES.slice(), n = D.RARITY[r].affix;
     for (var i = 0; i < n && pool.length; i++) {
       var a = pool.splice(Math.floor(rnd(P) * pool.length), 1)[0], v;
@@ -527,13 +533,13 @@
   function mainVal(it) {
     var S = R.slotDef(it), rm = D.RARITY[it.r].mult;
     if (S.main === 'spellPct' || S.main === 'skillPct') return S.base * (1 + it.ilvl * 0.025) * rm * it.q * (1 + it.enh * 0.08);
-    if (S.main === 'int' || S.main === 'luk') return S.base * (1 + it.ilvl * 0.09) * rm * it.q * (1 + it.enh * 0.08);
+    if (S.main === 'int' || S.main === 'luk' || S.main === 'vit') return S.base * (1 + it.ilvl * 0.09) * rm * it.q * (1 + it.enh * 0.08);
     return S.base * Math.pow(1.12, it.ilvl - 1) * rm * it.q * (1 + it.enh * 0.1);
   }
   function subVal(it) {
     var S = SLOT[it.slot]; if (!S.sub) return 0;
     var rm = D.RARITY[it.r].mult;
-    if (S.sub === 'critC') return S.subBase * rm * (1 + it.enh * 0.05);
+    if (S.sub === 'critC' || S.sub === 'lectureSpd') return S.subBase * rm * (1 + it.enh * 0.05);
     return S.subBase * Math.pow(1.12, it.ilvl - 1) * rm * it.q * (1 + it.enh * 0.1);
   }
   function itemStats(it) {
@@ -927,8 +933,11 @@
     log(P, t, '알이 부화했습니다: ' + f.name + (res.isNew ? ' (새로운 사역마!)' : ' (성장)'), 'good');
     return res;
   }
+  // 파견 지역: 사역마마다 정해 둘 수 있다 (P.fam.zone[fid] = 지역 id, 없으면 갈 수 있는 가장 높은 지역). 출발할 때 정해진 지역으로 다녀온다
+  R.dispZones = function (P) { var top = Math.min(P.maxStage, R.stageCap(P)); return D.ZONES.filter(function (z) { return z.from <= top; }); };
+  R.dispZoneOf = function (P, fid, zid) { var zs = R.dispZones(P), want = zid || (P.fam.zone && P.fam.zone[fid]); return zs.filter(function (z) { return z.id === want; })[0] || zs[zs.length - 1] || D.ZONES[0]; };
   function dispatchFinish(P, fid, d, t) {
-    var f = FAM[fid], z = R.zoneOf(Math.min(P.maxStage, R.stageCap(P))), h = d.dur / 3600, out = { k: 'disp', f: fid, t: t };
+    var f = FAM[fid], z = R.dispZoneOf(P, fid, d.z), h = d.dur / 3600, out = { k: 'disp', f: fid, t: t };
     out.xp = Math.round(h * R.FAM_DISP_XP); famGainXp(P, fid, out.xp, t);   // 파견 경험치 (시간에 비례, 동행보다 낮게)
     var mult = (1 + f.r * 0.3) * (1 + 0.05 * (P.fam.own[fid].lv - 1)) * (d.bonus || 1);
     var mats = Math.floor(h * 6 * mult + rnd(P) * 3); P.mats[z.mat] = (P.mats[z.mat] || 0) + mats; out.mats = mats; out.mat = z.mat;
@@ -2084,7 +2093,12 @@
     if (!R.famOpen(P)) err(R.FAM_OPEN_TEXT + '부터 할 수 있습니다'); if (!P.fam.own[id]) err('없는 사역마입니다'); if (!d) err('잘못된 시간입니다');
     if (P.fam.disp[id]) err('이미 파견 중입니다'); if (P.fam.act === id) err('동행 중인 사역마는 파견할 수 없습니다');
     var b = calc(P, W, now, now + d.s).b;   // 숙면의 차 등은 파견 시간과 겹친 만큼
-    P.fam.disp[id] = { start: now, end: now + d.s, dur: d.s, bonus: 1 + (b.dispPct || 0) + P.subj.beast.lv * R.BEAST_DISP }; return { ok: true };
+    P.fam.disp[id] = { start: now, end: now + d.s, dur: d.s, bonus: 1 + (b.dispPct || 0) + P.subj.beast.lv * R.BEAST_DISP, z: R.dispZoneOf(P, id).id }; return { ok: true };
+  };
+  A.famZone = function (P, W, now, a) {
+    var id = str(a.id), z = a.z ? str(a.z) : ''; if (!P.fam.own[id]) err('없는 사역마입니다');
+    if (z && !R.dispZones(P).some(function (x) { return x.id === z; })) err('아직 갈 수 없는 지역입니다');
+    var m = P.fam.zone || (P.fam.zone = {}); if (z) m[id] = z; else delete m[id]; return { ok: true };
   };
   // 이론 30: 시험 과목 평균 레벨이 기준이면 21점, 기준보다 3 높으면 30점 (문제 풀이 없음)
   R.examTheory = function (P, ex) { var xs = R.examSubjs(P, ex), avg = xs.reduce(function (s2, k) { return s2 + sjLv(P, k); }, 0) / xs.length; return clamp(21 + (avg - ex.req) * 3, 0, 30); };
@@ -2357,9 +2371,11 @@
   };
 
   /* ───────── 서버 보조: 랭킹·보스 체력 추정 ───────── */
+  // power = 랭킹 · 학생 카드 · 파티에 보이는 전투력: 물약 · 의식 같은 시간제 효과(P.buffs)는 빼고 계산한다 (공정한 순위)
   R.summary = function (P, W, now) {
-    var c = calc(P, W, now);
-    return { power: c.power, lvl: P.lvl, grade: P.grade, maxStage: P.maxStage, wbDps: Math.floor(c.totalDps * 30) };
+    var c = calc(P, W, now), bf = P.buffs, base;
+    P.buffs = {}; try { base = calc(P, W, now); } finally { P.buffs = bf; }
+    return { power: base.power, lvl: P.lvl, grade: P.grade, maxStage: P.maxStage, wbDps: Math.floor(c.totalDps * 30) };
   };
 
   /* ───────── 표기 ───────── */
