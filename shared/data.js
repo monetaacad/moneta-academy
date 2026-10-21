@@ -504,7 +504,7 @@ var DATA = (function () {
     { id: 'ward', name: '수호 문양 도감', desc: '생명력 +10%, 방어력 +5%', eff: { hpPct: 0.10, defPct: 0.05 }, color: '#7fb3d5' },
     { id: 'arcane', name: '마도 공학 개론', desc: '주문 위력 +10%', eff: { spellPct: 0.10 }, color: '#a78bdb' },
     { id: 'blade', name: '검술 비전서', desc: '기술 위력 +10%', eff: { skillPct: 0.10 }, color: '#c9a27e' },
-    { id: 'anatomy', name: '급소 해부학', desc: '치명타 확률 +5%p', eff: { critC: 0.05 }, color: '#d96c8a' },
+    { id: 'anatomy', name: '급소 해부학', desc: '치명타 확률 +5%', eff: { critC: 0.05 }, color: '#d96c8a' },
     { id: 'giant', name: '거인 사냥꾼의 기록', desc: '보스 피해 +10%', eff: { bossDmg: 0.10 }, color: '#b5651d' },
     { id: 'study', name: '학습 요령서', desc: '수업 효율 +8%', eff: { lectureSpd: 0.08 }, color: '#8fc1b5' },
     { id: 'veteran', name: '실전 수기', desc: '경험치 +10%', eff: { xpPct: 0.10 }, color: '#d4b483' },
