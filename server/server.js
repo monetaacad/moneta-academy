@@ -2755,6 +2755,7 @@ function shutdown(sig) {
   server.close();
   // 학생 상태 · 월드 보스 체력 · 소식/공지 · 채팅 글 번호를 모두 DB에 쓴 뒤 닫는다 (경매·거래소·채팅 글은 이미 DB에 바로 기록됨)
   try { store.flushAll(); world.tick(nowSec()); world.saveAll(); chat.saveSeq(); exprooms.persist(); } catch (e) { log('종료 중 저장 오류', e); }
+  try { push.saveLast(); } catch (e) { }
   try { dbx.close(); } catch (e) { log('종료 중 오류', e); }
   process.exit(0);
 }
