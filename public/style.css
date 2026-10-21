@@ -1847,3 +1847,7 @@ mark.hl { color: inherit; background: linear-gradient(transparent 38%, color-mix
 /* 광장 배치 편집 */
 .hblk.ed { outline: 1px dashed var(--brass); outline-offset: 4px; border-radius: 10px; }
 .hbtool { display: flex; align-items: center; gap: 4px; margin: 0 0 6px; }
+/* 모바일: 입력 칸 글자가 16px보다 작으면 누를 때 브라우저가 화면을 자동으로 확대한다 → 터치 기기에서는 입력 칸만 16px 이상 (설정의 글씨 크기와 무관) */
+@media (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea, select { font-size: max(16px, 1em) !important; }
+}
