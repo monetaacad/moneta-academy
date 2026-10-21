@@ -2153,9 +2153,15 @@ routes['POST /api/admin/plog'] = async (req, res) => {
   } catch (e) { log('운영실 학생 카드 계산 실패', e); }
   oplog('admin', '관리자', 'plog', row.name + ' 활동 기록 확인');
   const RN = ['일반', '고급', '희귀', '영웅', '전설'];
-  const dlog = (P.dlog || []).slice(0, 80).map((d) => ({ t: d.t, a: d.a, n: d.n, x: d.x || '', it: d.it || '', lv: d.lv, by: (d.rc || []).map((c, i) => c ? RN[i] + ' ' + c : '').filter(Boolean).join(' · ') }));
+  const dlog = (P.dlog || []).slice(0, 80).map((d) => ({ t: d.t, a: d.a, n: d.n, x: d.x || '', it: d.it || '', lv: d.lv, by: (d.rc || []).map((c, i) => c ? RN[i] + ' ' + c : '').filter(Boolean).join(' · '), keep: (d.keep || []).map((it) => itemOut(it)) }));
+  // 거래소 · 떠돌이 상인에서 산 장비 (옵션 그대로 남아 있어 재지급에 쓸 수 있다). have = 지금도 가지고 있는지
+  const owned = new Set((P.inv || []).map((x) => x.u).concat(Object.keys(P.eq || {}).map((k) => P.eq[k] && P.eq[k].u)).filter(Boolean));
+  const bought = [];
+  dbx.db.prepare(`SELECT data, price, done_at, COALESCE((SELECT name FROM players WHERE id = market.seller), seller_name) AS sname FROM market WHERE buyer = ? AND status = 'sold' AND kind = 'item' ORDER BY done_at DESC LIMIT 40`).all(row.id).forEach((r) => { try { const it = JSON.parse(r.data); bought.push(itemOut(it, { t: r.done_at, price: r.price, from: '거래소 · ' + (r.sname || ''), have: owned.has(it.u) })); } catch (e) { } });
+  try { dbx.db.prepare(`SELECT item, price, ends FROM auction WHERE bidder = ? AND done = 1 ORDER BY ends DESC LIMIT 20`).all(row.id).forEach((r) => { try { const it = JSON.parse(r.item); bought.push(itemOut(it, { t: r.ends, price: r.price, from: '떠돌이 상인', have: null })); } catch (e) { } }); } catch (e) { }
+  bought.sort((x, y) => y.t - x.t);
   const auto = P.rs && P.rs.sorter ? { on: P.autoSell >= 0, upto: P.autoSell >= 0 ? RN[P.autoSell] + ' 이하' : '꺼짐', mode: P.autoDis ? '분해' : '판매' } : null;
-  send(req, res, 200, { name: row.name, card, dlog, auto, log: (P.log || []).slice(0, 50).map((l) => ({ t: l.t, m: l.m, k: l.k, n: l.n || 1 })), high, st: { expJobs: P.st.expJobs || 0, epicFound: P.st.epicFound || 0, legendFound: P.st.legendFound || 0 } });
+  send(req, res, 200, { name: row.name, card, dlog, auto, bought, log: (P.log || []).slice(0, 50).map((l) => ({ t: l.t, m: l.m, k: l.k, n: l.n || 1 })), high, st: { expJobs: P.st.expJobs || 0, epicFound: P.st.epicFound || 0, legendFound: P.st.legendFound || 0 } });
 };
 // 운영실: 비밀번호를 잃어버린 학생에게 임시 비밀번호를 발급한다. 모든 기기에서 로그아웃되고, 로그인하면 비밀번호를 바꾸라고 안내한다
 routes['POST /api/admin/resetpw'] = async (req, res) => {
@@ -2383,6 +2389,11 @@ routes['POST /api/admin/maint'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
   const b = await readJson(req, 2048); maintSet(b); send(req, res, 200, { ok: true, maint: MAINT });
 };
+// 운영실: 장비 옵션 한 줄 (옵션 · 각인 · 품질) · 재지급용 장비 정보
+function itemOptText(it) { const D = R.D, f = (k, v) => (D.STAT_NAMES[k] || D.BONUS_NAMES[k] || k) + ' +' + (D.STAT_NAMES[k] ? Math.round(v * 10) / 10 : Math.round(v * 1000) / 10 + '%');
+  return (it.aff || []).map((a) => f(a.id, a.v)).concat(it.eng ? [((D.ENGRAVES.find((e) => e.id === it.eng.id) || {}).name || it.eng.id) + ' ' + (it.eng.id === 'killMana' ? it.eng.v : Math.round(it.eng.v * 1000) / 10 + '%')] : []).join(' · ') + ' · 품질 ' + Math.round((it.q || 1) * 1000) / 10 + '%'; }
+function itemOut(it, extra) { const RN = ['일반', '고급', '희귀', '영웅', '전설'], item = Object.assign({}, it); delete item.u; delete item.lock;
+  return Object.assign({ name: it.name + (it.enh ? ' +' + it.enh : ''), r: it.r, rn: RN[it.r], ilvl: it.ilvl, slot: R.slotName(it), opt: itemOptText(it), item }, extra || {}); }
 // 운영실: 백업과 비교 — 백업 시점의 학생 장비(가방 · 장착)와 지금을 장비 고유번호로 비교한다. 백업은 서버 안에서만 풀고 바로 지운다
 const bkDir = () => path.join(cfg.dataDir, 'backups'), BK_RE = /^moneta-\d{10}\.db(\.enc)?$/;
 routes['GET /api/admin/backups'] = (req, res) => {
@@ -2416,10 +2427,8 @@ routes['POST /api/admin/bkcompare'] = async (req, res) => {
   if (!O) return fail(req, res, 404, '이 백업에는 해당 학생이 없습니다 (백업 뒤에 입학)');
   const RN = ['일반', '고급', '희귀', '영웅', '전설'];
   const gear = (S) => { const m = new Map(); (S.inv || []).forEach((it) => it && it.u && m.set(it.u, { it, at: '가방' })); Object.keys(S.eq || {}).forEach((k) => { const it = S.eq[k]; if (it && it.u) m.set(it.u, { it, at: '장착' }); }); (S.mailQ || []).forEach((it) => it && it.u && m.set(it.u, { it, at: '우편 대기' })); return m; };
-  const optText = (it) => { const D = R.D, f = (k, v) => (D.STAT_NAMES[k] || D.BONUS_NAMES[k] || k) + ' +' + (D.STAT_NAMES[k] ? Math.round(v * 10) / 10 : Math.round(v * 1000) / 10 + '%');
-    return (it.aff || []).map((a) => f(a.id, a.v)).concat(it.eng ? [((D.ENGRAVES.find((e) => e.id === it.eng.id) || {}).name || it.eng.id) + ' ' + (it.eng.id === 'killMana' ? it.eng.v : Math.round(it.eng.v * 1000) / 10 + '%')] : []).join(' · ') + ' · 품질 ' + Math.round((it.q || 1) * 1000) / 10 + '%'; };
   const out1 = (x, why) => { const item = Object.assign({}, x.it); delete item.u; delete item.lock;   // 재지급용 (우편으로 그대로 보낼 수 있는 장비 정보)
-    return { name: x.it.name + (x.it.enh ? ' +' + x.it.enh : ''), r: x.it.r, rn: RN[x.it.r], ilvl: x.it.ilvl, slot: R.slotName(x.it), at: x.at, lock: !!x.it.lock, why: why || '', opt: optText(x.it), item }; };
+    return { name: x.it.name + (x.it.enh ? ' +' + x.it.enh : ''), r: x.it.r, rn: RN[x.it.r], ilvl: x.it.ilvl, slot: R.slotName(x.it), at: x.at, lock: !!x.it.lock, why: why || '', opt: itemOptText(x.it), item }; };
   const then = gear(O), cur = gear(P), bkT = Math.floor(fs.statSync(path.join(bkDir(), file)).mtimeMs / 1000);
   const open = dbx.db.prepare(`SELECT data FROM market WHERE seller = ? AND status = 'open' AND kind = 'item'`).all(row.id).map((r) => { try { return JSON.parse(r.data); } catch (e) { return null; } }).filter(Boolean);
   const sold = dbx.db.prepare(`SELECT name, rarity, ilvl, price, done_at FROM market WHERE seller = ? AND status = 'sold' AND kind = 'item' AND done_at > ?`).all(row.id, bkT);
