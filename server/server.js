@@ -529,7 +529,14 @@ routes['POST /api/act'] = async (req, res) => {
     const W0 = world.ctx(now); W0.lecPeers = type === 'lecStart' || type === 'ttApply' ? lecCounts(now) : null;
     r = R.act(P, W0, now, type, a); W0.lecPeers = null; questNotes(P);
     if (type === 'lecStart' || type === 'lecCancel' || type === 'ttApply') { lecSync(P); if (type === 'lecStart' || type === 'ttApply') { const j = P.lec[type === 'ttApply' ? 0 : Number(a.slot)]; if (j) lecStarted(P, j.s, now); } }
-    if (type === 'exam' && r && r.pass) world.addNews(P.name + ' 학생이 ' + (P.grade >= 8 ? '졸업 시험을 통과해 마스터 과정이 되었습니다' : P.grade + '학년으로 진급했습니다'), now);
+    if (type === 'exam' && r && r.pass) {
+      if (r.letter === 'S') {   // S등급 진급: 학년 소식을 돋보이게 + 공지 채팅 알림. 1 · 3 · 5 · 7번째 S면 받은 칭호도 함께
+        const sn = P.st.sGrades || 0, tt = R.D.TITLES.find((t) => t.stat === 'sGrades' && t.n === sn), grad = P.grade >= 8;
+        const tag = sn >= 7 ? '[전 학년 수석]' : grad ? '[수석 졸업]' : '[수석 진급]', head = r.grade + '학년 기말시험을 S등급(' + r.total + '점)으로 통과하고 ' + (grad ? '마스터 과정이 되었습니다' : P.grade + '학년으로 진급했습니다');
+        world.addNews(tag + ' ' + P.name + ' 학생이 ' + head + '.' + (tt ? ' 칭호 ' + R.josa('「' + tt.name + '」', '을', '를') + ' 받았습니다.' : ''), now);
+        chat.system('notice', '아카데미 알림: ' + P.name + ' 학생이 ' + r.grade + '학년 기말시험에서 S등급을 받아 ' + (sn >= 7 ? '일곱 기말시험을 모두 S등급으로 마쳤습니다' : grad ? '수석으로 졸업 시험을 통과했습니다' : '수석으로 진급했습니다') + '. 축하합니다.', Date.now() / 1000);
+      } else world.addNews(P.name + ' 학생이 ' + (P.grade >= 8 ? '졸업 시험을 통과해 마스터 과정이 되었습니다' : P.grade + '학년으로 진급했습니다'), now);
+    }
     if ((type === 'clsExam' || type === 'setCls') && r) setImmediate(() => { try { chat.clsChanged(pid); } catch (e) { } });
     if (leavePa) expLeft(P, leavePa, now);
     if (type === 'inboxAck' || type === 'expCancel' || type === 'expClaim') setImmediate(() => { try { chat.exrChanged(pid); } catch (e) { } });   // 결과를 받으면 원정 채팅 탭을 닫는다
