@@ -1590,6 +1590,7 @@
   ACT.erjoin = function (id, wp) { erOp({ op: 'join', id: id, pos: erPos(), withParty: wp === 'party' }, wp === 'party' ? null : '방에 들어갔습니다'); };
   ACT.erbring = function () { erOp({ op: 'bring' }); };
   ACT.rsnow = function (i) { act('useRsDone', { slot: +i }).then(function (r) { if (r && r.id) { toast('연구 즉시 완료', R.RES[r.id].name + ' ' + r.lv + '단계를 마쳤습니다'); Snd.play && Snd.play('level'); } render(); }); };
+  ACT.itemarm = function (type, u) { var k = 'ia' + type + u; if (!(S.confirm[k] > Date.now())) { S.confirm[k] = Date.now() + 4000; render(); setTimeout(function () { if (S.confirm[k] && S.confirm[k] <= Date.now()) render(); }, 4100); return; } S.confirm[k] = 0; ACT['do'](type, u); };
   ACT.gradeup = function () { if (!(S.confirm.gup > Date.now())) { S.confirm.gup = Date.now() + 4000; render(); return; } S.confirm.gup = 0; act('useGradeUp').then(function (r) { if (r && r.grade) { toast('학년 진급', (r.grade >= 8 ? '마스터 과정' : r.grade + '학년') + '이 되었습니다'); Snd.play && Snd.play('pass'); } renderNav(); render(); if (r && r.grade) promoModal(r.grade); }); };
   ACT.erleave = function () { erOp({ op: 'leave' }, '방에서 나왔습니다'); };
   ACT.ergo = function () { erOp({ op: 'go' }); };
@@ -2005,8 +2006,10 @@
     }
     h += '<button class="btn sm ghost" data-act="do" data-a="lock" data-b="' + it.u + '">' + (it.lock ? '잠금 해제' : '잠금') + '</button>';
     if (D.RARITY[it.r].affix && !it.lock) { var rf = R.reforgeCost(it); h += '<button class="btn sm" data-act="reforge" data-a="' + it.u + '"' + ((P.res.dust || 0) >= rf ? '' : ' disabled') + ' title="지금 옵션은 사라지고 새 옵션으로 바뀝니다 (등급·레벨·강화는 그대로)">재련 <span class="cost">마석가루 ' + fmt(rf) + '</span></button>'; }
-    if (!eqd && !it.lock) { var dy = R.dismantleYield(it); h += '<button class="btn sm" data-act="do" data-a="dismantle" data-b="' + it.u + '">분해 <span class="cost">마석 ' + dy.stone + ' · 마석가루 ' + dy.dust + '</span></button>'; }
-    if (!eqd && !it.lock) h += '<button class="btn sm danger" data-act="do" data-a="sell" data-b="' + it.u + '">판매 ' + fmt(R.sellPrice(it)) + ' ' + CUR + '</button><button class="btn sm" data-act="mksellgo" data-a="' + it.u + '">거래소에서 팔기</button>';
+    // 영웅 이상 · 강화한 장비는 분해 · 판매를 한 번 더 눌러야 실행 (실수 방지)
+    var risky = it.r >= 3 || it.enh > 0, armD = S.confirm['iadismantle' + it.u] > Date.now(), armS = S.confirm['iasell' + it.u] > Date.now();
+    if (!eqd && !it.lock) { var dy = R.dismantleYield(it); h += '<button class="btn sm' + (armD ? ' primary' : '') + '" data-act="' + (risky ? 'itemarm' : 'do') + '" data-a="dismantle" data-b="' + it.u + '">' + (armD ? '한 번 더 누르면 분해합니다' : '분해 <span class="cost">마석 ' + dy.stone + ' · 마석가루 ' + dy.dust + '</span>') + '</button>'; }
+    if (!eqd && !it.lock) h += '<button class="btn sm danger" data-act="' + (risky ? 'itemarm' : 'do') + '" data-a="sell" data-b="' + it.u + '">' + (armS ? '한 번 더 누르면 판매합니다' : '판매 ' + fmt(R.sellPrice(it)) + ' ' + CUR) + '</button><button class="btn sm" data-act="mksellgo" data-a="' + it.u + '">거래소에서 팔기</button>';
     return h + '</div><p class="tiny faint" style="margin-top:8px">' + (it.lock ? '잠긴 장비입니다. 장착 · 해제만 할 수 있고 강화 · 재련 · 분해 · 판매 · 거래소 · 창고에 넣기는 막혀 있습니다.' : '강화 실패 시 장비는 그대로입니다. 최대 +' + R.ENH_MAX + '. 잠그면 강화 · 판매 같은 실수를 막을 수 있습니다.') + '</p></div>';
   }
   function PRESETS_() { return R.allocPresets(S.P); }
@@ -5012,7 +5015,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102152;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102153;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
