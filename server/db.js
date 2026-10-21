@@ -383,6 +383,9 @@ function open(dir) {
     // 학과의 탑 순위: 저장된 학생 상태(JSON)의 st.twK / st.twM
     topCt: db.prepare(`SELECT id, name, house, grade, CAST(json_extract(state, ?) AS INTEGER) AS f FROM players WHERE banned = 0 AND CAST(json_extract(state, ?) AS INTEGER) > 0 ORDER BY f DESC, power DESC LIMIT ?`),
     topStage: db.prepare(`SELECT id, name, house, power, lvl, grade, max_stage FROM players WHERE banned = 0 ORDER BY max_stage DESC, power DESC LIMIT ?`),
+    // 별의 탑 이번 주 기록: 학생 상태의 tw2 = {week, best}
+    topTw: db.prepare(`SELECT id, name, house, CAST(json_extract(state, '$.tw2.best') AS INTEGER) AS f FROM players WHERE banned = 0 AND json_extract(state, '$.tw2.week') = ? AND CAST(json_extract(state, '$.tw2.best') AS INTEGER) > 0 ORDER BY f DESC, power DESC LIMIT ?`),
+    rankTw: db.prepare(`SELECT COUNT(*) + 1 AS r FROM players WHERE banned = 0 AND json_extract(state, '$.tw2.week') = ? AND CAST(json_extract(state, '$.tw2.best') AS INTEGER) > ?`),
     rankPower: db.prepare(`SELECT COUNT(*) + 1 AS r FROM players WHERE banned = 0 AND power > ?`),
     topLvl: db.prepare(`SELECT id, name, house, power, lvl, grade, max_stage FROM players WHERE banned = 0 ORDER BY lvl DESC, max_stage DESC, power DESC LIMIT ?`),
     rankLvl: db.prepare(`SELECT COUNT(*) + 1 AS r FROM players WHERE banned = 0 AND (lvl > ? OR (lvl = ? AND (max_stage > ? OR (max_stage = ? AND power > ?))))`),
@@ -454,6 +457,7 @@ function open(dir) {
     // 파티
     partyGet: db.prepare(`SELECT id, name, leader, created, npcs, allgo FROM parties WHERE id = ?`),
     partySetAllgo: db.prepare(`UPDATE parties SET allgo = ? WHERE id = ?`),
+    partyRename: db.prepare(`UPDATE parties SET name = ? WHERE id = ?`),
     partySetNpcs: db.prepare(`UPDATE parties SET npcs = ? WHERE id = ?`),
     partyInsert: db.prepare(`INSERT INTO parties (id, name, leader, created) VALUES (?, ?, ?, ?)`),
     partyLeader: db.prepare(`UPDATE parties SET leader = ? WHERE id = ?`),

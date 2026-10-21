@@ -64,8 +64,8 @@ var Net = (function () {
     open();
     return { close: function () { closed = true; if (es) es.close(); }, live: true };
   };
-  ServerApi.prototype.tower = function () { return this.req('GET', '/api/tower'); };
-  ServerApi.prototype.towerOp = function () { return this.req('POST', '/api/tower', {}); };
+  ServerApi.prototype.tower = function (have) { return this.req('GET', '/api/tower' + (have ? '?have=' + encodeURIComponent(have) : '')); };
+  ServerApi.prototype.towerOp = function (o) { return this.req('POST', '/api/tower', o || {}); };
   ServerApi.prototype.ritual = function () { return this.req('POST', '/api/ritual', {}); };
   ServerApi.prototype.auction = function () { return this.req('GET', '/api/auction'); };
   ServerApi.prototype.bid = function (id, amount) { return this.req('POST', '/api/auction', { id: id, amount: amount }); };

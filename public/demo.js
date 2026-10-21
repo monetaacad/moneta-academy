@@ -283,39 +283,45 @@
     else if (o.op === 'npcAdd') { if (so.party.npcs.length >= 3) return Promise.resolve({ error: '파티는 4명까지입니다' }); if (so.party.npcs.indexOf(o.k) < 0) so.party.npcs.push(o.k); this._npcSay('party', o.k, N[o.k].hello); }
     else if (o.op === 'npcRemove') { so.party.npcs = so.party.npcs.filter(function (k) { return k !== o.k; }); this._sys('party', N[o.k].name + ' 님이 파티에서 나갔습니다.'); }
     else if (o.op === 'allgo') { so.party.allgo = !!o.on; }
+    else if (o.op === 'rename') { var nm = String(o.name || '').replace(/\s+/g, ' ').trim(); if (!/^[가-힣A-Za-z0-9_ ]{2,12}$/.test(nm)) return Promise.resolve({ error: '파티 이름은 한글·영문·숫자 2~12자만 가능' }); so.party.name = nm; this._sys('party', this.d.P.name + ' 님이 파티 이름을 「' + nm + '」' + Rules.josa(nm, '으로', '로').slice(nm.length) + ' 바꾸었습니다.'); }
     else if (o.op === 'leave') { so.party = null; so.tower = null; so.chat.party = []; this._emitGroup('party'); }
     else if (o.op === 'invite') return Promise.resolve({ error: '데모에는 다른 학생이 없습니다. 「아카데미 친구 부르기」로 NPC를 불러 보세요' });
     else return Promise.resolve({ error: '데모에서는 할 수 없습니다' });
     this._save(); return Promise.resolve({ ok: true, party: this._partyView() });
   };
-  // 데모 별의 탑: 나 + NPC 파티원 (NPC는 내 힘의 30%씩)
+  // 데모 별의 탑: 나 + NPC 파티원 (NPC는 내 힘의 30%씩). 실전 · 연습 규칙은 서버와 같다 (shared/rules.js)
   LocalApi.prototype._towerCore = function (now) {
-    var so = this._soc(), P = this.d.P, pa = so.party; if (!pa) return null; var N = npcs(), W = this._world(now), c0 = Rules.calc(P, W, now), wk = Rules.weekId(now);
-    var tw = so.tower; if (!tw || tw.week !== wk) tw = so.tower = { week: wk, floor: 0, base: null, log: [] };
-    var team = [{ id: P.id, name: P.name, house: P.house, dps: c0.totalDps, hp: c0.hp, def: c0.def, me: true }].concat(pa.npcs.map(function (k) { return { id: 'npc:' + k, name: N[k].name, house: N[k].house, npc: true, dps: c0.totalDps * Rules.NPC_FRAC.tower, hp: c0.hp * Rules.NPC_FRAC.tower, def: c0.def }; }));
-    var real = Date.now() / 1000, last = tw.log[tw.log.length - 1], playing = last && last.sc && last.t + last.d > real ? { name: last.name, f: last.f, left: Math.ceil(last.t + last.d - real) } : null, shown = playing && last.win ? tw.floor - 1 : tw.floor;
-    var base = tw.base || Rules.towerBase([P.maxStage]), f = shown + 1, foe = Rules.towerFoe(f, base), c2 = Rules.towerTeam(c0, team);
-    return { tw: tw, team: team, c0: c0, c2: c2, base: base, f: f, foe: foe, W: W, playing: playing, shown: shown };
+    var so = this._soc(), P = this.d.P, pa = so.party; if (!pa) return null; var N = npcs(), W = this._world(now);
+    if (!so.tower || !Array.isArray(so.tower.runs)) so.tower = { runs: [] };
+    var me = Rules.twMember(P, W, now), ms = [me].concat(pa.npcs.map(function (k) { return Rules.twNpc(me, 'npc:' + k, N[k].name, N[k].house); }));
+    var runs = so.tower.runs, last = runs[runs.length - 1], live = last && last.t0 + last.d > Date.now() / 1000 ? last : null;
+    return { so: so, pa: pa, ms: ms, runs: runs, live: live };
   };
   LocalApi.prototype.tower = function () {
     var now = this._now(), P = this.d.P, x = this._towerCore(now); if (!x) return Promise.resolve({ party: null });
-    return Promise.resolve({ party: 'demo-party', week: x.tw.week, weekEnd: Rules.weekStart(x.tw.week + 1), floor: x.shown, playing: x.playing, now: Date.now() / 1000, base: x.base, fixed: !!x.tw.base, log: x.tw.log.slice(-12).reverse(), left: Rules.towerLeft(P, now), tries: Rules.TOWER_TRIES, myBest: Rules.towerBest(P, now),
-      team: x.team.map(function (m) { return { id: m.id, name: m.name, house: m.house, npc: !!m.npc, dps: m.dps, me: !!m.me }; }), teamDps: x.c2.totalDps, teamHp: x.c2.hp, demo: true,
-      next: { floor: x.f, stage: x.foe.stage, name: x.foe.name, arch: x.foe.arch, c1: x.foe.c1, c2: x.foe.c2, hp: x.foe.hp, est: Rules.towerEstimate(x.c2, x.foe), reward: Rules.towerReward(x.f, x.base) } });
+    var prev = x.live && x.live.kind === 'real' && x.live.prev ? x.live.prev : {}, best = P.id in prev ? prev[P.id] : Rules.twBest(P, now);
+    return Promise.resolve({ party: 'demo-party', name: x.pa.name || '파티', leader: P.id, week: Rules.weekId(now), weekEnd: Rules.weekStart(Rules.weekId(now) + 1), now: Date.now() / 1000, demo: true,
+      start: best + 1, used: Rules.twUsed(P, now) ? [P.name] : [], myUsed: Rules.twUsed(P, now), myBest: best, myPos: Rules.twPos(P), posOk: Rules.expPositions(P),
+      members: Rules.twMeta(x.ms).map(function (m) { return Object.assign(m, { me: m.id === P.id, best: m.npc ? null : best, used: !m.npc && Rules.twUsed(P, now) }); }), runs: x.runs.slice().reverse() });
   };
-  LocalApi.prototype.towerOp = function () {
-    var now = this._now(), P = this.d.P; Rules.advance(P, this._world(now), now); var x = this._towerCore(now); if (!x) return Promise.resolve({ error: '파티에 들어가 있어야 별의 탑에 오를 수 있습니다' });
-    if (Rules.towerLeft(P, now) <= 0) return Promise.resolve({ error: '오늘 도전 횟수를 다 썼습니다 (매일 자정에 ' + Rules.TOWER_TRIES + '번으로 돌아옵니다)' });
-    if (x.playing) return Promise.resolve({ error: x.playing.name + ' 님이 ' + x.playing.f + '층에 도전하는 중입니다. 함께 지켜보세요 (' + x.playing.left + '초 남음)', _status: 409 });
-    Rules.towerUse(P, now); var r = Rules.towerFight(P, x.c2, x.foe), tw = x.tw, self = this; tw.base = x.base;
-    var sc = Rules.towerScript({ name: P.name, f: x.f, foe: x.foe, team: x.team, r: r, hp: x.c2.hp }), t0 = Date.now() / 1000, after = sc.d * 1000;
-    tw.log.forEach(function (l, i) { if (i < tw.log.length - 4) { delete l.sc; delete l.d; } });
-    tw.log.push({ t: t0, name: P.name, f: x.f, win: !!r.win, pct: Math.round((1 - r.mHp) * 100), sc: sc.lines, d: sc.d }); if (tw.log.length > 30) tw.log.shift();
-    var reward = null, later = function (fn) { setTimeout(fn, after); };
-    if (r.win) { tw.floor = x.f; reward = Rules.towerReward(x.f, x.base); var pn = this._soc().party.name, ff = x.f, fname = x.foe.name; if (Rules.towerClaim(P, now, x.f)) (function () { self._sendMail('별의 탑', '별의 탑 ' + ff + '층 돌파', P.name + ' 님이 파티 「' + pn + '」의 힘을 모아 별의 탑 ' + ff + '층의 ' + Rules.josa(fname, '을', '를') + ' 쓰러뜨렸습니다.\n그때 파티에 있던 모두에게 보내는 보상입니다.', reward, 7, after); })(); later(function () { self._sys('party', '✦ ' + P.name + ' 님이 별의 탑 ' + ff + '층을 넘었습니다! 파티원 모두에게 보상 우편이 갔습니다.'); }); Rules.log(P, now, '별의 탑 ' + x.f + '층 돌파', 'good'); }
-    else { var lf = x.f, lp = Math.round((1 - r.mHp) * 100); later(function () { self._sys('party', P.name + ' 님이 별의 탑 ' + lf + '층에 도전했지만 물러났습니다 (' + lp + '%)'); }); }
+  LocalApi.prototype.towerOp = function (o) {
+    o = o || {}; var now = this._now(), P = this.d.P, self = this; Rules.advance(P, this._world(now), now); var x = this._towerCore(now); if (!x) return Promise.resolve({ error: '파티에 들어가 있어야 별의 탑에 오를 수 있습니다' });
+    var mk = function (kind) { return Object.assign(Rules.twRun(x.ms, Rules.twBest(P, now) + 1, Math.floor(Math.random() * 2147483646) + 1), { id: String(Date.now()), kind: kind, by: P.name, t0: Date.now() / 1000, ms: Rules.twMeta(x.ms), day: Rules.dayKST(now) }); };
+    if (o.mode === 'pos') { if (Rules.expPositions(P).indexOf(o.pos) < 0) return Promise.resolve({ error: '선택할 수 없는 포지션입니다' }); P.opt.twPos = o.pos; this._save(); return this.tower(); }
+    if (o.mode === 'solo') return Promise.resolve({ run: mk('solo') });
+    if (o.mode === 'stop') { if (!x.live || x.live.kind !== 'party') return Promise.resolve({ error: '중단할 파티 연습이 없습니다' }); x.live.d = Math.max(0, Date.now() / 1000 - x.live.t0); x.live.stopped = P.name; this._save(); return this.tower(); }
+    if (o.mode !== 'real' && o.mode !== 'party') return Promise.resolve({ error: '알 수 없는 요청입니다' });
+    if (x.live) return Promise.resolve({ error: x.live.by + ' 님이 시작한 ' + (x.live.kind === 'real' ? '실전' : '파티 연습') + '이 진행 중입니다. 함께 지켜보세요', _status: 409 });
+    if (o.mode === 'real' && Rules.twUsed(P, now)) return Promise.resolve({ error: '오늘 이미 실전에 도전한 파티원이 있습니다: ' + P.name + ' (매일 KST 자정에 초기화)' });
+    var run = mk(o.mode), after = run.d * 1000;
+    if (o.mode === 'real') {
+      Rules.twUse(P, now); var old = Rules.twRecord(P, now, run.cleared); run.prev = {}; run.prev[P.id] = old;
+      if (run.cleared > old) this._sendMail('별의 탑', '별의 탑 ' + run.cleared + '층 기록', '파티 「' + (x.pa.name || '') + '」의 실전에서 별의 탑 ' + run.cleared + '층까지 올랐습니다.\n이번 주에 처음 넘은 ' + (old + 1) + '~' + run.cleared + '층의 보상입니다.', Rules.twRewardSum(old + 1, run.cleared), 7, after);
+      setTimeout(function () { self._sys('party', '✦ 별의 탑 실전 종료 — ' + run.start + '층에서 시작해 ' + (run.cleared >= run.start ? run.cleared + '층까지 올랐습니다.' : '첫 층을 넘지 못했습니다.')); }, after);
+    }
+    x.runs.slice(0, -1).forEach(function (r) { delete r.floors; }); x.runs.push(run); if (x.runs.length > 4) x.runs.shift();
     this._save();
-    return this._ok(now, { r: { sc: sc.lines, d: sc.d, t0: t0, win: !!r.win, ev: r.ev, mHp: r.mHp, dead: !!r.dead, floor: x.f, foe: { name: x.foe.name, arch: x.foe.arch, c1: x.foe.c1, c2: x.foe.c2, id: x.foe.id }, maxHp: x.foe.hp, reward: reward ? Rules.rewardText(reward) : '' } });
+    return this._ok(now, { run: run });
   };
   // 데모 동아리: 직접 만들거나, 미리 있는 NPC 동아리에 들어갈 수 있다 (레벨·기여도·계급·창고까지 서버와 같은 규칙)
   var DEMO_GUILDS = [{ id: 'npc-g1', name: '별빛 관측회', intro: '밤마다 천문대 옥상에서 별샘을 관측합니다. 누구나 환영!', color: '#8fa8ff', mode: 'open', npcs: [1, 4, 7], lv: 3, xp: 420 }, { id: 'npc-g2', name: '결투 연구회', intro: '가시왕관관 주최. 결투제 대비 합동 연습. 가입은 신청 후 승인.', color: '#d9736b', mode: 'apply', npcs: [2, 5], lv: 2, xp: 150 }];

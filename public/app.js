@@ -740,7 +740,7 @@
       // 파티원이 별의 탑에 도전하면 일지를 함께 본다
       tower: function (d) {
         if (!d) return; S.towerAt = 0;
-        if (d.start && d.by !== (S.P && S.P.name)) { if (S.view !== 'tower') toast('별의 탑', d.by + ' 님이 ' + d.f + '층에 도전합니다 · 별의 탑에서 관전 가능', 4000); S.twSel = null; }
+        if (d.start && d.by !== (S.P && S.P.name)) { if (S.view !== 'tower') toast('별의 탑', d.by + ' 님이 별의 탑을 시작했습니다 · 별의 탑에서 함께 볼 수 있습니다', 4000); S.twWatch = 'party'; }
         loadTower();
       },
       seq: function (d) {
@@ -1439,7 +1439,7 @@
     if (S.rit && !S.rit.mine) out.push({ t: '별샘 의식에 마나 봉헌', s: '모두 함께 ' + S.rit.n + ' / ' + S.rit.goal + '명 · 채우면 ' + R.RITUAL_BUFF.text, act: 'ritual', btn: '봉헌' });
     if (S.auc && S.auc.active) out.push({ t: '떠돌이 상인이 와 있습니다', s: '구간별 귀한 장비 아홉 점 경매 · ' + left(S.auc.end) + ' 남음', go: 'auction' });
     (function () { var cf = R.ctBest(P) + 1, fo = R.ctFoe(cf, R.ctCls(P)), pv2 = R.duelPreview(P, wctx(), fo.stage, R.K.BOSS_HP * 0.6 * (fo.wall ? 1.8 : 1), R.K.BOSS_ATK * 3 * (fo.wall ? 1.4 : 1)); if (pv2.win && pv2.ttk < R.CT_TIME) out.push({ t: '무한의 탑 ' + cf + '층에 도전할 수 있습니다', s: R.CT_NAME[R.ctCls(P)] + ' · 승산 있음', go: 'ctower' }); })();
-    if (S.party && R.towerLeft(P, now()) > 0) out.push({ t: '별의 탑 도전 ' + R.towerLeft(P, now()) + '번 남음 (내 횟수)', s: '파티의 힘을 모아 한 층씩 · 돌파하면 파티원 모두에게 보상 우편', go: 'tower' });
+    if (S.party && !R.twUsed(P, now())) out.push({ t: '별의 탑 실전 가능 (오늘 1회)', s: '파티가 쓰러질 때까지 이어 오르는 실전 · 연습은 언제든 가능', go: 'tower' });
     var idleR = 0; for (var r = 0; r < c.resSlots; r++) if (!P.rsq[r]) idleR++;
     if (idleR) out.push({ t: '비어 있는 연구 자리 ' + idleR + '개', s: '', go: 'lib' });
     if (R.wbCanAttack(P, now()) && S.W && S.W.boss && !S.W.boss.killedAt) out.push({ t: '월드 보스 도전 <span class="tiny faint">도전권 ' + (P.wb.tickets + (P.wb.extra || 0)) + '장</span>', s: S.W.boss.name, go: 'world' });
@@ -1909,6 +1909,7 @@
     h += '<div class="card">' + rkHead('레벨 순위', '학생 레벨 순위입니다. 같은 레벨이면 원정 최고 단계, 그다음 전투력이 높은 학생이 앞섭니다. 이름 옆에 학년과 원정 최고 단계를 함께 표시합니다.', MR.lvl) + rankList((W.topLvl || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: 'Lv ' + r.lvl, sub: R.gradeLabel({ grade: r.grade }) + ' · 원정 ' + r.stage + '단계' }; }), 'lvl', { rank: MR.lvl, v: 'Lv ' + P.lvl, sub: R.gradeLabel({ grade: P.grade }) + ' · 원정 ' + P.maxStage + '단계' }) + '</div>';
     h += '<div class="card">' + rkHead('이번 주 월드 보스 피해 순위', '이번 주(월요일 KST 0시~) 월드 보스에 입힌 피해 합계입니다.', MR.dmg, P.wk.dmg > 0 ? '' : '이번 주 기록 없음') + rankList((W.topDmg || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: fmt(r.dmg) }; }), 'dmg', { rank: MR.dmg, v: fmt(P.wk.dmg) }) + '</div>';
     h += '</div><div class="stack">';
+    (function () { var b = R.twBest(P, now()); h += '<div class="card">' + rkHead('이번 주 별의 탑 순위', '이번 주(월요일 KST 0시~) 별의 탑 실전에서 기록한 가장 높은 층입니다. 연습 기록은 반영하지 않습니다.', b > 0 ? MR.tw : null, b > 0 ? '' : '이번 주 기록 없음') + rankList((W.topTw || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: r.f + '층' }; }), 'tw', b > 0 ? { rank: MR.tw, v: b + '층' } : null) + '</div>'; })();
     ['knight', 'mage'].forEach(function (cl) { var L = cl === 'knight' ? W.topTwK : W.topTwM, mine = R.ctCls(P) === cl, rk = cl === 'knight' ? MR.twK : MR.twM, b = R.ctBest(P, cl); h += '<div class="card">' + rkHead(R.CT_NAME[cl] + ' 순위', R.CLS[cl].name + '가 혼자 오르는 무한의 탑에서 도달한 가장 높은 층입니다.', b > 0 ? rk : null, mine && !b ? '아직 기록 없음' : '') + rankList((L || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: r.f + '층' }; }), 'ct' + cl, b > 0 ? { rank: rk, v: b + '층' } : null) + '</div>'; });
     var gr = gRankData('lv');
     h += '<div class="card"><div class="row between"><h3>동아리 순위</h3><button class="btn sm ghost" data-act="grall">전체 보기</button></div>' + (!gr ? '<div class="empty">불러오는 중…</div>' : gr.list.length ? (gr.mine ? '<p class="small" style="margin-top:4px">우리 동아리 <b class="num gold">' + gr.mine.rank + '위</b></p>' : '') + gRankRows(gr.list.slice(0, 10), true, gr.mine && gr.mine.id, 'lv') : '<div class="empty" style="margin-top:8px">아직 동아리가 없습니다.</div>') + '</div>';
@@ -2373,7 +2374,7 @@
     var pa = d.party;
     if (pa) {
       var lead = pa.leader === S.P.id;
-      h += '<div class="card hl"><div class="row between"><h3>' + esc(pa.name) + '</h3><span class="tag ok">원정 ' + CUR + ' +' + Math.round(pa.bonus * 100) + '% · 경험치 +' + Math.round((pa.bonusXp || 0) * 100) + '%</span></div><p class="tiny faint" style="margin-top:2px">' + pa.members.length + ' / ' + pa.max + '명</p><div style="margin-top:8px">' +
+      h += '<div class="card hl"><div class="row between"><h3>' + esc(pa.name) + (lead ? ' <button class="btn sm ghost" data-act="ptrename">이름 변경</button>' : '') + '</h3><span class="tag ok">원정 ' + CUR + ' +' + Math.round(pa.bonus * 100) + '% · 경험치 +' + Math.round((pa.bonusXp || 0) * 100) + '%</span></div><p class="tiny faint" style="margin-top:2px">' + pa.members.length + ' / ' + pa.max + '명</p><div style="margin-top:8px">' +
         pa.members.map(function (m) {
           if (m.npc) return '<div class="frow"><span class="av av0" style="width:40px;height:40px;font-size:17px;--hc:' + (R.HOUSE[m.house] ? R.HOUSE[m.house].color : '#d6ad5f') + '">' + esc(m.name.slice(0, 1)) + '</span><div style="flex:1;min-width:0"><b>' + esc(m.name) + '</b> <span class="tag npc">NPC</span><div class="tiny faint">' + esc(m.who) + ' · 파티 보너스에는 포함되지 않습니다</div></div>' + (lead ? '<button class="btn sm ghost" data-act="pop" data-a="npcRemove" data-b="' + String(m.id).slice(4) + '">돌려보내기</button>' : '') + '</div>';
           var btns = m.id === S.P.id ? '<span class="tag">나</span>' : lead ? '<button class="btn sm ghost" data-act="pop" data-a="lead" data-b="' + esc(m.id) + '">파티장 넘기기</button><button class="btn sm danger" data-act="pop" data-a="kick" data-b="' + esc(m.id) + '">내보내기</button>' : '';
@@ -2496,45 +2497,94 @@
   };
 
   /* ── 별의 탑: 파티가 한 주 동안 함께 쌓는 층 ── */
-  function loadTower() { S.towerAt = Date.now(); return API.tower().then(function (j) { if (j.error) return; if (j.now) S.twOff = j.now - Date.now() / 1000; S.towerD = j; S.towerAt = Date.now(); var l = j.log && j.log[0]; S.twEndAt = l && l.sc && l.t + l.d > twNow() ? l.t + l.d + 0.3 : 0; if (S.view === 'tower' && !S.modal) render(); }); }
-  // 별의 탑 일지: 원정 일지처럼 한 줄씩. 서버가 정한 시각에 맞춰 흘러가므로 파티원 모두가 같은 장면을 함께 본다.
+  /* ── 별의 탑: 실전 · 파티 연습 · 혼자 연습을 실제 시간 그대로 재생한다 ──
+     실행(run) = { id, kind: real|party|solo, by, t0(실제 초), d, start, cleared, ms:[파티원], floors:[{ f, t, d, foe, rest, win, why, L:[[초, 글, 종류]], S:[[초, 적 %, 파티원 %...]] }] }
+     파티 실행은 서버가 정한 시각에 맞춰 흘러가므로 파티원 모두가 같은 장면을 함께 본다. 혼자 연습은 내 화면에서만. */
+  S.twCache = S.twCache || {};
+  function loadTower() {
+    if (S.twLoadP) return S.twLoadP;   // 이미 불러오는 중이면 그 결과를 함께 기다린다 (요청이 겹쳐 429가 나지 않게)
+    S.towerAt = Date.now();
+    var have = Object.keys(S.twCache).join(',');
+    return (S.twLoadP = API.tower(have).then(function (j) {
+      S.twLoadP = null;
+      if (j.error) return; if (j.now) S.twOff = j.now - Date.now() / 1000;
+      (j.runs || []).forEach(function (r) { if (r.floors) S.twCache[r.id] = r; else if (r.held && S.twCache[r.id]) { r.floors = S.twCache[r.id].floors; delete r.held; } });
+      var keep = (j.runs || []).map(function (r) { return r.id; }); Object.keys(S.twCache).forEach(function (k) { if (keep.indexOf(k) < 0) delete S.twCache[k]; });
+      S.towerD = j; S.towerAt = Date.now(); if (S.view === 'tower' && !S.modal) render();
+    }, function () { S.twLoadP = null; }));
+  }
   function twNow() { return Date.now() / 1000 + (S.twOff || 0); }
-  function twRuns() { var t = S.towerD; return t && t.log ? t.log.filter(function (l) { return l.sc && l.sc.length; }) : []; }
-  function twPick() { var runs = twRuns(); if (!runs.length) return null; var k = S.twSel; return runs.find(function (l) { return l.t === k; }) || runs[0]; }
+  function twEnd(r) { return r.t0 + r.d; }
+  function twSkipped(r) { return !!(S.twSkip && S.twSkip[r.id]); }
+  function twPartyLive() { var t = S.towerD, r = t && t.runs && t.runs[0]; return r && r.floors && twEnd(r) > twNow() && !twSkipped(r) ? r : null; }
+  function twSoloLive() { var r = S.twSolo; return r && !r.closed ? r : null; }
+  // 지금 화면에 띄울 실행: 혼자 연습을 보고 있으면 그것, 아니면 파티 실행
+  function twViewRun() { var a = twSoloLive(), b = twPartyLive(); return a && (S.twWatch !== 'party' || !b) ? a : b; }
+  function twSoloNow(r) { return r.t0local != null ? Date.now() / 1000 - r.t0local : twNow() - r.t0; }
+  function twEl(r) { if (twSkipped(r)) return r.d; return r.kind === 'solo' ? twSoloNow(r) : twNow() - r.t0; }
+  // el초 지점의 장면: 층 · 층 안에서의 시각 · 체력 기록 한 줄
+  function twAt(r, el) {
+    var fs = r.floors || [], i = 0; while (i + 1 < fs.length && fs[i + 1].t <= el) i++;
+    var fl = fs[i]; if (!fl) return null;
+    var rel = el - fl.t, S0 = fl.S, sn = S0[0]; for (var k = 0; k < S0.length && S0[k][0] <= rel; k++) sn = S0[k];
+    return { fl: fl, rel: rel, sn: sn, gap: rel > fl.d, done: el >= r.d - 2 };
+  }
+  var TW_KIND = { real: '실전', party: '파티 연습', solo: '혼자 연습' };
+  function twBar(p, cls) { return '<div class="bar ' + (cls || '') + '" style="height:7px"><b style="width:' + Math.max(0, Math.min(100, p)).toFixed(1) + '%"></b></div>'; }
+  // 위쪽(적 · 파티원 체력): 0.25초마다 통째로 다시 그린다
+  function twStageTop(r) {
+    var el = twEl(r), a = twAt(r, el); if (!a) return '';
+    var fl = a.fl, sn = a.sn, foe = fl.foe, h = '';
+    h += '<div class="row between" style="gap:8px;flex-wrap:wrap"><div class="row" style="gap:8px"><div class="twf num">' + fl.f + '<span>층</span></div><div><b>' + (fl.rest ? '별샘의 쉼터' : esc(foe.name)) + '</b><div class="tiny faint">' + (fl.rest ? '휴식층 · 모두 회복합니다' : foe.stage + '단계 수준 · 체력 ' + fmt(foe.hp)) + '</div></div></div>' +
+      '<span class="tiny faint num">' + (a.done ? '종료' : a.gap ? '다음 층으로 이동 중' : (fl.rest ? '휴식 중' : Math.min(R.TW.TIME, Math.floor(a.rel)) + '초 / ' + R.TW.TIME + '초')) + '</span></div>';
+    if (!fl.rest) h += '<div style="margin-top:8px">' + twBar(sn[1], 'violet thick') + '<div class="tiny faint num" style="text-align:right">' + (Math.round(sn[1] * 10) / 10) + '%</div></div>';
+    h += '<div class="twms">' + r.ms.map(function (m, i) {
+      var p = sn[2 + i], pos = R.EXP_POS[m.pos];
+      return '<div class="twm2' + (p <= 0 ? ' down' : '') + '"><div class="row small" style="gap:6px"><span class="tag' + (m.pos === 'van' ? ' br' : m.pos === 'sup' ? ' ok' : '') + '">' + (pos ? pos.name : '') + '</span><span class="ell" style="flex:1;min-width:0;color:' + (R.HOUSE[m.house] ? R.HOUSE[m.house].color : 'inherit') + '">' + esc(m.name) + (m.npc ? ' <span class="tag npc">NPC</span>' : '') + '</span><span class="tiny num ' + (p <= 0 ? 'bad' : 'faint') + '">' + (p <= 0 ? '쓰러짐' : p + '%') + '</span></div>' + twBar(p, p > 50 ? '' : p > 25 ? 'brass' : 'rose') + '</div>';
+    }).join('') + '</div>';
+    return h;
+  }
+  function twLinesHtml(r) {
+    var el = twEl(r), out = [];
+    (r.floors || []).forEach(function (fl) { if (fl.t > el) return; fl.L.forEach(function (x) { if (fl.t + x[0] <= el) out.push('<div class="el k' + x[2] + '"><span class="et num">' + twHm(r.t0 + fl.t + x[0]) + '</span><span>' + esc(logDot(x[1])) + '</span></div>'); }); });
+    if (el < r.d) out.push('<div class="el faint twdots"><span class="et"></span><span>…</span></div>');
+    return out.slice(-60).join('');
+  }
   function twHm(t) { var d = new Date(t * 1000), h = d.getHours(), m = d.getMinutes(), s = d.getSeconds(); return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s; }
-  function twShown(l) { if (S.twSkip && S.twSkip[l.t]) return l.sc.length; var el = twNow() - l.t, n = 0; l.sc.forEach(function (x) { if (x[0] <= el) n++; }); return n; }
-  function twLive(l) { return l.t + l.d > twNow() && !(S.twSkip && S.twSkip[l.t]); }
-  function twLinesHtml(l) {
-    var n = twShown(l), out = l.sc.slice(0, n).map(function (x) { return '<div class="el k' + x[2] + '"><span class="et num">' + twHm(l.t + x[0]) + '</span><span>' + esc(logDot(x[1])) + '</span></div>'; });
-    if (n < l.sc.length) out.push('<div class="el faint twdots"><span class="et"></span><span>…</span></div>');
-    return out.join('');
+  function towerStage() {
+    var r = twViewRun(); if (!r) return '';
+    var other = r.kind === 'solo' ? twPartyLive() : twSoloLive();
+    return '<div class="card twjournal live" data-anchor="twlog" style="margin-bottom:14px"><div class="row between" style="gap:8px;flex-wrap:wrap"><h3>별의 탑 ' + TW_KIND[r.kind] + ' <span class="small muted">' + esc(r.by) + ' · ' + r.start + '층부터</span></h3><span class="tag br"><span class="livedot"></span> ' + (r.kind === 'solo' ? '내 화면에서만' : '파티원 모두가 함께 보는 중') + '</span></div>' +
+      (other ? '<div class="row tiny" style="margin-top:4px;gap:6px"><span class="faint">' + (r.kind === 'solo' ? '파티의 ' + (other.kind === 'real' ? '실전' : '연습') + '도 진행 중입니다.' : '혼자 연습도 진행 중입니다.') + '</span><button class="btn sm ghost" data-act="twwatch" data-a="' + (r.kind === 'solo' ? 'party' : 'solo') + '">그쪽 보기</button></div>' : '') +
+      '<div id="twstage" data-tw="' + r.id + '" style="margin-top:10px">' + twStageTop(r) + '</div>' +
+      '<div class="logw" style="margin-top:10px"><div class="explog twlines" id="twlines" data-tw="' + r.id + '" aria-live="polite">' + twLinesHtml(r) + '</div><button class="lognew" hidden></button></div>' +
+      '<div class="row tiny faint" style="margin-top:6px;gap:6px;flex-wrap:wrap"><span>' + (r.kind === 'real' ? '결과는 대본이 끝나면 알려 드립니다.' : '연습은 기록 · 보상에 반영되지 않습니다.') + '</span><span class="spacer"></span>' +
+      (r.kind === 'party' ? '<button class="btn sm ghost" data-act="twstop">연습 중단</button>' : '') + (r.kind === 'solo' ? '<button class="btn sm ghost" data-act="twclose">연습 닫기</button>' : '') + '<button class="btn sm ghost" data-act="twskip" data-a="' + r.id + '">끝까지 보기</button></div></div>';
   }
-  function towerJournal() {
-    var l = twPick(); if (!l) return '';
-    var runs = twRuns().slice(0, 5), live = twLive(l);
-    return '<div class="card twjournal' + (live ? ' live' : '') + '" data-anchor="twlog"><div class="row between"><h3>별의 탑 일지 <span class="small muted">' + esc(l.name) + ' · ' + l.f + '층</span></h3>' +
-      (live ? '<span class="tag br"><span class="livedot"></span> 지금 도전 중</span>' : '<span class="tag ' + (l.win ? 'ok' : '') + '">' + (l.win ? '돌파' : '물러남 · ' + l.pct + '%') + '</span>') + '</div>' +
-      (runs.length > 1 ? '<div class="filters" style="margin-top:6px">' + runs.map(function (x) { return '<button class="btn sm ghost' + (x === l ? ' on' : '') + '" data-act="twsel" data-a="' + x.t + '">' + esc(x.name) + ' ' + x.f + '층</button>'; }).join('') + '</div>' : '') +
-      '<div class="logw"><div class="explog twlines" id="twlines" data-tw="' + l.t + '" aria-live="polite">' + twLinesHtml(l) + '</div><button class="lognew" hidden></button></div>' +
-      '<div class="row tiny faint" style="margin-top:6px"><span>파티원 모두가 같은 시각에 같은 장면을 봅니다' + (live ? ' · 결과는 일지가 끝나면 알려 드립니다' : '') + '</span><span class="spacer"></span>' + (live ? '<button class="btn sm ghost" data-act="twskip" data-a="' + l.t + '">끝까지 보기</button>' : '') + '</div></div>';
-  }
-  ACT.twsel = function (t) { S.twSel = +t; render(); };
-  ACT.twskip = function (t) { (S.twSkip || (S.twSkip = {}))[+t] = 1; twTick(true); render(); };
-  // 0.25초마다: 새 줄이 생기면 그 칸만 고치고, 일지가 끝나는 순간 결과를 알린다
+  ACT.twwatch = function (w) { S.twWatch = w; render(); };
+  ACT.twskip = function (id) { (S.twSkip || (S.twSkip = {}))[id] = 1; twTick(true); render(); };
+  ACT.twclose = function () { if (S.twSolo) S.twSolo.closed = true; S.twSolo = null; render(); };
+  ACT.twstop = function () { API.towerOp({ mode: 'stop' }).then(function (j) { if (j.error) { toast('별의 탑', j.error); return; } S.towerAt = 0; loadTower(); }); };
+  // 0.25초마다: 보고 있는 실행의 장면을 고치고, 끝나는 순간 결과를 알린다
   function twTick(force) {
     var mine = S.twMine;
-    if (mine && (force && S.twSkip && S.twSkip[mine.t0] || twNow() >= mine.t0 + mine.d)) { S.twMine = null; twResult(mine.r); }
-    if (S.twEndAt && twNow() >= S.twEndAt) { S.twEndAt = 0; S.towerAt = 0; loadTower(); }
-    var box = $('#twlines'); if (!box || S.view !== 'tower') return;
-    var l = twRuns().find(function (x) { return String(x.t) === box.dataset.tw; }); if (!l) return;
-    var n = twShown(l); if (box.__n === n && !force) return; box.__n = n;
-    logFill(box, 'tw' + l.t, twLinesHtml(l));
-    if (!twLive(l) && box.closest('.twjournal.live')) render();
+    if (mine && (twNow() >= mine.t0 + mine.d || twSkipped(mine))) { S.twMine = null; twResult(mine); }
+    var solo = S.twSolo; if (solo && !solo.closed && !solo.doneSaid && twEl(solo) >= solo.d) { solo.doneSaid = true; toast('혼자 연습 종료', solo.cleared >= solo.start ? solo.cleared + '층까지 올랐습니다 (기록 · 보상 없음)' : '첫 층을 넘지 못했습니다 (기록 · 보상 없음)', 3600); if (S.view === 'tower') render(); }
+    var pl = S.towerD && S.towerD.runs && S.towerD.runs[0];
+    if (pl && pl.floors && S.twEndSeen !== pl.id && twNow() >= twEnd(pl)) { S.twEndSeen = pl.id; S.towerAt = 0; loadTower(); }   // 파티 실행이 끝나면 한 번만 새로 불러온다
+    if (S.view !== 'tower') return;
+    var st = $('#twstage'), r = twViewRun();
+    if (!r) { if (st) render(); return; }
+    if (!st || st.dataset.tw !== r.id) { render(); return; }
+    var top = twStageTop(r); if (force || st.__h !== top) { st.__h = top; st.innerHTML = top; }
+    var box = $('#twlines'); if (box) { var lh = twLinesHtml(r); if (force || box.__h !== lh) { box.__h = lh; logFill(box, 'tw' + r.id, lh); } }
+    if (twEl(r) >= r.d && r.kind !== 'solo') render();
   }
   function twResult(r) {
-    Snd.play(r.win ? 'pass' : 'fail'); sync(true); S.towerAt = 0; loadTower();
-    modal(mhead(r.win ? r.floor + '층 돌파!' : '물러났습니다', r.foe.name) + (r.win ? '<p>파티원 모두에게 보상 우편이 갔습니다.</p><p class="small" style="margin-top:6px">' + esc(r.reward) + '</p>' : '<p class="small muted">상대 체력이 ' + Math.round(r.mHp * 100) + '% 남았습니다. 파티원이 늘거나 강해지면 더 높이 오를 수 있습니다.</p>') +
-      '<div class="row" style="justify-content:flex-end;margin-top:14px">' + (r.win ? '<button class="btn" data-act="mailbox">우편함 열기</button>' : '') + '<button class="btn primary" data-act="modal-close" autofocus>확인</button></div>');
+    Snd.play(r.cleared >= r.start ? 'pass' : 'fail'); sync(true); S.towerAt = 0; loadTower();
+    var got = r.cleared >= r.start;
+    modal(mhead('별의 탑 실전 종료', r.start + '층부터 시작') + '<p>' + (got ? '<b class="gold">' + r.cleared + '층</b>까지 올랐습니다.' : '첫 층을 넘지 못했습니다.') + ' 각자의 이번 주 기록보다 높으면 기록이 갱신되고, 처음 넘은 층의 보상은 우편으로 전달됩니다.</p>' +
+      '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn" data-act="mailbox">우편함 열기</button><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>');
   }
   // 별의 탑 화면 (원정·전투): 파티가 있으면 일지 · 도전 칸, 없으면 파티와 함께 오른다는 안내
   /* ── 무한의 탑 (개인): 기사의 탑 · 마법사의 탑 ── */
@@ -2574,44 +2624,63 @@
     });
   };
   V.tower = function () {
-    var h = pageHead('파티와 함께 오르는 탑', '<span class="phimg">' + dotImg('tower', 40, '', 'twimg') + '별의 탑</span>', '한 주 동안 · 월요일에 0층부터');
+    var h = pageHead('파티와 함께 오르는 탑', '<span class="phimg">' + dotImg('tower', 40, '', 'twimg') + '별의 탑</span>', '실전 하루 1회 · 월요일 KST 0시 기록 초기화');
     if (!S.partyD || Date.now() - S.partyAt > 20000) { if (Date.now() - S.partyAt > 1500) loadParty(); }
-    if (!S.party) return h + '<div class="card hl"><h3>파티와 함께 오르는 탑</h3><p class="small" style="margin-top:4px">별의 탑은 파티원 모두의 힘을 모아 한 층씩 오르는 곳입니다. 접속하지 않은 파티원도 힘을 보태고, 층을 처음 넘으면 그때 파티에 있던 모두에게 보상 우편이 발송됩니다. 도전은 파티가 아니라 학생마다 하루 ' + R.TOWER_TRIES + '번이며 매일 한국 시간(KST) 자정에 초기화됩니다.</p><p class="small muted" style="margin-top:6px">파티에 들어가 있어야 도전할 수 있습니다. 혼자서도 파티를 만들 수 있고, 빈자리는 아카데미 친구(NPC)를 불러 채울 수 있습니다.</p><div class="row" style="margin-top:10px;gap:6px"><button class="btn primary" data-act="twparty">파티 만들기</button><button class="btn ghost" data-act="nav" data-a="party">파티 화면으로</button></div></div>';
-    var tj = S.towerD && S.towerD.party ? towerJournal() : ''; if (tj) h += '<div style="margin-bottom:14px">' + tj + '</div>';
-    return h + towerCard() + '<div class="row" style="margin-top:10px"><span class="tiny faint">파티원 · 초대 · 아카데미 친구는 파티 화면에서 관리합니다.</span><span class="spacer"></span><button class="btn sm ghost" data-act="nav" data-a="party">파티 화면</button></div>';
+    if (!S.party) return h + '<div class="card hl"><h3>파티와 함께 오르는 탑</h3><p class="small" style="margin-top:4px">별의 탑은 파티가 함께 1층부터 실시간으로 오르는 곳입니다. 실전은 파티 단위로 하루 1번이며, 파티가 쓰러질 때까지 층을 이어 오릅니다. 연습은 언제든 할 수 있습니다.</p><p class="small muted" style="margin-top:6px">파티에 들어가 있어야 도전할 수 있습니다. 혼자서도 파티를 만들 수 있고, 빈자리는 아카데미 친구(NPC)를 불러 채울 수 있습니다.</p><div class="row" style="margin-top:10px;gap:6px"><button class="btn primary" data-act="twparty">파티 만들기</button><button class="btn ghost" data-act="nav" data-a="party">파티 화면으로</button></div></div>';
+    return h + towerStage() + towerCard() + towerRuns() + '<div class="row" style="margin-top:10px"><span class="tiny faint">파티원 · 초대 · 아카데미 친구 · 파티 이름은 파티 화면에서 관리합니다.</span><span class="spacer"></span><button class="btn sm ghost" data-act="nav" data-a="party">파티 화면</button></div>';
   };
   ACT.twparty = function () { API.partyOp({ op: 'create', name: (S.P.name + '의 파티').slice(0, 12) }).then(function (j) { if (j.error) { toast('파티', j.error); return; } S.party = (j.party && j.party.id) || 'p'; S.partyAt = 0; S.towerAt = 0; S.towerD = null; renderDock(); toast('파티', '파티를 만들었습니다 · 이제 별의 탑에 도전할 수 있습니다', 2600); sync(true); render(); }); };
   function towerCard() {
     var t = S.towerD; if (!t || Date.now() - S.towerAt > 30000) { if (Date.now() - (S.towerAt || 0) > 1500) loadTower(); }
     if (!t) return '<div class="card" data-anchor="tower"><h3>별의 탑</h3><p class="small muted">불러오는 중…</p></div>';
     if (!t.party) return '';
-    var n = t.next, est = n.est, top = t.team.reduce(function (a, m) { return Math.max(a, m.dps); }, 1);
-    var live = t.log.filter(function (l) { return l.sc && twLive(l); })[0];   // 일지가 재생되는 동안은 결과(올라간 층 · 다음 층)를 감춘다
-    var h = '<div class="card tower" data-anchor="tower"><div class="row between"><h3 class="twhead">' + dotImg('tower', 32, '', 'twimg') + '별의 탑 <span class="tag br">이번 주 ' + (live ? live.f - 1 : t.floor) + '층</span></h3><span class="tiny faint">월요일에 0층부터 · ' + left(t.weekEnd) + ' 남음</span></div>' +
-      '<p class="tiny faint" style="margin-top:2px">파티원 모두의 힘을 모아 한 층씩 오릅니다. 접속하지 않은 파티원도 힘을 보태고, 층을 넘으면 그때 파티에 있던 모두에게 보상 우편이 발송됩니다. 도전 횟수는 파티가 아니라 학생마다 하루 ' + t.tries + '번이며 매일 한국 시간(KST) 자정에 초기화됩니다. 탑 기록은 파티의 것이라 새로 들어온 파티원은 지금 층부터 함께 오르고, 나간 사람은 기록을 가져가지 않습니다. 마지막 한 명까지 나가 파티가 없어지면 그 주의 탑 기록도 함께 사라집니다(이미 받은 보상은 그대로). 파티를 옮기거나 새로 만들어도 같은 층 보상은 한 주에 한 번만 받습니다.</p>' +
-      (live ? '<div class="twnext"><div class="twf num">' + live.f + '<span>층</span></div><div style="flex:1;min-width:0"><b>' + esc(live.name) + ' 님 도전 중</b><div class="small muted" style="margin-top:4px">결과는 일지가 끝나면 표시됩니다.</div></div></div>' :
-      '<div class="twnext"><div class="twf num">' + n.floor + '<span>층</span></div><div style="flex:1;min-width:0"><b>' + esc(n.name) + '</b><div class="tiny faint">' + n.stage + '단계 수준 · 체력 ' + fmt(n.hp) + '</div>' +
-      '<div class="small" style="margin-top:4px">' + (est.win ? '<span class="good">승산 있음</span> — 약 ' + est.ttk.toFixed(1) + '초' : '<span class="bad">아직 버겁습니다</span> — 45초 안에 체력의 약 ' + Math.round(est.frac * 100) + '%') + '</div>' +
-      '<div class="tiny" style="margin-top:4px">보상(모두에게) <span class="rwd">' + esc(R.rewardText(n.reward)) + '</span>' + (t.myBest >= n.floor ? ' <span class="tiny gold">· 나는 이번 주에 ' + t.myBest + '층까지 이미 받아서 이 층 보상은 건너뜁니다</span>' : '') + '</div></div></div>') +
-      '<div class="twteam">' + t.team.map(function (m) { return '<div class="twm"><span class="small ell" style="color:' + (R.HOUSE[m.house] ? R.HOUSE[m.house].color : 'inherit') + '">' + esc(m.name) + (m.npc ? ' <span class="tag npc">NPC</span>' : '') + (m.me ? ' <span class="tag">나</span>' : '') + '</span><div class="bar brass" style="height:5px"><b style="width:' + (m.dps / top * 100).toFixed(1) + '%"></b></div><span class="tiny faint num">' + fmt(m.dps) + '/초</span></div>'; }).join('') + '</div>' +
-      '<div class="row" style="margin-top:10px"><span class="tiny faint">파티 합계 초당 피해 <b class="num">' + fmt(t.teamDps) + '</b></span><span class="spacer"></span>' + (t.playing ? '<span class="tag br">' + esc(t.playing.name) + ' 님 도전 중</span>' : '<button class="btn primary" data-act="tower"' + (t.left > 0 ? '' : ' disabled') + '>' + n.floor + '층 도전 <span class="cost">내 도전 ' + t.left + '/' + t.tries + '</span></button>') + '<div class="tiny faint" style="width:100%;text-align:right;margin-top:4px">내 도전 횟수 · 학생마다 하루 ' + t.tries + '번 · KST 자정 초기화</div>' + '</div>';
-    if (t.log.length) h += '<div class="twlog">' + t.log.slice(0, 6).map(function (l) { return '<div class="tiny"><span class="faint num">' + clock(l.t) + '</span> ' + esc(l.name) + ' · ' + l.f + '층 ' + (l.sc && twLive(l) ? '<span class="gold">도전 중…</span>' : l.win ? '<span class="good">돌파</span>' : '<span class="faint">' + l.pct + '%</span>') + '</div>'; }).join('') + '</div>';
-    return h + '</div>';
+    var live = twPartyLive() || (t.runs[0] && t.runs[0].floors && twEnd(t.runs[0]) > twNow() ? t.runs[0] : null);
+    var realWhy = live ? (live.by + ' 님이 시작한 ' + TW_KIND[live.kind] + '이 진행 중입니다') : t.used.length ? '오늘 이미 실전에 도전한 파티원이 있습니다: ' + t.used.join(', ') : '';
+    var h = '<div class="card tower" data-anchor="tower"><div class="row between"><h3 class="twhead">' + dotImg('tower', 32, '', 'twimg') + '파티 「' + esc(t.name) + '」 <span class="tag br">내 기록 ' + t.myBest + '층</span></h3><span class="tiny faint">기록 초기화까지 ' + left(t.weekEnd) + '</span></div>' +
+      '<div class="twteam">' + t.members.map(function (m) {
+        var pos = R.EXP_POS[m.pos];
+        return '<div class="twm"><span class="small ell" style="color:' + (R.HOUSE[m.house] ? R.HOUSE[m.house].color : 'inherit') + '">' + esc(m.name) + (m.npc ? ' <span class="tag npc">NPC</span>' : '') + (m.me ? ' <span class="tag">나</span>' : '') + '</span>' +
+          '<span class="tiny"><span class="tag' + (m.pos === 'van' ? ' br' : m.pos === 'sup' ? ' ok' : '') + '">' + (pos ? pos.name : '') + '</span> ' + (m.npc ? '<span class="faint">내 힘의 30%</span>' : '<span class="faint">기록</span> <b class="num">' + m.best + '층</b>' + (m.used ? ' · <span class="gold">오늘 실전 완료</span>' : '')) + '</span>' +
+          '<span class="tiny faint num">전투력 ' + fmt(m.power) + ' · 생명력 ' + fmt(m.hp) + '</span></div>';
+      }).join('') + '</div>' +
+      '<div style="margin-top:10px"><div class="small">내 포지션</div><div class="filters" style="margin-top:4px">' + ['van', 'rear', 'sup'].map(function (k) {
+        var x = R.EXP_POS[k], ok = t.posOk.indexOf(k) >= 0;
+        return '<button class="btn sm ghost' + (t.myPos === k ? ' on' : '') + '" data-act="twpos" data-a="' + k + '"' + (ok ? '' : why(x.name + ' 포지션은 ' + x.desc.split(' · ')[0])) + '>' + x.name + '</button>';
+      }).join('') + '</div><p class="tiny faint" style="margin-top:4px">' + esc(R.EXP_POS[t.myPos].desc) + ' · 장착 주문은 「원정·전투 → 원정」에서 바꿀 수 있습니다.</p></div>' +
+      '<div class="row" style="margin-top:12px;gap:6px;flex-wrap:wrap"><button class="btn primary" data-act="twgo" data-a="real"' + (realWhy ? why(realWhy) : '') + '>실전 ' + t.start + '층부터 <span class="cost">오늘 1회</span></button>' +
+      '<button class="btn" data-act="twgo" data-a="party"' + (live ? why(realWhy) : '') + '>파티 연습</button><button class="btn ghost" data-act="twgo" data-a="solo">혼자 연습</button></div>' +
+      '<p class="tiny faint" style="margin-top:8px">실전은 파티 단위로 하루 1번이며, 누르는 순간 파티원 모두의 오늘 기회를 사용합니다(KST 자정 초기화 · 결과가 자정을 넘겨 끝나도 누른 날의 기회로 계산합니다). 파티원 중 한 명이라도 오늘 실전을 했다면 시작할 수 없습니다. ' +
+      '실전은 파티원 기록 중 가장 낮은 층의 다음 층부터 시작해, 파티가 모두 쓰러지거나 ' + R.TW.TIME + '초 안에 적을 쓰러뜨리지 못할 때까지 이어집니다. 마지막으로 넘은 층이 각자의 이번 주 기록이 되며(더 높을 때만), 처음 넘은 층의 보상은 우편으로 전달됩니다. ' +
+      '층 사이에 최대 생명력의 ' + Math.round(R.TW.HEAL * 100) + '%를 회복하고(쓰러진 파티원도 일어납니다), ' + R.TW.REST + '층마다 휴식층에서 모두 회복합니다. 적은 선봉 한 명을 집중해서 노리고, ' + R.TW.AOE + '초마다 파티 전체를 공격합니다. ' +
+      '연습은 언제든 할 수 있고 기록 · 보상에 반영되지 않습니다. 파티 연습은 파티원 모두가 함께 보고, 혼자 연습은 내 화면에서만 진행됩니다.</p></div>';
+    return h;
   }
-  ACT.tower = function () {
-    if (S.busy) return; S.busy = true;
-    API.towerOp().then(function (j) {
+  function towerRuns() {
+    var t = S.towerD; if (!t || !t.party || !t.runs.length) return '';
+    var rows = t.runs.filter(function (r) { return twEnd(r) <= twNow(); }).slice(0, 4); if (!rows.length) return '';
+    return '<div class="card" style="margin-top:14px"><h3>최근 기록</h3><div class="twlog">' + rows.map(function (r) {
+      return '<div class="tiny"><span class="faint num">' + clock(r.t0) + '</span> ' + esc(r.by) + ' · ' + TW_KIND[r.kind] + ' ' + r.start + '층부터 → ' + (r.stopped ? '<span class="faint">중단</span>' : r.cleared >= r.start ? '<span class="good">' + r.cleared + '층까지</span>' : '<span class="faint">첫 층에서 물러남</span>') + '</div>';
+    }).join('') + '</div></div>';
+  }
+  ACT.twpos = function (k) { API.towerOp({ mode: 'pos', pos: k }).then(function (j) { if (j.error) { toast('별의 탑', j.error); return; } S.P.opt.twPos = k; S.towerAt = 0; loadTower(); }); };
+  ACT.twgo = function (mode) {
+    if (mode === 'real' && !(S.confirm.twreal > Date.now())) { S.confirm.twreal = Date.now() + 4000; toast('별의 탑', '한 번 더 누르면 실전을 시작합니다 · 파티원 모두의 오늘 기회를 사용합니다', 3500); return; }
+    S.confirm.twreal = 0; if (S.busy) return; S.busy = true;
+    API.towerOp({ mode: mode }).then(function (j) {
       S.busy = false; if (j.error) { toast('별의 탑', j.error); S.towerAt = 0; loadTower(); return; }
-      // 우편 수는 일지가 끝난 뒤에 받는다 (결과가 먼저 새지 않게)
-      delete j.mailN; delete j.mailTop; absorb(j); var r = j.r;
-      Snd.play('click'); S.twSel = r.t0; S.twMine = { t0: r.t0, d: r.d, r: r };
-      if (S.view !== 'tower') ACT.nav('tower');
-      S.towerAt = 0; loadTower().then(function () { var el = $('[data-anchor="twlog"]'); if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' }); });
+      var r = j.run; delete j.run;
+      if (mode === 'solo') { r.t0local = Date.now() / 1000; S.twSolo = r; S.twWatch = 'solo'; }
+      else { delete j.mailN; delete j.mailTop; absorb(j); S.twCache[r.id] = r; S.twWatch = 'party'; if (mode === 'real') S.twMine = r; }
+      Snd.play('click'); if (S.view !== 'tower') ACT.nav('tower');
+      S.towerAt = 0; loadTower().then(function () { var el = $('[data-anchor="twlog"]'); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); });
+      render();
     }, function () { S.busy = false; toast('별의 탑', '연결 오류'); });
   };
+  ACT.ptrename = function () { var pa = S.partyD && S.partyD.party; modal(mhead('파티 이름 변경', '파티장만 바꿀 수 있습니다') + '<div class="row" style="margin-top:6px"><input id="pt-rename" maxlength="12" value="' + esc(pa ? pa.name : '') + '" placeholder="파티 이름 (2~12자)" style="flex:1;min-width:0"><button class="btn primary" data-act="pop" data-a="rename">변경</button></div><p class="tiny faint" style="margin-top:6px">한글 · 영문 · 숫자 2~12자</p><div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn" data-act="modal-close">닫기</button></div>'); };
   ACT.pop = function (op, b) {
     var o = { op: op };
     if (op === 'create') o.name = ($('#pt-name') || {}).value || '';
+    else if (op === 'rename') o.name = ($('#pt-rename') || {}).value || '';
     else if (op === 'invite') o.name = (b ? '' : ($('#pt-inv') || {}).value || ''), o.id = b || undefined;
     else if (op === 'accept' || op === 'decline') o.party = b;
     else if (op === 'kick' || op === 'lead') o.id = b;
@@ -2619,8 +2688,8 @@
     if (op === 'leave' || op === 'kick') { var key = 'pt-' + op + (b || ''); if (!(S.confirm[key] > Date.now())) { S.confirm[key] = Date.now() + 4000; toast('한 번 더 누르면 ' + (op === 'leave' ? '파티를 나갑니다' : '내보냅니다'), '', 2500); return; } S.confirm[key] = 0; }
     API.partyOp(o).then(function (j) {
       if (j.error) { toast('파티', j.error); return; }
-      toast({ create: '파티를 만들었습니다', invite: '초대를 보냈습니다', accept: '파티에 들어갔습니다', decline: '초대를 거절했습니다', leave: '파티에서 나왔습니다', kick: '파티에서 내보냈습니다', lead: '파티장을 넘겼습니다', npcAdd: '아카데미 친구가 합류했습니다', npcRemove: 'NPC 학생을 돌려보냈습니다' }[op] || '완료', '', 1800);
-      if (S.modal && op === 'invite') closeModal();
+      toast({ create: '파티를 만들었습니다', rename: '파티 이름을 바꾸었습니다', invite: '초대를 보냈습니다', accept: '파티에 들어갔습니다', decline: '초대를 거절했습니다', leave: '파티에서 나왔습니다', kick: '파티에서 내보냈습니다', lead: '파티장을 넘겼습니다', npcAdd: '아카데미 친구가 합류했습니다', npcRemove: 'NPC 학생을 돌려보냈습니다' }[op] || '완료', '', 1800);
+      if (S.modal && (op === 'invite' || op === 'rename')) closeModal();
       loadParty(); S.towerAt = 0; S.towerD = null; sync(true);
     });
   };
@@ -4246,7 +4315,7 @@
     hcup: [['h:기숙사 대항전', '기숙사 대항전', '모든 활동이 기숙사 점수로 쌓이며, 매주 활동 학생 평균 점수 순위에 따라 보상이 지급됩니다.'], ['h:기숙사 성장', '기숙사 성장', '대항전 점수가 쌓일수록 기숙사 혜택이 커집니다.']],
     rank: [['h:전투력 순위', '랭킹', '전투력 · 레벨 · 월드 보스 피해 · 무한의 탑 · 동아리 순위를 확인합니다. 순위는 10위까지 보이며 「더보기」로 50위까지 펼칠 수 있습니다.']],
     party: [['#view .card', '파티', '최대 4명이 함께하며 파티원 한 명당 원정 ' + CUR + ' · 경험치가 오릅니다. 파티를 만든 뒤 친구를 초대하거나 아카데미 친구(NPC)를 부를 수 있습니다. 파티와 함께 오르는 별의 탑은 「원정·전투 → 별의 탑」에 있습니다.']],
-    tower: [['.page-head', '별의 탑', '파티원 모두의 능력을 합쳐 한 층씩 오릅니다. 층을 처음 넘으면 파티원 모두에게 보상 우편이 발송됩니다. 파티가 없으면 먼저 파티를 만드세요(혼자서도 만들 수 있습니다).']],
+    tower: [['.page-head', '별의 탑', '파티가 함께 실시간으로 오르는 탑입니다. 실전은 파티 단위로 하루 1번이며, 연습은 언제든 할 수 있습니다. 파티가 없으면 먼저 파티를 만드세요(혼자서도 만들 수 있습니다).']],
     guild: [['#view .card', '동아리', '동아리를 찾아 가입하거나 직접 만들 수 있습니다. 출석과 기부로 동아리 레벨을 올리면 부원 모두가 혜택을 받습니다.']],
     friends: [['.page-head', '친구', '이름으로 친구를 신청하거나 채팅에서 이름을 눌러 신청합니다. 친구와는 1:1 대화와 파티 초대를 바로 할 수 있습니다.']],
     board: [['.page-head', '게시판', '말머리를 선택해 글을 작성합니다. 「관리자만 보기」로 작성하면 운영진에게 문의 · 건의 · 신고를 보낼 수 있습니다.']],
@@ -5212,7 +5281,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102248;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102249;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
@@ -5339,7 +5408,7 @@
     if (n - S.lastSync > 120000) sync();
     if (S.view === 'world' && n - S.lastWorld > 60000) refreshWorld();
     if (n - liveT > 1000) { liveT = n; updateBadges(); updateExpLogs(); erTick(); }
-    if (S.twMine || S.twEndAt || S.view === 'tower') twTick();
+    if (S.twMine || S.twSolo || S.view === 'tower') twTick();
   }
 
   /* ───────── 입력 ───────── */
