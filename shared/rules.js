@@ -896,7 +896,7 @@
     P.st.lecHours += hours * (canceled ? K.CANCEL_KEEP : 1);
     badgeGain(P, hours * (canceled ? K.CANCEL_KEEP : 1) * R.BADGE_XP.lecH, t);
     cupAdd(P, hours * 10 * (canceled ? K.CANCEL_KEEP : 1), 'lec');
-    return { k: 'lec', s: j.s, xp: j.xp * k, know: kn, from: lv0, to: P.subj[j.s].lv, t: t, canceled: !!canceled, peers: j.peers || 0, pb: j.pb || 0, ontime: !!j.ontime, auto: !!j.auto };
+    return { k: 'lec', s: j.s, xp: j.xp * k, know: kn, from: lv0, to: P.subj[j.s].lv, t: t, canceled: !!canceled, peers: j.peers || 0, pb: j.pb || 0, ontime: !!j.ontime, auto: !!j.auto, tt: j.tt && j.tt.i + 1 < j.tt.n ? 1 : 0 };   // tt: 다음 교시가 이어지는 시간표 수업 (보고 창 종소리 대신 제때 입실에서 종)
   }
 
   // 함께 듣는 수업: 같은 과목을 지금 듣고 있는 다른 학생 1명당 과목 경험치 +1% (최대 +5%), 맡길 때 정해진다
