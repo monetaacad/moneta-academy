@@ -7,6 +7,7 @@
   // 운영실 학생 기록: 장비 · 능력치 전체 (학생의 공개 범위 설정과 관계없음)
   var SLOTN = { staff: '무기', robe: '로브', hat: '모자', charm: '장신구', tome: '마도서' }, STN = { int: '지력', wil: '의지', agi: '민첩', vit: '체력', luk: '행운' };
   function fx(v) { v = Number(v) || 0; return Math.abs(v) >= 1000 ? Math.round(v).toLocaleString() : String(Math.round(v * 1000) / 1000); }
+  var BKGONE = [], BKNAME = '';
   function cardHtml(c, RN) {
     if (!c) return '<p class="small" style="margin-top:8px">장비 · 능력치를 불러오지 못했습니다.</p>';
     var f = c.fight, row = function (k, v) { return '<tr><th style="text-align:left;white-space:nowrap">' + k + '</th><td>' + v + '</td></tr>'; };
@@ -213,14 +214,31 @@
       api('POST', '/api/admin/bkcompare', { name: n, file: f }).then(function (j) {
         if (j.error) { $('#bkres').innerHTML = '<p class="small" style="margin-top:8px">' + esc(j.error) + '</p>'; return; }
         var RC = ['#b9bccb', '#7cc68a', '#6aa8ff', '#c084fc', '#f2b84b'], d = j.diff;
-        var tb = function (list, why) { return '<div class="scroll" style="margin-top:6px;max-height:300px"><table><thead><tr><th>장비</th><th>등급</th><th>Lv</th><th>종류</th><th>당시 위치</th>' + (why ? '<th>추정</th>' : '') + '</tr></thead><tbody>' + (list.map(function (x) { return '<tr><td style="color:' + RC[x.r] + '">' + esc(x.name) + (x.lock ? ' <span class="tiny faint">(잠금)</span>' : '') + '</td><td>' + esc(x.rn) + '</td><td class="num">' + x.ilvl + '</td><td>' + esc(x.slot) + '</td><td>' + esc(x.at) + '</td>' + (why ? '<td class="small">' + esc(x.why) + '</td>' : '') + '</tr>'; }).join('') || '<tr><td colspan="6" class="faint">없음</td></tr>') + '</tbody></table></div>'; };
+        BKGONE = j.gone; BKNAME = j.name;
+        var tb = function (list, why) { return '<div class="scroll" style="margin-top:6px;max-height:340px"><table><thead><tr><th>장비</th><th>등급</th><th>Lv</th><th>종류</th><th>옵션</th><th>당시 위치</th>' + (why ? '<th>추정</th><th></th>' : '') + '</tr></thead><tbody>' + (list.map(function (x, i) { return '<tr><td style="color:' + RC[x.r] + '">' + esc(x.name) + (x.lock ? ' <span class="tiny faint">(잠금)</span>' : '') + '</td><td>' + esc(x.rn) + '</td><td class="num">' + x.ilvl + '</td><td>' + esc(x.slot) + '</td><td class="small">' + esc(x.opt || '') + '</td><td>' + esc(x.at) + '</td>' + (why ? '<td class="small">' + esc(x.why) + '</td><td><button class="btn sm ghost" data-a="bkre" data-c="' + i + '">재지급</button></td>' : '') + '</tr>'; }).join('') || '<tr><td colspan="8" class="faint">없음</td></tr>') + '</tbody></table></div>'; };
         var sg = function (v) { return (v > 0 ? '+' : '') + Number(v).toLocaleString(); };
         window.__bkJson = JSON.stringify(j);
         $('#bkres').innerHTML = '<p class="small" style="margin-top:10px"><b>「' + esc(j.name) + '」 · ' + whenS(j.bkT) + ' 백업 → 지금</b></p>' +
           '<p class="small">분해 횟수 <b>' + sg(d.dismantled) + '</b> · 마석 ' + sg(d.stone) + ' · 마석가루 ' + sg(d.dust) + ' · 아르크 ' + sg(d.gold) + ' · 얻은 영웅 ' + sg(d.epicFound) + ' · 레벨 ' + sg(d.lvl) + (j.auto ? ' · 분류 마법 자동 처분: 당시 ' + esc(j.auto.then) + ' → 지금 ' + esc(j.auto.now) : ' · 분류 마법 연구 전') + '</p>' +
-          '<p class="small" style="margin-top:8px"><b>사라진 장비 ' + j.gone.length + '개</b> <span class="tiny faint">(거래소 판매 · 등록은 거래 기록과 대조해 표시. 나머지는 분해 · 매점 판매 · 자동 처분 중 하나이며, 「분해 횟수」 변화로 분해 개수를 가늠할 수 있습니다)</span></p>' + tb(j.gone, true) +
+          '<div id="bkre"></div><p class="small" style="margin-top:8px"><b>사라진 장비 ' + j.gone.length + '개</b> <span class="tiny faint">(거래소 판매 · 등록은 거래 기록과 대조해 표시. 나머지는 분해 · 매점 판매 · 자동 처분 중 하나이며, 「분해 횟수」 변화로 분해 개수를 가늠할 수 있습니다)</span></p>' + tb(j.gone, true) +
           '<p class="small" style="margin-top:10px"><b>새로 생긴 장비 ' + j.got.length + '개</b></p>' + tb(j.got, false) +
           '<p class="tiny faint" style="margin-top:6px">백업과 백업 사이에 들어왔다가 바로 사라진 장비는 어느 백업에도 없어 이 비교에 나오지 않습니다. 앞으로의 처분은 「활동 기록 → 장비 처분 기록」에 남습니다.</p>';
+      });
+    },
+    // 재지급: 사라진 장비를 같은 옵션 그대로 우편으로 (보내기는 운영자가 직접 누른다)
+    bkre: function (el) {
+      var x = BKGONE[+el.dataset.c]; if (!x) return;
+      $('#bkre').innerHTML = '<div class="card inset" style="margin-top:10px"><b>장비 재지급 · ' + esc(BKNAME) + '</b><p class="small" style="margin-top:4px">' + esc(x.rn + ' ' + x.slot + ' 「' + x.name + '」 Lv ' + x.ilvl + ' · ' + (x.opt || '')) + '</p>' +
+        '<div class="form" style="margin-top:8px;flex-direction:column;align-items:stretch"><label>제목<input id="bkr-t" value="장비 복구 안내"></label><label>내용<textarea id="bkr-b" rows="3">요청하신 장비를 같은 옵션으로 복구해 드립니다. 우편함에서 받으실 수 있습니다.</textarea></label></div>' +
+        '<div class="row" style="justify-content:flex-end;gap:6px;margin-top:8px"><button class="btn ghost" data-a="bkrno">취소</button><button class="btn primary" data-a="bkrgo" data-c="' + el.dataset.c + '">이 학생에게 우편 보내기</button></div></div>';
+      $('#bkre').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    },
+    bkrno: function () { $('#bkre').innerHTML = ''; },
+    bkrgo: function (el) {
+      var x = BKGONE[+el.dataset.c]; if (!x || el.disabled) return; el.disabled = true;
+      api('POST', '/api/admin/mail', { to: BKNAME, title: $('#bkr-t').value.trim(), body: $('#bkr-b').value.trim(), days: 30, rewards: { items: [x.item] } }).then(function (j) {
+        if (j.error) { toast(j.error); el.disabled = false; return; }
+        $('#bkre').innerHTML = '<p class="small good" style="margin-top:8px">「' + esc(x.name) + '」 재지급 우편을 보냈습니다.</p>'; mails();
       });
     },
     plogcopy: function () { var t = window.__plogJson || ''; if (!t) return; (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () { $('#umsg').textContent = '분석용 기록을 복사했습니다'; }, function () { prompt('아래 내용을 복사하십시오', t); }); },
