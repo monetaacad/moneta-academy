@@ -31,8 +31,8 @@ if not r.get('error'): errs.append('invite allowed when full')
 r = A.req('POST', '/api/party', {'op': 'npcRemove', 'k': 2}); time.sleep(2.1)
 if r.get('error') or len([m for m in r['party']['members'] if m.get('npc')]) != 2: errs.append('npcRemove ' + str(r.get('error')))
 tv = A.req('GET', '/api/tower')
-team = tv.get('team') or []
-print('tower team', [(m['name'], m['npc'], round(m['dps'], 1)) for m in team])
+team = tv.get('members') or []
+print('tower team', [(m['name'], m['npc'], m['pos'], m['power']) for m in team])
 if len([m for m in team if m['npc']]) != 2: errs.append('tower npc count')
 # 거래소 NPC 매물
 mk = A.req('GET', '/api/market?tab=buy')

@@ -340,6 +340,16 @@ function open(dir) {
       floor INTEGER NOT NULL DEFAULT 0,
       log TEXT NOT NULL DEFAULT '[]'
     );
+    -- 별의 탑 파티 순위: 주마다 파티의 가장 높은 실전 기록. 그때의 파티 이름 · 파티원을 남긴다 (파티가 이름을 바꾸거나 해산해도 그대로)
+    CREATE TABLE IF NOT EXISTS tower_rank (
+      week INTEGER NOT NULL,
+      party TEXT NOT NULL,
+      name TEXT NOT NULL,
+      members TEXT NOT NULL DEFAULT '[]',
+      floor INTEGER NOT NULL,
+      t INTEGER NOT NULL,
+      PRIMARY KEY (week, party)
+    );
     -- 성장 스냅샷: 하루(한국 날짜) 한 번, 학생마다 한 줄 (레벨 · 전투력 · 누적 통계). 성장곡선 분석용
     CREATE TABLE IF NOT EXISTS growth (
       day INTEGER NOT NULL,
@@ -383,6 +393,11 @@ function open(dir) {
     // 학과의 탑 순위: 저장된 학생 상태(JSON)의 st.twK / st.twM
     topCt: db.prepare(`SELECT id, name, house, grade, CAST(json_extract(state, ?) AS INTEGER) AS f FROM players WHERE banned = 0 AND CAST(json_extract(state, ?) AS INTEGER) > 0 ORDER BY f DESC, power DESC LIMIT ?`),
     topStage: db.prepare(`SELECT id, name, house, power, lvl, grade, max_stage FROM players WHERE banned = 0 ORDER BY max_stage DESC, power DESC LIMIT ?`),
+    // 별의 탑 파티 순위 (높은 층, 같으면 먼저 오른 파티)
+    twRankPut: db.prepare(`INSERT INTO tower_rank (week, party, name, members, floor, t) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(week, party) DO UPDATE SET name = excluded.name, members = excluded.members, floor = excluded.floor, t = excluded.t WHERE excluded.floor > tower_rank.floor`),
+    twRankTop: db.prepare(`SELECT party, name, members, floor, t FROM tower_rank WHERE week = ? ORDER BY floor DESC, t ASC LIMIT ?`),
+    twRankGet: db.prepare(`SELECT floor, t FROM tower_rank WHERE week = ? AND party = ?`),
+    twRankOf: db.prepare(`SELECT COUNT(*) + 1 AS r FROM tower_rank WHERE week = ? AND (floor > ? OR (floor = ? AND t < ?))`),
     rankPower: db.prepare(`SELECT COUNT(*) + 1 AS r FROM players WHERE banned = 0 AND power > ?`),
     topLvl: db.prepare(`SELECT id, name, house, power, lvl, grade, max_stage FROM players WHERE banned = 0 ORDER BY lvl DESC, max_stage DESC, power DESC LIMIT ?`),
     rankLvl: db.prepare(`SELECT COUNT(*) + 1 AS r FROM players WHERE banned = 0 AND (lvl > ? OR (lvl = ? AND (max_stage > ? OR (max_stage = ? AND power > ?))))`),
@@ -454,6 +469,7 @@ function open(dir) {
     // 파티
     partyGet: db.prepare(`SELECT id, name, leader, created, npcs, allgo FROM parties WHERE id = ?`),
     partySetAllgo: db.prepare(`UPDATE parties SET allgo = ? WHERE id = ?`),
+    partyRename: db.prepare(`UPDATE parties SET name = ? WHERE id = ?`),
     partySetNpcs: db.prepare(`UPDATE parties SET npcs = ? WHERE id = ?`),
     partyInsert: db.prepare(`INSERT INTO parties (id, name, leader, created) VALUES (?, ?, ?, ?)`),
     partyLeader: db.prepare(`UPDATE parties SET leader = ? WHERE id = ?`),
