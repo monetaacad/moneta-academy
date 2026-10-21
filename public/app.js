@@ -2822,6 +2822,9 @@
 
   /* ── 거래소 ── */
   S.mk.open = {}; S.mk.prices = {}; S.mk.trades = null; S.mk.trAt = 0;
+  try { S.mk.wear = localStorage.getItem('arc_mkwear') === '1'; } catch (e) { }   // 「착용 가능만」 (보는 사람마다 기억)
+  function mkWearTog() { return '<label class="tog tiny" style="margin-right:6px" title="내 레벨 이하 장비만 표시합니다"><input type="checkbox" data-act="mkwear"' + (S.mk.wear ? ' checked' : '') + '> 착용 가능만</label>'; }
+  function mkLv(x) { return x.item && !R.canWear(S.P, x.item) ? ' <span class="bad" title="레벨 ' + x.ilvl + '부터 장착할 수 있습니다">Lv ' + x.ilvl + ' 필요</span>' : ' Lv ' + x.ilvl; }   // 아직 장착할 수 없는 장비는 레벨을 「Lv N 필요」로
   // 거래소에 올릴 수 있는 소지품 (서버 MK_TOK과 같은 목록)
   var MK_TOKS = [['egg', '환수의 알', function (P) { return P.fam.eggs || 0; }], ['ticket', '토벌 도전권', function (P) { return P.wb.extra || 0; }], ['respec', '망각의 차', function (P) { return (P.tok && P.tok.respec) || 0; }]];
   function tokName(id) { var t = MK_TOKS.filter(function (x) { return x[0] === id; })[0]; return t ? t[1] : id; }
@@ -2830,7 +2833,7 @@
     var m = S.mk; m.at = Date.now();
     if (m.tab === 'live') return loadTrades();
     if (m.tab === 'hist') return loadHist();
-    var f = m.tab === 'auc' ? { auc: 1, kind: m.akind || 'item', slot: (m.akind || 'item') === 'item' ? m.slot : '', r: (m.akind || 'item') === 'item' ? m.r : '', gem: m.akind === 'badge' ? (m.gem || '') : '', q: m.q, sort: m.asort || 'end', nobid: m.nobid ? 1 : '' } : m.tab === 'buy' ? { kind: m.kind, slot: m.kind === 'item' ? m.slot : '', r: m.kind === 'item' ? m.r : '', mat: m.kind === 'mat' ? m.mat : '', pot: m.kind === 'pot' ? m.pot : '', tok: m.kind === 'tok' ? (m.tok || '') : '', gem: m.kind === 'badge' ? (m.gem || '') : '', q: m.q, sort: m.sort } : {};
+    var f = m.tab === 'auc' ? { auc: 1, kind: m.akind || 'item', slot: (m.akind || 'item') === 'item' ? m.slot : '', r: (m.akind || 'item') === 'item' ? m.r : '', gem: m.akind === 'badge' ? (m.gem || '') : '', q: m.q, sort: m.asort || 'end', nobid: m.nobid ? 1 : '', wear: (m.akind || 'item') === 'item' && m.wear ? 1 : '' } : m.tab === 'buy' ? { kind: m.kind, slot: m.kind === 'item' ? m.slot : '', r: m.kind === 'item' ? m.r : '', mat: m.kind === 'mat' ? m.mat : '', pot: m.kind === 'pot' ? m.pot : '', tok: m.kind === 'tok' ? (m.tok || '') : '', gem: m.kind === 'badge' ? (m.gem || '') : '', q: m.q, sort: m.sort, wear: m.kind === 'item' && m.wear ? 1 : '' } : {};
     return API.market(f).then(function (j) { if (j.error) { m.err = j.error; } else { m.err = ''; m.data = j; } if (m.tab === 'sell' || m.tab === 'buy' || m.tab === 'auc' || m.tab === 'mine') loadPrices(); if (S.view === 'market' && !S.modal) render(); });
   }
   function loadHist() { var m = S.mk; m.hiAt = Date.now(); if (!API.marketHistory) { m.hist = []; return Promise.resolve(); } return API.marketHistory().then(function (j) { if (!j.error) m.hist = j.list || []; if (S.view === 'market' && !S.modal) render(); }); }
@@ -2899,7 +2902,7 @@
     if (m.err) h += '<p class="small bad" style="margin-bottom:8px">' + esc(m.err) + '</p>';
     if (m.tab === 'auc') h += aucTab(d, low);
     else if (m.tab === 'buy') {
-      h += '<div class="card mkfilt" style="margin-bottom:10px"><div class="row"><div class="filters"><button class="btn sm ghost' + (m.kind === 'item' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="item">장비</button><button class="btn sm ghost' + (m.kind === 'mat' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="mat">재료</button><button class="btn sm ghost' + (m.kind === 'pot' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="pot">물약</button><button class="btn sm ghost' + (m.kind === 'badge' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="badge">휘장</button><button class="btn sm ghost' + (m.kind === 'tok' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="tok">소지품</button></div><span class="spacer"></span>' +
+      h += '<div class="card mkfilt" style="margin-bottom:10px"><div class="row"><div class="filters"><button class="btn sm ghost' + (m.kind === 'item' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="item">장비</button><button class="btn sm ghost' + (m.kind === 'mat' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="mat">재료</button><button class="btn sm ghost' + (m.kind === 'pot' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="pot">물약</button><button class="btn sm ghost' + (m.kind === 'badge' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="badge">휘장</button><button class="btn sm ghost' + (m.kind === 'tok' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="tok">소지품</button></div><span class="spacer"></span>' + (m.kind === 'item' ? mkWearTog() : '') +
         '<select id="mk-sort" data-act="mksel" data-a="sort" style="width:auto"><option value="price"' + (m.sort === 'price' ? ' selected' : '') + '>' + (m.kind !== 'item' ? '개당 가격 낮은 순' : '가격 낮은 순') + '</option><option value="high"' + (m.sort === 'high' ? ' selected' : '') + '>' + (m.kind !== 'item' ? '개당 가격 높은 순' : '가격 높은 순') + '</option><option value="new"' + (m.sort === 'new' ? ' selected' : '') + '>새로 올라온 순</option>' + (m.kind === 'item' ? '<option value="lvl"' + (m.sort === 'lvl' ? ' selected' : '') + '>장비 레벨 높은 순</option>' : '') + '</select></div>';
       if (m.kind === 'item') h += '<div class="filters" style="margin-top:6px">' + [['', '전체'], ['staff', '지팡이'], ['sword', '검']].concat(D.SLOTS.filter(function (x) { return x.id !== 'staff'; }).map(function (x) { return [x.id, x.name]; }), [['helm', '투구'], ['manual', '전술서']]).map(function (f) { return '<button class="btn sm ghost' + (m.slot === f[0] ? ' on' : '') + '" data-act="mkf" data-a="slot" data-b="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '<span class="fsep"></span>' +
         [['', '모든 등급', 'inherit']].concat(D.RARITY.map(function (r) { return [String(r.id), r.name, r.color]; })).map(function (f) { return '<button class="btn sm ghost' + (String(m.r) === f[0] ? ' on' : '') + '" data-act="mkf" data-a="r" data-b="' + f[0] + '" style="color:' + f[2] + '">' + f[1] + '</button>'; }).join('') + '</div>' +
@@ -2917,7 +2920,7 @@
         if (x.kind === 'item' && x.item) {
           var up = R.powerWith(P, x.item) - c.power;
           info = '<span class="mkn ell" style="color:' + rcol(x.r) + '">' + esc(x.name) + '</span><span class="mkchev tiny faint">' + (open ? '접기 ▴' : '옵션 ▾') + '</span>';
-          sub = R.slotName(x.item || x) + ' Lv ' + x.ilvl + ' · ' + itemBrief(x.item) + (up > 0 ? ' · <span class="good">▲' + fmt(up) + '</span>' : '');
+          sub = R.slotName(x.item || x) + mkLv(x) + ' · ' + itemBrief(x.item) + (up > 0 ? ' · <span class="good">▲' + fmt(up) + '</span>' : '');
         } else if (x.kind === 'badge' && x.badge && R.GEM[x.badge.gem]) {
           info = '<span class="mkn">' + esc(x.badge.name) + ' ' + badgeSvg(x.badge) + ' <span class="num faint">Lv ' + x.badge.lv + '</span></span>';
           sub = badgeBrief(x.badge) + (x.badge.aff || []).map(function (a) { return ' · ' + (D.BONUS_NAMES[a.id] || a.id) + ' +' + pct(a.v); }).join('');
@@ -2988,7 +2991,7 @@
   var AUC_SORTS = [['end', '마감 임박순'], ['cur', '현재 입찰가 낮은 순'], ['curhi', '현재 입찰가 높은 순'], ['buy', '즉시 구매가 낮은 순'], ['buyhi', '즉시 구매가 높은 순'], ['new', '새로 올라온 순'], ['bids', '입찰 많은 순']];
   function aucTab(d, low) {
     var m = S.mk, ak = m.akind || 'item', h = '<div class="card mkfilt" style="margin-bottom:10px"><div class="row"><div class="filters">' + [['item', '장비'], ['badge', '휘장']].map(function (f) { return '<button class="btn sm ghost' + (ak === f[0] ? ' on' : '') + '" data-act="mkf" data-a="akind" data-b="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '</div><span class="spacer"></span>' +
-      '<label class="tog tiny" style="margin-right:6px"><input type="checkbox" data-act="mknobid"' + (m.nobid ? ' checked' : '') + '> 입찰 없는 것만</label>' +
+      (ak === 'item' ? mkWearTog() : '') + '<label class="tog tiny" style="margin-right:6px"><input type="checkbox" data-act="mknobid"' + (m.nobid ? ' checked' : '') + '> 입찰 없는 것만</label>' +
       '<select data-act="mksel" data-a="asort" style="width:auto" aria-label="정렬">' + AUC_SORTS.map(function (o) { return '<option value="' + o[0] + '"' + ((m.asort || 'end') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></div>';
     if (ak === 'item') h += '<div class="filters" style="margin-top:6px">' + [['', '전체'], ['staff', '지팡이'], ['sword', '검']].concat(D.SLOTS.filter(function (x) { return x.id !== 'staff'; }).map(function (x) { return [x.id, x.name]; }), [['helm', '투구'], ['manual', '전술서']]).map(function (f) { return '<button class="btn sm ghost' + (m.slot === f[0] ? ' on' : '') + '" data-act="mkf" data-a="slot" data-b="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '</div><div class="filters" style="margin-top:6px">' +
       [['', '모든 등급', 'inherit']].concat(D.RARITY.map(function (r) { return [String(r.id), r.name, r.color]; })).map(function (f) { return '<button class="btn sm ghost' + (String(m.r) === f[0] ? ' on' : '') + '" data-act="mkf" data-a="r" data-b="' + f[0] + '" style="color:' + f[2] + '">' + f[1] + '</button>'; }).join('') + '</div>' +
@@ -3004,7 +3007,7 @@
     if (x.kind === 'item' && x.item) {
       var up = R.powerWith(P, x.item) - C().power;
       info = '<span class="mkn ell" style="color:' + rcol(x.r) + '">' + esc(x.name) + '</span><span class="mkchev tiny faint">' + (open ? '접기 ▴' : '옵션 ▾') + '</span>';
-      sub = R.slotName(x.item || x) + ' Lv ' + x.ilvl + ' · ' + itemBrief(x.item) + (up > 0 ? ' · <span class="good">▲' + fmt(up) + '</span>' : '');
+      sub = R.slotName(x.item || x) + mkLv(x) + ' · ' + itemBrief(x.item) + (up > 0 ? ' · <span class="good">▲' + fmt(up) + '</span>' : '');
     } else if (x.kind === 'badge' && x.badge && R.GEM[x.badge.gem]) {
       info = '<span class="mkn">' + esc(x.badge.name) + ' ' + badgeSvg(x.badge) + ' <span class="num faint">Lv ' + x.badge.lv + '</span></span>';
       sub = badgeBrief(x.badge) + (x.badge.aff || []).map(function (a) { return ' · ' + (D.BONUS_NAMES[a.id] || a.id) + ' +' + pct(a.v); }).join('');
@@ -3030,6 +3033,7 @@
   function aucToggle(u) { var on = (S.mk.aopen || {})[u]; return '<button class="btn sm ghost' + (on ? ' on' : '') + '" data-act="mkaopen" data-a="' + u + '" aria-expanded="' + !!on + '">경매</button>'; }
   ACT.mkaopen = function (u) { var m = S.mk; m.aopen = m.aopen || {}; m.aopen[u] = !m.aopen[u]; render(); };
   ACT.mknobid = function () { S.mk.nobid = !S.mk.nobid; S.mk.data = null; render(); loadMarket(); };
+  ACT.mkwear = function () { S.mk.wear = !S.mk.wear; try { localStorage.setItem('arc_mkwear', S.mk.wear ? '1' : '0'); } catch (e) { } S.mk.data = null; render(); loadMarket(); };
   ACT.mkauclist = function (kind, u, el) {
     var row = el && el.closest('.mkaf'), a = (S.mk.data && S.mk.data.auc) || { buyoutX: 1.2 }; if (!row) return;
     var start = Math.floor(+row.querySelector('.mkastart').value || 0), buy = Math.floor(+row.querySelector('.mkabuy').value || 0), hrs = +row.querySelector('.mkahr').value;
@@ -5015,7 +5019,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102153;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102161;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
