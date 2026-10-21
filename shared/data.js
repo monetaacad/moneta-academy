@@ -806,6 +806,8 @@ var DATA = (function () {
     { id: 'alch', name: '그을린 앞치마', stat: 'brews', n: 30, how: '물약 30병' },
     { id: 'firefly', name: '반딧불의 벗', stat: 'spirits', n: 100, how: '정령 100마리 풀어 주기' },
     { id: 'smith', name: '강화 장인', stat: 'maxEnh', n: 10, how: '장비 +10 강화' },
+    { id: 'duel5', name: '결투제 본선 진출자', stat: 'duelBest', n: 5, how: '결투제 상대 5명 이기기' },
+    { id: 'duel10', name: '결투제 4강', stat: 'duelBest', n: 10, how: '결투제 상대 10명 이기기' },
     { id: 'duel', name: '결투제 우승자', stat: 'duelBest', n: 15, how: '결투제 우승' },
     { id: 'raid', name: '토벌대원', stat: 'wbKills', n: 1, how: '월드 보스 토벌 참여' },
     { id: 'cup', name: '대항전의 영웅', stat: 'cupWins', n: 1, how: '기숙사 대항전 1위' },
