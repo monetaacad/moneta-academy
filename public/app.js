@@ -2190,7 +2190,7 @@
       var act2 = P.fam.act === f.id, disp = P.fam.disp[f.id], cost = o.lv < 20 ? R.feedCost(P, f.id) : 0;
       h += '<div class="card famcard' + (act2 ? ' act' : '') + '"><div style="flex:1;min-width:0"><div class="row" style="gap:6px;flex-wrap:wrap"><b>' + esc(o.nm || f.name) + '</b>' + (o.nm ? '<span class="tiny faint">' + f.name + '</span>' : '') + '<span class="num tiny gold">Lv ' + o.lv + '</span><button class="btn ghost sm famnm" data-act="famname" data-a="' + f.id + '">이름 짓기</button></div><div class="tiny" style="color:' + fr.color + '">' + fr.name + '</div>' +
         '<div class="small">' + D.BONUS_NAMES[f.bonus] + ' +' + pct(R.famBonus(f, o.lv, P)) + '</div>' + famXpBar(f, o, act2, disp) + (disp ? '<div class="tiny gold">파견 중 · ' + R.dispZoneOf(P, f.id, disp.z).name + ' · ' + clock(disp.end) + ' 귀환</div>' : '<div class="tiny faint">' + f.desc + '</div>') +
-        (act2 ? '' : (function () { var zs = R.dispZones(P), cur = P.fam.zone && P.fam.zone[f.id], top = zs[zs.length - 1];   // 파견 지역 (사역마마다 저장)
+        (act2 || (o.lock && !disp) ? '' : (function () { var zs = R.dispZones(P), cur = P.fam.zone && P.fam.zone[f.id], top = zs[zs.length - 1];   // 파견 지역 (사역마마다 저장, 파견 잠금이면 숨김)
           return '<div class="row tiny" style="gap:6px;margin-top:6px"><span class="faint">파견 지역</span><select data-act="famzone" data-a="' + f.id + '" style="width:auto;flex:1;min-width:0"><option value=""' + (cur ? '' : ' selected') + '>자동 · ' + (top ? top.name : '') + '</option>' + zs.map(function (z) { return '<option value="' + z.id + '"' + (cur === z.id ? ' selected' : '') + '>' + z.name + ' · ' + D.MATS[z.mat].name + '</option>'; }).join('') + '</select></div>'; })()) +
         '<div class="row" style="margin-top:6px;gap:6px">' + (o.lv < 20 ? '<button class="btn sm primary" data-act="do" data-a="feed" data-b="' + f.id + '"' + (P.res.gold >= cost ? '' : ' disabled') + '>먹이 <span class="cost">' + fmt(cost) + ' ' + CUR + '</span></button>' : '<span class="tag br">최대 레벨</span>') +
         (act2 ? '<span class="tag ok">동행 중</span>' : disp ? famRecallBtn(f.id) : '<button class="btn sm primary" data-act="do" data-a="famAct" data-b="' + f.id + '">동행</button>' + (o.lock ? '<span class="tag br" title="「모두 파견」에서 빠지며 따로 보낼 수도 없습니다">파견 잠금</span>' : '<button class="btn sm primary" data-act="dispatch" data-a="' + f.id + '">' + R.DDUR[dk].label + ' 파견</button>')) +
@@ -5117,7 +5117,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102182;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102183;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
