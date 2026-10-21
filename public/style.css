@@ -1084,6 +1084,7 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) { .fr-aurora, .fr-spring, .fr-pulse, .fr-neon, .ink.anim { animation: none; } }
 /* 꾸미기 탭: 위에 미리보기와 할 일, 아래에 칸마다 작은 칩 */
 .decoprev { position: sticky; top: -18px; z-index: 2; background: var(--panel); padding: 6px 0 8px; }
+@media (max-width: 700px) { .decoprev { position: static; } }   /* 모바일: 미리보기가 화면 대부분을 덮고 있어 위쪽을 밀어도 아래 목록만 움직이던 문제 → 함께 스크롤 */
 .decobar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; min-height: 30px; }
 .decotabs { display: flex; gap: 4px; flex-wrap: wrap; margin: 10px 0 8px; }
 .dchips { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; }
