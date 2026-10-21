@@ -247,7 +247,7 @@
       else if (o.k === 'ach') { var a = D.ACH.find(function (x) { return x.id === o.id; }); if (a) lines.push('<li><b>업적</b> — ' + a.name + ' (별조각 +' + a.r + ')</li>'); }
     });
     if (!lines.length) { act('inboxAck', { upto: S.inboxUpto }); return; }
-    if (!items.every(function (o) { return (o.t || 0) <= (S.chimedT || 0); })) Snd.play(items.some(function (o) { return o.k === 'lec'; }) ? 'bell' : 'level');   // 창이 떠 있어 소리를 먼저 낸 보고는 다시 울리지 않는다
+    if (!items.every(function (o) { return (o.t || 0) <= (S.chimedT || 0) || (o.k === 'lec' && o.tt); })) Snd.play(items.some(function (o) { return o.k === 'lec'; }) ? 'bell' : 'level');   // 창이 떠 있어 소리를 먼저 낸 보고 · 시간표 교시 보고(종은 「제때 입실」에서 울린다)는 다시 울리지 않는다
     // 끝난 작업마다 바로가기: 확인하고 그 화면으로 가서 다음 연구 · 수업 · 원정을 바로 시작한다
     var GO = [['res', 'lib', '연구로'], ['lec', 'lecture', '강의실로'], ['exp', 'explore', '원정으로'], ['disp', 'fam', '사역장으로'], ['hatch', 'fam', '사역장으로']], seen = {};
     var gos = GO.filter(function (g) { if (seen[g[1]] || !items.some(function (o) { return o.k === g[0]; })) return false; seen[g[1]] = 1; return true; });
@@ -1553,7 +1553,7 @@
   };
   ACT['tt-del'] = function () { var e = S.ttEdit; if (!e) return; act('ttDel', { k: e.k }).then(function () { S.ttEdit = null; render(); }); };
   ACT['tt-apply'] = function (k) { act('ttApply', { k: +k }).then(function (r) { if (!r) return; Snd.play('click'); toast('시간표 「' + r.name + '」', r.n + '교시를 차례로 듣습니다' + (r.skip ? ' · 아직 들을 수 없는 교시 ' + r.skip + '개는 건너뜀' : '') + (r.ontime ? ' · 제때 입실' : ''), 2600); render(); }); };
-  ACT['lec-ontime'] = function (i) { act('lecOnTime', { slot: +i || 0 }).then(function (r) { if (!r) return; Snd.play('ach'); toast('제때 입실', '이번 교시 과목 경험치 +' + Math.round(R.ONTIME_BONUS * 100) + '%', 2000); if ($('#modal:not([hidden]) .ontbtn')) $$('.ontbtn').forEach(function (b) { b.remove(); }); render(); }); };
+  ACT['lec-ontime'] = function (i) { act('lecOnTime', { slot: +i || 0 }).then(function (r) { if (!r) return; Snd.play('bell'); toast('제때 입실', '이번 교시 과목 경험치 +' + Math.round(R.ONTIME_BONUS * 100) + '%', 2000); if ($('#modal:not([hidden]) .ontbtn')) $$('.ontbtn').forEach(function (b) { b.remove(); }); render(); }); };
   // 시간표 교시가 저절로 시작된 뒤 15분 동안 보이는 「제때 입실」 단추
   function onTimeBtn(i) { var l = S.P.lec[i]; if (!l || !l.otUntil || l.ontime || now() > l.otUntil) return ''; return '<button class="btn sm primary ontbtn" data-act="lec-ontime" data-a="' + i + '">제때 입실 +' + Math.round(R.ONTIME_BONUS * 100) + '% <span class="tiny" data-l="left:' + l.otUntil + '"></span></button>'; }
   ACT['lecq-open'] = function (i) { S.qOpen = S.qOpen || {}; S.qOpen[+i] = true; render(); };
@@ -5247,7 +5247,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102255;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102256;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
@@ -5361,7 +5361,7 @@
         S.bgEv = ev; var n0 = (S.P.inbox || []).length, d0 = doneN(), hadModal = !!S.modal;
         sync(true).then(function () {
           var it = S.P.inbox || [];
-          if (hadModal && it.length > n0) { Snd.play(it.slice(n0).some(function (o) { return o.k === 'lec'; }) ? 'bell' : 'level'); S.chimedT = Math.max.apply(null, it.slice(n0).map(function (o) { return o.t || 0; })); }   // 이 보고는 소리를 이미 냈다
+          if (hadModal && it.length > n0 && !it.slice(n0).every(function (o) { return o.k === 'lec' && o.tt; })) { Snd.play(it.slice(n0).some(function (o) { return o.k === 'lec'; }) ? 'bell' : 'level'); S.chimedT = Math.max.apply(null, it.slice(n0).map(function (o) { return o.t || 0; })); }   // 이 보고는 소리를 이미 냈다
           else if (it.length <= n0 && doneN() > d0) Snd.play('level');   // 원정은 보고함에 들어가지 않고 「원정 완료」를 기다린다 → 끝난 때 소리만
         });
       }
