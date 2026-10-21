@@ -247,7 +247,7 @@
       else if (o.k === 'ach') { var a = D.ACH.find(function (x) { return x.id === o.id; }); if (a) lines.push('<li><b>업적</b> — ' + a.name + ' (별조각 +' + a.r + ')</li>'); }
     });
     if (!lines.length) { act('inboxAck', { upto: S.inboxUpto }); return; }
-    Snd.play(items.some(function (o) { return o.k === 'lec'; }) ? 'bell' : 'level');
+    if (!items.every(function (o) { return (o.t || 0) <= (S.chimedT || 0); })) Snd.play(items.some(function (o) { return o.k === 'lec'; }) ? 'bell' : 'level');   // 창이 떠 있어 소리를 먼저 낸 보고는 다시 울리지 않는다
     // 끝난 작업마다 바로가기: 확인하고 그 화면으로 가서 다음 연구 · 수업 · 원정을 바로 시작한다
     var GO = [['res', 'lib', '연구로'], ['lec', 'lecture', '강의실로'], ['exp', 'explore', '원정으로'], ['disp', 'fam', '사역장으로'], ['hatch', 'fam', '사역장으로']], seen = {};
     var gos = GO.filter(function (g) { if (seen[g[1]] || !items.some(function (o) { return o.k === g[0]; })) return false; seen[g[1]] = 1; return true; });
@@ -5247,7 +5247,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102254;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102255;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
@@ -5361,7 +5361,7 @@
         S.bgEv = ev; var n0 = (S.P.inbox || []).length, d0 = doneN(), hadModal = !!S.modal;
         sync(true).then(function () {
           var it = S.P.inbox || [];
-          if (hadModal && it.length > n0) Snd.play(it.slice(n0).some(function (o) { return o.k === 'lec'; }) ? 'bell' : 'level');
+          if (hadModal && it.length > n0) { Snd.play(it.slice(n0).some(function (o) { return o.k === 'lec'; }) ? 'bell' : 'level'); S.chimedT = Math.max.apply(null, it.slice(n0).map(function (o) { return o.t || 0; })); }   // 이 보고는 소리를 이미 냈다
           else if (it.length <= n0 && doneN() > d0) Snd.play('level');   // 원정은 보고함에 들어가지 않고 「원정 완료」를 기다린다 → 끝난 때 소리만
         });
       }
