@@ -1345,10 +1345,10 @@
         if (sp.type === 'shield' && sh > c.hp * 0.1) continue;
         cd[sid] = sp.cd * (1 - c.cdr);
         var lm = spellLvMult(P, sp);
-        if (evs.length < 400) evs.push([Math.round(t * 10) / 10, 's', sid]);
+        var se = evs.length < 400 ? [Math.round(t * 10) / 10, 's', sid] : null; if (se) evs.push(se);
         if (sp.type === 'dmg' || sp.type === 'stun') { var cr2 = rnd(P) < c.critC; if (sp.type === 'stun' || (sp.stunP && rnd(P) < sp.stunP)) stun = sp.stun; hit(R.spellHit(c, sp) * sp.mult * lm * (cr2 ? c.critD : 1), 'p', cr2); }
-        else if (sp.type === 'shield') sh = c.hp * sp.mult * Math.min(2, lm);
-        else if (sp.type === 'heal') ph = Math.min(c.hp, ph + c.hp * sp.mult * Math.min(2, lm));
+        else if (sp.type === 'shield') { sh = c.hp * sp.mult * Math.min(2, lm); if (se) se[3] = Math.round(sh); }
+        else if (sp.type === 'heal') { var hv = Math.min(c.hp - ph, c.hp * sp.mult * Math.min(2, lm)); ph += hv; if (se) se[3] = Math.round(hv); }
         else if (sp.type === 'haste') haste = sp.dur;
         else if (sp.type === 'amp') { amp = sp.dur; stun = sp.dur; }
       }
@@ -1428,7 +1428,11 @@
         dealt += e[2]; if (!firstHit) firstHit = e;
         if (e[4] && (!bigCrit || e[2] > bigCrit[2])) bigCrit = e;
         while (mi < marks.length && 1 - dealt / foe.hp <= marks[mi]) { var left = Math.round(marks[mi] * 100); add(e[0], foe.name + ' 체력 ' + left + '%. ' + (left === 25 ? '숨이 거칠어진다.' : left === 50 ? '갑옷에 금이 간다.' : '몸이 휘청인다.'), 'm'); mi++; }
-      } else if (e[1] === 's') { var sp = SPELL[e[2]]; if (sp && !spells[e[2]]) { spells[e[2]] = 1; add(e[0], o.name + '의 「' + sp.name + '」!', 'p'); } }
+      } else if (e[1] === 's') {
+        var sp = SPELL[e[2]];
+        if (sp && sp.type === 'heal' && e[3]) add(e[0], o.name + '의 「' + sp.name + '」! 생명력 +' + R.fmt(e[3]) + ' 회복', 'p');
+        else if (sp && !spells[e[2]]) { spells[e[2]] = 1; add(e[0], o.name + '의 「' + sp.name + '」!' + (sp.type === 'shield' && e[3] ? ' 보호막 ' + R.fmt(e[3]) : ''), 'p'); }
+      }
       else if (e[1] === 'x') { taken += e[2]; hurt.push(e); }
     });
     if (firstHit) add(Math.max(0.5, firstHit[0]), '첫 공격 — ' + R.fmt(firstHit[2]) + ' 피해', 'h');
