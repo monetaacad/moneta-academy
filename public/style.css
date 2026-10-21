@@ -1417,6 +1417,8 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 .bdcform.reply { margin: 6px 0 4px; }
 .cm.rcm .cx { display: block; padding: 5px 9px; border: 1px solid var(--line2); border-radius: 8px; background: color-mix(in srgb, var(--brass) 6%, transparent); font-size: 13px; line-height: 1.5; }
 .cm.rcm .rchead { display: block; }
+.cm.rcm.rcdone .cx { opacity: .5; }   /* 출정했거나 닫힌 방 · 인원 마감 · 모집 종료 */
+.cm.rcm .tag.rcst { font-size: 11px; }
 .cm.rcm .rcpos { display: inline-flex; flex-wrap: wrap; gap: 3px; align-items: center; margin-left: 6px; vertical-align: 1px; }
 .cm.rcm .rcpos .postag { font-size: 10.5px; padding: 0 5px; line-height: 1.6; }
 .cm.rcm .rcfoot { display: flex; align-items: center; gap: 8px; margin-top: 3px; }

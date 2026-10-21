@@ -866,6 +866,17 @@ function partyView(me) {
 const partyRec = new Map();   // 파티 → 마지막 모집 알림 시각 (실제 초)
 const gRecAt = new Map();     // 동아리 → 마지막 모집 홍보 시각
 function recNote(v) { return String(v || '').replace(/[\u0000-\u001F\u007F]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60); }
+// 모집 탭: 모집 카드의 지금 상태 (올릴 때의 인원이 아니라). gone = 출정했거나 닫힘 · 없어짐, ended = 모집 시간(30분)이 지남, full = 인원 마감
+routes['POST /api/recruit/status'] = async (req, res) => {
+  const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
+  if (limited('recst:' + me, 1, 6)) return fail(req, res, 429, '요청이 너무 잦습니다');
+  const b = await readJson(req, 4096), ids = (k, n) => (Array.isArray(b[k]) ? b[k] : []).map(String).filter(Boolean).slice(0, n), real = Date.now() / 1000, out = { rooms: {}, parties: {}, guilds: {} };
+  const st = (n, max) => ({ n, max, state: n >= max ? 'full' : 'open' });
+  ids('rooms', 40).forEach((id) => { const s = exprooms.status(id); out.rooms[id] = s ? st(s.n, s.max) : { state: 'gone' }; });
+  ids('parties', 40).forEach((id) => { if (!dbx.q.partyGet.get(id)) { out.parties[id] = { state: 'gone' }; return; } const v = st(partyCount(id), PARTY_MAX), at = partyRec.get(id); if (v.state === 'open' && (!at || real - at > 1800)) v.state = 'ended'; out.parties[id] = v; });
+  ids('guilds', 20).forEach((id) => { const g = dbx.q.gGet.get(id); out.guilds[id] = g ? st(gCount(id), R.guildCap(g.lv || 1)) : { state: 'gone' }; });
+  send(req, res, 200, out);
+};
 routes['GET /api/party'] = (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
   if (limited('pg:' + me, 1, 10)) return fail(req, res, 429, '요청이 너무 잦습니다');

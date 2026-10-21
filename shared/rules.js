@@ -1753,8 +1753,8 @@
     var cls = R.ctCls(P), key = R.ctKey(cls), c = calc(P, W, now), f = R.ctBest(P, cls) + 1, foe = R.ctFoe(f, cls);
     var r = fight(P, c, { hp: foe.hp, atk: foe.atk, boss: true }, R.CT_TIME, true);
     var out = { cls: cls, f: f, foe: foe, win: !!r.win, cc: !!r.cc, ev: r.ev, t: r.t, dead: !!r.dead, pct: Math.round((1 - r.mHp) * 100), rw: {}, titles: [] };
+    if (!r.win) return out;   // 휘장 별빛은 이겼을 때만 (도전 횟수 제한이 없어 지기만 반복해 휘장을 키울 수 있었다)
     badgeGain(P, R.BADGE_XP.fight, now);
-    if (!r.win) return out;
     P.st[key] = f; var g = R.ctReward(f), rw = out.rw;
     if (g.gold) { addGold(P, g.gold); rw.gold = g.gold; } if (g.stone) { P.res.stone += g.stone; rw.stone = g.stone; } if (g.shard) { P.res.shard += g.shard; rw.shard = g.shard; }
     if (g.gear || g.egg) { var gm = R.grantMail(P, W, now, { gear: g.gear, egg: g.egg }); if (g.egg) rw.egg = g.egg; out.items = gm.items; }

@@ -99,6 +99,7 @@ var Net = (function () {
   ServerApi.prototype.market = function (f) { var q = []; for (var k in f) if (f[k] !== '' && f[k] != null) q.push(k + '=' + encodeURIComponent(f[k])); return this.req('GET', '/api/market' + (q.length ? '?' + q.join('&') : '')); };
   ServerApi.prototype.marketOp = function (o) { return this.req('POST', '/api/market', o); };
   ServerApi.prototype.marketPrices = function (keys) { return this.req('GET', '/api/market/prices?keys=' + encodeURIComponent(keys.join(','))); };
+  ServerApi.prototype.recruitStatus = function (o) { return this.req('POST', '/api/recruit/status', o); };
   ServerApi.prototype.marketTrades = function () { return this.req('GET', '/api/market/trades'); };
   ServerApi.prototype.marketHistory = function () { return this.req('GET', '/api/market/history'); };
   ServerApi.prototype.guilds = function (q) { return this.req('GET', '/api/guilds' + (q ? '?q=' + encodeURIComponent(q) : '')); };

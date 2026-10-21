@@ -496,6 +496,7 @@
     if (chans().indexOf(S.chat.ch) < 0) S.chat.ch = chans().indexOf('world') >= 0 ? 'world' : chans()[0];
     if (GCH[S.chat.ch]) S.chat.gsub[GCH[S.chat.ch]] = S.chat.ch;
     var c = S.chat, ch = c.ch, open = dockOpen(), info = CH_INFO[ch];
+    if (ch === 'recruit' && open && Date.now() - S.recAt > 15000) setTimeout(recLoad, 0);
     logQ = []; if (logRaf) { cancelAnimationFrame(logRaf); logRaf = 0; } if (c.stick) c.below = 0;
     wantWatch();
     // 처음 여는 채널: 안 읽은 첫 글 앞에 줄을 긋는다
@@ -551,6 +552,20 @@
   function rpText(t) { return esc(t).replace(/\*([^*\n]{1,300})\*/g, '<i class="act">$1</i>'); }
   function chatText(t) { return esc(t).replace(/\*([^*\n]{1,300})\*/g, '<i class="act">$1</i>').replace(/\n/g, '<br>'); }
   // 모집 카드 아랫줄: 한마디(있으면) + 버튼을 한 줄로
+  /* 모집 카드의 지금 상태: 카드에는 올릴 때 인원이 담겨 있어서, 모집 탭을 보는 동안 서버에 지금 인원 · 출정 여부를 묻는다 (20초마다).
+     출정했거나 닫힌 방 · 인원이 찬 파티 · 동아리 · 모집 시간이 끝난 파티는 흐리게 */
+  S.recSt = { rooms: {}, parties: {}, guilds: {} }; S.recAt = 0;
+  function recLive(rc) { var t = rc.type === 'guild' ? S.recSt.guilds[rc.g] : rc.type === 'party' ? S.recSt.parties[rc.party] : S.recSt.rooms[rc.room]; return t || {}; }
+  function recDone(rc) { var st = recLive(rc).state; return st === 'gone' || st === 'full' || st === 'ended'; }
+  function recTag(rc) { var st = recLive(rc).state; if (!recDone(rc)) return ''; return '<span class="tag rcst">' + (st === 'full' ? '인원 마감' : st === 'ended' ? '모집 종료' : rc.type === 'guild' ? '없어진 동아리' : rc.type === 'party' ? '없어진 파티' : '출정했거나 닫힘') + '</span>'; }
+  function recLoad() {
+    if (!API.recruitStatus || Date.now() - S.recAt < 15000) return; S.recAt = Date.now();
+    var o = { rooms: [], parties: [], guilds: [] };
+    (S.chat.msgs.recruit || []).slice(-60).forEach(function (m) { if (m.kind !== 'recruit') return; var rc = {}; try { rc = JSON.parse(m.text) || {}; } catch (e) { } if (rc.type === 'guild' && rc.g) o.guilds.push(String(rc.g)); else if (rc.type === 'party' && rc.party) o.parties.push(String(rc.party)); else if (rc.room) o.rooms.push(String(rc.room)); });
+    if (!o.rooms.length && !o.parties.length && !o.guilds.length) return;
+    API.recruitStatus(o).then(function (j) { if (!j || j.error) return; S.recSt = { rooms: j.rooms || {}, parties: j.parties || {}, guilds: j.guilds || {} }; if (S.chat.ch === 'recruit' && dockOpen()) renderDock(); });
+  }
+  setInterval(function () { if (S.P && S.chat && S.chat.ch === 'recruit' && dockOpen()) recLoad(); }, 20000);
   function rcFoot(note, btn) { return note || btn ? '<span class="rcfoot">' + (note ? '<span class="rcnote">“' + esc(note) + '”</span>' : '') + btn + '</span>' : ''; }
   // 사감 한마디 숨기기 (설정 › 채팅, 이 브라우저에만): 신입생 환영 인사만 · 모두
   function headWelcome(m) { if (m.w) return true; var L = D.HOUSE_LORE[m.house], t = L && L.say && L.say.welcome; if (!t) return false; var p = t.split('{n}'); return p.length === 2 && m.text.indexOf(p[0]) === 0 && m.text.slice(-p[1].length) === p[1]; }
@@ -564,14 +579,14 @@
     if (m.kind === 'staff') return '<div class="cm staff" data-id="' + m.id + '"><span class="ct num">' + time + '</span><span class="cx"><span class="stag">운영진 공지</span> <mark class="hl">' + chatText(m.text) + '</mark></span></div>';   // 운영진 공지: 형광펜
     if (m.kind === 'recruit') {   // 함께 원정 모집 카드
       var rc = {}; try { rc = JSON.parse(m.text) || {}; } catch (e) { }
-      if (rc.type === 'guild') return '<div class="cm rcm' + (me ? ' mine' : '') + '" data-id="' + m.id + '"><span class="ct num">' + time + '</span><span class="cx"><span class="rchead"><b>' + esc(m.name) + '</b> 님의 동아리 홍보 · ' + gEmblem(/^#[0-9a-fA-F]{3,8}$/.test(rc.color || '') ? rc.color : '#d6ad5f', rc.name || '', 18, rc.icon) + ' <b>' + esc(rc.name || '') + '</b> Lv ' + (+rc.lv || 1) + ' · <b class="num">' + (+rc.n || 1) + '/' + (+rc.max || 0) + '</b> · ' + (rc.mode === 'apply' ? '신청 후 승인' : '누구나 가입') + '</span>' +
-        rcFoot(rc.note, me ? '' : '<button class="btn sm" data-act="gpeek" data-a="' + esc(String(rc.g || '')) + '">살펴보기</button>') + '</span></div>';
-      if (rc.type === 'party') return '<div class="cm rcm' + (me ? ' mine' : '') + '" data-id="' + m.id + '"><span class="ct num">' + time + '</span><span class="cx"><span class="rchead"><b>' + esc(m.name) + '</b> 님의 파티원 모집 · <b>' + esc(rc.name || '') + '</b> · <b class="num">' + (+rc.n || 1) + '/' + (+rc.max || 4) + '</b>' + (rc.floor ? ' · 별의 탑 ' + (+rc.floor) + '층 돌파' : ' · 별의 탑 도전') + '</span>' +
-        rcFoot(rc.note, me ? '' : '<button class="btn sm" data-act="ptjoinrec" data-a="' + esc(String(rc.party || '')) + '">파티 들어가기</button>') + '</span></div>';
+      if (rc.type === 'guild') return '<div class="cm rcm' + (me ? ' mine' : '') + (recDone(rc) ? ' rcdone' : '') + '" data-id="' + m.id + '"><span class="ct num">' + time + '</span><span class="cx"><span class="rchead"><b>' + esc(m.name) + '</b> 님의 동아리 홍보 · ' + gEmblem(/^#[0-9a-fA-F]{3,8}$/.test(rc.color || '') ? rc.color : '#d6ad5f', rc.name || '', 18, rc.icon) + ' <b>' + esc(rc.name || '') + '</b> Lv ' + (+rc.lv || 1) + ' · <b class="num">' + (recLive(rc).n || +rc.n || 1) + '/' + (recLive(rc).max || +rc.max || 0) + '</b> · ' + (rc.mode === 'apply' ? '신청 후 승인' : '누구나 가입') + '</span>' +
+        rcFoot(rc.note, recTag(rc) || (me ? '' : '<button class="btn sm" data-act="gpeek" data-a="' + esc(String(rc.g || '')) + '">살펴보기</button>')) + '</span></div>';
+      if (rc.type === 'party') return '<div class="cm rcm' + (me ? ' mine' : '') + (recDone(rc) ? ' rcdone' : '') + '" data-id="' + m.id + '"><span class="ct num">' + time + '</span><span class="cx"><span class="rchead"><b>' + esc(m.name) + '</b> 님의 파티원 모집 · <b>' + esc(rc.name || '') + '</b> · <b class="num">' + (recLive(rc).n || +rc.n || 1) + '/' + (recLive(rc).max || +rc.max || 4) + '</b>' + (rc.floor ? ' · 별의 탑 ' + (+rc.floor) + '층 돌파' : ' · 별의 탑 도전') + '</span>' +
+        rcFoot(rc.note, recTag(rc) || (me ? '' : '<button class="btn sm" data-act="ptjoinrec" data-a="' + esc(String(rc.party || '')) + '">파티 들어가기</button>')) + '</span></div>';
       var free = ['van', 'rear', 'sup'].filter(function (k) { return (rc.pos || []).indexOf(k) < 0; });
-      return '<div class="cm rcm' + (me ? ' mine' : '') + '" data-id="' + m.id + '"><span class="ct num">' + time + '</span><span class="cx"><span class="rchead"><b>' + esc(m.name) + '</b> 님의 함께 원정 · <b>' + (+rc.s || 0) + '단계</b> ' + esc(rc.zone || '') + ' · ' + (R.DUR[rc.d] ? R.DUR[rc.d].label : '') + ' · <b class="num">' + (+rc.n || 1) + '/' + (+rc.max || 4) + '</b>' +
+      return '<div class="cm rcm' + (me ? ' mine' : '') + (recDone(rc) ? ' rcdone' : '') + '" data-id="' + m.id + '"><span class="ct num">' + time + '</span><span class="cx"><span class="rchead"><b>' + esc(m.name) + '</b> 님의 함께 원정 · <b>' + (+rc.s || 0) + '단계</b> ' + esc(rc.zone || '') + ' · ' + (R.DUR[rc.d] ? R.DUR[rc.d].label : '') + ' · <b class="num">' + (recLive(rc).n || +rc.n || 1) + '/' + (recLive(rc).max || +rc.max || 4) + '</b>' +
         '<span class="rcpos">' + (rc.pos || []).map(function (k) { return R.EXP_POS[k] ? '<span class="postag p-' + k + '">' + R.EXP_POS[k].name + '</span>' : ''; }).join('') + (free.length ? '<span class="tiny faint">빈자리 ' + free.map(function (k) { return R.EXP_POS[k].name; }).join(' · ') + '</span>' : '') + '</span></span>' +
-        rcFoot(rc.note, me ? '' : '<button class="btn sm" data-act="erpeek" data-a="' + esc(String(rc.room || '')) + '">살펴보기</button>') + '</span></div>';
+        rcFoot(rc.note, recTag(rc) || (me ? '' : '<button class="btn sm" data-act="erpeek" data-a="' + esc(String(rc.room || '')) + '">살펴보기</button>')) + '</span></div>';
     }
     if (m.kind === 'head') return '<div class="cm head" data-id="' + m.id + '"><span class="ct num">' + time + '</span><span class="cx"><span class="tag hd">사감</span><button class="cn" data-act="houseinfo" data-a="' + esc(m.house) + '" style="color:' + hc + '">' + esc(m.name) + '</button> <span class="cb">' + chatText(m.text) + '</span></span></div>';   // 사감 한마디 (서버만 보낼 수 있다)
     var npc = String(m.pid).indexOf('npc:') === 0;
@@ -4864,7 +4879,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102122;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102123;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
