@@ -1896,7 +1896,7 @@
     P.shelf[id]--; var cur = P.buffs['p_' + id];
     var start = cur && cur.end > now ? cur.start : now, end = Math.min((cur && cur.end > now ? cur.end : now) + p.dur, now + p.dur * 3);
     P.buffs['p_' + id] = { name: p.name, eff: p.eff, start: start, end: end, color: p.color };
-    return { ok: true };
+    return { ok: true, id: id, end: end, n: P.shelf[id] };
   };
   A.equip = function (P, W, now, a) {
     var u = str(a.u), i = P.inv.findIndex(function (x) { return x.u === u; }); if (i < 0) err('가방에 없는 장비입니다');
