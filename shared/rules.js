@@ -1866,6 +1866,18 @@
     } else { P.bossCd = now + K.BOSS_CD; log(P, now, def.name + '에게 패배했습니다 (' + Math.round((1 - f.mHp) * 100) + '%)', 'bad'); }
     return out;
   };
+  // 연구 가속: 진행 중인 연구의 남은 시간을 1시간 줄인다. 마나(내 마나 생산 2시간분) 또는 지식(그 단계 지식 비용의 절반)으로, 하루(KST) 3회
+  R.RUSH_N = 3; R.RUSH_SEC = 3600;
+  R.rushLeft = function (P, now) { var d = R.dayKST(now), r = P.rush; return R.RUSH_N - (r && r.d === d ? r.n : 0); };
+  R.rushCost = function (P, W, now, q) { var c = calc(P, W, now), rc = R.resCost(P, q.id, P.rs[q.id] || 0); return { mana: Math.max(1000, Math.floor(c.mana * 7200)), know: Math.max(200, Math.floor(rc.know * 0.5)) }; };
+  A.resRush = function (P, W, now, a) {
+    var i = int(a.i, 0, 3), q = P.rsq[i], by = str(a.by); if (!q || q.end <= now) err('진행 중인 연구가 없습니다'); if (by !== 'mana' && by !== 'know') err('잘못된 요청');
+    if (R.rushLeft(P, now) <= 0) err('오늘은 더 가속할 수 없습니다 (하루 ' + R.RUSH_N + '회 · KST 자정 초기화)');
+    var cost = R.rushCost(P, W, now, q), need = cost[by]; if ((P.res[by] || 0) < need) err((by === 'mana' ? '마나' : '지식') + '가 부족합니다');
+    P.res[by] -= need; q.end = Math.max(now, q.end - R.RUSH_SEC);
+    var d = R.dayKST(now); P.rush = { d: d, n: (P.rush && P.rush.d === d ? P.rush.n : 0) + 1 };
+    return { end: q.end, left: R.rushLeft(P, now), paid: need, by: by };
+  };
   A.resStart = function (P, W, now, a) {
     var id = str(a.id), r = RES[id], c = calc(P, W, now);
     if (!r || !R.resAvailable(P, id)) err('연구할 수 없습니다');
@@ -2041,7 +2053,8 @@
   };
   A.feed = function (P, W, now, a) {
     var id = str(a.id), o = P.fam.own[id]; if (!o) err('없는 사역마입니다'); if (o.lv >= 20) err('최대 레벨입니다');
-    var cost = R.feedCost(P, id); if (P.res.gold < cost) err(CUR + '가 부족합니다'); P.res.gold -= cost; o.lv++; return { lv: o.lv };
+    var cost = R.feedCost(P, id), cur = a.by === 'mana' ? 'mana' : 'gold';   // 먹이는 아르크 또는 같은 양의 마나로
+    if (P.res[cur] < cost) err((cur === 'mana' ? '마나' : CUR) + '가 부족합니다'); P.res[cur] -= cost; o.lv++; return { lv: o.lv, by: cur };
   };
   // 사역마 이름: 학생이 지어 준 이름(o.nm). 비우면 원래 종 이름으로
   R.FAM_NAME_MAX = 10;
