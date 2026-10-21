@@ -1973,7 +1973,7 @@
         '<div class="row small" style="margin-top:8px;gap:6px"><b class="num">Lv ' + b.lv + '</b><span class="tiny faint">/ ' + R.BADGE_MAX + '</span><span class="spacer"></span><span class="tiny faint num">' + (full ? '완성된 휘장' : gterm('별빛') + ' ' + fmt(b.xp) + ' / ' + fmt(need)) + '</span></div>' +
         '<div class="bar brass" style="height:6px;margin-top:3px"><b style="width:' + (full ? 100 : Math.min(100, b.xp / need * 100)).toFixed(1) + '%"></b></div>' +
         '<div style="margin-top:8px">' + badgeLines(b) + '</div>' +
-        badgeUps(b, full, pc, can) + '<div class="row" style="margin-top:8px"><button class="btn sm ghost" data-act="bwear" data-a="">해제</button>' + lockBtn(b) + '</div></div></div>';
+        badgeUps(b, full, pc, can) + '<div class="row" style="margin-top:8px"><button class="btn sm ghost" data-act="bwear" data-a="">해제</button>' + (list.some(function (y) { return y !== b && y.lv < b.lv; }) ? '<button class="btn sm ghost"' + why('장착 중인 휘장은 재료로 사용할 수 없습니다. 먼저 해제 필요') + '>계승</button>' : '') + lockBtn(b) + '</div></div></div>';
     } else h += '<p class="small muted" style="margin-top:6px">달고 있는 휘장이 없습니다. 아래에서 하나를 달면 효과가 붙고 별빛을 모으기 시작합니다.</p>';
     var rest = list.filter(function (x) { return x !== b; });
     if (rest.length) h += '<div class="section-t" style="margin-top:12px;font-size:13px">보관 중인 휘장</div><div class="bdglist">' + rest.map(function (x) {
@@ -2011,9 +2011,9 @@
       '<p class="tiny faint" style="margin-top:4px">재료 휘장은 사라지고, 모은 별빛의 ' + Math.round(R.BADGE_INHERIT * 100) + '%가 받는 휘장에 더해집니다. 받는 휘장의 보석 · 품질 · 세공은 그대로이며, 레벨이 오르며 ' + D.BADGE_FACET_LV.join(' · ') + '레벨을 넘으면 새 세공이 새겨집니다. 비용: 마석가루 ' + R.badgeInheritCost(src) + '개 (보유 ' + fmt(P.res.dust || 0) + ')</p>';
     if (!tg.length) return h + '<p class="small muted" style="margin-top:8px">레벨이 더 낮은 휘장이 없습니다.</p>';
     return h + '<div class="bdglist" style="margin-top:10px">' + tg.map(function (y) {
-      var pv = R.badgeInheritPreview(src, y), why = R.badgeInheritCheck(P, src, y), armed = S.confirm['bi' + y.u] > Date.now();
+      var pv = R.badgeInheritPreview(src, y), no = R.badgeInheritCheck(P, src, y), armed = S.confirm['bi' + y.u] > Date.now();
       return '<div class="bdgrow"><div style="flex:1;min-width:0"><div class="small ell">' + esc(y.name) + ' ' + badgeSvg(y) + (P.badgeOn === y.u ? ' <span class="tag ok">장착 중</span>' : '') + '</div><div class="tiny">Lv ' + y.lv + ' → <b class="gold">Lv ' + pv.lv + '</b> · 별빛 +' + fmt(Math.floor(R.badgeTotalXp(src) * R.BADGE_INHERIT)) + (pv.facets ? ' · 새 세공 ' + pv.facets + '줄' : '') + '</div></div>' +
-        '<span class="frbtns"><button class="btn sm ' + (armed ? 'danger' : 'primary') + '" data-act="binheritgo" data-a="' + src.u + '" data-b="' + y.u + '"' + (why ? ' disabled title="' + esc(why) + '"' : '') + '>' + (armed ? '한 번 더 누르면 계승합니다' : '여기에 계승') + '</button></span></div>';
+        '<span class="frbtns"><button class="btn sm ' + (armed ? 'danger' : 'primary') + '" data-act="binheritgo" data-a="' + src.u + '" data-b="' + y.u + '"' + (no ? why(no) : '') + '>' + (armed ? '한 번 더 누르면 계승합니다' : '여기에 계승') + '</button></span></div>';
     }).join('') + '</div>';
   }
   ACT.binherit = function (u) { modal(mhead('휘장 계승', '높은 레벨 휘장의 별빛을 낮은 레벨 휘장으로') + '<div id="bibox">' + binheritBody(u) + '</div><div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn" data-act="modal-close">닫기</button></div>'); };
@@ -5189,7 +5189,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102234;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102235;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
