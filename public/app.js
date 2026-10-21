@@ -2748,7 +2748,7 @@
     var h = pageHead('파티와 함께 오르는 탑', '<span class="phimg">' + dotImg('tower', 40, '', 'twimg') + '별의 탑</span>', '실전 하루 1회 · 월요일 KST 0시 기록 초기화');
     if (!S.partyD || Date.now() - S.partyAt > 20000) { if (Date.now() - S.partyAt > 1500) loadParty(); }
     if (!S.party) return h + '<div class="card hl"><h3>파티와 함께 오르는 탑</h3><p class="small" style="margin-top:4px">별의 탑은 파티가 함께 1층부터 실시간으로 오르는 곳입니다. 실전은 파티 단위로 하루 1번이며, 파티가 쓰러질 때까지 층을 이어 오릅니다. 연습은 언제든 할 수 있습니다.</p><p class="small muted" style="margin-top:6px">파티에 들어가 있어야 도전할 수 있습니다. 혼자서도 파티를 만들 수 있고, 빈자리는 아카데미 친구(NPC)를 불러 채울 수 있습니다.</p><div class="row" style="margin-top:10px;gap:6px"><button class="btn primary" data-act="twparty">파티 만들기</button><button class="btn ghost" data-act="nav" data-a="party">파티 화면으로</button></div></div>';
-    return h + towerStage() + towerCard() + twPrep() + towerRuns() + '<div class="row" style="margin-top:10px"><span class="tiny faint">파티원 · 초대 · 아카데미 친구 · 파티 이름은 파티 화면에서 관리합니다.</span><span class="spacer"></span><button class="btn sm ghost" data-act="nav" data-a="party">파티 화면</button></div>';
+    return h + towerStage() + towerCard() + twPrep() + towerRuns() + '<div class="row" style="margin-top:10px"><span class="tiny faint">파티원 · 초대 · 아카데미 친구는 파티 화면에서 관리합니다. 파티 이름은 파티장이 이곳이나 파티 화면에서 바꿀 수 있습니다.</span><span class="spacer"></span><button class="btn sm ghost" data-act="nav" data-a="party">파티 화면</button></div>';
   };
   ACT.twparty = function () { API.partyOp({ op: 'create', name: (S.P.name + '의 파티').slice(0, 12) }).then(function (j) { if (j.error) { toast('파티', j.error); return; } S.party = (j.party && j.party.id) || 'p'; S.partyAt = 0; S.towerAt = 0; S.towerD = null; renderDock(); toast('파티', '파티를 만들었습니다 · 이제 별의 탑에 도전할 수 있습니다', 2600); sync(true); render(); }); };
   function towerCard() {
@@ -2759,12 +2759,12 @@
     var lob = t.lobby, nr = lob ? lob.notReady : [], meReady = (t.members.filter(function (m) { return m.me; })[0] || {}).ready;
     var liveWhy = live ? live.by + ' 님이 시작한 ' + TW_KIND[live.kind] + '이 진행 중입니다' : '';
     var realWhy = liveWhy || (t.used.length ? '오늘 이미 실전에 도전한 파티원이 있습니다: ' + t.used.join(', ') : '');
-    var h = '<div class="card tower" data-anchor="tower"><div class="row between"><h3 class="twhead">' + dotImg('tower', 32, '', 'twimg') + '파티 「' + esc(t.name) + '」 <span class="tag br">내 기록 ' + t.myBest + '층</span></h3><span class="tiny faint">기록 초기화까지 ' + left(t.weekEnd) + '</span></div>' +
+    var h = '<div class="card tower" data-anchor="tower"><div class="row between"><h3 class="twhead">' + dotImg('tower', 32, '', 'twimg') + '파티 「' + esc(t.name) + '」' + (t.leader === S.P.id ? ' <button class="btn sm ghost" data-act="ptrename">이름 변경</button>' : '') + ' <span class="tag br">내 기록 ' + t.myBest + '층</span></h3><span class="tiny faint">기록 초기화까지 ' + left(t.weekEnd) + '</span></div>' +
       '<div class="twteam">' + t.members.map(function (m) {
         var pos = R.EXP_POS[m.pos];
         return '<div class="twm"><span class="small ell" style="color:' + (R.HOUSE[m.house] ? R.HOUSE[m.house].color : 'inherit') + '">' + esc(m.name) + (m.npc ? ' <span class="tag npc">NPC</span>' : '') + (m.me ? ' <span class="tag">나</span>' : '') + '</span>' +
           '<span class="tiny"><span class="tag' + (m.pos === 'van' ? ' br' : m.pos === 'sup' ? ' ok' : '') + '">' + (pos ? pos.name : '') + '</span> ' + (m.npc ? '<span class="faint">내 힘의 30%</span>' : '<span class="faint">기록</span> <b class="num">' + m.best + '층</b>' + (m.used ? ' · <span class="gold">오늘 실전 완료</span>' : '')) + ' ' + (lob ? (m.ready ? '<span class="tag ok">준비 완료</span>' : '<span class="tag">준비 중</span>') : '') + '</span>' +
-          '<span class="tiny faint num">전투력 ' + fmt(m.power) + ' · 생명력 ' + fmt(m.hp) + '</span></div>';
+          '<span class="tiny faint num">초당 피해 ' + fmt(m.power) + ' · 생명력 ' + fmt(m.hp) + '</span></div>';
       }).join('') + '</div>' +
       '<div style="margin-top:10px"><div class="small">내 포지션</div><div class="filters" style="margin-top:4px">' + ['van', 'rear', 'sup'].map(function (k) {
         var x = R.EXP_POS[k], ok = t.posOk.indexOf(k) >= 0;
@@ -2825,7 +2825,7 @@
       render();
     }, function () { S.busy = false; toast('별의 탑', '연결 오류'); });
   };
-  ACT.ptrename = function () { var pa = S.partyD && S.partyD.party; modal(mhead('파티 이름 변경', '파티장만 바꿀 수 있습니다') + '<div class="row" style="margin-top:6px"><input id="pt-rename" maxlength="12" value="' + esc(pa ? pa.name : '') + '" placeholder="파티 이름 (2~12자)" style="flex:1;min-width:0"><button class="btn primary" data-act="pop" data-a="rename">변경</button></div><p class="tiny faint" style="margin-top:6px">한글 · 영문 · 숫자 2~12자</p><div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn" data-act="modal-close">닫기</button></div>'); };
+  ACT.ptrename = function () { var pa = (S.partyD && S.partyD.party) || (S.towerD && S.towerD.party ? { name: S.towerD.name } : null); modal(mhead('파티 이름 변경', '파티장만 바꿀 수 있습니다') + '<div class="row" style="margin-top:6px"><input id="pt-rename" maxlength="12" value="' + esc(pa ? pa.name : '') + '" placeholder="파티 이름 (2~12자)" style="flex:1;min-width:0"><button class="btn primary" data-act="pop" data-a="rename">변경</button></div><p class="tiny faint" style="margin-top:6px">한글 · 영문 · 숫자 2~12자</p><div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn" data-act="modal-close">닫기</button></div>'); };
   ACT.pop = function (op, b) {
     var o = { op: op };
     if (op === 'create') o.name = ($('#pt-name') || {}).value || '';
@@ -5479,7 +5479,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102269;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102270;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
