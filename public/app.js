@@ -1457,9 +1457,21 @@
   }
 
   /* ── 강의실 ── */
+  /* 콘텐츠 화면의 물약 줄: 그 화면에 효과가 있는 물약(effs가 null이면 전부) 중 가진 것을 바로 마신다. 마시는 중이면 남은 시간 */
+  function potBar(effs) {
+    var P = S.P, n = now(), list = D.POTIONS.filter(function (p) { return !effs || Object.keys(p.eff).some(function (k) { return effs.indexOf(k) >= 0; }); });
+    var items = list.filter(function (p) { var bf = P.buffs['p_' + p.id]; return (P.shelf[p.id] || 0) > 0 || (bf && bf.end > n); });
+    if (!items.length) return '';
+    return '<div class="potbar">' + items.map(function (p) {
+      var k = P.shelf[p.id] || 0, bf = P.buffs['p_' + p.id], on = bf && bf.end > n;
+      return '<span class="potb"><span class="pot-ic" style="background:' + p.color + '"></span><span class="small" title="' + esc(p.desc) + '">' + p.name + (on ? ' <span class="tiny good">' + R.fmtTime(bf.end - n) + '</span>' : '') + '</span>' +
+        (k > 0 ? '<button class="btn sm ghost" data-act="do" data-a="drink" data-b="' + p.id + '" title="' + esc(p.desc) + '">마시기 <span class="tiny faint">×' + k + '</span></button>' : '') + '</span>';
+    }).join('') + '</div>';
+  }
   V.lecture = function () {
     var P = S.P, c = C(), ex = R.examFor(P);
     var h = pageHead('일곱 과목, 일곱 해', '강의실', '수업 효율 <b class="num gold">×' + c.lecSpd.toFixed(2) + '</b> <span class="muted">경험치 · 지식 획득량</span>');
+    h += potBar(['lectureSpd', 'knowPct', 'xpPct', 'offlineEff']);
     R.lecQ(P); h += ttCard(c);
     var nL = 0; for (var i0 = 0; i0 < 3; i0++) { if (i0 >= c.lecSlots && !P.lec[i0]) break; nL++; }
     h += '<div class="grid gauto' + (nL === 1 ? ' one' : '') + '" style="margin-bottom:16px">';   // 한 자리면 가로로 넓게
@@ -1750,6 +1762,7 @@
     var P = S.P, c = C(), cap = Math.min(P.maxStage, R.stageCap(P));
     var shown = P.exp.find(Boolean), z = R.zoneOf(shown ? shown.s : (S.pick.es0 || R.bestStage(P, wctx())));
     var gcap = R.gradeCap(P), h = pageHead(z.name, '원정', '열린 단계 <b class="num gold">1–' + cap + '</b>' + (cap > gcap ? ' <span class="tag br" title="학년 상한 ' + gcap + '단계 너머를 레벨로 열었습니다">레벨로 +' + (cap - gcap) + '</span>' : ''));
+    h += potBar(null);   // 원정 화면은 물약 전부
     var running = P.exp.map(function (j, i) { return j ? i : -1; }).filter(function (i) { return i >= 0; });
     h += '<div class="grid ' + (running.length > 1 ? 'g2' : '') + '">' + (running.length ? running.map(function (i) { var j = P.exp[i]; return '<div class="card explogcard"><div class="row between"><h3>원정 일지 <span class="small muted">' + j.s + '단계 · ' + R.zoneOf(j.s).name + '</span></h3><span class="tiny faint num" data-l="left:' + j.end + '"></span></div><div class="row tiny muted" style="margin-top:2px;gap:12px"><span>처치 약 <b class="num" data-l="expk:' + i + '"></b></span><span>' + CUR + ' 약 <b class="num gold" data-l="expg:' + i + '"></b></span></div><div class="logw"><div class="explog" data-explog="' + i + '" aria-live="off"></div><button class="lognew" hidden></button></div></div>'; }).join('')
       : '<div class="card inset"><p class="small muted">출정하면 이곳에 원정 일지가 몇십 초마다 한 줄씩 적힙니다. 창을 닫아 두어도 원정은 그대로 진행됩니다.</p></div>') + '</div>';
@@ -2208,7 +2221,7 @@
     if (nv && nv.checked) act('opt', { k: 'bulkAsk', v: false });
     ACT['do'](type, r);
   };
-  var PNAMES = { balance: '균형', attack: '공격', guard: '생존', scholar: '학구' };
+  var PNAMES = { balance: '균형', attack: '공격', guard: '생존', scholar: '학구', mine: '개인' };
   // 프리셋을 고른 이유 (학과마다 공격 능력치가 다르다: 기사 = 체력, 마법사 = 지력)
   var PWHY = {
     mage: { balance: '주문 공격력을 올리는 지력을 중심으로, 의지 · 체력으로 버티는 힘을 보탭니다.', attack: '지력과 민첩을 높여 주문 · 평타 화력을 최대로 끌어올립니다. 생존력은 낮은 편입니다.', guard: '체력을 높여 쉽게 쓰러지지 않게 하면서 지력도 챙깁니다. 높은 단계나 보스에 적합합니다.', scholar: '의지로 마나 재생을, 지력으로 수업 효율을 올려 성장 속도에 집중합니다.' },
@@ -2222,7 +2235,8 @@
     return '기본 ' + fmt(c.stat[k] - al - sj - gr) + ' · 분배 ' + pl(al) + (sj ? ' · 과목 ' + pl(sj) : '') + ' · 장비 ' + pl(gr);
   }
   function allocCard() {
-    var P = S.P, c = C(), PRESETS = PRESETS_(), cur = Object.keys(PRESETS).find(function (k) { return JSON.stringify(PRESETS[k]) === JSON.stringify(P.opt.allocW); });
+    var P = S.P, c = C(), PRESETS = Object.assign({}, PRESETS_()), my = P.opt.allocMy; if (my) PRESETS.mine = my;   // 개인 프리셋
+    var cur = Object.keys(PRESETS).find(function (k) { return JSON.stringify(PRESETS[k]) === JSON.stringify(P.opt.allocW); });
     var rsn = (P.tok && P.tok.respec) || 0, rsArm = S.confirm.rsp > Date.now();
     var dr = S.allocDraft || {}, dsum = R.STATS.reduce(function (a, k) { return a + (dr[k] || 0); }, 0), left = P.pts - dsum;   // 나눠 보는 중 (저장 전)
     if (left < 0) { S.allocDraft = null; dr = {}; dsum = 0; left = P.pts; }   // 그사이 포인트가 줄었으면 나눠 보던 것은 버린다
@@ -2230,10 +2244,10 @@
     R.STATS.forEach(function (k) { var d = dr[k] || 0; h += '<span>' + D.STAT_NAMES[k] + '</span><span class="tiny faint">' + sdesc(k, c.stat[k] + d) + '<br><span class="num">' + statSplit(c, k) + '</span></span><span class="allocv"><button class="btn sm ghost" data-act="alloc" data-a="' + k + '" data-b="-1" aria-label="' + D.STAT_NAMES[k] + ' 하나 빼기"' + (d ? '' : ' style="visibility:hidden" tabindex="-1"') + '>−1</button><b class="num">' + fmt(c.stat[k]) + '</b><span class="good num allocd">' + (d ? '+' + d : '') + '</span></span><span class="row" style="gap:4px;flex-wrap:nowrap"><button class="btn sm" data-act="alloc" data-a="' + k + '" data-b="1"' + (left ? '' : ' disabled') + '>+1</button><button class="btn sm ghost" data-act="alloc" data-a="' + k + '" data-b="10"' + (left >= 2 ? '' : ' disabled') + '>+10</button></span>'; });
     if (dsum) h += '</div><div class="row allocsave" style="margin-top:8px;gap:6px"><span class="small gold">' + R.STATS.filter(function (k) { return dr[k]; }).map(function (k) { return D.STAT_NAMES[k] + ' +' + dr[k]; }).join(' · ') + '</span><span class="spacer"></span><button class="btn sm ghost" data-act="alloc-reset">되돌리기</button><button class="btn sm primary" data-act="alloc-save">저장</button><div class="alloc" style="display:none">';
     var why = PWHY[P.cls === 'knight' ? 'knight' : 'mage'], tot = 0, W0 = cur ? PRESETS[cur] : null; if (W0) R.STATS.forEach(function (k) { tot += W0[k] || 0; });
-    var info = W0 ? '<p class="tiny muted" style="margin-top:6px"><b>' + PNAMES[cur] + '</b> · ' + R.STATS.filter(function (k) { return W0[k]; }).sort(function (a, b) { return W0[b] - W0[a]; }).map(function (k) { return D.STAT_NAMES[k] + ' ' + Math.round(W0[k] / tot * 100) + '%'; }).join(' · ') + '<br>' + why[cur] + '</p>' : '<p class="tiny faint" style="margin-top:6px">직접 정한 비율입니다. 프리셋을 누르면 해당 비율로 바뀝니다.</p>';
+    var info = W0 ? '<p class="tiny muted" style="margin-top:6px"><b>' + PNAMES[cur] + '</b> · ' + R.STATS.filter(function (k) { return W0[k]; }).sort(function (a, b) { return W0[b] - W0[a]; }).map(function (k) { return D.STAT_NAMES[k] + ' ' + Math.round(W0[k] / tot * 100) + '%'; }).join(' · ') + '<br>' + (why[cur] || '직접 정한 개인 프리셋입니다.') + '</p>' : '<p class="tiny faint" style="margin-top:6px">직접 정한 비율입니다. 프리셋을 누르면 해당 비율로 바뀝니다.</p>';
     return h + '</div><hr class="sep"><label class="tog"><input type="checkbox" id="opt-aa" data-act="opt" data-a="autoAlloc"' + (P.opt.autoAlloc ? ' checked' : '') + '> 레벨업 시 자동 분배</label>' +
       (P.opt.autoAlloc ? '<p class="tiny gold" style="margin-top:4px">선택한 프리셋' + (cur ? ' 「' + PNAMES[cur] + '」' : '') + '대로 능력치가 분배됩니다.</p>' : '<p class="tiny faint" style="margin-top:4px">꺼져 있으면 레벨업 포인트를 직접 분배합니다.</p>') +
-      '<div class="filters" style="margin-top:8px">' + Object.keys(PRESETS).map(function (k) { return '<button class="btn sm ghost' + (cur === k ? ' on' : '') + '" data-act="preset" data-a="' + k + '">' + PNAMES[k] + '</button>'; }).join('') + '</div>' + info + '<p class="tiny faint" style="margin-top:6px">레벨마다 2포인트. 매점의 「망각의 차」로 초기화할 수 있습니다.</p></div>';
+      '<div class="filters" style="margin-top:8px">' + Object.keys(PRESETS).map(function (k) { return '<button class="btn sm ghost' + (cur === k ? ' on' : '') + '" data-act="preset" data-a="' + k + '">' + PNAMES[k] + '</button>'; }).join('') + '<button class="btn sm ghost" data-act="allocmy">' + (my ? '개인 프리셋 편집' : '+ 개인 프리셋') + '</button></div>' + info + '<p class="tiny faint" style="margin-top:6px">레벨마다 2포인트. 매점의 「망각의 차」로 초기화할 수 있습니다.</p></div>';
   }
 
   /* ── 연금 공방 · 환수 사역장 ── */
@@ -2241,7 +2255,7 @@
     var h = pageHead('연금화학 실습실', '연금 공방', '');
     return h + (S.P.grade >= 2 ? alchView() : '<div class="card inset"><p class="small muted">연금 공방은 2학년부터 사용할 수 있습니다. 재료와 마나로 물약을 만들고, 거래소에 내다 팔 수도 있습니다.</p></div>');
   };
-  V.fam = function () { return pageHead('환수 사육장', '환수 사역장', '') + famView(); };
+  V.fam = function () { return pageHead('환수 사육장', '환수 사역장', '') + potBar(['dispPct']) + famView(); };
   function matTag(m, need) { var have = S.P.mats[m] || 0; return '<span class="tag ' + (have >= need ? 'ok' : 'no') + '">' + D.MATS[m].name + ' ' + fmt(have) + '/' + need + '</span>'; }
   function alchView() {
     var P = S.P, c = C(), cnt = +(S.pick.bn || 1);
@@ -2968,7 +2982,7 @@
         '<div class="row" style="justify-content:flex-end;margin-top:14px;gap:8px"><button class="btn ghost" data-act="modal-close" autofocus>확인</button>' + (g.n > 1 ? '<button class="btn" data-act="gquitgo2">부원 탭으로</button>' : '<button class="btn danger" data-act="gdisband">동아리 해체</button>') + '</div>');
       return;
     }
-    modal(mhead('동아리 탈퇴', esc(g.name)) + '<p class="small">「' + esc(g.name) + '」 동아리에서 탈퇴하시겠습니까?</p><p class="tiny faint" style="margin-top:6px">쌓은 기여도는 사라지며, 다시 들어오면 0부터 시작합니다.</p>' +
+    modal(mhead('동아리 탈퇴', esc(g.name)) + '<p class="small">「' + esc(g.name) + '」 동아리에서 탈퇴하시겠습니까?</p><p class="tiny faint" style="margin-top:6px">쌓은 기여도는 사라지며, 다시 들어오면 0부터 시작합니다. 탈퇴 후 24시간 동안은 어느 동아리에도 가입 · 신청 · 창설할 수 없습니다.</p>' +
       '<div class="row" style="justify-content:flex-end;margin-top:14px;gap:8px"><button class="btn ghost" data-act="modal-close" autofocus>취소</button><button class="btn danger" data-act="gquitgo">탈퇴하기</button></div>');
   };
   ACT.gquitgo = function () { closeModal(); API.guildOp({ op: 'leave' }).then(function (j) { gDone(j, '동아리에서 탈퇴했습니다'); }); };
@@ -3966,7 +3980,18 @@
       '<p class="tiny faint" style="margin-top:8px">저장하면 되돌릴 수 없습니다. 다시 나누려면 「망각의 차」가 필요합니다.</p><div class="row" style="justify-content:flex-end;gap:8px;margin-top:12px"><button class="btn ghost" data-act="modal-close">취소</button><button class="btn primary" data-act="alloc-go">저장</button></div>');
   };
   ACT['alloc-go'] = function () { var d = S.allocDraft || {}; act('allocMany', { add: d }).then(function (r) { closeModal(); if (r) { S.allocDraft = null; Snd.play('click'); toast('능력치를 나눴습니다', r.n + '포인트', 1800); } render(); }); };
-  ACT.preset = function (k) { act('allocW', { w: PRESETS_()[k] }).then(render); };
+  ACT.preset = function (k) { act('allocW', { w: k === 'mine' ? S.P.opt.allocMy : PRESETS_()[k] }).then(render); };
+  // 개인 프리셋: 능력치마다 비율(0~10)을 정해 저장하면 바로 적용된다
+  ACT.allocmy = function () {
+    var w = S.P.opt.allocMy || S.P.opt.allocW || {};
+    modal(mhead('개인 프리셋', '레벨업 포인트를 나눌 비율') + '<p class="small muted">숫자가 클수록 그 능력치에 포인트가 많이 분배됩니다. 0이면 분배하지 않습니다.</p><div class="stack" style="gap:8px;margin-top:10px">' +
+      R.STATS.map(function (k) { return '<label class="row" style="gap:10px"><span style="width:4em">' + D.STAT_NAMES[k] + '</span><input type="number" class="amy" data-k="' + k + '" min="0" max="10" step="0.5" value="' + (+w[k] || 0) + '" style="width:90px"></label>'; }).join('') +
+      '</div><div class="row" style="justify-content:flex-end;margin-top:14px;gap:8px"><button class="btn ghost" data-act="modal-close">취소</button><button class="btn primary" data-act="allocmygo">저장하고 적용</button></div>');
+  };
+  ACT.allocmygo = function () {
+    var w = {}; $$('.amy').forEach(function (i) { var v = parseFloat(i.value); w[i.dataset.k] = isFinite(v) ? Math.max(0, Math.min(10, v)) : 0; });
+    act('allocW', { w: w, mine: true }).then(function (r) { if (!r) return; closeModal(); toast('개인 프리셋', '저장했습니다 · ' + (S.P.opt.autoAlloc ? '레벨업 시 이 비율로 분배됩니다' : '「레벨업 시 자동 분배」를 켜면 이 비율로 분배됩니다')); render(); });
+  };
   // 사역마 이름 짓기: 비우고 저장하면 원래 이름으로
   ACT.famname = function (id) {
     var o = S.P.fam.own[id], f = R.FAM[id]; if (!o || !f) return;
@@ -4984,7 +5009,25 @@
   ACT['av-clear'] = function () { S.peAv = null; ACT.me('profile'); };   // 저장을 눌러야 실제로 지워진다
   // 두상: 고른 사진을 자르기 창에서 확대 · 축소 · 이동해 영역을 정하고, 반씩 줄여 가며(계단식 축소로 선명하게) 100×100 JPEG로 만든다
   // 연구 효과 합계: 설명의 숫자에 단계를 곱한다 ('생명력 +8%' × 3 → '생명력 +24%')
-  function resTotal(r, lv) { if (/[-−]\d/.test(r.desc) || !/\d/.test(r.desc)) return ''; return r.desc.replace(/([+−-])(\d+(?:\.\d+)?)(%|시간분|칸)?/g, function (m, s, n, u) { return s + (Math.round(n * lv * 10) / 10) + (u || ''); }); }
+  // 연구의 지금 효과 (단계 × 단계당 효과). 비용이 줄어드는 연구는 실제 줄어드는 비율로
+  function resTotal(r, lv) {
+    if (!lv) return ''; var out = [], e = r.eff || {}, p1 = function (v) { return Math.round(v * 1000) / 10 + '%'; };
+    for (var k in e) {
+      var v = e[k] * lv;
+      if (k === 'brewSpd') out.push('양조 비용 −' + p1(1 - 1 / (1 + v)));
+      else if (k === 'hatchSpd') out.push('부화 비용 −' + p1(1 - 1 / (1 + v)));
+      else if (k === 'bag') out.push('가방 칸 +' + v);
+      else if (k === 'jarCap') out.push('반딧불 정령 병 +' + v + '칸');
+      else if (k === 'autosell') out.push('자동 판매 해금');
+      else if (k === 'manaCap') out.push('마나 저장 한도 +' + Math.round(v / 360) / 10 + '시간분');
+      else if (k === 'enhBonus') out.push('강화 성공률 +' + Math.round(v * 1000) / 10 + '%p');
+      else if (k === 'rarity') out.push('등급 상승 +' + p1(v));
+      else if (k === 'hpPct') out.push('생명력 +' + p1(v));
+      else { var t = R.effText(o1(k, v)); if (t) out.push(t); }
+    }
+    return out.join(', ');
+    function o1(k, v) { var o = {}; o[k] = v; return o; }
+  }
   function loadAvatarImg(file) {
     return new Promise(function (ok, no) {
       if (!file || !/^image\//.test(file.type)) return no(new Error('그림 파일 선택 필요'));
@@ -5250,7 +5293,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102258;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102259;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

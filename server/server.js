@@ -1774,6 +1774,9 @@ function gwqView(members, P, now) {
   const w = R.weekId(now), Qs = members.map((m) => store.get(m.id)).filter(Boolean);
   return { wk: w, end: R.weekStart(w + 1), list: R.GWQ.map((q) => ({ id: q.id, name: q.name, unit: q.unit, goal: q.goal, need: R.gwqNeed(q), prog: Qs.reduce((a, Q) => a + R.gwqMine(Q, q, w), 0), mine: R.gwqMine(P, q, w), got: !!(P && P.gwq && P.gwq.wk === w && P.gwq.got[q.id]) })), reward: P ? R.gwqReward(P) : null };
 }
+// 동아리를 스스로 탈퇴하면 24시간(현실 시간) 동안 다른 동아리에 가입 · 신청 · 창설할 수 없다
+const G_REJOIN = 24 * 3600;
+function gRejoinMsg(pid) { const Q = store.get(pid), left = Q && Q.gLeftAt ? Q.gLeftAt + G_REJOIN - Date.now() / 1000 : 0; return left > 0 ? '동아리 탈퇴 후 24시간 동안은 가입할 수 없습니다 (' + Math.ceil(left / 3600) + '시간 남음)' : ''; }
 function gJoin(pid, gid, role) { dbx.q.gJoin.run(pid, gid, role, Math.floor(Date.now() / 1000)); dbx.q.gAppDelAll.run(pid); dbx.q.ginvDelPid.run(pid); guildOf.set(pid, gid); guildRole.set(pid, role); if (!guildLv.has(gid)) guildLv.set(gid, (dbx.q.gGet.get(gid) || {}).lv || 1); chat.guildChanged(pid); const P = store.peek(pid); if (P && setGuildLv(P)) store.markDirty(pid); }
 function gLeave(pid) { const g = guildOf.get(pid); dbx.q.gLeave.run(pid); guildOf.delete(pid); guildRole.delete(pid); chat.guildChanged(pid); const P = store.peek(pid); if (P && setGuildLv(P)) store.markDirty(pid); return g; }
 function gSys(gid, text) { const now = Date.now() / 1000; chat.system('grp', text, now, gid); chat.system('gooc', text, now, gid); }
@@ -1836,6 +1839,7 @@ routes['POST /api/guild'] = async (req, res) => {
   const target = String(b.pid || ''), tRole = guildRole.get(target), sameG = target && guildOf.get(target) === mine;
   const ok = (extra) => send(req, res, 200, Object.assign({ ok: true, guild: mine || guildOf.get(me) ? gView(me, guildOf.get(me), true) : null }, extra || {}));
   const nameOf = (pid) => { const w = dbx.q.getProfile.get(pid); return w ? w.name : '학생'; };
+  if ((op === 'join' || op === 'create' || op === 'inviteAccept') && !mine && gRejoinMsg(me)) return fail(req, res, 400, gRejoinMsg(me));
   if (op === 'create') {
     if (meta.guest) return fail(req, res, 403, '게스트는 동아리를 만들 수 없습니다. 정식 학생 등록 필요');
     if (mine) return fail(req, res, 400, '이미 동아리에 들어가 있습니다');
@@ -1898,6 +1902,7 @@ routes['POST /api/guild'] = async (req, res) => {
     dbx.q.gAppDel.run(target, mine);
     if (op === 'accept') {
       if (guildOf.get(target)) return fail(req, res, 400, '이미 다른 동아리에 들어간 학생입니다');
+      if (gRejoinMsg(target)) return fail(req, res, 400, '탈퇴 후 24시간이 지나지 않은 학생입니다');
       if (gCount(mine) >= R.guildCap(g.lv)) return fail(req, res, 400, '정원이 가득 찼습니다');
       gJoin(target, mine, 'member'); gSys(mine, nameOf(target) + ' 님이 동아리에 들어왔습니다.'); gLog(mine, nameOf(target) + ' 님 가입 (' + P.name + ' 님이 승인)');
       addNote(target, 'guild', '동아리 「' + g.name + '」 가입이 승인되었습니다', { view: 'guild' });
@@ -1911,7 +1916,7 @@ routes['POST /api/guild'] = async (req, res) => {
   if (op === 'leave') {
     if (role === 'owner' && gCount(mine) > 1) return fail(req, res, 400, '부원이 있으면 회장은 나갈 수 없습니다. 먼저 회장 위임 필요');
     if (role === 'owner') return fail(req, res, 400, '혼자 남은 회장은 「동아리 해체」로 정리 필요');
-    gLeave(me); gSys(mine, P.name + ' 님이 동아리에서 나갔습니다.'); gLog(mine, P.name + ' 님 탈퇴');
+    gLeave(me); P.gLeftAt = Math.floor(Date.now() / 1000); store.markDirty(me); gSys(mine, P.name + ' 님이 동아리에서 나갔습니다.'); gLog(mine, P.name + ' 님 탈퇴');
     return send(req, res, 200, { ok: true, guild: null });
   }
   if (op === 'kick') {
