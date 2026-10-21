@@ -1712,14 +1712,21 @@ function gView(me, id, full) {
     o.items = dbx.q.giList.all(id).map((r) => { const it = JSON.parse(r.data); return { id: r.id, name: r.name, r: r.rarity, ilvl: r.ilvl, slot: r.slot, by: r.by_name, t: r.t, item: it }; });
     o.log = dbx.q.glList.all(id, 30);
     o.ranksMax = R.guildRanksMax(lv);
-    if (lv >= R.GRIT_LV) { const st = gritState(id, members.length, nowSec()); o.rit = { n: st.pids.length, goal: st.goal, done: st.done, mine: st.pids.indexOf(me) >= 0, cost: P ? R.ritualCost(P, world.ctx(nowSec()), nowSec()) : 0 }; }
+    if (lv >= R.GRIT_LV) { const t = nowSec(), st = gritState(id, members.length, t), bf = P && P.buffs && P.buffs.gritual; o.rit = { n: st.pids.length, goal: st.goal, done: st.done, mine: st.pids.indexOf(me) >= 0, claimed: st.claimed.indexOf(me) >= 0 || (!!P && P.gritDay === st.day), until: R.nextMidnight(t), end: bf && bf.end > t ? bf.end : 0, cost: P ? R.ritualCost(P, world.ctx(t), t) : 0 }; }
     if (lv >= R.GWQ_LV) o.wq = gwqView(members, P, nowSec());
     if (o.perms.invite) o.apps = dbx.q.gApps.all(id).map((a) => ({ id: a.id, t: a.t, msg: sec.dec(a.msg), name: a.name, house: a.house, grade: a.grade, lvl: a.lvl, av: a.avatar_v }));
   }
   return o;
 }
-/* 동아리 의식: 동아리마다 하루 한 번. 목표는 그날 처음 봉헌할 때의 부원 수로 정한다 */
-function gritState(gid, n, now) { const d = R.dayKST(now); let st = dbx.kvGet('grit:' + gid, null); if (!st || st.day !== d) { st = { day: d, pids: [], done: 0, goal: R.gritGoal(n) }; } return st; }
+/* 동아리 의식: 동아리마다 하루 한 번. 목표는 그날 처음 봉헌할 때의 부원 수로 정한다.
+   의식이 이루어지면 봉헌한 부원이 각자 원할 때 「축복 받기」를 눌러 그때부터 축복을 받는다 (그날 KST 자정까지, 하루 한 번).
+   claimed가 없는 옛 기록: 이미 이루어진 의식은 예전 방식대로 봉헌한 부원 모두가 축복을 받았으므로 모두 받은 것으로 친다 */
+function gritState(gid, n, now) {
+  const d = R.dayKST(now); let st = dbx.kvGet('grit:' + gid, null);
+  if (!st || st.day !== d) st = { day: d, pids: [], done: 0, goal: R.gritGoal(n), claimed: [] };
+  if (!Array.isArray(st.claimed)) st.claimed = st.done ? st.pids.slice() : [];
+  return st;
+}
 // 주간 동아리 과제: 부원들의 이번 주 기록을 합친다 (주가 바뀐 뒤 아직 들어오지 않은 부원은 0)
 function gwqView(members, P, now) {
   const w = R.weekId(now), Qs = members.map((m) => store.get(m.id)).filter(Boolean);
@@ -1926,12 +1933,22 @@ routes['POST /api/guild'] = async (req, res) => {
     const cost = R.ritualCost(P, world.ctx(gnow), gnow); if (P.res.mana < cost) return fail(req, res, 400, '마나가 모자랍니다 (마나 ' + R.fmt(cost) + ' 필요)');
     P.res.mana -= cost; st.pids.push(me); store.markDirty(me);
     R.log(P, gnow, '동아리 의식에 마나 ' + R.josa(R.fmt(cost), '을', '를') + ' 봉헌했습니다', 'news'); gLog(mine, P.name + ' 님이 동아리 의식에 봉헌 (' + st.pids.length + '/' + st.goal + ')');
-    if (st.done) R.gritBless(P, gnow);
-    else if (st.pids.length >= st.goal) {
+    if (!st.done && st.pids.length >= st.goal) {
       st.done = gnow;
-      st.pids.forEach((pid) => { const Q = pid === me ? P : store.get(pid); if (Q) { R.gritBless(Q, gnow); R.log(Q, gnow, '동아리 의식이 이루어졌습니다. ' + R.GRIT_BUFF.text, 'story'); store.markDirty(pid); } });
-      gSys(mine, '✦ 오늘의 동아리 의식이 이루어졌습니다! 봉헌한 ' + st.pids.length + '명에게 「' + R.GRIT_BUFF.name + '」 — ' + R.GRIT_BUFF.text + '. 아직 봉헌하지 않았다면 지금 봉헌해도 축복을 받습니다.');
+      st.pids.forEach((pid) => { const Q = pid === me ? P : store.get(pid); if (Q) { R.log(Q, gnow, '동아리 의식이 이루어졌습니다. 오늘 KST 자정 전까지 「축복 받기」를 누르면 그때부터 ' + R.GRIT_BUFF.text + ' 축복을 받습니다.', 'story'); store.markDirty(pid); } });
+      gSys(mine, '✦ 오늘의 동아리 의식이 이루어졌습니다. 봉헌한 부원은 오늘 KST 자정 전까지 원하는 때에 「축복 받기」를 누르면 그때부터 「' + R.GRIT_BUFF.name + '」 — ' + R.GRIT_BUFF.text + ' 효과를 받습니다. 아직 봉헌하지 않은 부원도 봉헌하면 받을 수 있습니다.');
     }
+    dbx.kvSet('grit:' + mine, st);
+    return ok({ P: R.publicState(P), now: gnow });
+  }
+  if (op === 'ritualClaim') {
+    if ((g.lv || 1) < R.GRIT_LV) return fail(req, res, 400, '동아리 ' + R.GRIT_LV + '레벨부터 의식을 올릴 수 있습니다');
+    const st = gritState(mine, gCount(mine), gnow);
+    if (!st.done) return fail(req, res, 400, '오늘의 동아리 의식이 아직 이루어지지 않았습니다 (' + st.pids.length + '/' + st.goal + ')');
+    if (st.pids.indexOf(me) < 0) return fail(req, res, 400, '봉헌한 부원만 축복을 받을 수 있습니다');
+    if (st.claimed.indexOf(me) >= 0 || P.gritDay === st.day) return fail(req, res, 400, '오늘은 이미 축복을 받았습니다');
+    st.claimed.push(me); P.gritDay = st.day; R.gritBless(P, gnow); store.markDirty(me);
+    R.log(P, gnow, '「' + R.GRIT_BUFF.name + '」 축복을 받았습니다. ' + R.GRIT_BUFF.text, 'story');
     dbx.kvSet('grit:' + mine, st);
     return ok({ P: R.publicState(P), now: gnow });
   }
