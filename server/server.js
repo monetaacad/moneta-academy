@@ -2032,6 +2032,21 @@ routes['POST /api/admin/grant'] = async (req, res) => {
   P.res.shard += shard; R.log(P, nowSec(), '아카데미에서 별조각 ' + shard + '개를 보냈습니다' + (b.reason ? ' (' + String(b.reason).slice(0, 60) + ')' : ''), 'news');
   store.markDirty(row.id); send(req, res, 200, { ok: true, shard: P.res.shard });
 };
+// 운영실: 자원 회수 (잘못 지급 · 장비 복구 시 분해로 얻은 것 등). 가진 만큼만 빼고(0 아래로 내리지 않음) 학생 일지에 사유와 함께 남긴다
+const RECLAIM = [['stone', '마석'], ['dust', '마석가루'], ['gold', CUR], ['shard', '별조각'], ['mana', '마나'], ['know', '지식']];
+routes['POST /api/admin/reclaim'] = async (req, res) => {
+  if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
+  const b = await readJson(req, 4096), row = dbx.q.playerByKey.get(nameKey(String(b.name || '')));
+  if (!row) return fail(req, res, 404, '없는 학생입니다');
+  const P = loadPlayer(row.id, nowSec()); if (!P) return fail(req, res, 404, '학생 정보를 찾을 수 없습니다');
+  const want = b.res || {}, took = {}, short = {};
+  RECLAIM.forEach(([k]) => { const v = Math.floor(Math.max(0, Math.min(1e12, Number(want[k]) || 0))); if (!v) return; const have = Math.floor(P.res[k] || 0), t = Math.min(v, have); P.res[k] = (P.res[k] || 0) - t; took[k] = t; if (t < v) short[k] = v - t; });
+  if (!Object.keys(took).length) return fail(req, res, 400, '회수할 양 입력 필요');
+  const txt = RECLAIM.filter(([k]) => took[k]).map(([k, n]) => n + ' ' + R.fmt(took[k])).join(' · '), why = String(b.reason || '').trim().slice(0, 80);
+  if (txt) R.log(P, nowSec(), '운영진이 ' + R.josa(txt, '을', '를') + ' 회수했습니다' + (why ? ' (' + why + ')' : ''), 'news');
+  store.markDirty(row.id); oplog('admin', '관리자', 'reclaim', row.name + ' · ' + (txt || '없음') + (why ? ' · ' + why : ''));
+  send(req, res, 200, { ok: true, name: row.name, took, short, res: RECLAIM.reduce((o, [k]) => { o[k] = Math.floor(P.res[k] || 0); return o; }, {}) });
+};
 routes['POST /api/admin/ops'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
   const b = await readJson(req, 1024), row = dbx.q.playerByKey.get(nameKey(String(b.name || '')));
@@ -2393,7 +2408,7 @@ routes['POST /api/admin/maint'] = async (req, res) => {
 function itemOptText(it) { const D = R.D, f = (k, v) => (D.STAT_NAMES[k] || D.BONUS_NAMES[k] || k) + ' +' + (D.STAT_NAMES[k] ? Math.round(v * 10) / 10 : Math.round(v * 1000) / 10 + '%');
   return (it.aff || []).map((a) => f(a.id, a.v)).concat(it.eng ? [((D.ENGRAVES.find((e) => e.id === it.eng.id) || {}).name || it.eng.id) + ' ' + (it.eng.id === 'killMana' ? it.eng.v : Math.round(it.eng.v * 1000) / 10 + '%')] : []).join(' · ') + ' · 품질 ' + Math.round((it.q || 1) * 1000) / 10 + '%'; }
 function itemOut(it, extra) { const RN = ['일반', '고급', '희귀', '영웅', '전설'], item = Object.assign({}, it); delete item.u; delete item.lock;
-  return Object.assign({ name: it.name + (it.enh ? ' +' + it.enh : ''), r: it.r, rn: RN[it.r], ilvl: it.ilvl, slot: R.slotName(it), opt: itemOptText(it), item }, extra || {}); }
+  return Object.assign({ name: it.name + (it.enh ? ' +' + it.enh : ''), r: it.r, rn: RN[it.r], ilvl: it.ilvl, slot: R.slotName(it), opt: itemOptText(it), dy: R.dismantleYield(it), item }, extra || {}); }
 // 운영실: 백업과 비교 — 백업 시점의 학생 장비(가방 · 장착)와 지금을 장비 고유번호로 비교한다. 백업은 서버 안에서만 풀고 바로 지운다
 const bkDir = () => path.join(cfg.dataDir, 'backups'), BK_RE = /^moneta-\d{10}\.db(\.enc)?$/;
 routes['GET /api/admin/backups'] = (req, res) => {
@@ -2428,7 +2443,7 @@ routes['POST /api/admin/bkcompare'] = async (req, res) => {
   const RN = ['일반', '고급', '희귀', '영웅', '전설'];
   const gear = (S) => { const m = new Map(); (S.inv || []).forEach((it) => it && it.u && m.set(it.u, { it, at: '가방' })); Object.keys(S.eq || {}).forEach((k) => { const it = S.eq[k]; if (it && it.u) m.set(it.u, { it, at: '장착' }); }); (S.mailQ || []).forEach((it) => it && it.u && m.set(it.u, { it, at: '우편 대기' })); return m; };
   const out1 = (x, why) => { const item = Object.assign({}, x.it); delete item.u; delete item.lock;   // 재지급용 (우편으로 그대로 보낼 수 있는 장비 정보)
-    return { name: x.it.name + (x.it.enh ? ' +' + x.it.enh : ''), r: x.it.r, rn: RN[x.it.r], ilvl: x.it.ilvl, slot: R.slotName(x.it), at: x.at, lock: !!x.it.lock, why: why || '', opt: itemOptText(x.it), item }; };
+    return { name: x.it.name + (x.it.enh ? ' +' + x.it.enh : ''), r: x.it.r, rn: RN[x.it.r], ilvl: x.it.ilvl, slot: R.slotName(x.it), at: x.at, lock: !!x.it.lock, why: why || '', opt: itemOptText(x.it), dy: R.dismantleYield(x.it), item }; };
   const then = gear(O), cur = gear(P), bkT = Math.floor(fs.statSync(path.join(bkDir(), file)).mtimeMs / 1000);
   const open = dbx.db.prepare(`SELECT data FROM market WHERE seller = ? AND status = 'open' AND kind = 'item'`).all(row.id).map((r) => { try { return JSON.parse(r.data); } catch (e) { return null; } }).filter(Boolean);
   const sold = dbx.db.prepare(`SELECT name, rarity, ilvl, price, done_at FROM market WHERE seller = ? AND status = 'sold' AND kind = 'item' AND done_at > ?`).all(row.id, bkT);
