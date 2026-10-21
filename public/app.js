@@ -2358,6 +2358,7 @@
     var h = pageHead('이름 없는 사서의 서가 · 서고', '연구', '연구 자리 <b class="num gold">' + used + ' / ' + c.resSlots + '</b>');
     var running = P.rsq.map(function (q, i) { return q ? '<div class="tl"><span class="tli">연구</span><div class="tlb"><div class="row small"><span>' + R.RES[q.id].name + ' ' + ((P.rs[q.id] || 0) + 1) + '단계</span><span class="spacer"></span><span class="num faint" data-l="left:' + q.end + '"></span></div><div class="bar" style="margin-top:4px;height:6px"><b data-b="prog:' + q.start + ':' + q.end + '"></b></div><div class="row tiny faint" style="margin-top:2px"><span>' + clock(q.end) + ' 완료</span><span class="spacer"></span>' + (P.tok && P.tok.rsDone > 0 ? '<button class="btn sm primary" data-act="rsnow" data-a="' + i + '" title="운영진 보상 물약">즉시 완료 <span class="cost">' + P.tok.rsDone + ' 물약</span></button>' : '') + cancelBtn('rs' + i, 'resCancel', { slot: i }) + '</div></div></div>' : ''; }).join('');
     if (running) h += '<div class="card hl timetable" style="margin-bottom:14px">' + running + '</div>';
+    h += bookCard();
     h += '<div class="grid gauto">' + D.RESEARCH.filter(function (r) { return !r.gone; }).map(function (r) {
       var lv = P.rs[r.id] || 0, av = R.resAvailable(P, r.id), max = lv >= r.max, cost = R.resCost(P, r.id), q = R.resQueued(P, r.id);
       var can = av && !max && !q && used < c.resSlots && predMana() >= cost.mana && P.res.know >= cost.know;
@@ -2370,6 +2371,29 @@
       return hh + '<div class="row"><button class="btn sm primary" data-act="do" data-a="resStart" data-b="' + r.id + '" data-can="res:' + r.id + '"' + (can ? '' : why(rwhy)) + '>' + (lv + 1) + '단계 연구 <span class="cost">' + R.fmtTime(cost.time) + '</span></button></div><div class="tiny faint" style="margin-top:4px">비용 · ' + fmt(cost.mana) + ' 마나' + (cost.know ? ' · ' + fmt(cost.know) + ' 지식' : '') + ' <span class="faint">(시작할 때 냄)</span></div></div>';
     }).join('') + '</div>';
     return h;
+  };
+
+  /* 고서 열람실: 지식으로 3시간 버프. 한 번에 한 권 (다른 책은 한 번 더 눌러 바꿔 펼침), 같은 책은 이어 읽기 최대 9시간 */
+  function bookCard() {
+    var P = S.P, t = now(), cur = P.buffs.book && P.buffs.book.end > t ? P.buffs.book : null, cost = R.bookCost(P), lock = P.grade < R.BOOK_GRADE;
+    var h = '<p class="tiny faint" style="margin:0 0 10px">지식을 사용해 고서를 열람하면 ' + R.BOOK_DUR / 3600 + '시간 동안 효과가 적용됩니다. 한 번에 한 권만 펼칠 수 있으며, 같은 책을 다시 열람하면 효과 시간이 이어집니다(최대 ' + R.BOOK_MAX / 3600 + '시간). 열람 비용 <b class="num gold">지식 ' + fmt(cost) + '</b> · 보유 <b class="num">' + fmt(P.res.know) + '</b></p>';
+    if (lock) h += '<span class="tag">' + R.BOOK_GRADE + '학년부터</span>';
+    else {
+      if (cur) h += '<div class="row small" style="margin-bottom:8px;gap:6px"><i class="bdot" style="background:' + esc(cur.color || '#e8c36a') + '"></i><span>열람 중: <b>' + esc(cur.name) + '</b> · ' + esc(R.BOOK[cur.id] ? R.BOOK[cur.id].desc : R.effText(cur.eff)) + '</span><span class="spacer"></span><span class="num faint" data-l="left:' + cur.end + '"></span></div>';
+      h += '<div class="booklist">' + D.BOOKS.map(function (b) {
+        var same = cur && cur.id === b.id, full = same && cur.end - t > R.BOOK_MAX - R.BOOK_DUR, swap = cur && !same, armed = S.confirm['bk' + b.id] > Date.now();
+        var ok = P.res.know >= cost && !full, label = full ? '최대 시간' : armed ? '한 번 더 누르면 바꿔 펼칩니다' : same ? '이어 읽기' : swap ? '바꿔 펼치기' : '열람하기';
+        return '<div class="bookrow' + (same ? ' on' : '') + '"><i class="bdot" style="background:' + b.color + '"></i><span class="bkname"><b>' + b.name + '</b> <span class="small muted">' + b.desc + '</span></span>' +
+          '<button class="btn sm' + (armed ? ' danger' : same ? ' primary' : '') + '" data-act="bookread" data-a="' + b.id + '"' + (ok ? '' : ' disabled') + '>' + label + '</button></div>';
+      }).join('') + '</div>';
+    }
+    return fold('bookroom', '고서 열람실', h, true, cur ? '<span class="tiny faint">' + esc(cur.name) + '</span>' : '', 'bookroom');
+  }
+  ACT.bookread = function (id) {
+    var P = S.P, cur = P.buffs.book && P.buffs.book.end > now() ? P.buffs.book : null, k = 'bk' + id;
+    if (cur && cur.id !== id && !(S.confirm[k] > Date.now())) { S.confirm[k] = Date.now() + 4000; render(); setTimeout(render, 4100); return; }
+    S.confirm[k] = 0;
+    act('bookRead', { id: id }).then(function (r) { if (r) { var b = R.BOOK[id]; toast(R.josa('「' + b.name + '」', '을', '를') + ' 열람했습니다', b.desc + ' · 남은 효과 ' + left(r.end) + ' · 지식 -' + fmt(r.paid)); Snd.play('drink'); } render(); });
   };
 
   /* ── 매점 ── */
@@ -3524,7 +3548,7 @@
     },
     know: function () {
       var r = perHour();
-      return '<b>' + dotImg('know', 18) + '지식</b><p>서고의 연구에 사용합니다.</p><dl class="kv"><dt>지금 수업에서</dt><dd class="' + (r.nl ? 'good' : 'faint') + '">' + (r.nl ? '시간당 약 +' + fmt(r.know) + ' (' + r.nl + '과목)' : '진행 중인 수업 없음') + '</dd></dl>' +
+      return '<b>' + dotImg('know', 18) + '지식</b><p>서고의 연구와 고서 열람실에서 사용합니다.</p><dl class="kv"><dt>지금 수업에서</dt><dd class="' + (r.nl ? 'good' : 'faint') + '">' + (r.nl ? '시간당 약 +' + fmt(r.know) + ' (' + r.nl + '과목)' : '진행 중인 수업 없음') + '</dd></dl>' +
         '<p class="tt-src">얻는 법: 수업(과목 레벨이 높을수록 많이), 꿈길(복습하는 꿈)<br>늘리는 법: 연구 「집중 명상」, 등불관, 등불달, 현자의 물약</p>';
     },
     stone: function () { return '<b>' + dotImg('stone', 18) + '마석</b><p>장비 강화에 사용합니다. 지금 ' + fmt(S.P.res.stone) + '개.</p><p class="tt-src">얻는 법: 원정 중 가끔, 장비 분해, 반딧불 정령, 사역마 파견, 보스 처치, 출석, 매점 「마석 꾸러미」, 거래소<br>마석가루(지금 ' + fmt(S.P.res.dust || 0) + '): 장비를 분해하면 나오고, 재련에 사용합니다</p>'; },
@@ -4587,7 +4611,7 @@
   ACT['tut-skip'] = function () { tutEnd(); toast('화면 둘러보기', '가이드 › 처음에서 다시 볼 수 있습니다'); };
   // 가입 화면: 기숙사 보너스에 나오는 말(마나 · 지식 · 아르크 …)을 처음 보는 학생을 위한 짧은 풀이
   function glossCard() {
-    var G = [['마나', '시간이 지나면 자동으로 차오르는 자원. 연구 · 물약 · 알 부화에 사용합니다.'], ['지식', '수업을 들으면 쌓입니다. 서고의 연구에 사용합니다.'], [CUR, '게임 내 화폐. 원정에서 몬스터를 처치해 얻고, 장비 강화 · 매점 · 거래소에서 사용합니다.'],
+    var G = [['마나', '시간이 지나면 자동으로 차오르는 자원. 연구 · 물약 · 알 부화에 사용합니다.'], ['지식', '수업을 들으면 쌓입니다. 서고의 연구와 고서 열람실에서 사용합니다.'], [CUR, '게임 내 화폐. 원정에서 몬스터를 처치해 얻고, 장비 강화 · 매점 · 거래소에서 사용합니다.'],
       ['수업 효율', '수업 시간은 그대로이고, 한 번에 얻는 경험치 · 지식이 그만큼 늘어납니다.'], ['사역마 파견', '키운 사역마를 몇 시간 파견해 재료와 ' + CUR + '를 받아 옵니다.'], ['공격력 · 생명력', '원정 · 보스 전투에 쓰이는 능력치. 높을수록 더 높은 단계에 출정할 수 있습니다.'], ['전리품', '원정에서 떨어지는 장비와 재료. 확률이 오르면 더 자주 나옵니다.']];
     return '<details class="card inset gloss" style="margin-bottom:12px"><summary><b>처음 보는 고유명사가 있나요?</b> <span class="small muted">마나 · 지식 · ' + CUR + ' 등</span></summary>' +
       '<dl>' + G.map(function (g) { return '<dt>' + g[0] + '</dt><dd>' + g[1] + '</dd>'; }).join('') + '</dl>' +
@@ -5479,7 +5503,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102270;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102271;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

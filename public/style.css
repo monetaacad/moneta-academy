@@ -1905,6 +1905,13 @@ mark.hl { color: inherit; background: linear-gradient(transparent 38%, color-mix
 .subj .hd h3 { word-break: keep-all; min-width: 0; }
 .subj .revline { margin: 2px 0 4px; }
 
+/* 고서 열람실: 책 한 권 = 한 줄 (모바일에서는 버튼이 다음 줄로) */
+.bookroom { margin-bottom: 14px; }
+.booklist { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 6px 14px; }
+.bookrow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 8px; border-radius: 8px; background: var(--sunk); }
+.bookrow.on { outline: 1px solid var(--brass2); }
+.bookrow .bkname { flex: 1; min-width: 150px; }
+@media (max-width: 520px) { .booklist { grid-template-columns: 1fr; } }
 /* 과목 수석 */
 table.sjtop { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 14px; table-layout: fixed; }
 table.sjtop th, table.sjtop td { padding: 5px 4px; text-align: left; border-bottom: 1px dashed var(--line2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
