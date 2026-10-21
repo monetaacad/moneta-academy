@@ -1382,7 +1382,7 @@
      전투는 파티원마다 따로 계산한다:
      - 적은 선봉 한 명(몬스터를 가장 잘 끄는 선봉)을 집중해서 노리고, 공격을 여러 번(R.TW.HITS)으로 나눠 친다 → 치유 · 보호막이 끼어들 틈이 있다. 8초마다 광역 공격.
      - 받는 피해 = 공격² ÷ (공격 + 방어 × R.TW.DEFX): 탑에서는 방어 효과가 크다. 선봉은 생명력 +30% · 받는 피해 −20%(탑 전용 선봉 보정).
-     - 지원은 치유 · 보호막을 가장 위태로운 동료(보호막은 선봉 우선)에게, 다른 포지션은 자신에게 건다. 탑에서는 치유 · 보호막 재사용 대기가 짧고(×R.TW.CARE_CD),
+     - 지원은 치유 · 보호막을 가장 위태로운 동료(보호막은 선봉 우선)에게, 다른 포지션은 자신에게 건다. 파티(2명 이상)의 지원이 거는 치유 · 보호막은 재사용 대기가 짧고(×R.TW.CARE_CD),
        평소에는 아껴 두다가 쓰러질 한 대를 맞기 직전에 준비돼 있으면 바로 끼어든다.
      - 주문 재사용 대기는 층을 넘어 이어진다. 층 사이에 최대 체력의 30% 회복(쓰러진 동료도 일어남), 5층마다 휴식층. 30층마다 시련의 층(특수 기믹).
      - 전투 시간 제한은 없다(오래 버티며 조금씩 깎는 전략도 인정). 계산이 끝나지 않는 일이 없도록 전투 시간 R.TW.TIME초가 지나면 물러난다.
@@ -1433,7 +1433,7 @@
     for (var i = 0; i < ns; i++) {
       var s = SPELL[P.spells[i]]; if (!s || !R.spellUnlocked(P, s.id)) continue;
       var lm = spellLvMult(P, s);
-      sp.push({ id: s.id, name: s.name, type: s.type, cd: s.cd * (1 - c.cdr) * (s.type === 'heal' || s.type === 'shield' ? R.TW.CARE_CD : 1), hit: s.type === 'dmg' || s.type === 'stun' ? R.spellHit(c, s) * s.mult * lm : 0, mult: s.mult * Math.min(2, lm), stun: s.stun || 0, stunP: s.stunP || 0, dur: s.dur || 0 });
+      sp.push({ id: s.id, name: s.name, type: s.type, cd: s.cd * (1 - c.cdr), hit: s.type === 'dmg' || s.type === 'stun' ? R.spellHit(c, s) * s.mult * lm : 0, mult: s.mult * Math.min(2, lm), stun: s.stun || 0, stunP: s.stunP || 0, dur: s.dur || 0 });
     }
     return { id: P.id, name: P.name, house: P.house, cls: P.cls, pos: pos || R.twPos(P), aggro: R.expAggro(P), hp: c.hp, def: c.def, regen: c.regen, atk: c.atk, aps: c.aps, critC: c.critC, critD: c.critD,
       bossDmg: c.bossDmg, leech: c.leech || 0, fam: P.fam.act && P.fam.own[P.fam.act] ? c.atk * famAtkMult(P) : 0, sp: sp, power: c.totalDps };
@@ -1491,7 +1491,7 @@
     }
     // 치유 · 보호막 주문 하나를 거는 일 (sp: 주문, i: 거는 사람, tg: 받는 사람)
     function care(i2, k2, tg, urgent) {
-      var m = ms[i2], sp = m.sp[k2]; cd[i2][sp.id] = sp.cd;
+      var m = ms[i2], sp = m.sp[k2]; cd[i2][sp.id] = sp.cd * (n > 1 && m.pos === 'sup' ? R.TW.CARE_CD : 1);   // 재사용 대기 단축은 파티의 지원만
       if (sp.type === 'shield') { var sv = mx[tg] * sp.mult; sh[tg] = Math.max(sh[tg], sv); ev(4, i2, sv, tg, k2); if (!urgent && t - healAt[i2] > 6) { healAt[i2] = t; line(m.name + '의 「' + sp.name + '」 — ' + (tg === i2 ? '' : ms[tg].name + '에게 ') + '보호막 ' + R.fmt(sv), 'p'); } }
       else { var hv = Math.min(mx[tg] - hp[tg], mx[tg] * sp.mult); hp[tg] += hv; ev(3, i2, hv, tg, k2); if (!urgent && t - healAt[i2] > 6) { healAt[i2] = t; line(m.name + '의 「' + sp.name + '」 — ' + (tg === i2 ? '' : ms[tg].name + ' ') + '생명력 +' + R.fmt(hv), 'p'); } }
     }
