@@ -1416,6 +1416,8 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 .bdgups { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
 .bdgup { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 7px 9px; border: 1px solid var(--line2); border-radius: 8px; background: var(--sunk); }
 .bdgut { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1 1 180px; }
+.bdgrc { gap: 6px; flex-wrap: wrap; min-width: 0; max-width: 100%; }
+.bdgrc select { width: auto; max-width: 230px; min-width: 0; flex: 1 1 140px; }
 .promo { display: flex; flex-direction: column; gap: 6px; max-height: 60vh; overflow-y: auto; }
 .prow { display: flex; gap: 10px; align-items: center; padding: 8px 10px; border: 1px solid var(--line2); border-radius: 8px; background: var(--sunk); }
 .prow.next { border-style: dashed; border-color: var(--line); }
@@ -1893,14 +1895,5 @@ mark.hl { color: inherit; background: linear-gradient(transparent 38%, color-mix
 .subj .revline { margin: 2px 0 4px; }
 
 /* 과목 수석 */
-.sjtops { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; }
-.sjtops li + li { border-top: 1px dashed var(--line); }
-.sjrow { all: unset; box-sizing: border-box; width: 100%; cursor: pointer; display: grid; grid-template-columns: 6.5em minmax(0, 1fr) auto 5.5em; gap: 8px; align-items: center; padding: 7px 4px; font-size: 14px; }
-.sjrow:hover, .sjrow:focus-visible { background: var(--sunk); }
-.sjrow .sjn { font-weight: 600; word-break: keep-all; }
-.sjrow .sjw { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sjrow .sjw.me { font-weight: 700; }
-.sjrow .sjm { text-align: right; }
-@media (max-width: 520px) { .sjrow { grid-template-columns: 6em minmax(0, 1fr) auto; } .sjrow .sjm { display: none; } }
 .pheads { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .phead { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--brass); color: var(--brass); background: color-mix(in srgb, var(--brass) 10%, transparent); white-space: nowrap; }

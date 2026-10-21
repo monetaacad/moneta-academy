@@ -500,7 +500,7 @@ function subjTops() {
   const tops = {};
   D.SUBJECTS.forEach((sj) => {
     const lp = '$.subj.' + sj.id + '.lv', xp = '$.subj.' + sj.id + '.xp';
-    tops[sj.id] = dbx.db.prepare(`SELECT id, name, house, grade, CAST(json_extract(state, ?) AS INTEGER) AS lv, CAST(json_extract(state, ?) AS REAL) AS xp FROM players WHERE banned = 0 AND CAST(json_extract(state, ?) AS INTEGER) > 0 ORDER BY lv DESC, xp DESC, created ASC LIMIT 50`)
+    tops[sj.id] = dbx.db.prepare(`SELECT id, name, house, grade, CAST(json_extract(state, ?) AS INTEGER) AS lv, CAST(json_extract(state, ?) AS REAL) AS xp FROM players WHERE banned = 0 AND CAST(json_extract(state, ?) AS INTEGER) > 0 ORDER BY lv DESC, xp DESC, created ASC LIMIT 10`)
       .all(lp, xp, lp).map((r) => ({ id: r.id, name: r.name, house: r.house, grade: r.grade, lv: r.lv, xp: Math.floor(r.xp || 0) }));
   });
   subjRank.at = Date.now(); subjRank.tops = tops;
@@ -511,9 +511,9 @@ routes['GET /api/subjranks'] = (req, res) => {
   const pid = authed(req); if (!pid) return fail(req, res, 401, '로그인이 필요합니다');
   if (limited('sr:' + pid, 2, 10)) return fail(req, res, 429, '요청이 너무 잦습니다');
   const P = store.get(pid), tops = subjTops(), mine = {};
-  if (P && P.subj) for (const k in tops) {   // 내 순위: 50위 밖이면 따로 센다
+  if (P && P.subj) for (const k in tops) {
     const sj = P.subj[k]; if (!sj || !(sj.lv > 0)) continue;
-    const i = tops[k].findIndex((r) => r.id === pid);
+    const i = tops[k].findIndex((r) => r.id === pid);   // 10위 안이면 그대로, 밖이면 따로 센다
     if (i >= 0) { mine[k] = i + 1; continue; }
     const lp = '$.subj.' + k + '.lv', xp = '$.subj.' + k + '.xp';
     mine[k] = Number(dbx.db.prepare(`SELECT COUNT(*) + 1 AS r FROM players WHERE banned = 0 AND id != ? AND (CAST(json_extract(state, ?) AS INTEGER) > ? OR (CAST(json_extract(state, ?) AS INTEGER) = ? AND CAST(json_extract(state, ?) AS REAL) > ?))`).get(pid, lp, sj.lv, lp, sj.lv, xp, sj.xp || 0).r);
@@ -1353,6 +1353,8 @@ function towerLogOut(l) { return { t: l.t, name: l.name, f: l.f, win: l.win, pct
 function towerPlaying(st) { const l = st.log[st.log.length - 1], real = Date.now() / 1000; return l && l.sc && l.t + (l.d || 0) > real ? { name: l.name, f: l.f, left: Math.ceil(l.t + l.d - real) } : null; }
 function towerPing(party, data) { dbx.q.partyMembers.all(party).forEach((m) => chat.ping(m.id, 'tower', data)); }
 const towerBusy = new Set();
+// 별의 탑 운영 중지: 이 시각(실제 시간, 초)부터 도전을 막는다. 2026-10-22 00:00 KST. 환경변수 TOWER_CLOSE_AT=0이면 다시 연다
+const TOWER_CLOSE_AT = process.env.TOWER_CLOSE_AT != null ? +process.env.TOWER_CLOSE_AT || 0 : 1792594800;
 routes['GET /api/tower'] = (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
   if (limited('twg:' + me, 1, 10)) return fail(req, res, 429, '요청이 너무 잦습니다');
@@ -1360,6 +1362,7 @@ routes['GET /api/tower'] = (req, res) => {
 };
 routes['POST /api/tower'] = async (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
+  if (TOWER_CLOSE_AT && Date.now() / 1000 >= TOWER_CLOSE_AT) return fail(req, res, 403, '별의 탑은 현재 운영을 중지했습니다');
   if (store.isBanned(me)) return fail(req, res, 403, '이용이 정지된 계정입니다');
   if (limited('twp:' + me, 0.5, 4)) return fail(req, res, 429, '잠시 후 다시 시도');
   await readJson(req, 256);
