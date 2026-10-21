@@ -1416,6 +1416,8 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 .bdgups { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
 .bdgup { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 7px 9px; border: 1px solid var(--line2); border-radius: 8px; background: var(--sunk); }
 .bdgut { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1 1 180px; }
+.bdgrc { gap: 6px; flex-wrap: wrap; min-width: 0; max-width: 100%; }
+.bdgrc select { width: auto; max-width: 230px; min-width: 0; flex: 1 1 140px; }
 .promo { display: flex; flex-direction: column; gap: 6px; max-height: 60vh; overflow-y: auto; }
 .prow { display: flex; gap: 10px; align-items: center; padding: 8px 10px; border: 1px solid var(--line2); border-radius: 8px; background: var(--sunk); }
 .prow.next { border-style: dashed; border-color: var(--line); }
