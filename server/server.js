@@ -2383,6 +2383,58 @@ routes['POST /api/admin/maint'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
   const b = await readJson(req, 2048); maintSet(b); send(req, res, 200, { ok: true, maint: MAINT });
 };
+// 운영실: 백업과 비교 — 백업 시점의 학생 장비(가방 · 장착)와 지금을 장비 고유번호로 비교한다. 백업은 서버 안에서만 풀고 바로 지운다
+const bkDir = () => path.join(cfg.dataDir, 'backups'), BK_RE = /^moneta-\d{10}\.db(\.enc)?$/;
+routes['GET /api/admin/backups'] = (req, res) => {
+  if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
+  let files = []; try { files = fs.readdirSync(bkDir()).filter((f) => BK_RE.test(f)).sort().reverse().map((f) => { const st = fs.statSync(path.join(bkDir(), f)); return { file: f, t: Math.floor(st.mtimeMs / 1000), size: st.size }; }); } catch (e) { }
+  send(req, res, 200, { files });
+};
+function bkReadPlayer(file, pid) {
+  const src = path.join(bkDir(), file), tmp = path.join(bkDir(), '.cmp-' + crypto.randomBytes(6).toString('hex') + '.db');
+  try {
+    let buf = fs.readFileSync(src);
+    if (file.endsWith('.enc')) {
+      if (!cfg.backupKey) throw new Error('백업 키가 없어 암호화된 백업을 열 수 없습니다');
+      if (buf.slice(0, 5).toString() !== 'ARCB1') throw new Error('백업 형식이 아닙니다');
+      const salt = buf.slice(5, 21), iv = buf.slice(21, 33), tag = buf.slice(33, 49);
+      const key = crypto.scryptSync(cfg.backupKey, salt, 32, { N: 32768, r: 8, p: 1, maxmem: 96 * 1024 * 1024 }), d = crypto.createDecipheriv('aes-256-gcm', key, iv); d.setAuthTag(tag);
+      buf = Buffer.concat([d.update(buf.slice(49)), d.final()]);
+    }
+    fs.writeFileSync(tmp, buf, { mode: 0o600 }); buf = null;
+    const { DatabaseSync } = require('node:sqlite'), db = new DatabaseSync(tmp, { readOnly: true });
+    try { const row = db.prepare('SELECT state FROM players WHERE id = ?').get(pid); return row ? JSON.parse(row.state) : null; } finally { db.close(); }
+  } finally { try { fs.unlinkSync(tmp); } catch (e) { } }
+}
+routes['POST /api/admin/bkcompare'] = async (req, res) => {
+  if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
+  const b = await readJson(req, 1024), nm = String(b.name || '').trim(), file = String(b.file || '');
+  if (!BK_RE.test(file) || !fs.existsSync(path.join(bkDir(), file))) return fail(req, res, 404, '없는 백업입니다');
+  const row = nm ? dbx.q.playerByKey.get(nameKey(nm)) : null; if (!row) return fail(req, res, 404, nm ? '없는 학생 이름입니다' : '학생 이름 입력 필요');
+  const P = store.get(row.id); if (!P) return fail(req, res, 404, '학생 정보를 찾을 수 없습니다');
+  let O; try { O = bkReadPlayer(file, row.id); } catch (e) { return fail(req, res, 400, e.message || '백업을 열지 못했습니다'); }
+  if (!O) return fail(req, res, 404, '이 백업에는 해당 학생이 없습니다 (백업 뒤에 입학)');
+  const RN = ['일반', '고급', '희귀', '영웅', '전설'];
+  const gear = (S) => { const m = new Map(); (S.inv || []).forEach((it) => it && it.u && m.set(it.u, { it, at: '가방' })); Object.keys(S.eq || {}).forEach((k) => { const it = S.eq[k]; if (it && it.u) m.set(it.u, { it, at: '장착' }); }); (S.mailQ || []).forEach((it) => it && it.u && m.set(it.u, { it, at: '우편 대기' })); return m; };
+  const out1 = (x, why) => ({ name: x.it.name + (x.it.enh ? ' +' + x.it.enh : ''), r: x.it.r, rn: RN[x.it.r], ilvl: x.it.ilvl, slot: R.slotName(x.it), at: x.at, lock: !!x.it.lock, why: why || '' });
+  const then = gear(O), cur = gear(P), bkT = Math.floor(fs.statSync(path.join(bkDir(), file)).mtimeMs / 1000);
+  const open = dbx.db.prepare(`SELECT data FROM market WHERE seller = ? AND status = 'open' AND kind = 'item'`).all(row.id).map((r) => { try { return JSON.parse(r.data); } catch (e) { return null; } }).filter(Boolean);
+  const sold = dbx.db.prepare(`SELECT name, rarity, ilvl, price, done_at FROM market WHERE seller = ? AND status = 'sold' AND kind = 'item' AND done_at > ?`).all(row.id, bkT);
+  const gone = [];
+  then.forEach((x, u) => {
+    if (cur.has(u)) return;
+    let why = '';
+    if (open.some((it) => it.u === u || (it.name === x.it.name && it.ilvl === x.it.ilvl && it.r === x.it.r))) why = '거래소에 올려 둠';
+    else { const k = sold.findIndex((s) => s.name === x.it.name && s.ilvl === x.it.ilvl && s.rarity === x.it.r); if (k >= 0) { why = '거래소에서 판매됨'; sold.splice(k, 1); } }
+    gone.push(out1(x, why || '분해 · 매점 판매 · 자동 처분 중 하나'));
+  });
+  const got = []; cur.forEach((x, u) => { if (!then.has(u)) got.push(out1(x)); });
+  const rs = (S, k) => Math.floor((S.res && S.res[k]) || 0), stv = (S, k) => (S.st && S.st[k]) || 0;
+  oplog('admin', '관리자', 'bkcompare', row.name + ' 백업 비교 (' + file + ')');
+  send(req, res, 200, { name: row.name, file, bkT, gone: gone.sort((a, c) => c.r - a.r || c.ilvl - a.ilvl), got: got.sort((a, c) => c.r - a.r || c.ilvl - a.ilvl),
+    diff: { stone: rs(P, 'stone') - rs(O, 'stone'), dust: rs(P, 'dust') - rs(O, 'dust'), gold: rs(P, 'gold') - rs(O, 'gold'), dismantled: stv(P, 'dismantled') - stv(O, 'dismantled'), epicFound: stv(P, 'epicFound') - stv(O, 'epicFound'), lvl: (P.lvl || 0) - (O.lvl || 0) },
+    auto: P.rs && P.rs.sorter ? { now: P.autoSell >= 0 ? RN[P.autoSell] + ' 이하 · ' + (P.autoDis ? '분해' : '판매') : '꺼짐', then: O.rs && O.rs.sorter ? (O.autoSell >= 0 ? RN[O.autoSell] + ' 이하 · ' + (O.autoDis ? '분해' : '판매') : '꺼짐') : '연구 전' } : null });
+};
 routes['POST /api/admin/backup'] = (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
   send(req, res, 200, { file: backup() });
