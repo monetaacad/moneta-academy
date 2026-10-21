@@ -1696,14 +1696,8 @@
       '<p class="small" style="margin-top:4px">' + (can ? (bpv.win && bpv.ttk < R.K.BOSS_TIME ? '<span class="good">승산 있음</span> — 약 ' + bpv.ttk.toFixed(1) + '초' : '<span class="bad">아직 버겁습니다</span> — 30초 안에 체력의 약 ' + Math.round(Math.min(1, R.K.BOSS_TIME / bpv.ttk) * 100) + '%') + ' · 이기면 ' + (b + 1) + '~' + (b + 9) + '단계가 열립니다' : '<span class="gold">' + R.bossLockText(P) + '</span>') + '</p></div>' +
       '<button class="btn primary" data-act="boss" data-can="boss"' + (can ? '' : ' data-why="' + esc(R.bossLockText(P)) + '"') + '><span data-l="bossbtn"></span></button></div></div>';
     // 주문
-    var ns = R.spellSlots(P);
-    h += '<div class="section-t" style="margin-top:16px">장착 주문 <span class="small faint">(보스·결투·월드 보스 전투에서 자동 시전)</span></div><div class="spellbar">';
-    for (var k = 0; k < 4; k++) {
-      if (k >= ns) { h += '<div class="spell emptys"><div class="sn">잠김</div><div class="sd">' + (k === 2 ? 3 : 5) + '학년에 열림</div></div>'; continue; }
-      var sp = R.SPELL[P.spells[k]];
-      h += '<button class="spell' + (sp ? '' : ' emptys') + '" data-act="spell-pick" data-a="' + k + '">' + (sp ? '<div class="sn">' + sp.name + '</div><div class="sd">' + sp.desc + ' · ' + sp.cd + '초</div>' : '<div class="sn">빈 슬롯</div><div class="sd">주문 선택</div>') + '</button>';
-    }
-    h += '</div><div class="grid g2" style="margin-top:16px"><div class="card"><h3>지역</h3><div class="zonelist" style="margin-top:8px">' + D.ZONES.map(function (zz, zi) {
+    h += '<div class="section-t" style="margin-top:16px">장착 주문 <span class="small faint">(보스·결투·월드 보스·무한의 탑 전투에서 자동 시전)</span></div>' + spellBar(P);
+    h += '<div class="grid g2" style="margin-top:16px"><div class="card"><h3>지역</h3><div class="zonelist" style="margin-top:8px">' + D.ZONES.map(function (zz, zi) {
       var to = zz.abyss ? '∞' : D.ZONES[zi + 1].from - 1, un = P.maxStage >= zz.from;
       return '<div class="zone' + (un ? '' : ' lockz') + '"><div style="min-width:0"><div class="small">' + zz.name + '</div><div class="tiny faint">재료: ' + D.MATS[zz.mat].name + '</div></div><span class="zr">' + zz.from + '–' + to + '</span></div>';
     }).join('') + '</div></div><div class="card"><div class="row between"><h3>전투 능력</h3><button class="btn sm ghost" data-act="fullstat">전체 능력치</button></div><dl class="kv" style="margin-top:6px"><dt>초당 피해</dt><dd>' + fmt(c.totalDps) + '</dd><dt>' + statTerm('물리 공격력') + '</dt><dd>' + fmt(c.patk) + (S.P.cls === 'knight' ? ' <span class="tiny faint">평타</span>' : '') + '</dd><dt' + (c.skill === 1 ? ' class="kvz"' : '') + '>' + statTerm('기술 위력') + '</dt><dd' + (c.skill === 1 ? ' class="kvz"' : '') + '>×' + c.skill.toFixed(2) + '</dd><dt>' + statTerm('주문 공격력') + '</dt><dd>' + fmt(c.matk) + (S.P.cls !== 'knight' ? ' <span class="tiny faint">평타</span>' : '') + '</dd><dt' + (c.spell === 1 ? ' class="kvz"' : '') + '>' + statTerm('주문 위력') + '</dt><dd' + (c.spell === 1 ? ' class="kvz"' : '') + '>×' + c.spell.toFixed(2) + '</dd><dt>' + statTerm('공격 속도') + '</dt><dd>' + c.aps.toFixed(2) + '/초</dd><dt>치명타</dt><dd>' + pct(c.critC) + ' · ×' + c.critD.toFixed(2) + '</dd><dt>생명력 · 방어력</dt><dd>' + fmt(c.hp) + ' · ' + fmt(c.def) + '</dd><dt>사역마</dt><dd>' + (P.fam.act ? R.FAM[P.fam.act].name : '없음') + '</dd></dl><p class="tiny faint" style="margin-top:8px">원정은 출정 시점의 능력치로 결과가 정해집니다. 장비를 바꾸면 다음 원정부터 반영됩니다.</p></div></div>';
@@ -2440,6 +2434,7 @@
       '<div class="small" style="margin-top:4px">' + (pv.win && pv.ttk < R.CT_TIME ? '<span class="good">승산 있음</span> — 약 ' + pv.ttk.toFixed(1) + '초' : '<span class="bad">아직 버겁습니다</span>') + '</div>' +
       '<div class="tiny" style="margin-top:4px">이 층 보상 <span class="rwd">' + esc(R.rewardText(rw)) + '</span></div></div></div>' +
       '<div class="row" style="margin-top:12px"><span class="tiny faint">' + (mt ? nextMile + '층 돌파 시 칭호 「' + esc(mt.name) + '」 · 별조각 30 · 희귀 장비 상자 · 환수의 알' : nextMile + '층 돌파 시 별조각 30 · 희귀 장비 상자 · 환수의 알') + '</span><span class="spacer"></span><button class="btn primary" data-act="ctower"' + '' + '>' + f + '층 도전</button></div></div>';
+    h += '<div class="card" style="margin-top:14px"><div class="row between"><h3>장착 주문</h3><span class="tiny faint">칸을 누르면 주문을 바꿉니다 · 바꾼 뒤 위의 승산이 다시 계산됩니다</span></div>' + spellBar(P) + '</div>';   // 탑에서도 바로 주문을 바꾼다
     var got = D.TITLES.filter(function (t) { return t.stat === R.ctKey(cl); });
     // 탑 칭호는 칭호 도감에 모두 있으므로 여기서는 한 줄 (획득 수 · 다음 칭호)
     var gotN = got.filter(function (t) { return best >= t.n; }).length, nextT = got.filter(function (t) { return best < t.n; }).sort(function (x, y) { return x.n - y.n; })[0];
@@ -3796,6 +3791,16 @@
   ACT.brew = function (id) { act('brew', { id: id, n: +(S.pick.bn || 1) }).then(function (r) { if (r) { Snd.play('enh'); toast('물약이 완성되었습니다', R.POT[id].name + ' ' + r.n + '병 · 선반에 올렸습니다', 1800); } render(); }); };
   ACT.dispall = function () { var d = S.pick.dd || '8h'; act('dispatchAll', { d: d }).then(function (r) { if (r) toast('사역마 ' + r.n + '마리 파견', clock(now() + R.DDUR[d].s) + '에 돌아옵니다', 2200); render(); }); };
   ACT.dispatch = function (id) { var d = S.pick.dd || '8h'; act('dispatch', { id: id, d: d }).then(function (r) { if (r) toast(R.FAM[id].name + ' 파견', clock(now() + R.DDUR[d].s) + '에 돌아옵니다', 2000); render(); }); };
+  // 장착 주문 칸 (보스 화면 · 무한의 탑에서 함께 사용). 누르면 그 칸의 주문을 고른다
+  function spellBar(P) {
+    var ns = R.spellSlots(P), h = '<div class="spellbar">';
+    for (var k = 0; k < 4; k++) {
+      if (k >= ns) { h += '<div class="spell emptys"><div class="sn">잠김</div><div class="sd">' + (k === 2 ? 3 : 5) + '학년에 열림</div></div>'; continue; }
+      var sp = R.SPELL[P.spells[k]];
+      h += '<button class="spell' + (sp ? '' : ' emptys') + '" data-act="spell-pick" data-a="' + k + '">' + (sp ? '<div class="sn">' + sp.name + '</div><div class="sd">' + sp.desc + ' · ' + sp.cd + '초</div>' : '<div class="sn">빈 슬롯</div><div class="sd">주문 선택</div>') + '</button>';
+    }
+    return h + '</div>';
+  }
   ACT['spell-pick'] = function (i) {
     i = +i; S.spellSlot = i;
     modal(mhead('주문 슬롯 ' + (i + 1), '전투 중 재사용 대기시간이 끝나면 자동으로 시전합니다.') + '<div class="stack" style="gap:8px">' + D.SPELLS.filter(function (sp) { return !sp.cls || sp.cls.indexOf(S.P.cls || 'mage') >= 0; }).map(function (sp) {
@@ -5010,7 +5015,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102150;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102153;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
