@@ -63,8 +63,10 @@ with sync_playwright() as p:
     else:
         pg.evaluate(f"() => window.__ACT.sel('{lu}')"); pg.wait_for_timeout(400)
         pg.evaluate("() => document.querySelector('[data-act=itemarm][data-a=dismantle]').click()"); pg.wait_for_timeout(300)
-        if not pg.evaluate(f"() => window.__S.P.inv.some(x => x.u === '{lu}')"): errs.append('전설 장비가 한 번 누름에 분해됨')
-        pg.evaluate("() => document.querySelector('[data-act=itemarm][data-a=dismantle]').click()"); pg.wait_for_timeout(500)
-        if pg.evaluate(f"() => window.__S.P.inv.some(x => x.u === '{lu}')"): errs.append('전설 장비가 두 번 눌러도 분해 안 됨')
+        if not pg.evaluate(f"() => window.__S.P.inv.some(x => x.u === '{lu}')"): errs.append('전설 장비가 경고 없이 분해됨')
+        if not pg.query_selector('#modal:not([hidden]) [data-act=itemgo]'): errs.append('전설 장비 분해 경고 창이 안 뜸')
+        pg.screenshot(path=os.path.join(os.path.dirname(__file__), 'shots', 'item-warn.png'))
+        pg.click('[data-act=itemgo]'); pg.wait_for_timeout(500)
+        if pg.evaluate(f"() => window.__S.P.inv.some(x => x.u === '{lu}')"): errs.append('경고 창에서 분해를 눌러도 분해 안 됨')
     b.close()
 print('\n'.join(errs) if errs else 'NO ERRORS')

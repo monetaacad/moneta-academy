@@ -7,7 +7,11 @@
   // 운영실 학생 기록: 장비 · 능력치 전체 (학생의 공개 범위 설정과 관계없음)
   var SLOTN = { staff: '무기', robe: '로브', hat: '모자', charm: '장신구', tome: '마도서' }, STN = { int: '지력', wil: '의지', agi: '민첩', vit: '체력', luk: '행운' };
   function fx(v) { v = Number(v) || 0; return Math.abs(v) >= 1000 ? Math.round(v).toLocaleString() : String(Math.round(v * 1000) / 1000); }
-  var BKGONE = [], BKNAME = '';
+  // 재지급할 수 있는 장비 목록 (백업 비교 · 처분 기록 · 구매 기록에서 같이 쓴다). 버튼의 data-c = 이 목록의 번호
+  var RE = [], BKNAME = '';
+  function reBtn(x) { RE.push(x); return '<button class="btn sm ghost" data-a="bkre" data-c="' + (RE.length - 1) + '">재지급</button>'; }
+  var RC5 = ['#b9bccb', '#7cc68a', '#6aa8ff', '#c084fc', '#f2b84b'];
+  function itemCell(x) { return '<span style="color:' + RC5[x.r] + '">' + esc(x.name) + '</span> <span class="tiny faint">' + esc(x.rn + ' ' + x.slot + ' Lv ' + x.ilvl) + '</span><div class="tiny faint">' + esc(x.opt || '') + '</div>'; }
   function cardHtml(c, RN) {
     if (!c) return '<p class="small" style="margin-top:8px">장비 · 능력치를 불러오지 못했습니다.</p>';
     var f = c.fight, row = function (k, v) { return '<tr><th style="text-align:left;white-space:nowrap">' + k + '</th><td>' + v + '</td></tr>'; };
@@ -214,31 +218,31 @@
       api('POST', '/api/admin/bkcompare', { name: n, file: f }).then(function (j) {
         if (j.error) { $('#bkres').innerHTML = '<p class="small" style="margin-top:8px">' + esc(j.error) + '</p>'; return; }
         var RC = ['#b9bccb', '#7cc68a', '#6aa8ff', '#c084fc', '#f2b84b'], d = j.diff;
-        BKGONE = j.gone; BKNAME = j.name;
-        var tb = function (list, why) { return '<div class="scroll" style="margin-top:6px;max-height:340px"><table><thead><tr><th>장비</th><th>등급</th><th>Lv</th><th>종류</th><th>옵션</th><th>당시 위치</th>' + (why ? '<th>추정</th><th></th>' : '') + '</tr></thead><tbody>' + (list.map(function (x, i) { return '<tr><td style="color:' + RC[x.r] + '">' + esc(x.name) + (x.lock ? ' <span class="tiny faint">(잠금)</span>' : '') + '</td><td>' + esc(x.rn) + '</td><td class="num">' + x.ilvl + '</td><td>' + esc(x.slot) + '</td><td class="small">' + esc(x.opt || '') + '</td><td>' + esc(x.at) + '</td>' + (why ? '<td class="small">' + esc(x.why) + '</td><td><button class="btn sm ghost" data-a="bkre" data-c="' + i + '">재지급</button></td>' : '') + '</tr>'; }).join('') || '<tr><td colspan="8" class="faint">없음</td></tr>') + '</tbody></table></div>'; };
+        BKNAME = j.name;
+        var tb = function (list, why) { return '<div class="scroll" style="margin-top:6px;max-height:340px"><table><thead><tr><th>장비</th><th>등급</th><th>Lv</th><th>종류</th><th>옵션</th><th>당시 위치</th>' + (why ? '<th>추정</th><th></th>' : '') + '</tr></thead><tbody>' + (list.map(function (x, i) { return '<tr><td style="color:' + RC[x.r] + '">' + esc(x.name) + (x.lock ? ' <span class="tiny faint">(잠금)</span>' : '') + '</td><td>' + esc(x.rn) + '</td><td class="num">' + x.ilvl + '</td><td>' + esc(x.slot) + '</td><td class="small">' + esc(x.opt || '') + '</td><td>' + esc(x.at) + '</td>' + (why ? '<td class="small">' + esc(x.why) + '</td><td>' + reBtn(x) + '</td>' : '') + '</tr>'; }).join('') || '<tr><td colspan="8" class="faint">없음</td></tr>') + '</tbody></table></div>'; };
         var sg = function (v) { return (v > 0 ? '+' : '') + Number(v).toLocaleString(); };
         window.__bkJson = JSON.stringify(j);
         $('#bkres').innerHTML = '<p class="small" style="margin-top:10px"><b>「' + esc(j.name) + '」 · ' + whenS(j.bkT) + ' 백업 → 지금</b></p>' +
           '<p class="small">분해 횟수 <b>' + sg(d.dismantled) + '</b> · 마석 ' + sg(d.stone) + ' · 마석가루 ' + sg(d.dust) + ' · 아르크 ' + sg(d.gold) + ' · 얻은 영웅 ' + sg(d.epicFound) + ' · 레벨 ' + sg(d.lvl) + (j.auto ? ' · 분류 마법 자동 처분: 당시 ' + esc(j.auto.then) + ' → 지금 ' + esc(j.auto.now) : ' · 분류 마법 연구 전') + '</p>' +
-          '<div id="bkre"></div><p class="small" style="margin-top:8px"><b>사라진 장비 ' + j.gone.length + '개</b> <span class="tiny faint">(거래소 판매 · 등록은 거래 기록과 대조해 표시. 나머지는 분해 · 매점 판매 · 자동 처분 중 하나이며, 「분해 횟수」 변화로 분해 개수를 가늠할 수 있습니다)</span></p>' + tb(j.gone, true) +
+          '<p class="small" style="margin-top:8px"><b>사라진 장비 ' + j.gone.length + '개</b> <span class="tiny faint">(거래소 판매 · 등록은 거래 기록과 대조해 표시. 나머지는 분해 · 매점 판매 · 자동 처분 중 하나이며, 「분해 횟수」 변화로 분해 개수를 가늠할 수 있습니다)</span></p>' + tb(j.gone, true) +
           '<p class="small" style="margin-top:10px"><b>새로 생긴 장비 ' + j.got.length + '개</b></p>' + tb(j.got, false) +
           '<p class="tiny faint" style="margin-top:6px">백업과 백업 사이에 들어왔다가 바로 사라진 장비는 어느 백업에도 없어 이 비교에 나오지 않습니다. 앞으로의 처분은 「활동 기록 → 장비 처분 기록」에 남습니다.</p>';
       });
     },
     // 재지급: 사라진 장비를 같은 옵션 그대로 우편으로 (보내기는 운영자가 직접 누른다)
     bkre: function (el) {
-      var x = BKGONE[+el.dataset.c]; if (!x) return;
-      $('#bkre').innerHTML = '<div class="card inset" style="margin-top:10px"><b>장비 재지급 · ' + esc(BKNAME) + '</b><p class="small" style="margin-top:4px">' + esc(x.rn + ' ' + x.slot + ' 「' + x.name + '」 Lv ' + x.ilvl + ' · ' + (x.opt || '')) + '</p>' +
+      var x = RE[+el.dataset.c]; if (!x) return;
+      $('#rebox').innerHTML = '<div class="card inset" style="margin-top:10px"><b>장비 재지급 · ' + esc(BKNAME) + '</b><p class="small" style="margin-top:4px">' + esc(x.rn + ' ' + x.slot + ' 「' + x.name + '」 Lv ' + x.ilvl + ' · ' + (x.opt || '')) + '</p>' +
         '<div class="form" style="margin-top:8px;flex-direction:column;align-items:stretch"><label>제목<input id="bkr-t" value="장비 복구 안내"></label><label>내용<textarea id="bkr-b" rows="3">요청하신 장비를 같은 옵션으로 복구해 드립니다. 우편함에서 받으실 수 있습니다.</textarea></label></div>' +
         '<div class="row" style="justify-content:flex-end;gap:6px;margin-top:8px"><button class="btn ghost" data-a="bkrno">취소</button><button class="btn primary" data-a="bkrgo" data-c="' + el.dataset.c + '">이 학생에게 우편 보내기</button></div></div>';
-      $('#bkre').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      $('#rebox').scrollIntoView({ behavior: 'smooth', block: 'center' });
     },
-    bkrno: function () { $('#bkre').innerHTML = ''; },
+    bkrno: function () { $('#rebox').innerHTML = ''; },
     bkrgo: function (el) {
-      var x = BKGONE[+el.dataset.c]; if (!x || el.disabled) return; el.disabled = true;
+      var x = RE[+el.dataset.c]; if (!x || el.disabled) return; el.disabled = true;
       api('POST', '/api/admin/mail', { to: BKNAME, title: $('#bkr-t').value.trim(), body: $('#bkr-b').value.trim(), days: 30, rewards: { items: [x.item] } }).then(function (j) {
         if (j.error) { toast(j.error); el.disabled = false; return; }
-        $('#bkre').innerHTML = '<p class="small good" style="margin-top:8px">「' + esc(x.name) + '」 재지급 우편을 보냈습니다.</p>'; mails();
+        $('#rebox').innerHTML = '<p class="small good" style="margin-top:8px">「' + esc(x.name) + '」 재지급 우편을 보냈습니다.</p>'; mails();
       });
     },
     plogcopy: function () { var t = window.__plogJson || ''; if (!t) return; (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () { $('#umsg').textContent = '분석용 기록을 복사했습니다'; }, function () { prompt('아래 내용을 복사하십시오', t); }); },
@@ -250,7 +254,11 @@
         $('#umsg').textContent = '「' + j.name + '」 활동 기록 · 원정 완료 ' + j.st.expJobs + '회 · 지금까지 얻은 영웅 ' + j.st.epicFound + '개 · 전설 ' + j.st.legendFound + '개';
         var RN = ['일반', '고급', '희귀', '영웅', '전설'];
         var dl = '<div class="row between" style="margin-top:10px"><b>장비 처분 기록</b><span class="small faint">분류 마법 자동 처분: ' + (j.auto ? esc(j.auto.on ? j.auto.upto + ' · ' + j.auto.mode : '꺼짐') : '연구 전') + '</span></div>' +
-          '<div class="scroll" style="margin-top:6px;max-height:260px"><table><thead><tr><th>때</th><th>처분</th><th>개수</th><th>내용</th></tr></thead><tbody>' + ((j.dlog || []).map(function (d) { return '<tr><td>' + when(d.t) + '</td><td>' + esc(d.a) + (d.x ? ' <span class="tiny faint">(' + esc(d.x) + ')</span>' : '') + '</td><td class="num">' + d.n + '</td><td class="small">' + esc(d.it || (d.by + (d.lv ? ' · 최고 Lv ' + d.lv : ''))) + '</td></tr>'; }).join('') || '<tr><td colspan="4" class="faint">기록 없음 (이 기능을 넣은 뒤부터 기록됩니다)</td></tr>') + '</tbody></table></div>';
+          '<div class="scroll" style="margin-top:6px;max-height:320px"><table><thead><tr><th>때</th><th>처분</th><th>개수</th><th>내용</th></tr></thead><tbody>' + ((j.dlog || []).map(function (d) { return '<tr><td>' + when(d.t) + '</td><td>' + esc(d.a) + (d.x ? ' <span class="tiny faint">(' + esc(d.x) + ')</span>' : '') + '</td><td class="num">' + d.n + '</td><td class="small">' + esc(d.it || (d.by + (d.lv ? ' · 최고 Lv ' + d.lv : ''))) +
+            (d.keep && d.keep.length ? d.keep.map(function (x) { return '<div class="row" style="gap:6px;margin-top:4px;align-items:flex-start"><div style="flex:1">' + itemCell(x) + '</div>' + reBtn(x) + '</div>'; }).join('') : '') + '</td></tr>'; }).join('') || '<tr><td colspan="4" class="faint">기록 없음 (이 기능을 넣은 뒤부터 기록됩니다)</td></tr>') + '</tbody></table></div>';
+        BKNAME = j.name; $('#rebox').innerHTML = '';
+        dl += '<p class="small" style="margin-top:10px"><b>거래소 · 떠돌이 상인에서 산 장비</b> <span class="tiny faint">(최근 40건 · 옵션 그대로 남아 있어 재지급할 수 있습니다)</span></p><div class="scroll" style="margin-top:6px;max-height:300px"><table><thead><tr><th>때</th><th>장비</th><th>가격</th><th>산 곳</th><th>지금</th><th></th></tr></thead><tbody>' +
+          ((j.bought || []).map(function (x) { return '<tr><td>' + when(x.t) + '</td><td>' + itemCell(x) + '</td><td class="num">' + Number(x.price).toLocaleString() + '</td><td class="small">' + esc(x.from) + '</td><td class="small">' + (x.have == null ? '—' : x.have ? '보유 중' : '<b style="color:#e07c72">없음</b>') + '</td><td>' + reBtn(x) + '</td></tr>'; }).join('') || '<tr><td colspan="6" class="faint">기록 없음</td></tr>') + '</tbody></table></div>';
         $('#plog').innerHTML = cardHtml(j.card, RN) + dl + '<p class="small" style="margin-top:8px"><b>보유 영웅 · 전설</b> ' + (j.high.length ? j.high.map(function (x) { return esc(RN[x.r] + ' · ' + x.name + ' (Lv ' + x.ilvl + ', ' + x.at + ')'); }).join(' / ') : '없음') + '</p>' +
           '<div class="scroll" style="margin-top:8px;max-height:320px"><table><thead><tr><th>때</th><th>기록</th></tr></thead><tbody>' + j.log.map(function (l) { return '<tr><td>' + when(l.t) + '</td><td>' + esc(l.m) + (l.n > 1 ? ' <b>×' + l.n + '</b>' : '') + '</td></tr>'; }).join('') + '</tbody></table></div>' +
           '<p class="tiny faint" style="margin-top:4px">같은 기록이 이어지면 한 줄로 묶고 횟수(×)를 표시합니다. 시각은 마지막으로 일어난 때입니다.</p>';

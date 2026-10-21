@@ -974,7 +974,9 @@
     var o = { t: now, a: act, n: items.length, rc: rc, lv: top };
     if (items.length === 1) o.it = items[0].name + (items[0].enh ? ' +' + items[0].enh : '') + ' (' + D.RARITY[items[0].r].name + ' Lv ' + items[0].ilvl + ')';
     if (extra) o.x = extra;
-    var last = L[0]; if (last && last.a === act && act.indexOf('자동') === 0 && last.x === o.x && now - last.t < 3600) { last.n += o.n; last.t = now; for (var i = 0; i < 5; i++) last.rc[i] += rc[i]; if (top > last.lv) last.lv = top; delete last.it; return; }   // 자동 처분은 1시간 안이면 한 줄로 묶는다
+    var keep = items.filter(function (it) { return it.r >= 3 || it.enh > 0; }).slice(0, 10).map(function (it) { var c = JSON.parse(JSON.stringify(it)); delete c.u; delete c.lock; return c; });   // 영웅 이상 · 강화 장비는 그대로 남겨 운영실에서 재지급할 수 있게
+    if (keep.length) o.keep = keep;
+    var last = L[0]; if (last && last.a === act && act.indexOf('자동') === 0 && last.x === o.x && now - last.t < 3600) { last.n += o.n; last.t = now; for (var i = 0; i < 5; i++) last.rc[i] += rc[i]; if (top > last.lv) last.lv = top; delete last.it; if (keep.length) last.keep = (last.keep || []).concat(keep).slice(-10); return; }   // 자동 처분은 1시간 안이면 한 줄로 묶는다
     L.unshift(o); if (L.length > 80) L.length = 80;
   }
   function storeOrSell(P, it, wasEq) {
