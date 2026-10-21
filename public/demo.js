@@ -320,7 +320,7 @@
   // 데모 동아리: 직접 만들거나, 미리 있는 NPC 동아리에 들어갈 수 있다 (레벨·기여도·계급·창고까지 서버와 같은 규칙)
   var DEMO_GUILDS = [{ id: 'npc-g1', name: '별빛 관측회', intro: '밤마다 천문대 옥상에서 별샘을 관측합니다. 누구나 환영!', color: '#8fa8ff', mode: 'open', npcs: [1, 4, 7], lv: 3, xp: 420 }, { id: 'npc-g2', name: '결투 연구회', intro: '가시왕관관 주최. 결투제 대비 합동 연습. 가입은 신청 후 승인.', color: '#d9736b', mode: 'apply', npcs: [2, 5], lv: 2, xp: 150 }];
   function gFix(g) {   // 예전 데모 저장본에 새 칸 채우기
-    if (g.lv == null) { g.lv = 1; g.xp = 0; } if (g.gold == null) g.gold = 0; if (!g.items) g.items = []; if (!g.log) g.log = []; if (!g.ranks) g.ranks = Rules.guildDefRanks(); if (!g.nr) g.nr = {}; if (g.contrib == null) g.contrib = 0; if (!g.nc) g.nc = {}; if (g.myRank == null) g.myRank = '';
+    if (g.lv == null) { g.lv = 1; g.xp = 0; } if (g.gold == null) g.gold = 0; if (!g.items) g.items = []; if (!g.stock) g.stock = {}; if (!g.log) g.log = []; if (!g.ranks) g.ranks = Rules.guildDefRanks(); if (!g.nr) g.nr = {}; if (g.contrib == null) g.contrib = 0; if (!g.nc) g.nc = {}; if (g.myRank == null) g.myRank = '';
     return g;
   }
   LocalApi.prototype._gLog = function (text) { var g = this._soc().guild; g.log.unshift({ t: Date.now() / 1000, text: text }); if (g.log.length > 60) g.log.length = 60; };
@@ -337,7 +337,7 @@
     return { id: g.id, name: g.name, intro: g.intro, notice: g.notice || '', color: g.color, mode: g.mode, n: mem.length, max: Rules.guildCap(g.lv), myRole: g.role, demo: true, apps: [],
       lv: g.lv, xp: Math.floor(g.xp), need: Rules.guildXpNeed(g.lv), maxLv: Rules.GUILD_MAX_LV, bonus: Rules.guildBonus(g.lv), ranks: ranks, myRank: g.myRank, myRankName: Rules.guildRankName(ranks, g.role, g.myRank), perms: perms,
       my: { contrib: g.contrib, checkin: g.cday === day, dpts: g.dday === day ? g.dpts : 0, cap: Rules.GUILD_DONATE_CAP, unit: Rules.guildGoldUnit(P), bonusIn: Rules.GUILD_CHECKIN },
-      gold: g.gold, slots: Rules.guildSlots(g.lv), items: g.items.map(function (x) { return { id: x.id, name: x.item.name + (x.item.enh ? ' +' + x.item.enh : ''), r: x.item.r, ilvl: x.item.ilvl, slot: x.item.slot, by: x.by, t: x.t, item: x.item }; }), log: g.log.slice(0, 30),
+      gold: g.gold, slots: Rules.guildSlots(g.lv), items: g.items.map(function (x) { return { id: x.id, name: x.item.name + (x.item.enh ? ' +' + x.item.enh : ''), r: x.item.r, ilvl: x.item.ilvl, slot: x.item.slot, by: x.by, t: x.t, item: x.item }; }), stock: Object.keys(g.stock).filter(function (k) { return g.stock[k] > 0; }).sort().map(function (k) { return { k: k.slice(0, 1), id: k.slice(2), n: g.stock[k] }; }), log: g.log.slice(0, 30),
       members: mem, ranksMax: Rules.guildRanksMax(g.lv), rit: g.lv >= Rules.GRIT_LV ? this._gRit(mem.length) : undefined, wq: g.lv >= Rules.GWQ_LV ? this._gWq() : undefined };
   };
   // 데모 동아리 의식: 내가 봉헌하면 NPC 부원들도 따라 봉헌한다
@@ -369,12 +369,14 @@
     else if (o.op === 'inviteAccept') return fail('데모에는 받은 초대가 없습니다');
     else if (!so.guild) return fail('동아리에 들어가 있지 않습니다');
     else {
-      var g = gFix(so.guild), role = g.role, staff = role === 'owner' || role === 'officer', can = function (p) { return Rules.guildCan(g.ranks, role, g.myRank, p); };
+      var g = gFix(so.guild), stUsed = function () { return Object.keys(g.stock).filter(function (k) { return g.stock[k] > 0; }).length; }, role = g.role, staff = role === 'owner' || role === 'officer', can = function (p) { return Rules.guildCan(g.ranks, role, g.myRank, p); };
       var k = o.pid ? +String(o.pid).slice(4) : -1, tr = k >= 0 ? (g.nr[k] || (g.nr[k] = {})) : null, tRole = tr ? (tr.role || 'member') : null;
       if (o.op === 'leave') { if (role === 'owner' && g.npcs.length) return fail('부원이 있으면 회장은 나갈 수 없습니다. 먼저 회장 위임 필요'); if (role === 'owner') return fail('혼자 남은 회장은 「동아리 해체」로 정리 필요'); so.guild = null; so.chat.grp = []; so.chat.gooc = []; P.guildLv = 0; this._emitGroup('guild'); this._save(); return Promise.resolve({ ok: true, guild: null }); }
       if (o.op === 'disband') {
         if (role !== 'owner') return fail('회장만 동아리를 해체할 수 있습니다'); if (g.npcs.length) return fail('다른 부원이 있으면 동아리를 해체할 수 없습니다. 모두 내보낸 뒤에 해체 가능');
         var its = g.items.map(function (x) { return x.item; }); for (var i = 0; i < Math.max(its.length, g.gold > 0 ? 1 : 0); i += 10) this._sendMail('동아리', '「' + g.name + '」 창고 정리', '동아리를 해체해 창고에 남아 있던 것을 돌려드립니다.', { gold: i === 0 ? Math.floor(g.gold) : 0, items: its.slice(i, i + 10) }, 30);
+        var back = []; Object.keys(g.stock).forEach(function (k) { var n = g.stock[k], bag = Rules.gStockBag(P, k.slice(0, 1)), nm = Rules.gStockName(k.slice(0, 1), k.slice(2)); if (n > 0 && bag && nm) { bag[k.slice(2)] = (bag[k.slice(2)] || 0) + n; back.push(nm + ' ' + Rules.fmt(n) + '개'); } });
+        if (back.length) Rules.log(P, now, '「' + g.name + '」 창고에 남아 있던 재료 · 물약이 반환되었습니다: ' + back.join(', '), 'news');
         so.guild = null; so.chat.grp = []; so.chat.gooc = []; P.guildLv = 0; this._emitGroup('guild'); this._save(); return Promise.resolve({ ok: true, guild: null });
       }
       if (o.op === 'edit') { if (!can('notice')) return fail('공지·소개를 고칠 권한이 없습니다'); if (o.intro !== undefined) g.intro = String(o.intro).slice(0, 300); if (o.notice !== undefined) { var nn = String(o.notice).slice(0, 300); if (nn && nn !== g.notice) this._sys('grp', '동아리 공지: ' + nn); g.notice = nn; } if (staff && o.color) g.color = o.color; if (staff && o.icon !== undefined) g.icon = o.icon; if (staff && o.mode) g.mode = o.mode; }
@@ -423,13 +425,15 @@
           this._save(); return this._ok(now, { ok: true, got: pts, cost: pts * unit, guild: this._guildView() });
         }
         if (o.op === 'deposit') {
-          if (o.u) { var ii = P.inv.findIndex(function (x) { return x.u === o.u; }); if (ii < 0) return fail('가방에 없는 장비입니다'); if (P.inv[ii].lock) return fail('잠긴 장비는 넣을 수 없습니다'); if (g.items.length >= Rules.guildSlots(g.lv)) return fail('창고가 가득 찼습니다'); var it = P.inv.splice(ii, 1)[0]; g.items.push({ id: (g.iseq = (g.iseq || 0) + 1), item: it, by: P.name, t: now }); this._gLog(P.name + ' 님이 ' + Rules.josa(it.name, '을', '를') + ' 넣었습니다'); }
+          if (o.u) { var ii = P.inv.findIndex(function (x) { return x.u === o.u; }); if (ii < 0) return fail('가방에 없는 장비입니다'); if (P.inv[ii].lock) return fail('잠긴 장비는 넣을 수 없습니다'); if (g.items.length + stUsed() >= Rules.guildSlots(g.lv)) return fail('창고가 가득 찼습니다'); var it = P.inv.splice(ii, 1)[0]; g.items.push({ id: (g.iseq = (g.iseq || 0) + 1), item: it, by: P.name, t: now }); this._gLog(P.name + ' 님이 ' + Rules.josa(it.name, '을', '를') + ' 넣었습니다'); }
+          else if (o.k) { var sk = String(o.k), sid = String(o.id || ''), snm = Rules.gStockName(sk, sid), sbag = snm ? Rules.gStockBag(P, sk) : null, sn = Math.floor(+o.n || 0), skey = sk + ':' + sid; if (!sbag) return fail('보관할 수 없는 물품입니다'); if (!(sn >= 1) || sn > (sbag[sid] || 0)) return fail('수량 확인 필요 (보유 ' + Rules.fmt(sbag[sid] || 0) + '개)'); if (!(g.stock[skey] > 0) && g.items.length + stUsed() >= Rules.guildSlots(g.lv)) return fail('창고가 가득 찼습니다'); sbag[sid] -= sn; g.stock[skey] = (g.stock[skey] || 0) + sn; this._gLog(P.name + ' 님이 ' + snm + ' ' + Rules.fmt(sn) + '개를 넣었습니다'); }
           else { var amt = Math.floor(+o.gold || 0); if (!(amt >= 1) || amt > P.res.gold) return fail(CUR + '를 확인 필요'); P.res.gold -= amt; g.gold += amt; this._gLog(P.name + ' 님이 ' + Rules.fmt(amt) + ' ' + CUR + '를 넣었습니다'); }
           this._save(); return this._ok(now, { ok: true, guild: this._guildView() });
         }
         if (o.op === 'withdraw') {
           if (!can('take')) return fail('창고에서 꺼낼 권한이 없습니다');
-          if (o.id) { var xi = g.items.findIndex(function (x) { return x.id === +o.id; }); if (xi < 0) return fail('이미 누가 꺼냈습니다'); if (P.inv.length >= Rules.calc(P, null).bag) return fail('가방이 가득 찼습니다'); var x2 = g.items.splice(xi, 1)[0]; P.inv.push(x2.item); this._gLog(P.name + ' 님이 ' + Rules.josa(x2.item.name, '을', '를') + ' 꺼냈습니다'); }
+          if (o.k) { var wk = String(o.k), wid = String(o.id || ''), wnm = Rules.gStockName(wk, wid), wbag = wnm ? Rules.gStockBag(P, wk) : null, wn = Math.floor(+o.n || 0), wkey = wk + ':' + wid; if (!wbag) return fail('창고에 없는 물품입니다'); if (!(wn >= 1)) return fail('수량 확인 필요'); if (!((g.stock[wkey] || 0) >= wn)) return fail('창고에 남은 수량이 모자랍니다'); g.stock[wkey] -= wn; if (g.stock[wkey] <= 0) delete g.stock[wkey]; wbag[wid] = (wbag[wid] || 0) + wn; this._gLog(P.name + ' 님이 ' + wnm + ' ' + Rules.fmt(wn) + '개를 꺼냈습니다'); }
+          else if (o.id) { var xi = g.items.findIndex(function (x) { return x.id === +o.id; }); if (xi < 0) return fail('이미 누가 꺼냈습니다'); if (P.inv.length >= Rules.calc(P, null).bag) return fail('가방이 가득 찼습니다'); var x2 = g.items.splice(xi, 1)[0]; P.inv.push(x2.item); this._gLog(P.name + ' 님이 ' + Rules.josa(x2.item.name, '을', '를') + ' 꺼냈습니다'); }
           else { var a2 = Math.floor(+o.gold || 0); if (!(a2 >= 1)) return fail(CUR + '를 확인 필요'); if (a2 > g.gold) return fail('창고 ' + CUR + '가 모자랍니다'); g.gold -= a2; P.res.gold += a2; this._gLog(P.name + ' 님이 ' + Rules.fmt(a2) + ' ' + CUR + '를 꺼냈습니다'); }
           this._save(); return this._ok(now, { ok: true, guild: this._guildView() });
         }

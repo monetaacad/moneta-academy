@@ -1711,6 +1711,7 @@ function gView(me, id, full) {
     o.perms = {}; R.GUILD_PERMS.forEach((k) => { o.perms[k[0]] = R.guildCan(ranks, role, mine.rank, k[0]); });
     o.my = { contrib: mine.contrib || 0, checkin: mine.cday === day, dpts: mine.dday === day ? mine.dpts : 0, cap: R.GUILD_DONATE_CAP, unit: P ? R.guildGoldUnit(P) : 1, bonusIn: R.GUILD_CHECKIN };
     o.gold = g.gold || 0; o.slots = R.guildSlots(lv);
+    o.stock = dbx.q.gsList.all(id).map((r) => ({ k: r.kind, id: r.key, n: Number(r.n) }));
     o.items = dbx.q.giList.all(id).map((r) => { const it = JSON.parse(r.data); return { id: r.id, name: r.name, r: r.rarity, ilvl: r.ilvl, slot: r.slot, by: r.by_name, t: r.t, item: it }; });
     o.log = dbx.q.glList.all(id, 30);
     o.ranksMax = R.guildRanksMax(lv);
@@ -1744,10 +1745,18 @@ function gXp(gid, x) {
     guildOf.forEach((g2, pid) => { if (g2 === gid) { const P = store.peek(pid); if (P && setGuildLv(P)) store.markDirty(pid); } }); }
   return ups;
 }
+// 창고에서 쓰는 칸: 장비 1개 = 1칸, 재료 · 물약은 종류마다 1칸
+function gUsed(gid) { return dbx.q.giCount.get(gid).n + dbx.q.gsCount.get(gid).n; }
 // 동아리를 해체할 때 창고에 남은 것은 회장에게 우편으로 돌려준다
 function gReturnStorage(gid, owner, gname) {
   const g = dbx.q.gGet.get(gid), items = dbx.q.giList.all(gid).map((r) => JSON.parse(r.data)), gold = Math.floor((g && g.gold) || 0);
   for (let i = 0; i < Math.max(items.length, gold > 0 ? 1 : 0); i += 10) sendMail(owner, '동아리', '「' + gname + '」 창고 정리', '동아리를 해체해 창고에 남아 있던 것을 돌려드립니다.', { gold: i === 0 ? gold : 0, items: items.slice(i, i + 10) }, Date.now() / 1000 + 30 * 86400);
+  // 재료 · 물약은 우편 보상 종류가 아니므로 회장 가방(재료함 · 물약 선반)에 바로 돌려준다
+  const stock = dbx.q.gsList.all(gid), P = stock.length ? store.get(owner) : null;
+  if (P) {
+    const got = stock.map((r) => { const bag = R.gStockBag(P, r.kind), nm = R.gStockName(r.kind, r.key); if (!bag || !nm) return ''; bag[r.key] = (bag[r.key] || 0) + Number(r.n); return nm + ' ' + R.fmt(Number(r.n)) + '개'; }).filter(Boolean);
+    if (got.length) { R.log(P, nowSec(), '「' + gname + '」 창고에 남아 있던 재료 · 물약이 반환되었습니다: ' + got.join(', '), 'news'); store.markDirty(owner); }
+  }
 }
 routes['GET /api/guilds'] = (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
@@ -1917,7 +1926,7 @@ routes['POST /api/guild'] = async (req, res) => {
     if (role !== 'owner') return fail(req, res, 403, '회장만 동아리를 해체할 수 있습니다');
     if (gCount(mine) > 1) return fail(req, res, 400, '다른 부원이 있으면 동아리를 해체할 수 없습니다. 모두 내보낸 뒤에 해체 가능');
     gReturnStorage(mine, me, g.name);
-    gRankCache.at = 0; dbx.tx(() => { dbx.q.gDelMembers.run(mine); dbx.q.gDelete.run(mine); dbx.q.gAppDelGuild.run(mine); dbx.q.giDelGuild.run(mine); dbx.q.glDelGuild.run(mine); dbx.q.ginvDelGuild.run(mine); });
+    gRankCache.at = 0; dbx.tx(() => { dbx.q.gDelMembers.run(mine); dbx.q.gDelete.run(mine); dbx.q.gAppDelGuild.run(mine); dbx.q.giDelGuild.run(mine); dbx.q.gsDelGuild.run(mine); dbx.q.glDelGuild.run(mine); dbx.q.ginvDelGuild.run(mine); });
     guildOf.delete(me); guildRole.delete(me); guildLv.delete(mine); chat.guildChanged(me); chat.dropGuild(mine); if (setGuildLv(P)) store.markDirty(me);
     return send(req, res, 200, { ok: true, guild: null });
   }
@@ -1979,9 +1988,18 @@ routes['POST /api/guild'] = async (req, res) => {
     if (b.u) {
       const i = P.inv.findIndex((x) => x.u === String(b.u)); if (i < 0) return fail(req, res, 400, '가방에 없는 장비입니다');
       if (P.inv[i].lock) return fail(req, res, 400, '잠긴 장비는 넣을 수 없습니다');
-      if (dbx.q.giCount.get(mine).n >= R.guildSlots(g.lv)) return fail(req, res, 400, '창고가 가득 찼습니다 (' + R.guildSlots(g.lv) + '칸)');
+      if (gUsed(mine) >= R.guildSlots(g.lv)) return fail(req, res, 400, '창고가 가득 찼습니다 (' + R.guildSlots(g.lv) + '칸)');
       const it = P.inv.splice(i, 1)[0]; dbx.q.giPut.run(mine, JSON.stringify(it), it.name + (it.enh ? ' +' + it.enh : ''), it.r, it.ilvl, it.slot, P.name, now); store.markDirty(me);
       gLog(mine, P.name + ' 님이 ' + R.josa(it.name + (it.enh ? ' +' + it.enh : ''), '을', '를') + ' 넣었습니다');
+    } else if (b.k) {   // 재료 · 물약: 종류마다 1칸, 같은 종류는 수량만 늘어난다
+      const k = String(b.k), key = String(b.id || ''), nm = R.gStockName(k, key), bag = nm ? R.gStockBag(P, k) : null, n = Math.floor(Number(b.n) || 0);
+      if (!bag) return fail(req, res, 400, '보관할 수 없는 물품입니다');
+      if (!(n >= 1) || n > (bag[key] || 0)) return fail(req, res, 400, '수량 확인 필요 (보유 ' + R.fmt(bag[key] || 0) + '개)');
+      const cur = dbx.q.gsGet.get(mine, k, key), have = cur ? Number(cur.n) : 0;
+      if (have <= 0 && gUsed(mine) >= R.guildSlots(g.lv)) return fail(req, res, 400, '창고가 가득 찼습니다 (' + R.guildSlots(g.lv) + '칸)');
+      if (have + n > R.GSTOCK_MAX) return fail(req, res, 400, '한 종류에 보관할 수 있는 수량을 넘었습니다');
+      bag[key] -= n; dbx.q.gsAdd.run(mine, k, key, n); store.markDirty(me);
+      gLog(mine, P.name + ' 님이 ' + nm + ' ' + R.fmt(n) + '개를 넣었습니다');
     } else {
       const amt = Math.floor(Number(b.gold) || 0); if (!(amt >= 1) || amt > P.res.gold) return fail(req, res, 400, CUR + '를 확인 필요');
       P.res.gold -= amt; dbx.q.gGoldAdd.run(amt, mine); store.markDirty(me); gLog(mine, P.name + ' 님이 ' + R.fmt(amt) + ' ' + CUR + '를 넣었습니다');
@@ -1990,11 +2008,18 @@ routes['POST /api/guild'] = async (req, res) => {
   }
   if (op === 'withdraw') {
     if (!can('take')) return fail(req, res, 403, '창고에서 꺼낼 권한이 없습니다');
-    if (b.id) {
+    if (b.id && !b.k) {
       const r = dbx.q.giGet.get(Number(b.id) | 0, mine); if (!r) return fail(req, res, 404, '이미 누가 꺼냈습니다');
       if (P.inv.length >= R.calc(P, world.ctx(gnow), gnow).bag) return fail(req, res, 400, '가방이 가득 찼습니다');
       if (!dbx.q.giDel.run(r.id, mine).changes) return fail(req, res, 409, '이미 누가 꺼냈습니다');
       P.inv.push(JSON.parse(r.data)); store.markDirty(me); gLog(mine, P.name + ' 님이 ' + R.josa(r.name, '을', '를') + ' 꺼냈습니다');
+    } else if (b.k) {
+      const k = String(b.k), key = String(b.id || ''), nm = R.gStockName(k, key), bag = nm ? R.gStockBag(P, k) : null, n = Math.floor(Number(b.n) || 0);
+      if (!bag) return fail(req, res, 400, '창고에 없는 물품입니다');
+      if (!(n >= 1) || n > R.GSTOCK_MAX) return fail(req, res, 400, '수량 확인 필요');
+      if (!dbx.q.gsTake.run(n, mine, k, key, n).changes) return fail(req, res, 400, '창고에 남은 수량이 모자랍니다');
+      dbx.q.gsClean.run(mine); bag[key] = (bag[key] || 0) + n; store.markDirty(me);
+      gLog(mine, P.name + ' 님이 ' + nm + ' ' + R.fmt(n) + '개를 꺼냈습니다');
     } else {
       const amt = Math.floor(Number(b.gold) || 0); if (!(amt >= 1)) return fail(req, res, 400, CUR + '를 확인 필요');
       if (!dbx.q.gGoldTake.run(amt, mine, amt).changes) return fail(req, res, 400, '창고 ' + CUR + '가 모자랍니다');
@@ -2096,7 +2121,7 @@ function resetCharacter(oldId) {
       dbx.tx(() => { dbx.q.gRole.run('owner', next.id); dbx.q.gSetRank.run('', next.id); dbx.q.gOwner.run(next.id, gid); }); guildRole.set(next.id, 'owner');
       gLeave(oldId); gSys(gid, row.name + ' 님이 동아리에서 나가 ' + next.name + ' 님이 새 회장이 되었습니다.'); gLog(gid, row.name + ' 님 탈퇴(캐릭터 초기화) · ' + next.name + ' 님이 회장');
     } else if (role === 'owner') {
-      gRankCache.at = 0; dbx.tx(() => { dbx.q.gDelMembers.run(gid); dbx.q.gDelete.run(gid); dbx.q.gAppDelGuild.run(gid); dbx.q.giDelGuild.run(gid); dbx.q.glDelGuild.run(gid); dbx.q.ginvDelGuild.run(gid); });
+      gRankCache.at = 0; dbx.tx(() => { dbx.q.gDelMembers.run(gid); dbx.q.gDelete.run(gid); dbx.q.gAppDelGuild.run(gid); dbx.q.giDelGuild.run(gid); dbx.q.gsDelGuild.run(gid); dbx.q.glDelGuild.run(gid); dbx.q.ginvDelGuild.run(gid); });
       guildOf.delete(oldId); guildRole.delete(oldId); guildLv.delete(gid); chat.dropGuild(gid);
     } else { gLeave(oldId); gSys(gid, row.name + ' 님이 동아리에서 나갔습니다.'); gLog(gid, row.name + ' 님 탈퇴(캐릭터 초기화)'); }
     if (g) gRankCache.at = 0;
