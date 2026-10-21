@@ -1941,11 +1941,12 @@
     var sel = S.sjSel && R.SUBJ[S.sjSel] ? S.sjSel : subs.reduce(function (a, sj) { return !a || (P.subj[sj.id] || {}).lv > (P.subj[a] || {}).lv ? sj.id : a; }, null);
     var mine = d && d.mine && d.mine[sel], sjm = P.subj[sel] || {};
     var h = '<div class="card">' + rkHead('과목 수석', '과목 레벨 순위입니다. 같은 레벨이면 그 레벨에서 쌓은 경험치가 많은 학생이 앞섭니다. 학과 전용 과목은 그 학과 학생끼리 겨루며, 순위는 5분마다 갱신됩니다.', mine, sjm.lv > 0 ? '' : '아직 기록 없음') +
-      '<select data-act="sjsel" aria-label="과목 선택" style="width:auto;margin:4px 0 2px">' + D.SUBJECTS.map(function (sj) { return '<option value="' + sj.id + '"' + (sj.id === sel ? ' selected' : '') + '>' + sj.name + '</option>'; }).join('') + '</select>';
+      '<div class="tabs sjtabs" role="tablist" aria-label="과목">' + D.SUBJECTS.map(function (sj) { return '<button role="tab" class="' + (sj.id === sel ? 'on' : '') + '" aria-selected="' + (sj.id === sel) + '" data-act="sjsel" data-a="' + sj.id + '">' + sj.name + '</button>'; }).join('') + '</div>';
     if (!d) return h + '<div class="empty">불러오는 중…</div></div>';
     var rows = (d.tops[sel] || []).slice(0, 10).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: 'Lv ' + r.lv, sub: R.gradeLabel({ grade: r.grade }) }; });
     return h + rankList(rows, null, mine ? { rank: mine, v: 'Lv ' + sjm.lv } : null) + '</div>';
   }
+  ACT.sjsel = function (k) { if (R.SUBJ[k]) { S.sjSel = k; render(); } };
   // 내 순위들 (랭킹 화면을 볼 때만, 30초 캐시)
   function myRanks() {
     if (API.myRanks && (!S.myRanksAt || Date.now() - S.myRanksAt > 30000)) { S.myRanksAt = Date.now(); API.myRanks().then(function (j) { if (j && j.ranks) { S.myRanks = j.ranks; if ((S.view === 'world' || S.view === 'rank') && !S.modal) render(); } }); }
@@ -5370,7 +5371,6 @@
   document.addEventListener('change', function (e) {
     var el = e.target;
     if (el.dataset.act === 'pick-sel') { S.pick[el.dataset.a] = el.value; render(); }
-    else if (el.dataset.act === 'sjsel') { S.sjSel = el.value; render(); }
     else if (el.dataset.act === 'exampick') act('examPick', { s: el.value }).then(function (r) { if (r) { toast('선택 과목', el.value ? R.SUBJ[el.value].name + ' 과목으로 응시합니다' : '가장 레벨이 높은 과목이 자동으로 반영됩니다'); render(); } });
     else if (el.dataset.act === 'tfpick') ACT.tfpick(el.dataset.a, null, el);
     else if (el.dataset.act === 'famzone') act('famZone', { id: el.dataset.a, z: el.value }).then(function (r) { if (r) { toast('파견 지역', (el.value ? R.dispZoneOf(S.P, el.dataset.a, el.value).name : '갈 수 있는 가장 높은 지역') + '으로 정했습니다. 다음 파견부터 적용됩니다'); render(); } });

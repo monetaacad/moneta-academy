@@ -1895,5 +1895,7 @@ mark.hl { color: inherit; background: linear-gradient(transparent 38%, color-mix
 .subj .revline { margin: 2px 0 4px; }
 
 /* 과목 수석 */
+.tabs.sjtabs { flex-wrap: wrap; overflow: visible; margin: 6px 0 4px; }
+.tabs.sjtabs button { padding: 6px 8px; font-size: 13px; }
 .pheads { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .phead { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--brass); color: var(--brass); background: color-mix(in srgb, var(--brass) 10%, transparent); white-space: nowrap; }
