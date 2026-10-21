@@ -494,7 +494,7 @@ function open(dir) {
     mkReprice: db.prepare(`UPDATE market SET price = ? WHERE id = ? AND seller = ? AND status = 'open' AND auc = 0`),
     mkAucInit: db.prepare(`UPDATE market SET auc = 1, start_price = ? WHERE id = ?`),
     mkBidLog: db.prepare(`INSERT INTO market_bids (mid, pid, amount, t) VALUES (?, ?, ?, ?)`),
-    mkMyBids: db.prepare(`SELECT m.*, COALESCE(p.name, m.seller_name) AS seller_name FROM market m LEFT JOIN players p ON p.id = m.seller WHERE m.auc = 1 AND m.id IN (SELECT mid FROM market_bids WHERE pid = ?) AND (m.status = 'open' OR m.done_at > ?) ORDER BY m.status = 'open' DESC, m.expires ASC LIMIT 30`),
+    mkMyBids: db.prepare(`SELECT m.*, COALESCE(p.name, m.seller_name) AS seller_name FROM market m LEFT JOIN players p ON p.id = m.seller WHERE m.auc = 1 AND m.id IN (SELECT mid FROM market_bids WHERE pid = ?) AND m.status = 'open' ORDER BY m.expires ASC LIMIT 30`),   // 진행 중인 경매만 (즉시 구매 · 마감으로 끝난 경매는 「거래 내역」 · 알림으로)
     mkBidPurge: db.prepare(`DELETE FROM market_bids WHERE mid NOT IN (SELECT id FROM market)`),
     // 동아리
     gGet: db.prepare(`SELECT * FROM guilds WHERE id = ?`),
