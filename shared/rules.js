@@ -2027,7 +2027,9 @@
   };
   A.allocW = function (P, W, now, a) {
     var w = a.w || {}, o = {}; STATS.forEach(function (k) { var v = Number(w[k]); o[k] = isFinite(v) ? clamp(v, 0, 10) : 0; });
-    P.opt.allocW = o; if (P.opt.autoAlloc) R.autoAlloc(P); return { ok: true };
+    if (!STATS.some(function (k) { return o[k] > 0; })) err('비율을 하나 이상 입력해야 합니다');
+    P.opt.allocW = o; if (a.mine) P.opt.allocMy = JSON.parse(JSON.stringify(o));   // 개인 프리셋으로 저장
+    if (P.opt.autoAlloc) R.autoAlloc(P); return { ok: true };
   };
   A.opt = function (P, W, now, a) {
     var k = str(a.k); if (['autoEquip', 'autoAlloc', 'sound', 'reduceFx', 'hideMyTitle', 'hideOtherTitle', 'dockClosed', 'bulkAsk', 'showFam', 'hideRank', 'buffMerge'].indexOf(k) < 0) err('잘못된 설정');
