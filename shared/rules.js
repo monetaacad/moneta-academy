@@ -936,7 +936,7 @@
   // 파견 지역: 사역마마다 정해 둘 수 있다 (P.fam.zone[fid] = 지역 id, 없으면 갈 수 있는 가장 높은 지역). 출발할 때 정해진 지역으로 다녀온다
   R.dispZones = function (P) { var top = Math.min(P.maxStage, R.stageCap(P)); return D.ZONES.filter(function (z) { return z.from <= top; }); };
   R.dispZoneOf = function (P, fid, zid) { var zs = R.dispZones(P), want = zid || (P.fam.zone && P.fam.zone[fid]); return zs.filter(function (z) { return z.id === want; })[0] || zs[zs.length - 1] || D.ZONES[0]; };
-  function dispatchFinish(P, fid, d, t) {
+  function dispatchFinish(P, fid, d, t, early) {   // early: 도중에 불러들임 (보낸 뒤 지난 시간만큼만, 파견 횟수 · 대항전 점수 · 밤샘에는 넣지 않는다)
     var f = FAM[fid], z = R.dispZoneOf(P, fid, d.z), h = d.dur / 3600, out = { k: 'disp', f: fid, t: t };
     out.xp = Math.round(h * R.FAM_DISP_XP); famGainXp(P, fid, out.xp, t);   // 파견 경험치 (시간에 비례, 동행보다 낮게)
     var mult = (1 + f.r * 0.3) * (1 + 0.05 * (P.fam.own[fid].lv - 1)) * (d.bonus || 1);
@@ -945,6 +945,7 @@
     var gold = Math.floor(h * 40 * K.KILL_GOLD * Math.pow(K.G_GOLD, z.from - 1) * mult * K.DISP_GOLD); addGold(P, gold); out.gold = gold;
     if (rnd(P) < h * 0.008 * mult) { P.fam.eggs++; out.egg = 1; }
     if (rnd(P) < h * 0.04) { var sh = ri(P, 1, 3); P.res.shard += sh; out.shard = sh; }
+    if (early) { out.early = 1; return out; }
     P.st.dispatches++; cupAdd(P, 20, 'disp');
     nightJob(P, t);
     return out;
@@ -2113,15 +2114,26 @@
   // 쉬고 있는 사역마(동행 · 파견 중이 아닌) 모두를 같은 시간으로 파견
   A.dispatchAll = function (P, W, now, a) {
     if (!R.famOpen(P)) err(R.FAM_OPEN_TEXT + '부터 할 수 있습니다');
-    var ids = Object.keys(P.fam.own).filter(function (id) { return FAM[id] && !P.fam.disp[id] && P.fam.act !== id; }); if (!ids.length) err('파견을 보낼 수 있는 사역마가 없습니다');
+    var ids = R.famIdle(P); if (!ids.length) err('파견을 보낼 수 있는 사역마가 없습니다 (파견 잠금 · 동행 중 제외)');
     ids.forEach(function (id) { A.dispatch(P, W, now, { id: id, d: a.d }); }); return { n: ids.length };
   };
   A.dispatch = function (P, W, now, a) {
     var id = str(a.id), d = DDUR[str(a.d)];
     if (!R.famOpen(P)) err(R.FAM_OPEN_TEXT + '부터 할 수 있습니다'); if (!P.fam.own[id]) err('없는 사역마입니다'); if (!d) err('잘못된 시간입니다');
-    if (P.fam.disp[id]) err('이미 파견 중입니다'); if (P.fam.act === id) err('동행 중인 사역마는 파견할 수 없습니다');
+    if (P.fam.disp[id]) err('이미 파견 중입니다'); if (P.fam.act === id) err('동행 중인 사역마는 파견할 수 없습니다'); if (P.fam.own[id].lock) err('파견 잠금을 푼 뒤 보낼 수 있습니다');
     var b = calc(P, W, now, now + d.s).b;   // 숙면의 차 등은 파견 시간과 겹친 만큼
     P.fam.disp[id] = { start: now, end: now + d.s, dur: d.s, bonus: 1 + (b.dispPct || 0) + P.subj.beast.lv * R.BEAST_DISP, z: R.dispZoneOf(P, id).id }; return { ok: true };
+  };
+  // 쉬고 있는 사역마 (동행 · 파견 중 · 파견 잠금 제외) — 「모두 파견」이 보내는 대상
+  R.famIdle = function (P) { return Object.keys(P.fam.own).filter(function (id) { return FAM[id] && !P.fam.disp[id] && P.fam.act !== id && !P.fam.own[id].lock; }); };
+  // 파견 잠금: 「모두 파견」에서 빼고 따로 보내지도 못하게 한다 (동행 · 먹이는 그대로)
+  A.famLock = function (P, W, now, a) { var id = str(a.id), o = P.fam.own[id]; if (!o) err('없는 사역마입니다'); if (o.lock) delete o.lock; else o.lock = 1; return { id: id, lock: !!o.lock }; };
+  // 파견 중인 사역마 하나를 지금 불러들인다: 보낸 뒤 지난 시간만큼의 몫만 받는다
+  A.dispRecall = function (P, W, now, a) {
+    var id = str(a.id), d = P.fam.disp[id]; if (!d) err('파견 중이 아닙니다');
+    var o = dispatchFinish(P, id, Object.assign({}, d, { dur: Math.max(0, Math.min(d.dur, now - d.start)) }), now, true); delete P.fam.disp[id];
+    log(P, now, R.josa(R.FAM[id].name, '을', '를') + ' 파견에서 일찍 불러들였습니다', 'news');
+    return o;
   };
   A.famZone = function (P, W, now, a) {
     var id = str(a.id), z = a.z ? str(a.z) : ''; if (!P.fam.own[id]) err('없는 사역마입니다');

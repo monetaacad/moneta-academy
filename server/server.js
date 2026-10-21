@@ -2109,11 +2109,11 @@ routes['GET /api/admin/growth'] = (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
   const u = new URL(req.url, 'http://x'), days = Math.max(1, Math.min(400, Number(u.searchParams.get('days')) || 30));
   if (u.searchParams.get('now') === '1') growthSnap(true);
-  const from = kstDay(Math.floor(Date.now() / 1000) - (days - 1) * 86400), rows = dbx.q.growthFrom.all(from);
-  const cols = ['d', 'house', 'cls', 'lvl', 'power', 'grade', 'stage', 'ctM', 'ctK', 'cup', 'act'].concat(GROWTH_ST, GROWTH_GEAR), anon = (id) => crypto.createHash('sha256').update('growth:' + id).digest('hex').slice(0, 10);
+  const from = kstDay(Math.floor(Date.now() / 1000) - (days - 1) * 86400) * 100, rows = dbx.q.growthFrom.all(from);
+  const cols = ['d', 'h', 'house', 'cls', 'lvl', 'power', 'grade', 'stage', 'ctM', 'ctK', 'cup', 'act'].concat(GROWTH_ST, GROWTH_GEAR), anon = (id) => crypto.createHash('sha256').update('growth:' + id).digest('hex').slice(0, 10);
   const lines = [['date', 'student'].concat(cols).join(',')];
-  rows.forEach((r) => { let o = {}; try { o = JSON.parse(r.data); } catch (e) { } lines.push([String(r.day).replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3'), anon(r.pid)].concat(cols.map((k) => o[k] == null ? '' : String(o[k]).replace(/[,\n]/g, ' '))).join(',')); });
-  send(req, res, 200, { csv: lines.join('\n'), rows: rows.length, days: dbx.q.growthDays.all().slice(0, days) });
+  rows.forEach((r) => { let o = {}; try { o = JSON.parse(r.data); } catch (e) { } lines.push([growthSlotText(r.day), anon(r.pid)].concat(cols.map((k) => o[k] == null ? '' : String(o[k]).replace(/[,\n]/g, ' '))).join(',')); });
+  send(req, res, 200, { csv: lines.join('\n'), rows: rows.length, days: dbx.q.growthDays.all().slice(0, days * 2) });
 };
 routes['GET /api/admin/oplog'] = (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
@@ -2555,21 +2555,24 @@ function growthGear(P, now) {
   return o;
 }
 const GROWTH_ST = ['kills', 'lecHours', 'lecJobs', 'expJobs', 'bosses', 'bossTries', 'researchDone', 'brews', 'dispatches', 'tasksDone', 'duelWins', 'wbAttacks', 'goldTotal', 'manaTotal', 'famKinds', 'epicFound', 'legendFound', 'maxEnh'];
+// 성장 기록 칸: 한국 날짜 + 0시 / 12시 구간 (YYYYMMDDHH). 12시간마다 한 번 저장
+const growthSlot = (t) => kstDay(t) * 100 + (new Date(t * 1000 + 9 * 3600000).getUTCHours() < 12 ? 0 : 12);
+const growthSlotText = (v) => { v = Number(v); if (v < 1e9) v *= 100; const s = String(v); return s.slice(0, 4) + '-' + s.slice(4, 6) + '-' + s.slice(6, 8) + ' ' + s.slice(8, 10) + '시'; };
 function growthSnap(force) {
-  const real = Math.floor(Date.now() / 1000), day = kstDay(real);
-  if (!force && dbx.kvGet('growthDay', 0) === day) return 0;
+  const real = Math.floor(Date.now() / 1000), day = growthSlot(real);
+  if (!force && dbx.kvGet('growthSlot', 0) === day) return 0;
   const rows = dbx.db.prepare('SELECT id, house, created, last_seen, state, power, lvl, grade FROM players WHERE banned = 0 AND guest = 0 AND deleted = 0').all();
   let n = 0;
   dbx.tx(() => {
     rows.forEach((r) => {
       let P = store.peek(r.id); if (!P) { try { P = JSON.parse(r.state); } catch (e) { return; } }
-      const st = P.st || {}, o = { d: Math.floor((real - r.created) / 86400), house: r.house, cls: P.cls || '', lvl: P.lvl || r.lvl, power: Math.round(r.power), grade: P.grade || r.grade, stage: st.maxStageAll || 0,
+      const st = P.st || {}, o = { d: Math.floor((real - r.created) / 86400), h: Math.floor((real - r.created) / 3600), house: r.house, cls: P.cls || '', lvl: P.lvl || r.lvl, power: Math.round(r.power), grade: P.grade || r.grade, stage: st.maxStageAll || 0,
         ctM: st.twM || 0, ctK: st.twK || 0, cup: Math.round((P.wk && P.wk.cup) || 0), act: real - r.last_seen < 86400 ? 1 : 0 };
       GROWTH_ST.forEach((k) => { o[k] = Math.round(st[k] || 0); });
       Object.assign(o, growthGear(P, nowSec()));
       dbx.q.growthPut.run(day, r.id, JSON.stringify(o)); n++;
     });
-    dbx.kvSet('growthDay', day);
+    dbx.kvSet('growthSlot', day);
   });
   log('성장 스냅샷 ' + day + ': ' + n + '명');
   return n;
