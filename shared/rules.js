@@ -485,7 +485,7 @@
   };
 
   /* ───────── 후배 장학금: 서버 진행보다 두 학년 이상 뒤처진 학생 지원 ───────── */
-  R.PACE = [1.8, 4.3, 9.9, 16.5, 28.9, 49.9, 91.9]; // 성실한 학생이 각 시험을 통과하는 개교 후 날짜
+  R.PACE = [2.9, 4.5, 14.2, 19.5, 30.7, 43.6, 73.5]; // 성실한 학생이 각 시험을 통과하는 개교 후 날짜
   R.SCHOLAR_EFF = { lectureSpd: 0.6, xpPct: 0.6, goldPct: 0.3 };
   R.expectedGrade = function (W, t) { var d = (t - W.epoch) / 86400, g = 1; R.PACE.forEach(function (x) { if (d >= x) g++; }); return g; };
   R.scholarship = function (P, W, t) { return !!W && P.grade < 8 && P.grade <= R.expectedGrade(W, t) - 2; };
@@ -863,8 +863,8 @@
   R.subjStats = function (P, s) { return P && P.cls === 'knight' && s.kstat ? [s.kstat, s.kstat2 || s.stat2] : [s.stat, s.stat2]; };   // 과목이 올려 주는 능력치 (원소역학은 학과마다 다르다)
   R.subjVisible = function (P, s) { return !s.cls || s.cls === (P.cls || 'mage'); };   // 학과 전용 수업은 그 학과에게만
   R.availableSubjects = function (P) { return D.SUBJECTS.filter(function (s) { return s.unlock <= Math.min(P.grade, 7) && R.subjVisible(P, s); }); };
-  // 학년별 수업 경험치 배율 (1학년부터 · 8 = 마스터 과정)
-  R.LEC_GRADE = [1.08, 1.16, 1.24, 1.32, 1.4, 1.48, 1.56, 1.64];
+  // 학년별 수업 경험치 배율 (1학년부터 · 8 = 마스터 과정). 1~3학년은 느리게, 6학년 이후는 빠르게 (2차 베타)
+  R.LEC_GRADE = [0.6, 0.65, 0.8, 1.3, 1.7, 2.4, 2.8, 2.8];
   R.lecGradeMul = function (g) { return R.LEC_GRADE[clamp(g | 0, 1, R.LEC_GRADE.length) - 1]; };
   R.lecPreview = function (P, W, sid, durK, t0) {
     var d = DUR[durK] || DUR['1h']; t0 = t0 || P.at;
