@@ -1667,7 +1667,7 @@
         '<div class="stagectl" style="margin-top:8px"><button class="btn sm" data-act="ers" data-a="-1" aria-label="이전 단계">◀</button><span class="big num">' + s0 + '</span><button class="btn sm" data-act="ers" data-a="1" aria-label="다음 단계">▶</button><span class="tiny faint">' + R.zoneOf(s0).name + '</span></div>' +
         durPicker('erd', D.DURATIONS, '1h') +
         (er.party && er.party.n > 1 ? '<p class="small" style="margin-top:8px">' + (er.party.can ? '파티에 들어가 있습니다. 「파티로 열기」를 누르면 파티원 ' + er.party.n + '명이 함께 방에 들어갑니다.' : '파티로 열기는 파티장만 가능합니다. 파티장이 파티 화면에서 「파티원도 파티 단위로 원정 참가」를 켜면 누구나 열 수 있습니다.') + '</p>' : '') +
-        '<div class="row" style="margin-top:8px;flex-wrap:wrap;gap:6px">' + (S.party ? '<label class="small"><input type="checkbox" id="er-po"' + (S.erPO ? ' checked' : '') + '> 파티원만</label>' : '') + '<span class="spacer"></span>' + (er.party && er.party.can && er.party.n > 1 ? '<button class="btn ghost sm" data-act="ercreate">혼자 열기</button><button class="btn primary" data-act="ercreate" data-a="party">파티로 열기 (' + er.party.n + '명)</button>' : '<button class="btn primary" data-act="ercreate">방 열기</button>') + '</div></details>';
+        '<div class="row" style="margin-top:8px;flex-wrap:wrap;gap:6px">' + (S.party ? '<label class="small"><input type="checkbox" id="er-po" data-act="erpo"' + ((S.erPO != null ? S.erPO : PREF.erPO) ? ' checked' : '') + '> 파티원만</label>' : '') + '<span class="spacer"></span>' + (er.party && er.party.can && er.party.n > 1 ? '<button class="btn ghost sm" data-act="ercreate">혼자 열기</button><button class="btn primary" data-act="ercreate" data-a="party">파티로 열기 (' + er.party.n + '명)</button>' : '<button class="btn primary" data-act="ercreate">방 열기</button>') + '</div></details>';
     }
     var others = er.rooms.filter(function (r) { return !r.mine; });
     h += '<div class="erlist">' + (others.length ? others.map(function (r) {
@@ -5294,7 +5294,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102261;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102262;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
@@ -5434,6 +5434,7 @@
   document.addEventListener('change', function (e) {
     var el = e.target;
     if (el.dataset.act === 'pick-sel') { S.pick[el.dataset.a] = el.value; render(); }
+    else if (el.dataset.act === 'erpo') { S.erPO = el.checked; PREF.erPO = el.checked; savePref(); }   // 「파티원만」: 다시 그려도 · 다음 접속에도 유지
     else if (el.dataset.act === 'exampick') act('examPick', { s: el.value }).then(function (r) { if (r) { toast('선택 과목', el.value ? R.SUBJ[el.value].name + ' 과목으로 응시합니다' : '가장 레벨이 높은 과목이 자동으로 반영됩니다'); render(); } });
     else if (el.dataset.act === 'tfpick') ACT.tfpick(el.dataset.a, null, el);
     else if (el.dataset.act === 'famzone') act('famZone', { id: el.dataset.a, z: el.value }).then(function (r) { if (r) { toast('파견 지역', (el.value ? R.dispZoneOf(S.P, el.dataset.a, el.value).name : '갈 수 있는 가장 높은 지역') + '으로 정했습니다. 다음 파견부터 적용됩니다'); render(); } });
