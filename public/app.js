@@ -114,10 +114,30 @@
   }
   function modal(html, wide, locked) {
     var m = $('#modal'); m.innerHTML = '<div class="mbox' + (wide ? ' wide' : '') + '" role="dialog" aria-modal="true">' + html + '</div>';
-    m.hidden = false; S.modal = true; S.modalLocked = !!locked; scrollHints();
+    m.hidden = false; S.modal = true; S.modalLocked = !!locked; scrollHints(); histModal();
     var f = m.querySelector('[autofocus]') || m.querySelector('button'); if (f) setTimeout(function () { f.focus({ preventScroll: true }); }, 30);   // 포커스가 창을 맨 위로 끌어올리지 않게 (같은 창을 다시 그릴 때 보던 자리 유지)
   }
-  function closeModal() { var m = $('#modal'); m.hidden = true; m.innerHTML = ''; S.modal = false; S.modalLocked = false; S.replay = null; S.rpKeep = false; S.mbox = null; S.meModal = false; S.notesOpen = false; render(); var f = S.afterClose; S.afterClose = null; if (f) setTimeout(f, 60); }
+  /* ── 뒤로 가기 (브라우저 · 모바일 뒤로 가기 버튼) ──
+     화면을 옮길 때마다 기록을 하나 쌓고, 창(모달)을 열면 하나 더 쌓는다. 뒤로 가기는 열린 창을 먼저 닫고, 창이 없으면 이전 화면으로.
+     창을 버튼으로 닫으면 그 기록은 「빈 칸(dup)」으로 바꿔 두고, 다음 화면 이동 · 창 열기 때 그 칸을 다시 사용한다 (뒤로 가기를 헛누르지 않게). */
+  function hist(fn, st) { try { history[fn](st, ''); } catch (e) { } }
+  function histModal() { if (S.modalHist || !S.P) return; hist(S.curDup ? 'replaceState' : 'pushState', { m: 1, v: S.view }); S.modalHist = true; S.curDup = false; }
+  function histView(a) { if (S.popNav) return; hist(S.curDup ? 'replaceState' : 'pushState', { v: a }); S.curDup = false; }
+  window.addEventListener('popstate', function (e) {
+    if (!S.P || S.P.needCreate) return;
+    var st = e.state || {}, wasDup = S.curDup;
+    S.curDup = !!st.dup;
+    if (S.modal) {
+      S.modalHist = false;
+      if (!S.modalLocked) tryClose();
+      if (S.modal) { hist('pushState', { m: 1, v: S.view }); S.modalHist = true; S.curDup = false; return; }   // 닫지 않은 창(잠긴 창 · 저장 확인)은 기록을 다시 쌓는다
+      if (st.v && st.v !== S.view) { S.popNav = true; ACT.nav(st.v); S.popNav = false; }
+      return;
+    }
+    if (st.v && st.v !== S.view) { S.popNav = true; ACT.nav(st.v); S.popNav = false; }
+    else if (wasDup && !st.m) history.back();   // 버튼으로 닫은 창의 빈 칸에서 나온 경우: 한 번 더 뒤로
+  });
+  function closeModal() { if (S.modalHist) { S.modalHist = false; hist('replaceState', { v: S.view, dup: 1 }); S.curDup = true; } var m = $('#modal'); m.hidden = true; m.innerHTML = ''; S.modal = false; S.modalLocked = false; S.replay = null; S.rpKeep = false; S.mbox = null; S.meModal = false; S.notesOpen = false; render(); var f = S.afterClose; S.afterClose = null; if (f) setTimeout(f, 60); }
   function mhead(title, sub, noClose) { return '<div class="mhead"><div><h2>' + title + '</h2>' + (sub ? '<p class="muted small">' + sub + '</p>' : '') + '</div>' + (noClose ? '' : '<button class="btn ghost sm x" data-act="modal-close" aria-label="닫기">닫기</button>') + '</div>'; }
 
   /* ───────── 서버와 주고받기 ───────── */
@@ -3712,7 +3732,7 @@
   /* ───────── 행동 ───────── */
   ACT.nav = function (a) { if (String(a).indexOf(':') > 0) { var sp = String(a).split(':'); ACT.goto(sp[0], sp[1]); return; }   // 'work:fam' = 공방 사역마 탭처럼 탭까지 지정
     if (a === 'work') a = S.P && S.P.grade >= 2 ? 'alch' : 'fam';   // 예전 「공방」
-    if (!VIEWS.some(function (v) { return v.id === a; })) a = 'home'; S.gtab[groupOf(a).id] = a; S.view = a; S.sel = S.view === 'gear' ? S.sel : null; renderNav(); render(); window.scrollTo(0, 0); viewTut(a); if (a === 'world') refreshWorld(); };
+    if (!VIEWS.some(function (v) { return v.id === a; })) a = 'home'; if (a !== S.view) histView(a); S.gtab[groupOf(a).id] = a; S.view = a; S.sel = S.view === 'gear' ? S.sel : null; renderNav(); render(); window.scrollTo(0, 0); viewTut(a); if (a === 'world') refreshWorld(); };
   ACT.loretab = function (t) { S.loreTab = t; render(); };
   ACT['modal-close'] = function () { if (S.modalLocked) return; tryClose(); };
   // 내 정보에서 저장하지 않은 변경(글·두상)이 있으면 닫기 전에 한 번 묻는다. 닫으면 변경은 버린다.
@@ -5192,7 +5212,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102242;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102243;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
@@ -5246,7 +5266,7 @@
   }
   function enterMaint(m) {
     S.maintInfo = m;
-    if (!S.maintOn) { S.maintOn = true; stopLoop(); chatDisconnect(); var md = $('#modal'); if (md && S.modal) { md.hidden = true; md.innerHTML = ''; S.modal = false; S.modalLocked = false; S.replay = null; } }
+    if (!S.maintOn) { S.maintOn = true; S.modalHist = false; stopLoop(); chatDisconnect(); var md = $('#modal'); if (md && S.modal) { md.hidden = true; md.innerHTML = ''; S.modal = false; S.modalLocked = false; S.replay = null; } }
     var el = $('#maint'); if (!el) { el = document.createElement('div'); el.id = 'maint'; el.setAttribute('role', 'alert'); document.body.appendChild(el); }
     el.innerHTML = maintHtml(m); schedulePoll();
   }
@@ -5285,6 +5305,7 @@
   // 이 기기에 채팅창 기록이 없으면 서버에 저장한 접힘 상태로
   function start() { if (S.P && S.P.needCreate) { authScreen(); return; }
     try { if (localStorage.getItem('arc_dock') == null && S.P && S.P.opt && S.P.opt.dockClosed != null) S.chat.open = !S.P.opt.dockClosed; } catch (e) { if (S.P && S.P.opt && S.P.opt.dockClosed != null) S.chat.open = !S.P.opt.dockClosed; }
+    hist('replaceState', { v: S.view }); S.curDup = false; S.modalHist = false;
     shell(); renderNav(); watchNav(); render(); renderDock(); document.body.classList.toggle('dock-open', dockOpen()); updateMeBadge(); setTimeout(pushSync, 3000); Snd.on = !!(S.P.opt && S.P.opt.sound); if (!loopT) loopT = setInterval(loop, 250); chatConnect(); loadMe(); }
   function stopLoop() { if (loopT) { clearInterval(loopT); loopT = 0; } Bgm.want(null, now()); }
   // 원정·시험·토벌 화면은 전투곡, 나머지는 광장곡
