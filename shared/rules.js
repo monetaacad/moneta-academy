@@ -281,6 +281,7 @@
     if (!P.bossV && P.st) { P.bossV = 1; P.st.bosses = (P.st.bosses || 0) + (P.st.wbAttacks || 0) + (P.st.duelWins || 0) + Math.floor((P.st.twK || 0) / R.CT_MILE) + Math.floor((P.st.twM || 0) / R.CT_MILE); }
     if (!P.physV) { P.physV = 1; if (P.cls === 'knight' && P.alloc && P.log && (P.alloc.int || 0) > 0 && allocReset(P, 'knight')) log(P, P.at || 0, '기사의 공격력이 지력 대신 체력을 따르게 바뀌어 능력치 포인트를 모두 돌려드렸습니다.', 'news'); }
     D.SUBJECTS.forEach(function (s) { if (!P.subj[s.id]) P.subj[s.id] = { lv: 0, xp: 0 }; });
+    if (P.fam && P.st && (P.st.hatches || 0) < (P.fam.hatched || 0)) P.st.hatches = P.fam.hatched;   // 누적 부화 수 (예전 학생)
     delete P.quizCd; delete P.pq; delete P.qRecent; if (P.st) delete P.st.quizCorrect;
     // 수업 예약 · 시간표 · 분해 (2026-10-19)
     if (!P.lecQ) P.lecQ = [null, null, null]; if (!P.lecEnd) P.lecEnd = [0, 0, 0]; if (!P.tt) P.tt = [];
@@ -350,7 +351,7 @@
       duel: { rank: 0, cd: 0 }, tasks: {}, ach: {}, codex: {},
       st: { lecJobs: 0, lecHours: 0, expJobs: 0, nightJobs: 0, kills: 0, bosses: 0, bossTries: 0, maxStageAll: 9, maxGrade: 1, sGrades: 0,
         aGrades: 0, epicFound: 0, legendFound: 0, maxEnh: 0, enh: 0, brews: 0, spirits: 0, maxLevel: 1, manaTotal: 0, goldTotal: 0,
-        streak: 0, famKinds: 0, dispatches: 0, researchDone: 0, wbAttacks: 0, wbKills: 0, cupWins: 0, duelWins: 0, duelBest: 0, tasksDone: 0 },
+        streak: 0, famKinds: 0, hatches: 0, dispatches: 0, researchDone: 0, wbAttacks: 0, wbKills: 0, cupWins: 0, duelWins: 0, duelBest: 0, tasksDone: 0 },
       daily: { day: -1, q: [], streak: 0, login: false },
       wk: { id: 0, cup: 0, dmg: 0, att: 0 }, wkPrev: null, wb: { tickets: K.WB_TICKET_MAX, at: now, extra: 0, bought: 0, buyWk: -1, exUsed: 0, exWk: -1 },
       spirit: { n: 1, at: now },
@@ -921,7 +922,7 @@
   R.eggCost = function (P) { return Math.floor(5000 * Math.pow(1.2, Math.min(P.fam.hatched, 30))); };   // 깨운 수마다 1.2배 (예전 1.45배)
   R.feedCost = function (P, id) { var f = FAM[id], o = P.fam.own[id]; return Math.floor(2000 * Math.pow(1.45, o.lv) * (f.r + 1)); };
   function hatch(P, t) {
-    P.fam.egg = null; P.fam.hatched++;
+    P.fam.egg = null; P.fam.hatched++; P.st.hatches = P.fam.hatched;   // 칭호 · 업적용 누적 부화 수
     var luck = 0;
     var ws = D.FAM_RARITY.map(function (r, i) { return r.w * (i >= 1 ? 1 + luck : 1); });
     var tot = ws.reduce(function (a, b) { return a + b; }, 0), x = rnd(P) * tot, r = 0;
