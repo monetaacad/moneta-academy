@@ -548,17 +548,25 @@
     return it;
   }
   R.makeItem = makeItem;
+  /* 장비 레벨 성장(무기 공격력 · 로브 생명력 · 로브 방어력 · 마도서 공격력): 예전에는 레벨마다 ×1.12 복리(10레벨 ×3.1)였다.
+     GEAR_BAND 레벨(2학년)씩 묶어, 묶음 안에서는 단리로 천천히(묶음 끝이 시작의 GEAR_IN배), 다음 묶음으로 넘어갈 때 한 번에 오른다.
+     묶음 전체(20레벨)의 성장 폭과 묶음 안 평균(기하 평균)은 예전 곡선과 같게 맞춘다 */
+  R.ENH_MAIN = 0.1;   // 강화 1단계마다 주 능력치 +10%
+  R.GEAR_G = 1.12; R.GEAR_BAND = 20; R.GEAR_OFF = 10;   // 묶음: 10~29 · 30~49 · 50~69 · 70~89 … (1~9는 앞 묶음의 끝)
+  R.GEAR_IN = 2;
+  var GEAR_C = (function () { var B = R.GEAR_BAND, a = 0, b = 0; for (var p = 0; p < B; p++) { a += p * Math.log(R.GEAR_G); b += Math.log(1 + (R.GEAR_IN - 1) * p / (B - 1)); } return Math.exp((a - b) / B); })();
+  R.gearGrow = function (ilvl) { var B = R.GEAR_BAND, v = Math.max(1, ilvl), st = R.GEAR_OFF + Math.floor((v - R.GEAR_OFF) / B) * B, p = v - st; return Math.pow(R.GEAR_G, st - 1) * GEAR_C * (1 + (R.GEAR_IN - 1) * p / (B - 1)); };
   function mainVal(it) {
     var S = R.slotDef(it), rm = D.RARITY[it.r].mult;
     if (S.main === 'spellPct' || S.main === 'skillPct') return S.base * (1 + it.ilvl * 0.025) * Math.sqrt(rm) * it.q * (1 + it.enh * 0.05);   // 주문 · 기술 위력은 다른 공격 능력치와 곱해지므로 등급 · 강화 효과를 줄인다
     if (S.main === 'int' || S.main === 'luk' || S.main === 'vit') return S.base * (1 + it.ilvl * 0.09) * rm * it.q * (1 + it.enh * 0.08);
-    return S.base * Math.pow(1.12, it.ilvl - 1) * rm * it.q * (1 + it.enh * 0.1);
+    return S.base * R.gearGrow(it.ilvl) * rm * it.q * (1 + it.enh * R.ENH_MAIN);
   }
   function subVal(it) {
     var S = SLOT[it.slot]; if (!S.sub) return 0;
     var rm = D.RARITY[it.r].mult;
     if (S.sub === 'critC' || S.sub === 'lectureSpd') return S.subBase * rm * (1 + it.enh * 0.05);
-    return S.subBase * Math.pow(1.12, it.ilvl - 1) * rm * it.q * (1 + it.enh * 0.1);
+    return S.subBase * R.gearGrow(it.ilvl) * rm * it.q * (1 + it.enh * R.ENH_MAIN);
   }
   function itemStats(it) {
     var o = {}, S = R.slotDef(it);
