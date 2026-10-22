@@ -328,6 +328,7 @@ function loadPlayer(pid, now) {
   const fp = R.fingerprint(P);
   const pc = setPartyN(P) | setGuildLv(P);
   R.advance(P, world.ctx(now), now); R.questCheck(P, now); questNotes(P);
+  expRecallLeft(P, now);   // 귀환 투표가 통과했는데 남아 있던 함께 원정
   if (pc) store.markDirty(pid);
   if (R.fingerprint(P) !== fp) store.markDirty(pid); else store.touch(pid);
   return P;
@@ -1702,6 +1703,19 @@ routes['GET /api/exprooms'] = (req, res) => {
 // 함께 원정 귀환 투표: 다른 학생과 함께 떠난 원정은 혼자 귀환하지 않고, 아직 원정 중인 학생의 과반이 찬성하면 모두 함께 귀환한다
 // (투표는 메모리에만 · 서버를 다시 켜면 처음부터. 원정 일정의 pt.vote에 찬성한 학생 id를 적어 화면에 보여 준다)
 const expVotes = new Map();   // pt.ck → Set(pid)
+// 귀환 투표가 통과한 함께 원정(pt.ck → {t, yes, n}). 그때 함께 처리되지 못한 일행(처리 오류 · 목록 누락)은 다음 요청 때 loadPlayer에서 마저 귀환시킨다
+const expRecalled = new Map();
+function expRecallLeft(P, now) {
+  if (!expRecalled.size || !P || !P.exp) return;
+  P.exp.forEach((j, k) => {
+    const v = j && j.pt && j.pt.ck && expRecalled.get(j.pt.ck); if (!v || R.expEnd(j) <= now) return;
+    try {
+      const o = R.act(P, world.ctx(now), now, 'expCancel', { slot: k }); o.vote = 1; R.inbox(P, o);
+      addNote(P.id, 'exp', '함께 원정 귀환 투표에서 과반이 찬성해 모두 귀환했습니다 (' + v.yes + '/' + v.n + '명 찬성)', { view: 'explore' });
+      store.markDirty(P.id); log('함께 원정 귀환 투표: 남아 있던 일행 귀환', P.id, j.pt.ck);
+    } catch (e) { log('귀환 투표 뒤 남은 일행 처리 실패', P.id, e.message); }
+  });
+}
 function expPartyActive(ck, ids, now) {   // 같은 원정(ck)에 아직 나가 있는 학생들: [{id, P, slot}]
   const out = [];
   ids.forEach((id) => { const Q = loadPlayer(id, now); if (!Q) return; const k = Q.exp.findIndex((j) => j && j.pt && j.pt.ck === ck && R.expEnd(j) > now); if (k >= 0) out.push({ id, P: Q, slot: k }); });
@@ -1709,8 +1723,11 @@ function expPartyActive(ck, ids, now) {   // 같은 원정(ck)에 아직 나가 
 }
 function expPartyOf(P, slot, now) {
   const j = P.exp[slot]; if (!j || !j.pt || !j.pt.ck || R.expEnd(j) <= now) return null;
-  const ids = [P.id].concat((j.pt.with || []).filter((w) => w && w.id && !w.npc).map((w) => w.id));
-  return { j, ck: j.pt.ck, act: expPartyActive(j.pt.ck, [...new Set(ids)], now) };
+  const ids = new Set([P.id].concat((j.pt.with || []).filter((w) => w && w.id && !w.npc).map((w) => w.id)));
+  const act = expPartyActive(j.pt.ck, [...ids], now);
+  // 다른 일행의 동행 목록도 합친다 (한 사람의 목록에 빠진 일행이 있어도 함께 처리되도록)
+  const more = []; act.forEach((x) => { const xj = x.P.exp[x.slot]; ((xj.pt && xj.pt.with) || []).forEach((w) => { if (w && w.id && !w.npc && !ids.has(w.id)) { ids.add(w.id); more.push(w.id); } }); });
+  return { j, ck: j.pt.ck, act: more.length ? act.concat(expPartyActive(j.pt.ck, more, now)) : act };
 }
 // 혼자 먼저 귀환한 뒤: 남은 일행 화면에 「귀환」 표시 · 알림, 내 찬성표 지우기, 30분 안에 3번이면 3시간 함께 원정 제한
 function expLeft(P, pa, now) {
@@ -1740,6 +1757,7 @@ routes['POST /api/exp/vote'] = async (req, res) => {
   const need = Math.floor(ids.length / 2) + 1;
   if (V.size >= need) {   // 과반 찬성: 모두 귀환
     expVotes.delete(pa.ck); let mine = null;
+    expRecalled.set(pa.ck, { t: now, yes: V.size, n: ids.length }); for (const [k, v] of expRecalled) if (now - v.t > 86400) expRecalled.delete(k);
     pa.act.forEach((x) => {
       try {
         const o = R.act(x.P, world.ctx(now), now, 'expCancel', { slot: x.slot }); o.vote = 1;
@@ -1752,7 +1770,7 @@ routes['POST /api/exp/vote'] = async (req, res) => {
   }
   pa.act.forEach((x) => {   // 찬성 현황을 모두의 원정 일정에 적는다
     const j = x.P.exp[x.slot]; j.pt.vote = { yes: [...V], need, n: ids.length }; store.markDirty(x.id);
-    if (x.id !== me && b.on !== false) addNote(x.id, 'exp', P.name + ' 님이 함께 원정 귀환에 찬성했습니다 (' + V.size + '/' + need + '명). 과반이 찬성하면 모두 함께 귀환합니다', { view: 'explore' });
+    if (x.id !== me && b.on !== false) addNote(x.id, 'exp', P.name + ' 님이 함께 원정 귀환에 찬성했습니다 (찬성 ' + V.size + '명 · 귀환에 필요한 찬성 ' + need + '명 · 학생 ' + ids.length + '명, 동행 친구 제외). 과반이 찬성하면 모두 함께 귀환합니다', { view: 'explore' });
   });
   send(req, res, 200, { ok: true, done: false, yes: V.size, need, n: ids.length, P: R.publicState(P) });
 };

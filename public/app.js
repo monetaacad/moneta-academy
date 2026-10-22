@@ -1680,13 +1680,13 @@
   function expVoting(j) { return !!(j && j.pt && j.pt.ck && (j.pt.with || []).some(function (w) { return w && w.id && !w.npc; }) && !(S.expSolo && S.expSolo[j.pt.ck])); }
   function expVoteBtn(i, j) {
     var v = j.pt.vote, mine = !!(v && v.yes && v.yes.indexOf(S.P.id) >= 0);
-    return '<button class="btn sm ' + (mine ? 'primary' : 'ghost') + '" data-act="expvote" data-a="' + i + '" data-b="' + (mine ? 0 : 1) + '" title="아직 원정 중인 학생의 과반이 찬성하면 모두 함께 귀환합니다">' + (mine ? '귀환 찬성 취소' : '귀환 투표') + (v ? ' <span class="cost">' + v.yes.length + '/' + v.need + '</span>' : '') + '</button>';
+    return '<button class="btn sm ' + (mine ? 'primary' : 'ghost') + '" data-act="expvote" data-a="' + i + '" data-b="' + (mine ? 0 : 1) + '" title="아직 원정 중인 학생(동행 친구 제외)의 과반이 찬성하면 모두 함께 귀환합니다">' + (mine ? '귀환 찬성 취소' : '귀환 투표') + (v ? ' <span class="cost">' + v.yes.length + '/' + v.need + '</span>' : '') + '</button>';
   }
   ACT.expvote = function (i, on) {
     var j = S.P.exp[+i]; if (!j || !j.pt) return;
     API.expVote({ slot: +i, on: on === '1' }).then(function (r) {
       if (r.error) { if (/다른 학생이 없습니다/.test(r.error)) { (S.expSolo = S.expSolo || {})[j.pt.ck] = 1; toast('함께 원정', '다른 학생이 모두 돌아와 혼자 귀환할 수 있습니다', 2400); render(); return; } toast('귀환 투표', r.error, 2400); return; }
-      absorb(r); toast(r.done ? '원정에서 귀환했습니다' : '귀환 투표', r.done ? '과반이 찬성해 모두 함께 귀환했습니다' : (on === '1' ? '귀환에 찬성했습니다' : '찬성을 취소했습니다') + ' · ' + r.yes + '/' + r.need + '명 (과반이 찬성하면 모두 귀환)', 2600); render();
+      absorb(r); toast(r.done ? '원정에서 귀환했습니다' : '귀환 투표', r.done ? '과반이 찬성해 모두 함께 귀환했습니다' : (on === '1' ? '귀환에 찬성했습니다' : '찬성을 취소했습니다') + ' · 찬성 ' + r.yes + '명 / 필요 ' + r.need + '명 (학생 ' + r.n + '명 중 과반 · 동행 친구 제외)', 2600); render();
     });
   };
   function cancelBtn(key, type, a, leave) {   // leave: 함께 원정에서 혼자 먼저 귀환 (모은 것의 50%)
