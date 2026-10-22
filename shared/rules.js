@@ -24,7 +24,7 @@
     SPAWN: 3.0,            // 처치 사이 이동 시간(초)
     KILL_PACK: 100,        // 처치 1회 = 몬스터 무리 하나 (처치 수는 1/100, 처치 1회 보상 · 드롭률은 100배 → 총 보상은 그대로)
     EXP_RATE: 1,           // 원정 보상 배율
-    KILL_GOLD: 0.6, G_GOLD: 1.11,
+    KILL_GOLD: 0.6, G_GOLD: 1.11, G_GOLD2: 1.095, GOLD_KNEE: 50,   // 아르크는 단계마다 ×G_GOLD, GOLD_KNEE단계부터는 ×G_GOLD2로 완만하게 (2차 베타)
     EXP_GOLD: 0.7, DISP_GOLD: 0.3, SPIRIT_GOLD: 0.5,   // 원정 처치 · 사역마 파견 · 정령의 아르크 배율 (아르크는 적게 벌리게)
     FALL_KEEP: 0.8,        // 원정 중 쓰러지면 그때까지 모은 것의 80%
     KILL_XP: 0.12, G_XP: 1.128,
@@ -561,7 +561,7 @@
     return o;
   }
   R.itemStats = itemStats;
-  R.sellPrice = function (it) { return Math.floor(K.KILL_GOLD * 3 * Math.pow(1.10, it.ilvl - 1) * Math.pow(it.r + 1, 2) * (1 + it.enh * 0.3)); };
+  R.sellPrice = function (it) { var e = it.ilvl - 1, k = K.GOLD_KNEE - 1; return Math.floor(K.KILL_GOLD * 3 * (e <= k ? Math.pow(1.10, e) : Math.pow(1.10, k) * Math.pow(1.10 - (K.G_GOLD - K.G_GOLD2), e - k)) * Math.pow(it.r + 1, 2) * (1 + it.enh * 0.3)); };
   R.ENH_MAX = 20;
   R.enhCost = function (P, it) { return { gold: Math.floor(60 * Math.pow(1.10, it.ilvl - 1) * Math.pow(1.5, it.enh)), stone: 1 + Math.floor(it.enh * 1.2) }; };
   R.enhChance = function (P, it) { var b = bonuses(P, null, 0, 0); return clamp(1 - it.enh * 0.065 + (b.enhBonus || 0) + P.subj.rune.lv * 0.004, it.enh >= 15 ? 0.1 : 0.2, 1); };
@@ -706,6 +706,9 @@
       if (!best) break; P.alloc[best]++; P.pts--;
     }
   };
+  // 단계에 따른 아르크 배율 (예전 Math.pow(G_GOLD, e)). GOLD_KNEE단계 이후는 증가율을 낮춘다
+  function goldPow(e) { var k = K.GOLD_KNEE - 1; return e <= k ? Math.pow(K.G_GOLD, e) : Math.pow(K.G_GOLD, k) * Math.pow(K.G_GOLD2, e - k); }
+  R.goldPow = goldPow;
   function addGold(P, g) { g = Math.floor(g); P.res.gold += g; P.st.goldTotal += g; }
   function addMana(P, m) { P.res.mana += m; P.st.manaTotal += m; }
 
@@ -747,7 +750,7 @@
     var surv = risk <= 0.5 ? 1 : Math.max(0.03, 1 - (risk - 0.5) * 0.9);
     var kps = surv / (ttk + K.SPAWN) / K.KILL_PACK;
     var kills = kps * d.s * d.eff;
-    var gEach = K.KILL_GOLD * Math.pow(K.G_GOLD, s - 1) * c.gold * K.EXP_RATE * K.EXP_GOLD * K.KILL_PACK;
+    var gEach = K.KILL_GOLD * goldPow(s - 1) * c.gold * K.EXP_RATE * K.EXP_GOLD * K.KILL_PACK;
     var xEach = K.KILL_XP * Math.pow(K.G_XP, s - 1) * c.xp * K.EXP_RATE * K.KILL_PACK;
     return { s: s, dur: d.s, eff: d.eff, kills: kills, kps: kps, risk: risk, surv: surv, gold: kills * gEach, xp: kills * xEach, gEach: gEach, xEach: xEach,
       drop: c.drop, rarity: c.rarity, killMana: c.killMana * c.mana * K.KILL_PACK, label: risk <= 0.25 ? '안정' : risk <= 0.5 ? '적정' : risk <= 1 ? '위험' : '무모함' };
@@ -817,7 +820,7 @@
     var surv = survSum / n, kpsAll = surv / (ttk + K.SPAWN / n) / K.KILL_PACK, share = (1 + R.EXP_PARTY_BONUS * (n - 1)) / n;
     var out = ms.map(function (m, i) {
       var c = m.c, kps = kpsAll * share, kills = kps * d.s * d.eff;
-      var gEach = K.KILL_GOLD * Math.pow(K.G_GOLD, s - 1) * c.gold * K.EXP_RATE * K.EXP_GOLD * K.KILL_PACK, xEach = K.KILL_XP * Math.pow(K.G_XP, s - 1) * c.xp * K.EXP_RATE * K.KILL_PACK;
+      var gEach = K.KILL_GOLD * goldPow(s - 1) * c.gold * K.EXP_RATE * K.EXP_GOLD * K.KILL_PACK, xEach = K.KILL_XP * Math.pow(K.G_XP, s - 1) * c.xp * K.EXP_RATE * K.KILL_PACK;
       return { kps: kps, kills: kills, gold: kills * gEach, xp: kills * xEach, gEach: gEach, xEach: xEach, drop: c.drop, rarity: c.rarity, killMana: c.killMana * c.mana * K.KILL_PACK, risk: each[i].risk, surv: each[i].surv, frac: each[i].frac, dmg: c.totalDps * posOf(m).dps / Math.max(1e-9, dps) };
     });
     return { s: s, dur: d.s, eff: d.eff, d: d.k, n: n, kills: kpsAll * d.s * d.eff, risk: worst, red: red, each: out, label: worst <= 0.25 ? '안정' : worst <= 0.5 ? '적정' : worst <= 1 ? '위험' : '무모함' };
@@ -979,7 +982,7 @@
     var mult = (1 + f.r * 0.3) * (1 + 0.05 * (P.fam.own[fid].lv - 1)) * (d.bonus || 1);
     var mats = Math.floor(h * 6 * mult + rnd(P) * 3); P.mats[z.mat] = (P.mats[z.mat] || 0) + mats; out.mats = mats; out.mat = z.mat;
     var stones = Math.floor(h * 0.8 * mult + rnd(P)); P.res.stone += stones; out.stones = stones;
-    var gold = Math.floor(h * 40 * K.KILL_GOLD * Math.pow(K.G_GOLD, z.from - 1) * mult * K.DISP_GOLD); addGold(P, gold); out.gold = gold;
+    var gold = Math.floor(h * 40 * K.KILL_GOLD * goldPow(z.from - 1) * mult * K.DISP_GOLD); addGold(P, gold); out.gold = gold;
     if (rnd(P) < h * 0.008 * mult) { P.fam.eggs++; out.egg = 1; }
     if (rnd(P) < h * 0.04) { var sh = ri(P, 1, 3); P.res.shard += sh; out.shard = sh; }
     if (early) { out.early = 1; return out; }
@@ -1096,7 +1099,7 @@
     while (lv < R.BADGE_MAX && xp >= R.badgeNeed(lv)) { xp -= R.badgeNeed(lv); lv++; if (D.BADGE_FACET_LV.indexOf(lv) >= 0) fac++; }
     return { lv: lv, xp: lv >= R.BADGE_MAX ? 0 : Math.floor(xp), facets: fac, cost: R.badgeInheritCost(src) };
   };
-  R.badgePolishCost = function (P, b) { return { dust: 10 + b.lv * 4, gold: Math.floor(150 * Math.pow(1.11, Math.max(1, Math.min(P.maxStage, R.stageCap(P))) - 1)) }; };
+  R.badgePolishCost = function (P, b) { return { dust: 10 + b.lv * 4, gold: Math.floor(150 * goldPow(Math.max(1, Math.min(P.maxStage, R.stageCap(P))) - 1)) }; };
   R.badgePolishXp = function (b) { return Math.ceil(R.badgeNeed(b.lv) / 4); };
   R.badgeBreakDust = function (b) { return 15 + b.lv * 8 + (b.aff || []).length * 5; };
   // 거래 기준값 (데모 NPC 가격 · 데모 매수 판단용)
@@ -1105,6 +1108,7 @@
   R.BADGE_Q_MAX = 1.25; R.BADGE_Q_STEP = 0.025;
   R.badgeShineCost = function (b) { return 20 + Math.round(Math.max(0, (b.q || 1) - 0.9) * 400); };
   R.badgeRecutCost = function (b) { return 15 + (b.aff || []).length * 5; };
+  R.badgeRecutGold = function (P) { return Math.floor(300 * goldPow(Math.max(1, Math.min(P.maxStage, R.stageCap(P))) - 1)); };   // 세공 다시 새기기 아르크 (지금 원정 단계 기준)
   /* ───────── 아카데미 친구(NPC): 사람이 적을 때 빈자리를 채운다 (서버 · 데모 공용) ─────────
      함께 원정 동행 · 파티(별의 탑) 동행은 방장(또는 나)의 힘에 이 비율을 곱해 싸운다. 파티 보너스 · 탑 보상 대상에는 들지 않는다. */
   R.NPC_FRAC = { exp: 0.6, tower: 0.3 };
@@ -1114,11 +1118,11 @@
     rand = rand || Math.random; stage = Math.max(1, stage | 0);
     var dm = { rng: (rand() * 2147483647) | 1 }, roll = rand(), x;
     if (!wantMat && roll < 0.12) { var pots = D.POTIONS.filter(function (p) { return p.unlock <= Math.max(3, stage / 3); }), pp = pots[Math.floor(rand() * pots.length)], pq = 1 + Math.floor(rand() * 4), mn = Object.keys(pp.mats).reduce(function (a, k) { return a + pp.mats[k]; }, 0);
-      x = { kind: 'pot', pot: pp.id, name: pp.name, qty: pq, price: pq * Math.max(20, Math.round(K.KILL_GOLD * Math.pow(K.G_GOLD, stage) * 25 * mn * (1.4 + rand() * 0.8))) }; }
+      x = { kind: 'pot', pot: pp.id, name: pp.name, qty: pq, price: pq * Math.max(20, Math.round(K.KILL_GOLD * goldPow(stage) * 25 * mn * (1.4 + rand() * 0.8))) }; }
     else if (!wantMat && roll < 0.2) { var bl = 1 + Math.floor(rand() * Math.min(12, 2 + stage / 6)), bd = makeBadge(dm, null, bl);
       x = { kind: 'badge', badge: bd, name: bd.name + ' Lv ' + bd.lv, gem: bd.gem, lv: bd.lv, qty: 1, price: Math.round(R.badgeValue(bd) * (0.8 + rand() * 0.8)) }; }
     else if (wantMat || roll < 0.4) {
-      var z = R.zoneOf(Math.max(1, Math.round(stage * (0.4 + rand() * 0.7)))), qty = 10 + Math.floor(rand() * 40), unit = Math.max(2, Math.round(K.KILL_GOLD * Math.pow(K.G_GOLD, z.from + 5) * 25 * (0.8 + rand() * 0.4)));
+      var z = R.zoneOf(Math.max(1, Math.round(stage * (0.4 + rand() * 0.7)))), qty = 10 + Math.floor(rand() * 40), unit = Math.max(2, Math.round(K.KILL_GOLD * goldPow(z.from + 5) * 25 * (0.8 + rand() * 0.4)));
       x = { kind: 'mat', mat: z.mat, name: D.MATS[z.mat].name, qty: qty, price: unit * qty };
     } else {
       var ilvl = Math.max(1, Math.round(stage + (rand() * 1.6 - 0.6) * 6)), y = rand(), r = y < 0.45 ? 1 : y < 0.78 ? 2 : y < 0.95 ? 3 : 4;
@@ -1309,7 +1313,7 @@
     return true;
   };
   // 보상 미리보기 (화면에 보여 주는 값과 실제 지급이 같은 식)
-  R.dailyReward = function (P) { return { shard: 4 + Math.min(P.grade, 8), gold: Math.floor(300 * K.KILL_GOLD * Math.pow(K.G_GOLD, Math.min(P.maxStage, R.stageCap(P)) - 1)) }; };
+  R.dailyReward = function (P) { return { shard: 4 + Math.min(P.grade, 8), gold: Math.floor(300 * K.KILL_GOLD * goldPow(Math.min(P.maxStage, R.stageCap(P)) - 1)) }; };
   R.loginReward = function (P) { var s = Math.min(P.daily.streak, 7); return { shard: 3 + s * 2, stone: 3 + s }; };
   // 우편 보상 (운영진 우편 · 별의 탑 등). 값은 정수, 너무 큰 값은 잘라 낸다.
   R.MAIL_REWARDS = [['shard', '별조각', 100000], ['gold', CUR, 1e15], ['stone', '마석', 100000], ['mana', '마나', 1e15], ['know', '지식', 1e15], ['egg', '환수의 알', 100], ['ticket', '토벌 도전권', 100], ['gear', '희귀 장비 상자', 50], ['rsDone', '연구 즉시 완료 물약', 100], ['respec', '망각의 차', 100], ['gradeUp', '학년 진급 물약', 10]];   // 물약 두 가지는 운영진 보상 전용 (매점에서 팔지 않음)
@@ -1327,11 +1331,11 @@
   };
   R.mailNeedSlots = function (rw) { rw = rw || {}; return (Array.isArray(rw.items) ? rw.items.length : 0) + (Math.floor(Number(rw.gear) || 0)); };
   R.grantMail = function (P, W, now, rw) {
-    rw = R.cleanRewards(rw); var out = { items: [] }; R.noMailQ = true;   // 우편에서 받는 장비는 다시 우편으로 돌리지 않는다 (받기 전에 가방 칸을 확인)
+    var leg = rw && rw.legend || 0; rw = R.cleanRewards(rw); var out = { items: [] }; R.noMailQ = true;   // leg: 장비 전설 확률 (무한의 탑 50층)   // 우편에서 받는 장비는 다시 우편으로 돌리지 않는다 (받기 전에 가방 칸을 확인)
     if (rw.shard) P.res.shard += rw.shard; if (rw.gold) addGold(P, rw.gold); if (rw.stone) P.res.stone += rw.stone;
     if (rw.mana) addMana(P, rw.mana); if (rw.know) P.res.know += rw.know; if (rw.egg) P.fam.eggs += rw.egg; if (rw.ticket) P.wb.extra = (P.wb.extra || 0) + rw.ticket;
     if (rw.rsDone || rw.gradeUp || rw.respec) { var tk = P.tok || (P.tok = {}); if (rw.rsDone) tk.rsDone = (tk.rsDone || 0) + rw.rsDone; if (rw.gradeUp) tk.gradeUp = (tk.gradeUp || 0) + rw.gradeUp; if (rw.respec) tk.respec = (tk.respec || 0) + rw.respec; }
-    for (var i = 0; i < (rw.gear || 0); i++) { var it = makeItem(P, pick(P, D.SLOTS).id, R.rewardIlvl(P), Math.max(2, rollRarity(P, 0.6)), 2); out.items.push({ name: it.name, r: it.r, res: gainItem(P, it, now, '우편 (무작위 장비)', 0.6) }); }
+    for (var i = 0; i < (rw.gear || 0); i++) { var it = makeItem(P, pick(P, D.SLOTS).id, R.rewardIlvl(P), leg && rndL(P) < leg ? 4 : Math.max(2, leg ? Math.min(3, rollRarity(P, 0.6)) : rollRarity(P, 0.6)), 2); out.items.push({ name: it.name, r: it.r, res: gainItem(P, it, now, '우편 (무작위 장비)', 0.6) }); }
     (rw.items || []).forEach(function (it0) { var it = JSON.parse(JSON.stringify(it0)); it.u = uid(P); it.lock = false; out.items.push({ name: it.name, r: it.r, res: gainItem(P, it, now, '우편 (지정 장비)') }); });
     R.noMailQ = false;
     out.text = R.rewardText(rw); return out;
@@ -1454,7 +1458,7 @@
   // 층 보상 (그 주에 처음 넘은 층만, 실전이 끝난 뒤 우편으로 한 번에)
   R.twReward = function (f) {
     if (R.twRest(f)) return { shard: 2 };
-    var s = R.twStage(f), r = { gold: Math.floor(60 * K.KILL_GOLD * Math.pow(K.G_GOLD, s - 1)), shard: 1 + Math.floor(f / 10) + (R.twTrial(f) ? 10 : 0) };
+    var s = R.twStage(f), r = { gold: Math.floor(60 * K.KILL_GOLD * goldPow(s - 1)), shard: 1 + Math.floor(f / 10) + (R.twTrial(f) ? 10 : 0) };
     if (f % 2 === 0) r.stone = 1 + Math.floor(f / 20); if (f % 10 === 0) r.gear = 1; if (f % 20 === 0) r.egg = 1;
     return r;
   };
@@ -1758,9 +1762,11 @@
   };
   R.letter = function (s) { return s >= 95 ? 'S' : s >= 85 ? 'A' : s >= 75 ? 'B' : s >= 60 ? 'C' : 'F'; };
   // 등급별 합격 보상 (화면 표와 실제 지급이 같은 표). 합격하면 바로 다음 학년이라 같은 시험은 다시 볼 수 없다.
-  R.EXAM_S_LEGEND = 0.03;   // S 보상 장비: 전설 확률 3% (나머지는 영웅)
+  R.EXAM_S_LEGEND = 0.5;   // S 보상 장비: 전설 확률 50% (나머지는 영웅) — 2차 베타: 일반 드랍 전설을 줄이는 대신 노력한 만큼 확정에 가깝게
+  R.BOSS_LEGEND = 0.25;   // 보스 첫 처치 장비: 전설 확률 25% (나머지는 희귀 이상)
+  R.CT_LEGEND = 0.5;   // 무한의 탑 50층마다 장비: 전설 확률 50% (나머지는 희귀 이상)
   R.EXAM_REWARD = {
-    S: { mult: 2, minR: 3, egg: 1, text: '별조각·' + CUR + ' 2배 · 영웅 이상 장비(전설 3%) · 환수의 알' },
+    S: { mult: 2, minR: 3, egg: 1, text: '별조각·' + CUR + ' 2배 · 영웅 이상 장비(전설 50%) · 환수의 알' },
     A: { mult: 1.5, minR: 2, egg: 0, text: '별조각·' + CUR + ' 1.5배 · 희귀 이상 장비' },
     B: { mult: 1.2, minR: 1, egg: 0, text: '별조각·' + CUR + ' 1.2배' },
     C: { mult: 1, minR: 1, egg: 0, text: '기본 보상' }
@@ -1788,9 +1794,9 @@
   /* ───────── 상점 ───────── */
   R.shopPrice = function (P, id) {
     var s = SHOP[id];
-    if (s.price === 'stone') return Math.floor(400 * Math.pow(1.11, P.maxStage - 1));
-    if (s.price === 'shardbag') return Math.floor(2000 * Math.pow(1.11, P.maxStage - 1));   // 마석 꾸러미의 5배
-    if (s.price === 'gearbox') return Math.floor(500 * Math.pow(1.11, P.maxStage - 1));
+    if (s.price === 'stone') return Math.floor(400 * goldPow(P.maxStage - 1));
+    if (s.price === 'shardbag') return Math.floor(2000 * goldPow(P.maxStage - 1));   // 마석 꾸러미의 5배
+    if (s.price === 'gearbox') return Math.floor(500 * goldPow(P.maxStage - 1));
     if (s.price === 'bag') return 20 + P.bagExtra * 4;
     return s.price;
   };
@@ -2039,9 +2045,9 @@
       hp: R.monHp(s) * K.BOSS_HP * 0.6 * (w ? 1.8 : 1), atk: R.monAtk(s) * K.BOSS_ATK * 3 * (w ? 1.4 : 1), boss: true };
   };
   R.ctReward = function (f) {
-    var s = R.ctStage(f), r = { gold: Math.floor(40 * K.KILL_GOLD * Math.pow(K.G_GOLD, s - 1)) };
+    var s = R.ctStage(f), r = { gold: Math.floor(40 * K.KILL_GOLD * goldPow(s - 1)) };
     if (f % 2 === 0) r.stone = 1; if (f % 10 === 0) r.shard = 3;
-    if (f % R.CT_MILE === 0) { r.shard = (r.shard || 0) + 30; r.gear = 1; r.egg = 1; }
+    if (f % R.CT_MILE === 0) { r.shard = (r.shard || 0) + 30; r.gear = 1; r.legend = R.CT_LEGEND; r.egg = 1; }
     return r;
   };
   R.ctTitle = function (cls, f) { return D.TITLES.find(function (t) { return t.stat === R.ctKey(cls) && t.n === f; }); };
@@ -2053,7 +2059,7 @@
     badgeGain(P, R.BADGE_XP.fight, now);
     P.st[key] = f; var g = R.ctReward(f), rw = out.rw;
     if (g.gold) { addGold(P, g.gold); rw.gold = g.gold; } if (g.stone) { P.res.stone += g.stone; rw.stone = g.stone; } if (g.shard) { P.res.shard += g.shard; rw.shard = g.shard; }
-    if (g.gear || g.egg) { var gm = R.grantMail(P, W, now, { gear: g.gear, egg: g.egg }); if (g.egg) rw.egg = g.egg; out.items = gm.items; }
+    if (g.gear || g.egg) { var gm = R.grantMail(P, W, now, { gear: g.gear, egg: g.egg, legend: g.legend }); if (g.egg) rw.egg = g.egg; out.items = gm.items; }
     if (f % R.CT_MILE === 0) { var tt = R.ctTitle(cls, f); if (tt) { out.titles.push(tt.name); log(P, now, R.CT_NAME[cls] + ' ' + f + '층 돌파! 칭호 「' + tt.name + '」를 얻었습니다', 'legend'); } }
     else log(P, now, R.CT_NAME[cls] + ' ' + f + '층 돌파', 'good');
     return out;
@@ -2073,7 +2079,7 @@
       P.codex[def.id] = (P.codex[def.id] || 0) + 1;
       var sh = 5 + Math.floor(b / 10) * 2; P.res.shard += sh; out.shard = sh;
       var st = ri(P, 3, 6) + Math.floor(b / 10); P.res.stone += st; out.stone = st;
-      var it = makeItem(P, pick(P, D.SLOTS).id, b + 2, rollRarity(P, c.rarity + 0.8), 2); out.item = { name: it.name, r: it.r, res: gainItem(P, it, now, '보스', c.rarity + 0.8) };
+      var it = makeItem(P, pick(P, D.SLOTS).id, b + 2, rndL(P) < R.BOSS_LEGEND ? 4 : Math.min(3, rollRarity(P, c.rarity + 0.8)), 2); out.item = { name: it.name, r: it.r, res: gainItem(P, it, now, '보스', c.rarity + 0.8) };
       if (R.famOpen(P) && rnd(P) < 0.35) { P.fam.eggs++; out.egg = 1; }
       if (rnd(P) < 0.06) { var bd = makeBadge(P); if (gainBadge(P, bd, now, def.name + '의 전리품') === 'got') out.badge = bd.name; }
       cupAdd(P, 50, 'boss');
@@ -2210,14 +2216,20 @@
   // 재련: 등급·레벨·강화는 그대로 두고 옵션만 새로 굴린다 (옵션이 없는 일반 등급은 못 함)
   // 굴린 옵션은 바로 붙이지 않고 P.rfPend = {u, aff, name, cost}에 두었다가, 학생이 이전 · 새 옵션 중 하나를 고르면(A.reforgePick) 정한다
   R.reforgeCost = function (it) { return Math.floor(8 * (it.r + 1) * (it.r + 1) * (1 + it.ilvl / 20)); };
+  // 거래소 수수료: 누진 (판매가의 구간마다 다른 비율을 더한다. 세금 구간처럼 경계에서 받는 돈이 거꾸로 줄지 않는다)
+  R.MK_FEE = [[1e5, 0.05], [1e6, 0.07], [1e7, 0.10], [1e8, 0.13], [Infinity, 0.15]];
+  R.marketFee = function (price) { var fee = 0, lo = 0; for (var i = 0; i < R.MK_FEE.length && price > lo; i++) { var hi = R.MK_FEE[i][0]; fee += (Math.min(price, hi) - lo) * R.MK_FEE[i][1]; lo = hi; } return Math.floor(fee); };
+  R.marketFeeText = '5%(10만까지) · 7%(100만까지) · 10%(1000만까지) · 13%(1억까지) · 15%(그 이상), 구간별 누진';
+  R.reforgeGold = function (it) { return Math.floor(40 * (it.r + 1) * goldPow(it.ilvl - 1)); };   // 재련 아르크 (2차 베타 아르크 소비처: 그 단계 하루 원정 수입의 약 1%)
   R.rfPending = function (P) { var p = P.rfPend; return p && R.findItem(P, p.u) ? p : null; };   // 장비가 사라졌으면(판매 · 분해 · 거래소) 없는 것으로 본다
   A.reforge = function (P, W, now, a) {
     var it = R.findItem(P, str(a.u)); if (!it) err('장비가 없습니다'); if (it.lock) err('잠긴 장비입니다. 잠금을 풀면 재련할 수 있습니다');
     if (P.rfPend && !R.rfPending(P)) P.rfPend = null;
     if (P.rfPend) err('이전 재련 결과(' + R.findItem(P, P.rfPend.u).name + ')를 먼저 선택해야 합니다');
     var n = D.RARITY[it.r].affix; if (!n) err('옵션이 없는 장비는 재련할 수 없습니다');
-    var cost = R.reforgeCost(it); if ((P.res.dust || 0) < cost) err('마석가루가 모자랍니다 (' + cost + '개 필요)');
-    P.res.dust -= cost;
+    var cost = R.reforgeCost(it), gc = R.reforgeGold(it); if ((P.res.dust || 0) < cost) err('마석가루가 모자랍니다 (' + cost + '개 필요)');
+    if (P.res.gold < gc) err(CUR + '가 모자랍니다 (' + R.fmt(gc) + ' 필요)');
+    P.res.dust -= cost; P.res.gold -= gc;
     var pool = D.AFFIXES.slice(), aff = [];
     for (var i = 0; i < n && pool.length; i++) {
       var af = pool.splice(Math.floor(rnd(P) * pool.length), 1)[0], v;
@@ -2343,7 +2355,7 @@
     function lec(id) { var L = P.subj[id].lv, ls = R.lecSpdOf(P, c, id); return { xp: K.LEC_XP * ls * R.lecGradeMul(P.grade), know: (K.LEC_KNOW + L * K.LEC_KNOW_LV) * c.know * ls }; }
     if (kind === 'study') { var one = lec(SUBJ[sid] ? sid : top.id); out.xp = one.xp * h * R.DREAM_STUDY; out.know = one.know * h * 0.25; }
     else if (kind === 'stars') { out.shard = Math.floor(h * 0.6); out.know = lec(top.id).know * h * 0.3; out.egg = h * 0.004; }
-    else { var z = R.zoneOf(Math.min(P.maxStage, R.stageCap(P))); out.mat = z.mat; out.mats = Math.floor(h * 3.5); out.stones = Math.floor(h * 0.45); out.gold = Math.floor(h * 22 * K.KILL_GOLD * Math.pow(K.G_GOLD, z.from - 1) * (1 + (c.b.goldPct || 0))); }
+    else { var z = R.zoneOf(Math.min(P.maxStage, R.stageCap(P))); out.mat = z.mat; out.mats = Math.floor(h * 3.5); out.stones = Math.floor(h * 0.45); out.gold = Math.floor(h * 22 * K.KILL_GOLD * goldPow(z.from - 1) * (1 + (c.b.goldPct || 0))); }
     var dm = 1 + (c.b.offlineEff || 0); if (dm > 1) ['xp', 'know', 'shard', 'egg', 'gold', 'mats', 'stones'].forEach(function (k) { if (out[k]) out[k] = k === 'egg' || k === 'xp' || k === 'know' ? out[k] * dm : Math.floor(out[k] * dm); });   // 꿈나방: 꿈길 보상 +
     return out;
   };
@@ -2417,7 +2429,7 @@
       P.scores[run.grade] = { total: total, letter: L }; if (L === 'S') P.st.sGrades++;
       P.st.aGrades = Object.keys(P.scores).filter(function (g) { var l = P.scores[g].letter; return l === 'S' || l === 'A'; }).length;
       var rw = R.EXAM_REWARD[L] || R.EXAM_REWARD.C, mult = rw.mult, shard = Math.round((8 + run.grade * 4) * mult);
-      var gold = Math.floor(400 * K.KILL_GOLD * Math.pow(K.G_GOLD, ex.duel) * mult); P.res.shard += shard; addGold(P, gold);
+      var gold = Math.floor(400 * K.KILL_GOLD * goldPow(ex.duel) * mult); P.res.shard += shard; addGold(P, gold);
       var minR = rw.minR;
       // 장비 레벨: 지금 연 원정 단계 ±3 (학년 상한을 넘어도 됨). S는 전설 확률 3%
       var ilv = Math.max(1, Math.min(P.maxStage, R.stageCap(P)) + Math.floor(rnd(P) * 7) - 3), rr = Math.max(minR, rollRarity(P, 0.5));
@@ -2442,7 +2454,7 @@
     badgeGain(P, R.BADGE_XP.fight * (f.win ? 2 : 1), now);
     if (f.win) {
       P.duel.rank++; P.st.duelWins++; var first = P.duel.rank > P.st.duelBest; if (first) P.st.duelBest = P.duel.rank;
-      var shard = 3 + k + (first ? k : 0), gold = Math.floor(80 * K.KILL_GOLD * Math.pow(K.G_GOLD, r.stage - 1) * c.gold);
+      var shard = 3 + k + (first ? k : 0), gold = Math.floor(80 * K.KILL_GOLD * goldPow(r.stage - 1) * c.gold);
       P.res.shard += shard; addGold(P, gold); res.reward = { shard: shard, gold: gold, first: first };
       P.duel.cd = now + K.DUEL_CD; cupAdd(P, 40, 'duel');
       log(P, now, '결투제 ' + k + '회전 승리: ' + r.name, 'good');
@@ -2504,7 +2516,7 @@
       var roll = rnd(P);
       if (roll < 0.28) { var m = c.mana * 1800; addMana(P, m); out.mana += m; }
       else if (roll < 0.53) { var kn = Math.floor((60 + P.grade * 50) * 2.4 * c.know * Math.pow(1.25, P.grade - 1)); P.res.know += kn; out.know = (out.know || 0) + kn; }
-      else if (roll < 0.76) { var g = Math.floor(120 * K.KILL_GOLD * Math.pow(K.G_GOLD, Math.min(P.maxStage, R.stageCap(P)) - 1) * c.gold * K.SPIRIT_GOLD); addGold(P, g); out.gold += g; }
+      else if (roll < 0.76) { var g = Math.floor(120 * K.KILL_GOLD * goldPow(Math.min(P.maxStage, R.stageCap(P)) - 1) * c.gold * K.SPIRIT_GOLD); addGold(P, g); out.gold += g; }
       else if (roll < 0.9) { var s = ri(P, 1, 3); P.res.shard += s; out.shard += s; }
       else { var st = ri(P, 2, 5); P.res.stone += st; out.stone += st; }
     }
@@ -2609,10 +2621,11 @@
     var b = R.badgeFind(P, str(a.u)); if (!b) err('없는 휘장입니다'); if (b.lock) err('잠긴 휘장입니다. 잠금을 풀면 세공을 다시 새길 수 있습니다'); if (!b.aff || !b.aff.length) err('다시 새길 세공이 없습니다');
     if (P.rcPend && !R.rcPending(P)) P.rcPend = null;
     if (P.rcPend) err('이전 세공 다시 새기기 결과(' + R.badgeFind(P, P.rcPend.u).name + ')를 먼저 선택해야 합니다');
-    var i = int(a.i, 0, b.aff.length - 1), c = R.badgeRecutCost(b); if (P.res.shard < c) err('별조각이 모자랍니다 (' + c + '개 필요)');
+    var i = int(a.i, 0, b.aff.length - 1), c = R.badgeRecutCost(b), gc = R.badgeRecutGold(P); if (P.res.shard < c) err('별조각이 모자랍니다 (' + c + '개 필요)');
+    if (P.res.gold < gc) err(CUR + '가 모자랍니다 (' + R.fmt(gc) + ' 필요)');
     var pool = D.AFFIXES.filter(function (x) { return x.pct && x.id !== GEM[b.gem].bonus && !b.aff.some(function (y, j) { return j !== i && y.id === x.id; }); });
     if (!pool.length) err('새길 수 있는 세공이 없습니다');
-    P.res.shard -= c; var x = pick(P, pool), old = b.aff[i];
+    P.res.shard -= c; P.res.gold -= gc; var x = pick(P, pool), old = b.aff[i];
     var nw = { id: x.id, v: Math.round((x.pct[0] + (x.pct[1] - x.pct[0]) * rnd(P)) * 0.5 * 10000) / 10000 };
     P.rcPend = { u: b.u, i: i, aff: nw, cost: c }; P.st.recut = (P.st.recut || 0) + 1;
     return { u: b.u, i: i, id: x.id, v: nw.v, cost: c, name: b.name, text: R.affText(nw), was: R.affText(old) };

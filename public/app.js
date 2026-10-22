@@ -2096,12 +2096,12 @@
   ACT.block = function (u) { act('badgeLock', { u: u }).then(function (r) { if (r) toast(r.lock ? '휘장을 잠갔습니다' : '휘장 잠금을 풀었습니다', '', 1400); render(); }); };
   // 휘장 강화 세 갈래: 닦기(가루 · 레벨) · 광내기(별조각 · 품질) · 세공 다시 새기기(별조각 · 옵션)
   function badgeUps(b, full, pc, can) {
-    var P = S.P, q = b.q || 1, qmax = q >= R.BADGE_Q_MAX - 1e-9, sc = R.badgeShineCost(b), rc = R.badgeRecutCost(b), sh = P.res.shard || 0;
+    var P = S.P, q = b.q || 1, qmax = q >= R.BADGE_Q_MAX - 1e-9, sc = R.badgeShineCost(b), rc = R.badgeRecutCost(b), rcg = R.badgeRecutGold(P), sh = P.res.shard || 0;
     var li = Math.min(+(S.pick.brc || 0), Math.max(0, (b.aff || []).length - 1)), armed = S.confirm['brc' + b.u] > Date.now(), lk = !!b.lock, lkTag = '<span class="tag" title="잠금을 풀면 할 수 있습니다">잠김</span>';
     return '<div class="bdgups">' +
       '<div class="bdgup"><div class="bdgut"><b class="small">닦기</b><span class="tiny faint">마석가루로 별빛을 채워 레벨을 올립니다</span></div>' + (full ? '<span class="tag br">완성</span>' : lk ? lkTag : '<span class="row" style="gap:8px;flex-wrap:nowrap"><span class="bdgdeal"><span class="tiny"><span class="faint">얻음</span> <b class="gold">별빛 +' + R.badgePolishXp(b) + '</b></span><span class="tiny"><span class="faint">소모</span> ' + fmt(pc.dust) + ' 마석가루 <span class="faint">(보유 ' + fmt(P.res.dust || 0) + ')</span> · ' + fmt(pc.gold) + ' ' + CUR + '</span></span><button class="btn sm primary" data-act="bpolish" data-a="' + b.u + '"' + (can ? '' : ' disabled') + '>닦기</button></span>') + '</div>' +
       '<div class="bdgup"><div class="bdgut"><b class="small">' + gterm('광내기') + '</b><span class="tiny faint">별조각으로 보석 품질을 올려 대표 효과를 키웁니다 · 지금 ' + (Math.round(q * 1000) / 10) + '% / 최대 ' + Math.round(R.BADGE_Q_MAX * 100) + '%</span></div>' + (qmax ? '<span class="tag br">최고 품질</span>' : lk ? lkTag : '<button class="btn sm" data-act="bshine" data-a="' + b.u + '"' + (sh >= sc ? '' : ' disabled') + '>품질 +' + (R.BADGE_Q_STEP * 100) + '% <span class="cost">' + sc + ' 별조각</span></button>') + '</div>' +
-      ((b.aff || []).length ? '<div class="bdgup"><div class="bdgut"><b class="small">' + gterm('세공 다시 새기기', '세공') + '</b><span class="tiny faint">별조각으로 선택한 세공 한 줄을 새로 굴린 뒤 이전 세공과 새 세공 중 하나를 선택합니다 (다른 줄 · 대표 효과와 같은 옵션은 나오지 않음 · 이름의 앞말은 첫 줄을 따릅니다)</span></div><span class="row bdgrc"><select id="brc-line" aria-label="다시 새길 세공">' + b.aff.map(function (a, i) { return '<option value="' + i + '"' + (i === li ? ' selected' : '') + '>' + (i + 1) + '. ' + (D.BONUS_NAMES[a.id] || a.id) + ' +' + pct(a.v) + '</option>'; }).join('') + '</select>' + (lk ? lkTag : '<button class="btn sm' + (armed ? ' primary' : '') + '" data-act="brecut" data-a="' + b.u + '"' + (sh >= rc ? '' : ' disabled') + '>' + (armed ? '한 번 더 누르면 새깁니다' : '새기기') + ' <span class="cost">' + rc + ' 별조각</span></button>') + '</span></div>' : '') +
+      ((b.aff || []).length ? '<div class="bdgup"><div class="bdgut"><b class="small">' + gterm('세공 다시 새기기', '세공') + '</b><span class="tiny faint">별조각과 ' + CUR + '로 선택한 세공 한 줄을 새로 굴린 뒤 이전 세공과 새 세공 중 하나를 선택합니다 (다른 줄 · 대표 효과와 같은 옵션은 나오지 않음 · 이름의 앞말은 첫 줄을 따릅니다)</span></div><span class="row bdgrc"><select id="brc-line" aria-label="다시 새길 세공">' + b.aff.map(function (a, i) { return '<option value="' + i + '"' + (i === li ? ' selected' : '') + '>' + (i + 1) + '. ' + (D.BONUS_NAMES[a.id] || a.id) + ' +' + pct(a.v) + '</option>'; }).join('') + '</select>' + (lk ? lkTag : '<button class="btn sm' + (armed ? ' primary' : '') + '" data-act="brecut" data-a="' + b.u + '"' + (sh >= rc && P.res.gold >= rcg ? '' : ' disabled') + '>' + (armed ? '한 번 더 누르면 새깁니다' : '새기기') + ' <span class="cost">' + rc + ' 별조각 · ' + MONEY(rcg) + '</span></button>') + '</span></div>' : '') +
       '</div>';
   }
   ACT.bshine = function (u) { act('badgeShine', { u: u }).then(function (r) { if (r) { Snd.play('enh'); toast('광을 냈습니다', r.name + ' · 품질 ' + (Math.round(r.q * 1000) / 10) + '% · 별조각 -' + r.cost, 2200); } render(); }); };
@@ -2190,7 +2190,7 @@
       h += '<button class="btn sm" data-act="enh" data-a="' + it.u + '"' + (okc ? '' : why(P.res.gold < cost.gold ? CUR + '가 부족합니다' : '마석이 부족합니다')) + '>강화 <span class="cost">' + fmt(cost.gold) + ' ' + CUR + ' · ' + cost.stone + ' 마석</span></button><button class="btn sm ghost" data-act="enh" data-a="' + it.u + '" data-b="until"' + (okc ? '' : why(P.res.gold < cost.gold ? CUR + '가 부족합니다' : '마석이 부족합니다')) + '>성공할 때까지</button>';
     }
     h += '<button class="btn sm ghost" data-act="do" data-a="lock" data-b="' + it.u + '">' + (it.lock ? '잠금 해제' : '잠금') + '</button>';
-    if (D.RARITY[it.r].affix && !it.lock) { var rf = R.reforgeCost(it); h += '<button class="btn sm" data-act="reforge" data-a="' + it.u + '"' + ((P.res.dust || 0) >= rf ? '' : ' disabled') + ' title="지금 옵션은 사라지고 새 옵션으로 바뀝니다 (등급·레벨·강화는 그대로)">재련 <span class="cost">' + fmt(rf) + ' 마석가루</span></button>'; }
+    if (D.RARITY[it.r].affix && !it.lock) { var rf = R.reforgeCost(it), rg = R.reforgeGold(it); h += '<button class="btn sm" data-act="reforge" data-a="' + it.u + '"' + ((P.res.dust || 0) >= rf && P.res.gold >= rg ? '' : ' disabled') + ' title="지금 옵션은 사라지고 새 옵션으로 바뀝니다 (등급·레벨·강화는 그대로)">재련 <span class="cost">' + fmt(rf) + ' 마석가루 · ' + MONEY(rg) + '</span></button>'; }
     // 영웅 이상 · 강화한 장비는 분해 · 판매 전에 경고 창 (실수 방지)
     var risky = it.r >= 3 || it.enh > 0;
     if (!eqd && !it.lock) { var dy = R.dismantleYield(it); h += '<button class="btn sm" data-act="' + (risky ? 'itemarm' : 'do') + '" data-a="dismantle" data-b="' + it.u + '">분해 <span class="cost">' + dy.stone + ' 마석 · ' + dy.dust + ' 마석가루</span></button>'; }
@@ -2767,7 +2767,7 @@
       '<div class="twnext" style="margin-top:10px"><div class="twf num">' + f + '<span>층</span></div><div style="flex:1;min-width:0"><b' + (foe.wall ? ' class="gold"' : '') + '>' + esc(foe.name) + '</b><div class="tiny faint">' + foe.stage + '단계 수준 · 체력 ' + fmt(foe.hp) + (foe.wall ? ' · <span class="bad">시련의 층: 탑의 문지기가 지킵니다</span>' : '') + '</div>' +
       '<div class="small" style="margin-top:4px">' + (pv.win && pv.ttk < R.CT_TIME ? '<span class="good">승산 있음</span> — 약 ' + pv.ttk.toFixed(1) + '초' : '<span class="bad">아직 버겁습니다</span>') + '</div>' +
       '<div class="tiny" style="margin-top:4px">이 층 보상 <span class="rwd">' + esc(R.rewardText(rw)) + '</span></div></div></div>' +
-      '<div class="row" style="margin-top:12px"><span class="tiny faint">' + (mt ? nextMile + '층 돌파 시 칭호 「' + esc(mt.name) + '」 · 별조각 30 · 희귀 장비 상자 · 환수의 알' : nextMile + '층 돌파 시 별조각 30 · 희귀 장비 상자 · 환수의 알') + '</span><span class="spacer"></span><button class="btn primary" data-act="ctower"' + '' + '>' + f + '층 도전</button></div></div>';
+      '<div class="row" style="margin-top:12px"><span class="tiny faint">' + (mt ? nextMile + '층 돌파 시 칭호 「' + esc(mt.name) + '」 · 별조각 30 · 희귀 이상 장비 상자(전설 50%) · 환수의 알' : nextMile + '층 돌파 시 별조각 30 · 희귀 이상 장비 상자(전설 50%) · 환수의 알') + '</span><span class="spacer"></span><button class="btn primary" data-act="ctower"' + '' + '>' + f + '층 도전</button></div></div>';
     h += '<div class="card" style="margin-top:14px"><div class="row between"><h3>장착 주문</h3><span class="tiny faint">칸을 누르면 주문을 바꿉니다 · 바꾼 뒤 위의 승산이 다시 계산됩니다</span></div>' + spellBar(P) + '</div>';   // 탑에서도 바로 주문을 바꾼다
     var got = D.TITLES.filter(function (t) { return t.stat === R.ctKey(cl); });
     // 탑 칭호는 칭호 도감에 모두 있으므로 여기서는 한 줄 (획득 수 · 다음 칭호)
@@ -3294,7 +3294,7 @@
     if (m.tab === 'live') { if (!m.trades || Date.now() - m.trAt > 30000) { if (Date.now() - m.trAt > 1500) loadTrades(); } }
     else if (m.tab === 'hist') { if (!m.hist || Date.now() - (m.hiAt || 0) > 30000) { if (Date.now() - (m.hiAt || 0) > 1500) loadHist(); } }
     else if (!d || Date.now() - m.at > 30000) { if (Date.now() - m.at > 1500) loadMarket(); }
-    var h = pageHead('부엉이 상단', '거래소', '수수료 5% · 3일 보관 · 한 번에 10개');
+    var h = pageHead('부엉이 상단', '거래소', '누진 수수료 5~15% · 3일 보관 · 한 번에 10개') + '<p class="tiny faint" style="margin:-6px 0 10px">판매 수수료: ' + R.marketFeeText + '</p>';
     // 올린 물건 수 (판매 중 / 한 번에 올릴 수 있는 수): 내 물건 탭 이름과 팔기 화면 위에
     var openN = d && d.mine ? d.mine.filter(function (x) { return x.status === 'open'; }).length : null, openMax = (d && d.maxOpen) || 10, openTxt = openN == null ? '' : ' <span class="num tiny' + (openN >= openMax ? ' bad' : ' faint') + '">' + openN + ' / ' + openMax + '</span>';
     h += '<div class="tabs" role="tablist">' + [['buy', '사기']].concat(API.mode === 'server' ? [['auc', '경매']] : [], [['sell', '팔기'], ['live', '실시간 거래'], ['mine', '내 물건' + openTxt], ['hist', '거래 내역']]).map(function (t) { return '<button role="tab" class="' + (m.tab === t[0] ? 'on' : '') + '" data-act="mktab" data-a="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
@@ -4250,10 +4250,10 @@
   ACT.rcpick = function (k) { act('badgeRecutPick', { keep: k }).then(function (r) { closeModal(); if (r) { if (k === 'new') Snd.play('enh'); toast(k === 'new' ? '새 세공을 적용했습니다' : '이전 세공을 유지했습니다', r.name + ' · ' + r.text, 2200); } render(); }); };
   ACT.reforge = function (u) {
     if (R.rfPending(S.P)) { rfPickModal(); return; }
-    var it = R.findItem(S.P, u); if (!it) return; var rf = R.reforgeCost(it);
-    modal(mhead('재련', esc(it.name)) + '<p class="small">옵션을 새로 굴린 뒤, <b>이전 옵션과 새 옵션 중 하나를 선택</b>합니다. 마석가루는 어느 쪽을 선택해도 소모됩니다. 등급 · 레벨 · 강화 · 기본 능력치는 그대로이며, 한 장비에 같은 옵션이 두 줄 붙지 않습니다.</p>' +
+    var it = R.findItem(S.P, u); if (!it) return; var rf = R.reforgeCost(it), rg = R.reforgeGold(it);
+    modal(mhead('재련', esc(it.name)) + '<p class="small">옵션을 새로 굴린 뒤, <b>이전 옵션과 새 옵션 중 하나를 선택</b>합니다. 마석가루와 ' + CUR + '는 어느 쪽을 선택해도 소모됩니다. 등급 · 레벨 · 강화 · 기본 능력치는 그대로이며, 한 장비에 같은 옵션이 두 줄 붙지 않습니다.</p>' +
       '<div class="section-t" style="margin-top:10px">지금 옵션</div><div class="rfold">' + affList(it) + '</div>' +
-      '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn ghost" data-act="modal-close">취소</button><button class="btn primary" data-act="reforge-go" data-a="' + esc(u) + '">재련하기 <span class="cost">' + fmt(rf) + ' 마석가루</span></button></div>');
+      '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn ghost" data-act="modal-close">취소</button><button class="btn primary" data-act="reforge-go" data-a="' + esc(u) + '">재련하기 <span class="cost">' + fmt(rf) + ' 마석가루 · ' + MONEY(rg) + '</span></button></div>');
   };
   ACT['reforge-go'] = function (u) {
     act('reforge', { u: u }).then(function (r) {
@@ -5553,7 +5553,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102285;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102286;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
