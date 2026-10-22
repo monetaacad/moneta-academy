@@ -2294,8 +2294,10 @@
 
   /* ───────── 텃밭 · 낚시터 (2차 베타: 서버가 fg를 보낼 때만 보인다) ───────── */
   // 도트 그림: D.LZ_SHEETS의 한 칸을 px 크기로 (16px 칸은 2 · 3배처럼 정수배로 쓰면 또렷하다)
+  var LZ_SMALL = { g: 1, f: 1, s: 1 };
   function spr(code, px, cls, title) {
     var p = String(code || '').split(':'), sh = D.LZ_SHEETS[p[0]]; if (!sh) return '';
+    if (LZ_SMALL[p[0]]) px = px >= 96 ? 48 : px >= 48 ? 32 : 16;   // 텃밭 · 물고기 도트는 작게: 원래 크기(16px)의 1 · 2 · 3배만
     var i = +p[1], k = px / sh.c, x = (i % sh.cols) * sh.c * k, y = Math.floor(i / sh.cols) * sh.c * k;
     return '<span class="spr' + (cls ? ' ' + cls : '') + '" style="width:' + px + 'px;height:' + px + 'px;background-image:url(' + sh.src + ');background-size:' + sh.w * k + 'px ' + sh.h * k + 'px;background-position:-' + x + 'px -' + y + 'px"' + (title ? ' role="img" aria-label="' + esc(title) + '"' : ' aria-hidden="true"') + '></span>';
   }
@@ -5832,7 +5834,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102275;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102276;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
