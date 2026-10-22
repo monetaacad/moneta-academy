@@ -38,7 +38,7 @@ function create(dbx, sec, opts) {
       else { if (p.priv) return; if (tag && p.tag !== tag) return; }   // 관리자만 보기 글은 일반 목록에 나오지 않는다 (운영진 포함)
       if (spaceOf(p) !== (f.sp || '')) return;   // 게시판 · 건의함(건의 말머리) · RP 게시판(RP 말머리)을 나눠 보인다
       if (f.st && (p.st || '') !== f.st) return;   // 건의함: 처리 상태로 보기
-      if (f.hideDone && !f.st && (p.st === 'done' || p.st === 'no')) return;   // 해결 완료 · 반영 안 함 숨기기 (처리 상태를 직접 골랐을 때는 그대로 보인다)
+      if (f.hideDone && !f.st && (p.st === 'done' || p.st === 'no' || p.st === 'norepro')) return;   // 해결 완료 · 반영 안 함 · 재현 안 됨 숨기기 (처리 상태를 직접 골랐을 때는 그대로 보인다)
       if (q) {
         const hit = qt === 'author' ? nameOf(p.pid).toLowerCase().replace(/ /g, '').indexOf(q.replace(/ /g, '')) >= 0
           : qt === 'title' ? p.title.toLowerCase().indexOf(q) >= 0 : (p.title + '\n' + p.body).toLowerCase().indexOf(q) >= 0;
