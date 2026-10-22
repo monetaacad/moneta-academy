@@ -469,10 +469,10 @@
         row('기술 위력', '×' + c.skill.toFixed(2), from('skillPct'), c.skill === 1),
         row('주문 공격력', R.fmt(Math.round(c.matk)), add(from('atkPct').concat(from('matkPct')), sn.int + ' ' + Math.round(st.int), R.statFx(0.01, st.int))),
         row('주문 위력', '×' + c.spell.toFixed(2), from('spellPct'), c.spell === 1),
-        row('공격 속도', c.aps.toFixed(2) + '/초', add(from('aps'), sn.agi + ' ' + Math.round(st.agi), R.statFx(0.005, st.agi))),
+        row('공격 속도', c.aps.toFixed(2) + '/초', add(from('aps'), sn.agi + ' ' + Math.round(st.agi), R.statFx(0.008, st.agi))),
         row('치명타 확률', R.fmtPct(c.critC, 1), add([['기본', '5%', 0]].concat(from('critC')), sn.agi + ' ' + Math.round(st.agi), R.statFx(0.0008, st.agi))),
         row('치명타 피해', '×' + c.critD.toFixed(2), add([['기본', '×1.5', 0]].concat(from('critD')), sn.luk + ' ' + Math.round(st.luk), R.statFx(0.008, st.luk))),
-        row('생명력', R.fmt(Math.round(c.hp)), add(add(from('hpPct'), sn.vit + ' ' + Math.round(st.vit), R.statFx(0.008, st.vit)), sn.wil + ' ' + Math.round(st.wil), R.statFx(0.004, st.wil))),
+        row('생명력', R.fmt(Math.round(c.hp)), add(add(from('hpPct'), sn.vit + ' ' + Math.round(st.vit), R.statFx(0.008, st.vit)), sn.wil + ' ' + Math.round(st.wil), R.statFx(0.008, st.wil))),
         row('방어력', R.fmt(Math.round(c.def)), add(from('defPct'), sn.vit + ' ' + Math.round(st.vit), R.statFx(0.006, st.vit))),
         row('생명력 흡수', R.fmtPct(c.leech, 1) + (c.leech >= 0.1 ? ' (최대)' : ''), from('leech'), !c.leech),
         row('보스 피해', '×' + c.bossDmg.toFixed(2), from('bossDmg'), c.bossDmg === 1),
@@ -592,7 +592,7 @@
   R.statFx = function (p, v) { v = Math.max(0, v || 0); return p * (R.SOFT_K + R.SOFT_AT) * v / (v + R.SOFT_K); };
   R.statFxMax = function (p) { return p * (R.SOFT_K + R.SOFT_AT); };
   R.CDR_MAX = 0.6;   // 재사용 대기 감소 최대 (민첩 + 장비 각인)
-  R.STAT_FX = { int: [['주문 공격력', 0.01], ['수업 효율(지력 수업)', 0.0008]], wil: [['마나 재생', 0.04], ['치유 · 보호막 위력', 0.005], ['생명력', 0.004]], agi: [['공격 속도', 0.005], ['치명타 확률', 0.0008], ['재사용 대기 감소', 0.0005]],
+  R.STAT_FX = { int: [['주문 공격력', 0.01], ['수업 효율(지력 수업)', 0.0008]], wil: [['마나 재생', 0.04], ['치유 · 보호막 위력', 0.005], ['생명력', 0.008]], agi: [['공격 속도', 0.008], ['치명타 확률', 0.0008], ['재사용 대기 감소', 0.0005]],
     vit: [['물리 공격력', 0.01], ['생명력', 0.008], ['방어력', 0.006], ['수업 효율(체력 수업)', 0.0008]], luk: [['치명타 피해', 0.008], ['전리품 확률', 0.001], ['장비 등급 상승', 0.0008]] };
   function calc(P, W, t0, t1) {
     if (t0 == null) t0 = P.at; if (t1 == null) t1 = t0;
@@ -610,9 +610,9 @@
     var atk0 = (5 + gear.atk) * (1 + (b.atkPct || 0));
     c.patk = atk0 * (1 + R.statFx(0.01, st.vit)) * (1 + (b.physPct || 0)); c.matk = atk0 * (1 + R.statFx(0.01, st.int)) * (1 + (b.matkPct || 0));
     c.atk = P.cls === 'knight' ? c.patk : c.matk;
-    c.hp = (60 + gear.hp) * (1 + R.statFx(0.008, st.vit) + R.statFx(0.004, st.wil)) * (1 + (b.hpPct || 0));
+    c.hp = (60 + gear.hp) * (1 + R.statFx(0.008, st.vit) + R.statFx(0.008, st.wil)) * (1 + (b.hpPct || 0));
     c.def = (2 + gear.def) * (1 + R.statFx(0.006, st.vit)) * (1 + (b.defPct || 0));
-    c.aps = Math.min(5, 0.8 * (1 + R.statFx(0.005, st.agi)) * (1 + (b.aps || 0)));
+    c.aps = Math.min(5, 0.8 * (1 + R.statFx(0.008, st.agi)) * (1 + (b.aps || 0)));
     c.critC = Math.min(0.8, 0.05 + R.statFx(0.0008, st.agi) + (b.critC || 0));
     c.critD = 1.5 + (b.critD || 0) + R.statFx(0.008, st.luk);
     c.spell = 1 + (b.spellPct || 0);   // 주문 위력 (주문구문학 레벨 효과는 bonuses에서)
