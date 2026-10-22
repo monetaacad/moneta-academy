@@ -912,7 +912,7 @@ routes['POST /api/friends'] = async (req, res) => {
 /* ───────── 관계 ─────────
    한 학생이 상대와 자기의 이름표(예: 선배 / 후배)를 정해 신청하고, 상대가 수락하면 두 학생의 정보창 「관계」 탭에 보인다. 한 쌍에 하나 */
 const REL_MAX = 30, REL_OUT_MAX = 10, REL_LABEL_MAX = 8;
-const relView = (r) => ({ rid: r.rid, id: r.id, name: r.name, house: r.house, grade: r.grade, av: r.avatar_v, mine: r.mine, theirs: r.theirs, t: r.t });
+const relView = (r) => ({ rid: r.rid, id: r.id, name: r.name, house: r.house, grade: r.grade, av: r.avatar_v, mine: r.mine, theirs: r.theirs, t: r.t, prop: r.pdir ? { dir: r.pdir, mine: r.pmine, theirs: r.ptheirs } : null });
 function relLabel(v) { const s = cleanText(v, 40).replace(/\s+/g, ' '); if (!s) return { err: '관계 이름 입력 필요' }; if (s.length > REL_LABEL_MAX) return { err: '관계 이름은 ' + REL_LABEL_MAX + '자까지 가능' }; if (R.badName(s)) return { err: '사용할 수 없는 말이 들어 있습니다' }; return { s }; }
 routes['GET /api/rels'] = (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
@@ -947,6 +947,23 @@ routes['POST /api/rels'] = async (req, res) => {
     if (Number(dbx.q.relCount.get(other, other).n) >= REL_MAX) return fail(req, res, 400, '상대 학생의 관계가 가득 찼습니다');
     dbx.q.relAccept.run(t, r.id);
     addNote(other, 'rel', pname(me) + ' 님이 관계 신청을 수락했습니다: ' + r.la + ' · ' + r.lb, { me: 'rels' });
+    return send(req, res, 200, { ok: true });
+  }
+  // 맺은 관계의 이름표 수정: 한쪽이 제안하고 상대가 수락하면 바뀐다 (제안은 한 번에 하나)
+  if (op === 'propose') {
+    if (r.state !== 'ok') return fail(req, res, 400, '맺은 관계만 수정할 수 있습니다');
+    if (r.pby && r.pby !== me) return fail(req, res, 400, '상대가 보낸 수정 제안이 있습니다. 먼저 수락하거나 거절해야 합니다');
+    const m = relLabel(b.mine), o = relLabel(b.theirs); if (m.err || o.err) return fail(req, res, 400, m.err || o.err);
+    const la = r.a === me ? m.s : o.s, lb = r.a === me ? o.s : m.s; if (la === r.la && lb === r.lb) return fail(req, res, 400, '지금과 같은 이름입니다');
+    dbx.q.relPropose.run(me, la, lb, r.id);
+    addNote(other, 'rel', pname(me) + ' 님이 관계 수정을 제안했습니다: ' + pname(me) + ' ' + m.s + ' · 나 ' + o.s, { me: 'rels' });
+    return send(req, res, 200, { ok: true });
+  }
+  if (op === 'paccept' || op === 'pdecline' || op === 'pcancel') {
+    if (!r.pby) return fail(req, res, 400, '수정 제안이 없습니다');
+    if (op === 'pcancel' ? r.pby !== me : r.pby === me) return fail(req, res, 400, op === 'pcancel' ? '보낸 수정 제안이 없습니다' : '받은 수정 제안이 없습니다');
+    if (op === 'paccept') { dbx.q.relPApply.run(r.id); addNote(other, 'rel', pname(me) + ' 님이 관계 수정 제안을 수락했습니다: ' + r.pla + ' · ' + r.plb, { me: 'rels' }); }
+    else dbx.q.relPClear.run(r.id);
     return send(req, res, 200, { ok: true });
   }
   if (op === 'decline' || op === 'cancel' || op === 'remove') {
