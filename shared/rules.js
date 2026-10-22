@@ -1810,12 +1810,17 @@
     return 25 + 15 * clamp((avg - ex.req) / 4, 0, 1);
   };
   R.duelEnemy = function (stage, hpM, atkM) { return { hp: R.monHp(stage) * (hpM || 5), atk: R.monAtk(stage) * (atkM || 1.4), boss: true }; };
-  R.duelPreview = function (P, W, stage, hpM, atkM, t) {
+  /* 기말 대련 과제: 학과 성향이 수호 · 축복(duel: 'hold')이면 「버티기」 — 시험관이 HOLD_ATK배로 강하게 공격하고, DUEL_T초를 버티면 합격.
+     그 밖(공세 · 파괴)은 「처치」 — DUEL_T초 안에 쓰러뜨리면 합격. 못 하면 부분 점수: 처치는 깎은 체력 85% + 버틴 시간 15%, 버티기는 그 반대 */
+  R.DUEL_T = 45; R.HOLD_ATK = 2.5;
+  R.examDuelMode = function (P) { return R.stanceOf(P).duel === 'hold' ? 'hold' : 'kill'; };
+  R.duelScore = function (mode, win, dmgFrac, survFrac) { if (win) return 30; return 30 * (mode === 'hold' ? 0.85 * survFrac + 0.15 * dmgFrac : 0.85 * dmgFrac + 0.15 * survFrac); };
+  R.duelPreview = function (P, W, stage, hpM, atkM, t, mode) {
     var c = calc(P, W, t || P.at), e = R.duelEnemy(stage, hpM, atkM);
     var pd = c.totalDps, ed = Math.max(0.001, dmgTaken(e.atk, c.def) - c.hp * c.regen), shield = 0;
     P.spells.forEach(function (sid) { var sp = SPELL[sid]; if (sp && R.spellUnlocked(P, sid) && (sp.type === 'shield' || sp.type === 'heal')) shield += c.hp * sp.mult * (c.care || 1) * (sp.type === 'shield' ? 3 : 2); });
-    var ttk = e.hp / pd, ttd = (c.hp + shield) / ed, T = 45, win = ttk <= Math.min(T, ttd);
-    return { win: win, frac: win ? 1 : clamp(Math.min(T, ttd) * pd / e.hp, 0, 1), ttk: ttk, ttd: ttd };
+    var ttk = e.hp / pd, ttd = (c.hp + shield) / ed, T = R.DUEL_T, win = mode === 'hold' ? ttd >= T || ttk <= T : ttk <= Math.min(T, ttd);
+    return { win: win, frac: win && mode !== 'hold' ? 1 : clamp(Math.min(T, ttd) * pd / e.hp, 0, 1), surv: clamp(ttd / T, 0, 1), ttk: ttk, ttd: ttd, mode: mode || 'kill' };
   };
   R.letter = function (s) { return s >= 95 ? 'S' : s >= 85 ? 'A' : s >= 75 ? 'B' : s >= 60 ? 'C' : 'F'; };
   // 등급별 합격 보상 (화면 표와 실제 지급이 같은 표). 합격하면 바로 다음 학년이라 같은 시험은 다시 볼 수 없다.
@@ -1831,12 +1836,12 @@
   // 지금 보면 몇 점·몇 등급인지, 시험 과목을 모두 몇 레벨씩 더 올리면 A·S가 되는지 (대련은 지금 전투력 그대로로 어림)
   R.examPredict = function (P, W, t) {
     var ex = R.examFor(P); if (!ex || P.grade >= 8) return null;
-    var c = calc(P, W, t || P.at), du = R.duelPreview(P, W, ex.duel, null, null, t), duel = du.win ? 30 : 30 * du.frac * 0.85, bonus = c.examBonus || 0;
+    var mode = R.examDuelMode(P), c = calc(P, W, t || P.at), du = R.duelPreview(P, W, ex.duel, null, mode === 'hold' ? 1.4 * R.HOLD_ATK : null, t, mode), duel = R.duelScore(mode, du.win, du.frac, du.surv), bonus = c.examBonus || 0;
     // 아직 자격이 없으면 모든 시험 과목이 기준 레벨이 됐을 때로 어림한다
     function tot(n) { var sj = {}; R.examSubjs(P, ex).forEach(function (k) { sj[k] = { lv: Math.max(P.subj[k].lv, ex.req) + n }; }); var Q = { subj: sj }; return Math.round(R.examTheory(Q, ex) + R.examPractical(Q, ex) + duel + bonus); }
     function need(min) { for (var n = 0; n <= 12; n++) if (tot(n) >= min) return n; return -1; }
     var total = tot(0);
-    return { th: R.examTheory(P, ex), pr: R.examPractical(P, ex), duel: duel, duelWin: du.win, bonus: bonus, total: total, letter: R.letter(total), toS: need(95), toA: need(85) };
+    return { th: R.examTheory(P, ex), pr: R.examPractical(P, ex), duel: duel, duelWin: du.win, duelMode: mode, bonus: bonus, total: total, letter: R.letter(total), toS: need(95), toA: need(85) };
   };
 
   /* ───────── 결투제 ───────── */
@@ -2555,10 +2560,10 @@
     var run = { grade: P.grade };
     var ex = D.EXAMS[run.grade - 1];
     var written = R.examTheory(P, ex), practical = R.examPractical(P, ex);
-    var c = calc(P, W, now), e = R.duelEnemy(ex.duel), f = fight(P, c, e, 45, true);
-    var duelPts = f.win ? 30 : 30 * (1 - f.mHp) * 0.85;
+    var mode = R.examDuelMode(P), c = calc(P, W, now), e = R.duelEnemy(ex.duel, null, mode === 'hold' ? 1.4 * R.HOLD_ATK : null), f = fight(P, c, e, R.DUEL_T, mode === 'kill');
+    var duelPts = R.duelScore(mode, f.win, 1 - f.mHp, f.dead ? f.t / R.DUEL_T : 1);
     var total = Math.round(written + practical + duelPts + c.examBonus), L = R.letter(total);
-    var res = { grade: run.grade, written: written, practical: practical, duel: duelPts, duelWin: f.win, cc: !!f.cc, bonus: c.examBonus, total: total, letter: L,
+    var res = { grade: run.grade, written: written, practical: practical, duel: duelPts, duelWin: f.win, duelMode: mode, cc: !!f.cc, bonus: c.examBonus, total: total, letter: L,
       pass: total >= 60, ev: f.ev, maxHp: e.hp, examiner: ex.examiner };
     P.px = null;
     if (res.pass) {
