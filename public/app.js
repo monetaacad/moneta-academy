@@ -1027,7 +1027,8 @@
   }
   // 관계 신청: 예시를 고르거나 직접 입력 (나 · 상대 이름표)
   // ed: 맺은 관계 수정 제안 { rid, mine, theirs } (상대가 수락하면 바뀐다)
-  ACT.relform = function (id, name, ed) {
+  ACT.relform = function (id, name) { relForm(id, name, null); };   // 버튼 클릭은 세 번째 인자로 버튼 요소가 오므로 수정 제안과 분리
+  function relForm(id, name, ed) {
     S.relTo = { id: id, name: name, ed: ed || null };
     modal(mhead(ed ? '관계 수정 제안' : '관계 신청', esc(name)) + '<p class="small muted">' + (ed ? '새 관계 이름을 제안합니다. 상대가 수락하면 바뀌며, 그 전까지는 지금 이름이 그대로 보입니다.' : '상대가 수락하면 두 학생의 정보창 「관계」 탭에 표시됩니다.') + '</p>' +
       '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:10px">' + D.REL_PRESETS.map(function (x, i) { return '<button class="btn sm ghost" data-act="relpre" data-a="' + i + '">' + (x[0] === x[1] ? x[0] : x[0] + ' · ' + x[1]) + '</button>'; }).join('') + '</div>' +
@@ -1035,7 +1036,7 @@
       '<div class="field"><label for="rel-theirs">' + esc(name) + ' 님은 나의</label><input id="rel-theirs" maxlength="8" placeholder="예: 후배" value="' + esc(ed ? ed.theirs : '') + '"></div>' +
       '<p class="tiny faint">관계 이름은 8자까지 가능합니다. 한 학생과는 하나의 관계만 맺을 수 있습니다.</p>' +
       '<div class="row" style="justify-content:flex-end;margin-top:12px;gap:6px"><button class="btn" data-act="prof" data-a="' + esc(id) + '">취소</button><button class="btn primary" data-act="relsend">' + (ed ? '수정 제안 보내기' : '신청 보내기') + '</button></div><p class="small" id="rel-msg" style="color:var(--rose);min-height:1.2em"></p>');
-  };
+  }
   ACT.relpre = function (i) { var x = D.REL_PRESETS[+i]; if (!x) return; $('#rel-mine').value = x[0]; $('#rel-theirs').value = x[1]; };
   ACT.relsend = function () {
     var t = S.relTo; if (!t) return; var mine = $('#rel-mine').value.trim(), theirs = $('#rel-theirs').value.trim(), msg = $('#rel-msg');
@@ -1044,7 +1045,7 @@
     API.relOp({ op: 'req', id: t.id, mine: mine, theirs: theirs }).then(function (j) { if (j.error) { msg.textContent = j.error; return; } toast('관계 신청을 보냈습니다', t.name + ' 님이 수락하면 표시됩니다', 2200); openProfile(t.id); });
   };
   var REL_DONE = { accept: '관계를 맺었습니다', decline: '관계 신청을 거절했습니다', cancel: '관계 신청을 취소했습니다', remove: '관계를 끊었습니다', paccept: '관계 이름이 바뀌었습니다', pdecline: '수정 제안을 거절했습니다', pcancel: '수정 제안을 취소했습니다' };
-  ACT.reledit = function (rid) { var r = (S.relRows || []).filter(function (x) { return x.rid === +rid; })[0]; if (r) ACT.relform(r.id, r.name, { rid: r.rid, mine: r.mine, theirs: r.theirs }); };
+  ACT.reledit = function (rid) { var r = (S.relRows || []).filter(function (x) { return x.rid === +rid; })[0]; if (r) relForm(r.id, r.name, { rid: r.rid, mine: r.mine, theirs: r.theirs }); };
   ACT.relop = function (op, rid) {
     if (op === 'remove' && !S.relSure) { S.relSure = rid; toast('한 번 더 누르면 관계를 끊습니다', '', 2000); setTimeout(function () { S.relSure = null; }, 3000); return; }
     S.relSure = null;
@@ -5961,7 +5962,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102331;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102332;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
