@@ -184,7 +184,7 @@
   });
   function oplog() { api('GET', '/api/admin/oplog').then(function (j) { $('#oplog').innerHTML = (j.log || []).map(function (l) { return '<tr><td>' + when(l.t) + '</td><td>' + esc(l.name || l.actor) + '</td><td>' + esc({ slow: '슬로우 모드', role: '운영자 지정', maint: '점검', build: '새 버전' }[l.action] || l.action) + '</td><td>' + esc(l.detail) + '</td></tr>'; }).join('') || '<tr><td colspan="4" class="faint">기록이 없습니다</td></tr>'; }); }
   function kst(t) { return t ? new Date(t * 1000).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) : ''; }
-  function showPin(l) { l = (Array.isArray(l) ? l : l ? [l] : []).filter(function (p) { return p && p.text; }); $('#pinnow').innerHTML = l.length ? l.map(function (p) { return '<span style="display:block">고정 중: ' + esc(p.text.slice(0, 60)) + (p.text.length > 60 ? '…' : '') + ' <button class="btn sm ghost" data-a="unpin" data-id="' + esc(String(p.id)) + '">해제</button></span>'; }).join('') : '고정 공지 없음 (최대 2개)'; }
+  function showPin(l) { l = (Array.isArray(l) ? l : l ? [l] : []).filter(function (p) { return p && p.text; }); $('#pinnow').innerHTML = l.length ? l.map(function (p) { return '<span style="display:block">고정 중: ' + esc(p.text.slice(0, 60)) + (p.text.length > 60 ? '…' : '') + ' <button class="btn sm ghost" data-a="unpin" data-id="' + esc(String(p.id)) + '">해제</button></span>'; }).join('') : '고정 공지 없음'; }
   function sys() { api('GET', '/api/admin/sys').then(function (j) { if (j.error) return; showPin(j.pins || j.pin); var m = j.maint || {}, b = j.build || {}; $('#sysnow').textContent = '지금: ' + (m.on ? '점검 중' + (m.until ? ' (' + kst(m.until) + ' 종료 예정)' : '') : m.start ? '점검 예고 ' + kst(m.start) : '점검 없음') + ' · 화면 빌드 ' + (b.build || 0) + (b.minBuild ? ' · 최소 ' + b.minBuild : ''); if (j.epoch) { var e = new Date((j.epoch + 9 * 3600) * 1000).toISOString().slice(0, 10); $('#epnow').textContent = '지금 개교일: ' + e + (j.cal ? ' · 오늘은 ' + j.cal.year + '년 ' + j.cal.month + ' ' + j.cal.d + '일' : '') + (j.epoch > Date.now() / 1000 ? ' (개교일이 미래라 달력이 1일에 멈춰 있습니다)' : ''); if (!$('#epdate').value) $('#epdate').value = e; } }); }
   function tsOf(id) { var v = $(id).value; return v ? Math.floor(new Date(v + ':00+09:00').getTime() / 1000) : 0; }
   function maint(o, msg) { api('POST', '/api/admin/maint', o).then(function (j) { toast(j.error || msg); sys(); oplog(); }); }
@@ -194,6 +194,12 @@
     mton: function () { if (!confirm('지금 점검을 시작합니다. 운영자가 아닌 학생은 모두 점검 화면으로 바뀝니다.')) return; maint({ on: true, until: tsOf('#mtuntil'), msg: $('#mtmsg').value }, '점검을 시작했습니다'); },
     mtoff: function () { maint({ on: false }, '점검을 끝냈습니다'); },
     epoch: function () { var v = $('#epdate').value; if (!v) return toast('날짜 선택 필요'); if (!confirm('개교일을 ' + v + '로 바꿉니다. 아카데미력 날짜 · 달 축복 · 날씨가 이 날짜 기준으로 바뀝니다.')) return; api('POST', '/api/admin/epoch', { date: v }).then(function (j) { toast(j.error || ('개교일을 바꿨습니다 · 오늘은 ' + j.cal.month + ' ' + j.cal.d + '일')); sys(); oplog(); }); },
+    season: function () {
+      var c = $('#ssconfirm').value.trim(); if (c !== '시즌 초기화') return toast('확인 문구 「시즌 초기화」 입력 필요');
+      if (!confirm('모든 학생의 캐릭터와 이번 시즌 기록을 삭제합니다. 되돌리려면 백업으로 복구해야 합니다. 계속합니까?')) return;
+      $('#ssmsg').textContent = '백업 후 초기화하는 중…';
+      api('POST', '/api/admin/season-reset', { confirm: c, legacy: $('#ssleg').value.trim(), epoch: $('#ssepoch').checked }).then(function (j) { $('#ssmsg').textContent = j.error || ('완료 · ' + j.players + '명 초기화 · 기념 표시 ' + j.tagged + '명 · 백업 ' + j.backup + ' · 서버가 다시 시작됩니다'); $('#ssconfirm').value = ''; });
+    },
     build: function () { api('POST', '/api/admin/build', { build: +$('#bdbuild').value || 0, minBuild: +$('#bdmin').value || 0 }).then(function (j) { toast(j.error || '새 버전을 알렸습니다'); sys(); oplog(); }); },
     opon: function () { var n = $('#un').value.trim(); if (!n) return; api('POST', '/api/admin/ops', { name: n, rank: 'admin' }).then(function (j) { $('#umsg').textContent = j.error || n + ' 님을 학생회(운영진)로 지정했습니다 · 칭호 「학생회」를 낄 수 있습니다'; oplog(); }); },
     opchief: function () { var n = $('#un').value.trim(); if (!n) return; if (!confirm(n + ' 님을 학생회장으로 지정합니다.')) return; api('POST', '/api/admin/ops', { name: n, rank: 'chief' }).then(function (j) { $('#umsg').textContent = j.error || n + ' 님을 학생회장으로 지정했습니다 · 칭호 「학생회장」 · 「학생회」를 낄 수 있습니다'; oplog(); }); },

@@ -46,7 +46,7 @@
 
   /* ───────── 색인 ───────── */
   function idx(arr) { var o = {}; arr.forEach(function (x) { o[x.id] = x; }); return o; }
-  var SUBJ = R.SUBJ = idx(D.SUBJECTS), SPELL = R.SPELL = idx(D.SPELLS), RES = R.RES = idx(D.RESEARCH);
+  var SUBJ = R.SUBJ = idx(D.SUBJECTS), SPELL = R.SPELL = idx(D.SPELLS), RES = R.RES = idx(D.RESEARCH), BOOK = R.BOOK = idx(D.BOOKS);
   var POT = R.POT = idx(D.POTIONS), FAM = R.FAM = idx(D.FAMILIARS), HOUSE = R.HOUSE = idx(D.HOUSES);
   R.D = D;
   var SLOT = R.SLOT = idx(D.SLOTS), AFF = R.AFF = idx(D.AFFIXES), SHOP = R.SHOP_IDX = idx(D.SHOP);
@@ -215,7 +215,7 @@
   R.ritualGoal = function (active) { return Math.max(5, Math.ceil((active || 0) * 0.35)); };
   R.ritualCost = function (P, W, now) { return Math.floor(calc(P, W, now).mana * 1800); };   // 마나 30분 분
   // 효과 묶음 → 「경험치 +50%, 수업 효율 +100%」 (버프 · 날씨 설명용)
-  var EFF_NAME = { xpPct: '경험치', goldPct: CUR, knowPct: '지식', lectureSpd: '수업 효율', manaPct: '마나 재생', manaCap: '마나 저장', hpPct: '체력', atkPct: '공격력', defPct: '방어력', physPct: '물리 공격력', matkPct: '주문 공격력', spellPct: '주문 위력', skillPct: '기술 위력', dropPct: '전리품', dispPct: '파견 보상', hatchSpd: '부화 속도', brewSpd: '조제 속도', enhBonus: '강화 성공률', bossDmg: '보스 피해', cdr: '재사용 대기', leech: '흡혈' };
+  var EFF_NAME = { xpPct: '경험치', goldPct: CUR, knowPct: '지식', lectureSpd: '수업 효율', manaPct: '마나 재생', manaCap: '마나 저장', hpPct: '생명력', atkPct: '공격력', defPct: '방어력', physPct: '물리 공격력', matkPct: '주문 공격력', spellPct: '주문 위력', skillPct: '기술 위력', dropPct: '전리품', dispPct: '파견 보상', hatchSpd: '부화 속도', brewSpd: '조제 속도', enhBonus: '강화 성공률', bossDmg: '보스 피해', critC: '치명타 확률', cdr: '재사용 대기', leech: '흡혈' };
   R.effText = function (eff) {
     var out = []; for (var k in eff || {}) { var v = eff[k]; if (!v || !EFF_NAME[k]) { if (k === 'examBonus' && v) out.push('시험 +' + v + '점'); continue; } out.push(EFF_NAME[k] + ' ' + (v > 0 ? '+' : '−') + (k === 'manaCap' ? Math.round(Math.abs(v) / 3600 * 10) / 10 + '시간' : Math.round(Math.abs(v) * 1000) / 10 + '%')); }
     return out.join(', ');
@@ -899,7 +899,7 @@
     P.st.lecHours += hours * (canceled ? K.CANCEL_KEEP : 1);
     badgeGain(P, hours * (canceled ? K.CANCEL_KEEP : 1) * R.BADGE_XP.lecH, t);
     cupAdd(P, hours * 10 * (canceled ? K.CANCEL_KEEP : 1), 'lec');
-    return { k: 'lec', s: j.s, xp: j.xp * k, know: kn, from: lv0, to: P.subj[j.s].lv, t: t, canceled: !!canceled, peers: j.peers || 0, pb: j.pb || 0, ontime: !!j.ontime, auto: !!j.auto };
+    return { k: 'lec', s: j.s, xp: j.xp * k, know: kn, from: lv0, to: P.subj[j.s].lv, t: t, canceled: !!canceled, peers: j.peers || 0, pb: j.pb || 0, ontime: !!j.ontime, auto: !!j.auto, tt: j.tt && j.tt.i + 1 < j.tt.n ? 1 : 0 };   // tt: 다음 교시가 이어지는 시간표 수업 (보고 창 종소리 대신 제때 입실에서 종)
   }
 
   // 함께 듣는 수업: 같은 과목을 지금 듣고 있는 다른 학생 1명당 과목 경험치 +1% (최대 +5%), 맡길 때 정해진다
@@ -918,7 +918,7 @@
   /* ───────── 연금술 · 사역마 ───────── */
   R.cauldrons = function (P) { var a = P.subj.alch.lv; return 1 + (a >= 10 ? 1 : 0) + (a >= 20 ? 1 : 0); };
   R.potionUnlocked = function (P, id) { return P.grade >= 2 && P.subj.alch.lv >= POT[id].unlock; };
-  R.eggCost = function (P) { return Math.floor(5000 * Math.pow(1.45, Math.min(P.fam.hatched, 30))); };
+  R.eggCost = function (P) { return Math.floor(5000 * Math.pow(1.2, Math.min(P.fam.hatched, 30))); };   // 깨운 수마다 1.2배 (예전 1.45배)
   R.feedCost = function (P, id) { var f = FAM[id], o = P.fam.own[id]; return Math.floor(2000 * Math.pow(1.45, o.lv) * (f.r + 1)); };
   function hatch(P, t) {
     P.fam.egg = null; P.fam.hatched++;
@@ -989,7 +989,8 @@
     if (P.inv.length >= bag) { if (!wasEq && !R.noMailQ && (P.mailQ || (P.mailQ = [])).length < R.MAILQ_MAX) { P.mailQ.push(it); return 'mail'; } addGold(P, R.sellPrice(it)); return 'sold'; }   // 가방이 가득 차면 우편으로 (서버가 P.mailQ를 우편으로 보낸다)
     P.inv.push(it); return 'bag';
   }
-  R.powerWith = function (P, it) { var old = P.eq[it.slot]; P.eq[it.slot] = it; var p = calc(P, null).power; P.eq[it.slot] = old; return p; };
+  // it을 장착했을 때 전투력. 화면에서 지금 전투력(W · 지금 시각)과 빼서 보이므로 같은 W · 시각으로 계산해야 한다 (기숙사 · 달 축복 · 물약이 한쪽에만 들어가 차이가 틀어지던 문제)
+  R.powerWith = function (P, it, W, t) { var old = P.eq[it.slot]; P.eq[it.slot] = it; var p; try { p = calc(P, W || null, t).power; } finally { P.eq[it.slot] = old; } return p; };
   R.findItem = function (P, u) {
     for (var s in P.eq) if (P.eq[s] && P.eq[s].u === u) return P.eq[s];
     for (var i = 0; i < P.inv.length; i++) if (P.inv[i].u === u) return P.inv[i];
@@ -1202,7 +1203,9 @@
   R.spiritNext = function (P) { return P.spirit.n >= R.jarMax(P) ? null : P.spirit.at + K.SPIRIT_EVERY; };
   // 양조·부화는 즉시. 효율 보너스는 비용을 줄인다.
   R.brewMana = function (P, W, now, id) { return Math.ceil(POT[id].mana / calc(P, W, now).brewSpd); };
-  R.eggPrice = function (P, W, now) { return Math.ceil(R.eggCost(P) / calc(P, W, now).hatchSpd); };
+  // 마나로 바로 깨우기 값: 부화 효율로 나누고, 내 마나 생산 R.EGG_RUSH_H시간분을 넘지 않게 (저장 한도 안이라 늘 사용할 수 있게)
+  R.EGG_RUSH_H = 6;
+  R.eggPrice = function (P, W, now) { var c = calc(P, W, now); return Math.ceil(Math.min(R.eggCost(P) / c.hatchSpd, c.mana * R.EGG_RUSH_H * 3600)); };
 
   /* ───────── 주간 · 일일 ───────── */
   R.ensureWeek = function (P, W, now) {
@@ -1266,6 +1269,7 @@
     if (t.op) return opLv(P) >= t.op;
     if (t.grade) return P.grade >= t.grade || (P.st.maxGrade || 1) >= t.grade;
     if (t.stat) return (P.st[t.stat] || 0) >= t.n;
+    if (t.legacy) return (P.legacy || []).indexOf(t.legacy) >= 0;   // 시즌 기념 칭호 (예: 1기 학생)
     return true;
   };
   // 보상 미리보기 (화면에 보여 주는 값과 실제 지급이 같은 식)
@@ -1375,91 +1379,256 @@
   R.fight = fight;
 
   /* ───────── 별의 탑 (파티 콘텐츠) ─────────
-     파티가 함께 한 주 동안 층을 쌓는다. 도전한 학생의 전투를 바탕으로, 파티원 모두의 힘을 합쳐 싸운다.
-     층을 처음 넘을 때마다 그때 파티에 있던 학생 모두에게 우편으로 보상. 매주 월요일 0층부터 다시. */
-  R.TOWER_TRIES = 3;   // 하루 도전 횟수 (학생마다)
+     파티가 함께 1층부터 오른다. 실전은 파티 단위 하루 1번(누른 시각의 KST 날짜 기준): 파티원 누구도 그날 실전을 하지 않았어야 시작할 수 있고,
+     시작하면 파티원 모두의 기회를 쓴다. 파티가 모두 쓰러질 때까지 층을 이어 오르고, 마지막으로 넘은 층이 각자의 이번 주 기록이 된다(더 높을 때만 · 월요일 KST 0시에 초기화).
+     실전 시작 층 = 파티원 기록 중 가장 낮은 층 + 1. 연습(파티가 함께 보는 연습 · 혼자 보는 연습)은 언제나 할 수 있고 기록 · 보상이 없다.
+     전투는 파티원마다 따로 계산한다:
+     - 적은 선봉 한 명(몬스터를 가장 잘 끄는 선봉)을 집중해서 노리고, 공격을 여러 번(R.TW.HITS)으로 나눠 친다 → 치유 · 보호막이 끼어들 틈이 있다. 8초마다 광역 공격.
+     - 받는 피해 = 공격² ÷ (공격 + 방어 × R.TW.DEFX): 탑에서는 방어 효과가 크다. 선봉은 생명력 +30% · 받는 피해 −20%(탑 전용 선봉 보정).
+     - 지원은 치유 · 보호막을 가장 위태로운 동료(보호막은 선봉 우선)에게, 다른 포지션은 자신에게 건다. 파티(2명 이상)의 지원이 거는 치유 · 보호막은 재사용 대기가 짧고(×R.TW.CARE_CD),
+       평소에는 아껴 두다가 쓰러질 한 대를 맞기 직전에 준비돼 있으면 바로 끼어든다.
+     - 주문 재사용 대기는 층을 넘어 이어진다. 층 사이에 최대 체력의 30% 회복(쓰러진 동료도 일어남), 5층마다 휴식층. 30층마다 시련의 층(특수 기믹).
+     - 전투 시간 제한은 없다(오래 버티며 조금씩 깎는 전략도 인정). 계산이 끝나지 않는 일이 없도록 전투 시간 R.TW.TIME초가 지나면 물러난다.
+     적은 무한의 탑 곡선 기준 체력 ×5 · 공격 ×2. 대본은 전투 시간의 R.TW.PACE배로 천천히 흐르고, 층 사이 · 휴식층에는 탑을 둘러보는 대사가 나온다. */
+  R.TW = { TIME: 180, HEAL: 0.3, REST: 5, GAP: 2, REST_D: 5, HPX: 5, ATKX: 2, MAX_F: 500, AOE: 8, AOE_K: 0.5, PACE: 5, HITS: 3, DEFX: 4, VAN_HP: 0.3, VAN_TAKE: 0.8, TRIAL: 30, HEAL_AT: 0.4, SHIELD_AT: 0.7, CARE_CD: 0.4 };
   R.TOWER_FOES = [
     { name: '탑의 문지기 석상', arch: 'golem', c1: '#b8a98a', c2: '#4a4236' }, { name: '별빛 갑옷 기사', arch: 'construct', c1: '#cfd8ff', c2: '#3a4470' },
     { name: '거울 속 쌍둥이', arch: 'wisp', c1: '#d8c8ff', c2: '#3a2a6a' }, { name: '시간을 먹는 올빼미', arch: 'beast', c1: '#c9a26b', c2: '#4a3418' },
     { name: '잿불 수호룡의 그림자', arch: 'eye', c1: '#ff8a5a', c2: '#5a1a08' }, { name: '잊힌 사서의 책', arch: 'book', c1: '#a86a8a', c2: '#2a0a1a' },
     { name: '별샘의 정령왕', arch: 'blob', c1: '#9fe8ff', c2: '#1a4a6a' }
   ];
-  // 1층은 그 주에 처음 도전할 때 파티원들의 진도(최고 단계 중간값)보다 조금 아래에서 시작하고, 한 층마다 2단계씩 높아진다
-  R.towerBase = function (stages) { var a = stages.slice().sort(function (x, y) { return x - y; }), m = a.length ? a[Math.floor((a.length - 1) / 2)] : 9; return Math.max(1, m - 12); };
-  R.towerStage = function (f, base) { return (base || 1) + (f - 1) * 2; };
-  R.towerFoe = function (f, base) { var d = D2T(f), s = R.towerStage(f, base); return { id: 'tw' + (f % 7), name: d.name + (f > 7 ? ' ' + toRoman(Math.ceil(f / 7)) : ''), arch: d.arch, c1: d.c1, c2: d.c2, boss: true, hp: R.monHp(s) * K.BOSS_HP * 3, atk: R.monAtk(s) * K.BOSS_ATK * 1.15, stage: s }; };
-  function D2T(f) { return R.TOWER_FOES[(f - 1) % R.TOWER_FOES.length]; }
+  // 시련의 층(30층마다): 차례로 돌아가며 나오는 특수 기믹. 시련의 적은 체력 ×1.5
+  R.TW_TRIALS = [
+    { id: 'rage', name: '분노', desc: '10초마다 공격력이 15%씩 강해집니다' },
+    { id: 'mark', name: '집중 표식', desc: '12초마다 선봉이 아닌 파티원 한 명에게 표식을 새기고 3초 뒤 강력한 일격(단일 공격의 3배)을 날립니다' },
+    { id: 'regen', name: '별빛 재생', desc: '1초마다 최대 체력의 1.5%를 회복합니다' },
+    { id: 'storm', name: '폭풍', desc: '광역 공격이 4초마다 더 강하게(평소의 1.5배) 몰아칩니다' }
+  ];
+  R.twTrial = function (f) { return f % R.TW.TRIAL === 0 ? R.TW_TRIALS[(f / R.TW.TRIAL - 1) % R.TW_TRIALS.length] : null; };
   function toRoman(n) { return ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'][n] || String(n); }
-  // team: [{dps, hp, def, npc}] — 도전한 학생(c)의 공격 모습에 파티 전체 화력을 싣는다
-  R.towerTeam = function (c, team) {
-    var dps = 0, hp = 0, def = 0, n = 0;
-    team.forEach(function (m) { dps += m.dps; hp += m.hp; def += m.def; n++; });
-    var k = dps / Math.max(1e-9, c.totalDps), c2 = {}; for (var key in c) c2[key] = c[key];
-    c2.atk = c.atk * k; c2.totalDps = dps; c2.hp = hp * 0.7; c2.def = def / Math.max(1, n);
-    return c2;
-  };
-  R.towerEstimate = function (c2, foe) {
-    var ttk = foe.hp / Math.max(1e-9, c2.totalDps), dmg = Math.max(0.001, dmgTaken(foe.atk, c2.def) - c2.hp * c2.regen), ttd = c2.hp / dmg, T = 45;
-    return { win: ttk <= Math.min(T, ttd), ttk: ttk, frac: clamp(Math.min(T, ttd) / ttk, 0, 1) };
-  };
-  R.towerFight = function (P, c2, foe) { return fight(P, c2, { hp: foe.hp, atk: foe.atk, boss: true }, 45, true); };
-  R.towerReward = function (f, base) {
-    var s = R.towerStage(f, base), r = { shard: Math.min(30, 3 + f), gold: Math.floor(150 * K.KILL_GOLD * Math.pow(K.G_GOLD, s - 1)), stone: 2 + Math.floor(f / 2) };
-    if (f % 5 === 0) r.gear = 1; if (f % 10 === 0) r.egg = 1; return r;
-  };
-  R.towerLeft = function (P, now) { var d = R.dayKST(now), t = P.tw; return !t || t.day !== d ? R.TOWER_TRIES : Math.max(0, R.TOWER_TRIES - t.used); };
-  // 파티를 옮겨 다녀도 같은 층 보상을 한 주에 두 번 받지 않게: 학생마다 이번 주에 보상받은 가장 높은 층을 기억한다
-  R.towerBest = function (P, now) { var w = R.weekId(now); return P.twr && P.twr.week === w ? P.twr.best : 0; };
-  R.towerClaim = function (P, now, f) { var w = R.weekId(now); if (!P.twr || P.twr.week !== w) P.twr = { week: w, best: 0 }; if (f <= P.twr.best) return false; P.twr.best = f; return true; };
-  R.towerUse = function (P, now) { var d = R.dayKST(now); if (!P.tw || P.tw.day !== d) P.tw = { day: d, used: 0 }; P.tw.used++; };
-  /* 별의 탑 전투 일지: 원정 일지처럼 한 줄씩 흘러가는 대본. 파티원 모두가 같은 대본을 같은 시각에 본다.
-     전투 기록(ev)에서 주문·치명타·반격·체력 고비를 골라 줄로 만들고, 파티원들이 거드는 장면을 섞는다.
-     줄 = [시각(초, 대본 시작 기준), 글, 종류('s'=시작·끝, 'h'=내 공격, 'p'=주문, 'x'=적의 공격, 't'=파티원, 'm'=고비)] */
-  R.TOWER_SCRIPT_MAX = 30; R.TOWER_SCRIPT_MIN = 14;   // 대본은 실제로 14~30초 동안 흐른다 (짧은 싸움은 천천히, 긴 싸움은 빠르게)
   function jo(w, a, b) { var c = String(w).charCodeAt(String(w).length - 1); return w + ((c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28) ? a : b); }
-  var TW_HELP = ['{n}{이} 앞으로 나서 방패 주문을 펼친다', '{n}{이} 뒤에서 마나를 모아 보탠다', '{n}의 주문이 겹쳐 터진다', '{n}{이} 적의 시선을 끌며 옆으로 돈다', '{n}{이} 쓰러질 뻔한 동료를 붙잡아 세운다', '{n}{이} 짧게 외친다. “지금이야!”'];
-  R.towerScript = function (o) {
-    // o: { name, f, foe, team:[{name,me,npc}], r(전투 결과), hp(파티 생명력) }
-    var r = o.r, ev = r.ev || [], T = Math.max(1, Math.min(45, r.t || 45)), k = Math.min(R.TOWER_SCRIPT_MAX, Math.max(R.TOWER_SCRIPT_MIN, T)) / T, L = [], foe = o.foe;
-    function add(t, text, kind) { L.push([Math.round(t * k * 10) / 10, text, kind]); }
-    var mates = o.team.filter(function (m) { return !m.me; });
-    add(0, jo(o.name, '이', '가') + ' 별의 탑 ' + o.f + '층 문을 연다. ' + (mates.length ? '파티원 ' + (mates.length + 1) + '명의 힘이 한데 실린다.' : '혼자서 오른다.'), 's');
-    add(0.05, jo(foe.name, '이', '가') + ' 모습을 드러낸다.', 'x');
-    var dealt = 0, taken = 0, marks = [0.75, 0.5, 0.25], mi = 0, spells = {}, bigCrit = null, hurt = [], firstHit = null;
-    ev.forEach(function (e) {
-      if (e[1] === 'h') {
-        dealt += e[2]; if (!firstHit) firstHit = e;
-        if (e[4] && (!bigCrit || e[2] > bigCrit[2])) bigCrit = e;
-        while (mi < marks.length && 1 - dealt / foe.hp <= marks[mi]) { var left = Math.round(marks[mi] * 100); add(e[0], foe.name + ' 체력 ' + left + '%. ' + (left === 25 ? '숨이 거칠어진다.' : left === 50 ? '갑옷에 금이 간다.' : '몸이 휘청인다.'), 'm'); mi++; }
-      } else if (e[1] === 's') {
-        var sp = SPELL[e[2]];
-        if (sp && sp.type === 'heal' && e[3]) add(e[0], o.name + '의 「' + sp.name + '」! 생명력 +' + R.fmt(e[3]) + ' 회복', 'p');
-        else if (sp && !spells[e[2]]) { spells[e[2]] = 1; add(e[0], o.name + '의 「' + sp.name + '」!' + (sp.type === 'shield' && e[3] ? ' 보호막 ' + R.fmt(e[3]) : ''), 'p'); }
+  R.twRest = function (f) { return f % R.TW.REST === 0 && !R.twTrial(f); };
+  // 층 단계: 무한의 탑 곡선에서 시련의 층 직후의 쉬운 층(움푹 꺼진 곳)만 뺀 것
+  R.twStage = function (f) { var m = f % R.CT_MILE; return f > R.CT_MILE && m >= 1 && m <= 4 ? R.ctStage(f) + 5 - m : R.ctStage(f); };
+  R.twFoe = function (f) {
+    var s = R.twStage(f), L = R.TOWER_FOES, d = L[(f - 1) % L.length], k = Math.ceil(f / L.length), tr = R.twTrial(f);
+    return { name: (tr ? '시련의 ' : '') + d.name + (k > 1 ? ' ' + toRoman(Math.min(k, 10)) + (k > 10 ? '+' : '') : ''), arch: d.arch, c1: d.c1, c2: d.c2, stage: s, boss: true, trial: tr ? tr.id : '',
+      hp: R.monHp(s) * K.BOSS_HP * 0.6 * R.TW.HPX * (tr ? 1.5 : 1), atk: R.monAtk(s) * K.BOSS_ATK * 3 * R.TW.ATKX };
+  };
+  // 층 보상 (그 주에 처음 넘은 층만, 실전이 끝난 뒤 우편으로 한 번에)
+  R.twReward = function (f) {
+    if (R.twRest(f)) return { shard: 2 };
+    var s = R.twStage(f), r = { gold: Math.floor(60 * K.KILL_GOLD * Math.pow(K.G_GOLD, s - 1)), shard: 1 + Math.floor(f / 10) + (R.twTrial(f) ? 10 : 0) };
+    if (f % 2 === 0) r.stone = 1 + Math.floor(f / 20); if (f % 10 === 0) r.gear = 1; if (f % 20 === 0) r.egg = 1;
+    return r;
+  };
+  R.twRewardSum = function (a, b) { var o = {}; for (var f = a; f <= b; f++) { var r = R.twReward(f); for (var k in r) o[k] = (o[k] || 0) + r[k]; } return o; };
+  // 학생마다: 이번 주 기록(P.tw2 = {week, best}) · 실전을 한 날(P.tw2d = KST 날짜)
+  R.twBest = function (P, now) { return P.tw2 && P.tw2.week === R.weekId(now) ? P.tw2.best : 0; };
+  R.twUsed = function (P, now) { return P.tw2d === R.dayKST(now); };
+  R.twUse = function (P, now) { P.tw2d = R.dayKST(now); };
+  R.twRecord = function (P, now, cleared) { var w = R.weekId(now); if (!P.tw2 || P.tw2.week !== w) P.tw2 = { week: w, best: 0 }; var old = P.tw2.best; if (cleared > old) P.tw2.best = cleared; return old; };
+  R.twStart = function (bests) { return (bests.length ? Math.min.apply(null, bests) : 0) + 1; };
+  R.twPos = function (P) { var ok = R.expPositions(P), p = P.opt && P.opt.twPos; return ok.indexOf(p) >= 0 ? p : P.cls === 'knight' || ok.length < 2 ? 'van' : ok.indexOf('rear') >= 0 ? 'rear' : ok[0]; };
+  // 파티원 한 명의 전투 정보 (전투에 필요한 값만 미리 계산)
+  R.twMember = function (P, W, now, pos) {
+    var c = calc(P, W, now), sp = [], ns = R.spellSlots(P);
+    for (var i = 0; i < ns; i++) {
+      var s = SPELL[P.spells[i]]; if (!s || !R.spellUnlocked(P, s.id)) continue;
+      var lm = spellLvMult(P, s);
+      sp.push({ id: s.id, name: s.name, type: s.type, cd: s.cd * (1 - c.cdr), hit: s.type === 'dmg' || s.type === 'stun' ? R.spellHit(c, s) * s.mult * lm : 0, mult: s.mult * Math.min(2, lm), stun: s.stun || 0, stunP: s.stunP || 0, dur: s.dur || 0 });
+    }
+    return { id: P.id, name: P.name, house: P.house, cls: P.cls, pos: pos || R.twPos(P), aggro: R.expAggro(P), hp: c.hp, def: c.def, regen: c.regen, atk: c.atk, aps: c.aps, critC: c.critC, critD: c.critD,
+      bossDmg: c.bossDmg, leech: c.leech || 0, fam: P.fam.act && P.fam.own[P.fam.act] ? c.atk * famAtkMult(P) : 0, sp: sp, power: c.totalDps };
+  };
+  // 동행 친구(NPC): 기준 학생 힘의 30%, 주문 없이 평타만 (후열)
+  R.twNpc = function (base, id, name, house) {
+    var f = R.NPC_FRAC.tower, m = {}; for (var k in base) m[k] = base[k];
+    m.id = id; m.name = name; m.house = house; m.cls = ''; m.npc = true; m.pos = 'rear'; m.aggro = R.EXP_AGGRO; m.sp = []; m.leech = 0;
+    m.hp = base.hp * f; m.def = base.def * f; m.atk = base.atk * f; m.fam = 0; m.power = base.power * f;
+    return m;
+  };
+  // 탑에서의 최대 생명력 (선봉 보정 포함)
+  R.twMaxHp = function (m, n) { return m.hp * (n > 1 && m.pos === 'van' ? 1 + R.TW.VAN_HP : 1); };
+  function twRng(seed) { var s = (seed >>> 0) || 1; return function () { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
+  // 탑 둘러보기 · 동료 대사 ({n} = 파티원 이름, {이} = 조사)
+  var TW_CLIMB = ['나선 계단이 끝없이 위로 이어진다.', '벽에 그려진 별자리가 발소리에 맞춰 하나씩 빛난다.', '창밖으로 하늘섬들이 점점 아래로 멀어진다.', '계단참의 촛불이 저절로 켜졌다가 등 뒤에서 꺼진다.',
+    '누군가 벽에 남긴 낙서가 보인다. “조금만 더 올라가면 돼!”', '바람에 실려 별샘의 맑은 냄새가 스친다.', '태엽 감기는 소리가 계단을 따라 올라온다.', '모래시계 모양 창 너머로 모래가 아래에서 위로 떨어진다.',
+    '아직 울리지 않은 종소리가 귀에 맴돈다.', '{n}{이} 숨을 고르며 지팡이를 고쳐 쥔다.', '{n}{이} 지도를 펼쳐 다음 층의 위치를 확인한다.', '{n}{이} 앞장서며 손짓한다. “이쪽이야.”',
+    '{n}{이} 물병을 돌리며 모두의 얼굴을 살핀다.', '발밑의 계단 하나가 반 박자 늦게 삐걱인다.', '층계마다 이전 도전자들의 이름이 희미하게 새겨져 있다.', '위층에서 무언가 무거운 것이 끌리는 소리가 들린다.'];
+  var TW_REST = ['별샘의 쉼터에 닿았다. 맑은 물이 상처를 씻어 낸다.', '{n}{이} 모두에게 따뜻한 차를 나눠 준다.', '쉼터 벽에 지난 파티들의 이름이 빼곡하다.', '{n}{이} 장비 끈을 다시 조인다.',
+    '작은 정령들이 쉼터 천장을 맴돌며 노래한다.', '{n}{이} 웃으며 말한다. “여기까지 온 것도 대단해.”', '창문 너머로 아카데미의 불빛이 아득하게 보인다.'];
+  var TW_BANTER = ['{n}{이} 짧게 외친다. “지금이야!”', '{n}{이} 적의 시선을 끌며 옆으로 돈다.', '{n}{이} 쓰러질 뻔한 동료를 붙잡아 세운다.', '{n}{이} 마나를 모으며 다음 주문을 준비한다.', '{n}{이} 이를 악물고 버틴다.', '{n}{이} 동료들에게 위치를 바꾸자고 손짓한다.'];
+  function twSay(list, ms, rnd2) { var s = list[Math.floor(rnd2() * list.length)], alive = ms.filter(function (m) { return !m.npc; }), m = (alive.length ? alive : ms)[Math.floor(rnd2() * (alive.length || ms.length))]; return s.indexOf('{n}') < 0 ? s : s.replace('{n}{이}', jo(m.name, '이', '가')).replace('{n}', m.name); }
+  /* 한 층 전투 (시각은 전투 시간 기준, R.twRun이 R.TW.PACE배로 늘린다). hp: 파티원마다 시작 체력(쓰러진 동료는 0).
+     S: 1초마다 [초, 적 체력 %, 파티원 체력 %...], L: 대본(요약) [초, 글, 종류('s'=시작·끝, 'h'=공격, 'p'=주문, 'x'=적, 't'=둘러보기 · 동료, 'm'=고비)]
+     E: 전투 기록(전부) [초, 종류, 누가, 값, 대상, 덧값] — 종류: 0 평타(덧값 1=치명타) · 1 사역마 · 2 공격 주문(대상=주문 번호) · 3 치유(덧값=주문 번호) ·
+        4 보호막(덧값=주문 번호) · 5 강화 주문(대상=주문 번호) · 6 적의 공격(덧값=보호막이 막은 양) · 7 적의 광역 공격 · 8 시련의 일격 · 9 적의 회복. 누가 = 파티원 번호(적은 -1) */
+  R.TW_EV_MAX = 20000;
+  // cd0: 파티원마다 주문 재사용 대기(층을 넘어 이어진다 · 없으면 모두 준비됨)
+  R.twFight = function (ms, foe, hp0, rnd2, f, cd0) {
+    var n = ms.length, dt = 0.1, t = 0, mh = foe.hp, hp = hp0.slice(), mx = ms.map(function (m) { return R.twMaxHp(m, n); }), sh = [], pT = [], fT = [], cd = [], haste = [], amp = [], dealt = [], healAt = [], told = {};
+    var stun = 0, mT = 0, aT = 0, gT = 0, rage = 1, mark = null, saves = 0, L = [], S = [], E = [], marks = [0.75, 0.5, 0.25], mi = 0, sec = 0, nextTalk = 6 + rnd2() * 6, i;
+    var tr = foe.trial ? R.TW_TRIALS.filter(function (x) { return x.id === foe.trial; })[0] : null;
+    for (i = 0; i < n; i++) { sh[i] = 0; pT[i] = 0; fT[i] = 0; cd[i] = cd0 && cd0[i] ? cd0[i] : {}; haste[i] = 0; amp[i] = 0; dealt[i] = 0; healAt[i] = -99; }
+    function P0(m) { return R.EXP_POS[m.pos] || R.EXP_POS.van; }
+    function line(text, kind) { L.push([Math.round(t * 10) / 10, text, kind]); }
+    // c는 값이 있을 때만 붙인다 (0도 주문 번호라 남긴다 · 치명타 · 막은 양은 없으면 null)
+    function ev(k, a, v, b, c) { if (E.length < R.TW_EV_MAX) { var e = [Math.round(t * 10) / 10, k, a, Math.round(v)]; if (b != null || c != null) e.push(b == null ? -1 : b); if (c != null) e.push(Math.round(c)); E.push(e); } }
+    function snap() { var row = [Math.round(t), Math.max(0, Math.round(mh / foe.hp * 1000) / 10)]; for (var j = 0; j < n; j++) row.push(Math.max(0, Math.round(hp[j] / mx[j] * 100))); S.push(row); }
+    function lowest(vanFirst) {
+      var b = -1, j;
+      if (vanFirst) for (j = 0; j < n; j++) if (hp[j] > 0 && ms[j].pos === 'van' && (b < 0 || hp[j] / mx[j] < hp[b] / mx[b])) b = j;
+      if (b >= 0) return b;
+      for (j = 0; j < n; j++) if (hp[j] > 0 && (b < 0 || hp[j] / mx[j] < hp[b] / mx[b])) b = j;
+      return b;
+    }
+    function tankOf() { var tk = -1; for (var j = 0; j < n; j++) if (hp[j] > 0 && ms[j].pos === 'van' && (tk < 0 || ms[j].aggro > ms[tk].aggro)) tk = j; return tk; }
+    // 몬스터의 표적: 선봉 중 몬스터를 가장 잘 끄는 한 명이 aggro 확률로 맞고, 나머지는 다른 동료(다른 선봉 포함)가 고르게 맞는다
+    function target() {
+      var tank = tankOf(), others = [], j;
+      for (j = 0; j < n; j++) if (hp[j] > 0 && j !== tank) others.push(j);
+      if (tank < 0) return others.length ? others[Math.floor(rnd2() * others.length)] : -1;
+      if (!others.length || n < 2 || rnd2() < ms[tank].aggro) return tank;
+      return others[Math.floor(rnd2() * others.length)];
+    }
+    // 치유 · 보호막 주문 하나를 거는 일 (sp: 주문, i: 거는 사람, tg: 받는 사람)
+    function care(i2, k2, tg, urgent) {
+      var m = ms[i2], sp = m.sp[k2]; cd[i2][sp.id] = sp.cd * (n > 1 && m.pos === 'sup' ? R.TW.CARE_CD : 1);   // 재사용 대기 단축은 파티의 지원만
+      if (sp.type === 'shield') { var sv = mx[tg] * sp.mult; sh[tg] = Math.max(sh[tg], sv); ev(4, i2, sv, tg, k2); if (!urgent && t - healAt[i2] > 6) { healAt[i2] = t; line(m.name + '의 「' + sp.name + '」 — ' + (tg === i2 ? '' : ms[tg].name + '에게 ') + '보호막 ' + R.fmt(sv), 'p'); } }
+      else { var hv = Math.min(mx[tg] - hp[tg], mx[tg] * sp.mult); hp[tg] += hv; ev(3, i2, hv, tg, k2); if (!urgent && t - healAt[i2] > 6) { healAt[i2] = t; line(m.name + '의 「' + sp.name + '」 — ' + (tg === i2 ? '' : ms[tg].name + ' ') + '생명력 +' + R.fmt(hv), 'p'); } }
+    }
+    // 쓰러질 한 대 직전: 지원(또는 맞는 사람 자신)의 준비된 보호막 · 치유가 먼저 끼어든다
+    function rescue(j2, d) {
+      for (var pass = 0; pass < 2; pass++) for (var i2 = 0; i2 < n; i2++) {
+        if (hp[i2] <= 0 || !(i2 === j2 || (ms[i2].pos === 'sup' && n > 1))) continue;
+        for (var k2 = 0; k2 < ms[i2].sp.length; k2++) {
+          var sp = ms[i2].sp[k2]; if ((pass === 0 ? sp.type !== 'shield' : sp.type !== 'heal') || (cd[i2][sp.id] || 0) > 0) continue;
+          care(i2, k2, j2, true); saves++;
+          line('✦ ' + jo(ms[j2].name, '이', '가') + ' 쓰러지기 직전, ' + ms[i2].name + '의 「' + sp.name + '」' + (pass === 0 ? '가 막아선다!' : '가 일으켜 세운다!'), 'm');
+          if (d < hp[j2] + sh[j2]) return true;
+        }
       }
-      else if (e[1] === 'x') { taken += e[2]; hurt.push(e); }
-    });
-    if (firstHit) add(Math.max(0.5, firstHit[0]), '첫 공격 — ' + R.fmt(firstHit[2]) + ' 피해', 'h');
-    if (bigCrit && bigCrit !== firstHit) add(bigCrit[0], '치명타! ' + R.fmt(bigCrit[2]) + ' 피해', 'h');
-    // 적의 반격: 가장 아픈 한 방과, 파티 생명력이 반 넘게 깎인 순간
-    if (hurt.length) { var worst = hurt.reduce(function (a, b) { return b[2] > a[2] ? b : a; }); add(worst[0], foe.name + '의 반격 — ' + R.fmt(worst[2]) + ' 피해', 'x'); }
-    var acc = 0, halfAt = null; hurt.forEach(function (e) { acc += e[2]; if (halfAt == null && acc > o.hp * 0.5) halfAt = e[0]; });
-    if (halfAt != null && !r.dead) add(halfAt, '파티가 크게 흔들린다. 다들 이를 악문다.', 'x');
-    // 파티원들이 거드는 장면: 전투 시간에 고르게
-    var end = r.win ? r.t : r.dead ? r.t : 45, pool = TW_HELP.slice();
-    // 중간 점검: 그때까지 쌓인 피해
-    [0.45, 0.8].forEach(function (q) { var at = end * q, sum = 0; ev.forEach(function (e) { if (e[1] === 'h' && e[0] <= at) sum += e[2]; }); if (sum > 0 && sum < foe.hp) add(at, '지금까지 입힌 피해 ' + R.fmt(sum) + ' / ' + R.fmt(foe.hp), 'h'); });
-    mates.slice(0, 5).forEach(function (m, i) { var j = Math.floor(Math.random() * pool.length), line = pool.splice(j, 1)[0] || TW_HELP[0]; if (!pool.length) pool = TW_HELP.slice(); var nm = m.name; add(end * (i + 1) / (mates.length + 1.4), line.replace('{n}{이}', jo(nm, '이', '가')).replace('{n}', nm), 't'); });
-    if (r.win) add(end, (r.cc ? '✦ 마지막 순간, 일격이 교차한다. 크로스카운터 — ' : '✦ ') + jo(foe.name, '이', '가') + ' 먼저 무너진다! ' + o.f + '층 돌파 (' + end.toFixed(1) + '초)', 's');
-    else if (r.dead) add(end, '파티가 버티지 못하고 물러난다. ' + foe.name + ' 체력 ' + Math.round(r.mHp * 100) + '% 남음', 's');
-    else add(end, '시간이 다 되었다. ' + foe.name + ' 체력 ' + Math.round(r.mHp * 100) + '% 남음 — 다음에 다시', 's');
-    L.sort(function (a, b) { return a[0] - b[0]; });
-    if (L.length > 18) { var keep = L.filter(function (x) { return x[2] === 's' || x[2] === 'm'; }), rest = L.filter(function (x) { return x[2] !== 's' && x[2] !== 'm'; }); L = keep.concat(rest.slice(0, 18 - keep.length)).sort(function (a, b) { return a[0] - b[0]; }); }
-    return { lines: L, d: Math.round((end * k + 1.5) * 10) / 10 };
+      return false;
+    }
+    function hurt(j2, d, k) {
+      var mm = ms[j2], ab = 0;
+      if (d >= hp[j2] + sh[j2]) rescue(j2, d);
+      if (sh[j2] > 0) { ab = Math.min(sh[j2], d); sh[j2] -= ab; d -= ab; }
+      hp[j2] -= d; ev(k, -1, d, j2, ab > 0 ? ab : null);
+      if (hp[j2] <= 0) { hp[j2] = 0; sh[j2] = 0; line(jo(mm.name, '이', '가') + ' 쓰러진다.', 'x'); }
+      else if (k === 6 && d > mx[j2] * 0.3 && !told['x' + j2]) { told['x' + j2] = 1; line(foe.name + '의 강타 — ' + mm.name + '에게 ' + R.fmt(d) + ' 피해', 'x'); }
+    }
+    function dmgTo(j2, atk) { var x = P0(ms[j2]), van = n > 1 && ms[j2].pos === 'van'; return dmgTaken(atk, ms[j2].def * R.TW.DEFX * (n > 1 ? x.def : 1)) * (n > 1 ? x.take : 1) * (van ? R.TW.VAN_TAKE : 1) * (1 - red()); }
+    function hit(j, d, cr, k, si) {
+      var m = ms[j]; if (amp[j] > 0) d *= 2; d *= m.bossDmg * (n > 1 ? P0(m).dps : 1);
+      ev(k, j, d, si, cr ? 1 : null); mh -= d; dealt[j] += d; if (m.leech && hp[j] > 0) hp[j] = Math.min(mx[j], hp[j] + d * m.leech);
+      if (cr && d > foe.hp * 0.03 && !told['c' + j]) { told['c' + j] = 1; line(m.name + '의 치명타! ' + R.fmt(d) + ' 피해', 'h'); }
+    }
+    var red = function () { var s = 0; for (var j = 0; j < n; j++) if (hp[j] > 0 && n > 1) s += P0(ms[j]).red; return Math.min(0.3, s); };
+    line(f + '층 — ' + jo(foe.name, '이', '가') + ' 모습을 드러낸다. (' + foe.stage + '단계 수준)', 's');
+    if (tr) line('시련의 층 · 「' + tr.name + '」 — ' + tr.desc + '.', 'm');
+    snap();
+    while (true) {
+      t += dt;
+      for (i = 0; i < n; i++) {
+        var m = ms[i]; if (hp[i] <= 0) continue;
+        if (haste[i] > 0) haste[i] -= dt; if (amp[i] > 0) amp[i] -= dt;
+        pT[i] += dt * m.aps * (haste[i] > 0 ? 2 : 1);
+        while (pT[i] >= 1) { pT[i] -= 1; var cr = rnd2() < m.critC; hit(i, m.atk * (cr ? m.critD : 1), cr, 0); }
+        if (m.fam) { fT[i] += dt; if (fT[i] >= 1.5) { fT[i] -= 1.5; hit(i, m.fam, false, 1); } }
+        for (var k = 0; k < m.sp.length; k++) {
+          var sp = m.sp[k]; cd[i][sp.id] = (cd[i][sp.id] || 0) - dt; if (cd[i][sp.id] > 0) continue;
+          var sup = m.pos === 'sup' && n > 1, tg = i;
+          // 평소에는 아껴 둔다 (치유는 체력 R.TW.HEAL_AT 아래, 보호막은 R.TW.SHIELD_AT 아래) → 쓰러질 한 대가 올 때 끼어들 여유가 남는다
+          if (sp.type === 'heal') { tg = sup ? lowest(false) : i; if (tg >= 0 && hp[tg] <= mx[tg] * R.TW.HEAL_AT) care(i, k, tg); continue; }
+          if (sp.type === 'shield') { tg = sup ? lowest(true) : i; if (tg >= 0 && sh[tg] <= mx[tg] * 0.1 && hp[tg] <= mx[tg] * R.TW.SHIELD_AT) care(i, k, tg); continue; }
+          cd[i][sp.id] = sp.cd;
+          if (sp.type === 'dmg' || sp.type === 'stun') {
+            var cr2 = rnd2() < m.critC; if (sp.type === 'stun' || (sp.stunP && rnd2() < sp.stunP)) stun = sp.stun;
+            hit(i, sp.hit * (cr2 ? m.critD : 1), cr2, 2, k);
+            if (!told['s' + i + sp.id]) { told['s' + i + sp.id] = 1; line(m.name + '의 「' + sp.name + '」!', 'p'); }
+          } else if (sp.type === 'haste') { haste[i] = sp.dur; ev(5, i, 0, k); }
+          else if (sp.type === 'amp') { amp[i] = sp.dur; stun = sp.dur; ev(5, i, 0, k); }
+        }
+      }
+      if (tr && tr.id === 'regen' && mh > 0) { var rg = Math.min(foe.hp - mh, foe.hp * 0.015 * dt); if (rg > 0) { mh += rg; if (Math.floor(t) !== Math.floor(t - dt)) ev(9, -1, foe.hp * 0.015); } }
+      while (mi < marks.length && mh / foe.hp <= marks[mi]) { var left = Math.round(marks[mi] * 100); line(foe.name + ' 체력 ' + left + '%. ' + (left === 25 ? '숨이 거칠어진다.' : left === 50 ? '갑옷에 금이 간다.' : '몸이 휘청인다.'), 'm'); mi++; }
+      if (mh <= 0) { line('✦ ' + jo(foe.name, '이', '가') + ' 무너진다! ' + f + '층 돌파' + (saves ? ' · 위기에서 ' + saves + '번 버팀' : ''), 's'); snap(); return { win: true, t: t, hp: hp, S: S, L: L, E: E, dealt: dealt, cd: cd }; }
+      if (stun > 0) stun -= dt;
+      else {
+        mT += dt * 0.85 * R.TW.HITS; aT += dt; gT += dt;
+        var hitAtk = foe.atk * rage / R.TW.HITS;
+        while (mT >= 1) { mT -= 1; var j2 = target(); if (j2 < 0) break; hurt(j2, dmgTo(j2, hitAtk), 6); }
+        var aoeEvery = tr && tr.id === 'storm' ? 4 : R.TW.AOE, aoeK = R.TW.AOE_K * (tr && tr.id === 'storm' ? 1.5 : 1);
+        if (aT >= aoeEvery) {   // 광역 공격: 살아 있는 모두에게 한 번씩
+          aT -= aoeEvery;
+          if (!told.aoe) { told.aoe = 1; line(jo(foe.name, '이', '가') + ' 파티 전체를 휩쓴다!', 'x'); }
+          for (var j3 = 0; j3 < n; j3++) if (hp[j3] > 0) hurt(j3, dmgTo(j3, foe.atk * rage * aoeK), 7);
+        }
+        if (tr && tr.id === 'rage' && gT >= 10) { gT -= 10; rage *= 1.15; line(jo(foe.name, '이', '가') + ' 분노한다! 공격력이 ' + Math.round((rage - 1) * 100) + '% 강해졌다.', 'm'); }
+        if (tr && tr.id === 'mark') {
+          if (!mark && gT >= 12) { gT -= 12; var cand = []; for (var j4 = 0; j4 < n; j4++) if (hp[j4] > 0 && j4 !== tankOf()) cand.push(j4); if (!cand.length) for (j4 = 0; j4 < n; j4++) if (hp[j4] > 0) cand.push(j4); if (cand.length) { mark = { j: cand[Math.floor(rnd2() * cand.length)], at: t + 3 }; line(jo(foe.name, '이', '가') + ' ' + ms[mark.j].name + '에게 표식을 새긴다! 3초 뒤 강력한 일격이 떨어진다.', 'm'); } }
+          if (mark && t >= mark.at) { if (hp[mark.j] > 0) hurt(mark.j, dmgTo(mark.j, foe.atk * 3 / R.TW.HITS * Math.sqrt(R.TW.HITS)), 8); mark = null; }
+        }
+      }
+      var up = 0; for (i = 0; i < n; i++) if (hp[i] > 0) { hp[i] = Math.min(mx[i], hp[i] + mx[i] * ms[i].regen * dt); up++; }
+      if (!up) { line('파티가 모두 쓰러졌다. ' + foe.name + ' 체력 ' + Math.ceil(mh / foe.hp * 100) + '% 남음', 's'); snap(); return { win: false, why: 'wipe', t: t, hp: hp, S: S, L: L, E: E, dealt: dealt, cd: cd }; }
+      if (t >= R.TW.TIME) { line('결판이 나지 않은 채 오랜 시간이 흘렀다. ' + foe.name + ' 체력 ' + Math.ceil(mh / foe.hp * 100) + '% 남음 — 파티가 물러난다', 's'); snap(); return { win: false, why: 'time', t: t, hp: hp, S: S, L: L, E: E, dealt: dealt, cd: cd }; }
+      if (t >= nextTalk && n > 1) { nextTalk = t + 8 + rnd2() * 8; line(twSay(TW_BANTER, ms.filter(function (x, j) { return hp[j] > 0; }), rnd2), 't'); }
+      if (Math.floor(t) !== sec) { sec = Math.floor(t); snap(); }
+    }
+  };
+  // 실전 · 연습 한 번: 시작 층부터 파티가 모두 쓰러질 때까지. 시각은 실행 시작 기준 실제 초(전투 시간 × R.TW.PACE)
+  R.twRun = function (ms, start, seed) {
+    var rnd2 = twRng(seed), P = R.TW.PACE, T = 0, n = ms.length, mx = ms.map(function (m) { return R.twMaxHp(m, n); }), hp = mx.slice(), floors = [], cleared = start - 1, dealt = ms.map(function () { return 0; }), cd = ms.map(function () { return {}; });
+    var wait = function (s) { cd.forEach(function (o) { for (var k in o) o[k] -= s; }); };   // 층 사이 · 휴식층에서 흐른 시간만큼 재사용 대기가 줄어든다
+    var pct = function (a) { return a.map(function (h, i) { return Math.max(0, Math.round(h / mx[i] * 100)); }); };
+    var slow = function (fl) { fl.d = Math.round(fl.d * P * 10) / 10; [fl.L, fl.S, fl.E || []].forEach(function (a) { a.forEach(function (x) { x[0] = Math.round(x[0] * P * 10) / 10; }); }); return fl; };
+    // 층 사이 이동: 둘러보기 대사 한두 줄 (이동 시간은 전투 시간 기준 gap초)
+    var climb = function (fl, gap) { var k = 1 + (rnd2() < 0.5 ? 1 : 0); for (var i = 0; i < k; i++) fl.L.push([Math.round((fl.d + gap * (i + 1) / (k + 1)) * 10) / 10, twSay(TW_CLIMB, ms, rnd2), 't']); };
+    for (var f = start; f < start + R.TW.MAX_F; f++) {
+      if (R.twRest(f)) {
+        var before = pct(hp); hp = mx.slice();
+        var RL = [[0, f + '층 · 별샘의 쉼터. 모두 숨을 고르고 상처를 회복한다.', 's']]; for (var q = 1; q <= 3; q++) RL.push([Math.round(R.TW.REST_D * q / 4 * 10) / 10, twSay(TW_REST, ms, rnd2), 't']);
+        floors.push(slow({ f: f, t: 0, d: R.TW.REST_D, rest: 1, L: RL, S: [[0, 0].concat(before), [R.TW.REST_D - 1, 0].concat(pct(hp))] }));
+        floors[floors.length - 1].t = Math.round(T * P * 10) / 10;
+        T += R.TW.REST_D; wait(R.TW.REST_D); cleared = f; continue;
+      }
+      var foe = R.twFoe(f), r = R.twFight(ms, foe, hp, rnd2, f, cd);
+      var fl = { f: f, t: 0, d: Math.round(r.t * 10) / 10, win: r.win, why: r.why, foe: { name: foe.name, arch: foe.arch, c1: foe.c1, c2: foe.c2, stage: foe.stage, hp: Math.round(foe.hp), trial: foe.trial || undefined }, L: r.L, S: r.S, E: r.E };
+      r.dealt.forEach(function (v, i) { dealt[i] += v; });
+      var gap = r.t < 3 ? 1 : R.TW.GAP;
+      if (r.win) climb(fl, gap);
+      slow(fl); fl.t = Math.round(T * P * 10) / 10; floors.push(fl);
+      T += r.t; if (!r.win) break;
+      cleared = f; hp = r.hp.map(function (h, i) { return Math.min(mx[i], h + mx[i] * R.TW.HEAL); });
+      T += gap; wait(gap);   // 금방 끝난 층은 바로 다음 층으로
+    }
+    return { start: start, cleared: cleared, d: Math.round((T + 2) * P * 10) / 10, floors: floors, dealt: dealt.map(Math.round) };
+  };
+  R.twMeta = function (ms) { var n = ms.length; return ms.map(function (m) { return { id: m.id, name: m.name, house: m.house, cls: m.cls, pos: m.pos, npc: !!m.npc, hp: Math.round(R.twMaxHp(m, n)), power: Math.round(m.power), sp: m.sp.map(function (x) { return x.name; }) }; }); };
+  // 전투 기록 한 줄을 글로: e = [초, 종류, 누가, 값, 대상, 덧값], ms = R.twMeta, foe = 적 이름. [글, 종류('h' · 'p' · 'x')]
+  R.twEvText = function (e, ms, foe) {
+    var a = ms[e[2]] || {}, b = ms[e[4]] || {}, v = R.fmt(e[3]), sp = function (i) { return (a.sp && a.sp[i]) || '주문'; }, ab = e[5] ? ' (보호막이 ' + R.fmt(e[5]) + ' 막음)' : '';
+    switch (e[1]) {
+      case 0: return [a.name + '의 공격 — ' + v + ' 피해' + (e[5] ? ' (치명타)' : ''), 'h'];
+      case 1: return [a.name + '의 사역마 — ' + v + ' 피해', 'h'];
+      case 2: return [a.name + '의 「' + sp(e[4]) + '」 — ' + v + ' 피해' + (e[5] ? ' (치명타)' : ''), 'h'];
+      case 3: return [a.name + '의 「' + sp(e[5]) + '」 — ' + (e[4] === e[2] ? '' : b.name + ' ') + '생명력 +' + v, 'p'];
+      case 4: return [a.name + '의 「' + sp(e[5]) + '」 — ' + (e[4] === e[2] ? '' : b.name + '에게 ') + '보호막 ' + v, 'p'];
+      case 5: return [a.name + '의 「' + sp(e[4]) + '」!', 'p'];
+      case 6: return [foe + '의 공격 — ' + b.name + '에게 ' + v + ' 피해' + ab, 'x'];
+      case 7: return [foe + '의 광역 공격 — ' + b.name + '에게 ' + v + ' 피해' + ab, 'x'];
+      case 8: return [foe + '의 표식 일격 — ' + b.name + '에게 ' + v + ' 피해' + ab, 'x'];
+      case 9: return [foe + '의 별빛 재생 — 체력 +' + v, 'x'];
+    }
+    return ['', 'h'];
   };
 
-  /* ───────── 동아리: 레벨 · 기여도 · 계급 · 창고 ─────────
+  /* ───────── 동아리: 레벨 · 기여도 · 역할 · 창고 ─────────
      기여도: 하루 한 번 출석(+10), 아르크 기부(내 진도 기준 환산, 하루 최대 200점). 기여도가 곧 동아리 경험치.
-     계급: 회장 · 부회장(고정) + 부원 계급 최대 3개(5레벨에 4개, 10레벨에 5개 · 이름과 권한을 회장이 정한다) + 기본 「부원」.
+     역할: 회장 · 부회장(이름만 바꿀 수 있음) + 부원 역할 최대 3개(5레벨에 4개, 10레벨에 5개 · 이름과 권한을 회장이 정한다) + 기본 「부원」.
      4레벨: 동아리 의식(하루 한 번, 부원 절반이 봉헌하면 봉헌한 부원에게 4시간 축복). 5레벨: 주간 동아리 과제. */
   R.GUILD_MAX_LV = 10;
   R.guildXpNeed = function (lv) { return Math.floor(400 * Math.pow(1.65, lv - 1)); };
@@ -1472,7 +1641,7 @@
   R.guildBonus = function (lv) { return 0.005 * (lv || 0); };          // 부원 모두 아르크·경험치 +0.5%/레벨
   R.GUILD_PERMS = [['invite', '초대·가입 승인'], ['kick', '부원 내보내기'], ['notice', '공지·소개 수정'], ['take', '창고에서 꺼내기']];
   R.GUILD_RANKS_MAX = 5; R.GUILD_CHECKIN = 10; R.GUILD_DONATE_CAP = 200;
-  R.guildRanksMax = function (lv) { return 3 + (lv >= 5 ? 1 : 0) + (lv >= 10 ? 1 : 0); };   // 만들 수 있는 부원 계급 수
+  R.guildRanksMax = function (lv) { return 3 + (lv >= 5 ? 1 : 0) + (lv >= 10 ? 1 : 0); };   // 만들 수 있는 부원 역할 수
   /* 동아리 의식 (4레벨~): 부원마다 마나 30분 분을 봉헌, 그날 목표(부원 수의 절반, 1인 동아리는 1명)를 채우면 봉헌한 부원이
      각자 원할 때 「축복 받기」를 눌러 그때부터 4시간 축복을 받는다 (그날 KST 자정까지 · 하루 한 번, P.gritDay).
      효과는 동아리 레벨 보너스(아르크·경험치)와 겹치지 않는 지식 · 전리품으로, 5% 안쪽. */
@@ -1485,18 +1654,19 @@
   R.GWQ_LV = 5;
   R.GWQ = [{ id: 'exp', st: 'expJobs', name: '원정 완료', unit: '회', goal: 15 }, { id: 'lec', st: 'lecJobs', name: '수업 듣기', unit: '교시', goal: 15 }, { id: 'res', st: 'researchDone', name: '연구 완료', unit: '회', goal: 3 }];
   // from 레벨 다음부터 to 레벨까지 새로 열린 것 (레벨업 알림에 덧붙인다)
-  R.guildUnlockText = function (from, to) { var out = []; for (var l = from + 1; l <= to; l++) { if (l === R.GRIT_LV) out.push('동아리 의식'); if (l === R.GWQ_LV) out.push('주간 동아리 과제'); if (R.guildRanksMax(l) > R.guildRanksMax(l - 1)) out.push('부원 계급 ' + R.guildRanksMax(l) + '개까지'); } return out.length ? ' · 새로 열림: ' + out.join(', ') : ''; };
+  R.guildUnlockText = function (from, to) { var out = []; for (var l = from + 1; l <= to; l++) { if (l === R.GRIT_LV) out.push('동아리 의식'); if (l === R.GWQ_LV) out.push('주간 동아리 과제'); if (R.guildRanksMax(l) > R.guildRanksMax(l - 1)) out.push('부원 역할 ' + R.guildRanksMax(l) + '개까지'); } return out.length ? ' · 새로 열림: ' + out.join(', ') : ''; };
   R.gwqNeed = function (q) { return Math.max(1, Math.ceil(q.goal / 5)); };
   R.gwqReward = function (P) { return { shard: 4 + Math.min(P.grade, 8), gxp: 30 }; };
   R.gwqSync = function (P, now) { var w = R.weekId(now); if (!P.gwq || P.gwq.wk !== w) { var b = {}; R.GWQ.forEach(function (q) { b[q.st] = P.st[q.st] || 0; }); P.gwq = { wk: w, b: b, got: {} }; return true; } return false; };
   R.gwqMine = function (P, q, w) { return P && P.gwq && P.gwq.wk === w ? Math.max(0, (P.st[q.st] || 0) - (P.gwq.b[q.st] || 0)) : 0; };
-  R.guildDefRanks = function () { return { base: { name: '부원', perms: {} }, list: [] }; };
+  R.guildDefRanks = function () { return { owner: '회장', officer: '부회장', base: { name: '부원', perms: {} }, list: [] }; };   // owner · officer: 회장 · 부회장 역할 이름 (회장이 바꿀 수 있다)
   R.guildCleanRanks = function (o, max) {
     var out = R.guildDefRanks(); o = o || {};
     function nm(v, d) { v = String(v == null ? '' : v).replace(/[<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 8); return v || d; }
     function pm(x) { var r = {}; R.GUILD_PERMS.forEach(function (k) { if (x && x[k[0]]) r[k[0]] = true; }); return r; }
+    out.owner = nm(o.owner, '회장'); out.officer = nm(o.officer, '부회장');
     if (o.base) out.base = { name: nm(o.base.name, '부원'), perms: pm(o.base.perms) };
-    (Array.isArray(o.list) ? o.list : []).slice(0, max || R.GUILD_RANKS_MAX).forEach(function (x, i) { if (x && String(x.name || '').trim()) out.list.push({ id: /^r[1-9]$/.test(x.id) ? x.id : 'r' + (i + 1), name: nm(x.name, '계급' + (i + 1)), perms: pm(x.perms) }); });
+    (Array.isArray(o.list) ? o.list : []).slice(0, max || R.GUILD_RANKS_MAX).forEach(function (x, i) { if (x && String(x.name || '').trim()) out.list.push({ id: /^r[1-9]$/.test(x.id) ? x.id : 'r' + (i + 1), name: nm(x.name, '역할' + (i + 1)), perms: pm(x.perms) }); });
     var seen = {}; out.list = out.list.filter(function (x) { if (seen[x.id]) return false; seen[x.id] = 1; return true; });
     return out;
   };
@@ -1508,7 +1678,7 @@
     return !!(r.perms && r.perms[perm]);
   };
   R.guildRankName = function (ranks, role, rank) {
-    if (role === 'owner') return '회장'; if (role === 'officer') return '부회장';
+    if (role === 'owner') return (ranks && ranks.owner) || '회장'; if (role === 'officer') return (ranks && ranks.officer) || '부회장';
     ranks = ranks || R.guildDefRanks(); var r = (ranks.list || []).find(function (x) { return x.id === rank; });
     return r ? r.name : (ranks.base && ranks.base.name) || '부원';
   };
@@ -1582,6 +1752,7 @@
   R.shopPrice = function (P, id) {
     var s = SHOP[id];
     if (s.price === 'stone') return Math.floor(400 * Math.pow(1.11, P.maxStage - 1));
+    if (s.price === 'shardbag') return Math.floor(2000 * Math.pow(1.11, P.maxStage - 1));   // 마석 꾸러미의 5배
     if (s.price === 'gearbox') return Math.floor(500 * Math.pow(1.11, P.maxStage - 1));
     if (s.price === 'bag') return 20 + P.bagExtra * 4;
     return s.price;
@@ -1877,6 +2048,21 @@
   R.RUSH_N = 3; R.RUSH_SEC = 3600;
   R.rushLeft = function (P, now) { var d = R.dayKST(now), r = P.rush; return R.RUSH_N - (r && r.d === d ? r.n : 0); };
   R.rushCost = function (P, W, now, q) { var c = calc(P, W, now), rc = R.resCost(P, q.id, P.rs[q.id] || 0); return { mana: Math.max(1000, Math.floor(c.mana * 7200)), know: Math.max(200, Math.floor(rc.know * 0.5)) }; };
+  /* 고서 열람실: 지식으로 3시간 버프 (한 번에 한 권 · 같은 책은 이어 읽기 최대 9시간 · 다른 책은 바꿔 펼침) */
+  R.BOOK_DUR = 10800; R.BOOK_MAX = 32400; R.BOOK_GRADE = 2;
+  // 값: 학년마다 1.62배 (2학년 1,600 · 4학년 4,100 · 6학년 10,800 · 8학년 28,000). 시뮬레이션의 하루 남는 지식 1/6쯤
+  R.bookCost = function (P) { return Math.round(600 * Math.pow(1.62, Math.max(2, P.grade)) / 100) * 100; };
+  A.bookRead = function (P, W, now, a) {
+    var id = str(a.id), b = BOOK[id]; if (!b) err('없는 책입니다');
+    if (P.grade < R.BOOK_GRADE) err(R.BOOK_GRADE + '학년부터 열람할 수 있습니다');
+    var cost = R.bookCost(P); if (P.res.know < cost) err('지식이 부족합니다 (' + R.fmt(cost) + ' 필요)');
+    var cur = P.buffs.book, same = cur && cur.end > now && cur.id === id;
+    if (same && cur.end - now > R.BOOK_MAX - R.BOOK_DUR) err('이 책은 최대 ' + (R.BOOK_MAX / 3600) + '시간까지 이어 읽을 수 있습니다');
+    P.res.know -= cost;
+    P.buffs.book = { id: id, name: b.name, eff: b.eff, start: same ? cur.start : now, end: (same ? cur.end : now) + R.BOOK_DUR, color: b.color };
+    P.st.books = (P.st.books || 0) + 1;
+    return { ok: true, id: id, end: P.buffs.book.end, paid: cost, swapped: !!(cur && cur.end > now && !same) };
+  };
   A.resRush = function (P, W, now, a) {
     var i = int(a.i, 0, 3), q = P.rsq[i], by = str(a.by); if (!q || q.end <= now) err('진행 중인 연구가 없습니다'); if (by !== 'mana' && by !== 'know') err('잘못된 요청');
     if (R.rushLeft(P, now) <= 0) err('오늘은 더 가속할 수 없습니다 (하루 ' + R.RUSH_N + '회 · KST 자정 초기화)');
@@ -2025,7 +2211,9 @@
   };
   A.allocW = function (P, W, now, a) {
     var w = a.w || {}, o = {}; STATS.forEach(function (k) { var v = Number(w[k]); o[k] = isFinite(v) ? clamp(v, 0, 10) : 0; });
-    P.opt.allocW = o; if (P.opt.autoAlloc) R.autoAlloc(P); return { ok: true };
+    if (!STATS.some(function (k) { return o[k] > 0; })) err('비율을 하나 이상 입력해야 합니다');
+    P.opt.allocW = o; if (a.mine) P.opt.allocMy = JSON.parse(JSON.stringify(o));   // 개인 프리셋으로 저장
+    if (P.opt.autoAlloc) R.autoAlloc(P); return { ok: true };
   };
   A.opt = function (P, W, now, a) {
     var k = str(a.k); if (['autoEquip', 'autoAlloc', 'sound', 'reduceFx', 'hideMyTitle', 'hideOtherTitle', 'dockClosed', 'bulkAsk', 'showFam', 'hideRank', 'buffMerge'].indexOf(k) < 0) err('잘못된 설정');
@@ -2223,6 +2411,7 @@
     if (id === 'bagslot' && P.bagExtra >= 60) err('더 늘릴 수 없습니다');
     if (id === 'badgebox' && (P.badges || []).length >= R.BADGE_HOLD) err('휘장 보관함이 가득 찼습니다 (' + R.BADGE_HOLD + '개)');
     if (id === 'ticket' && R.wbBuyLeft(P, now) <= 0) err('이번 주에는 더 살 수 없습니다 (월요일 KST 0시 초기화)');
+    if (id === 'shardbag' && P.sbDay === R.dayKST(now)) err('오늘은 이미 구매했습니다 (KST 0시 초기화)');
     var n = s.multi ? (a.n == null ? 1 : int(a.n, 1, s.multi)) : 1;   // 여러 번 한꺼번에 (마석가루 교환 ×100 = 10회)
     var price = R.shopPrice(P, id) * n, cur = s.cur === 'gold' ? 'gold' : s.cur === 'stone' ? 'stone' : 'shard'; if (P.res[cur] < price) err((cur === 'gold' ? CUR + '가' : cur === 'stone' ? '마석이' : '별조각이') + ' 부족합니다');
     P.res[cur] -= price; var out = { id: id, n: n };
@@ -2230,6 +2419,7 @@
     else if (id === 'dust10') { var dg = s.give.dust * n; P.res.dust = (P.res.dust || 0) + dg; out.dust = dg; }
     else if (id === 'gearbox') { var it = makeItem(P, pick(P, D.SLOTS).id, R.rewardIlvl(P), Math.max(1, rollRarity(P, calc(P, W, now).rarity + 0.4)), 1); out.item = { name: it.name, r: it.r, res: gainItem(P, it, now) }; }
     else if (id === 'egg') P.fam.eggs++;
+    else if (id === 'shardbag') { P.sbDay = R.dayKST(now); P.res.shard += s.give.shard; out.shard = s.give.shard; }   // 하루 1번
     else if (id === 'badgebox') { var nb = makeBadge(P); gainBadge(P, nb, now, '매점 휘장 원석'); out.badge = { name: nb.name, gem: nb.gem }; }
     else if (id === 'manavial') { var m = calc(P, W, now).mana * 14400; addMana(P, m); out.mana = m; }
     else if (id === 'ticket') { R.wbBuyLeft(P, now); P.wb.extra++; P.wb.bought++; }

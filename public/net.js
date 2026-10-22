@@ -17,6 +17,7 @@ var Net = (function () {
   ServerApi.prototype.state = function () { return this.req('GET', '/api/state'); };
   ServerApi.prototype.world = function () { return this.req('GET', '/api/world'); };
   ServerApi.prototype.myRanks = function () { return this.req('GET', '/api/myranks'); };
+  ServerApi.prototype.subjRanks = function () { return this.req('GET', '/api/subjranks'); };
   ServerApi.prototype.act = function (type, a) { return this.req('POST', '/api/act', { type: type, a: a || {} }); };
   ServerApi.prototype.login = function (login, password) { var s = this; return this.req('POST', '/api/login', { login: login, password: password }).then(function (j) { if (j.token) s.saveToken(j.token); return j; }); };
   ServerApi.prototype.logout = function () { var s = this; return this.req('POST', '/api/logout').then(function (j) { s.saveToken(null); return j; }); };
@@ -64,8 +65,8 @@ var Net = (function () {
     open();
     return { close: function () { closed = true; if (es) es.close(); }, live: true };
   };
-  ServerApi.prototype.tower = function () { return this.req('GET', '/api/tower'); };
-  ServerApi.prototype.towerOp = function () { return this.req('POST', '/api/tower', {}); };
+  ServerApi.prototype.tower = function (have) { return this.req('GET', '/api/tower' + (have ? '?have=' + encodeURIComponent(have) : '')); };
+  ServerApi.prototype.towerOp = function (o) { return this.req('POST', '/api/tower', o || {}); };
   ServerApi.prototype.ritual = function () { return this.req('POST', '/api/ritual', {}); };
   ServerApi.prototype.auction = function () { return this.req('GET', '/api/auction'); };
   ServerApi.prototype.bid = function (id, amount) { return this.req('POST', '/api/auction', { id: id, amount: amount }); };
