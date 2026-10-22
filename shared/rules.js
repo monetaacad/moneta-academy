@@ -757,7 +757,7 @@
     return best;
   };
   /* ───────── 함께 원정 (최대 4명) ─────────
-     몬스터는 선봉을 80% 확률로 노린다(기사 선봉 +5%p, 수호 결계를 끼면 +5%p, 최대 95%). 나머지는 다른 사람들이 고르게 나눠 받는다.
+     몬스터는 선봉을 80% 확률로 노린다(기사 선봉 +5%p, 수호 결계를 끼면 +5%p, 수호의 함성을 끼면 +10%p, 최대 95%). 나머지는 다른 사람들이 고르게 나눠 받는다.
      후열은 공격 주문을 장착해야 선택할 수 있고 공격 +10% · 받는 피해 +10%. 지원은 보호막·치유 주문을 장착해야 선택할 수 있고 공격 −15% · 파티가 받는 피해 −15%.
      함께 잡은 몬스터는 인원수로 나누되 1명 늘 때마다 +5%. 전리품은 각자 따로 굴린다. */
   R.EXP_POS = {
@@ -776,7 +776,7 @@
   R.expAggro = function (P) {
     var a = R.EXP_AGGRO; if (P && P.cls === 'knight') a += 0.05;
     if (P && P.spells && P.spells.slice(0, R.spellSlots(P)).indexOf('ward') >= 0 && R.spellUnlocked(P, 'ward')) a += 0.05;
-    if (P && P.spells && P.spells.slice(0, R.spellSlots(P)).indexOf('warcry') >= 0 && R.spellUnlocked(P, 'warcry')) a += 0.05;
+    if (P && P.spells && P.spells.slice(0, R.spellSlots(P)).indexOf('warcry') >= 0 && R.spellUnlocked(P, 'warcry')) a += 0.1;
     return Math.min(0.95, a);
   };
   // 함께 갈 수 있는지: 비어 있는 원정 슬롯 번호를 돌려주거나 이유를 던진다
@@ -1498,10 +1498,11 @@
       if (!others.length || n < 2 || rnd2() < ms[tank].aggro) return tank;
       return others[Math.floor(rnd2() * others.length)];
     }
+    // 광역 보호막(pshield)은 살아 있는 모두에게, pmult가 있으면 다른 파티원은 시전자 기준 × pmult (수호의 함성)
     // 치유 · 보호막 주문 하나를 거는 일 (sp: 주문, i: 거는 사람, tg: 받는 사람). 보호막량은 시전자의 공격력 × 2와 최대 생명력 중 큰 쪽에 비례
     function care(i2, k2, tg, urgent) {
       var m = ms[i2], sp = m.sp[k2]; cd[i2][sp.id] = sp.cd * (n > 1 && m.pos === 'sup' ? R.TW.CARE_CD : 1);   // 재사용 대기 단축은 파티의 지원만
-      if (sp.type === 'shield' || sp.type === 'pshield') { var sv = Math.max((ms[i2].spAtk || ms[i2].atk) * R.TW.SHIELD_ATK, mx[i2]) * sp.mult; if (sp.type === 'pshield') { for (var q2 = 0; q2 < n; q2++) if (hp[q2] > 0 && q2 !== tg) { sh[q2] = Math.max(sh[q2], sv); ev(4, i2, sv, q2, k2); } } sh[tg] = Math.max(sh[tg], sv); ev(4, i2, sv, tg, k2); if (!urgent && t - healAt[i2] > 6) { healAt[i2] = t; line(m.name + '의 「' + sp.name + '」 — ' + (tg === i2 ? '' : ms[tg].name + '에게 ') + '보호막 ' + R.fmt(sv), 'p'); } }
+      if (sp.type === 'shield' || sp.type === 'pshield') { var sv = Math.max((ms[i2].spAtk || ms[i2].atk) * R.TW.SHIELD_ATK, mx[i2]) * sp.mult; if (sp.type === 'pshield') { var so = sp.pmult ? sv / sp.mult * sp.pmult : sv; for (var q2 = 0; q2 < n; q2++) if (hp[q2] > 0) { var a2 = q2 === i2 ? sv : so; sh[q2] = Math.max(sh[q2], a2); ev(4, i2, a2, q2, k2); } } else { sh[tg] = Math.max(sh[tg], sv); ev(4, i2, sv, tg, k2); } if (!urgent && t - healAt[i2] > 6) { healAt[i2] = t; line(m.name + '의 「' + sp.name + '」 — ' + (tg === i2 ? '' : ms[tg].name + '에게 ') + '보호막 ' + R.fmt(sv), 'p'); } }
       else { var hv = Math.min(mx[tg] - hp[tg], mx[tg] * sp.mult); hp[tg] += hv; ev(3, i2, hv, tg, k2); if (!urgent && t - healAt[i2] > 6) { healAt[i2] = t; line(m.name + '의 「' + sp.name + '」 — ' + (tg === i2 ? '' : ms[tg].name + ' ') + '생명력 +' + R.fmt(hv), 'p'); } }
     }
     // 쓰러질 한 대 직전: 지원(또는 맞는 사람 자신)의 준비된 보호막 · 치유가 먼저 끼어든다
