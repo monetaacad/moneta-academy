@@ -2016,6 +2016,11 @@
       var st = i < P.duel.rank ? '<span class="tag ok">승리</span>' : i === P.duel.rank ? '<span class="tag br">다음 상대</span>' : '<span class="faint tiny">' + rv.stage + '단계</span>';
       return '<div class="row small" style="padding:2px 0;flex-wrap:nowrap"><span class="num faint" style="width:22px">' + (i + 1) + '</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap' + (i > P.duel.rank ? ';color:var(--faint)' : '') + '">' + (i <= P.duel.rank ? rv.name : '???') + '</span>' + st + '</div>';
     }).join('') + '</div></div></div>';
+    // 결투 준비: 무한의 탑처럼 같은 화면에서 전투 물약 · 장비 프리셋 · 장착 주문을 바꾼다
+    if (r) h += '<div class="card" style="margin-top:14px"><div class="row between"><h3>결투 준비</h3><span class="tiny faint">바꾼 뒤 위의 승산이 다시 계산됩니다</span></div>' +
+      '<div style="margin-top:8px">' + gearSetRow() + '</div>' +
+      '<div class="small" style="margin-top:12px">장착 주문 <span class="tiny faint">· 칸을 누르면 주문을 바꿉니다</span></div>' + spellBar(P) + spellSetBar(P) +
+      '<div class="small" style="margin-top:12px">전투 물약</div><div style="margin-top:6px">' + potBar(['atkPct', 'hpPct', 'defPct']) + '</div></div>';
     return h;
   };
 
@@ -5943,7 +5948,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102323;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102324;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
