@@ -1928,3 +1928,4 @@ table.sjtop .sjmeta { white-space: nowrap; }
 .potbar { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; margin: -4px 0 12px; padding: 6px 10px; border: 1px dashed var(--line2); border-radius: 8px; }
 .potb { display: inline-flex; align-items: center; gap: 6px; }
 .potb .pot-ic { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+.mksub { white-space: normal; overflow-wrap: anywhere; line-height: 1.5; }   /* 거래소 · 경매 줄의 부가 정보: 판매자 이름이 길면 줄바꿈 */
