@@ -401,7 +401,6 @@ textarea { min-height: 90px; font-family: var(--f-num); font-size: 12px; resize:
   .arena canvas { height: 240px; }
   .page-head h2 { font-size: 22px; }
   .housepick { grid-template-columns: minmax(0, 1fr); }
-  #toasts { top: auto; bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
 }
 @media (max-width: 480px) {
   .chip .rate { display: none; }
@@ -521,7 +520,9 @@ button[disabled][data-why] { pointer-events: none; }
   .dock { left: 0; right: 0; width: auto; bottom: var(--navh, calc(58px + env(safe-area-inset-bottom, 0px))); border-radius: 12px 12px 0 0; border-left: 0; border-right: 0; box-shadow: 0 -10px 30px rgba(0, 0, 0, .4); }
   .dock:not(.closed) { height: 62vh; height: 62dvh; }
   .body { padding-bottom: calc(var(--navh, calc(58px + env(safe-area-inset-bottom, 0px))) + 92px); }
-  #toasts { top: auto; bottom: calc(var(--navh, calc(58px + env(safe-area-inset-bottom, 0px))) + 92px); }
+  /* 알림 · 전광판은 상단(상단 막대 아래)에: 하단 안내도 · 채팅 입력을 가리지 않게. 누름은 통과시킨다 */
+  #toasts { top: calc(max(var(--toph, 0px), env(safe-area-inset-top, 0px)) + 8px); bottom: auto; left: 50%; right: auto; transform: translateX(-50%); width: min(420px, calc(100vw - 24px)); }
+  body.bc-on #toasts { top: calc(max(var(--toph, 0px), env(safe-area-inset-top, 0px)) + 50px); }
 }
 
 /* ───────── 내 정보 · 두상 · 친구 ───────── */
@@ -970,6 +971,22 @@ button.mkn:hover { text-decoration: underline; }
 .tk-t { flex: none; }
 .tk-tag { flex: none; font-size: 11px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--brass2); white-space: nowrap; }
 .tk-tag.news { color: var(--verd); border-color: rgba(116, 191, 169, .45); }
+/* 전광판 (모바일 · 학교 전체 소식): 상단 막대 아래 한 줄. 넘치는 글은 옆으로 흘러가고, 움직임 줄이기 설정이면 멈춘 채 두 줄까지 */
+.bcast { position: fixed; z-index: 211; left: 50%; transform: translateX(-50%); top: calc(max(var(--toph, 0px), env(safe-area-inset-top, 0px)) + 8px); width: min(420px, calc(100vw - 24px));
+  display: flex; align-items: center; gap: 8px; padding: 6px 10px 6px 7px; border: 1px solid var(--line); border-radius: 999px; background: var(--toastbg); color: var(--ink); font: inherit; text-align: left;
+  box-shadow: 0 6px 18px var(--shadow, rgba(0,0,0,.3)); cursor: pointer; animation: bcin .25s ease-out; -webkit-tap-highlight-color: transparent; }
+.bcast.notice { border-color: color-mix(in srgb, var(--brass) 55%, var(--line)); }
+.bcast.out { animation: bcout .3s ease-in forwards; }
+.bc-vp { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; font-size: 13px; line-height: 1.45; -webkit-mask-image: linear-gradient(90deg, transparent, #000 6px, #000 calc(100% - 10px), transparent); mask-image: linear-gradient(90deg, transparent, #000 6px, #000 calc(100% - 10px), transparent); }
+.bc-tx { display: inline-block; padding: 0 6px; }
+.bc-tx.run { animation: bcmove linear forwards; }
+.bcast.wrap { border-radius: 12px; }
+.bcast.wrap .bc-tx { display: inline; padding: 0; }
+.bcast.wrap .bc-vp { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; -webkit-mask-image: none; mask-image: none; }
+@keyframes bcmove { 0%, 14% { transform: translateX(0); } 88%, 100% { transform: translateX(var(--bcx, 0px)); } }
+@keyframes bcin { from { opacity: 0; transform: translate(-50%, -8px); } }
+@keyframes bcout { to { opacity: 0; transform: translate(-50%, -8px); } }
+@media (prefers-reduced-motion: reduce) { .bc-tx.run { animation: none; } }
 .newslist { display: flex; flex-direction: column; max-height: 60vh; overflow-y: auto; }
 .nrow { display: flex; gap: 10px; align-items: baseline; padding: 7px 2px; border-bottom: 1px dashed var(--line2); }
 @media (max-width: 480px) { .ticker .tk-t { display: none; } }
