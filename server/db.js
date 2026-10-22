@@ -166,6 +166,9 @@ function open(dir) {
   const pcols = db.prepare(`PRAGMA table_info(parties)`).all().map((c) => c.name);
   if (pcols.indexOf('npcs') < 0) db.exec(`ALTER TABLE parties ADD COLUMN npcs TEXT NOT NULL DEFAULT '[]'`);
   if (pcols.indexOf('allgo') < 0) db.exec(`ALTER TABLE parties ADD COLUMN allgo INTEGER NOT NULL DEFAULT 0`);   // 파티원도 원정에 파티를 데려갈 수 있음
+  // 별의 탑 순위 대기 기록: 실전이 끝나는 시각(pt)이 지나야 정식 기록(floor · name · members · t)으로 옮긴다 (진행 중에 순위가 먼저 바뀌지 않게)
+  const trcols = db.prepare(`PRAGMA table_info(tower_rank)`).all().map((c) => c.name);
+  if (trcols.length && trcols.indexOf('pfloor') < 0) db.exec(`ALTER TABLE tower_rank ADD COLUMN pfloor INTEGER NOT NULL DEFAULT 0; ALTER TABLE tower_rank ADD COLUMN pt INTEGER NOT NULL DEFAULT 0; ALTER TABLE tower_rank ADD COLUMN pname TEXT NOT NULL DEFAULT ''; ALTER TABLE tower_rank ADD COLUMN pmembers TEXT NOT NULL DEFAULT '[]'`);
   const mcols = db.prepare(`PRAGMA table_info(market)`).all().map((c) => c.name);
   if (mcols.indexOf('seller_name') < 0) db.exec(`ALTER TABLE market ADD COLUMN seller_name TEXT NOT NULL DEFAULT ''`);
   // 학생 경매: 거래소 물건 중 auc = 1. price = 즉시 구매가, start_price = 시작가, bid = 현재 입찰가(입찰한 학생의 아르크는 맡겨 둔다), expires = 마감
@@ -348,6 +351,10 @@ function open(dir) {
       members TEXT NOT NULL DEFAULT '[]',
       floor INTEGER NOT NULL,
       t INTEGER NOT NULL,
+      pfloor INTEGER NOT NULL DEFAULT 0,
+      pt INTEGER NOT NULL DEFAULT 0,
+      pname TEXT NOT NULL DEFAULT '',
+      pmembers TEXT NOT NULL DEFAULT '[]',
       PRIMARY KEY (week, party)
     );
     -- 성장 스냅샷: 하루(한국 날짜) 한 번, 학생마다 한 줄 (레벨 · 전투력 · 누적 통계). 성장곡선 분석용
@@ -357,6 +364,19 @@ function open(dir) {
       data TEXT NOT NULL,
       PRIMARY KEY (day, pid)
     );
+    -- 학생 계정 기록 (운영실 확인용): 가입 · 로그인 · 로그인 실패 · 접속(하루 한 번 · 접속지가 바뀔 때) · 비밀번호 · 이름 변경 · 우편 수령 · 운영 조치.
+    -- ip는 IP 주소가 아니라 HMAC 값(같은 접속지인지만 비교할 수 있고 주소로 되돌릴 수 없다). dev는 기기 종류(모바일/PC · 브라우저). 180일 보관
+    CREATE TABLE IF NOT EXISTS pevent (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      t INTEGER NOT NULL,
+      pid TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      detail TEXT NOT NULL DEFAULT '',
+      ip TEXT NOT NULL DEFAULT '',
+      dev TEXT NOT NULL DEFAULT ''
+    );
+    CREATE INDEX IF NOT EXISTS pevent_pid ON pevent(pid, id DESC);
+    CREATE INDEX IF NOT EXISTS pevent_ip ON pevent(ip, t);
   `);
   const gcols = db.prepare(`PRAGMA table_info(guilds)`).all().map((c) => c.name);
   [['lv', 'INTEGER NOT NULL DEFAULT 1'], ['xp', 'INTEGER NOT NULL DEFAULT 0'], ['gold', 'REAL NOT NULL DEFAULT 0'], ['ranks', "TEXT NOT NULL DEFAULT '{}'"]].forEach((c) => { if (gcols.indexOf(c[0]) < 0) db.exec(`ALTER TABLE guilds ADD COLUMN ${c[0]} ${c[1]}`); });
@@ -394,9 +414,11 @@ function open(dir) {
     topCt: db.prepare(`SELECT id, name, house, grade, CAST(json_extract(state, ?) AS INTEGER) AS f FROM players WHERE banned = 0 AND CAST(json_extract(state, ?) AS INTEGER) > 0 ORDER BY f DESC, power DESC LIMIT ?`),
     topStage: db.prepare(`SELECT id, name, house, power, lvl, grade, max_stage FROM players WHERE banned = 0 ORDER BY max_stage DESC, power DESC LIMIT ?`),
     // 별의 탑 파티 순위 (높은 층, 같으면 먼저 오른 파티)
-    twRankPut: db.prepare(`INSERT INTO tower_rank (week, party, name, members, floor, t) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(week, party) DO UPDATE SET name = excluded.name, members = excluded.members, floor = excluded.floor, t = excluded.t WHERE excluded.floor > tower_rank.floor`),
-    twRankTop: db.prepare(`SELECT party, name, members, floor, t FROM tower_rank WHERE week = ? ORDER BY floor DESC, t ASC LIMIT ?`),
-    twRankGet: db.prepare(`SELECT floor, t FROM tower_rank WHERE week = ? AND party = ?`),
+    // 실전 기록은 대기(pfloor · pt = 끝나는 시각)로 넣고, twRankSettle이 끝난 것만 정식 기록으로 옮긴다 (처음 오른 파티는 floor 0인 줄로 시작)
+    twRankPend: db.prepare(`INSERT INTO tower_rank (week, party, name, members, floor, t, pfloor, pt, pname, pmembers) VALUES (?, ?, '', '[]', 0, 0, ?, ?, ?, ?) ON CONFLICT(week, party) DO UPDATE SET pfloor = excluded.pfloor, pt = excluded.pt, pname = excluded.pname, pmembers = excluded.pmembers WHERE excluded.pfloor > MAX(tower_rank.floor, tower_rank.pfloor)`),
+    twRankSettle: db.prepare(`UPDATE tower_rank SET floor = CASE WHEN pfloor > floor THEN pfloor ELSE floor END, name = CASE WHEN pfloor > floor THEN pname ELSE name END, members = CASE WHEN pfloor > floor THEN pmembers ELSE members END, t = CASE WHEN pfloor > floor THEN pt ELSE t END, pfloor = 0, pt = 0 WHERE pt > 0 AND pt <= ?`),
+    twRankTop: db.prepare(`SELECT party, name, members, floor, t FROM tower_rank WHERE week = ? AND floor > 0 ORDER BY floor DESC, t ASC LIMIT ?`),
+    twRankGet: db.prepare(`SELECT floor, t FROM tower_rank WHERE week = ? AND party = ? AND floor > 0`),
     twRankOf: db.prepare(`SELECT COUNT(*) + 1 AS r FROM tower_rank WHERE week = ? AND (floor > ? OR (floor = ? AND t < ?))`),
     rankPower: db.prepare(`SELECT COUNT(*) + 1 AS r FROM players WHERE banned = 0 AND power > ?`),
     topLvl: db.prepare(`SELECT id, name, house, power, lvl, grade, max_stage FROM players WHERE banned = 0 ORDER BY lvl DESC, max_stage DESC, power DESC LIMIT ?`),
@@ -431,6 +453,12 @@ function open(dir) {
     setRole: db.prepare(`UPDATE players SET role = ? WHERE id = ?`),
     oplogAdd: db.prepare(`INSERT INTO oplog (t, actor, name, action, detail) VALUES (?, ?, ?, ?, ?)`),
     oplogList: db.prepare(`SELECT * FROM oplog ORDER BY id DESC LIMIT ?`),
+    peAdd: db.prepare(`INSERT INTO pevent (t, pid, kind, detail, ip, dev) VALUES (?, ?, ?, ?, ?, ?)`),
+    peList: db.prepare(`SELECT t, kind, detail, ip, dev FROM pevent WHERE pid = ? ORDER BY id DESC LIMIT ?`),
+    peCount: db.prepare(`SELECT kind, COUNT(*) AS n, MAX(t) AS last FROM pevent WHERE pid = ? GROUP BY kind`),
+    peSameIp: db.prepare(`SELECT e.pid, p.name, p.banned, p.deleted, COUNT(DISTINCT e.ip) AS ips, MAX(e.t) AS last FROM pevent e JOIN players p ON p.id = e.pid WHERE e.ip != '' AND e.t >= ? AND e.pid != ? AND e.ip IN (SELECT DISTINCT ip FROM pevent WHERE pid = ? AND ip != '' AND t >= ?) GROUP BY e.pid ORDER BY ips DESC, last DESC LIMIT 30`),
+    peMove: db.prepare(`UPDATE pevent SET pid = ? WHERE pid = ?`),
+    pePrune: db.prepare(`DELETE FROM pevent WHERE t < ?`),
     upgradeGuest: db.prepare(`UPDATE players SET name = ?, name_key = ?, pass = ?, guest = 0, invite = ? WHERE id = ? AND guest = 1`),
     renamePlayer: db.prepare(`UPDATE players SET name = ?, name_key = ? WHERE id = ?`),
     setMute: db.prepare(`UPDATE players SET muted_until = ? WHERE id = ?`),

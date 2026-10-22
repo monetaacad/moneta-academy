@@ -326,7 +326,7 @@
     S.rPend = 0;   // 미뤄 둔 softRender가 있었다면 이걸로 끝
     var v = VIEWS.find(function (x) { return x.id === S.view; }) || VIEWS[0];
     var sy = window.scrollY;
-    $('#view').innerHTML = groupTabs() + (viewOpen(v) ? V[v.id]() : pageHead('잠긴 구역', v.name, '') + '<div class="card"><p>' + R.josa(v.name, '은', '는') + ' ' + (v.alch ? '연금화학 ' + R.ALCH_OPEN + '레벨부터 출입할 수 있습니다. 연금화학은 1학년부터 수강할 수 있습니다(지금 Lv ' + S.P.subj.alch.lv + ').' : v.grade + '학년부터 출입할 수 있습니다.') + '</p></div>');
+    $('#view').innerHTML = groupTabs() + (viewOpen(v) ? V[v.id]() : pageHead('잠긴 구역', v.name, '') + '<div class="card"><p>' + R.josa(v.name, '은', '는') + ' ' + (v.alch ? '연금화학 ' + R.ALCH_OPEN + '레벨부터 출입할 수 있습니다. 연금화학은 1학년부터 수강할 수 있습니다(지금 Lv ' + S.P.subj.alch.lv + ').' : (v.fam ? R.FAM_OPEN_TEXT : v.grade + '학년') + '부터 출입할 수 있습니다.') + '</p></div>');
     if (Math.abs(window.scrollY - sy) > 2) window.scrollTo(0, sy);
     afterRender(); updateLive(); updateBadges(); updateSide();
   }
@@ -1325,7 +1325,7 @@
   // 과목 카드: 다음에 열리는 것 (주문 · 물약 · 시험 기준 · 학기 이야기 목표)
   // 강의계획서: 잠긴 과목도 미리 본다 (능력치 · 레벨당 효과 · 레벨별 보상 · 교수 과제 · 기말시험)
   // 레벨당 효과는 rules.js 계산식과 같은 값을 적어 둔 것 (syntax · alch · beast · rune)
-  var SUBJ_PASSIVE = { alch: '물약 조제 속도 +1%', beast: '사역마 효과 +3% · 파견 보상 +2% · 부화 속도 +1%', rune: '장비 강화 성공 확률 +0.4%p' };
+  var SUBJ_PASSIVE = { alch: '물약 조제 속도 +1%', beast: '사역마 효과 +3% · 파견 보상 +2% · 부화 속도 +1%', rune: '장비 강화 성공 확률 +0.4%' };
   // 과목 종류 · 수업 효율 능력치 한 줄 (「마법사 전공 · 지원 · 수업 효율: 지력」)
   var LST_NAME = { int: '지력', vit: '체력', main: '주 능력치(마법사 지력 · 기사 체력)' };
   function subjKind(S2) { return (S2.cls ? R.CLS[S2.cls].name + ' 전공' : '공용') + (S2.sup ? ' · 지원' : ''); }
@@ -1468,6 +1468,7 @@
     if (S.rit && !S.rit.mine) out.push({ t: '별샘 의식에 마나 봉헌', s: '모두 함께 ' + S.rit.n + ' / ' + S.rit.goal + '명 · 채우면 ' + R.RITUAL_BUFF.text, act: 'ritual', btn: '봉헌' });
     if (S.auc && S.auc.active) out.push({ t: '떠돌이 상인이 와 있습니다', s: '구간별 귀한 장비 아홉 점 경매 · ' + left(S.auc.end) + ' 남음', go: 'auction' });
     (function () { var cf = R.ctBest(P) + 1, fo = R.ctFoe(cf, R.ctCls(P)), pv2 = R.duelPreview(P, wctx(), fo.stage, R.K.BOSS_HP * 0.6 * (fo.wall ? 1.8 : 1), R.K.BOSS_ATK * 3 * (fo.wall ? 1.4 : 1)); if (pv2.win && pv2.ttk < R.CT_TIME) out.push({ t: '무한의 탑 ' + cf + '층에 도전할 수 있습니다', s: R.CT_NAME[R.ctCls(P)] + ' · 승산 있음', go: 'ctower' }); })();
+    if (P.twPend && Date.now() / 1000 >= P.twPend.end) out.push({ t: '별의 탑 실전 보상을 받을 수 있습니다', s: '끝난 실전의 보상은 「보상 받기」를 눌러야 우편으로 발송됩니다', go: 'tower' });
     if (S.party && !R.twUsed(P, now())) out.push({ t: '별의 탑 실전 가능 (오늘 1회)', s: '파티가 쓰러질 때까지 이어 오르는 실전 · 연습은 언제든 가능', go: 'tower' });
     var idleR = 0; for (var r = 0; r < c.resSlots; r++) if (!P.rsq[r]) idleR++;
     if (idleR) out.push({ t: '비어 있는 연구 자리 ' + idleR + '개', s: '', go: 'lib' });
@@ -2027,6 +2028,7 @@
     var tk = P.eq.tome ? R.slotName(P.eq.tome) : P.cls === 'knight' ? '전술서' : '마도서';
     var hk = P.eq.hat ? R.slotName(P.eq.hat) : P.cls === 'knight' ? '투구' : '모자';
     var h = pageHead(D.SLOTS.map(function (s) { return '<button class="eblink" data-act="invjump" data-a="' + s.id + '" title="가방에서 ' + (s.id === 'staff' ? '무기' : s.name) + '만 보기">' + (s.id === 'staff' ? wk : s.id === 'tome' ? tk : s.id === 'hat' ? hk : s.name) + '</button>'; }).join(' · '), '장비·능력', '전투력 <b class="num gold">' + fmt(c.power) + '</b>');
+    h += pendBanner();
     h += '<div class="doll">' + D.SLOTS.map(function (s) {
       var it = P.eq[s.id];
       return '<button class="eqslot' + (it ? '' : ' empty') + (it && S.sel === it.u ? ' sel' : '') + '" data-act="sel" data-a="' + (it ? it.u : '') + '"><span class="sl">' + s.name + '</span>' +
@@ -2099,14 +2101,14 @@
     return '<div class="bdgups">' +
       '<div class="bdgup"><div class="bdgut"><b class="small">닦기</b><span class="tiny faint">마석가루로 별빛을 채워 레벨을 올립니다</span></div>' + (full ? '<span class="tag br">완성</span>' : lk ? lkTag : '<span class="row" style="gap:8px;flex-wrap:nowrap"><span class="bdgdeal"><span class="tiny"><span class="faint">얻음</span> <b class="gold">별빛 +' + R.badgePolishXp(b) + '</b></span><span class="tiny"><span class="faint">소모</span> ' + fmt(pc.dust) + ' 마석가루 <span class="faint">(보유 ' + fmt(P.res.dust || 0) + ')</span> · ' + fmt(pc.gold) + ' ' + CUR + '</span></span><button class="btn sm primary" data-act="bpolish" data-a="' + b.u + '"' + (can ? '' : ' disabled') + '>닦기</button></span>') + '</div>' +
       '<div class="bdgup"><div class="bdgut"><b class="small">' + gterm('광내기') + '</b><span class="tiny faint">별조각으로 보석 품질을 올려 대표 효과를 키웁니다 · 지금 ' + (Math.round(q * 1000) / 10) + '% / 최대 ' + Math.round(R.BADGE_Q_MAX * 100) + '%</span></div>' + (qmax ? '<span class="tag br">최고 품질</span>' : lk ? lkTag : '<button class="btn sm" data-act="bshine" data-a="' + b.u + '"' + (sh >= sc ? '' : ' disabled') + '>품질 +' + (R.BADGE_Q_STEP * 100) + '% <span class="cost">' + sc + ' 별조각</span></button>') + '</div>' +
-      ((b.aff || []).length ? '<div class="bdgup"><div class="bdgut"><b class="small">' + gterm('세공 다시 새기기', '세공') + '</b><span class="tiny faint">별조각으로 선택한 세공 한 줄을 새로 굴립니다 (다른 줄 · 대표 효과와 같은 옵션은 나오지 않음 · 이름의 앞말은 첫 줄을 따릅니다)</span></div><span class="row bdgrc"><select id="brc-line" aria-label="다시 새길 세공">' + b.aff.map(function (a, i) { return '<option value="' + i + '"' + (i === li ? ' selected' : '') + '>' + (i + 1) + '. ' + (D.BONUS_NAMES[a.id] || a.id) + ' +' + pct(a.v) + '</option>'; }).join('') + '</select>' + (lk ? lkTag : '<button class="btn sm' + (armed ? ' primary' : '') + '" data-act="brecut" data-a="' + b.u + '"' + (sh >= rc ? '' : ' disabled') + '>' + (armed ? '한 번 더 누르면 새깁니다' : '새기기') + ' <span class="cost">' + rc + ' 별조각</span></button>') + '</span></div>' : '') +
+      ((b.aff || []).length ? '<div class="bdgup"><div class="bdgut"><b class="small">' + gterm('세공 다시 새기기', '세공') + '</b><span class="tiny faint">별조각으로 선택한 세공 한 줄을 새로 굴린 뒤 이전 세공과 새 세공 중 하나를 선택합니다 (다른 줄 · 대표 효과와 같은 옵션은 나오지 않음 · 이름의 앞말은 첫 줄을 따릅니다)</span></div><span class="row bdgrc"><select id="brc-line" aria-label="다시 새길 세공">' + b.aff.map(function (a, i) { return '<option value="' + i + '"' + (i === li ? ' selected' : '') + '>' + (i + 1) + '. ' + (D.BONUS_NAMES[a.id] || a.id) + ' +' + pct(a.v) + '</option>'; }).join('') + '</select>' + (lk ? lkTag : '<button class="btn sm' + (armed ? ' primary' : '') + '" data-act="brecut" data-a="' + b.u + '"' + (sh >= rc ? '' : ' disabled') + '>' + (armed ? '한 번 더 누르면 새깁니다' : '새기기') + ' <span class="cost">' + rc + ' 별조각</span></button>') + '</span></div>' : '') +
       '</div>';
   }
   ACT.bshine = function (u) { act('badgeShine', { u: u }).then(function (r) { if (r) { Snd.play('enh'); toast('광을 냈습니다', r.name + ' · 품질 ' + (Math.round(r.q * 1000) / 10) + '% · 별조각 -' + r.cost, 2200); } render(); }); };
   ACT.brecut = function (u) {
     var sel = $('#brc-line'), i = sel ? +sel.value : 0, k = 'brc' + u; S.pick.brc = i;
     if (!(S.confirm[k] > Date.now())) { S.confirm[k] = Date.now() + 4000; render(); setTimeout(render, 4100); return; }
-    S.confirm[k] = 0; act('badgeRecut', { u: u, i: i }).then(function (r) { if (r) { Snd.play('enh'); toast('세공을 다시 새겼습니다', r.was + ' → ' + r.text + ' · 별조각 -' + r.cost, 2800); } render(); });
+    S.confirm[k] = 0; act('badgeRecut', { u: u, i: i }).then(function (r) { render(); if (r) { Snd.play('enh'); rcPickModal(); } });
   };
   ACT.bwear = function (u) { act('badgeWear', { u: u || '' }).then(function (r) { if (r) { var b = u && R.badgeFind(S.P, u); toast(u ? '휘장을 달았습니다' : '휘장을 뗐습니다', b ? b.name : '', 1600); } render(); }); };
   ACT.bpolish = function (u) { act('badgePolish', { u: u }).then(function (r) { if (!r) return; Snd.play('enh'); toast('휘장을 닦았습니다', '별빛 +' + r.xp + (r.to > r.from ? ' · Lv ' + r.from + '→' + r.to : ''), 2000); render(); }); };
@@ -2732,10 +2734,26 @@
     if (twEl(r) >= r.d && r.kind !== 'solo') render();
   }
   function twResult(r) {
-    Snd.play(r.cleared >= r.start ? 'pass' : 'fail'); sync(true); S.towerAt = 0; loadTower();
+    Snd.play(r.cleared >= r.start ? 'pass' : 'fail'); sync(true); S.towerAt = 0;
     var got = r.cleared >= r.start;
-    modal(mhead('별의 탑 실전 종료', r.start + '층부터 시작') + '<p>' + (got ? '<b class="gold">' + r.cleared + '층</b>까지 올랐습니다.' : '첫 층을 넘지 못했습니다.') + ' 각자의 이번 주 기록보다 높으면 기록이 갱신되고, 처음 넘은 층의 보상은 우편으로 전달됩니다.</p>' +
-      '<div class="row" style="justify-content:flex-end;margin-top:14px;gap:6px;flex-wrap:wrap"><button class="btn" data-act="twexport" data-a="' + r.id + '">전투 기록 내보내기</button><button class="btn" data-act="mailbox">우편함 열기</button><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>');
+    loadTower().then(function () {
+      var pd = S.towerD && S.towerD.pend, mine = pd && pd.id === r.id && pd.to;
+      modal(mhead('별의 탑 실전 종료', r.start + '층부터 시작') + '<p>' + (got ? '<b class="gold">' + r.cleared + '층</b>까지 올랐습니다.' : '첫 층을 넘지 못했습니다.') + '</p>' +
+        (mine ? '<p class="small" style="margin-top:6px">이번 주 기록이 <b>' + pd.to + '층</b>으로 갱신되었습니다. 처음 넘은 ' + pd.from + '~' + pd.to + '층의 보상: <span class="rwd">' + esc(pd.reward) + '</span></p>' : '<p class="small muted" style="margin-top:6px">이번 주 기록보다 높이 오르지 못해 새 보상은 없습니다.</p>') +
+        '<div class="row" style="justify-content:flex-end;margin-top:14px;gap:6px;flex-wrap:wrap"><button class="btn" data-act="twexport" data-a="' + r.id + '">전투 기록 내보내기</button>' + (mine ? '<button class="btn primary" data-act="twclaim" autofocus>보상 받기</button>' : '<button class="btn primary" data-act="modal-close" autofocus>확인</button>') + '</div>');
+    });
+  }
+  // 실전 보상 받기: 끝난 뒤 눌러야 우편으로 발송된다 (원정 귀환처럼)
+  ACT.twclaim = function () {
+    API.towerOp({ mode: 'claim' }).then(function (j) {
+      if (j.error) { toast('별의 탑', j.error); return; }
+      if (S.P) delete S.P.twPend; Snd.play('ach'); toast('별의 탑 보상', j.claimed + '층까지의 보상을 우편으로 보냈습니다', 2600);
+      S.towerD = Object.assign(S.towerD || {}, { pend: null }); S.towerAt = 0; sync(true); closeModal(); ACT.mailbox();
+    });
+  };
+  function twPendCard() {
+    var pd = S.towerD && S.towerD.pend; if (!pd || !pd.to) return '';
+    return '<div class="card hl" style="margin-bottom:14px"><div class="row between" style="gap:8px;flex-wrap:wrap"><div><b>실전 보상을 받을 수 있습니다</b><div class="small" style="margin-top:4px">' + pd.from + '~' + pd.to + '층 · <span class="rwd">' + esc(pd.reward) + '</span></div></div><button class="btn primary" data-act="twclaim">보상 받기</button></div></div>';
   }
   // 별의 탑 화면 (원정·전투): 파티가 있으면 일지 · 도전 칸, 없으면 파티와 함께 오른다는 안내
   /* ── 무한의 탑 (개인): 기사의 탑 · 마법사의 탑 ── */
@@ -2778,8 +2796,9 @@
   V.tower = function () {
     var h = pageHead('파티와 함께 오르는 탑', '<span class="phimg">' + dotImg('tower', 40, '', 'twimg') + '별의 탑</span>', '실전 하루 1회 · 월요일 KST 0시 기록 초기화');
     if (!S.partyD || Date.now() - S.partyAt > 20000) { if (Date.now() - S.partyAt > 1500) loadParty(); }
-    if (!S.party) return h + '<div class="card hl"><h3>파티와 함께 오르는 탑</h3><p class="small" style="margin-top:4px">별의 탑은 파티가 함께 1층부터 실시간으로 오르는 곳입니다. 실전은 파티 단위로 하루 1번이며, 파티가 쓰러질 때까지 층을 이어 오릅니다. 연습은 언제든 할 수 있습니다.</p><p class="small muted" style="margin-top:6px">파티에 들어가 있어야 도전할 수 있습니다. 혼자서도 파티를 만들 수 있고, 빈자리는 아카데미 친구(NPC)를 불러 채울 수 있습니다.</p><div class="row" style="margin-top:10px;gap:6px"><button class="btn primary" data-act="twparty">파티 만들기</button><button class="btn ghost" data-act="nav" data-a="party">파티 화면으로</button></div></div>';
-    return h + towerStage() + towerCard() + twPrep() + towerRuns() + '<div class="row" style="margin-top:10px"><span class="tiny faint">파티원 · 초대 · 아카데미 친구는 파티 화면에서 관리합니다. 파티 이름은 파티장이 이곳이나 파티 화면에서 바꿀 수 있습니다.</span><span class="spacer"></span><button class="btn sm ghost" data-act="nav" data-a="party">파티 화면</button></div>';
+    if (!S.party && S.P.twPend && (!S.towerD || Date.now() - S.towerAt > 30000) && Date.now() - (S.towerAt || 0) > 1500) loadTower();   // 파티를 나갔어도 받지 않은 실전 보상
+    if (!S.party) return h + twPendCard() + '<div class="card hl"><h3>파티와 함께 오르는 탑</h3><p class="small" style="margin-top:4px">별의 탑은 파티가 함께 1층부터 실시간으로 오르는 곳입니다. 실전은 파티 단위로 하루 1번이며, 파티가 쓰러질 때까지 층을 이어 오릅니다. 연습은 언제든 할 수 있습니다.</p><p class="small muted" style="margin-top:6px">파티에 들어가 있어야 도전할 수 있습니다. 혼자서도 파티를 만들 수 있고, 빈자리는 아카데미 친구(NPC)를 불러 채울 수 있습니다.</p><div class="row" style="margin-top:10px;gap:6px"><button class="btn primary" data-act="twparty">파티 만들기</button><button class="btn ghost" data-act="nav" data-a="party">파티 화면으로</button></div></div>';
+    return h + twPendCard() + towerStage() + towerCard() + twPrep() + towerRuns() + '<div class="row" style="margin-top:10px"><span class="tiny faint">파티원 · 초대 · 아카데미 친구는 파티 화면에서 관리합니다. 파티 이름은 파티장이 이곳이나 파티 화면에서 바꿀 수 있습니다.</span><span class="spacer"></span><button class="btn sm ghost" data-act="nav" data-a="party">파티 화면</button></div>';
   };
   ACT.twparty = function () { API.partyOp({ op: 'create', name: (S.P.name + '의 파티').slice(0, 12) }).then(function (j) { if (j.error) { toast('파티', j.error); return; } S.party = (j.party && j.party.id) || 'p'; S.partyAt = 0; S.towerAt = 0; S.towerD = null; renderDock(); toast('파티', '파티를 만들었습니다 · 이제 별의 탑에 도전할 수 있습니다', 2600); sync(true); render(); }); };
   function towerCard() {
@@ -2822,7 +2841,7 @@
       ['출발 취소', '그 사이 한 명이라도 준비를 취소하면 출발이 취소되고, 다시 모두 준비하면 ' + n + '초부터 다시 셉니다. 준비는 ' + Math.round((t.readyTtl || 900) / 60) + '분이 지나면 풀립니다.'],
       ['실전 횟수', '파티 단위로 하루 1번이며, 출발하는 순간 파티원 모두의 오늘 기회를 사용합니다(KST 자정 초기화 · 결과가 자정을 넘겨 끝나도 출발한 날의 기회로 계산). 파티원 중 한 명이라도 오늘 실전을 했다면 출발할 수 없습니다.'],
       ['진행', '파티원 기록 중 가장 낮은 층의 다음 층부터 시작해 파티가 모두 쓰러질 때까지 이어집니다. 전투 시간 제한은 없으며, 한 층이 ' + Math.round(R.TW.TIME * R.TW.PACE / 60) + '분을 넘기면 물러납니다. 실전과 파티 연습은 건너뛸 수 없습니다.'],
-      ['기록 · 보상', '마지막으로 넘은 층이 각자의 이번 주 기록이 되며(더 높을 때만), 처음 넘은 층의 보상은 우편으로 전달됩니다. 파티 기록은 랭킹의 별의 탑 파티 순위에 남습니다.'],
+      ['기록 · 보상', '마지막으로 넘은 층이 각자의 이번 주 기록이 되며(더 높을 때만), 처음 넘은 층의 보상은 실전이 끝난 뒤 「보상 받기」를 누르면 우편으로 발송됩니다. 파티 기록은 랭킹의 별의 탑 파티 순위에 남습니다.'],
       ['회복', '층 사이에 최대 생명력의 ' + Math.round(R.TW.HEAL * 100) + '%를 회복하고(쓰러진 파티원도 일어납니다), ' + R.TW.REST + '층마다 휴식층에서 모두 회복합니다.'],
       ['전투', '적은 선봉 한 명을 집중해서 노리며 공격을 여러 번으로 나눠 치고, 주기적으로 파티 전체를 공격합니다. 탑에서는 방어력의 효과가 크고, 선봉은 생명력 +' + Math.round(R.TW.VAN_HP * 100) + '% · 받는 피해 −' + Math.round((1 - R.TW.VAN_TAKE) * 100) + '%를 받습니다.'],
       ['치유 · 보호막', '2명 이상 파티의 지원 포지션이 걸면 재사용 대기가 짧아집니다. 동료가 쓰러질 공격을 맞기 직전에 준비돼 있으면 먼저 끼어듭니다.'],
@@ -3289,7 +3308,7 @@
     if (m.tab === 'auc') h += aucTab(d, low);
     else if (m.tab === 'buy') {
       h += '<div class="card mkfilt" style="margin-bottom:10px"><div class="row"><div class="filters"><button class="btn sm ghost' + (m.kind === 'item' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="item">장비</button><button class="btn sm ghost' + (m.kind === 'mat' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="mat">재료</button><button class="btn sm ghost' + (m.kind === 'pot' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="pot">물약</button><button class="btn sm ghost' + (m.kind === 'badge' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="badge">휘장</button><button class="btn sm ghost' + (m.kind === 'tok' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="tok">소지품</button></div><span class="spacer"></span>' + (m.kind === 'item' ? mkWearTog() : '') +
-        '<select id="mk-sort" data-act="mksel" data-a="sort" style="width:auto"><option value="price"' + (m.sort === 'price' ? ' selected' : '') + '>' + (m.kind !== 'item' ? '개당 가격 낮은 순' : '가격 낮은 순') + '</option><option value="high"' + (m.sort === 'high' ? ' selected' : '') + '>' + (m.kind !== 'item' ? '개당 가격 높은 순' : '가격 높은 순') + '</option><option value="new"' + (m.sort === 'new' ? ' selected' : '') + '>새로 올라온 순</option>' + (m.kind === 'item' ? '<option value="lvl"' + (m.sort === 'lvl' ? ' selected' : '') + '>장비 레벨 높은 순</option>' : '') + '</select></div>';
+        '<select id="mk-sort" data-act="mksel" data-a="sort" style="width:auto"><option value="price"' + (m.sort === 'price' ? ' selected' : '') + '>' + (m.kind !== 'item' ? '개당 가격 낮은 순' : '가격 낮은 순') + '</option><option value="high"' + (m.sort === 'high' ? ' selected' : '') + '>' + (m.kind !== 'item' ? '개당 가격 높은 순' : '가격 높은 순') + '</option><option value="new"' + (m.sort === 'new' ? ' selected' : '') + '>새로 올라온 순</option>' + (m.kind === 'item' ? '<option value="lvl"' + (m.sort === 'lvl' ? ' selected' : '') + '>장비 레벨 높은 순</option><option value="pow"' + (m.sort === 'pow' ? ' selected' : '') + '>전투력 상승순</option>' : '') + '</select></div>';
       if (m.kind === 'item') h += '<div class="filters" style="margin-top:6px">' + MK_SLOT_F.map(function (f) { return '<button class="btn sm ghost' + (m.slot === f[0] ? ' on' : '') + '" data-act="mkf" data-a="slot" data-b="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '<span class="fsep"></span>' +
         [['', '모든 등급', 'inherit']].concat(D.RARITY.map(function (r) { return [String(r.id), r.name, r.color]; })).map(function (f) { return '<button class="btn sm ghost' + (String(m.r) === f[0] ? ' on' : '') + '" data-act="mkf" data-a="r" data-b="' + f[0] + '" style="color:' + f[2] + '">' + f[1] + '</button>'; }).join('') + '</div>' +
         mkAffRow(m) +
@@ -3315,7 +3334,7 @@
         else if (x.kind === 'tok') { info = '<span class="mkn">' + esc(x.name) + ' <span class="num">×' + fmt(x.qty) + '</span></span>'; sub = '개당 ' + fmt(x.price / x.qty) + ' · 가진 수 ' + fmt(tokHave(x.tok)); }
         else { info = '<span class="mkn">' + esc(x.name) + ' <span class="num">×' + fmt(x.qty) + '</span></span>'; sub = '개당 ' + fmt(x.price / x.qty) + ' · 가진 수 ' + fmt(x.mat === 'stone' ? P.res.stone : (P.mats[x.mat] || 0)); }
         var tap = x.kind === 'item' && x.item;   // 장비는 줄(이름·요약) 어디를 눌러도 옵션이 펼쳐진다 (휴대폰에서 이름만 누르기 어려워서)
-        return '<div class="mkrow' + (open ? ' open' : '') + '"><div class="mki' + (tap ? ' tap" data-act="mkopen" data-a="' + x.id + '" role="button" tabindex="0" aria-expanded="' + !!open + '"' : '"') + '>' + info + '<div class="tiny faint ell">' + sub + ' · ' + esc(x.seller) + (x.npc ? ' <span class="tag npc">NPC</span>' : '') + ' · ' + R.fmtTime(Math.max(0, x.expires - Date.now() / 1000)) + '</div>' + (open && x.item ? '<div class="mkst">' + statLines(x.item) + '</div>' + cmpBlock(x.item) : '') + '</div>' +
+        return '<div class="mkrow' + (open ? ' open' : '') + '"><div class="mki' + (tap ? ' tap" data-act="mkopen" data-a="' + x.id + '" role="button" tabindex="0" aria-expanded="' + !!open + '"' : '"') + '>' + info + '<div class="tiny faint mksub">' + sub + ' · ' + R.fmtTime(Math.max(0, x.expires - Date.now() / 1000)) + ' 남음 · ' + esc(x.seller) + (x.npc ? ' <span class="tag npc">NPC</span>' : '') + '</div>' + (open && x.item ? '<div class="mkst">' + statLines(x.item) + '</div>' + cmpBlock(x.item) : '') + '</div>' +
           '<b class="num gold mkpr">' + fmt(x.price) + '</b>' + (bw ? '<span class="tag no" title="최근 30일 시세(판매가 중간값) ' + fmt(bw.avg) + (x.qty > 1 ? ' (개당)' : '') + '">시세의 ' + bw.txt + '</span>' : '') + (x.mine ? '<span class="tag">내 물건</span>' : '<button class="btn sm primary' + (armed ? ' armed' : '') + '" data-act="mkbuy" data-a="' + x.id + '"' + (bw && bw.high ? ' data-warn="' + bw.txt + '"' : '') + (can ? '' : why(low ? '학년이 낮아 살 수 없습니다' : CUR + '가 부족합니다')) + '>' + (armed ? '한 번 더 누르면 구매' : '사기') + '</button>') + '</div>';
       }).join('') + '</div>';
     } else if (m.tab === 'sell') {
@@ -3379,7 +3398,7 @@
   function aucTab(d, low) {
     var m = S.mk, ak = m.akind || 'item', h = '<div class="card mkfilt" style="margin-bottom:10px"><div class="row"><div class="filters">' + [['item', '장비'], ['badge', '휘장']].map(function (f) { return '<button class="btn sm ghost' + (ak === f[0] ? ' on' : '') + '" data-act="mkf" data-a="akind" data-b="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '</div><span class="spacer"></span>' +
       (ak === 'item' ? mkWearTog() : '') + '<label class="tog tiny" style="margin-right:6px"><input type="checkbox" data-act="mknobid"' + (m.nobid ? ' checked' : '') + '> 입찰 없는 것만</label>' +
-      '<select data-act="mksel" data-a="asort" style="width:auto" aria-label="정렬">' + AUC_SORTS.map(function (o) { return '<option value="' + o[0] + '"' + ((m.asort || 'end') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></div>';
+      '<select data-act="mksel" data-a="asort" style="width:auto" aria-label="정렬">' + AUC_SORTS.concat(ak === 'item' ? [['pow', '전투력 상승순']] : []).map(function (o) { return '<option value="' + o[0] + '"' + ((m.asort || 'end') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></div>';
     if (ak === 'item') h += '<div class="filters" style="margin-top:6px">' + MK_SLOT_F.map(function (f) { return '<button class="btn sm ghost' + (m.slot === f[0] ? ' on' : '') + '" data-act="mkf" data-a="slot" data-b="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '</div><div class="filters" style="margin-top:6px">' +
       [['', '모든 등급', 'inherit']].concat(D.RARITY.map(function (r) { return [String(r.id), r.name, r.color]; })).map(function (f) { return '<button class="btn sm ghost' + (String(m.r) === f[0] ? ' on' : '') + '" data-act="mkf" data-a="r" data-b="' + f[0] + '" style="color:' + f[2] + '">' + f[1] + '</button>'; }).join('') + '</div>' +
       mkAffRow(m) + '<div class="row" style="margin-top:6px"><input id="mk-q" maxlength="20" placeholder="이름 검색" value="' + esc(m.q || '') + '" style="flex:1;min-width:120px"><button class="btn sm" data-act="mkq">검색</button></div>';
@@ -3406,7 +3425,7 @@
       act += '<button class="btn sm primary' + (armed ? ' armed' : '') + '" data-act="mkbuyout" data-a="' + x.id + '"' + (canBuy ? '' : why(low ? '학년이 낮아 살 수 없습니다' : CUR + '가 부족합니다')) + '>' + (armed ? '한 번 더 누르면 구매' : '즉시 구매') + '</button>';
     }
     return '<div class="mkrow mkauc' + (open ? ' open' : '') + '"><div class="mki' + (tap ? ' tap" data-act="mkopen" data-a="' + x.id + '" role="button" tabindex="0" aria-expanded="' + !!open + '"' : '"') + '>' + info +
-      '<div class="tiny faint ell">' + sub + (x.seller ? ' · ' + esc(x.seller) : '') + (ended ? '' : ' · ' + (left > 0 ? R.fmtTime(left) + ' 남음' : '마감 처리 중')) + '</div>' + (open && x.item ? '<div class="mkst">' + statLines(x.item) + '</div>' + cmpBlock(x.item) : '') + '</div>' +
+      '<div class="tiny faint mksub">' + sub + (ended ? '' : ' · ' + (left > 0 ? R.fmtTime(left) + ' 남음' : '마감 처리 중')) + (x.seller ? ' · ' + esc(x.seller) : '') + '</div>' + (open && x.item ? '<div class="mkst">' + statLines(x.item) + '</div>' + cmpBlock(x.item) : '') + '</div>' +
       '<div class="mkap"><div class="tiny faint">' + (x.bids ? '현재가 · 입찰 ' + x.bids + '건' : '시작가 · 입찰 없음') + '</div><b class="num gold">' + fmt(x.bids ? x.bid : x.start) + '</b><div class="tiny faint">즉시 구매가 <b class="num">' + fmt(x.price) + '</b></div></div>' +
       '<div class="mkab">' + st + act + '</div></div>';
   }
@@ -3499,7 +3518,7 @@
       sel.map(function (id) { return '<button class="btn sm on" data-act="mkaffx" data-a="' + id + '" title="빼기">' + (R.AFF[id] ? R.AFF[id].name : id) + ' ×</button>'; }).join('') + (sel.length ? '<span class="tiny faint">고른 옵션을 모두 가진 장비</span>' : '') + '</div>';
   }
   ACT.mkaffx = function (id) { S.mk.aff = (S.mk.aff || '').split(',').filter(function (x) { return x && x !== id; }).join(','); S.mk.data = null; render(); loadMarket(); };
-  ACT.mkf = function (k, v) { S.mk[k] = v; if (k === 'kind' || k === 'akind') { S.mk.slot = ''; S.mk.r = ''; S.mk.aff = ''; S.mk.mat = ''; S.mk.pot = ''; S.mk.tok = ''; S.mk.gem = ''; S.mk.q = ''; if (S.mk.sort === 'lvl') S.mk.sort = 'price'; } S.mk.data = null; render(); loadMarket(); };
+  ACT.mkf = function (k, v) { S.mk[k] = v; if (k === 'kind' || k === 'akind') { S.mk.slot = ''; S.mk.r = ''; S.mk.aff = ''; S.mk.mat = ''; S.mk.pot = ''; S.mk.tok = ''; S.mk.gem = ''; S.mk.q = ''; if (S.mk.sort === 'lvl' || S.mk.sort === 'pow') S.mk.sort = 'price'; if (S.mk.asort === 'pow') S.mk.asort = 'end'; } S.mk.data = null; render(); loadMarket(); };
   ACT.mkq = function () { S.mk.q = ($('#mk-q') || {}).value || ''; loadMarket(); };
   function mkDone(j, msg) { if (j.error) { toast('거래소', j.error); return; } absorb(j); toast(msg, '', 2000); Snd.play('click'); loadMarket(); render(); }
   // 사기: 한 번 누르면 바로 산다 (누르는 사이 두 번 사지 않게 잠깐 잠근다)
@@ -4205,21 +4224,40 @@
   ACT.opt = function (k, v, el) { act('opt', { k: k, v: el.checked }).then(function () { if (k === 'sound') { Snd.set(S.P.opt.sound); if ($('#setbox')) ACT.settings(); } if (/Title$/.test(k)) renderDock(); render(); }); };
   ACT.autosell = function () { act('autoSell', { r: +$('#autosell').value }).then(render); };
   ACT.automode = function () { act('autoMode', { dis: $('#automode').value === 'dis' }).then(render); };
-  // 재련: 먼저 지금 옵션이 사라진다는 확인 창 → 재련하면 이전 · 새 옵션을 나란히 보여 준다
+  // 재련: 확인 창 → 재련하면 이전 · 새 옵션을 나란히 보여 주고 하나를 선택한다 (고르기 전에 닫혀도 장비 화면 띠에서 이어서 선택)
   function affList(it) { return (it.aff || []).map(function (a) { var nm = D.BONUS_NAMES[a.id] || D.STAT_NAMES[a.id] || a.id, val = (a.id === 'atk' || a.id === 'hp' || a.id === 'def' || D.STAT_NAMES[a.id]) ? '+' + fmt(a.v) : '+' + pct(a.v); return '<div class="statline"><span>' + nm + '</span><span class="d">' + val + '</span></div>'; }).join('') || '<p class="tiny faint">옵션 없음</p>'; }
+  function pickBtns(act, w) { return '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn" data-act="' + act + '" data-a="old">이전 ' + w + ' 유지</button><button class="btn primary" data-act="' + act + '" data-a="new" autofocus>새 ' + w + ' 적용</button></div>'; }
+  function rfPickModal() {
+    var p = R.rfPending(S.P); if (!p) return; var it = R.findItem(S.P, p.u);
+    modal(mhead('재련 결과 선택', esc(it.name) + ' · 마석가루 -' + fmt(p.cost), true) + '<p class="small">이전 옵션과 새 옵션 중 하나를 선택합니다. 선택하지 않은 쪽은 사라집니다.</p>' +
+      '<div class="grid g2" style="gap:10px"><div><div class="section-t">이전 옵션</div><div class="rfold">' + affList(it) + '</div></div><div><div class="section-t">새 옵션</div><div class="rfnew">' + affList({ aff: p.aff }) + '</div></div></div>' + pickBtns('rfpick', '옵션'), false, true);
+  }
+  function rcPickModal() {
+    var p = R.rcPending(S.P); if (!p) return; var b = R.badgeFind(S.P, p.u), line = function (a) { return '<div class="statline"><span>' + esc(R.affText(a)) + '</span></div>'; };
+    modal(mhead('세공 다시 새기기 결과 선택', esc(b.name) + ' · 별조각 -' + p.cost, true) + '<p class="small">' + (p.i + 1) + '번째 줄의 이전 세공과 새 세공 중 하나를 선택합니다. 선택하지 않은 쪽은 사라집니다.</p>' +
+      '<div class="grid g2" style="gap:10px"><div><div class="section-t">이전 세공</div><div class="rfold">' + line(b.aff[p.i]) + '</div></div><div><div class="section-t">새 세공</div><div class="rfnew">' + line(p.aff) + '</div></div></div>' + pickBtns('rcpick', '세공'), false, true);
+  }
+  // 고르지 않은 재련 · 세공 결과가 있으면 장비 화면 위쪽에 띠로 알린다
+  function pendBanner() {
+    var h = '', rp = R.rfPending(S.P), cp = R.rcPending(S.P);
+    if (rp) h += '<div class="card row" style="justify-content:space-between;gap:8px"><span class="small">재련 결과를 아직 선택하지 않았습니다: <b>' + esc(R.findItem(S.P, rp.u).name) + '</b></span><button class="btn sm primary" data-act="rfopen">선택하기</button></div>';
+    if (cp) h += '<div class="card row" style="justify-content:space-between;gap:8px"><span class="small">세공 다시 새기기 결과를 아직 선택하지 않았습니다: <b>' + esc(R.badgeFind(S.P, cp.u).name) + '</b></span><button class="btn sm primary" data-act="rcopen">선택하기</button></div>';
+    return h;
+  }
+  ACT.rfopen = function () { rfPickModal(); };
+  ACT.rcopen = function () { rcPickModal(); };
+  ACT.rfpick = function (k) { act('reforgePick', { keep: k }).then(function (r) { closeModal(); if (r) { if (k === 'new') Snd.play('enh'); toast(k === 'new' ? '새 옵션을 적용했습니다' : '이전 옵션을 유지했습니다', r.name, 1800); } render(); }); };
+  ACT.rcpick = function (k) { act('badgeRecutPick', { keep: k }).then(function (r) { closeModal(); if (r) { if (k === 'new') Snd.play('enh'); toast(k === 'new' ? '새 세공을 적용했습니다' : '이전 세공을 유지했습니다', r.name + ' · ' + r.text, 2200); } render(); }); };
   ACT.reforge = function (u) {
+    if (R.rfPending(S.P)) { rfPickModal(); return; }
     var it = R.findItem(S.P, u); if (!it) return; var rf = R.reforgeCost(it);
-    modal(mhead('재련', esc(it.name)) + '<p class="small"><b class="bad">지금 옵션은 사라지고</b> 새로 굴린 옵션으로 바뀝니다. 되돌릴 수 없습니다. 등급 · 레벨 · 강화 · 기본 능력치는 그대로이며, 한 장비에 같은 옵션이 두 줄 붙지 않습니다.</p>' +
-      '<div class="section-t" style="margin-top:10px">사라질 옵션</div><div class="rfold">' + affList(it) + '</div>' +
+    modal(mhead('재련', esc(it.name)) + '<p class="small">옵션을 새로 굴린 뒤, <b>이전 옵션과 새 옵션 중 하나를 선택</b>합니다. 마석가루는 어느 쪽을 선택해도 소모됩니다. 등급 · 레벨 · 강화 · 기본 능력치는 그대로이며, 한 장비에 같은 옵션이 두 줄 붙지 않습니다.</p>' +
+      '<div class="section-t" style="margin-top:10px">지금 옵션</div><div class="rfold">' + affList(it) + '</div>' +
       '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn ghost" data-act="modal-close">취소</button><button class="btn primary" data-act="reforge-go" data-a="' + esc(u) + '">재련하기 <span class="cost">' + fmt(rf) + ' 마석가루</span></button></div>');
   };
   ACT['reforge-go'] = function (u) {
-    var it0 = R.findItem(S.P, u), old = it0 ? affList(it0) : '';
     act('reforge', { u: u }).then(function (r) {
-      if (!r) { closeModal(); render(); return; } Snd.play('enh'); var it = R.findItem(S.P, u);
-      modal(mhead('재련 완료', esc(r.name) + ' · 마석가루 -' + fmt(r.cost)) + '<div class="grid g2" style="gap:10px"><div><div class="section-t">이전 옵션 (사라짐)</div><div class="rfold">' + old + '</div></div><div><div class="section-t">새 옵션</div><div class="rfnew">' + (it ? affList(it) : '') + '</div></div></div>' +
-        '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn primary" data-act="modal-close">확인</button></div>');
-      render();
+      if (!r) { closeModal(); render(); return; } Snd.play('enh'); render(); rfPickModal();
     });
   };
   ACT.rectab = function (t) { S.recTab = t; render(); };
@@ -4344,7 +4382,13 @@
     });
   };
   function saveBlocked() { try { localStorage.setItem('arc_blocked', JSON.stringify(S.chat.blocked)); localStorage.setItem('arc_blockedN', JSON.stringify(S.chat.blockedN || {})); } catch (e) { } }
-  ACT.cblock = function (pid, name) { if (S.chat.blocked.indexOf(pid) < 0) S.chat.blocked.push(pid); S.chat.blockedN = S.chat.blockedN || {}; if (name) S.chat.blockedN[pid] = name; saveBlocked(); closeModal(); renderDock(); toast('이 학생을 가렸습니다', '이 학생의 메시지가 보이지 않습니다. 설정 → 채팅에서 다시 보이게 할 수 있습니다', 2400); };
+  // 학생 가리기: 확인 팝업을 먼저 띄운다
+  ACT.cblock = function (pid, name) {
+    var nm = name || '이 학생';
+    modal(mhead('학생 가리기', esc(nm)) + '<p class="small"><b>' + esc(nm) + '</b> 님을 가립니다. 이 학생의 채팅 메시지가 더 이상 보이지 않습니다. 설정 → 채팅에서 다시 보이게 할 수 있습니다.</p>' +
+      '<div class="row" style="justify-content:flex-end;margin-top:14px;gap:6px"><button class="btn" data-act="modal-close" autofocus>취소</button><button class="btn danger" data-act="cblockgo" data-a="' + esc(pid) + '" data-b="' + esc(name || '') + '">가리기</button></div>');
+  };
+  ACT.cblockgo = function (pid, name) { if (S.chat.blocked.indexOf(pid) < 0) S.chat.blocked.push(pid); S.chat.blockedN = S.chat.blockedN || {}; if (name) S.chat.blockedN[pid] = name; saveBlocked(); closeModal(); renderDock(); toast('이 학생을 가렸습니다', '이 학생의 메시지가 보이지 않습니다. 설정 → 채팅에서 다시 보이게 할 수 있습니다', 2400); };
   ACT.unblock = function (pid) { S.chat.blocked = S.chat.blocked.filter(function (x) { return x !== pid; }); if (S.chat.blockedN) delete S.chat.blockedN[pid]; saveBlocked(); renderDock(); var el = $('[data-blk="' + pid + '"]'); if (el) el.remove(); var n = $('#blk-n'); if (n) n.textContent = S.chat.blocked.length; toast('가리기 해제', '이 학생의 메시지가 다시 보입니다', 1600); };
   ACT.unblockall = function () { S.chat.blocked = []; S.chat.blockedN = {}; saveBlocked(); renderDock(); var b = $('#blk-box'); if (b) b.innerHTML = '<p class="tiny faint">가린 학생이 없습니다.</p>'; var n = $('#blk-n'); if (n) n.textContent = 0; };
   // 설정 → 채팅: 가린 학생 목록 (이름을 모르는 예전 기록은 불러와서 채운다)
@@ -4513,7 +4557,7 @@
       ['.potbar', '전투 물약', '실전 · 연습 버튼을 누르는 순간 켜져 있는 물약 효과가 전투에 반영되며, 진행 중에 물약 시간이 끝나도 그 실행이 끝날 때까지 유지됩니다.'],
       ['[data-anchor="tower"] .twteam', '파티원', '파티원마다 포지션 · 이번 주 기록 · 오늘 실전 여부가 표시됩니다. 실전은 파티원 기록 중 가장 낮은 층의 다음 층부터 시작합니다. 접속하지 않은 파티원도 함께 싸웁니다.'],
       ['[data-anchor="tower"] .filters', '내 포지션', '선봉은 적의 공격을 집중해서 받으며 탑에서 생명력 +30% · 받는 피해 −20%를 받습니다. 후열은 공격 주문, 지원은 치유 · 보호막 주문을 장착해야 선택할 수 있습니다. 지원의 치유 · 보호막은 동료가 쓰러질 공격을 맞기 직전에 먼저 끼어들어 막아 냅니다. 장착 주문은 「원정·전투 → 원정」에서 바꿉니다.'],
-      ['[data-act="twgo"][data-a="real"]', '실전', '파티 단위로 하루 1번입니다. 「실전 준비」를 누르면 출발 대기가 열리고, 파티원 모두가 「준비 완료」를 누르면 15초 뒤 자동으로 출발합니다(그 사이 한 명이라도 준비를 취소하면 출발이 취소됩니다). 출발하는 순간 파티원 모두의 오늘 기회를 사용하며, 파티원 중 한 명이라도 오늘 실전을 했다면 출발할 수 없습니다. 마지막으로 넘은 층이 각자의 이번 주 기록이 되고, 처음 넘은 층의 보상은 우편으로 전달됩니다. 파티 기록은 랭킹의 「별의 탑 파티 순위」에 파티 이름과 함께 남습니다.'],
+      ['[data-act="twgo"][data-a="real"]', '실전', '파티 단위로 하루 1번입니다. 「실전 준비」를 누르면 출발 대기가 열리고, 파티원 모두가 「준비 완료」를 누르면 15초 뒤 자동으로 출발합니다(그 사이 한 명이라도 준비를 취소하면 출발이 취소됩니다). 출발하는 순간 파티원 모두의 오늘 기회를 사용하며, 파티원 중 한 명이라도 오늘 실전을 했다면 출발할 수 없습니다. 마지막으로 넘은 층이 각자의 이번 주 기록이 되고, 처음 넘은 층의 보상은 실전이 끝난 뒤 「보상 받기」를 누르면 우편으로 발송됩니다. 파티 기록은 랭킹의 「별의 탑 파티 순위」에 파티 이름과 함께 남습니다.'],
       ['[data-act="twgo"][data-a="party"]', '연습', '「파티 연습 준비」도 실전처럼 모두 준비 완료해야 출발하며 파티원 모두가 함께 보고, 「혼자 연습」은 내 화면에서만 진행됩니다. 오늘 실전을 마친 뒤에도 할 수 있어 포지션 · 주문 · 물약 조합을 시험하기 좋습니다.'],
       ['[data-anchor="twlog"]', '진행 화면', '적과 파티원의 체력이 실시간으로 표시되고, 모든 공격 · 치유 · 보호막이 대본으로 올라옵니다. 실전과 파티 연습은 건너뛸 수 없어 파티가 끝까지 함께 봅니다(혼자 연습만 「끝까지 보기」 가능). 「요약만 보기」로 주요 장면만 볼 수 있고, 끝난 기록은 「기록 내보내기」로 저장할 수 있습니다. 5층마다 휴식층, 30층마다 특수 기믹이 있는 시련의 층이 나옵니다.']
     ],
@@ -4653,7 +4697,7 @@
   function relLum(hex) { var c = parseInt(hex.slice(1), 16); return [16, 8, 0].reduce(function (a, sh, i) { var v = ((c >> sh) & 255) / 255; v = v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); return a + v * [0.2126, 0.7152, 0.0722][i]; }, 0); }
   function contrast(a, b) { var x = relLum(a), y = relLum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
   function applyTheme() {
-    var t = curTheme(), de = document.documentElement; de.classList.toggle('nav-homeleft', !!PREF.homeLeft); de.dataset.paper = PREF.paper === false ? 'off' : 'on'; de.dataset.skin = t.id; de.dataset.skintone = t.dark ? 'dark' : 'light'; de.style.colorScheme = t.dark ? 'dark' : 'light';
+    var t = curTheme(), de = document.documentElement; de.classList.toggle('nav-homeleft', !!PREF.homeLeft); de.dataset.paper = PREF.paper === false ? 'off' : 'on'; de.dataset.skin = t.id; de.dataset.skintone = t.dark ? 'dark' : 'light'; de.style.colorScheme = t.dark ? 'dark' : 'only light'; var mc = document.querySelector('meta[name=color-scheme]'); if (mc) mc.content = t.dark ? 'dark' : 'only light';   // 휴대폰 강제 다크 모드 방지 (theme.js와 같은 규칙)
     var mt = document.querySelector('meta[name="theme-color"]'); if (!mt) { mt = document.createElement('meta'); mt.name = 'theme-color'; document.head.appendChild(mt); } mt.content = getComputedStyle(de).getPropertyValue('--night').trim() || (t.dark ? '#11152a' : '#f3ede1');
     // 밝은 바탕에서는 기숙사·등급 글자색을 조금 진하게 (그림에 쓰는 색도 같이)
     [D.HOUSES, D.RARITY, D.FAM_RARITY].forEach(function (arr) { arr.forEach(function (x) { if (!x._c0) x._c0 = x.color; x.color = t.dark ? x._c0 : mixDark(x._c0, 0.38); }); });
@@ -5236,7 +5280,7 @@
       else if (k === 'jarCap') out.push('반딧불 정령 병 +' + v + '칸');
       else if (k === 'autosell') out.push('자동 판매 해금');
       else if (k === 'manaCap') out.push('마나 저장 한도 +' + Math.round(v / 360) / 10 + '시간분');
-      else if (k === 'enhBonus') out.push('강화 성공률 +' + Math.round(v * 1000) / 10 + '%p');
+      else if (k === 'enhBonus') out.push('강화 성공률 +' + Math.round(v * 1000) / 10 + '%');
       else if (k === 'rarity') out.push('등급 상승 +' + p1(v));
       else if (k === 'hpPct') out.push('생명력 +' + p1(v));
       else { var t = R.effText(o1(k, v)); if (t) out.push(t); }
@@ -5509,7 +5553,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102277;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102284;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

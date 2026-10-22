@@ -79,6 +79,26 @@ function isChatOp(pid) {
 }
 // 운영 로그: 누가 언제 무엇을 바꿨는지
 function oplog(actor, name, action, detail) { dbx.q.oplogAdd.run(Math.floor(Date.now() / 1000), actor, name || '', action, String(detail || '').slice(0, 300)); log(`[운영] ${name || actor} ${action} ${detail || ''}`); }
+// 학생 계정 기록 (운영실 「활동 기록」에서 확인). IP는 HMAC으로만 남겨 같은 접속지인지만 비교한다
+function devOf(req) {
+  const u = String((req && req.headers['user-agent']) || '');
+  const os = /iPhone|iPad|iPod/.test(u) ? 'iOS' : /Android/.test(u) ? 'Android' : /Windows/.test(u) ? 'Windows' : /Mac OS X/.test(u) ? 'Mac' : /Linux/.test(u) ? 'Linux' : '';
+  const br = /KAKAOTALK/i.test(u) ? '카카오톡' : /SamsungBrowser/.test(u) ? '삼성 인터넷' : /Whale/.test(u) ? '웨일' : /Edg\//.test(u) ? 'Edge' : /Firefox|FxiOS/.test(u) ? 'Firefox' : /Chrome|CriOS/.test(u) ? 'Chrome' : /Safari/.test(u) ? 'Safari' : u ? '기타' : '';
+  return ((/Mobi|Android|iPhone|iPad/.test(u) ? '모바일' : u ? 'PC' : '') + (os ? ' · ' + os : '') + (br ? ' · ' + br : '')).slice(0, 40);
+}
+function pevent(pid, kind, detail, req) {
+  if (!pid) return;
+  try { dbx.q.peAdd.run(Math.floor(Date.now() / 1000), pid, kind, String(detail || '').slice(0, 200), req ? sec.index('ip:' + clientIp(req)) : '', req ? devOf(req) : ''); } catch (e) { log('계정 기록 실패', e); }
+}
+// 접속 기록: 로그인 상태로 들어온 학생을 하루에 한 번, 같은 날이라도 접속지 · 기기가 바뀌면 다시 남긴다
+const visitSeen = new Map();   // pid → '날짜|접속지|기기'
+function visit(pid, req) {
+  const real = Math.floor(Date.now() / 1000), ip = sec.index('ip:' + clientIp(req)), dev = devOf(req), k = kstDay(real) + '|' + ip + '|' + dev;
+  if (visitSeen.get(pid) === k) return;
+  if (visitSeen.size > 50000) visitSeen.clear();
+  visitSeen.set(pid, k);
+  try { dbx.q.peAdd.run(real, pid, 'visit', '', ip, dev); } catch (e) { }
+}
 /* 새 버전 알림 · 점검: kv 'build' {build, minBuild}, kv 'maint' {on, start, until, msg}
    build가 화면의 빌드 번호보다 크면 「새 버전」 띠, minBuild보다 낮은 화면은 10초 뒤 저절로 새로고침.
    점검 중(on)에는 운영자(bypass)가 아닌 학생의 API를 503 + maint로 막는다. start만 있으면 예고 띠. */
@@ -108,6 +128,7 @@ function addNote(pid, kind, text, link) {
   try { dbx.q.noteInsert.run(pid, Math.floor(Date.now() / 1000), kind, sec.enc(String(text).slice(0, 300)), link ? JSON.stringify(link) : ''); chat.ping(pid, 'note', { n: Number(dbx.q.noteUnread.get(pid).n) }); } catch (e) { log('알림 저장 실패', e); }
 }
 setInterval(() => { try { dbx.q.notePrune.run(Math.floor(Date.now() / 1000) - 30 * 86400); } catch (e) { } }, 3600000).unref();
+setInterval(() => { try { dbx.q.pePrune.run(Math.floor(Date.now() / 1000) - 180 * 86400); } catch (e) { } }, 6 * 3600000).unref();   // 계정 기록 180일 보관
 const board = Board.create(dbx, sec, { isOp: (pid) => pid !== 'staff' && isChatOp(pid), isChief: (pid) => chiefIds.has(pid), badgeOf: (pid) => { if (pid === 'staff' || !isChatOp(pid)) return ''; const P = store.peek(pid), t = P ? R.titleName(P, P.title) : ((dbx.q.getProfile.get(pid) || {}).title || ''); return R.OP_TITLES[t] ? t : ''; }, sendMail: (...a) => sendMail(...a), note: (...a) => addNote(...a), log });
 const ExpRoom = require('./exproom.js');
 const exprooms = ExpRoom.create({ loadPlayer: (pid, now) => loadPlayer(pid, now), ctx: () => world.ctx(nowSec()), gameNow: () => nowSec(), markDirty: (pid) => store.markDirty(pid), partyOf, log,
@@ -216,12 +237,13 @@ function authed(req) {
   else if (req.url.startsWith('/api/chat/stream?')) key = useTicket(new URL(req.url, 'http://x').searchParams.get('k'));
   if (!key) return null;
   const c = sessionCache.get(key), now = Math.floor(Date.now() / 1000);
-  if (c && now - c.checked < 300) return c.pid;
+  if (c && now - c.checked < 300) { visit(c.pid, req); return c.pid; }
   const s = dbx.q.getSession.get(key);
   if (!s || s.expires < now) { sessionCache.delete(key); return null; }
   if (s.expires - now < (cfg.sessionDays - 1) * 86400) dbx.q.touchSession.run(now + cfg.sessionDays * 86400, key);
   sessionCache.set(key, { pid: s.pid, checked: now });
   if (sessionCache.size > 20000) sessionCache.clear();
+  visit(s.pid, req);
   return s.pid;
 }
 // 채팅 스트림용 1회용 입장권: 긴 로그인 토큰이 주소(접속 기록)에 남지 않도록 30초짜리 표를 따로 준다
@@ -405,6 +427,7 @@ routes['POST /api/register'] = async (req, res) => {
   store.put(P);
   if (opInv) { dbx.q.setRole.run('admin', id); adminIds.add(id); P.op = 1; oplog('admin', '관리자', 'role', `${name} → admin (운영자 초대코드)`); }
   const token = newSession(id);
+  pevent(id, 'join', code ? '초대코드 ' + code + (opInv ? ' (운영자)' : '') : '', req);
   log(`입학: ${name} (${house})${code ? ' 초대코드 ' + code : ''}${opInv ? ' · 운영자' : ''}`);
   world.addNews(P.name + ' 학생이 ' + (R.HOUSE[P.house] ? R.HOUSE[P.house].name : '아카데미') + '에 입학했습니다', now);
   headWelcome(P);
@@ -424,7 +447,7 @@ routes['POST /api/rename'] = async (req, res) => {
   const other = dbx.q.playerByKey.get(nameKey(name)); if (other && other.id !== pid) return fail(req, res, 409, '이미 사용 중인 이름입니다');
   try { dbx.q.renamePlayer.run(name, nameKey(name), pid); } catch (e) { return fail(req, res, 409, '이미 사용 중인 이름입니다'); }
   const old = P.name; P.name = name; P.nameAt = Math.floor(real); R.log(P, now, '이름을 ' + R.josa('「' + name + '」', '으로', '로') + ' 바꿨습니다', 'news');
-  store.markDirty(pid); board.forgetName(pid); log(`이름 변경: ${old} → ${name}`);
+  store.markDirty(pid); board.forgetName(pid); log(`이름 변경: ${old} → ${name}`); pevent(pid, 'rename', old + ' → ' + name, req);
   send(req, res, 200, Object.assign({ ok: true }, statePayload(P, now)));
 };
 // 아이디 찾기: 학생 이름 + 비밀번호가 맞으면 아이디를 알려 준다. 기록이 없는 예전 학생은 여기서 새 아이디를 정한다 (로그인과 같은 횟수 제한)
@@ -436,8 +459,9 @@ routes['POST /api/findid'] = async (req, res) => {
   if (!cfg.testMode && limited('findN:' + nk, 10 / 600, 10)) return fail(req, res, 429, '이 학생 이름으로 시도가 너무 많습니다. 10분 뒤 다시 시도');
   const row = nk ? dbx.q.playerByKey.get(nk) : null;
   if (!row) { await hashPass(pw); return fail(req, res, 401, '학생 이름이나 비밀번호가 맞지 않습니다'); }
-  if (!(await checkPass(pw, row.pass))) return fail(req, res, 401, '학생 이름이나 비밀번호가 맞지 않습니다');
+  if (!(await checkPass(pw, row.pass))) { pevent(row.id, 'loginfail', '아이디 찾기 · 비밀번호 불일치', req); return fail(req, res, 401, '학생 이름이나 비밀번호가 맞지 않습니다'); }
   if (row.banned) return fail(req, res, 403, '이용이 정지된 계정입니다');
+  pevent(row.id, 'findid', nl ? '새 아이디 정함' : '아이디 확인', req);
   const r = dbx.db.prepare('SELECT login_key, login_enc FROM players WHERE id = ?').get(row.id) || {};
   let login = ''; try { login = r.login_enc ? sec.dec(r.login_enc) : ''; } catch (e) { }
   if (!login && r.login_key && r.login_key === sec.index('login:' + nk)) login = row.name;   // 아이디 이전에 가입 → 이름이 아이디
@@ -461,12 +485,13 @@ routes['POST /api/login'] = async (req, res) => {
   if (!cfg.testMode && limited('loginN:' + lkey, 10 / 600, 10)) return fail(req, res, 429, '이 아이디로 로그인 시도가 너무 많습니다. 10분 뒤 다시 시도');
   const row = login ? dbx.q.playerByLogin.get(lkey) : null;
   if (!row) { await hashPass(pw); return fail(req, res, 401, '아이디나 비밀번호가 맞지 않습니다'); } // 없는 아이디도 같은 시간이 걸리게
-  if (!(await checkPass(pw, row.pass))) return fail(req, res, 401, '아이디나 비밀번호가 맞지 않습니다');
-  if (row.banned) return fail(req, res, 403, '이용이 정지된 계정입니다');
+  if (!(await checkPass(pw, row.pass))) { pevent(row.id, 'loginfail', '비밀번호 불일치', req); return fail(req, res, 401, '아이디나 비밀번호가 맞지 않습니다'); }
+  if (row.banned) { pevent(row.id, 'loginfail', '정지 상태', req); return fail(req, res, 403, '이용이 정지된 계정입니다'); }
   if (needsRehash(row.pass)) dbx.q.setPass.run(await hashPass(pw), row.id);
   let pwTemp = false;
   try { const le = dbx.db.prepare('SELECT login_enc, pw_temp FROM players WHERE id = ?').get(row.id); pwTemp = !!(le && le.pw_temp); if (le && !le.login_enc) dbx.db.prepare('UPDATE players SET login_enc = ? WHERE id = ?').run(sec.enc(LOGIN_RE.test(login.toLowerCase()) ? login.toLowerCase() : login.trim()), row.id); } catch (e) { }   // 예전 학생은 로그인할 때 아이디를 기록 (이름이 아이디인 학생은 이름 그대로)
   const token = newSession(row.id), now = nowSec();
+  pevent(row.id, 'login', pwTemp ? '임시 비밀번호' : '', req);
   const P = loadPlayer(row.id, now);
   send(req, res, 200, Object.assign({ token }, statePayload(P, now), pwTemp ? { pwTemp: true } : {}), { 'Set-Cookie': cookie(token, cfg.sessionDays * 86400) });
 };
@@ -483,6 +508,7 @@ routes['POST /api/password'] = async (req, res) => {
   const pw = String(b.password || ''); { const why = pwProblem(pw, P.name); if (why) return fail(req, res, 400, why); }
   dbx.q.setPass.run(await hashPass(pw), pid);
   try { dbx.db.prepare('UPDATE players SET pw_temp = 0 WHERE id = ?').run(pid); } catch (e) { }
+  pevent(pid, 'pw', '', req);
   send(req, res, 200, { ok: true });
 };
 routes['GET /api/state'] = (req, res) => {
@@ -1122,10 +1148,16 @@ function mkSearch(f, now) {
     : f.sort === 'new' ? 'm.id DESC' : f.sort === 'lvl' ? 'm.ilvl DESC, m.price ASC' : f.kind === 'mat' || f.kind === 'pot' || f.kind === 'tok' ? 'm.price / m.qty ' + dir : 'm.price ' + dir;
   const sql = `SELECT m.id, m.kind, m.data, m.name, m.slot, m.rarity, m.ilvl, m.qty, m.price, m.created, m.expires, m.seller, m.auc, m.start_price, m.bid, m.bids, m.bidder, COALESCE(p.name, m.seller_name) AS seller_name FROM market m LEFT JOIN players p ON p.id = m.seller WHERE ${where.join(' AND ')} ORDER BY ${order} LIMIT 60`;
   let st = mkQueries.get(sql); if (!st) { st = dbx.db.prepare(sql); mkQueries.set(sql, st); }
-  return st.all(...args);
+  if (f.sort !== 'pow' || !f.powP) return st.all(...args);
+  // 전투력 상승순: 찾는 학생의 지금 장비 대신 끼었을 때 전투력이 얼마나 오르는지 (장비만 · 넉넉히 꺼내 계산한 뒤 60개)
+  const P = f.powP, t = nowSec(), ctx = world.ctx(t), base = R.calc(P, ctx, t).power;
+  const rows = (mkQueries.get(sql + '#pow') || (mkQueries.set(sql + '#pow', dbx.db.prepare(sql.replace(/LIMIT 60$/, 'LIMIT 600'))), mkQueries.get(sql + '#pow'))).all(...args);
+  rows.forEach((r) => { r._dp = null; if (r.kind !== 'item') return; try { r._dp = Math.round(R.powerWith(P, JSON.parse(r.data), ctx, t) - base); } catch (e) { } });
+  return rows.sort((a, b) => (b._dp == null ? -1e18 : b._dp) - (a._dp == null ? -1e18 : a._dp) || a.price - b.price).slice(0, 60);
 }
 function mkOut(r, me) {
   const o = { id: r.id, kind: r.kind, name: r.name, slot: r.slot, r: r.rarity, ilvl: r.ilvl, qty: r.qty, price: r.price, created: r.created, expires: r.expires, seller: r.seller_name, npc: String(r.seller).startsWith('npc:'), mine: r.seller === me, status: r.status };
+  if (r._dp != null) o.dp = r._dp;   // 전투력 상승순: 장착 시 전투력 변화
   if (r.auc) { o.auc = 1; o.start = r.start_price; o.bid = r.bid; o.bids = r.bids; o.top = !!me && r.bidder === me; o.min = mkAucMin(r); o.won = r.status === 'sold' && r.buyer === me; }   // 입찰한 학생 이름은 보이지 않는다
   if (r.kind === 'item') { try { const it = JSON.parse(r.data); delete it.lock; delete it.u; o.item = it; } catch (e) { } } else if (r.kind === 'badge') { try { const bd = JSON.parse(r.data); delete bd.u; o.badge = bd; o.gem = bd.gem; o.lv = bd.lv; } catch (e) { } } else if (r.kind === 'pot') o.pot = r.data; else if (r.kind === 'tok') o.tok = r.data; else o.mat = r.data;
   return o;
@@ -1144,6 +1176,7 @@ routes['GET /api/market'] = (req, res) => {
   const u = new URL(req.url, 'http://x'), g = (k) => u.searchParams.get(k) || '', now = Date.now() / 1000;
   const f = { kind: g('kind'), slot: g('slot'), r: g('r') === '' ? -1 : Number(g('r')), mat: g('mat'), pot: g('pot'), tok: g('tok'), gem: g('gem'), q: g('q').slice(0, 20), aff: g('aff').split(',').filter((x, i, a) => R.AFF[x] && a.indexOf(x) === i).slice(0, 3), sort: g('sort'), auc: g('auc') === '1', nobid: g('nobid') === '1', wear: 0 };
   if (g('wear') === '1') { const P = store.get(me); f.wear = Math.max(1, (P && P.lvl) || 1); }   // 레벨은 서버가 아는 값으로
+  if (f.sort === 'pow') { if (limited('mkpow:' + me, 0.5, 4)) return fail(req, res, 429, '잠시 후 다시 시도'); f.powP = loadPlayer(me, nowSec()); }   // 전투력 상승순은 계산이 많아 조금 더 아껴 쓴다
   send(req, res, 200, { list: mkSearch(f, now).map((r) => mkOut(r, me)), mine: dbx.q.mkMine.all(me, Math.floor(now) - 3 * 86400).map((r) => mkOut(Object.assign({ seller_name: '' }, r, { seller: me }), me)), myBids: dbx.q.mkMyBids.all(me).map((r) => mkOut(r, me)),
     fee: MK.FEE, days: MK.DAYS, maxOpen: MK.MAX_OPEN, grade: MK.GRADE, auc: { max: MK_AUC.MAX, hours: MK_AUC.HOURS, up: MK_AUC.MIN_UP, buyoutX: MK_AUC.BUYOUT_X } });
 };
@@ -1350,7 +1383,7 @@ function towerTeam(party, me, now) {
   return { pa, ms, ps };
 }
 function towerView(me, now) {
-  const party = partyOf.get(me); if (!party) return { party: null };
+  const party = partyOf.get(me); if (!party) { const Q = store.get(me); return { party: null, pend: twPendView(Q) }; }
   const { pa, ms, ps } = towerTeam(party, me, now), runs = towerRuns(party), live = towerLive(runs), P = ps.find((Q) => Q.id === me);
   // 실전이 흐르는 동안은 그 실전 전의 기록을 보여 준다 (결과가 대본보다 먼저 새지 않게)
   const prev = live && live.kind === 'real' ? live.prev || {} : {};
@@ -1359,6 +1392,7 @@ function towerView(me, now) {
   return { party, name: pa ? pa.name : '', leader: pa ? pa.leader : '', week: R.weekId(now), weekEnd: R.weekStart(R.weekId(now) + 1), now: Date.now() / 1000,
     start: R.twStart(ps.map(best)), used: used.map((Q) => Q.name), myUsed: !!P && R.twUsed(P, now), myBest: P ? best(P) : 0, myPos: P ? R.twPos(P) : 'van', posOk: P ? R.expPositions(P) : ['van'],
     members: R.twMeta(ms).map((m) => { const Q = ps.find((x) => x.id === m.id); return Object.assign(m, { me: m.id === me, best: Q ? best(Q) : null, used: !!Q && R.twUsed(Q, now), ready: m.npc || (!!lob && lob.ready.has(m.id)) }); }),
+    pend: twPendView(P),
     lobby: lob ? { mode: lob.mode, by: lob.byName, at: lob.at, notReady: ps.filter((Q) => !lob.ready.has(Q.id)).map((Q) => Q.name) } : null, readyTtl: TW_READY_TTL, count: TW_COUNT,
     runs: runs.slice().reverse() };
 }
@@ -1375,6 +1409,19 @@ routes['GET /api/tower'] = (req, res) => {
   send(req, res, 200, v);
 };
 // mode: real(실전) · party(파티 연습) · solo(혼자 연습) · stop(파티 연습 중단) · pos(내 포지션)
+// 끝난 실전의 대기 순위를 정식 기록으로 (실전이 끝날 때 · 1분마다 · 서버를 켤 때)
+function twRankSettle() { try { if (dbx.q.twRankSettle.run(Math.floor(Date.now() / 1000)).changes) world.invalidate(); } catch (e) { log('별의 탑 순위 정리 실패', e); } }
+setInterval(twRankSettle, 60000).unref(); setTimeout(twRankSettle, 1000).unref();
+// 별의 탑 실전 보상 맡겨 두기: P.twPend = { id, end(실제 시각), from, to, pname }. 끝난 뒤 「보상 받기」로 우편 발송
+function twPendMail(Q) {
+  const p = Q.twPend; if (!p) return; delete Q.twPend;
+  sendMail(Q.id, '별의 탑', '별의 탑 ' + p.to + '층 기록', '파티 「' + p.pname + '」의 실전에서 별의 탑 ' + p.to + '층까지 올랐습니다.\n이번 주에 처음 넘은 ' + p.from + '~' + p.to + '층의 보상입니다.', R.twRewardSum(p.from, p.to), Math.floor(Date.now() / 1000) + 7 * 86400, true);
+  store.markDirty(Q.id);
+}
+// 화면에 보이는 보상 대기: 끝나기 전에는 층 · 보상을 숨긴다
+function twPendView(Q) { const p = Q && Q.twPend; if (!p) return null; return Date.now() / 1000 >= p.end - 1 ? { id: p.id, end: p.end, from: p.from, to: p.to, reward: R.rewardText(R.twRewardSum(p.from, p.to)) } : { id: p.id, end: p.end }; }
+// 받지 않은 채 다음 실전을 시작하면, 끝난 지난 보상은 먼저 보낸다
+function twPendFlush(Q) { if (Q.twPend && Date.now() / 1000 >= Q.twPend.end) twPendMail(Q); }
 // 출발 대기: 파티 → { mode(real · party), by, byName, ready: Map(학생 → 누른 실제 시각), at(출발 예정 실제 시각), timer }
 // 누군가 「실전 준비」 · 「파티 연습 준비」를 누르면 출발 종류가 정해지고, 사람 파티원(NPC 제외)이 모두 「준비 완료」하면 15초 뒤 자동으로 출발한다.
 // 그 사이 한 명이라도 준비를 풀면 출발이 취소되고, 다시 모두 준비하면 15초부터 다시 센다. 준비는 15분이 지나면 풀린다.
@@ -1420,16 +1467,17 @@ function twStartRun(party, mode, starterId) {
     const after = Math.round(run.d * 1000), later = (fn) => setTimeout(fn, after).unref(), pname = pa ? pa.name : '';
     if (mode === 'real') {
       run.prev = {};
-      if (run.cleared > 0) dbx.q.twRankPut.run(R.weekId(now), party, pname, JSON.stringify(run.ms.map((m) => ({ name: m.name, house: m.house, npc: m.npc || undefined }))), run.cleared, Math.floor(Date.now() / 1000));
+      // 파티 순위는 실전이 끝난 뒤에 (대기 기록으로 넣고, 끝나는 시각에 정식 기록으로)
+      if (run.cleared > 0) dbx.q.twRankPend.run(R.weekId(now), party, run.cleared, Math.floor(run.t0 + run.d), pname, JSON.stringify(run.ms.map((m) => ({ name: m.name, house: m.house, npc: m.npc || undefined }))));
       ps.forEach((Q) => {
         R.twUse(Q, now); const old = R.twRecord(Q, now, run.cleared); run.prev[Q.id] = old;
-        if (run.cleared > old) {
-          const rw = R.twRewardSum(old + 1, run.cleared), exp = Math.floor(Date.now() / 1000) + 7 * 86400;
-          sendMail(Q.id, '별의 탑', '별의 탑 ' + run.cleared + '층 기록', '파티 「' + pname + '」의 실전에서 별의 탑 ' + run.cleared + '층까지 올랐습니다.\n이번 주에 처음 넘은 ' + (old + 1) + '~' + run.cleared + '층의 보상입니다.', rw, exp, true, after);
-        }
+        // 보상은 맡겨 두었다가 실전이 끝난 뒤 「보상 받기」를 누르면 우편으로 보낸다 (진행 중에 결과가 새지 않게, 원정 귀환처럼)
+        twPendFlush(Q);
+        if (run.cleared > old) Q.twPend = { id: run.id, end: run.t0 + run.d, from: old + 1, to: run.cleared, pname };
         store.markDirty(Q.id);
       });
       later(() => {
+        twRankSettle();
         chat.system('party', '✦ 별의 탑 실전 종료 — ' + run.start + '층에서 시작해 ' + (run.cleared >= run.start ? run.cleared + '층까지 올랐습니다.' : '첫 층을 넘지 못했습니다.') + ' 각자의 이번 주 기록에 반영되었습니다.', Date.now() / 1000, party);
         ps.forEach((Q) => { const X = store.get(Q.id); if (X) { R.log(X, nowSec(), '별의 탑 실전: ' + run.cleared + '층까지 기록', 'good'); store.markDirty(Q.id); } });
       });
@@ -1446,8 +1494,14 @@ routes['POST /api/tower'] = async (req, res) => {
   if (store.isBanned(me)) return fail(req, res, 403, '이용이 정지된 계정입니다');
   if (limited('twp:' + me, 0.5, 4)) return fail(req, res, 429, '잠시 후 다시 시도');
   const b = await readJson(req, 256), mode = String(b.mode || '');
-  const party = partyOf.get(me); if (!party) return fail(req, res, 400, '파티에 들어가 있어야 별의 탑에 오를 수 있습니다');
   const now = nowSec(), P = loadPlayer(me, now); if (!P) return fail(req, res, 401, '학생 정보를 찾을 수 없습니다');
+  if (mode === 'claim') {   // 실전이 끝난 뒤 보상 받기 (파티를 나갔어도 받을 수 있게 아래 파티 확인보다 먼저)
+    const p = P.twPend; if (!p) return fail(req, res, 400, '받을 별의 탑 보상이 없습니다');
+    if (Date.now() / 1000 < p.end - 1) return fail(req, res, 400, '실전이 아직 진행 중입니다. 끝난 뒤에 받을 수 있습니다');
+    const to = p.to; twPendMail(P);
+    return send(req, res, 200, Object.assign(towerView(me, now), { claimed: to, pend: null }));
+  }
+  const party = partyOf.get(me); if (!party) return fail(req, res, 400, '파티에 들어가 있어야 별의 탑에 오를 수 있습니다');
   if (mode === 'pos') {
     const pos = String(b.pos || ''); if (!R.EXP_POS[pos]) return fail(req, res, 400, '포지션 선택 필요');
     if (R.expPositions(P).indexOf(pos) < 0) return fail(req, res, 400, R.EXP_POS[pos].name + ' 포지션은 ' + R.EXP_POS[pos].desc.split(' · ')[0]);
@@ -1761,6 +1815,7 @@ routes['POST /api/mail'] = async (req, res) => {
     if (!dbx.q.mailClaim.run(r.id, me).changes) return;   // 이미 받은 우편 (동시에 두 번 눌러도 한 번만)
     const o = R.grantMail(P, world.ctx(now), now, rw);
     R.log(P, now, '우편 「' + sec.dec(r.title) + '」 보상을 받았습니다' + (o.text ? ': ' + o.text : ''), 'news');
+    pevent(me, 'mail', '#' + r.id + ' 「' + sec.dec(r.title) + '」 (' + (r.sender || '') + ')' + (o.text ? ' ' + o.text : ''), req);
     got.push({ id: r.id, text: o.text, items: o.items });
   });
   if (got.length) store.markDirty(me);
@@ -2205,7 +2260,7 @@ routes['POST /api/admin/grant'] = async (req, res) => {
   if (!row) return fail(req, res, 404, '없는 학생입니다');
   const P = store.get(row.id), shard = Math.max(0, Math.min(100000, Number(b.shard) || 0));
   P.res.shard += shard; R.log(P, nowSec(), '아카데미에서 별조각 ' + shard + '개를 보냈습니다' + (b.reason ? ' (' + String(b.reason).slice(0, 60) + ')' : ''), 'news');
-  store.markDirty(row.id); send(req, res, 200, { ok: true, shard: P.res.shard });
+  store.markDirty(row.id); oplog('admin', '관리자', 'grant', row.name + ' · 별조각 ' + shard + (b.reason ? ' · ' + String(b.reason).slice(0, 60) : '')); pevent(row.id, 'op', '별조각 ' + shard + '개 지급'); send(req, res, 200, { ok: true, shard: P.res.shard });
 };
 // 운영실: 학생 카드 (공개 범위 설정과 관계없이 · 두상은 데이터 URL로)
 routes['GET /api/admin/pcard'] = (req, res) => {
@@ -2234,7 +2289,7 @@ routes['POST /api/admin/reclaim'] = async (req, res) => {
   if (!Object.keys(took).length) return fail(req, res, 400, '회수할 양 입력 필요');
   const txt = RECLAIM.filter(([k]) => took[k]).map(([k, n]) => n + ' ' + R.fmt(took[k])).join(' · '), why = String(b.reason || '').trim().slice(0, 80);
   if (txt) R.log(P, nowSec(), '운영진이 ' + R.josa(txt, '을', '를') + ' 회수했습니다' + (why ? ' (' + why + ')' : ''), 'news');
-  store.markDirty(row.id); oplog('admin', '관리자', 'reclaim', row.name + ' · ' + (txt || '없음') + (why ? ' · ' + why : ''));
+  store.markDirty(row.id); oplog('admin', '관리자', 'reclaim', row.name + ' · ' + (txt || '없음') + (why ? ' · ' + why : '')); pevent(row.id, 'op', '자원 회수 · ' + (txt || '없음') + (why ? ' · ' + why : ''));
   send(req, res, 200, { ok: true, name: row.name, took, short, res: RECLAIM.reduce((o, [k]) => { o[k] = Math.floor(P.res[k] || 0); return o; }, {}) });
 };
 routes['POST /api/admin/ops'] = async (req, res) => {
@@ -2315,6 +2370,8 @@ function resetCharacter(oldId) {
   for (const [k, v] of sessionCache) if (v.pid === oldId) sessionCache.delete(k);
   store.drop(oldId); chat.kick(oldId);
   oplog('admin', '관리자', 'reset', row.name + ' 캐릭터 초기화');
+  try { dbx.q.peMove.run(newId, oldId); } catch (e) { }   // 계정 기록은 새 캐릭터로 이어진다
+  pevent(newId, 'op', '캐릭터 초기화 (이전 이름 ' + row.name + ')');
   return { name: row.name, id: newId };
 }
 // 운영실: 학생 이름 ↔ 아이디 확인 (크로스체크용). 아이디는 암호화해 두었다가 여기서만 풀어 보여 준다
@@ -2333,6 +2390,39 @@ routes['POST /api/admin/lookup'] = async (req, res) => {
   oplog('admin', '관리자', 'lookup', (row.name || '') + ' 아이디 확인');
   send(req, res, 200, { name: row.name, login: login || null, match, rank: row.role === 'chief' ? '학생회장' : row.role === 'admin' ? '학생회' : '', banned: !!row.banned });
 };
+// 운영실: 학생 계정 기록 — 계정 상태 · 보유 자원 · 접속(기기 · 접속지) · 같은 접속지 학생 · 거래 상대 · 판매 · 신고 · 운영 조치 · 성장 추이
+const PE_NAME = { join: '가입', login: '로그인', loginfail: '로그인 실패', visit: '접속', findid: '아이디 찾기', pw: '비밀번호 변경', rename: '이름 변경', mail: '우편 수령', op: '운영 조치' };
+function acctRecord(pid, P) {
+  const real = Math.floor(Date.now() / 1000), ipTag = (h) => h ? h.slice(0, 6) : '';
+  const m = dbx.db.prepare('SELECT created, last_seen, banned, muted_until, role, invite, guest, pw_temp FROM players WHERE id = ?').get(pid) || {};
+  const tg = guildOf.get(pid), tgr = tg && dbx.q.gGet.get(tg);
+  const ev = dbx.q.peList.all(pid, 120), cnt = {}; dbx.q.peCount.all(pid).forEach((r) => { cnt[r.kind] = { n: Number(r.n), last: r.last }; });
+  const ips = new Set(ev.filter((e) => e.ip).map((e) => e.ip)), devs = {}; ev.forEach((e) => { if (e.dev) devs[e.dev] = (devs[e.dev] || 0) + 1; });
+  const since = real - 30 * 86400, same = dbx.q.peSameIp.all(since, pid, pid, since).map((r) => ({ name: r.name, banned: !!r.banned, deleted: !!r.deleted, ips: Number(r.ips), last: r.last }));
+  // 거래소 거래 상대 (산 것 · 판 것 모두, 최근 500건). 같은 접속지 학생과의 거래는 화면에서 강조한다
+  const trades = dbx.db.prepare(`SELECT seller, buyer, kind, name, qty, price, done_at FROM market WHERE status = 'sold' AND (seller = ? OR buyer = ?) ORDER BY done_at DESC LIMIT 500`).all(pid, pid);
+  const pmap = new Map(); trades.forEach((r) => { const other = r.seller === pid ? r.buyer : r.seller; if (!other) return; const o = pmap.get(other) || { buy: 0, sell: 0, paid: 0, got: 0, last: 0 }; if (r.seller === pid) { o.sell++; o.got += r.price; } else { o.buy++; o.paid += r.price; } o.last = Math.max(o.last, r.done_at); pmap.set(other, o); });
+  const nameOf = (id) => { const r = dbx.q.getProfile.get(id); return r ? r.name : '(없는 학생)'; }, sameSet = new Set(same.map((x) => x.name));
+  const partners = [...pmap.entries()].map(([id, o]) => Object.assign({ name: nameOf(id) }, o)).map((o) => Object.assign(o, { same: sameSet.has(o.name) })).sort((a, b) => (b.paid + b.got) - (a.paid + a.got)).slice(0, 15);
+  const sold = trades.filter((r) => r.seller === pid).slice(0, 40).map((r) => ({ t: r.done_at, name: r.name, kind: r.kind, qty: r.qty, price: r.price, to: r.buyer ? nameOf(r.buyer) : '' }));
+  // 신고: 이 학생의 메시지가 받은 신고 · 이 학생이 한 신고
+  const against = dbx.db.prepare(`SELECT r.t, r.reason, r.resolved, c.text, c.ch, p.name AS reporter FROM reports r JOIN chat c ON c.id = r.msg_id LEFT JOIN players p ON p.id = r.reporter WHERE c.pid = ? ORDER BY r.id DESC LIMIT 10`).all(pid).map((r) => ({ t: r.t, reason: sec.dec(r.reason), text: String(sec.dec(r.text) || '').slice(0, 120), resolved: !!r.resolved, by: r.reporter || '' }));
+  const nAgainst = Number((dbx.db.prepare(`SELECT COUNT(*) AS n FROM reports r JOIN chat c ON c.id = r.msg_id WHERE c.pid = ?`).get(pid) || {}).n || 0), nBy = Number((dbx.db.prepare(`SELECT COUNT(*) AS n FROM reports WHERE reporter = ?`).get(pid) || {}).n || 0);
+  // 운영 조치 (운영 로그에서 지금 이름 · 예전 이름으로 시작하는 줄 · 카드 · 기록 열람은 빼고)
+  const names = [P.name].concat(ev.filter((e) => e.kind === 'rename').map((e) => String(e.detail).split(' → ')[0]), ev.map((e) => (/이전 이름 (.+)\)$/.exec(e.detail) || [])[1])).filter((n, i, a) => n && n !== '새 학생' && a.indexOf(n) === i);
+  const ops = []; names.forEach((n) => dbx.db.prepare(`SELECT t, action, detail FROM oplog WHERE detail LIKE ? ESCAPE '\\' AND action NOT IN ('pcard', 'plog') ORDER BY id DESC LIMIT 30`).all(n.replace(/[\\%_]/g, '\\$&') + ' %').forEach((r) => { if (!ops.some((o) => o.t === r.t && o.detail === r.detail)) ops.push(r); }));
+  ops.sort((a, b) => b.t - a.t);
+  // 성장 추이: 12시간 기록 최근 14일 (갑자기 크게 늘어난 구간 확인용)
+  const trend = dbx.db.prepare(`SELECT day, data FROM growth WHERE pid = ? ORDER BY (CASE WHEN day < 1000000000 THEN day * 100 ELSE day END) DESC LIMIT 28`).all(pid).map((r) => { let o = {}; try { o = JSON.parse(r.data); } catch (e) { } return { slot: growthSlotText(r.day), lvl: o.lvl, power: o.power, grade: o.grade, stage: o.stage, gold: o.goldTotal, kills: o.kills, exp: o.expJobs, epic: o.epicFound, legend: o.legendFound, enh: o.maxEnh, gearLv: o.gearLv }; });
+  const res = {}; Object.keys(P.res || {}).forEach((k) => { if (typeof P.res[k] === 'number') res[k] = Math.floor(P.res[k]); });
+  return {
+    created: m.created, seen: m.last_seen, online: isOnline(pid), banned: !!m.banned, muted: m.muted_until > real ? m.muted_until : 0, guest: !!m.guest, pwTemp: !!m.pw_temp,
+    role: m.role === 'chief' ? '학생회장' : m.role === 'admin' ? '학생회' : '', invite: m.invite || '', guild: tgr ? tgr.name : '', nameAt: P.nameAt || 0,
+    res, mats: Object.keys(P.mats || {}).reduce((a, k) => a + (Number(P.mats[k]) || 0), 0), inv: (P.inv || []).length,
+    cnt, ipN: ips.size, devs, events: ev.map((e) => ({ t: e.t, kind: e.kind, k: PE_NAME[e.kind] || e.kind, detail: e.detail, ip: ipTag(e.ip), dev: e.dev })),
+    same, partners, sold, reports: { against, nAgainst, nBy }, ops: ops.slice(0, 40), trend
+  };
+}
 // 운영실: 학생 활동 기록 (게임 안 기록 최근 50줄 · 같은 일이 이어지면 횟수로 묶임) 과 영웅 · 전설 장비 보유 현황
 routes['POST /api/admin/plog'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
@@ -2366,7 +2456,8 @@ routes['POST /api/admin/plog'] = async (req, res) => {
   try { dbx.db.prepare(`SELECT item, price, ends FROM auction WHERE bidder = ? AND done = 1 ORDER BY ends DESC LIMIT 20`).all(row.id).forEach((r) => { try { const it = JSON.parse(r.item); bought.push(itemOut(it, { t: r.ends, price: r.price, from: '떠돌이 상인', have: null })); } catch (e) { } }); } catch (e) { }
   bought.sort((x, y) => y.t - x.t);
   const auto = P.rs && P.rs.sorter ? { on: P.autoSell >= 0, upto: P.autoSell >= 0 ? RN[P.autoSell] + ' 이하' : '꺼짐', mode: P.autoDis ? '분해' : '판매' } : null;
-  send(req, res, 200, { name: row.name, card, dlog, auto, bought, log: (P.log || []).slice(0, 50).map((l) => ({ t: l.t, m: l.m, k: l.k, n: l.n || 1 })), high, st: { expJobs: P.st.expJobs || 0, epicFound: P.st.epicFound || 0, legendFound: P.st.legendFound || 0 } });
+  let acct = null; try { acct = acctRecord(row.id, P); } catch (e) { log('운영실 계정 기록 실패', e); }
+  send(req, res, 200, { name: row.name, acct, card, dlog, auto, bought, log: (P.log || []).slice(0, 50).map((l) => ({ t: l.t, m: l.m, k: l.k, n: l.n || 1 })), glog: (P.glog || []).slice(0, 100), high, st: { expJobs: P.st.expJobs || 0, epicFound: P.st.epicFound || 0, legendFound: P.st.legendFound || 0 } });
 };
 // 운영실: 비밀번호를 잃어버린 학생에게 임시 비밀번호를 발급한다. 모든 기기에서 로그아웃되고, 로그인하면 비밀번호를 바꾸라고 안내한다
 routes['POST /api/admin/resetpw'] = async (req, res) => {
@@ -2381,7 +2472,7 @@ routes['POST /api/admin/resetpw'] = async (req, res) => {
   for (const [k, v] of sessionCache) if (v.pid === row.id) sessionCache.delete(k);
   chat.kick(row.id);
   let login = ''; try { const r = dbx.db.prepare('SELECT login_enc FROM players WHERE id = ?').get(row.id); login = r && r.login_enc ? sec.dec(r.login_enc) : ''; } catch (e) { }
-  oplog('admin', '관리자', 'resetpw', row.name + ' 임시 비밀번호 발급');
+  oplog('admin', '관리자', 'resetpw', row.name + ' 임시 비밀번호 발급'); pevent(row.id, 'op', '임시 비밀번호 발급');
   send(req, res, 200, { name: row.name, login: login || null, temp });
 };
 // 운영실: 아이디를 잃어버린 학생에게 새 아이디를 정해 준다 (비밀번호는 그대로 → 새 아이디 + 원래 비밀번호로 로그인)
@@ -2395,7 +2486,7 @@ routes['POST /api/admin/setlogin'] = async (req, res) => {
   if (other && other.id !== row.id) return fail(req, res, 409, '이미 사용 중인 아이디입니다');
   dbx.q.setLoginKey.run(lkey, row.id);
   try { dbx.db.prepare('UPDATE players SET login_enc = ? WHERE id = ?').run(sec.enc(login), row.id); } catch (e) { }
-  oplog('admin', '관리자', 'setlogin', row.name + ' 아이디 새로 정함');
+  oplog('admin', '관리자', 'setlogin', row.name + ' 아이디 새로 정함'); pevent(row.id, 'op', '아이디 새로 정함');
   send(req, res, 200, { name: row.name, login });
 };
 routes['POST /api/admin/reset'] = async (req, res) => {
@@ -2469,7 +2560,7 @@ routes['POST /api/recreate'] = async (req, res) => {
   try { dbx.db.prepare('UPDATE players SET name = ?, name_key = ?, house = ?, created = ?, state = ? WHERE id = ?').run(name, nameKey(name), house, Math.floor(now), JSON.stringify(P), pid); }
   catch (e) { return fail(req, res, 409, '이미 사용 중인 이름입니다'); }
   store.drop(pid); store.put(P); store.markDirty(pid);
-  log(`다시 입학: ${name} (${house})`);
+  log(`다시 입학: ${name} (${house})`); pevent(pid, 'rename', (P0.name || '') + ' → ' + name + ' (다시 입학)', req);
   world.addNews(P.name + ' 학생이 ' + (R.HOUSE[P.house] ? R.HOUSE[P.house].name : '아카데미') + '에 입학했습니다', now);
   headWelcome(P);
   send(req, res, 200, statePayload(P, now));
@@ -2479,6 +2570,8 @@ routes['POST /api/admin/ban'] = async (req, res) => {
   const b = await readJson(req, 4096), key = nameKey(String(b.name || '')), row = dbx.q.playerByKey.get(key);
   if (!row) return fail(req, res, 404, '없는 학생입니다');
   dbx.q.setBan.run(b.ban === false ? 0 : 1, key); dbx.q.delSessionsFor.run(row.id); sessionCache.clear(); store.flushAll(); store.drop(row.id); if (b.ban !== false) chat.kick(row.id);
+  const why = String(b.reason || '').trim().slice(0, 80), what = (b.ban === false ? '이용 정지 해제' : '이용 정지') + (why ? ' · ' + why : '');
+  oplog('admin', '관리자', b.ban === false ? 'unban' : 'ban', row.name + ' ' + what); pevent(row.id, 'op', what);
   send(req, res, 200, { ok: true });
 };
 routes['POST /api/admin/invites'] = async (req, res) => {
@@ -2510,6 +2603,8 @@ routes['POST /api/admin/mute'] = async (req, res) => {
   const minutes = Math.max(0, Math.min(525600, Number(b.minutes) || 0));
   dbx.q.setMute.run(minutes ? Math.floor(Date.now() / 1000) + minutes * 60 : 0, row.id);
   if (b.purge) { chat.removeBy(row.id); board.deleteBy(row.id); exprooms.forget(row.id); dbx.q.noteDelBy.run(row.id); }
+  const why = String(b.reason || '').trim().slice(0, 80), what = (minutes ? '채팅 금지 ' + (minutes >= 1440 ? Math.round(minutes / 1440 * 10) / 10 + '일' : minutes + '분') : '채팅 금지 해제') + (b.purge ? ' · 작성 글 삭제' : '') + (why ? ' · ' + why : '');
+  oplog('admin', '관리자', 'mute', ((dbx.q.playerMeta.get(row.id) || {}).name || '') + ' ' + what); pevent(row.id, 'op', what);
   send(req, res, 200, { ok: true });
 };
 routes['POST /api/admin/chat/delete'] = async (req, res) => {

@@ -215,7 +215,7 @@
   R.ritualGoal = function (active) { return Math.max(5, Math.ceil((active || 0) * 0.35)); };
   R.ritualCost = function (P, W, now) { return Math.floor(calc(P, W, now).mana * 1800); };   // 마나 30분 분
   // 효과 묶음 → 「경험치 +50%, 수업 효율 +100%」 (버프 · 날씨 설명용)
-  var EFF_NAME = { xpPct: '경험치', goldPct: CUR, knowPct: '지식', lectureSpd: '수업 효율', manaPct: '마나 재생', manaCap: '마나 저장', hpPct: '생명력', atkPct: '공격력', defPct: '방어력', physPct: '물리 공격력', matkPct: '주문 공격력', spellPct: '주문 위력', skillPct: '기술 위력', dropPct: '전리품', dispPct: '파견 보상', hatchSpd: '부화 속도', brewSpd: '조제 속도', enhBonus: '강화 성공률', bossDmg: '보스 피해', critC: '치명타 확률', cdr: '재사용 대기', leech: '흡혈', critD: '치명타 피해', aps: '공격 속도', rarity: '장비 등급 상승', carePct: '치유 · 보호막 위력', supRed: '지원 시 파티가 받는 피해 감소', supAtk: '지원 시 파티 공격력' };
+  var EFF_NAME = { xpPct: '경험치', goldPct: CUR, knowPct: '지식', lectureSpd: '수업 효율', manaPct: '마나 재생', manaCap: '마나 저장', hpPct: '생명력', atkPct: '공격력', defPct: '방어력', physPct: '물리 공격력', matkPct: '주문 공격력', spellPct: '주문 위력', skillPct: '기술 위력', dropPct: '전리품', dispPct: '파견 보상', hatchSpd: '부화 속도', brewSpd: '조제 속도', enhBonus: '강화 성공률', bossDmg: '보스 피해', critC: '치명타 확률', cdr: '재사용 대기', leech: '흡혈', offlineEff: '꿈길 보상', rarity: '등급 상승', aps: '공격 속도', critD: '치명타 피해', carePct: '치유 · 보호막 위력', supRed: '지원 시 파티가 받는 피해 감소', supAtk: '지원 시 파티 공격력' };
   R.effText = function (eff) {
     var out = []; for (var k in eff || {}) { var v = eff[k]; if (!v || !EFF_NAME[k]) { if (k === 'examBonus' && v) out.push('시험 +' + v + '점'); continue; } out.push(EFF_NAME[k] + ' ' + (v > 0 ? '+' : '−') + (k === 'manaCap' ? Math.round(Math.abs(v) / 3600 * 10) / 10 + '시간' : Math.round(Math.abs(v) * 1000) / 10 + '%')); }
     return out.join(', ');
@@ -856,7 +856,7 @@
     // 장비: 떠날 때 정해 둔 전리품(j.loot)이 있으면 그것을 (취소하면 그때까지 주운 것의 일부만)
     if (j.loot) {
       var got = j.loot.filter(function (x) { return !canceled || x.at <= t; }); if (canceled) got = got.slice(0, Math.floor(got.length * keep));
-      got.forEach(function (x) { var res2 = gainItem(P, x.it, t); out.items.push({ name: x.it.name, r: x.it.r, res: res2 }); });
+      got.forEach(function (x) { var res2 = gainItem(P, x.it, t, '원정 ' + j.s + '단계', j.rarity); out.items.push({ name: x.it.name, r: x.it.r, res: res2 }); });
       var rest = Math.max(0, (j.nItems || 0) - j.loot.length); if (canceled) rest = Math.floor(rest * frac * keep);
       if (rest) { var ex2 = rest * R.sellPrice({ ilvl: j.s, r: 0, enh: 0 }); addGold(P, ex2); out.gold += Math.floor(ex2); out.sold = rest; }
       if (!canceled) { P.st.expJobs++; nightJob(P, t); }
@@ -867,7 +867,7 @@
     var made = Math.min(n, 12);
     for (var i = 0; i < made; i++) {
       var it = makeItem(P, pick(P, D.SLOTS).id, j.s, rollRarity(P, j.rarity));
-      var res = gainItem(P, it, t); out.items.push({ name: it.name, r: it.r, res: res });
+      var res = gainItem(P, it, t, '원정 ' + j.s + '단계', j.rarity); out.items.push({ name: it.name, r: it.r, res: res });
     }
     if (n > made) { var extra = (n - made) * R.sellPrice({ ilvl: j.s, r: 0, enh: 0 }); addGold(P, extra); out.gold += Math.floor(extra); out.sold = n - made; }
     if (!canceled) { P.st.expJobs++; nightJob(P, t); }
@@ -989,7 +989,9 @@
   }
 
   /* ───────── 장비 획득 · 관리 ───────── */
-  function gainItem(P, it, t) {
+  // src: 얻은 곳 (운영실 영웅 · 전설 획득 기록용), b: 그때 적용된 등급 상승
+  function gainItem(P, it, t, src, b) {
+    if (it.r >= 3) { var G = P.glog || (P.glog = []); G.unshift({ t: t, n: it.name, r: it.r, lv: it.ilvl, src: src || '', b: b == null ? null : Math.round(b * 1000) / 1000 }); if (G.length > 100) G.length = 100; }
     if (it.r === 3) P.st.epicFound++;
     if (it.r === 4) { P.st.legendFound++; log(P, t, '전설 장비 획득: ' + it.name + '!', 'legend'); }
     else if (it.r === 3) log(P, t, '영웅 장비 획득: ' + it.name, 'epic');
@@ -1329,8 +1331,8 @@
     if (rw.shard) P.res.shard += rw.shard; if (rw.gold) addGold(P, rw.gold); if (rw.stone) P.res.stone += rw.stone;
     if (rw.mana) addMana(P, rw.mana); if (rw.know) P.res.know += rw.know; if (rw.egg) P.fam.eggs += rw.egg; if (rw.ticket) P.wb.extra = (P.wb.extra || 0) + rw.ticket;
     if (rw.rsDone || rw.gradeUp || rw.respec) { var tk = P.tok || (P.tok = {}); if (rw.rsDone) tk.rsDone = (tk.rsDone || 0) + rw.rsDone; if (rw.gradeUp) tk.gradeUp = (tk.gradeUp || 0) + rw.gradeUp; if (rw.respec) tk.respec = (tk.respec || 0) + rw.respec; }
-    for (var i = 0; i < (rw.gear || 0); i++) { var it = makeItem(P, pick(P, D.SLOTS).id, R.rewardIlvl(P), Math.max(2, rollRarity(P, 0.6)), 2); out.items.push({ name: it.name, r: it.r, res: gainItem(P, it, now) }); }
-    (rw.items || []).forEach(function (it0) { var it = JSON.parse(JSON.stringify(it0)); it.u = uid(P); it.lock = false; out.items.push({ name: it.name, r: it.r, res: gainItem(P, it, now) }); });
+    for (var i = 0; i < (rw.gear || 0); i++) { var it = makeItem(P, pick(P, D.SLOTS).id, R.rewardIlvl(P), Math.max(2, rollRarity(P, 0.6)), 2); out.items.push({ name: it.name, r: it.r, res: gainItem(P, it, now, '우편 (무작위 장비)', 0.6) }); }
+    (rw.items || []).forEach(function (it0) { var it = JSON.parse(JSON.stringify(it0)); it.u = uid(P); it.lock = false; out.items.push({ name: it.name, r: it.r, res: gainItem(P, it, now, '우편 (지정 장비)') }); });
     R.noMailQ = false;
     out.text = R.rewardText(rw); return out;
   };
@@ -2071,7 +2073,7 @@
       P.codex[def.id] = (P.codex[def.id] || 0) + 1;
       var sh = 5 + Math.floor(b / 10) * 2; P.res.shard += sh; out.shard = sh;
       var st = ri(P, 3, 6) + Math.floor(b / 10); P.res.stone += st; out.stone = st;
-      var it = makeItem(P, pick(P, D.SLOTS).id, b + 2, rollRarity(P, c.rarity + 0.8), 2); out.item = { name: it.name, r: it.r, res: gainItem(P, it, now) };
+      var it = makeItem(P, pick(P, D.SLOTS).id, b + 2, rollRarity(P, c.rarity + 0.8), 2); out.item = { name: it.name, r: it.r, res: gainItem(P, it, now, '보스', c.rarity + 0.8) };
       if (R.famOpen(P) && rnd(P) < 0.35) { P.fam.eggs++; out.egg = 1; }
       if (rnd(P) < 0.06) { var bd = makeBadge(P); if (gainBadge(P, bd, now, def.name + '의 전리품') === 'got') out.badge = bd.name; }
       cupAdd(P, 50, 'boss');
@@ -2156,7 +2158,8 @@
   R.GEARSET_N = 3;
   A.gearSet = function (P, W, now, a) {
     var i = int(a.i, 0, R.GEARSET_N - 1), op = str(a.op), sets = P.gearSets || (P.gearSets = []);
-    if (op === 'save') { var eq = {}; for (var s in P.eq) if (P.eq[s]) eq[s] = P.eq[s].u; var bw = R.badgeWorn(P); if (!Object.keys(eq).length && !bw) err('장착한 장비가 없습니다'); sets[i] = { eq: eq, badge: bw ? bw.u : '', at: now }; return { saved: i }; }   // 달고 있는 휘장도 함께
+    // 저장(덮어쓰기)해도 프리셋 이름은 그대로 둔다 (비우기를 해야 이름도 지워진다)
+    if (op === 'save') { var old = sets[i], eq = {}; for (var s in P.eq) if (P.eq[s]) eq[s] = P.eq[s].u; var bw = R.badgeWorn(P); if (!Object.keys(eq).length && !bw) err('장착한 장비가 없습니다'); sets[i] = { eq: eq, badge: bw ? bw.u : '', at: now }; if (old && old.name) sets[i].name = old.name; return { saved: i }; }   // 달고 있는 휘장도 함께
     if (op === 'clear') { sets[i] = null; return { cleared: i }; }
     if (op === 'name') { if (!sets[i]) err('저장된 프리셋이 없습니다'); var nm = R.cleanName(a.name).slice(0, 10); if (nm) sets[i].name = nm; else delete sets[i].name; return { named: i, name: nm }; }   // 프리셋 이름 (최대 10자, 비우면 번호만)
     if (op !== 'load') err('잘못된 요청');
@@ -2205,22 +2208,34 @@
     return o;
   };
   // 재련: 등급·레벨·강화는 그대로 두고 옵션만 새로 굴린다 (옵션이 없는 일반 등급은 못 함)
+  // 굴린 옵션은 바로 붙이지 않고 P.rfPend = {u, aff, name, cost}에 두었다가, 학생이 이전 · 새 옵션 중 하나를 고르면(A.reforgePick) 정한다
   R.reforgeCost = function (it) { return Math.floor(8 * (it.r + 1) * (it.r + 1) * (1 + it.ilvl / 20)); };
+  R.rfPending = function (P) { var p = P.rfPend; return p && R.findItem(P, p.u) ? p : null; };   // 장비가 사라졌으면(판매 · 분해 · 거래소) 없는 것으로 본다
   A.reforge = function (P, W, now, a) {
     var it = R.findItem(P, str(a.u)); if (!it) err('장비가 없습니다'); if (it.lock) err('잠긴 장비입니다. 잠금을 풀면 재련할 수 있습니다');
+    if (P.rfPend && !R.rfPending(P)) P.rfPend = null;
+    if (P.rfPend) err('이전 재련 결과(' + R.findItem(P, P.rfPend.u).name + ')를 먼저 선택해야 합니다');
     var n = D.RARITY[it.r].affix; if (!n) err('옵션이 없는 장비는 재련할 수 없습니다');
     var cost = R.reforgeCost(it); if ((P.res.dust || 0) < cost) err('마석가루가 모자랍니다 (' + cost + '개 필요)');
     P.res.dust -= cost;
-    var pool = D.AFFIXES.slice(); it.aff = [];
+    var pool = D.AFFIXES.slice(), aff = [];
     for (var i = 0; i < n && pool.length; i++) {
       var af = pool.splice(Math.floor(rnd(P) * pool.length), 1)[0], v;
       if (af.flat) v = af.flat * (1 + it.ilvl * 0.07) * (0.7 + rnd(P) * 0.6) * (1 + it.r * 0.1);
       else v = (af.pct[0] + (af.pct[1] - af.pct[0]) * rnd(P)) * (1 + Math.min(it.ilvl, 200) * 0.004);
-      it.aff.push({ id: af.id, v: Math.round(v * 10000) / 10000 });
+      aff.push({ id: af.id, v: Math.round(v * 10000) / 10000 });
     }
-    it.name = (it.aff.length ? AFF[it.aff[0].id].prefix + ' ' : '') + R.baseName(it);
+    var name = (aff.length ? AFF[aff[0].id].prefix + ' ' : '') + R.baseName(it);
+    P.rfPend = { u: it.u, aff: aff, name: name, cost: cost };
     P.st.reforged = (P.st.reforged || 0) + 1;
-    return { name: it.name, cost: cost, aff: it.aff };
+    return { u: it.u, name: name, cost: cost, aff: aff, was: it.aff, wasName: it.name };
+  };
+  // 재련 결과 선택: keep = 'new'(새 옵션 적용) | 'old'(이전 옵션 유지)
+  A.reforgePick = function (P, W, now, a) {
+    var p = R.rfPending(P); if (!p) { P.rfPend = null; err('선택할 재련 결과가 없습니다'); }
+    var it = R.findItem(P, p.u), take = a.keep === 'new'; P.rfPend = null;
+    if (take) { it.aff = p.aff; it.name = p.name; }
+    return { u: it.u, keep: take ? 'new' : 'old', name: it.name, aff: it.aff };
   };
   // 자동 처리: 판매 또는 분해 (분류 마법)
   A.autoMode = function (P, W, now, a) { if (!P.rs.sorter) err('분류 마법이 필요합니다'); P.autoDis = !!a.dis; return { ok: true }; };
@@ -2409,7 +2424,7 @@
       if (L === 'S') rr = rndL(P) < R.EXAM_S_LEGEND ? 4 : Math.min(rr, 3);
       var it = makeItem(P, pick(P, D.SLOTS).id, ilv, rr, minR);
       if (rw.egg) P.fam.eggs += rw.egg;
-      res.reward = { shard: shard, gold: gold, egg: rw.egg, item: { name: it.name, r: it.r, res: gainItem(P, it, now) } };
+      res.reward = { shard: shard, gold: gold, egg: rw.egg, item: { name: it.name, r: it.r, res: gainItem(P, it, now, '시험 ' + L) } };
       P.grade = run.grade + 1; if (P.grade > P.st.maxGrade) P.st.maxGrade = P.grade;
       cupAdd(P, 300, 'exam');
       log(P, now, ex.title + ' 합격! ' + L + ' (' + total + '점)', 'story');
@@ -2440,7 +2455,7 @@
     if (R.taskProg(P, sid, o.t) < o.t.n) err('아직 과제를 마치지 못했습니다');
     P.tasks[sid] = o.i + 1; var shard = R.taskShard(o.i); P.res.shard += shard; P.st.tasksDone++; cupAdd(P, 15, 'task');
     var out = { shard: shard, prof: SUBJ[sid].prof };
-    if (o.t.item) { var it = makeItem(P, o.t.item, Math.max(R.rewardIlvl(P), 10), 3, 3); it.name = SUBJ[sid].prof.split(' ')[0] + '의 ' + R.baseName(it); out.item = { name: it.name, r: it.r, res: gainItem(P, it, now) }; }
+    if (o.t.item) { var it = makeItem(P, o.t.item, Math.max(R.rewardIlvl(P), 10), 3, 3); it.name = SUBJ[sid].prof.split(' ')[0] + '의 ' + R.baseName(it); out.item = { name: it.name, r: it.r, res: gainItem(P, it, now, '과목 보상') }; }
     log(P, now, SUBJ[sid].prof + '의 과제 완료', 'good'); return out;
   };
   A.buy = function (P, W, now, a) {
@@ -2454,7 +2469,7 @@
     P.res[cur] -= price; var out = { id: id, n: n };
     if (id === 'stone10') P.res.stone += 10;
     else if (id === 'dust10') { var dg = s.give.dust * n; P.res.dust = (P.res.dust || 0) + dg; out.dust = dg; }
-    else if (id === 'gearbox') { var it = makeItem(P, pick(P, D.SLOTS).id, R.rewardIlvl(P), Math.max(1, rollRarity(P, calc(P, W, now).rarity + 0.4)), 1); out.item = { name: it.name, r: it.r, res: gainItem(P, it, now) }; }
+    else if (id === 'gearbox') { var gb = calc(P, W, now).rarity + 0.4, it = makeItem(P, pick(P, D.SLOTS).id, R.rewardIlvl(P), Math.max(1, rollRarity(P, gb)), 1); out.item = { name: it.name, r: it.r, res: gainItem(P, it, now, '장비 상자', gb) }; }
     else if (id === 'egg') P.fam.eggs++;
     else if (id === 'shardbag') { P.sbDay = R.dayKST(now); P.res.shard += s.give.shard; out.shard = s.give.shard; }   // 하루 1번
     else if (id === 'badgebox') { var nb = makeBadge(P); gainBadge(P, nb, now, '매점 휘장 원석'); out.badge = { name: nb.name, gem: nb.gem }; }
@@ -2523,7 +2538,7 @@
       var top = r.mvps && r.mvps[pv.house] === P.id;   // 기숙사 안 개인 1위
       var gr = place !== 1 ? (r.v2 && top ? 3 : 0) : !r.v2 ? 3 : r.mvp && r.mvp === P.id ? 4 : ((R.CUP_GEAR.filter(function (x) { return pv.cup >= x[0]; })[0] || [0, 0])[1]);
       if (top && r.v2) out.mvp = true;
-      if (gr) { var it = makeItem(P, pick(P, D.SLOTS).id, R.rewardIlvl(P), gr, gr); out.items.push({ name: it.name, r: it.r, res: gainItem(P, it, now) }); }
+      if (gr) { var it = makeItem(P, pick(P, D.SLOTS).id, R.rewardIlvl(P), gr, gr); out.items.push({ name: it.name, r: it.r, res: gainItem(P, it, now, '주간 대항전 보상') }); }
       if (r.v2) { var ct = R.CUP_TIERS.filter(function (x) { return pv.cup >= x[0]; })[0]; if (ct) { out.shard += ct[1]; out.cupTier = ct[0]; out.cupTierShard = ct[1]; } }   // 개인 점수 구간 보상
     }
     if (pv.att > 0) {
@@ -2531,7 +2546,7 @@
       if (r.killed) { var kn = Math.max(1, r.kills || 1), un = Math.max(0, kn - (r.paidKills || 0)); P.st.wbKills += kn; out.kills = kn; if (un) { out.shard += R.WB_KILL_RW.shard * un; P.fam.eggs += R.WB_KILL_RW.egg * un; out.egg = un; } }   // 토벌 보상은 잡은 순간 우편으로(paidKills). 그때 못 낸 것만 여기서
       var t = r.tiers || [], tier = pv.dmg >= (t[0] || Infinity) ? 1 : pv.dmg >= (t[1] || Infinity) ? 2 : pv.dmg >= (t[2] || Infinity) ? 3 : 4;
       out.tier = tier; out.shard += [0, 40, 20, 8, 0][tier];
-      if (tier <= 2) { var it2 = makeItem(P, pick(P, D.SLOTS).id, R.rewardIlvl(P, 3), tier === 1 && rnd(P) < 0.25 ? 4 : 3, 3); out.items.push({ name: it2.name, r: it2.r, res: gainItem(P, it2, now) }); }
+      if (tier <= 2) { var it2 = makeItem(P, pick(P, D.SLOTS).id, R.rewardIlvl(P, 3), tier === 1 && rnd(P) < 0.25 ? 4 : 3, 3); out.items.push({ name: it2.name, r: it2.r, res: gainItem(P, it2, now, '월드보스 ' + tier + '구간 보상') }); }
     }
     P.res.shard += out.shard;
     return out;
@@ -2588,17 +2603,28 @@
     log(P, now, b.name + '에 광을 냈습니다 (품질 ' + Math.round(b.q * 1000) / 10 + '%)', 'good');
     return { q: b.q, cost: c, name: b.name };
   };
+  // 세공 다시 새기기도 재련처럼: 새로 굴린 줄을 P.rcPend = {u, i, aff, cost}에 두고, 학생이 이전 · 새 세공 중 하나를 고르면(A.badgeRecutPick) 정한다
+  R.rcPending = function (P) { var p = P.rcPend, b = p && R.badgeFind(P, p.u); return b && b.aff && p.i < b.aff.length ? p : null; };
   A.badgeRecut = function (P, W, now, a) {
     var b = R.badgeFind(P, str(a.u)); if (!b) err('없는 휘장입니다'); if (b.lock) err('잠긴 휘장입니다. 잠금을 풀면 세공을 다시 새길 수 있습니다'); if (!b.aff || !b.aff.length) err('다시 새길 세공이 없습니다');
+    if (P.rcPend && !R.rcPending(P)) P.rcPend = null;
+    if (P.rcPend) err('이전 세공 다시 새기기 결과(' + R.badgeFind(P, P.rcPend.u).name + ')를 먼저 선택해야 합니다');
     var i = int(a.i, 0, b.aff.length - 1), c = R.badgeRecutCost(b); if (P.res.shard < c) err('별조각이 모자랍니다 (' + c + '개 필요)');
     var pool = D.AFFIXES.filter(function (x) { return x.pct && x.id !== GEM[b.gem].bonus && !b.aff.some(function (y, j) { return j !== i && y.id === x.id; }); });
     if (!pool.length) err('새길 수 있는 세공이 없습니다');
     P.res.shard -= c; var x = pick(P, pool), old = b.aff[i];
-    b.aff[i] = { id: x.id, v: Math.round((x.pct[0] + (x.pct[1] - x.pct[0]) * rnd(P)) * 0.5 * 10000) / 10000 };
-    b.name = badgeName(b); P.st.recut = (P.st.recut || 0) + 1;
-    var nm = function (y) { return (D.BONUS_NAMES[y.id] || y.id) + ' +' + R.fmtPct(y.v, 1); };
-    log(P, now, b.name + ' 세공 다시 새기기: ' + nm(old) + ' → ' + nm(b.aff[i]), 'good');
-    return { i: i, id: x.id, v: b.aff[i].v, cost: c, name: b.name, text: nm(b.aff[i]), was: nm(old) };
+    var nw = { id: x.id, v: Math.round((x.pct[0] + (x.pct[1] - x.pct[0]) * rnd(P)) * 0.5 * 10000) / 10000 };
+    P.rcPend = { u: b.u, i: i, aff: nw, cost: c }; P.st.recut = (P.st.recut || 0) + 1;
+    return { u: b.u, i: i, id: x.id, v: nw.v, cost: c, name: b.name, text: R.affText(nw), was: R.affText(old) };
+  };
+  R.affText = function (y) { return (D.BONUS_NAMES[y.id] || y.id) + ' +' + R.fmtPct(y.v, 1); };
+  // 세공 다시 새기기 결과 선택: keep = 'new'(새 세공 적용) | 'old'(이전 세공 유지)
+  A.badgeRecutPick = function (P, W, now, a) {
+    var p = R.rcPending(P); if (!p) { P.rcPend = null; err('선택할 세공 결과가 없습니다'); }
+    var b = R.badgeFind(P, p.u), take = a.keep === 'new', old = b.aff[p.i]; P.rcPend = null;
+    if (take && b.aff.some(function (y, j) { return j !== p.i && y.id === p.aff.id; })) err('그사이 같은 세공이 다른 줄에 새겨져 새 세공을 적용할 수 없습니다. 이전 세공을 유지합니다');
+    if (take) { b.aff[p.i] = p.aff; b.name = badgeName(b); log(P, now, b.name + ' 세공 다시 새기기: ' + R.affText(old) + ' → ' + R.affText(p.aff), 'good'); }
+    return { u: b.u, keep: take ? 'new' : 'old', name: b.name, text: R.affText(b.aff[p.i]) };
   };
   R.fingerprint = function (P) { return [P.inbox.length, P.inbox.length ? P.inbox[P.inbox.length - 1].t : 0, P.log.length, P.log[0] ? P.log[0].t : 0, P.daily.day, P.wk.id, P.spirit.at, P.wb.tickets, P.wb.extra].join('|'); };
   /* ───────── 학기 이야기 (메인 퀘스트): 상태 P.mq = { g: 장(1~8, 9 = 다 읽음), i: 단계, b: 단계 시작 때 통계 } ───────── */
@@ -2650,7 +2676,7 @@
 
   /* ───────── 클라이언트로 보낼 때 숨길 값 ───────── */
   R.publicState = function (P) {
-    var o = {}; for (var k in P) if (k !== 'rng' && k !== 'lrng' && k !== 'pq' && k !== 'px' && k !== 'qRecent' && k !== 'quizCd' && k !== 'dlog') o[k] = P[k];   // dlog: 장비 처분 기록 (운영실 전용)
+    var o = {}; for (var k in P) if (k !== 'rng' && k !== 'lrng' && k !== 'pq' && k !== 'px' && k !== 'qRecent' && k !== 'quizCd' && k !== 'dlog' && k !== 'glog') o[k] = P[k];   // dlog: 장비 처분 기록 (운영실 전용)
     // 원정 전리품은 출정할 때 정해 두지만, 아직 줍지 않은 것은 시각만 보낸다 (미리 보고 귀환 · 재출정으로 고르지 못하게)
     if (P.exp) o.exp = P.exp.map(function (j) { return j && j.loot ? Object.assign({}, j, { loot: j.loot.map(function (x) { return x.at <= P.at ? x : { at: x.at }; }) }) : j; });
     o.examPending = !!P.px;
