@@ -2832,8 +2832,10 @@ server.requestTimeout = 30000;
 // 성장 스냅샷: 한국 날짜가 바뀌면(서버를 켤 때 오늘 것이 없어도) 학생마다 한 줄. 정지 · 게스트 · 초기화로 남은 캐릭터는 뺀다
 const kstDay = (t) => { const d = new Date(t * 1000 + 9 * 3600000); return d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate(); };
 // 성장 기록 · 장비: 칸마다 장비 레벨 · 등급 · 강화, 휘장, 전투력 구성(장비 몫), 과목 레벨 합, 능력치 분배 (2026-10-21부터 쌓인다)
+// 전투력 구성(2026-10-22부터): 장비는 바탕값이고 나머지는 배율이라 장비 몫(gearPct)은 늘 100%에 가깝다 → 분배 · 과목 · 사역마를 하나씩 뺀 전투력(powNo*)도 남긴다
+// mq: 학기 이야기 진행 (장 × 100 + 단계, 101 = 1장 첫 단계 · 첫 가입 흐름에서 멈춘 곳 확인용)
 const GROWTH_SLOTS = ['staff', 'robe', 'hat', 'charm', 'tome'];
-const GROWTH_GEAR = [].concat(...GROWTH_SLOTS.map((s) => [s + 'Lv', s + 'R', s + 'Enh'])).concat(['gearLv', 'powNow', 'powNoGear', 'gearPct', 'bdgGem', 'bdgLv', 'bdgQ', 'subjSum']).concat(R.STATS.map((k) => 'al_' + k));
+const GROWTH_GEAR = [].concat(...GROWTH_SLOTS.map((s) => [s + 'Lv', s + 'R', s + 'Enh'])).concat(['gearLv', 'powNow', 'powNoGear', 'gearPct', 'powNoAlloc', 'powNoSubj', 'powNoFam', 'mq', 'bdgGem', 'bdgLv', 'bdgQ', 'subjSum']).concat(R.STATS.map((k) => 'al_' + k));
 const GROWTH_CALC = ['drop', 'rarity', 'critC', 'critD', 'aps', 'spell', 'skill', 'lecSpd', 'gold', 'xp', 'know', 'manaH', 'manaCapH', 'brewSpd', 'hatchSpd', 'bossDmg', 'cdr', 'killMana', 'leech', 'examBonus', 'dps', 'spellDps', 'famDps', 'hp', 'def', 'patk', 'matk'];
 const GROWTH_RES = ['gold', 'mana', 'know', 'shard', 'stone', 'dust'];
 function growthGear(P, now) {
@@ -2843,10 +2845,14 @@ function growthGear(P, now) {
   try {   // 장비 몫: 장비를 모두 뺀 전투력과 비교 (P를 건드리지 않게 얕은 복사)
     const W = world.ctx(now), t = Math.min(now, P.at || now), full = R.calc(P, W, t).power, bare = R.calc(Object.assign({}, P, { eq: {} }), W, t).power;
     o.powNow = Math.round(full); o.powNoGear = Math.round(bare); o.gearPct = full > 0 ? Math.round((1 - bare / full) * 1000) / 10 : 0;
+    const subj0 = {}; Object.keys(P.subj || {}).forEach((k) => { subj0[k] = Object.assign({}, P.subj[k], { lv: 0 }); });
+    const pw = (o2) => Math.round(R.calc(Object.assign({}, P, o2), W, t).power);
+    o.powNoAlloc = pw({ alloc: {} }); o.powNoSubj = pw({ subj: subj0 }); o.powNoFam = pw({ fam: Object.assign({}, P.fam, { act: null }) });
     const c = R.calc(P, W, t), r4 = (v) => Math.round((v || 0) * 10000) / 10000;   // 전리품 · 등급 상승 · 각종 배율 (물약 · 날씨 포함 그 순간 값)
     GROWTH_CALC.forEach((k) => { o['c_' + k] = k === 'manaH' ? Math.round(c.mana * 3600) : k === 'manaCapH' ? Math.round(c.manaCap / Math.max(1e-9, c.mana) / 360) / 10 : r4(c[k]); });
   } catch (e) { }
   const bw = R.badgeWorn(P); if (bw) { o.bdgGem = bw.gem; o.bdgLv = bw.lv; o.bdgQ = Math.round((bw.q || 1) * 1000) / 1000; }
+  if (P.mq) o.mq = P.mq.g * 100 + P.mq.i + 1;
   o.subjSum = Object.keys(P.subj || {}).reduce((a, k) => a + ((P.subj[k] || {}).lv || 0), 0);
   R.STATS.forEach((k) => { o['al_' + k] = (P.alloc || {})[k] || 0; });
   return o;
