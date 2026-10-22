@@ -551,7 +551,8 @@ routes['GET /api/myranks'] = (req, res) => {
   if (limited('mr:' + pid, 2, 10)) return fail(req, res, 429, '요청이 너무 잦습니다');
   const now = nowSec(), P = loadPlayer(pid, now); if (!P) return fail(req, res, 401, '학생 정보를 찾을 수 없습니다');
   const ranks = world.myRanks(P, R.summary(P, world.W, now).power, now), party = partyOf.get(pid), tr = party && dbx.q.twRankGet.get(R.weekId(now), party);
-  ranks.twp = tr ? Number(dbx.q.twRankOf.get(R.weekId(now), tr.floor, tr.floor, tr.t).r) : null; ranks.twpF = tr ? tr.floor : 0;   // 우리 파티의 이번 주 별의 탑 순위
+  let twi = -1, twf = 0; if (tr) { const L = world.twRanked(R.weekId(now)); twi = L.findIndex((x) => x.parties.indexOf(party) >= 0); if (twi >= 0) twf = L[twi].f; }   // 같은 파티원 구성은 한 줄로 합친 순위
+  ranks.twp = twi >= 0 ? twi + 1 : null; ranks.twpF = twf;   // 우리 파티의 이번 주 별의 탑 순위
   send(req, res, 200, { ranks });
 };
 routes['GET /api/world'] = (req, res) => {
