@@ -5674,13 +5674,27 @@
     if (free) h += D.CLASSES.filter(function (x) { return x.id !== cur.id; }).map(function (x) { var arm = S.clsArm === x.id && S.clsArmT > Date.now(); return '<button class="btn sm' + (arm ? ' primary' : '') + '" data-act="clsset" data-a="' + x.id + '" data-tip="' + esc(x.bonusText) + '">' + (arm ? '한 번 더 누르면 ' + R.josa(x.name, '으로', '로') + ' 바꿉니다' : R.josa(x.name, '으로', '로') + ' 바꾸기') + '</button>'; }).join('');
     h += '</div>';
     if (free) return h + '<p class="tiny faint" style="margin-top:2px">예전에 입학해 학과를 선택한 적이 없어 지금은 시험 없이 한 번 선택할 수 있습니다(지금은 마법사). 그 뒤로는 전과시험을 봐야 합니다.</p>';
+    h += stanceRow();
     var fee = R.clsExamFee(P);
-    return h + '<div class="clsexam"><div class="tiny muted">전과시험 · 옮길 학과의 몸으로 시험관과 대련해 이기면 옮깁니다 · 응시료 ' + MONEY(fee) + '(이기든 지든) · 지면 하루 뒤 다시</div>' +
+    return h + '<div class="clsexam"><div class="tiny muted">전과시험 · 옮길 학과의 몸으로 시험관과 대련해 이기면 옮깁니다 · 응시료 ' + MONEY(fee) + '(이기든 지든) · 지면 하루 뒤 다시 · 합격하면 ' + Math.round(R.CLS_REDO / 86400) + '일 동안 다시 전과할 수 없고, 전과할 때마다 응시료가 2배(최대 8배)가 됩니다' + (P.clsN ? ' (지금까지 전과 ' + P.clsN + '번)' : '') + '</div>' +
       (cd > 0 ? '<p class="tiny gold" style="margin-top:4px">다음 응시까지 ' + R.fmtTime(cd) + '</p>' : '<div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap">' + D.CLASSES.filter(function (x) { return x.id !== cur.id; }).map(function (x) {
         var pv = R.clsExamPreview(P, wctx(), x.id, now()), arm = S.clsArm === x.id && S.clsArmT > Date.now();
         return '<button class="btn sm' + (arm ? ' primary' : '') + '" data-act="clsexam" data-a="' + x.id + '" data-tip="' + esc(x.bonusText) + '">' + (arm ? '한 번 더 누르면 응시합니다' : x.name + ' 전과시험') + ' <span class="tiny ' + (pv.win ? 'good' : 'bad') + '">' + (pv.win ? '승산 있음' : '버거움 · ' + Math.round(pv.frac * 100) + '%') + '</span></button>';
       }).join('') + '</div>') + '</div>';
   }
+  // 학과 성향: 둘 중 하나 · 하루 한 번
+  function stanceRow() {
+    var P = S.P, cur = R.stanceOf(P), freeS = R.stanceFree(P, now());
+    return '<div class="stancebox" style="margin-top:8px"><div class="row" style="gap:6px;flex-wrap:wrap"><span class="small muted">성향</span>' + R.stances(P).map(function (x) {
+      var on = x.id === cur.id, arm = S.stArm === x.id && S.stArmT > Date.now();
+      return '<button class="btn sm' + (on ? ' primary' : arm ? ' primary' : ' ghost') + '"' + (on || !freeS ? ' disabled' : ' data-act="stance" data-a="' + x.id + '"') + ' data-tip="' + esc(x.text) + '">' + (arm ? '한 번 더 누르면 「' + x.name + '」로 바꿉니다' : x.name) + '</button>';
+    }).join('') + '<span class="tiny faint">하루 한 번 변경 가능' + (freeS ? '' : ' · 오늘은 이미 바꿨습니다') + '</span></div>' +
+      '<p class="tiny faint" style="margin-top:2px">' + esc(cur.name) + ' — ' + esc(cur.desc || '') + ' ' + esc(cur.text || '') + '</p></div>';
+  }
+  ACT.stance = function (id) {
+    if (S.stArm !== id || !(S.stArmT > Date.now())) { S.stArm = id; S.stArmT = Date.now() + 4000; ACT.me('profile'); return; }
+    S.stArm = null; act('setStance', { id: id }).then(function (j) { if (j && !j.error) toast('성향', '「' + R.stanceOf(S.P).name + '」 성향으로 바꿨습니다'); ACT.me('profile'); });
+  };
   ACT.clsset = function (id) {
     if (S.clsArm !== id || !(S.clsArmT > Date.now())) { S.clsArm = id; S.clsArmT = Date.now() + 4000; ACT.me('profile'); return; }
     S.clsArm = null; act('setCls', { cls: id }).then(function (j) { if (j && !j.error) toast('학과', R.CLS[id].name + ' 학과로 옮겼습니다'); ACT.me('profile'); });
@@ -5691,7 +5705,7 @@
       if (!r || r.error) { ACT.me('profile'); return; }
       Snd.play(r.win ? 'pass' : 'fail');
       modal(mhead(r.win ? '전과시험 합격' : '전과시험 불합격', R.CLS[id].name + ' 학과') +
-        '<p class="small">' + (r.win ? '시험관을 쓰러뜨렸습니다. 이제부터 <b class="gold">' + R.CLS[id].name + '</b>입니다.' : '시험관 체력을 ' + Math.round((1 - (r.mHp || 0)) * 100) + '%까지 깎았지만 이기지 못했습니다. 하루 뒤 다시 볼 수 있습니다.') + '</p>' +
+        '<p class="small">' + (r.win ? '시험관을 쓰러뜨렸습니다. 이제부터 <b class="gold">' + R.CLS[id].name + '</b>입니다. 성향은 「' + R.stanceOf(S.P).name + '」(기본)이며, ' + Math.round(R.CLS_REDO / 86400) + '일 동안 다시 전과할 수 없습니다.' : '시험관 체력을 ' + Math.round((1 - (r.mHp || 0)) * 100) + '%까지 깎았지만 이기지 못했습니다. 하루 뒤 다시 볼 수 있습니다.') + '</p>' +
         (r.win ? '<ul class="small" style="margin:8px 0 0 18px">' + (r.restored ? '<li>이전에 ' + R.CLS[id].name + ' 학과에서 사용하던 주문 구성을 다시 장착했습니다.</li>' : '') +
           (r.off && r.off.length ? '<li class="gold">주문 칸에서 해제된 주문: ' + esc(r.off.join(', ')) + '. 빈 주문 칸이 있으면 전투력이 낮아지므로 장착 주문을 확인하십시오.</li>' : '') +
           (r.pts ? '<li class="gold">능력치 포인트 ' + r.pts + '점을 돌려받았습니다. ' + (S.P.opt.autoAlloc ? '자동 분배로 다시 분배되었습니다.' : '「장비·공방 → 장비」의 능력치에서 다시 분배하십시오.') + '</li>' : '') + '</ul>' : '') +
@@ -5736,7 +5750,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102291;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102292;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

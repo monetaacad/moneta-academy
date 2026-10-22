@@ -34,4 +34,11 @@ t('시험 공통 과목은 지력 1 · 체력 1', () => { D.EXAMS.forEach(e => {
 t('전체 능력치 화면', () => { const P = mk('knight'); P.subj.guard.lv = 12; const fs = R.fullStats(P, W, now0); assert.ok(JSON.stringify(fs).indexOf('수호기사학 Lv 12') >= 0); });
 t('연금 공방은 연금화학 1레벨부터 (학년 무관)', () => { const P = mk('mage'); assert.strictEqual(P.grade, 1); assert.strictEqual(R.alchOpen(P), false); assert.strictEqual(R.potionUnlocked(P, 'focus'), false); P.subj.alch.lv = 1; assert.strictEqual(R.alchOpen(P), true); assert.strictEqual(R.potionUnlocked(P, 'focus'), true); assert.strictEqual(R.potionUnlocked(P, 'guard'), false); });
 t('넘친 장비: 아르크 / 마석가루 선택 (원정 상한 20)', () => { const P = mk('mage'); assert.strictEqual(R.K.ITEM_CAP, 20); R.act(P, W, now0, 'ovfMode', { dust: true }); assert.strictEqual(P.ovfDust, true); assert.ok(R.overflowEach(40, true) >= 1); R.act(P, W, now0, 'ovfMode', { dust: false }); assert.strictEqual(P.ovfDust, false); assert.ok(R.overflowEach(40, false) > 0); });
+t('학과 성향: 하루 한 번 · 전과하면 기본 성향 · 전과 패널티', () => {
+  const P = mk('knight'); assert.strictEqual(R.stanceOf(P).id, 'guard'); const c0 = R.calc(P, null);
+  R.act(P, W, now0, 'setStance', { id: 'assault' }); assert.strictEqual(R.stanceOf(P).id, 'assault'); assert.ok(R.calc(P, null).skill > c0.skill); assert.ok(R.expAggro(P) < R.EXP_AGGRO + 0.05);
+  assert.throws(() => R.act(P, W, now0 + 60, 'setStance', { id: 'guard' }));
+  P.lvl = 400; P.res.gold = 1e12; const f0 = R.clsExamFee(P); R.act(P, W, now0 + 86400, 'clsExam', { cls: 'mage' }); assert.strictEqual(P.cls, 'mage'); assert.strictEqual(R.stanceOf(P).id, 'destroy');
+  assert.strictEqual(R.clsExamFee(P), f0 * 2); assert.throws(() => R.act(P, W, now0 + 86400 * 2, 'clsExam', { cls: 'knight' }));
+});
 console.log(ok + '개 통과');
