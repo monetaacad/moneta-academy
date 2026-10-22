@@ -2021,6 +2021,7 @@
     var tk = P.eq.tome ? R.slotName(P.eq.tome) : P.cls === 'knight' ? '전술서' : '마도서';
     var hk = P.eq.hat ? R.slotName(P.eq.hat) : P.cls === 'knight' ? '투구' : '모자';
     var h = pageHead(D.SLOTS.map(function (s) { return '<button class="eblink" data-act="invjump" data-a="' + s.id + '" title="가방에서 ' + (s.id === 'staff' ? '무기' : s.name) + '만 보기">' + (s.id === 'staff' ? wk : s.id === 'tome' ? tk : s.id === 'hat' ? hk : s.name) + '</button>'; }).join(' · '), '장비·능력', '전투력 <b class="num gold">' + fmt(c.power) + '</b>');
+    h += pendBanner();
     h += '<div class="doll">' + D.SLOTS.map(function (s) {
       var it = P.eq[s.id];
       return '<button class="eqslot' + (it ? '' : ' empty') + (it && S.sel === it.u ? ' sel' : '') + '" data-act="sel" data-a="' + (it ? it.u : '') + '"><span class="sl">' + s.name + '</span>' +
@@ -2093,14 +2094,14 @@
     return '<div class="bdgups">' +
       '<div class="bdgup"><div class="bdgut"><b class="small">닦기</b><span class="tiny faint">마석가루로 별빛을 채워 레벨을 올립니다</span></div>' + (full ? '<span class="tag br">완성</span>' : lk ? lkTag : '<span class="row" style="gap:8px;flex-wrap:nowrap"><span class="bdgdeal"><span class="tiny"><span class="faint">얻음</span> <b class="gold">별빛 +' + R.badgePolishXp(b) + '</b></span><span class="tiny"><span class="faint">소모</span> ' + fmt(pc.dust) + ' 마석가루 <span class="faint">(보유 ' + fmt(P.res.dust || 0) + ')</span> · ' + fmt(pc.gold) + ' ' + CUR + '</span></span><button class="btn sm primary" data-act="bpolish" data-a="' + b.u + '"' + (can ? '' : ' disabled') + '>닦기</button></span>') + '</div>' +
       '<div class="bdgup"><div class="bdgut"><b class="small">' + gterm('광내기') + '</b><span class="tiny faint">별조각으로 보석 품질을 올려 대표 효과를 키웁니다 · 지금 ' + (Math.round(q * 1000) / 10) + '% / 최대 ' + Math.round(R.BADGE_Q_MAX * 100) + '%</span></div>' + (qmax ? '<span class="tag br">최고 품질</span>' : lk ? lkTag : '<button class="btn sm" data-act="bshine" data-a="' + b.u + '"' + (sh >= sc ? '' : ' disabled') + '>품질 +' + (R.BADGE_Q_STEP * 100) + '% <span class="cost">' + sc + ' 별조각</span></button>') + '</div>' +
-      ((b.aff || []).length ? '<div class="bdgup"><div class="bdgut"><b class="small">' + gterm('세공 다시 새기기', '세공') + '</b><span class="tiny faint">별조각으로 선택한 세공 한 줄을 새로 굴립니다 (다른 줄 · 대표 효과와 같은 옵션은 나오지 않음 · 이름의 앞말은 첫 줄을 따릅니다)</span></div><span class="row bdgrc"><select id="brc-line" aria-label="다시 새길 세공">' + b.aff.map(function (a, i) { return '<option value="' + i + '"' + (i === li ? ' selected' : '') + '>' + (i + 1) + '. ' + (D.BONUS_NAMES[a.id] || a.id) + ' +' + pct(a.v) + '</option>'; }).join('') + '</select>' + (lk ? lkTag : '<button class="btn sm' + (armed ? ' primary' : '') + '" data-act="brecut" data-a="' + b.u + '"' + (sh >= rc ? '' : ' disabled') + '>' + (armed ? '한 번 더 누르면 새깁니다' : '새기기') + ' <span class="cost">' + rc + ' 별조각</span></button>') + '</span></div>' : '') +
+      ((b.aff || []).length ? '<div class="bdgup"><div class="bdgut"><b class="small">' + gterm('세공 다시 새기기', '세공') + '</b><span class="tiny faint">별조각으로 선택한 세공 한 줄을 새로 굴린 뒤 이전 세공과 새 세공 중 하나를 선택합니다 (다른 줄 · 대표 효과와 같은 옵션은 나오지 않음 · 이름의 앞말은 첫 줄을 따릅니다)</span></div><span class="row bdgrc"><select id="brc-line" aria-label="다시 새길 세공">' + b.aff.map(function (a, i) { return '<option value="' + i + '"' + (i === li ? ' selected' : '') + '>' + (i + 1) + '. ' + (D.BONUS_NAMES[a.id] || a.id) + ' +' + pct(a.v) + '</option>'; }).join('') + '</select>' + (lk ? lkTag : '<button class="btn sm' + (armed ? ' primary' : '') + '" data-act="brecut" data-a="' + b.u + '"' + (sh >= rc ? '' : ' disabled') + '>' + (armed ? '한 번 더 누르면 새깁니다' : '새기기') + ' <span class="cost">' + rc + ' 별조각</span></button>') + '</span></div>' : '') +
       '</div>';
   }
   ACT.bshine = function (u) { act('badgeShine', { u: u }).then(function (r) { if (r) { Snd.play('enh'); toast('광을 냈습니다', r.name + ' · 품질 ' + (Math.round(r.q * 1000) / 10) + '% · 별조각 -' + r.cost, 2200); } render(); }); };
   ACT.brecut = function (u) {
     var sel = $('#brc-line'), i = sel ? +sel.value : 0, k = 'brc' + u; S.pick.brc = i;
     if (!(S.confirm[k] > Date.now())) { S.confirm[k] = Date.now() + 4000; render(); setTimeout(render, 4100); return; }
-    S.confirm[k] = 0; act('badgeRecut', { u: u, i: i }).then(function (r) { if (r) { Snd.play('enh'); toast('세공을 다시 새겼습니다', r.was + ' → ' + r.text + ' · 별조각 -' + r.cost, 2800); } render(); });
+    S.confirm[k] = 0; act('badgeRecut', { u: u, i: i }).then(function (r) { render(); if (r) { Snd.play('enh'); rcPickModal(); } });
   };
   ACT.bwear = function (u) { act('badgeWear', { u: u || '' }).then(function (r) { if (r) { var b = u && R.badgeFind(S.P, u); toast(u ? '휘장을 달았습니다' : '휘장을 뗐습니다', b ? b.name : '', 1600); } render(); }); };
   ACT.bpolish = function (u) { act('badgePolish', { u: u }).then(function (r) { if (!r) return; Snd.play('enh'); toast('휘장을 닦았습니다', '별빛 +' + r.xp + (r.to > r.from ? ' · Lv ' + r.from + '→' + r.to : ''), 2000); render(); }); };
@@ -4216,21 +4217,40 @@
   ACT.opt = function (k, v, el) { act('opt', { k: k, v: el.checked }).then(function () { if (k === 'sound') { Snd.set(S.P.opt.sound); if ($('#setbox')) ACT.settings(); } if (/Title$/.test(k)) renderDock(); render(); }); };
   ACT.autosell = function () { act('autoSell', { r: +$('#autosell').value }).then(render); };
   ACT.automode = function () { act('autoMode', { dis: $('#automode').value === 'dis' }).then(render); };
-  // 재련: 먼저 지금 옵션이 사라진다는 확인 창 → 재련하면 이전 · 새 옵션을 나란히 보여 준다
+  // 재련: 확인 창 → 재련하면 이전 · 새 옵션을 나란히 보여 주고 하나를 선택한다 (고르기 전에 닫혀도 장비 화면 띠에서 이어서 선택)
   function affList(it) { return (it.aff || []).map(function (a) { var nm = D.BONUS_NAMES[a.id] || D.STAT_NAMES[a.id] || a.id, val = (a.id === 'atk' || a.id === 'hp' || a.id === 'def' || D.STAT_NAMES[a.id]) ? '+' + fmt(a.v) : '+' + pct(a.v); return '<div class="statline"><span>' + nm + '</span><span class="d">' + val + '</span></div>'; }).join('') || '<p class="tiny faint">옵션 없음</p>'; }
+  function pickBtns(act, w) { return '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn" data-act="' + act + '" data-a="old">이전 ' + w + ' 유지</button><button class="btn primary" data-act="' + act + '" data-a="new" autofocus>새 ' + w + ' 적용</button></div>'; }
+  function rfPickModal() {
+    var p = R.rfPending(S.P); if (!p) return; var it = R.findItem(S.P, p.u);
+    modal(mhead('재련 결과 선택', esc(it.name) + ' · 마석가루 -' + fmt(p.cost), true) + '<p class="small">이전 옵션과 새 옵션 중 하나를 선택합니다. 선택하지 않은 쪽은 사라집니다.</p>' +
+      '<div class="grid g2" style="gap:10px"><div><div class="section-t">이전 옵션</div><div class="rfold">' + affList(it) + '</div></div><div><div class="section-t">새 옵션</div><div class="rfnew">' + affList({ aff: p.aff }) + '</div></div></div>' + pickBtns('rfpick', '옵션'), false, true);
+  }
+  function rcPickModal() {
+    var p = R.rcPending(S.P); if (!p) return; var b = R.badgeFind(S.P, p.u), line = function (a) { return '<div class="statline"><span>' + esc(R.affText(a)) + '</span></div>'; };
+    modal(mhead('세공 다시 새기기 결과 선택', esc(b.name) + ' · 별조각 -' + p.cost, true) + '<p class="small">' + (p.i + 1) + '번째 줄의 이전 세공과 새 세공 중 하나를 선택합니다. 선택하지 않은 쪽은 사라집니다.</p>' +
+      '<div class="grid g2" style="gap:10px"><div><div class="section-t">이전 세공</div><div class="rfold">' + line(b.aff[p.i]) + '</div></div><div><div class="section-t">새 세공</div><div class="rfnew">' + line(p.aff) + '</div></div></div>' + pickBtns('rcpick', '세공'), false, true);
+  }
+  // 고르지 않은 재련 · 세공 결과가 있으면 장비 화면 위쪽에 띠로 알린다
+  function pendBanner() {
+    var h = '', rp = R.rfPending(S.P), cp = R.rcPending(S.P);
+    if (rp) h += '<div class="card row" style="justify-content:space-between;gap:8px"><span class="small">재련 결과를 아직 선택하지 않았습니다: <b>' + esc(R.findItem(S.P, rp.u).name) + '</b></span><button class="btn sm primary" data-act="rfopen">선택하기</button></div>';
+    if (cp) h += '<div class="card row" style="justify-content:space-between;gap:8px"><span class="small">세공 다시 새기기 결과를 아직 선택하지 않았습니다: <b>' + esc(R.badgeFind(S.P, cp.u).name) + '</b></span><button class="btn sm primary" data-act="rcopen">선택하기</button></div>';
+    return h;
+  }
+  ACT.rfopen = function () { rfPickModal(); };
+  ACT.rcopen = function () { rcPickModal(); };
+  ACT.rfpick = function (k) { act('reforgePick', { keep: k }).then(function (r) { closeModal(); if (r) { if (k === 'new') Snd.play('enh'); toast(k === 'new' ? '새 옵션을 적용했습니다' : '이전 옵션을 유지했습니다', r.name, 1800); } render(); }); };
+  ACT.rcpick = function (k) { act('badgeRecutPick', { keep: k }).then(function (r) { closeModal(); if (r) { if (k === 'new') Snd.play('enh'); toast(k === 'new' ? '새 세공을 적용했습니다' : '이전 세공을 유지했습니다', r.name + ' · ' + r.text, 2200); } render(); }); };
   ACT.reforge = function (u) {
+    if (R.rfPending(S.P)) { rfPickModal(); return; }
     var it = R.findItem(S.P, u); if (!it) return; var rf = R.reforgeCost(it);
-    modal(mhead('재련', esc(it.name)) + '<p class="small"><b class="bad">지금 옵션은 사라지고</b> 새로 굴린 옵션으로 바뀝니다. 되돌릴 수 없습니다. 등급 · 레벨 · 강화 · 기본 능력치는 그대로이며, 한 장비에 같은 옵션이 두 줄 붙지 않습니다.</p>' +
-      '<div class="section-t" style="margin-top:10px">사라질 옵션</div><div class="rfold">' + affList(it) + '</div>' +
+    modal(mhead('재련', esc(it.name)) + '<p class="small">옵션을 새로 굴린 뒤, <b>이전 옵션과 새 옵션 중 하나를 선택</b>합니다. 마석가루는 어느 쪽을 선택해도 소모됩니다. 등급 · 레벨 · 강화 · 기본 능력치는 그대로이며, 한 장비에 같은 옵션이 두 줄 붙지 않습니다.</p>' +
+      '<div class="section-t" style="margin-top:10px">지금 옵션</div><div class="rfold">' + affList(it) + '</div>' +
       '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn ghost" data-act="modal-close">취소</button><button class="btn primary" data-act="reforge-go" data-a="' + esc(u) + '">재련하기 <span class="cost">' + fmt(rf) + ' 마석가루</span></button></div>');
   };
   ACT['reforge-go'] = function (u) {
-    var it0 = R.findItem(S.P, u), old = it0 ? affList(it0) : '';
     act('reforge', { u: u }).then(function (r) {
-      if (!r) { closeModal(); render(); return; } Snd.play('enh'); var it = R.findItem(S.P, u);
-      modal(mhead('재련 완료', esc(r.name) + ' · 마석가루 -' + fmt(r.cost)) + '<div class="grid g2" style="gap:10px"><div><div class="section-t">이전 옵션 (사라짐)</div><div class="rfold">' + old + '</div></div><div><div class="section-t">새 옵션</div><div class="rfnew">' + (it ? affList(it) : '') + '</div></div></div>' +
-        '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn primary" data-act="modal-close">확인</button></div>');
-      render();
+      if (!r) { closeModal(); render(); return; } Snd.play('enh'); render(); rfPickModal();
     });
   };
   ACT.rectab = function (t) { S.recTab = t; render(); };
@@ -5527,7 +5547,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102282;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102283;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
