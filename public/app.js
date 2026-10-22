@@ -940,7 +940,7 @@
   function profileCard(p, m) {
     if (p.deleted) return '<div class="pcard"><p class="small muted" style="padding:18px 4px;text-align:center">삭제된 사용자입니다.</p></div>';
     var hh = R.HOUSE[p.house], dc = p.deco || {}, fr = decoFrame(dc.frame), bgs = decoBg(dc.bg), dk = dc.frame || dc.bg;
-    var h = (p.preview ? '<p class="tiny gold" style="margin-bottom:10px">미리보기 · 저장하지 않은 내용이 들어 있습니다</p>' : '') + '<div class="pcard' + (dk ? ' deco ' + fr.cls : '') + (dc.bg ? (decoDark(dc.bg) ? ' bgdark' : ' bglight') : '') + '"' + (dk ? ' style="' + fr.style + bgs + '"' : '') + '>' + (dc.stamp && R.DECO[dc.stamp] ? '<span class="pstamp" title="' + R.DECO[dc.stamp].name + '" aria-hidden="true">' + R.DECO[dc.stamp].glyph + '</span>' : '') + '<div class="pav">' + avatarHtml(p, 100) + (p.avcredit && (p.av || p.avData) ? '<span class="avcredit" title="두상 출처">' + esc(p.avcredit) + '</span>' : '') + '</div>' + '<div style="min-width:0">' + (p.title ? '<div class="pttl">' + (R.OP_TITLES[p.title] ? '<span class="ttl' + R.opTitleCls(p.title) + '">' + esc(p.title) + '</span>' : esc(p.title)) + '</div>' : '') + '<h2 class="pname"><span class="pnm">' + inkName(p.name, dc.ink, decoBgRef(dc.bg)) + '</span>' + (p.badge && R.GEM[p.badge.gem] ? ' <span class="pbdg" title="' + esc((p.badge.name || '') + ' · Lv ' + p.badge.lv) + '">' + badgeSvg(p.badge, 26) + '</span>' : '') + (p.online ? ' <span class="odot" title="접속 중"></span>' : '') + '</h2>' +
+    var h = (p.preview ? '<p class="tiny gold" style="margin-bottom:10px">미리보기 · 저장하지 않은 내용이 들어 있습니다</p>' : '') + '<div class="pcard' + (dk ? ' deco ' + fr.cls : '') + (dc.bg ? (decoDark(dc.bg) ? ' bgdark' : ' bglight') : '') + '"' + (dk ? ' style="' + fr.style + bgs + '"' : '') + '>' + (dc.stamp && R.DECO[dc.stamp] ? '<span class="pstamp" title="' + R.DECO[dc.stamp].name + '" aria-hidden="true">' + stampHtml(R.DECO[dc.stamp]) + '</span>' : '') + '<div class="pav">' + avatarHtml(p, 100) + (p.avcredit && (p.av || p.avData) ? '<span class="avcredit" title="두상 출처">' + esc(p.avcredit) + '</span>' : '') + '</div>' + '<div style="min-width:0">' + (p.title ? '<div class="pttl">' + (R.OP_TITLES[p.title] ? '<span class="ttl' + R.opTitleCls(p.title) + '">' + esc(p.title) + '</span>' : esc(p.title)) + '</div>' : '') + '<h2 class="pname"><span class="pnm">' + inkName(p.name, dc.ink, decoBgRef(dc.bg)) + '</span>' + (p.badge && R.GEM[p.badge.gem] ? ' <span class="pbdg" title="' + esc((p.badge.name || '') + ' · Lv ' + p.badge.lv) + '">' + badgeSvg(p.badge, 26) + '</span>' : '') + (p.online ? ' <span class="odot" title="접속 중"></span>' : '') + '</h2>' +
       '<div class="small">' + (hh ? houseDot(p.house, 16) + ' ' : '') + '<span style="color:' + (hh ? hh.color : 'inherit') + '">' + (hh ? hh.name : '') + '</span> · ' + (p.grade >= 8 ? '마스터 과정' : p.grade + '학년') + (p.lvl ? ' · Lv ' + p.lvl : '') + (R.CLS[p.cls] ? ' · <span class="pcls">' + clsDot(p.cls, 14) + ' ' + R.CLS[p.cls].name + '</span>' : '') + '</div>' +
       (p.guild ? '<div class="pguild">' + gEmblem(p.guild.color, p.guild.name, 20, p.guild.icon) + '<span class="pgt"><b class="pgn">' + esc(p.guild.name) + '</b><span class="pgm"><span class="tiny faint">Lv ' + (p.guild.lv || 1) + '</span>' + (p.guild.rank ? '<span class="tag' + (p.guild.role === 'owner' ? ' br' : p.guild.role === 'officer' ? ' ok' : '') + '">' + esc(p.guild.rank) + '</span>' : '') + '</span></span></div>' : '') +
       ((p.heads && p.heads.length) || (p.seconds && p.seconds.length) ? '<div class="pheads">' + (p.heads || []).filter(function (k) { return R.SUBJ[k]; }).map(function (k) { return '<span class="phead" title="' + R.SUBJ[k].name + ' 과목 순위 1위">★ ' + R.SUBJ[k].name + ' 수석</span>'; }).join('') + (p.seconds || []).filter(function (k) { return R.SUBJ[k]; }).map(function (k) { return '<span class="phead two" title="' + R.SUBJ[k].name + ' 과목 순위 2위">☆ ' + R.SUBJ[k].name + ' 차석</span>'; }).join('') + '</div>' : '') +
@@ -5194,9 +5194,14 @@
     return c.length === 1 ? { cls: '', style: 'color:' + c[0] + ';' + ol } : { cls: 'ink' + (x.anim ? ' anim' : ''), style: 'color:' + c[0] + ';background-image:linear-gradient(90deg,' + c.join(',') + ');' + ol };
   }
   function inkName(name, id, bg) { var k = inkAttr(id, bg); return k ? '<span class="' + k.cls + '" style="' + k.style + '">' + esc(name) + '</span>' : esc(name); }
+  // 인장 그림: svg가 있으면 그림으로 (글자 기호보다 또렷하게), 없으면 글자 기호
+  var STAMP_SVG = {
+    laurel: '<svg class="stsvg" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M8 20C3.6 16.4 3 10 6.4 4.8"/><path d="M16 20c4.4-3.6 5-10 1.6-15.2"/><path d="M9.6 20.6 12 19l2.4 1.6"/></g><g fill="currentColor"><ellipse cx="5.3" cy="16.6" rx="1.7" ry=".8" transform="rotate(-50 5.3 16.6)"/><ellipse cx="4.2" cy="12.6" rx="1.7" ry=".8" transform="rotate(-80 4.2 12.6)"/><ellipse cx="4.7" cy="8.6" rx="1.7" ry=".8" transform="rotate(70 4.7 8.6)"/><ellipse cx="18.7" cy="16.6" rx="1.7" ry=".8" transform="rotate(50 18.7 16.6)"/><ellipse cx="19.8" cy="12.6" rx="1.7" ry=".8" transform="rotate(80 19.8 12.6)"/><ellipse cx="19.3" cy="8.6" rx="1.7" ry=".8" transform="rotate(-70 19.3 8.6)"/><path d="M12 6.2l1.15 3.65 3.65 1.15-3.65 1.15L12 15.8l-1.15-3.65L7.2 11l3.65-1.15z"/></g></svg>'
+  };
+  function stampHtml(x) { return x.svg && STAMP_SVG[x.svg] ? STAMP_SVG[x.svg] : x.glyph; }
   function decoFrame(id, small) {
     var x = id && R.DECO[id]; if (!x || x.slot !== 'frame') return { cls: '', style: '' };
-    if (x.st === 'aurora' || x.st === 'spring') return { cls: 'fr-' + x.st, style: '' };
+    if (x.st === 'aurora' || x.st === 'spring' || x.st === 'seven') return { cls: 'fr-' + x.st, style: '' };
     var c = forTone(x.c), w = small ? 2 : 2;
     if (x.st === 'double') return { cls: '', style: 'border:' + (small ? 4 : 5) + 'px double ' + c + ';' };
     if (x.st === 'dotted') return { cls: '', style: 'border:' + (small ? 2 : 3) + 'px dotted ' + c + ';' };
@@ -5207,6 +5212,19 @@
     if (x.st === 'gild') return { cls: 'fr-gild', style: 'border:' + (small ? 4 : 5) + 'px double ' + c + ';box-shadow:0 0 ' + (small ? 5 : 12) + 'px ' + hexA(x.c, 0.45) + ',inset 0 0 ' + (small ? 4 : 10) + 'px ' + hexA(x.c, 0.3) + ';' };
     return { cls: '', style: 'border:' + w + 'px ' + (x.st === 'dashed' ? 'dashed' : 'solid') + ' ' + c + ';' + (x.st === 'glow' ? 'box-shadow:0 0 ' + (small ? 6 : 14) + 'px ' + hexA(x.c, 0.5) + ';' : 'box-shadow:inset 0 0 0 1px ' + hexA(x.c, 0.3) + ';') };
   }
+  // 별자리 무늬 (화면 배경처럼 별 사이를 잇는 가는 선): 한 번 만들어 둔 SVG
+  var CONST_SVG = null;
+  function constPat(small) {
+    if (!CONST_SVG) {
+      var s = 7, rnd = function () { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; }, st = '', ln = '';
+      for (var i = 0; i < 46; i++) st += '<circle cx="' + (rnd() * 320).toFixed(1) + '" cy="' + (rnd() * 140).toFixed(1) + '" r="' + (rnd() < 0.85 ? 0.4 + rnd() * 0.5 : 0.9 + rnd() * 0.6).toFixed(2) + '" fill="' + (rnd() < 0.25 ? '#f0cf8a' : '#dfe4ff') + '" opacity="' + (0.35 + rnd() * 0.55).toFixed(2) + '"/>';
+      [[[30, 26], [62, 18], [88, 34], [112, 22], [128, 46]], [[196, 98], [222, 80], [252, 92], [270, 70], [300, 78]], [[150, 112], [172, 96], [186, 118]], [[236, 22], [258, 36], [284, 26]]].forEach(function (L) {
+        ln += '<polyline points="' + L.map(function (p) { return p.join(','); }).join(' ') + '" fill="none" stroke="#f0cf8a" stroke-width=".6" opacity=".45"/>' + L.map(function (p) { return '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="1.5" fill="#fff3c4" opacity=".9"/>'; }).join('');
+      });
+      CONST_SVG = "url('data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 140" preserveAspectRatio="xMidYMid slice">' + st + ln + '</svg>') + "')";   // style 속성이 큰따옴표라 작은따옴표로 감싼다
+    }
+    return CONST_SVG + ' center/cover no-repeat,radial-gradient(120% 90% at 85% -10%,rgba(240,207,138,.22),transparent 60%)';
+  }
   function decoDark(id) { var x = id && R.DECO[id]; if (!x || x.slot !== 'bg') return false; var L = x.g.reduce(function (t, c) { var n = parseInt(c.slice(1), 16); return t + (0.299 * (n >> 16) + 0.587 * (n >> 8 & 255) + 0.114 * (n & 255)) / 255; }, 0) / x.g.length; return L < 0.5; }
   function decoBg(id, small) {
     var x = id && R.DECO[id]; if (!x || x.slot !== 'bg') return '';
@@ -5214,6 +5232,7 @@
     var a = small ? 1 : 0.95, g = 'linear-gradient(160deg,' + x.g.map(function (c) { return hexA(c, a); }).join(',') + ')', p = '';
     var dot = !decoDark(id) && !small ? 'rgba(40,40,80,.18)' : 'rgba(255,255,255,.35)';
     if (x.pat === 'stars') p = 'radial-gradient(1.5px 1.5px at 20% 30%,' + dot + ',transparent),radial-gradient(1px 1px at 70% 20%,' + dot + ',transparent),radial-gradient(1.2px 1.2px at 85% 70%,' + dot + ',transparent),radial-gradient(1px 1px at 40% 80%,' + dot + ',transparent),';
+    else if (x.pat === 'const') p = constPat(small) + ',';
     else if (x.pat === 'dots') p = 'radial-gradient(' + dot + ' 1px,transparent 1.6px) 0 0/' + (small ? 8 : 14) + 'px ' + (small ? 8 : 14) + 'px,';
     else if (x.pat === 'snow') p = 'radial-gradient(' + dot + ' 1.4px,transparent 2px) 0 0/' + (small ? 9 : 18) + 'px ' + (small ? 9 : 18) + 'px,radial-gradient(' + dot + ' 1px,transparent 1.5px) 7px 9px/' + (small ? 9 : 18) + 'px ' + (small ? 9 : 18) + 'px,';
     else if (x.pat === 'lines') p = 'repeating-linear-gradient(0deg,' + (lightUi() && !small ? 'rgba(90,70,30,.06)' : 'rgba(255,255,255,.07)') + ' 0 1px,transparent 1px 7px),';
@@ -5222,7 +5241,7 @@
   function decoSwatch(x) {
     if (x.slot === 'frame') { var f = decoFrame(x.id, true); return '<span class="dsw ' + f.cls + '" style="' + f.style + '"></span>'; }
     if (x.slot === 'bg') return '<span class="dsw" style="' + decoBg(x.id, true) + '"></span>';
-    if (x.slot === 'stamp') return '<span class="dsw">' + x.glyph + '</span>';
+    if (x.slot === 'stamp') return '<span class="dsw">' + stampHtml(x) + '</span>';
     return '<span class="dsw">' + inkName('가', x.id) + '</span>';
   }
   // 정보 카드 꾸미기: 위에는 입어 본 모습과 할 일(사기·달기·빼기), 아래에는 칸을 골라 작은 칩으로
@@ -5236,6 +5255,7 @@
       var x = R.DECO[t], xb = '<span class="cx" data-act="decoundo" data-a="' + sl.id + '" role="button" aria-label="' + sl.name + ' 미리보기 빼기" title="빼기">×</span>';
       if (!t) acts.push('<button class="btn sm ghost cartbtn" data-act="decoset" data-a="' + sl.id + '" data-b="">' + sl.name + ' 빼기' + xb + '</button>');
       else if (d.own[t]) acts.push('<button class="btn sm cartbtn" data-act="decoset" data-a="' + sl.id + '" data-b="' + t + '">' + esc(x.name) + ' 달기' + xb + '</button>');
+      else if (x.need) acts.push('<button class="btn sm ghost cartbtn" disabled title="' + esc(x.needText) + '을 달성하면 지급됩니다">' + esc(x.name) + ' · ' + esc(x.needText) + ' 달성 시 지급' + xb + '</button>');   // 살 수 없는 전용 꾸미기
       else { cart.push(x); var armed = S.confirm['deco' + t] > Date.now(); acts.push('<button class="btn sm primary cartbtn' + (armed ? ' armed' : '') + '" data-act="decobuy" data-a="' + t + '"' + (P.res.gold >= x.price ? '' : ' aria-disabled="true" title="' + CUR + '가 모자랍니다"') + '>' + (armed ? '한 번 더 누르면 삽니다 · ' : esc(x.name) + ' ' + sl.name + ' · ') + MONEY(x.price) + xb + '</button>'); }
     });
     if (cart.length > 1) {
@@ -5244,11 +5264,11 @@
     }
     h += acts.length ? acts.join('') + '<button class="btn sm ghost" data-act="decotry" data-a="" data-b="reset">원래대로</button>' : '<span class="tiny faint">칩을 누르면 입어 봅니다. 산 것만 실제로 붙고, 한 번 사면 언제든 바꿔 달 수 있습니다.</span>';
     h += '<span class="spacer"></span><span class="tiny muted">가진 ' + CUR + ' <b class="num gold">' + fmt(P.res.gold) + '</b></span></div></div>';
-    h += '<div class="decotabs filters">' + D.DECO_SLOTS.map(function (sl) { var all = D.DECO.filter(function (x) { return x.slot === sl.id && (!(x.fest || x.mw) || d.own[x.id]); }), own = all.filter(function (x) { return d.own[x.id]; }).length; return '<button class="btn sm ghost' + (slot === sl.id ? ' on' : '') + '" data-act="decoslot" data-a="' + sl.id + '">' + sl.name + ' <span class="tiny faint num">' + own + '/' + all.length + '</span></button>'; }).join('') + '</div>';
+    h += '<div class="decotabs filters">' + D.DECO_SLOTS.map(function (sl) { var all = D.DECO.filter(function (x) { return x.slot === sl.id && (!(x.fest || x.mw || x.off) || d.own[x.id]); }), own = all.filter(function (x) { return d.own[x.id]; }).length; return '<button class="btn sm ghost' + (slot === sl.id ? ' on' : '') + '" data-act="decoslot" data-a="' + sl.id + '">' + sl.name + ' <span class="tiny faint num">' + own + '/' + all.length + '</span></button>'; }).join('') + '</div>';
     h += '<div class="dchips"><button class="dchip' + (!tr[slot] ? ' on' : '') + '" data-act="decotry" data-a="' + slot + '" data-b=""><span class="dsw none">없음</span><span class="dn">없음</span><span class="dp">&nbsp;</span></button>' +
-      D.DECO.filter(function (x) { return x.slot === slot && (!x.house || x.house === P.house || d.own[x.id]) && (!(x.fest || x.mw) || d.own[x.id]); }).map(function (x) {   // 기숙사 문장은 자기 기숙사 것만 · 마스터 주간 과제 보상은 받은 뒤에만 · 축제 인장은 교환소에서 받은 것만
+      D.DECO.filter(function (x) { return x.slot === slot && (!x.house || x.house === P.house || d.own[x.id]) && (!(x.fest || x.mw || x.off) || d.own[x.id]); }).map(function (x) {   // 기숙사 문장은 자기 기숙사 것만 · 마스터 주간 과제 보상은 받은 뒤에만 · 축제 인장은 교환소에서 받은 것만
         var own = !!d.own[x.id], on = worn[slot] === x.id;
-        return '<button class="dchip' + (tr[slot] === x.id ? ' on' : '') + '" data-act="decotry" data-a="' + slot + '" data-b="' + x.id + '" title="' + esc(x.name) + (own ? '' : ' · ' + MONEY(x.price)) + '">' + decoSwatch(x) + '<span class="dn">' + esc(x.name) + '</span><span class="dp' + (on ? ' worn' : own ? ' own' : '') + '">' + (on ? '다는 중' : own ? '가짐' : fmt(x.price)) + '</span></button>';
+        return '<button class="dchip' + (tr[slot] === x.id ? ' on' : '') + '" data-act="decotry" data-a="' + slot + '" data-b="' + x.id + '" title="' + esc(x.name) + (own ? '' : ' · ' + (x.need ? esc(x.needText) + ' 달성 시 지급' : MONEY(x.price))) + '">' + decoSwatch(x) + '<span class="dn">' + esc(x.name) + '</span><span class="dp' + (on ? ' worn' : own ? ' own' : '') + '">' + (on ? '다는 중' : own ? '가짐' : x.need ? esc(x.needText.replace('기말시험 ', '')) : fmt(x.price)) + '</span></button>';
       }).join('') + '</div>';
     return h;
   }
@@ -5263,7 +5283,7 @@
   };
   // 입어 본 것 중 안 산 것을 한 번에 (하나씩 차례로 사고, 모자라면 거기서 멈춘다)
   ACT.decobuyall = function () {
-    var d = S.P.deco || { own: {} }, tr = S.decoTry || {}, list = D.DECO_SLOTS.map(function (sl) { return tr[sl.id]; }).filter(function (id) { return id && !d.own[id]; });
+    var d = S.P.deco || { own: {} }, tr = S.decoTry || {}, list = D.DECO_SLOTS.map(function (sl) { return tr[sl.id]; }).filter(function (id) { return id && !d.own[id] && R.DECO[id] && !R.DECO[id].need; });   // 전용 꾸미기는 살 수 없다
     if (!list.length || !decoArm('decoAll')) return;
     var got = [], i = 0;
     (function next() {
@@ -5797,7 +5817,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102309;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102310;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
