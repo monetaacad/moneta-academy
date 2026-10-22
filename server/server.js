@@ -846,11 +846,20 @@ routes['GET /api/me/login'] = (req, res) => {
   let login = ''; try { const r = dbx.db.prepare('SELECT login_enc FROM players WHERE id = ?').get(me); login = r && r.login_enc ? sec.dec(r.login_enc) : ''; } catch (e) { }
   send(req, res, 200, { login });
 };
+// 친구 목록에 보이는 지금 하는 일: 원정 중(단계 · 끝나는 시각, 함께 원정 여부) · 함께 원정 방 대기 · 꿈길 · 출정 가능. 메모리에 있는 학생만 (접속 중이면 항상 있음)
+function friendActivity(id, now) {
+  if (exprooms.inRoom(id)) return { k: 'room' };
+  const P = store.peek(id); if (!P) return null;
+  if (R.dreaming(P, now)) return { k: 'dream', end: P.dream.end };
+  const j = (P.exp || []).filter((x) => x && x.end > now).sort((a, b) => a.end - b.end)[0];
+  return j ? { k: 'exp', s: j.s, end: j.end, pt: j.pt ? 1 : 0 } : { k: 'free' };
+}
 routes['GET /api/friends'] = (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
   if (limited('fl:' + me, 1, 10)) return fail(req, res, 429, '요청이 너무 잦습니다');
   const mine = dbx.q.friendList.all(me).map((r) => ({ id: r.id, state: r.state === 'ok' ? 'ok' : 'out', name: r.name, house: r.house, grade: r.grade, lvl: r.lvl, av: r.avatar_v, title: r.title, status: profileOf(r.profile).status, online: r.state === 'ok' && isOnline(r.id), seen: r.last_seen, memo: memoOf(r.memo) }));
   const inc = dbx.q.friendIncoming.all(me).map((r) => ({ id: r.id, name: r.name, house: r.house, grade: r.grade, lvl: r.lvl, av: r.avatar_v, t: r.t }));
+  const now = nowSec(); mine.forEach((f) => { if (f.online) f.act = friendActivity(f.id, now); });   // 접속 중인 친구의 원정 상태 (파티 초대 전에 확인)
   send(req, res, 200, { friends: mine.filter((f) => f.state === 'ok').sort((a, b) => (b.online - a.online) || (b.seen - a.seen)), out: mine.filter((f) => f.state === 'out'), inc });
 };
 // 학생 이름 검색 (친구 화면): 이름 일부로 찾고, 눌러서 정보창을 열어 친구 신청한다. 게스트 · 정지 학생은 빼고 최근 접속순 20명
