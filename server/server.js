@@ -1394,7 +1394,7 @@ function towerView(me, now) {
     start: R.twStart(ps.map(best)), used: used.map((Q) => Q.name), myUsed: !!P && R.twUsed(P, now), myBest: P ? best(P) : 0, myPos: P ? R.twPos(P) : 'van', posOk: P ? R.expPositions(P) : ['van'],
     members: R.twMeta(ms).map((m) => { const Q = ps.find((x) => x.id === m.id); return Object.assign(m, { me: m.id === me, best: Q ? best(Q) : null, used: !!Q && R.twUsed(Q, now), ready: m.npc || (!!lob && lob.ready.has(m.id)) }); }),
     pend: twPendView(P),
-    lobby: lob ? { mode: lob.mode, by: lob.byName, at: lob.at, notReady: ps.filter((Q) => !lob.ready.has(Q.id)).map((Q) => Q.name) } : null, readyTtl: TW_READY_TTL, count: TW_COUNT,
+    lobby: lob ? { mode: lob.mode, by: lob.byName, at: lob.at, notReady: ps.filter((Q) => !lob.ready.has(Q.id)).map((Q) => Q.name) } : null, count: TW_COUNT,
     runs: runs.slice().reverse() };
 }
 // 모집 카드에 보이는 층: 파티원 이번 주 기록 중 가장 낮은 층
@@ -1426,12 +1426,10 @@ function twPendView(Q) { const p = Q && Q.twPend; if (!p) return null; return Da
 function twPendFlush(Q) { if (Q.twPend && Date.now() / 1000 >= Q.twPend.end) twPendMail(Q); }
 // 출발 대기: 파티 → { mode(real · party), by, byName, ready: Map(학생 → 누른 실제 시각), at(출발 예정 실제 시각), timer }
 // 누군가 「실전 준비」 · 「파티 연습 준비」를 누르면 출발 종류가 정해지고, 사람 파티원(NPC 제외)이 모두 「준비 완료」하면 15초 뒤 자동으로 출발한다.
-// 그 사이 한 명이라도 준비를 풀면 출발이 취소되고, 다시 모두 준비하면 15초부터 다시 센다. 준비는 15분이 지나면 풀린다.
-const towerLobby = new Map(), TW_READY_TTL = 900, TW_COUNT = 15;
+// 그 사이 한 명이라도 준비를 풀면 출발이 취소되고, 다시 모두 준비하면 15초부터 다시 센다. 준비는 직접 취소하기 전까지 유지된다.
+const towerLobby = new Map(), TW_COUNT = 15;
 function twLobbyOf(party) {
-  const L = towerLobby.get(party); if (!L) return null; const real = Date.now() / 1000;
-  L.ready.forEach((t, k) => { if (real - t > TW_READY_TTL) L.ready.delete(k); });
-  return L;
+  return towerLobby.get(party) || null;
 }
 function twLobbyEval(party) {
   const L = twLobbyOf(party); if (!L) return;
