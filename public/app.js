@@ -4164,7 +4164,7 @@
       while (k < ev.length && ev[k][0] <= end) {
         var e = ev[k++];
         if (e[1] === 'h') { dealt += e[2]; if (e[3] === 'p') d.p += e[2]; else if (e[3] === 'f') d.f += e[2]; else d.n += e[2]; if (e[4] && e[2] > d.crit) d.crit = e[2]; }
-        else if (e[1] === 's') { var sp = R.SPELL[e[2]]; if (sp && d.sp.indexOf(sp.name) < 0) d.sp.push(sp.name); if (sp && sp.type === 'heal') { d.r += e[3] || 0; php = Math.min(1, php + (e[3] || 0) / pHpMax); } else if (sp && sp.type === 'shield') d.g += e[3] || 0; }
+        else if (e[1] === 's') { var sp = R.SPELL[e[2]]; if (sp && d.sp.indexOf(sp.name) < 0) d.sp.push(sp.name); if (sp && sp.type === 'heal') { d.r += e[3] || 0; php = Math.min(1, php + (e[3] || 0) / pHpMax); } else if (sp && (sp.type === 'shield' || sp.type === 'pshield')) d.g += e[3] || 0; }
         else if (e[1] === 'x') { d.x += e[2]; php = Math.max(0, php - e[2] / pHpMax); }
       }
       var t = Math.min(total, end), txt = '', kind = '';
@@ -5792,7 +5792,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102303;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102304;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

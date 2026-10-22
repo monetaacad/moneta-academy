@@ -327,6 +327,7 @@ var DATA = (function () {
   D.SPELLS = [
     { id: 'bolt', name: '마력 화살', req: null, cd: 4, mult: 2.0, type: 'dmg', main: true, desc: '주 공격력의 200% 피해' },
     { id: 'ward', name: '수호 결계', req: ['ward', 5], cd: 15, mult: 0.3, type: 'shield', desc: '최대 생명력 30%의 보호막 · 함께 원정 선봉일 때 몬스터를 끄는 확률 +5%' },
+    { id: 'wardfield', name: '결계진', req: ['ward', 8], cd: 25, mult: 0.2, type: 'pshield', desc: '파티원 모두에게 최대 생명력 20%의 보호막 (혼자일 때는 자신에게)' },
     { id: 'bigward', name: '대결계', req: ['ward', 20], cd: 24, mult: 0.5, type: 'shield', desc: '최대 생명력 50%의 보호막' },
     { id: 'beastcall', name: '환수 소환', req: ['beast', 8], cd: 20, mult: 10, type: 'dmg', main: true, desc: '사역마와 함께 주 공격력의 1000% 피해' },
     { id: 'meteor', name: '별똥별', req: ['astro', 10], cd: 25, mult: 15, type: 'dmg', main: true, desc: '주 공격력의 1500% 피해' },
@@ -338,7 +339,8 @@ var DATA = (function () {
     { id: 'regroup', name: '전열 정비', req: ['rescue', 4], cd: 14, mult: 0.25, type: 'shield', desc: '최대 생명력 25%의 보호막' },
     { id: 'heal', name: '재생의 노래', req: ['rescue', 8], cd: 18, mult: 0.35, type: 'heal', desc: '생명력이 60% 미만일 때 35% 회복' },
     { id: 'jab', name: '정권 지르기', req: ['martial', 3], cd: 5, mult: 2.2, type: 'dmg', main: true, stunP: 0.2, stun: 1, desc: '주 공격력의 220% 피해 · 20% 확률로 1초 기절' },
-    { id: 'ironstrike', name: '강철 일격', req: ['martial', 5], cd: 8, mult: 3.5, type: 'dmg', main: true, stunP: 0.35, stun: 1.5, desc: '주 공격력의 350% 피해 · 35% 확률로 1.5초 기절' },
+    { id: 'ironstrike', name: '강철 일격', req: ['martial', 5], cd: 8, mult: 3.5, type: 'dmg', main: true, stunP: 0.35, stun: 1.5, selfShield: 0.1, desc: '주 공격력의 350% 피해 · 35% 확률로 1.5초 기절 · 적중할 때 자신에게 최대 생명력 10%의 보호막' },
+    { id: 'ironwall', name: '철벽 자세', req: ['martial', 8], cd: 16, mult: 0.35, type: 'shield', desc: '최대 생명력 35%의 보호막' },
     { id: 'earthsplit', name: '대지 가르기', req: ['martial', 12], cd: 18, mult: 8, type: 'stun', stun: 2, main: true, desc: '주 공격력의 800% 피해 · 2초 기절' },
     // 학과 전공 주문 (cls: 배울 수 있는 학과). 기사도 공용 과목으로 배운 주문은 장착할 수 있다
     { id: 'arcane', name: '비전 폭발', req: null, cls: ['mage'], cd: 10, mult: 6, type: 'dmg', desc: '마법사 전용 · 주문 공격력의 600% 피해' },
