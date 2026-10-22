@@ -2142,7 +2142,8 @@
   R.SPSET_N = 5;
   A.spellSet = function (P, W, now, a) {
     var i = int(a.i, 0, R.SPSET_N - 1), op = str(a.op), sets = P.spellSets || (P.spellSets = []);
-    if (op === 'save') { if (!P.spells.some(Boolean)) err('장착한 주문이 없습니다'); sets[i] = { sp: P.spells.slice(), cls: P.cls || 'mage', at: now }; return { saved: i }; }
+    if (op === 'save') { if (!P.spells.some(Boolean)) err('장착한 주문이 없습니다'); var old = sets[i]; sets[i] = { sp: P.spells.slice(), cls: P.cls || 'mage', at: now }; if (old && old.name) sets[i].name = old.name; return { saved: i }; }   // 덮어써도 이름은 그대로
+    if (op === 'name') { if (!sets[i]) err('저장된 프리셋이 없습니다'); var nm = R.cleanName(a.name).slice(0, 10); if (nm) sets[i].name = nm; else delete sets[i].name; return { named: i }; }
     if (op === 'clear') { sets[i] = null; return { cleared: i }; }
     var st = sets[i]; if (!st) err('저장된 프리셋이 없습니다');
     var ns = R.spellSlots(P), miss = 0, out = [null, null, null, null], used = {};
