@@ -4449,40 +4449,35 @@
   ACT.opt = function (k, v, el) { act('opt', { k: k, v: el.checked }).then(function () { if (k === 'sound') { Snd.set(S.P.opt.sound); if ($('#setbox')) ACT.settings(); } if (/Title$/.test(k)) renderDock(); render(); }); };
   ACT.autosell = function () { act('autoSell', { r: +$('#autosell').value }).then(render); };
   ACT.automode = function () { act('autoMode', { dis: $('#automode').value === 'dis' }).then(render); };
-  // 재련: 확인 창 → 재련하면 이전 · 새 옵션을 나란히 보여 주고 하나를 선택한다 (고르기 전에 닫혀도 장비 화면 띠에서 이어서 선택)
+  // 재련: 먼저 지금 옵션이 사라진다는 확인 창 → 재련하면 이전 · 새 옵션을 나란히 보여 준다
   function affList(it) { return (it.aff || []).map(function (a) { var nm = D.BONUS_NAMES[a.id] || D.STAT_NAMES[a.id] || a.id, val = (a.id === 'atk' || a.id === 'hp' || a.id === 'def' || D.STAT_NAMES[a.id]) ? '+' + fmt(a.v) : '+' + pct(a.v); return '<div class="statline"><span>' + nm + '</span><span class="d">' + val + '</span></div>'; }).join('') || '<p class="tiny faint">옵션 없음</p>'; }
   function pickBtns(act, w) { return '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn" data-act="' + act + '" data-a="old">이전 ' + w + ' 유지</button><button class="btn primary" data-act="' + act + '" data-a="new" autofocus>새 ' + w + ' 적용</button></div>'; }
-  function rfPickModal() {
-    var p = R.rfPending(S.P); if (!p) return; var it = R.findItem(S.P, p.u);
-    modal(mhead('재련 결과 선택', esc(it.name) + ' · 마석가루 -' + fmt(p.cost), true) + '<p class="small">이전 옵션과 새 옵션 중 하나를 선택합니다. 선택하지 않은 쪽은 사라집니다.</p>' +
-      '<div class="grid g2" style="gap:10px"><div><div class="section-t">이전 옵션</div><div class="rfold">' + affList(it) + '</div></div><div><div class="section-t">새 옵션</div><div class="rfnew">' + affList({ aff: p.aff }) + '</div></div></div>' + pickBtns('rfpick', '옵션'), false, true);
-  }
   function rcPickModal() {
     var p = R.rcPending(S.P); if (!p) return; var b = R.badgeFind(S.P, p.u), line = function (a) { return '<div class="statline"><span>' + esc(R.affText(a)) + '</span></div>'; };
     modal(mhead('세공 다시 새기기 결과 선택', esc(b.name) + ' · 별조각 -' + p.cost, true) + '<p class="small">' + (p.i + 1) + '번째 줄의 이전 세공과 새 세공 중 하나를 선택합니다. 선택하지 않은 쪽은 사라집니다.</p>' +
       '<div class="grid g2" style="gap:10px"><div><div class="section-t">이전 세공</div><div class="rfold">' + line(b.aff[p.i]) + '</div></div><div><div class="section-t">새 세공</div><div class="rfnew">' + line(p.aff) + '</div></div></div>' + pickBtns('rcpick', '세공'), false, true);
   }
-  // 고르지 않은 재련 · 세공 결과가 있으면 장비 화면 위쪽에 띠로 알린다
+  // 고르지 않은 세공 결과가 있으면 장비 화면 위쪽에 띠로 알린다
   function pendBanner() {
-    var h = '', rp = R.rfPending(S.P), cp = R.rcPending(S.P);
-    if (rp) h += '<div class="card row" style="justify-content:space-between;gap:8px"><span class="small">재련 결과를 아직 선택하지 않았습니다: <b>' + esc(R.findItem(S.P, rp.u).name) + '</b></span><button class="btn sm primary" data-act="rfopen">선택하기</button></div>';
+    var h = '', cp = R.rcPending(S.P);
     if (cp) h += '<div class="card row" style="justify-content:space-between;gap:8px"><span class="small">세공 다시 새기기 결과를 아직 선택하지 않았습니다: <b>' + esc(R.badgeFind(S.P, cp.u).name) + '</b></span><button class="btn sm primary" data-act="rcopen">선택하기</button></div>';
     return h;
   }
-  ACT.rfopen = function () { rfPickModal(); };
   ACT.rcopen = function () { rcPickModal(); };
-  ACT.rfpick = function (k) { act('reforgePick', { keep: k }).then(function (r) { closeModal(); if (r) { if (k === 'new') Snd.play('enh'); toast(k === 'new' ? '새 옵션을 적용했습니다' : '이전 옵션을 유지했습니다', r.name, 1800); } render(); }); };
   ACT.rcpick = function (k) { act('badgeRecutPick', { keep: k }).then(function (r) { closeModal(); if (r) { if (k === 'new') Snd.play('enh'); toast(k === 'new' ? '새 세공을 적용했습니다' : '이전 세공을 유지했습니다', r.name + ' · ' + r.text, 2200); } render(); }); };
   ACT.reforge = function (u) {
-    if (R.rfPending(S.P)) { rfPickModal(); return; }
     var it = R.findItem(S.P, u); if (!it) return; var rf = R.reforgeCost(it), rg = R.reforgeGold(it);
-    modal(mhead('재련', esc(it.name)) + '<p class="small">옵션을 새로 굴린 뒤, <b>이전 옵션과 새 옵션 중 하나를 선택</b>합니다. 마석가루와 ' + CUR + '는 어느 쪽을 선택해도 소모됩니다. 등급 · 레벨 · 강화 · 기본 능력치는 그대로이며, 한 장비에 같은 옵션이 두 줄 붙지 않습니다.</p>' +
-      '<div class="section-t" style="margin-top:10px">지금 옵션</div><div class="rfold">' + affList(it) + '</div>' +
+    modal(mhead('재련', esc(it.name)) + '<p class="small"><b class="bad">지금 옵션은 사라지고</b> 새로 굴린 옵션으로 바뀝니다. 되돌릴 수 없습니다. 등급 · 레벨 · 강화 · 기본 능력치는 그대로이며, 한 장비에 같은 옵션이 두 줄 붙지 않습니다.</p>' +
+      '<div class="section-t" style="margin-top:10px">사라질 옵션</div><div class="rfold">' + affList(it) + '</div>' +
       '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn ghost" data-act="modal-close">취소</button><button class="btn primary" data-act="reforge-go" data-a="' + esc(u) + '">재련하기 <span class="cost">' + fmt(rf) + ' 마석가루 · ' + MONEY(rg) + '</span></button></div>');
   };
   ACT['reforge-go'] = function (u) {
+    var it0 = R.findItem(S.P, u), old = it0 ? affList(it0) : '';
     act('reforge', { u: u }).then(function (r) {
-      if (!r) { closeModal(); render(); return; } Snd.play('enh'); render(); rfPickModal();
+      if (!r) { closeModal(); render(); return; } Snd.play('enh'); var it = R.findItem(S.P, u);
+      modal(mhead('재련 완료', esc(r.name) + ' · 마석가루 -' + fmt(r.cost)) + '<div class="grid g2" style="gap:10px"><div><div class="section-t">이전 옵션 (사라짐)</div><div class="rfold">' + old + '</div></div><div><div class="section-t">새 옵션</div><div class="rfnew">' + (it ? affList(it) : '') + '</div></div></div>' +
+        '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn primary" data-act="modal-close">확인</button></div>');
+      render();
     });
   };
   ACT.rectab = function (t) { S.recTab = t; render(); };
@@ -5797,7 +5792,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102301;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102302;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
