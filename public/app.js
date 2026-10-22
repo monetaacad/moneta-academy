@@ -1294,8 +1294,8 @@
   }
 
   /* ── 아카데미 광장 ── */
-  var ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
-  function storyUnread() { var P = S.P; return P.story < Math.min(P.grade, 8); }
+  var ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX'];
+  function storyUnread() { var P = S.P; return P.story < R.storyAvail(P); }
   // 경험치 바 + 그 아래 현재 / 다음 레벨까지 필요한 경험치
   function xpBar(P, mt) {
     var need = R.xpNeed(P.lvl), pct = Math.min(100, P.xp / need * 100);
@@ -1334,7 +1334,7 @@
     res: [['[data-a="resStart"][data-b="manaspring"]', '첫 연구', '「마나 샘 개척」의 「연구」를 누르세요. 연구에는 마나와 지식이 필요하며, 끝나면 효과가 영구히 남습니다. 첫 단계는 5분이면 끝납니다.', { wait: function () { return S.P.rsq.some(Boolean); } }], MQ_BACK]
   };
   function mqTut(kind) { if (!MQ_TUT[kind]) return; if (S.tut) tutEnd(); S.tut = { i: -1, steps: MQ_TUT[kind], key: 'mq' + kind }; tutGo(1); }
-  function mqChLabel(g) { return g >= 8 ? '마지막 장' : g + '장'; }
+  function mqChLabel(g) { return g >= D.MQ.length ? '마지막 장' : g + '장'; }
   function mqGoalsHtml(gl) {
     return '<div class="mqgoals">' + gl.map(function (x) { return '<div class="mqg' + (x.ok ? ' ok' : '') + '"><span class="mqck" aria-hidden="true">' + (x.ok ? '✓' : '') + '</span><span class="small">' + esc(x.text) + '</span>' + (x.need > 1 ? '<span class="num tiny faint">' + x.cur + ' / ' + x.need + '</span>' : '') + '</div>'; }).join('') + '</div>';
   }
@@ -3822,7 +3822,7 @@
     h += '<div class="tabs" role="tablist">' + tabs.map(function (t) { return '<button role="tab" class="' + (S.loreTab === t[0] ? 'on' : '') + '" data-act="loretab" data-a="' + t[0] + '">' + t[1] + (t[0] === 'story' && storyUnread() ? ' <span class="tag br">새 글</span>' : '') + '</button>'; }).join('') + '</div>';
     if (S.loreTab === 'story') {
       h += '<div class="stack">' + D.STORY.map(function (s2, i) {
-        if (i + 1 > Math.min(P.grade, 8)) return '<div class="card inset"><h4 class="faint">' + s2.title + '</h4><p class="small faint">' + (i + 1 === 8 ? '졸업 시험을 통과하면 열립니다.' : (i + 1) + '학년이 되면 열립니다.') + '</p></div>';
+        if (i + 1 > R.storyAvail(P)) return '<div class="card inset"><h4 class="faint">' + s2.title + '</h4><p class="small faint">' + (i + 1 === 9 ? '학기 이야기 8장을 마치면 열립니다.' : i + 1 === 8 ? '졸업 시험을 통과하면 열립니다.' : (i + 1) + '학년이 되면 열립니다.') + '</p></div>';
         var unread = i >= P.story;
         return '<div class="card chapter' + (unread ? ' hl' : '') + '"><div class="roman">' + ROMAN[i + 1] + '</div><h3>' + s2.title + (unread ? ' <span class="tag br">새 글</span>' : '') + '</h3>' + (unread ? '<div class="row" style="margin-top:8px"><button class="btn sm primary" data-act="story" data-a="' + i + '">읽기</button></div>' : '<p class="small" style="margin-top:6px">' + esc(s2.text) + '</p>') + '</div>';
       }).join('') + '</div>';
@@ -5787,7 +5787,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102296;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102298;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
