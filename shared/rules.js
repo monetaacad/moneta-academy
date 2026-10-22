@@ -281,6 +281,7 @@
     if (!P.bossV && P.st) { P.bossV = 1; P.st.bosses = (P.st.bosses || 0) + (P.st.wbAttacks || 0) + (P.st.duelWins || 0) + Math.floor((P.st.twK || 0) / R.CT_MILE) + Math.floor((P.st.twM || 0) / R.CT_MILE); }
     if (!P.physV) { P.physV = 1; if (P.cls === 'knight' && P.alloc && P.log && (P.alloc.int || 0) > 0 && allocReset(P, 'knight')) log(P, P.at || 0, '기사의 공격력이 지력 대신 체력을 따르게 바뀌어 능력치 포인트를 모두 돌려드렸습니다.', 'news'); }
     D.SUBJECTS.forEach(function (s) { if (!P.subj[s.id]) P.subj[s.id] = { lv: 0, xp: 0 }; });
+    if (P.fam && P.st && (P.st.hatches || 0) < (P.fam.hatched || 0)) P.st.hatches = P.fam.hatched;   // 누적 부화 수 (예전 학생)
     delete P.quizCd; delete P.pq; delete P.qRecent; if (P.st) delete P.st.quizCorrect;
     // 수업 예약 · 시간표 · 분해 (2026-10-19)
     if (!P.lecQ) P.lecQ = [null, null, null]; if (!P.lecEnd) P.lecEnd = [0, 0, 0]; if (!P.tt) P.tt = [];
@@ -328,7 +329,8 @@
     } else P.spells = P.spells.map(function (s) { return ok(s) ? s : null; });
     if (!P.spells.some(Boolean)) P.spells[0] = 'bolt';
     var off = before.filter(function (s) { return P.spells.indexOf(s) < 0; }).map(function (s) { return SPELL[s] ? SPELL[s].name : s; });
-    var pts = allocReset(P, id); if (pts) log(P, now, '학과를 옮겨 능력치 포인트를 모두 돌려받았습니다. 새 학과에 맞게 다시 분배할 수 있습니다.', 'news');
+    var wasAuto = !!P.opt.autoAlloc; P.opt.autoAlloc = false;   // 전과하면 자동 분배를 끈다 (켜 둔 채면 돌려받자마자 예전 비율로 다시 나뉘어 직접 나눌 수 없었다)
+    var pts = allocReset(P, id); if (pts) log(P, now, '학과를 옮겨 능력치 포인트를 모두 돌려받았습니다. 새 학과에 맞게 다시 분배할 수 있습니다.' + (wasAuto ? ' 자동 분배는 꺼 두었습니다.' : ''), 'news');
     log(P, now, R.CLS[id].name + ' 학과로 옮겼습니다' + (how ? ' (' + how + ')' : '') + '.', 'story');
     if (restored) log(P, now, '이전에 ' + R.CLS[id].name + ' 학과에서 사용하던 주문 구성을 다시 장착했습니다.', 'news');
     if (off.length) log(P, now, '주문 칸에서 해제된 주문: ' + off.join(', ') + '. 장착 주문을 확인하십시오.', 'news');
@@ -350,7 +352,7 @@
       duel: { rank: 0, cd: 0 }, tasks: {}, ach: {}, codex: {},
       st: { lecJobs: 0, lecHours: 0, expJobs: 0, nightJobs: 0, kills: 0, bosses: 0, bossTries: 0, maxStageAll: 9, maxGrade: 1, sGrades: 0,
         aGrades: 0, epicFound: 0, legendFound: 0, maxEnh: 0, enh: 0, brews: 0, spirits: 0, maxLevel: 1, manaTotal: 0, goldTotal: 0,
-        streak: 0, famKinds: 0, dispatches: 0, researchDone: 0, wbAttacks: 0, wbKills: 0, cupWins: 0, duelWins: 0, duelBest: 0, tasksDone: 0 },
+        streak: 0, famKinds: 0, hatches: 0, dispatches: 0, researchDone: 0, wbAttacks: 0, wbKills: 0, cupWins: 0, duelWins: 0, duelBest: 0, tasksDone: 0 },
       daily: { day: -1, q: [], streak: 0, login: false },
       wk: { id: 0, cup: 0, dmg: 0, att: 0 }, wkPrev: null, wb: { tickets: K.WB_TICKET_MAX, at: now, extra: 0, bought: 0, buyWk: -1, exUsed: 0, exWk: -1 },
       spirit: { n: 1, at: now },
@@ -921,7 +923,7 @@
   R.eggCost = function (P) { return Math.floor(5000 * Math.pow(1.2, Math.min(P.fam.hatched, 30))); };   // 깨운 수마다 1.2배 (예전 1.45배)
   R.feedCost = function (P, id) { var f = FAM[id], o = P.fam.own[id]; return Math.floor(2000 * Math.pow(1.45, o.lv) * (f.r + 1)); };
   function hatch(P, t) {
-    P.fam.egg = null; P.fam.hatched++;
+    P.fam.egg = null; P.fam.hatched++; P.st.hatches = P.fam.hatched;   // 칭호 · 업적용 누적 부화 수
     var luck = 0;
     var ws = D.FAM_RARITY.map(function (r, i) { return r.w * (i >= 1 ? 1 + luck : 1); });
     var tot = ws.reduce(function (a, b) { return a + b; }, 0), x = rnd(P) * tot, r = 0;
@@ -948,6 +950,8 @@
     var gold = Math.floor(h * 40 * K.KILL_GOLD * Math.pow(K.G_GOLD, z.from - 1) * mult * K.DISP_GOLD); addGold(P, gold); out.gold = gold;
     if (rnd(P) < h * 0.008 * mult) { P.fam.eggs++; out.egg = 1; }
     if (rnd(P) < h * 0.04) { var sh = ri(P, 1, 3); P.res.shard += sh; out.shard = sh; }
+    // 사역장 「파견 기록」: 최근 40건 (같은 때 돌아온 사역마는 화면에서 한 줄로 묶는다)
+    var L = P.fam.dlog || (P.fam.dlog = []); L.unshift({ t: Math.round(t), f: fid, h: Math.round(h * 10) / 10, mat: z.mat, mats: mats, stones: stones, gold: gold, egg: out.egg || 0, shard: out.shard || 0, early: early ? 1 : 0 }); if (L.length > 40) L.length = 40;
     if (early) { out.early = 1; return out; }
     P.st.dispatches++; cupAdd(P, 20, 'disp');
     nightJob(P, t);
