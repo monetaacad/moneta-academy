@@ -3,6 +3,13 @@
 # 마감 정산 · 마감 연장은 DB의 마감 시각을 직접 당겨서 본다 (DB = /tmp/arc-a/moneta.db)
 import os, json, time, secrets, sqlite3, urllib.request, http.cookiejar
 B = os.environ.get('BASE', 'http://127.0.0.1:8097'); DBF = os.environ.get('DB', '/tmp/arc-a/moneta.db'); TOK = 'test-admin-token-0123456789abcdef'; errs = []
+def fee(price):
+    f, lo = 0, 0
+    for hi, r in [(1e5, 0.05), (1e6, 0.07), (1e7, 0.10), (1e8, 0.13), (float('inf'), 0.15)]:
+        if price <= lo: break
+        f += (min(price, hi) - lo) * r; lo = hi
+    return int(f)
+
 def check(c, m):
     if not c: errs.append(m); print('FAIL', m)
 def adm(path, body):
@@ -66,7 +73,7 @@ j = A.op(op='cancel', id=a3['id']); check(j.get('ok'), 'cancel no bids: %s' % j)
 ga, gc = A.gold(), Cu.gold()
 j = Bu.op(op='buy', id=a1['id']); check(j.get('ok'), 'buyout: %s' % j)
 check(Cu.gold() == gc + 105000, 'refund C on buyout')
-check(A.gold() == ga + int(200000 * 0.95), 'seller paid buyout')
+check(A.gold() == ga + 200000 - fee(200000), 'seller paid buyout')
 # 즉시 구매로 끝난 경매는 「내가 입찰한 경매」에서 빠진다 (남이 즉시 구매: C, 내가 즉시 구매: B)
 check(not any(x['id'] == a1['id'] for x in Cu.mk(auc=1)['myBids']), 'myBids C hides bought-out auction')
 check(not any(x['id'] == a1['id'] for x in Bu.mk(auc=1)['myBids']), 'myBids B hides own buyout')
@@ -84,7 +91,7 @@ j = Cu.op(op='bid', id=a2['id'], amount=100000); check(j.get('ok') and j.get('en
 # 마감 정산: 마감을 지난 시각으로 → 20초 안에 정산
 ga = A.gold(); db('UPDATE market SET expires = ? WHERE id = ?', int(time.time()) - 5, a2['id']); time.sleep(25)
 inv_c = Cu.req('GET', '/api/state')['P']['inv']; check(any(x['u'] == it2['u'] for x in inv_c), 'winner got item')
-check(A.gold() == ga + int(100000 * 0.95), 'seller paid on settle')
+check(A.gold() == ga + 100000 - fee(100000), 'seller paid on settle')
 mb = Cu.mk(auc=1)['myBids']; check(not any(x['id'] == a2['id'] for x in mb), 'myBids hides won auction (in history)')
 hist = A.req('GET', '/api/market/history')['list']; check(any(x['price'] == 100000 and x['side'] == 'sell' for x in hist), 'history has auction sale')
 print('NO ERRORS' if not errs else 'ERRORS: ' + '; '.join(errs))

@@ -7,7 +7,8 @@ var DATA = (function () {
   D.WORLD = {
     title: '모네타 아카데미',
     calendarMonths: ['서사달', '기록달', '피리달', '웃음달', '가면달', '춤달', '연가달', '별무리달', '침묵달'],   // 아홉 무사이 (칼리오페 → 폴리힘니아)
-    baseYear: 1024
+    baseYear: 1024,
+    monthDays: 7   // 아카데미력 한 달 = 실제 7일 (1주)
   };
 
   /* ───────── 서버형: 시간제 작업 ─────────
@@ -69,6 +70,7 @@ var DATA = (function () {
     { id: 'b_gold', slot: 'bg', name: '금박 장부', price: 20000, g: ['#f6dc9c', '#b98c3e'], pat: 'lines' },
     { id: 'b_void', slot: 'bg', name: '별의 틈', price: 30000, g: ['#05051a', '#4a2a8a', '#05051a'], pat: 'stars' },
     { id: 'b_exam5', slot: 'bg', name: '아카데미의 자랑', price: 0, need: { stat: 'sGrades', n: 5 }, needText: '기말시험 S 다섯 번', g: ['#1c1440', '#5a3a9a', '#f2c84b'], pat: 'stars' },
+    { id: 'b_bell', slot: 'bg', name: '종탑의 새벽', price: 0, mw: 4, g: ['#f3d9a4', '#7d6bb8', '#1c1840'], pat: 'stars' },   // 마스터 주간 과제 4주 완수 (살 수 없다)
     { id: 's_moon', slot: 'stamp', name: '초승달', price: 500, glyph: '☾' },
     { id: 's_quill', slot: 'stamp', name: '깃펜', price: 1000, glyph: '✒' },
     { id: 's_flower', slot: 'stamp', name: '꽃', price: 1000, glyph: '✿' },
@@ -132,7 +134,7 @@ var DATA = (function () {
     { k: '2h', s: 7200, label: '2시간' }, { k: '4h', s: 14400, label: '4시간' },
     { k: '8h', s: 28800, label: '8시간' }, { k: '12h', s: 43200, label: '12시간' }
   ];
-  // 아카데미력: 실제 1일 = 아카데미 1일, 한 달 28일(4주), 한 해 9달(아홉 무사이). 달마다 그 무사이의 축복.
+  // 아카데미력: 실제 1일 = 아카데미 1일, 한 달 7일(1주, D.WORLD.monthDays), 한 해 9달(아홉 무사이). 달마다 그 무사이의 축복.
   D.MONTH_BONUS = [
     { eff: { xpPct: 0.15 }, text: '서사달 — 경험치 +15%' },
     { eff: { knowPct: 0.10 }, text: '기록달 — 지식 획득 +10%' },
@@ -245,75 +247,120 @@ var DATA = (function () {
   /* ───────── 학과: 입학할 때 고른다 (한 번 바꿀 수 있음). 예전 학생은 마법사로 시작해 한 번 고를 수 있다 ───────── */
   D.CLASSES = [
     { id: 'mage', name: '마법사', desc: '뒤에서 주문을 쏟아붓는다. 주문이 강하지만 몸은 약하다.', bonus: { spellPct: 0.25, hpPct: -0.10 }, bonusText: '주문 위력 +25%, 생명력 −10%', pos: '후열 · 지원', spells: '비전 폭발 · 마나 폭주', subj: '비전학' },
-    { id: 'knight', name: '기사', desc: '검과 방패로 맨 앞에 선다. 단단하고 몬스터를 더 잘 끈다.', bonus: { atkPct: 0.10, hpPct: 0.20, defPct: 0.25, spellPct: -0.20 }, bonusText: '공격력 +10%, 생명력 +20%, 방어 +25%, 주문 위력 −20%', pos: '선봉 (몬스터를 끄는 확률 +5%p)', spells: '방패 강타 · 수호의 함성', subj: '검술·방패술' },
+    { id: 'knight', name: '기사', desc: '검과 방패로 맨 앞에 선다. 단단하고 몬스터를 더 잘 끈다.', bonus: { atkPct: 0.10, hpPct: 0.20, defPct: 0.25, spellPct: -0.20 }, bonusText: '공격력 +10%, 생명력 +20%, 방어 +25%, 주문 위력 −20%', pos: '선봉 (수호 성향: 몬스터를 끄는 확률 +12%)', spells: '방패 강타 · 수호의 함성', subj: '검술·방패술' },
   ];
 
+  /* ───────── 학과 성향 (2차 베타): 학과마다 둘 중 하나. 학과 기본 보너스에 더해진다. 하루 한 번 바꿀 수 있다 ───────── */
+  // 첫 번째가 기본값. aggro: 선봉일 때 몬스터를 끄는 확률 보너스 (기사 수호 +12%)
+  D.STANCES = {
+    knight: [
+      { id: 'guard', name: '수호', bonus: {}, aggro: 0.12, text: '학과 기본 그대로 · 선봉 끌기 +12%', desc: '맨 앞에서 버티고 몬스터를 끄는 방패 기사.' },
+      { id: 'assault', name: '공세', bonus: { hpPct: -0.15, defPct: -0.25, atkPct: 0.15, skillPct: 0.30, critD: 0.20 }, aggro: false, text: '공격력 +15%, 기술 위력 +30%, 치명타 피해 +20%, 생명력 −15%, 방어 −25% · 선봉 끌기 보너스 없음', desc: '방패 대신 검을 앞세우는 근접 딜러.' }
+    ],
+    mage: [
+      { id: 'destroy', name: '파괴', bonus: {}, text: '학과 기본 그대로', desc: '뒤에서 주문을 쏟아붓는 마법사.' },
+      { id: 'bless', name: '축복', bonus: { spellPct: -0.25, hpPct: 0.15, defPct: 0.15, carePct: 0.40, supRed: 0.05, supAtk: 0.06 }, text: '치유 · 보호막 위력 +40%, 생명력 +15%, 방어 +15%, 지원 시 파티 공격력 +6% · 받는 피해 −5%, 주문 위력 −25%', desc: '동료를 살리는 데 마나를 쓰는 지원 마법사.' }
+    ]
+  };
+
   /* ───────── 과목 · 교수 ───────── */
+  // 2차 베타 수업 개편: 모든 과목을 1학년부터 듣는다.
+  // kind: major = 학과 전공(마법사 · 기사가 pair로 짝을 이루며, 전과하면 같은 레벨로 이어진다) · common = 공용. sup: 지원 과목
+  // lst: 수업 효율을 올려 주는 능력치 (int 지력 · vit 체력 · main 그 학과의 주 능력치 = 마법사 지력 · 기사 체력)
+  // stat · stat2: 레벨마다 오르는 능력치 (+1.2 · +0.6). 공용 과목의 main은 주 능력치 (학과마다 같은 몫을 받는다)
+  // lv: 레벨마다 붙는 효과 · perk: [레벨, 효과] 주문이 아닌 레벨 보상 (주문은 D.SPELLS의 req)
   D.SUBJECTS = [
-    { id: 'elem', name: '원소역학', prof: '이그나 벨로르 교수', unlock: 1, stat: 'int', stat2: 'wil', kstat: 'vit', kstat2: 'wil',   // 기사는 체력 · 의지 (무기에 원소를 싣는 원소 부여)
-      desc: '불, 물, 바람, 흙. 네 원소가 서로를 밀고 당기는 힘의 법칙을 배운다. 마법사는 원소를 주문으로 엮고(지력 · 의지), 기사는 무기에 원소를 싣는다(체력 · 의지).',
+    // 학과 전공 (마법사 ↔ 기사). 짝을 이루는 두 과목은 효과 수치가 같다
+    { id: 'arcana', name: '비전학', prof: '오렐 미스트 교수', unlock: 1, cls: 'mage', pair: 'sword', kind: 'major', lst: 'int', stat: 'int', stat2: 'wil', lv: { matkPct: 0.005 }, perk: [[20, { critD: 0.15 }]],
+      desc: '마법과 전공. 마나를 원소에 싣지 않고 날것 그대로 다루는 위험한 학문. 강의실 벽에는 그을린 별 모양이 남아 있다.',
+      line: '마나에 이름을 붙이지 마세요. 이름을 붙이는 순간 작아집니다.' },
+    { id: 'sword', name: '검술·방패술', prof: '레온 바르크 교관', unlock: 1, cls: 'knight', pair: 'arcana', kind: 'major', lst: 'vit', stat: 'vit', stat2: 'wil', lv: { physPct: 0.005 }, perk: [[20, { critD: 0.15 }]],
+      desc: '기사과 전공. 검을 휘두르는 법보다 방패를 드는 법을 먼저 배운다. 훈련장 모래에는 늘 발자국이 가득하다.',
+      line: '방패는 너를 위한 게 아니다. 네 뒤에 선 사람을 위한 거다.' },
+    { id: 'elem', name: '원소역학', prof: '이그나 벨로르 교수', unlock: 1, cls: 'mage', pair: 'elemk', kind: 'major', lst: 'int', stat: 'int', stat2: 'wil', lv: { bossDmg: 0.005 }, perk: [[25, { cdr: 0.05 }]],
+      desc: '마법과 전공. 불, 물, 바람, 흙. 네 원소가 서로를 밀고 당기는 힘의 법칙을 배우고 주문으로 엮는다.',
       line: '마나는 강물과 같다네. 막으면 넘치고, 흘리면 길이 되지.' },
-    { id: 'syntax', name: '주문구문학', prof: '마르텐 오웰 교수', unlock: 1, stat: 'int', stat2: 'luk',
-      desc: '주문의 어순, 억양, 숨 고르기. 한 음절이 틀리면 화염구가 꽃다발이 된다.',
+    { id: 'elemk', name: '원소검술', prof: '이그나 벨로르 교수', unlock: 1, cls: 'knight', pair: 'elem', kind: 'major', lst: 'vit', stat: 'vit', stat2: 'wil', lv: { bossDmg: 0.005 }, perk: [[25, { cdr: 0.05 }]],
+      desc: '기사과 전공. 칼날에 불꽃과 냉기를 실어 베는 원소 부여의 기술. 원소역학과 같은 교수가 맡는다.',
+      line: '원소는 주문서에만 사는 게 아니라네. 칼끝에도 길이 있지.' },
+    { id: 'syntax', name: '주문구문학', prof: '마르텐 오웰 교수', unlock: 1, cls: 'mage', pair: 'tactics', kind: 'major', lst: 'int', stat: 'int', stat2: 'luk', lv: { spellPct: 0.02 }, perk: [[5, { critC: 0.02 }], [20, { cdr: 0.05 }]],
+      desc: '마법과 전공. 주문의 어순, 억양, 숨 고르기. 한 음절이 틀리면 화염구가 꽃다발이 된다.',
       line: '주문은 문장일세. 주어 없는 주문은 주인 없는 칼이야.' },
-    { id: 'ward', name: '결계공학', prof: '브람 하일 교수', unlock: 1, stat: 'vit', stat2: 'wil',
+    { id: 'tactics', name: '전술학', prof: '그레타 볼크 교관', unlock: 1, cls: 'knight', pair: 'syntax', kind: 'major', lst: 'vit', stat: 'vit', stat2: 'luk', lv: { skillPct: 0.02 }, perk: [[5, { critC: 0.02 }], [20, { cdr: 0.05 }]],
+      desc: '기사과 전공. 대열을 짜고, 틈을 읽고, 한 번에 몰아치는 법. 훈련장 칠판에는 지워지지 않은 진형도가 겹겹이 남아 있다.',
+      line: '칼 한 번 휘두르기 전에 세 수 앞을 봐라. 그게 전술이다.' },
+    { id: 'bless', name: '축복마법학', prof: '루미아 세렌 교수', unlock: 1, cls: 'mage', pair: 'guard', kind: 'major', sup: true, lst: 'int', stat: 'int', stat2: 'wil', lv: { carePct: 0.01 }, perk: [[10, { supAtk: 0.06, supRed: 0.03 }], [25, { supAtk: 0.06, supRed: 0.03 }]],
+      desc: '마법과 전공 · 지원. 동료에게 마나의 장막을 드리우고 꺼져 가는 기운을 되살리는 축복 마법.',
+      line: '축복은 나누는 순간 두 배가 돼요. 그러니 아끼지 마세요.' },
+    { id: 'guard', name: '수호기사학', prof: '오스윈 크레인 경', unlock: 1, cls: 'knight', pair: 'bless', kind: 'major', sup: true, lst: 'vit', stat: 'vit', stat2: 'wil', lv: { carePct: 0.01 }, perk: [[10, { supAtk: 0.06, supRed: 0.03 }], [25, { supAtk: 0.06, supRed: 0.03 }]],
+      desc: '기사과 전공 · 지원. 동료 앞을 막아서는 자세와, 쓰러진 동료를 일으키는 기사의 맹세.',
+      line: '기사의 맹세는 말이 아니라 자리다. 물러서지 않는 자리.' },
+    // 공용: 지력 수업(결계 · 환수 · 성도 · 생명) 4과목 · 체력 수업(체술 · 비행 · 연금 · 구호) 4과목 · 고대 룬어(주 능력치)
+    { id: 'ward', name: '결계공학', prof: '브람 하일 교수', unlock: 1, kind: 'common', lst: 'int', stat: 'main', stat2: 'wil', lv: { defPct: 0.01 }, perk: [[12, { hpPct: 0.06 }]],
       desc: '마력의 벽을 세우고, 엮고, 수리하는 법. 아카데미 섬을 지탱하는 결계도 이 과목의 산물이다.',
       line: '튼튼한 벽보다 금 간 자리를 아는 눈이 먼저야.' },
-    { id: 'alch', name: '연금화학', prof: '세라핀 루 교수', unlock: 2, stat: 'wil', stat2: 'luk',
-      desc: '재료의 본질을 끓이고 거르고 응축한다. 실습실 천장의 그을음은 선배들의 흔적이다.',
-      line: '폭발했다고요? 좋아요, 재료가 아주 솔직하게 대답한 거예요.' },
-    { id: 'beast', name: '환수생태학', prof: '고드릭 펜 교수', unlock: 1, stat: 'vit', stat2: 'agi',
+    { id: 'beast', name: '환수생태학', prof: '고드릭 펜 교수', unlock: 1, kind: 'common', lst: 'int', stat: 'main', stat2: 'agi', perk: [[15, { xpPct: 0.05 }]],
       desc: '마나를 먹고 자라는 생물들의 습성과 교감법. 출석부에 사역마 이름이 더 많은 수업.',
       line: '고르려 들지 마라. 녀석들이 먼저 너를 고른다.' },
-    { id: 'astro', name: '성도해석학', prof: '아스트라 노엘 교수', unlock: 4, stat: 'luk', stat2: 'int',
+    { id: 'astro', name: '성도해석학', prof: '아스트라 노엘 교수', unlock: 1, kind: 'common', lst: 'int', stat: 'luk', stat2: 'main', lv: { knowPct: 0.01 }, perk: [[5, { dropPct: 0.05 }], [20, { critC: 0.03 }]],
       desc: '일곱 별샘의 위치와 흐름을 읽어 마나의 조류와 운명을 점친다.',
       line: '별은 거짓말을 하지 않아요. 다만 늘 조금 늦게 도착하죠.' },
-    { id: 'flight', name: '체술·비행', prof: '카야 린 교관', unlock: 5, stat: 'agi', stat2: 'vit',
-      desc: '빗자루, 바람발판, 낙하 제어. 그리고 넘어지는 법. 의무실이 가장 가까운 강의실이다.',
-      line: '떨어지는 건 괜찮아. 착지를 못 하는 게 문제지!' },
-    { id: 'rune', name: '고대 룬어', prof: '이름 없는 사서', unlock: 6, stat: 'wil', stat2: 'int',
-      desc: '창립기 이전의 문자. 읽을 수 있는 사람은 아카데미에 단 한 명뿐이며, 그는 이름을 말하지 않는다.',
-      line: '……이 문자는 눈으로 읽히지 않는다. 오래 들여다보면 기억이 먼저 떠오른다.' },
-    { id: 'mend', name: '생명마법학', prof: '세레스 마렌 교수', unlock: 2, stat: 'wil', stat2: 'vit',
+    { id: 'mend', name: '생명마법학', prof: '세레스 마렌 교수', unlock: 1, kind: 'common', sup: true, lst: 'int', stat: 'wil', stat2: 'main', lv: { carePct: 0.005 }, perk: [[20, { hpPct: 0.06 }]],
       desc: '상처를 닫고 기운을 되돌리는 회복 마법. 의무실과 이어진 강의실이라 늘 약초 냄새가 난다. 기사과 · 마법과 공용.',
       line: '고치는 손은 서두르지 않아요. 대신 멈추지도 않죠.' },
-    { id: 'martial', name: '전투체술학', prof: '브란 오스틴 교관', unlock: 2, stat: 'vit', stat2: 'agi',
-      desc: '무기와 맨손으로 싸우는 물리 전투의 기본. 마법이 닿지 않는 순간을 위한 수업. 기사과 · 마법과 공용.',
+    { id: 'martial', name: '전투체술학', prof: '브란 오스틴 교관', unlock: 1, kind: 'common', lst: 'vit', stat: 'main', stat2: 'agi', lv: { hpPct: 0.005 },
+      desc: '무기와 맨손으로 싸우는 전투의 기본. 마법이 닿지 않는 순간을 위한 수업. 기사과 · 마법과 공용.',
       line: '주문이 끊겨도 주먹은 남는다. 그러니 주먹부터 바로 쥐어라.' },
-    // 학과 전용 수업: 그 학과 학생에게만 보인다 (cls)
-    { id: 'sword', name: '검술·방패술', prof: '레온 바르크 교관', unlock: 1, cls: 'knight', stat: 'vit', stat2: 'agi',
-      desc: '기사과 전용. 검을 휘두르는 법보다 방패를 드는 법을 먼저 배운다. 훈련장 모래에는 늘 발자국이 가득하다.',
-      line: '방패는 너를 위한 게 아니다. 네 뒤에 선 사람을 위한 거다.' },
-    { id: 'arcana', name: '비전학', prof: '오렐 미스트 교수', unlock: 1, cls: 'mage', stat: 'int', stat2: 'wil',
-      desc: '마법과 전용. 마나를 원소에 싣지 않고 날것 그대로 다루는 위험한 학문. 강의실 벽에는 그을린 별 모양이 남아 있다.',
-      line: '마나에 이름을 붙이지 마세요. 이름을 붙이는 순간 작아집니다.' }
+    { id: 'flight', name: '체술·비행', prof: '카야 린 교관', unlock: 1, kind: 'common', lst: 'vit', stat: 'agi', stat2: 'main', lv: { aps: 0.003 }, perk: [[14, { critC: 0.02 }], [22, { cdr: 0.05 }]],
+      desc: '빗자루, 바람발판, 낙하 제어. 그리고 넘어지는 법. 의무실이 가장 가까운 강의실이다.',
+      line: '떨어지는 건 괜찮아. 착지를 못 하는 게 문제지!' },
+    { id: 'alch', name: '연금화학', prof: '세라핀 루 교수', unlock: 1, kind: 'common', lst: 'vit', stat: 'wil', stat2: 'luk',
+      desc: '재료의 본질을 끓이고 거르고 응축한다. 무거운 가마솥을 하루 종일 젓는 실습이라 체력이 받쳐 줘야 한다. 실습실 천장의 그을음은 선배들의 흔적이다.',
+      line: '폭발했다고요? 좋아요, 재료가 아주 솔직하게 대답한 거예요.' },
+    { id: 'rescue', name: '전장구호학', prof: '에다 크로우 의무관', unlock: 1, kind: 'common', sup: true, lst: 'vit', stat: 'main', stat2: 'wil', lv: { carePct: 0.005 }, perk: [[15, { supAtk: 0.04, supRed: 0.03 }], [22, { hpPct: 0.05 }]],
+      desc: '쓰러진 동료를 부축하고, 상처를 묶고, 무너진 대열을 다시 세우는 현장 구호. 기사과 · 마법과 공용.',
+      line: '살리는 건 마법보다 손이 먼저야. 붕대부터 꽉 묶어!' },
+    { id: 'rune', name: '고대 룬어', prof: '이름 없는 사서', unlock: 1, kind: 'common', lst: 'main', stat: 'wil', stat2: 'main', perk: [[5, { rarity: 0.05 }], [20, { bossDmg: 0.08 }]],
+      desc: '창립기 이전의 문자. 읽을 수 있는 사람은 아카데미에 단 한 명뿐이며, 그는 이름을 말하지 않는다.',
+      line: '……이 문자는 눈으로 읽히지 않는다. 오래 들여다보면 기억이 먼저 떠오른다.' }
   ];
 
   /* ───────── 주문 ───────── */
+  // main: 주 공격력(마법사 주문 공격력 · 주문 위력, 기사 물리 공격력 · 기술 위력)으로 치는 공용 주문. phys: 물리(기사 기술), 둘 다 없으면 주문
+  // 학과 전공 과목(D.SUBJECTS의 cls)으로 배우는 주문은 그 학과만 사용한다. 짝을 이루는 전공 주문은 수치가 같다
   D.SPELLS = [
-    { id: 'bolt', name: '마력 화살', req: null, cd: 4, mult: 2.0, type: 'dmg', desc: '주문 공격력의 200% 피해' },
-    { id: 'fireball', name: '화염구', req: ['elem', 5], cd: 8, mult: 4.5, type: 'dmg', desc: '주문 공격력의 450% 피해' },
-    { id: 'ward', name: '수호 결계', req: ['ward', 5], cd: 15, mult: 0.3, type: 'shield', desc: '최대 생명력 30%의 보호막' },
-    { id: 'chain', name: '연쇄 번개', req: ['syntax', 10], cd: 12, mult: 7, type: 'dmg', desc: '주문 공격력의 700% 피해' },
-    { id: 'heal', name: '재생의 노래', req: ['alch', 8], cd: 18, mult: 0.35, type: 'heal', desc: '생명력이 60% 미만일 때 35% 회복' },
-    { id: 'frost', name: '얼음 감옥', req: ['elem', 15], cd: 14, mult: 3.5, type: 'stun', stun: 2.5, desc: '주문 공격력의 350% 피해, 2.5초 빙결' },
-    { id: 'flameblade', name: '화염 베기', req: ['elem', 5], cls: ['knight'], cd: 8, mult: 4.5, type: 'dmg', phys: true, desc: '기사 전용 · 무기에 불꽃을 실어 물리 공격력의 450% 피해 (주문 위력과 무관)' },
-    { id: 'frostblade', name: '서리 베기', req: ['elem', 15], cls: ['knight'], cd: 14, mult: 3.5, type: 'stun', phys: true, stun: 2.5, desc: '기사 전용 · 무기에 냉기를 실어 물리 공격력의 350% 피해, 2.5초 빙결 (주문 위력과 무관)' },
-    { id: 'beastcall', name: '환수 소환', req: ['beast', 8], cd: 20, mult: 10, type: 'dmg', desc: '사역마와 함께 주문 공격력의 1000% 피해' },
-    { id: 'meteor', name: '별똥별', req: ['astro', 10], cd: 25, mult: 15, type: 'dmg', desc: '주문 공격력의 1500% 피해' },
+    { id: 'bolt', name: '마력 화살', req: null, cd: 4, mult: 2.0, type: 'dmg', main: true, desc: '주 공격력의 200% 피해' },
+    { id: 'ward', name: '수호 결계', req: ['ward', 5], cd: 15, mult: 0.3, type: 'shield', desc: '최대 생명력 30%의 보호막 · 함께 원정 선봉일 때 몬스터를 끄는 확률 +5%' },
+    { id: 'bigward', name: '대결계', req: ['ward', 20], cd: 24, mult: 0.5, type: 'shield', desc: '최대 생명력 50%의 보호막' },
+    { id: 'beastcall', name: '환수 소환', req: ['beast', 8], cd: 20, mult: 10, type: 'dmg', main: true, desc: '사역마와 함께 주 공격력의 1000% 피해' },
+    { id: 'meteor', name: '별똥별', req: ['astro', 10], cd: 25, mult: 15, type: 'dmg', main: true, desc: '주 공격력의 1500% 피해' },
     { id: 'haste', name: '그림자 분신', req: ['flight', 8], cd: 28, mult: 2, dur: 6, type: 'haste', desc: '6초간 공격 속도 2배' },
     { id: 'timestop', name: '시간 정지', req: ['rune', 12], cd: 40, mult: 2, dur: 5, type: 'amp', desc: '5초간 모든 피해 2배, 적 정지' },
     { id: 'firstaid', name: '응급 처치', req: ['mend', 3], cd: 14, mult: 0.2, type: 'heal', desc: '생명력이 60% 미만일 때 20% 회복' },
-    { id: 'jab', name: '정권 지르기', req: ['martial', 3], cd: 5, mult: 2.2, type: 'dmg', phys: true, stunP: 0.2, stun: 1, desc: '물리 공격력의 220% 피해 · 20% 확률로 1초 기절 (주문 위력과 무관)' },
     { id: 'mendlight', name: '치유의 빛', req: ['mend', 6], cd: 16, mult: 0.3, type: 'heal', desc: '생명력이 60% 미만일 때 30% 회복' },
     { id: 'prayer', name: '수호의 기도', req: ['mend', 12], cd: 20, mult: 0.35, type: 'shield', desc: '최대 생명력 35%의 보호막' },
-    { id: 'ironstrike', name: '강철 일격', req: ['martial', 5], cd: 8, mult: 3.5, type: 'dmg', phys: true, stunP: 0.35, stun: 1.5, desc: '물리 공격력의 350% 피해 · 35% 확률로 1.5초 기절 (주문 위력과 무관)' },
-    { id: 'earthsplit', name: '대지 가르기', req: ['martial', 12], cd: 18, mult: 8, type: 'stun', stun: 2, phys: true, desc: '물리 공격력의 800% 피해 · 2초 기절 (주문 위력과 무관)' },
-    // 학과 전용 주문 (cls: 배울 수 있는 학과). 기사도 수업으로 배운 일반 주문은 낄 수 있다 (= 마검사)
-    { id: 'shieldbash', name: '방패 강타', req: null, cls: ['knight'], cd: 9, mult: 3, type: 'stun', stun: 1.5, phys: true, desc: '기사 전용 · 물리 공격력의 300% 피해, 1.5초 기절 (주문 위력과 무관)' },
-    { id: 'warcry', name: '수호의 함성', req: ['sword', 8], cls: ['knight'], cd: 18, mult: 0.4, type: 'shield', desc: '기사 전용 · 최대 생명력 40%의 보호막 · 함께 원정 선봉일 때 몬스터를 끄는 확률 +5%p' },
+    { id: 'regroup', name: '전열 정비', req: ['rescue', 4], cd: 14, mult: 0.25, type: 'shield', desc: '최대 생명력 25%의 보호막' },
+    { id: 'heal', name: '재생의 노래', req: ['rescue', 8], cd: 18, mult: 0.35, type: 'heal', desc: '생명력이 60% 미만일 때 35% 회복' },
+    { id: 'jab', name: '정권 지르기', req: ['martial', 3], cd: 5, mult: 2.2, type: 'dmg', main: true, stunP: 0.2, stun: 1, desc: '주 공격력의 220% 피해 · 20% 확률로 1초 기절' },
+    { id: 'ironstrike', name: '강철 일격', req: ['martial', 5], cd: 8, mult: 3.5, type: 'dmg', main: true, stunP: 0.35, stun: 1.5, desc: '주 공격력의 350% 피해 · 35% 확률로 1.5초 기절' },
+    { id: 'earthsplit', name: '대지 가르기', req: ['martial', 12], cd: 18, mult: 8, type: 'stun', stun: 2, main: true, desc: '주 공격력의 800% 피해 · 2초 기절' },
+    // 학과 전공 주문 (cls: 배울 수 있는 학과). 기사도 공용 과목으로 배운 주문은 장착할 수 있다
     { id: 'arcane', name: '비전 폭발', req: null, cls: ['mage'], cd: 10, mult: 6, type: 'dmg', desc: '마법사 전용 · 주문 공격력의 600% 피해' },
-    { id: 'manaflare', name: '마나 폭주', req: ['arcana', 12], cls: ['mage'], cd: 32, mult: 2, dur: 5, type: 'amp', desc: '마법사 전용 · 5초간 모든 피해 2배' }
+    { id: 'shieldbash', name: '방패 강타', req: null, cls: ['knight'], cd: 9, mult: 3, type: 'stun', stun: 1.5, phys: true, desc: '기사 전용 · 물리 공격력의 300% 피해, 1.5초 기절' },
+    { id: 'manawall', name: '마나 장벽', req: ['arcana', 8], cls: ['mage'], cd: 18, mult: 0.4, type: 'shield', desc: '마법사 전용 · 최대 생명력 40%의 보호막' },
+    { id: 'warcry', name: '수호의 함성', req: ['sword', 8], cls: ['knight'], cd: 18, mult: 0.4, type: 'shield', desc: '기사 전용 · 최대 생명력 40%의 보호막 · 함께 원정 선봉일 때 몬스터를 끄는 확률 +5%' },
+    { id: 'manaflare', name: '마나 폭주', req: ['arcana', 12], cls: ['mage'], cd: 32, mult: 2, dur: 5, type: 'amp', desc: '마법사 전용 · 5초간 모든 피해 2배' },
+    { id: 'unleash', name: '투지 해방', req: ['sword', 12], cls: ['knight'], cd: 32, mult: 2, dur: 5, type: 'amp', desc: '기사 전용 · 5초간 모든 피해 2배' },
+    { id: 'fireball', name: '화염구', req: ['elem', 5], cls: ['mage'], cd: 8, mult: 4.5, type: 'dmg', desc: '마법사 전용 · 주문 공격력의 450% 피해' },
+    { id: 'flameblade', name: '화염 베기', req: ['elemk', 5], cls: ['knight'], cd: 8, mult: 4.5, type: 'dmg', phys: true, desc: '기사 전용 · 무기에 불꽃을 실어 물리 공격력의 450% 피해' },
+    { id: 'frost', name: '얼음 감옥', req: ['elem', 15], cls: ['mage'], cd: 14, mult: 3.5, type: 'stun', stun: 2.5, desc: '마법사 전용 · 주문 공격력의 350% 피해, 2.5초 빙결' },
+    { id: 'frostblade', name: '서리 베기', req: ['elemk', 15], cls: ['knight'], cd: 14, mult: 3.5, type: 'stun', phys: true, stun: 2.5, desc: '기사 전용 · 무기에 냉기를 실어 물리 공격력의 350% 피해, 2.5초 빙결' },
+    { id: 'chain', name: '연쇄 번개', req: ['syntax', 10], cls: ['mage'], cd: 12, mult: 7, type: 'dmg', desc: '마법사 전용 · 주문 공격력의 700% 피해' },
+    { id: 'slash', name: '연속 베기', req: ['tactics', 10], cls: ['knight'], cd: 12, mult: 7, type: 'dmg', phys: true, desc: '기사 전용 · 물리 공격력의 700% 피해' },
+    { id: 'blessveil', name: '축복의 장막', req: ['bless', 3], cls: ['mage'], cd: 12, mult: 0.25, type: 'shield', desc: '마법사 전용 · 최대 생명력 25%의 보호막' },
+    { id: 'guardstance', name: '방호 태세', req: ['guard', 3], cls: ['knight'], cd: 12, mult: 0.25, type: 'shield', desc: '기사 전용 · 최대 생명력 25%의 보호막' },
+    { id: 'revive', name: '소생의 기도', req: ['bless', 18], cls: ['mage'], cd: 20, mult: 0.4, type: 'heal', desc: '마법사 전용 · 생명력이 60% 미만일 때 40% 회복' },
+    { id: 'oath', name: '불굴의 맹세', req: ['guard', 18], cls: ['knight'], cd: 20, mult: 0.4, type: 'heal', desc: '기사 전용 · 생명력이 60% 미만일 때 40% 회복' }
   ];
 
   /* ───────── 탐사 지역 · 몬스터 ───────── */
@@ -424,12 +471,14 @@ var DATA = (function () {
     manual: ['기초 검술 교본', '참나무 표지 전술서', '월광 검식서', '황동 기사 규범', '수정 검결서', '잿불 전투록', '별철 무예서', '공허의 검보', '시간의 병법서', '심연 무경'],
     tome: ['낡은 교과서', '약초 도감', '성도 노트', '항해 일지', '결정 사본', '화염 비망록', '별의 서', '금서의 조각', '시간의 연대기', '심연 문서']
   };
+  // 등급 가중치(2차 베타): 위 등급으로 갈수록 급격히 어려워지는 곡선 w = 62 × e^−(0.639·i + 0.231·i²) (i = 0 일반 … 4 전설)
+  // 예전 62 · 26 · 9 · 2.6 · 0.4 → 62 · 26 · 6.9 · 1.14 · 0.12
   D.RARITY = [
     { id: 0, name: '일반', color: '#b9bccb', mult: 1.0, affix: 0, w: 62 },
     { id: 1, name: '고급', color: '#7cc68a', mult: 1.3, affix: 1, w: 26 },
-    { id: 2, name: '희귀', color: '#6aa8ff', mult: 1.7, affix: 2, w: 9 },
-    { id: 3, name: '영웅', color: '#c084fc', mult: 2.3, affix: 3, w: 2.6 },
-    { id: 4, name: '전설', color: '#f2b84b', mult: 3.2, affix: 4, w: 0.4 }
+    { id: 2, name: '희귀', color: '#6aa8ff', mult: 1.65, affix: 2, w: 6.9 },
+    { id: 3, name: '영웅', color: '#c084fc', mult: 2.1, affix: 3, w: 1.14 },
+    { id: 4, name: '전설', color: '#f2b84b', mult: 2.7, affix: 4, w: 0.12 }
   ];
   // 접두사(대표 옵션에 따라)
   D.AFFIXES = [
@@ -483,14 +532,20 @@ var DATA = (function () {
     { id: 'ashfox', name: '잿빛여우', r: 2, bonus: 'dropPct', base: 0.06, desc: '황야에서 온 여우. 숨겨진 보물 냄새를 맡는다.', c1: '#b0a8a0' },
     { id: 'dreammoth', name: '꿈나방', r: 2, bonus: 'offlineEff', base: 0.06, desc: '잠든 주인의 꿈속에서도 공부를 이어 간다. (꿈길 보상 증가)', c1: '#c0a0e0' },
     { id: 'clockcat', name: '태엽 고양이', r: 2, bonus: 'critC', base: 0.025, desc: '정확히 세 시 십 분마다 하품한다. 사냥은 그보다 정확하다.', c1: '#d0b070' },
-    { id: 'shadowcrow', name: '그림자까마귀', r: 3, bonus: 'critD', base: 0.18, desc: '주인의 그림자 속에 사는 까마귀. 적의 약점을 속삭인다.', c1: '#3a3450' },
+    { id: 'shadowcrow', name: '그림자까마귀', r: 3, bonus: 'critD', base: 0.15, desc: '주인의 그림자 속에 사는 까마귀. 적의 약점을 속삭인다.', c1: '#3a3450' },
     { id: 'starwhale', name: '새끼 별고래', r: 3, bonus: 'manaPct', base: 0.15, desc: '구름바다를 헤엄치는 별고래의 새끼. 숨을 쉴 때마다 마나가 흩날린다.', c1: '#6a8aff' },
-    { id: 'starwyrm', name: '작은 성룡', r: 3, bonus: 'atkPct', base: 0.12, desc: '별샘에서 태어난다는 용의 새끼. 아직은 손바닥만 하다.', c1: '#ff9a6a' }
+    { id: 'starwyrm', name: '작은 성룡', r: 3, bonus: 'atkPct', base: 0.12, desc: '별샘에서 태어난다는 용의 새끼. 아직은 손바닥만 하다.', c1: '#ff9a6a' },
+    { id: 'acornmouse', name: '도토리쥐', r: 0, bonus: 'defPct', base: 0.04, desc: '볼주머니에 도토리를 가득 채우고 다니는 생쥐. 위험하면 도토리 껍데기 속에 쏙 숨는다.', c1: '#a8805a' },
+    { id: 'lotusfrog', name: '연잎개구리', r: 0, bonus: 'hatchSpd', base: 0.06, desc: '연잎 위에서만 잠드는 작은 개구리. 알 곁에 앉아 노래를 불러 주면 알이 더 빨리 깨어난다.', c1: '#7ac8a8' },
+    { id: 'snowpup', name: '눈송이 강아지', r: 1, bonus: 'dispPct', base: 0.06, desc: '갓 내린 눈처럼 온몸이 새하얀 강아지. 주인의 발소리를 누구보다 먼저 알아채고 꼬리를 흔든다.', c1: '#f4f2ec' },
+    { id: 'herbhog', name: '허브고슴도치', r: 2, bonus: 'brewSpd', base: 0.05, desc: '가시마다 말린 허브를 꽂고 다니는 고슴도치. 솥 냄새만 맡아도 무엇이 빠졌는지 안다.', c1: '#8aa860' },
+    { id: 'moondeer', name: '달빛사슴', r: 2, bonus: 'bossDmg', base: 0.06, desc: '뿔 끝에 달빛이 고여 은은하게 빛나는 어린 사슴. 큰 적 앞에서도 물러서지 않는다.', c1: '#c8d0f0' },
+    { id: 'glowbird', name: '노을불새', r: 3, bonus: 'leech', base: 0.012, desc: '해가 질 무렵에만 깃털이 노을빛으로 타오르는 불새의 새끼. 주인이 다치면 따뜻한 깃털로 상처를 감싼다.', c1: '#ff9a5a' }
   ];
   D.FAM_RARITY = [
     { name: '평범', color: '#b9bccb', w: 60 },
     { name: '희귀', color: '#6aa8ff', w: 28 },
-    { name: '귀한', color: '#c084fc', w: 10 },
+    { name: '영웅', color: '#c084fc', w: 10 },
     { name: '전설', color: '#f2b84b', w: 2 }
   ];
   D.BONUS_NAMES = {
@@ -508,7 +563,7 @@ var DATA = (function () {
     { id: 'ward', name: '수호 문양 도감', desc: '생명력 +10%, 방어력 +5%', eff: { hpPct: 0.10, defPct: 0.05 }, color: '#7fb3d5' },
     { id: 'arcane', name: '마도 공학 개론', desc: '주문 위력 +10%', eff: { spellPct: 0.10 }, color: '#a78bdb' },
     { id: 'blade', name: '검술 비전서', desc: '기술 위력 +10%', eff: { skillPct: 0.10 }, color: '#c9a27e' },
-    { id: 'anatomy', name: '급소 해부학', desc: '치명타 확률 +5%p', eff: { critC: 0.05 }, color: '#d96c8a' },
+    { id: 'anatomy', name: '급소 해부학', desc: '치명타 확률 +5%', eff: { critC: 0.05 }, color: '#d96c8a' },
     { id: 'giant', name: '거인 사냥꾼의 기록', desc: '보스 피해 +10%', eff: { bossDmg: 0.10 }, color: '#b5651d' },
     { id: 'study', name: '학습 요령서', desc: '수업 효율 +8%', eff: { lectureSpd: 0.08 }, color: '#8fc1b5' },
     { id: 'veteran', name: '실전 수기', desc: '경험치 +10%', eff: { xpPct: 0.10 }, color: '#d4b483' },
@@ -519,25 +574,25 @@ var DATA = (function () {
     { id: 'beast', name: '환수 사육 일지', desc: '부화 효율 +15%, 파견 보상 +10%', eff: { hatchSpd: 0.15, dispPct: 0.10 }, color: '#e3a86b' }
   ];
   D.RESEARCH = [
-    { id: 'manaspring', name: '마나 샘 개척', desc: '마나 재생 +15%', eff: { manaPct: 0.15 }, mana: 400, know: 0, g: 1.42, max: 60, time: 300, tg: 1.32 },
+    { id: 'manaspring', name: '마나 샘 개척', desc: '마나 재생 +6%', eff: { manaPct: 0.06 }, mana: 400, know: 0, g: 1.42, max: 60, time: 300, tg: 1.32 },
     { id: 'storage', name: '마나 저장고 확장', desc: '마나 저장 한도 +3시간분', eff: { manaCap: 10800 }, mana: 1500, know: 40, g: 1.9, max: 8, time: 1800, tg: 1.6 },
     { id: 'speedread', name: '속독술', desc: '수업 효율 +2%', eff: { lectureSpd: 0.02 }, mana: 800, know: 30, g: 1.4, max: 50, time: 600, tg: 1.3 },
-    { id: 'combat', name: '전투 마법 이론', desc: '공격력 +8%', eff: { atkPct: 0.08 }, mana: 1000, know: 40, g: 1.38, max: 80, time: 600, tg: 1.28 },
-    { id: 'sigil', name: '수호 문양학', desc: '생명력 +8%, 방어력 +4%', eff: { hpPct: 0.08, defPct: 0.04 }, mana: 1000, know: 40, g: 1.38, max: 80, time: 600, tg: 1.28 },
-    { id: 'merchant', name: '상인의 화술', desc: CUR + ' 획득 +10%', eff: { goldPct: 0.1 }, mana: 1500, know: 60, g: 1.42, max: 50, time: 900, tg: 1.3 },
-    { id: 'focus', name: '집중 명상', desc: '지식 획득 +10%', eff: { knowPct: 0.1 }, mana: 1800, know: 50, g: 1.42, max: 50, time: 900, tg: 1.3 },
-    { id: 'veteran', name: '실전 경험록', desc: '경험치 +10%', eff: { xpPct: 0.1 }, mana: 1800, know: 70, g: 1.42, max: 50, time: 900, tg: 1.3 },
-    { id: 'luckystar', name: '행운의 별자리', desc: '전리품 확률 +5%, 등급 상승', eff: { dropPct: 0.05, rarity: 0.05 }, mana: 6000, know: 200, g: 1.5, max: 30, time: 3600, tg: 1.35, grade: 2 },
-    { id: 'brewing', name: '연금 효율', desc: '양조 비용 -13%', eff: { brewSpd: 0.15 }, mana: 5000, know: 150, g: 1.55, max: 20, time: 3600, tg: 1.35, grade: 2 },
-    { id: 'hatching', name: '부화 촉진', desc: '부화 비용 -13%', eff: { hatchSpd: 0.15 }, mana: 9000, know: 250, g: 1.55, max: 20, time: 5400, tg: 1.35, grade: 3 },
+    { id: 'combat', name: '전투 마법 이론', desc: '공격력 +4%', eff: { atkPct: 0.04 }, mana: 1000, know: 40, g: 1.38, max: 80, time: 600, tg: 1.28 },
+    { id: 'sigil', name: '수호 문양학', desc: '생명력 +4%, 방어력 +2%', eff: { hpPct: 0.04, defPct: 0.02 }, mana: 1000, know: 40, g: 1.38, max: 80, time: 600, tg: 1.28 },
+    { id: 'merchant', name: '상인의 화술', desc: CUR + ' 획득 +4%', eff: { goldPct: 0.04 }, mana: 1500, know: 60, g: 1.42, max: 50, time: 900, tg: 1.3 },
+    { id: 'focus', name: '집중 명상', desc: '지식 획득 +4%', eff: { knowPct: 0.04 }, mana: 1800, know: 50, g: 1.42, max: 50, time: 900, tg: 1.3 },
+    { id: 'veteran', name: '실전 경험록', desc: '경험치 +4%', eff: { xpPct: 0.04 }, mana: 1800, know: 70, g: 1.42, max: 50, time: 900, tg: 1.3 },
+    { id: 'luckystar', name: '행운의 별자리', desc: '전리품 확률 +2.5%, 등급 상승', eff: { dropPct: 0.025, rarity: 0.025 }, mana: 6000, know: 200, g: 1.5, max: 30, time: 3600, tg: 1.35, grade: 2 },
+    { id: 'brewing', name: '연금 효율', desc: '양조 비용 -7%', eff: { brewSpd: 0.075 }, mana: 5000, know: 150, g: 1.55, max: 20, time: 3600, tg: 1.35, grade: 2 },
+    { id: 'hatching', name: '부화 촉진', desc: '부화 비용 -7%', eff: { hatchSpd: 0.075 }, mana: 9000, know: 250, g: 1.55, max: 20, time: 5400, tg: 1.35, grade: 3 },
     { id: 'jarcap', name: '정령 병 확장', desc: '반딧불 정령 병 +1칸', eff: { jarCap: 1 }, mana: 4000, know: 120, g: 2.2, max: 4, time: 3600, tg: 1.6 },
     { id: 'bag', name: '공간 확장 주문', desc: '가방 칸 +5', eff: { bag: 5 }, mana: 3000, know: 80, g: 1.8, max: 10, time: 1800, tg: 1.5 },
     { id: 'dual', gone: true, name: '이중 수강 허가', desc: '수업 슬롯 +1', eff: { lectureSlot: 1 }, mana: 60000, know: 3000, g: 25, max: 2, time: 43200, tg: 3, grade: 2 },
     { id: 'assistant', gone: true, name: '연구 조교 고용', desc: '연구를 두 개 동시에 진행', eff: { researchSlot: 1 }, mana: 60000, know: 2000, g: 1, max: 1, time: 43200, tg: 1, grade: 3 },
     { id: 'expedition', gone: true, name: '원정대 편성', desc: '원정 슬롯 +1', eff: { expSlot: 1 }, mana: 250000, know: 8000, g: 1, max: 1, time: 86400, tg: 1, grade: 4 },
-    { id: 'abyss', name: '심연 연구', desc: '공격력·생명력 +4% (마스터 과정, 단계 제한 없음)', eff: { atkPct: 0.04, hpPct: 0.04 }, mana: 2000000, know: 100000, g: 1.08, max: 999, time: 86400, tg: 1, grade: 8 },
+    { id: 'abyss', name: '심연 연구', desc: '공격력·생명력 +2% (마스터 과정, 단계 제한 없음)', eff: { atkPct: 0.02, hpPct: 0.02 }, mana: 2000000, know: 100000, g: 1.08, max: 999, time: 86400, tg: 1, grade: 8 },
     { id: 'sorter', name: '분류 마법', desc: '자동 판매 기능 해금', eff: { autosell: 1 }, mana: 2000, know: 50, g: 1, max: 1, time: 1200, tg: 1 },
-    { id: 'runeforge', name: '룬 각인술', desc: '강화 성공률 +3%p', eff: { enhBonus: 0.03 }, mana: 40000, know: 1500, g: 1.7, max: 10, time: 14400, tg: 1.4, grade: 4 }
+    { id: 'runeforge', name: '룬 각인술', desc: '강화 성공률 +3%', eff: { enhBonus: 0.03 }, mana: 40000, know: 1500, g: 1.7, max: 10, time: 14400, tg: 1.4, grade: 4 }
   ];
 
   /* ───────── 시험 ───────── */
@@ -565,7 +620,7 @@ var DATA = (function () {
     ] },
     { title: '속삭이는 숲', steps: [
       { t: '냄비 태우기', who: '세라핀 루 교수', go: ['lecture'], g: [{ k: 'subj', s: 'alch', n: 1 }], rw: { shard: 5 },
-        sc: '세라핀 루 교수의 실습실에서는 늘 무언가 끓고 있었다. “2학년부터는 손으로 배워요. 첫 시간엔 냄비 태우는 것부터.” 교수는 웃으며 당신 앞에 작은 솥을 놓았다.' },
+        sc: '세라핀 루 교수의 실습실에서는 늘 무언가 끓고 있었다. “여기서는 처음부터 손으로 배워요. 첫 시간엔 냄비 태우는 것부터.” 교수는 웃으며 당신 앞에 작은 솥을 놓았다.' },
       { t: '숲의 소문', who: '', go: ['explore'], g: [{ k: 'cnt', s: 'expJobs', n: 2 }], rw: { stone: 5, shard: 5 },
         sc: '동쪽 숲으로 나가는 허가가 났다. 수다쟁이 버섯들이 같은 이야기를 되풀이했다. “섬이 한 뼘 내려갔대. 작년보다 한 뼘.”',
         end: '버섯들 말이 사실인지 확인할 방법은 하나뿐이었다. 숲에서 가장 오래 산 나무에게 묻는 것.' },
@@ -642,7 +697,7 @@ var DATA = (function () {
     ] },
     { title: '하늘의 균열과 금서', steps: [
       { t: '사서의 수업', who: '이름 없는 사서', go: ['lecture'], g: [{ k: 'subj', s: 'rune', n: 3 }], rw: { shard: 8 },
-        sc: '6학년 시간표에 처음 보는 과목이 있었다. 고대 룬어, 담당 이름 없는 사서. 첫 시간, 사서는 칠판에 그 글자를 썼다. 당신의 열쇠에 새겨진 바로 그 글자를.' },
+        sc: '6학년이 되자 고대 룬어 강의실의 공기가 달라졌다. 담당은 이름 없는 사서. 그날 사서는 칠판에 처음 보는 글자를 썼다. 당신의 열쇠에 새겨진 바로 그 글자를.' },
       { t: '하늘의 눈', who: '', go: ['explore'], g: [{ k: 'cnt', s: 'expJobs', n: 10 }], rw: { stone: 25, shard: 5 },
         sc: '하늘의 균열 너머에서 거대한 눈이 아카데미를 내려다보고 있었다. 밤마다 균열이 한 뼘씩 넓어졌다.' },
       { t: '사람 냄새', who: '고드릭 펜 교수', go: ['work', 'fam'], g: [{ k: 'cnt', s: 'dispatches', n: 5 }], rw: { shard: 10 },
@@ -695,19 +750,40 @@ var DATA = (function () {
         end: '군주가 무너지며 웃었다. “종은 또 멈춘다. 그때도 네가 있을까?”' },
       { t: '다음 종을 위해', who: '', go: ['lib'], g: [{ k: 'cnt', s: 'researchDone', n: 3 }], rw: { shard: 20 },
         sc: '당신은 마스터 과정 연구생이 되었다. 같은 하늘 아래의 모든 학생과 함께, 다음에 종이 멈출 날을 대비한다.',
-        end: '여기까지가 지금의 이야기. 하지만 수업은 끝나지 않는다.' }
+        end: '연구 기록을 덮던 날 밤, 시간의 탑 꼭대기에서 종이 아주 작게 떨렸다. 바람도 없었다. 다음 날 아침, 이름 없는 사서가 당신을 찾아왔다.' }
+    ] },
+    { title: '종지기의 해', steps: [
+      { t: '스스로 울리지 않는 종', who: '이름 없는 사서', go: ['explore', 'boss'], g: [{ k: 'boss', n: 100 }], rw: { gear: 1, shard: 25 },
+        sc: '사서는 종탑 계단에 앉아 있었다. “스승이 만든 종은 천 년 동안 스스로 울리도록 짜여 있었다. 그 천 년이 끝났다. 이제 종은 해마다 누군가 직접 울려야 한다.” 사서가 섬 아래를 가리켰다. “그런데 종소리가 아래로 갈수록 얇아진다. 심연이 소리를 삼키고 있어. 백 층까지 내려가서, 무엇이 소리를 먹는지 보고 와라.”',
+        end: '백 층의 군주가 무너진 자리에 낡은 아카데미 배지가 떨어져 있었다. 뒷면에는 아카데미력 724년 졸업이라고 새겨져 있었다. 삼백 년 전의 선배였다.' },
+      { t: '돌아오지 못한 선배', who: '', go: ['explore'], g: [{ k: 'cnt', s: 'expJobs', n: 15 }], rw: { stone: 60, shard: 15 },
+        sc: '심연을 오갈 때마다 배지가 하나씩 늘었다. 모두 마스터 과정 연구생의 배지였다. 그들은 종이 멈출 날을 막겠다며 내려갔고, 내려갈수록 종소리를 잊었다. 그림자가 된 선배들은 지금도 아래를 향해 걷고 있었다.',
+        end: '배지를 모아 사서에게 건넸다. 사서는 이름을 하나씩 읽고, 도서관 가장 안쪽 책장에 나란히 세웠다. “혼자 내려가면 안 되는 이유다.”' },
+      { t: '꿰맨 하늘', who: '카야 교관', go: ['world', 'wb'], g: [{ k: 'cnt', s: 'wbAttacks', n: 5 }], rw: { mana: 300000, shard: 15 },
+        sc: '카야 교관이 하늘을 올려다보았다. “종이 울려서 균열이 닫힌 게 아니야. 꿰맨 거지. 실이 느슨해지면 틈으로 저런 게 내려온다.” 하늘 저편에서 거대한 그림자가 다시 섬을 향하고 있었다. “혼자서는 못 막아. 모두 같이 가.”' },
+      { t: '꺼져 가는 별샘', who: '아스트라 노엘 교수', go: ['lib'], g: [{ k: 'cnt', s: 'researchDone', n: 5 }], rw: { know: 200000, shard: 15 },
+        sc: '노엘 교수는 가라앉은 천문대에서 건져 온 관측 일지를 펼쳤다. “은빛 샘이 오십 년째 흐려지고 있어요. 그런데 빛이 사라지는 게 아니라, 아래로 새고 있어요.” 교수가 손가락으로 섬 아래를 가리켰다. “구름을 뚫고 떨어진 빛은 전부 심연으로 가요. 심연이 깊어질수록 별샘이 마르는 거예요.”',
+        end: '계산을 마친 교수가 조용히 말했다. “일곱 샘 중 하나라도 꺼지면, 종은 일곱 음을 낼 수 없어요. 그러면 아무리 강한 사람이 올라가도 종은 울리지 않아요.”' },
+      { t: '종지기의 자격', who: '학장', go: ['exam'], g: [{ k: 'cnt', s: 'duelWins', n: 5 }], rw: { gold: 200000, shard: 20 },
+        sc: '학장은 시간의 탑 꼭대기에 서 있었다. 바람이 칼날처럼 불었다. “종지기는 이 바람 속에서 일곱 음절을 끝까지 외워야 합니다. 한 음절이라도 끊기면 종은 반쯤만 울리고, 섬은 그해 한 뼘 내려갑니다.” 학장이 결투제 명단을 건넸다. “누구보다 강해지세요. 종을 울리는 데 필요한 것은 그것뿐입니다.”' },
+      { t: '백이십 층의 목소리', who: '', go: ['explore', 'boss'], g: [{ k: 'boss', n: 120 }], rw: { gear: 1, shard: 30 },
+        sc: '심연의 군주는 열 층마다 모습을 바꿨다. 백이십 층에서 만난 것은 종의 모양을 하고 있었다. 금이 간, 소리 없는 종이었다.',
+        end: '무너지던 군주가 처음으로 다른 말을 했다. “나는 오렐리아가 처음 주조한 종이다. 울리지 못해 버려진.” 그 목소리는 슬펐다. 심연은 처음부터 버려진 종이 빛을 모으던 자리였다.' },
+      { t: '다음 입학식', who: '학장', go: ['lecture'], g: [{ k: 'cnt', s: 'lecJobs', n: 20 }], rw: { know: 300000, shard: 30 },
+        sc: '입학식이 다가왔다. 학장은 당신에게 별의 인장을 다시 건넸다. “올해 종은 당신들이 울립니다. 그리고 내년에는, 당신들이 가르친 아이들이 울릴 겁니다.” 일곱 과목, 일곱 해, 일곱 번의 시험. 가르치는 일 자체가 종을 지키는 주문이었다.',
+        end: '입학식 날 새벽, 칼리오페호의 기적이 아홉 음으로 울렸다. 당신은 시간의 탑 꼭대기에서 일곱 음절을 외웠다. 종이 울렸다. 저 아래 심연의 군주도, 아주 작게 따라 울었다. 여기까지가 지금의 이야기다. 종지기의 해는 해마다 다시 돌아온다.' }
     ] }
   ];
-  // 기말시험 과목: subj = 공통(모두 기준 레벨), opt = 선택(이 중 레벨이 가장 높은 1과목이 반영. 예전 과목이 반드시 들어 있다).
-  // 학과 전용 과목(검술·방패술 · 비전학)은 모든 학년 선택 후보에 넣는다 (그 학과에게만 보인다)
+  // 기말시험 과목: subj = 공통(모두 기준 레벨), opt = 선택(이 중 레벨이 가장 높은 1과목이 반영).
+  // 2차 베타: 공통은 지력 수업 1과목 + 체력 수업 1과목 (어느 학과든 유리한 과목 하나 · 불리한 과목 하나). 다음 학년과 한 과목씩 겹친다. 선택은 학과 전공(그 학과에게만 보인다) · 고대 룬어 · 성도해석학
   D.EXAMS = [
-    { grade: 1, title: '1학년 기말: 기초 마법 이론', subj: ['elem', 'ward'], opt: ['syntax', 'sword', 'arcana'], req: 3, duel: 9, examiner: '견습 시험관 골렘' },
-    { grade: 2, title: '2학년 기말: 원소와 연금', subj: ['ward', 'alch'], opt: ['elem', 'martial', 'mend', 'beast', 'sword', 'arcana'], req: 6, duel: 17, examiner: '연금 키메라' },
-    { grade: 3, title: '3학년 기말: 생명과 주문', subj: ['alch', 'beast'], opt: ['syntax', 'martial', 'sword', 'arcana'], req: 10, duel: 26, examiner: '환수 사육사의 그리핀' },
-    { grade: 4, title: '4학년 기말: 하늘을 읽는 자', subj: ['beast', 'astro'], opt: ['elem', 'martial', 'mend', 'sword', 'arcana'], req: 14, duel: 35, examiner: '별자리 수호상' },
-    { grade: 5, title: '5학년 기말: 결계와 비행', subj: ['ward', 'astro'], opt: ['flight', 'sword', 'arcana'], req: 18, duel: 45, examiner: '카야 교관의 분신' },
-    { grade: 6, title: '6학년 기말: 잊힌 문자', subj: ['flight', 'rune'], opt: ['syntax', 'martial', 'arcana', 'sword'], req: 22, duel: 55, examiner: '룬 각인 기사' },
-    { grade: 7, title: '졸업 시험: 별의 종 앞에서', subj: ['astro', 'rune'], opt: ['elem', 'martial', 'sword', 'arcana'], req: 26, duel: 66, examiner: '창립자의 잔영' }
+    { grade: 1, title: '1학년 기말: 결계와 체술', subj: ['ward', 'martial'], opt: ['elem', 'elemk', 'syntax', 'tactics', 'arcana', 'sword'], req: 3, duel: 9, examiner: '견습 시험관 골렘' },
+    { grade: 2, title: '2학년 기말: 결계와 연금', subj: ['ward', 'alch'], opt: ['elem', 'elemk', 'syntax', 'tactics', 'arcana', 'sword', 'bless', 'guard'], req: 6, duel: 17, examiner: '연금 키메라' },
+    { grade: 3, title: '3학년 기말: 환수와 연금', subj: ['beast', 'alch'], opt: ['elem', 'elemk', 'syntax', 'tactics', 'arcana', 'sword', 'bless', 'guard', 'rune', 'astro'], req: 10, duel: 26, examiner: '환수 사육사의 그리핀' },
+    { grade: 4, title: '4학년 기말: 환수와 구호', subj: ['beast', 'rescue'], opt: ['elem', 'elemk', 'syntax', 'tactics', 'arcana', 'sword', 'bless', 'guard', 'rune', 'astro'], req: 14, duel: 35, examiner: '별자리 수호상' },
+    { grade: 5, title: '5학년 기말: 생명과 구호', subj: ['mend', 'rescue'], opt: ['elem', 'elemk', 'syntax', 'tactics', 'arcana', 'sword', 'bless', 'guard', 'rune', 'astro'], req: 18, duel: 45, examiner: '카야 교관의 분신' },
+    { grade: 6, title: '6학년 기말: 생명과 비행', subj: ['mend', 'flight'], opt: ['elem', 'elemk', 'syntax', 'tactics', 'arcana', 'sword', 'bless', 'guard', 'rune', 'astro'], req: 22, duel: 55, examiner: '룬 각인 기사' },
+    { grade: 7, title: '졸업 시험: 별의 종 앞에서', subj: ['ward', 'flight'], opt: ['elem', 'elemk', 'syntax', 'tactics', 'arcana', 'sword', 'bless', 'guard', 'rune', 'astro'], req: 26, duel: 66, examiner: '창립자의 잔영' }
   ];
 
   /* ───────── 이야기 ───────── */
@@ -727,7 +803,9 @@ var DATA = (function () {
     { grade: 7, title: '7장. 별의 종',
       text: '이름 없는 사서는 오렐리아 베스퍼의 첫 번째 제자였다. 스승은 종이 언젠가 멈출 것을 알고, 그것을 다시 울릴 주문을 시간 속에 나누어 숨겼다. 일곱 과목, 일곱 해, 일곱 번의 시험. 모네타의 교육 과정 자체가 하나의 거대한 주문이었다.\n\n시간의 탑 꼭대기에서 당신은 마지막 음절을 외웠다. 천 년 만에, 종이 울렸다. 섬이 떠오른다. 그리고 종소리가 닿지 않는 섬 아래, 끝없는 심연이 모습을 드러냈다.' },
     { grade: 8, title: '8장. 끝나지 않는 수업',
-      text: '종이 다시 울린 날, 학장은 당신에게 별의 인장을 건네며 말했다. "졸업은 미뤄 두세요. 종소리가 닿지 않는 저 아래가 아직 남았습니다."\n\n당신은 마스터 과정 연구생이 되었다. 같은 하늘 아래의 모든 학생과 함께, 끝없는 심연으로 내려가며 다음에 종이 멈출 날을 대비한다.' }
+      text: '종이 다시 울린 날, 학장은 당신에게 별의 인장을 건네며 말했다. "졸업은 미뤄 두세요. 종소리가 닿지 않는 저 아래가 아직 남았습니다."\n\n당신은 마스터 과정 연구생이 되었다. 같은 하늘 아래의 모든 학생과 함께, 끝없는 심연으로 내려가며 다음에 종이 멈출 날을 대비한다.' },
+    { grade: 9, title: '9장. 종지기의 해',
+      text: '종은 울렸지만, 다시 스스로 울리지는 않는다. 오렐리아 베스퍼가 짜 둔 천 년이 끝났기 때문이다. 이제부터 종은 해마다 누군가 시간의 탑 꼭대기에 올라 일곱 음절을 직접 외워야 울린다. 그 사람을 종지기라 부른다.\n\n위험은 끝나지 않았다. 하늘의 균열은 닫힌 것이 아니라 꿰매어졌을 뿐이고, 종소리가 약해질 때마다 실이 느슨해진다. 은빛 샘은 오십 년째 흐려지고 있으며, 구름을 뚫고 떨어진 빛은 모두 섬 아래 심연으로 흘러간다. 심연이 깊어질수록 별샘이 마르고, 별샘 하나라도 꺼지면 종은 일곱 음을 낼 수 없다. 그해에는 섬이 가라앉고, 마나 비가 그친 에테라 대륙의 마을들도 함께 어두워진다.\n\n그래서 모네타는 해마다 학생을 받는다. 일곱 과목은 종을 울릴 주문이고, 일곱 해는 그 주문을 견딜 힘을 기르는 시간이다. 강해지는 것은 자신을 위해서가 아니다. 다음 해에도 종이 울리게 하기 위해서다.' }
   ];
 
   /* ───────── 세계관 도감 ───────── */
@@ -740,9 +818,16 @@ var DATA = (function () {
     { id: 'houses', title: '네 기숙사', text: '등불관, 물시계관, 가시왕관관, 거울관. 입학생은 기숙사 문 앞의 거울에 손을 대고, 거울이 비추는 빛의 색에 따라 배정된다. 기숙사 간 경쟁은 아카데미 축제의 가장 큰 볼거리다.' },
     { id: 'librarian', title: '이름 없는 사서', text: '아카데미 도서관을 홀로 지키는 사서. 고대 룬어를 가르치는 유일한 사람이다. 누구도 그의 이름을 모르고, 아카데미의 가장 오래된 졸업 앨범에도 그가 지금 모습 그대로 찍혀 있다.' },
     { id: 'mana', title: '마나의 세 형태', text: '아카데미에서는 마나를 세 가지로 나눠 가르친다. 흐르는 마나(재생), 고인 마나(마석), 새긴 마나(룬). 마석은 고인 마나가 굳은 것으로 장비 강화에 쓰인다.' },
+    { id: 'bellkeeper', title: '종지기', text: '해마다 입학식 날 새벽, 시간의 탑 꼭대기에 올라 일곱 음절을 외워 별의 종을 울리는 사람. 창립 후 천 년 동안은 종이 스스로 울렸기 때문에 필요 없던 자리다. 탑 꼭대기의 바람은 약한 마법사의 목소리를 찢어 버린다. 종지기는 그해 가장 강한 마스터 과정 연구생 가운데서 정해진다.' },
+    { id: 'seam', title: '꿰맨 하늘', text: '종이 다시 울리며 하늘의 균열은 닫혔다. 정확히는 꿰매어졌다. 종소리가 약해지는 해에는 실이 느슨해지고, 그 틈으로 균열 너머의 거대한 것들이 내려온다. 아카데미의 모든 학생이 함께 맞서는 월드 보스가 바로 그것이다. 균열 너머의 눈은 아직 감기지 않았다.' },
+    { id: 'fadingwell', title: '꺼져 가는 별샘', text: '가라앉은 천문대의 관측 일지에 따르면 은빛 샘은 오십 년째 흐려지고 있다. 빛은 사라지는 것이 아니라 구름을 뚫고 아래로 새어, 섬 아래 심연에 고인다. 별의 종은 일곱 샘의 빛으로 울리기 때문에, 샘 하나라도 꺼지면 종은 끝내 울리지 않는다.' },
+    { id: 'abyssdeep', title: '심연', text: '구름섬 라디아 아래, 종소리가 닿지 않는 끝없는 구덩이. 열 층마다 모습을 바꾸는 심연의 군주가 산다. 군주의 정체는 오렐리아 베스퍼가 처음 주조했다가 울리지 않아 버린 첫 번째 종이라는 말이 있다. 버려진 종은 천 년 동안 떨어지는 빛을 모아 스스로 울리려 하고 있다.' },
+    { id: 'fallen', title: '돌아오지 못한 졸업생', text: '종이 멈출 날을 막겠다며 홀로 심연에 내려간 마스터 과정 연구생들. 내려갈수록 종소리를 잊고 그림자가 되었다. 심연에서 거두어 온 배지는 도서관 가장 안쪽 책장에 이름 순서대로 세워져 있다. 마스터 과정 연구생이 혼자 심연에 내려가지 않는 것은 그들 때문이다.' },
+    { id: 'below', title: '구름 아래의 대륙', text: '에테라 대륙의 마을들은 별샘이 내리는 마나 비로 등불을 밝히고 밭을 일군다. 종이 반쯤만 울린 해에는 비가 엷어지고, 대륙 끝 마을부터 어두워진다. 침묵의 섬으로 가는 현이 끊어진 것도 그런 해의 일이다. 대륙 사람들은 구름섬을 올려다보며 종소리를 기다린다.' },
+    { id: 'paths', title: '졸업 이후의 길', text: '별의 인장을 받은 이들이 걷는 길은 여럿이다.\n종지기: 시간의 탑에 남아 해마다 종을 울린다.\n심연 원정대: 심연으로 내려가 군주를 막고, 돌아오지 못한 선배들의 배지를 거두어 온다.\n별샘 관측관: 가라앉은 천문대를 다시 띄워 일곱 샘의 빛을 지킨다.\n현 조율사: 오선 철도의 끊어진 현을 다시 잇고, 침묵의 섬으로 가는 길을 연다.\n순회 마법사: 마나 비가 엷어진 대륙의 마을을 돌며 결계와 등불을 세운다.\n교수: 아카데미로 돌아와 다음 세대를 가르친다. 일곱 과목이 곧 종을 울리는 주문이므로, 가르치는 일 또한 종을 지키는 일이다.' },
     { id: 'seals', title: '별의 인장', text: '졸업생에게만 주어지는 인장. 인장에는 졸업생이 배운 것의 일부가 봉인되어 있어, 다음 세대의 학생에게 유산으로 전해질 수 있다.' },
     { id: 'spirits', title: '반딧불 정령', text: '별샘에서 떨어진 작은 빛 조각이 의지를 가진 것. 아카데미 곳곳을 떠돌다 학생들의 유리병에 스스로 들어와 쉬고, 풀어 준 학생에게 작은 선물을 남기고 사라진다.' },
-    { id: 'calendar', title: '아카데미력', text: '모네타는 창립년을 원년으로 하는 아카데미력을 쓴다. 올해는 아카데미력 1024년이다. 한 해는 아홉 달, 한 달은 스물여덟 날이며, 달마다 무사이 한 명의 이름을 따른다. 서사달(칼리오페), 기록달(클리오), 피리달(에우테르페), 웃음달(탈리아), 가면달(멜포메네), 춤달(테르프시코레), 연가달(에라토), 별무리달(우라니아), 그리고 아홉째 침묵달(폴리힘니아). 학생들 사이에서는 "침묵달에 치른 시험은 반드시 붙는다"는 미신이 있다.' },
+    { id: 'calendar', title: '아카데미력', text: '모네타는 창립년을 원년으로 하는 아카데미력을 쓴다. 올해는 아카데미력 1024년이다. 한 해는 아홉 달, 한 달은 이레이며, 달마다 무사이 한 명의 이름을 따른다. 서사달(칼리오페), 기록달(클리오), 피리달(에우테르페), 웃음달(탈리아), 가면달(멜포메네), 춤달(테르프시코레), 연가달(에라토), 별무리달(우라니아), 그리고 아홉째 침묵달(폴리힘니아). 학생들 사이에서는 "침묵달에 치른 시험은 반드시 붙는다"는 미신이 있다.' },
     { id: 'musai', title: '아홉 무사이', text: '기억의 여신 므네모시네의 아홉 딸. 모네타라는 이름도 므네모시네를 부르는 로마식 이름에서 왔다. 오렐리아 베스퍼는 여덟 학년마다 무사이 한 명을 수호자로 두었고, 학생은 해마다 그 무사이의 음을 하나씩 얻어 화음을 쌓아 간다고 전해진다. 아홉째 폴리힘니아만은 어느 학년에도 속하지 않는다. 그녀는 늘 손가락을 입술에 댄 모습으로 그려진다.' },
     { id: 'invite', title: '초대장', text: '별의 종은 울리고 나면 한 해 내내 사람의 귀에는 들리지 않는 낮은 여운을 남긴다. 에테라 대륙에서 그 여운을 듣는 이는 한 해에 손에 꼽을 만큼뿐이고, 모네타는 오직 그들에게만 아홉 무사이의 인장이 찍힌 초대장을 보낸다. 가문도 재산도 나이도 묻지 않는다. 초대장은 그대로 입학 열차의 승차권이 된다. 올해의 신입생은 지난해 종의 여운을 마지막으로 들은 이들이다.' },
     { id: 'calliope', title: '칼리오페호', text: '한 해에 단 한 번, 입학식 날 새벽에만 달리는 입학 열차. 기적이 아홉 음으로 울린다. 칼리오페는 서사의 무사이 이름이자, 증기로 노래하는 오르간의 이름이기도 하다. 졸업생들은 마지막 날 이 열차를 다시 타고 대륙으로 돌아간다.' },
@@ -805,6 +890,42 @@ var DATA = (function () {
       { k: 'subj', n: 5, t: '……첫 룬을 기억해 내라. 고대 룬어 5레벨.' },
       { k: 'st', s: 'maxEnh', n: 10, t: '룬은 쇠에도 새겨진다. 장비를 +10까지 강화해라.' },
       { k: 'stage', n: 81, t: '종을 울려라. 그리고 그 아래를 보아라.', item: 'staff' }
+    ],
+    // 2차 베타: 학과 전공(짝끼리 같은 목표) · 지원 과목 과제
+    arcana: [
+      { k: 'subj', n: 8, t: '마나를 벽으로 세워 보세요. 비전학 8레벨이면 마나 장벽을 배울 수 있습니다.' },
+      { k: 'st', s: 'bosses', n: 10, t: '날것의 마나는 강한 상대 앞에서 시험해야 합니다. 보스를 10번 쓰러뜨리고 오세요.' },
+      { k: 'subj', n: 20, t: '마나에 이름을 붙이지 않고 끝까지 다루어 보세요. 비전학 20레벨.', item: 'tome' }
+    ],
+    sword: [
+      { k: 'subj', n: 8, t: '방패를 드는 법부터 다시. 검술·방패술 8레벨이면 수호의 함성을 배운다.' },
+      { k: 'st', s: 'bosses', n: 10, t: '방패는 맞아 봐야 안다. 보스를 10번 쓰러뜨리고 와라.' },
+      { k: 'subj', n: 20, t: '끝까지 버틴 자만이 검을 내린다. 검술·방패술 20레벨.', item: 'tome' }
+    ],
+    elemk: [
+      { k: 'subj', n: 3, t: '칼끝에 불씨부터 올려 보게. 원소검술 3레벨까지 와 보게.' },
+      { k: 'st', s: 'kills', n: 30, t: '베어 봐야 아는 법이지. 몬스터 30마리를 상대해 보게.' },
+      { k: 'stage', n: 41, t: '잿빛 황야에 가 보게. 실패한 대주문의 열기를 칼날로 느껴야 하네.', item: 'staff' }
+    ],
+    tactics: [
+      { k: 'st', s: 'lecJobs', n: 15, t: '진형은 외워서 몸에 새기는 거다. 수업을 열다섯 번 마치고 와라.' },
+      { k: 'subj', n: 10, t: '연속 베기의 박자를 익힐 때다. 전술학 10레벨.' },
+      { k: 'st', s: 'lecJobs', n: 200, t: '한 수도 틀리지 않을 때까지. 수업 200번.', item: 'tome' }
+    ],
+    bless: [
+      { k: 'subj', n: 3, t: '첫 축복의 장막을 드리워 보세요. 축복마법학 3레벨.' },
+      { k: 'st', s: 'expJobs', n: 60, t: '축복은 동료와 함께 나가 봐야 의미가 있어요. 원정을 60번 다녀오세요.' },
+      { k: 'subj', n: 18, t: '이제 쓰러진 동료를 일으킬 차례예요. 축복마법학 18레벨.', item: 'robe' }
+    ],
+    guard: [
+      { k: 'subj', n: 3, t: '방호 태세부터 몸에 익혀라. 수호기사학 3레벨.' },
+      { k: 'st', s: 'expJobs', n: 60, t: '맹세는 전장에서 지키는 것이다. 원정을 60번 다녀와라.' },
+      { k: 'subj', n: 18, t: '쓰러진 동료 앞에 설 차례다. 수호기사학 18레벨.', item: 'robe' }
+    ],
+    rescue: [
+      { k: 'subj', n: 4, t: '대열 다시 세우는 법부터! 전장구호학 4레벨.' },
+      { k: 'subj', n: 8, t: '재생의 노래는 구호의 기본이야. 전장구호학 8레벨까지 와.' },
+      { k: 'st', s: 'expJobs', n: 120, t: '돌아온 동료 수만큼 실력이 늘어. 원정을 120번 다녀와!', item: 'charm' }
     ]
   };
 
@@ -850,6 +971,12 @@ var DATA = (function () {
     { id: 'loyal', name: '개근상', stat: 'streak', n: 30, how: '30일 연속 출석' },
     { id: 'loyal100', name: '1년 개근', stat: 'streak', n: 100, how: '100일 연속 출석' },
     { id: 'deep', name: '심연의 끝을 걷는 자', stat: 'maxStageAll', n: 101, how: '원정 101단계 도달' },
+    { id: 'mwq4', name: '종지기 후보', stat: 'mwqWeeks', n: 4, how: '마스터 주간 과제 4주 모두 완수' },
+    { id: 'mwq12', name: '종지기의 제자', stat: 'mwqWeeks', n: 12, how: '마스터 주간 과제 12주 모두 완수' },
+    { id: 'mwq30', name: '종지기', stat: 'mwqWeeks', n: 30, how: '마스터 주간 과제 30주 모두 완수' },
+    { id: 'deep120', name: '종소리를 품고 내려간 자', stat: 'maxStageAll', n: 121, how: '원정 121단계 도달 (심연 120단계 보스 처치)' },
+    { id: 'deep150', name: '심연의 등불', stat: 'maxStageAll', n: 151, how: '원정 151단계 도달 (심연 150단계 보스 처치)' },
+    { id: 'deep200', name: '심연의 바닥을 본 자', stat: 'maxStageAll', n: 201, how: '원정 201단계 도달 (심연 200단계 보스 처치)' },
     { id: 'slayer', name: '몬스터 사냥꾼', stat: 'kills', n: 10000, how: '몬스터 1만 번 처치' },
     { id: 'retry', name: '쓰러져도 다시', stat: 'bossTries', n: 100, how: '보스 · 결투 도전 100번' },
     { id: 'raid30', name: '토벌대장', stat: 'wbKills', n: 30, how: '월드 보스 토벌 30번 참여' },
@@ -860,7 +987,8 @@ var DATA = (function () {
     { id: 'firefly10', name: '정령의 목소리', stat: 'spirits', n: 1000, how: '정령 1,000마리 풀어 주기' },
     { id: 'firefly30', name: '반딧불 숲의 주인', stat: 'spirits', n: 3000, how: '정령 3,000마리 풀어 주기' },
     { id: 'fam5', name: '환수 사육사', stat: 'famKinds', n: 5, how: '사역마 다섯 종 보유' },
-    { id: 'fam12', name: '모든 환수의 벗', stat: 'famKinds', n: 12, how: '사역마 열두 종 모두 보유' },
+    { id: 'fam12', name: '환수 도감 편찬자', stat: 'famKinds', n: 12, how: '사역마 열두 종 보유' },
+    { id: 'fam18', name: '모든 환수의 벗', stat: 'famKinds', n: 18, how: '사역마 열여덟 종 모두 보유' },
     { id: 'disp1k', name: '먼 길의 동반자', stat: 'dispatches', n: 1000, how: '사역마 파견 1,000번' },
     { id: 'res200', name: '서고의 주인', stat: 'researchDone', n: 200, how: '연구 200단계 완료' },
     { id: 'dream100', name: '꿈길의 여행자', stat: 'dreams', n: 100, how: '꿈길 100번' },
@@ -978,8 +1106,8 @@ var DATA = (function () {
   ];
   D.GUIDE = [
     { c: '처음', t: '이 게임은 어떻게 하나요?', b: '수업과 원정을 30분~3시간 단위로 진행하고, 끝나면 다음 교시를 이어 가는 방치형 게임입니다. 뽀모도로 타이머처럼 활용할 수 있습니다. 창을 닫아도 서버에서 그대로 진행되며, 다시 접속하면 끝난 작업의 결과가 표시됩니다. 잠들기 전에는 연구 · 사역마 파견처럼 오래 걸리는 작업을 시작해 두면 좋습니다. 모네타 아카데미의 입학에는 나이 제한이 없습니다.', go: ['home'] },
-    { c: '처음', t: '첫날 할 일', b: '1) 「수업·연구」에서 수업을 듣고 2) 「원정·전투」에서 추천 단계로 출정하고 3) 「수업·연구 → 연구」에서 연구를 하나 시작합니다. 아카데미 광장의 「다음 할 일」이 지금 할 일을 알려 주며, 「이동」 버튼으로 해당 화면에 바로 갈 수 있습니다. 화면 좌측(모바일에서는 하단)의 안내도는 비슷한 활동끼리 묶여 있습니다.', go: ['home'] },
-    { c: '처음', t: '서버와 시간', b: '모든 학생이 같은 시간을 공유합니다. 아카데미력은 현실의 하루가 아카데미의 하루이며, 4주가 한 달, 아홉 달이 한 해입니다. 달마다 별샘의 축복이 바뀌고, 토 · 일요일에는 유성우가 내려 마나 재생과 수업 효율이 오릅니다. 학년은 달력과 관계없이 기말시험에 합격할 때마다 오릅니다.' },
+    { c: '처음', t: '첫날 할 일', b: '1) 「수업·연구」에서 수업을 듣고 2) 「원정·전투」에서 추천 단계로 출정하고 3) 「수업·연구 → 연구」에서 연구를 하나 시작합니다. 연금화학 수업을 한 번 들으면 연금 공방이 열려 수업 효율을 올리는 집중의 물약을 만들 수 있습니다. 아카데미 광장의 「다음 할 일」이 지금 할 일을 알려 주며, 「이동」 버튼으로 해당 화면에 바로 갈 수 있습니다. 화면 좌측(모바일에서는 하단)의 안내도는 비슷한 활동끼리 묶여 있습니다.', go: ['home'] },
+    { c: '처음', t: '서버와 시간', b: '모든 학생이 같은 시간을 공유합니다. 아카데미력은 현실의 하루가 아카데미의 하루이며, 1주(7일)가 한 달, 아홉 달이 한 해입니다. 달마다 별샘의 축복이 바뀌고, 토 · 일요일에는 유성우가 내려 마나 재생과 수업 효율이 오릅니다. 학년은 달력과 관계없이 기말시험에 합격할 때마다 오릅니다.' },
     { c: '처음', t: '아카데미 광장 화면', b: '상단의 풍경에는 현재 하늘(하늘 이벤트 · 다음 일정)과 오늘의 축복이 표시되며, 좌측의 반딧불 병을 눌러 반딧불 정령을 풀어 줄 수 있습니다. 그 아래에서 공지 · 시간표 · 다음 할 일 · 일일 목표를 확인합니다. 잠자리 · 꿈길은 광장 하단에 있습니다.', go: ['home'] },
     { c: '처음', t: '학기 이야기', b: '광장 상단 카드에 현재 진행할 이야기 단계가 표시됩니다. 학년마다 한 장(章)씩 진행되며, 단계마다 목표가 있어 달성하면 「보상 받기」로 다음 장면이 열립니다. 무엇을 할지 모르겠다면 「하러 가기」를 누르세요. 각 장의 마지막 단계는 해당 학년의 기말시험입니다.', go: ['home'] },
     { c: '처음', t: '아카데미 공지와 아카데미 소식', b: '아카데미 광장 풍경 아래 한 줄에 가장 최근 공지나 소식(새 학생 입학, 진급)이 표시됩니다. 「더보기」로 지난 공지와 소식을 모아 볼 수 있습니다.', go: ['home'] },
@@ -995,15 +1123,15 @@ var DATA = (function () {
     { c: '자원', t: '재료', b: '원정 지역마다 다른 재료가 나옵니다(지하 저장고: 먼지 가루, 속삭이는 숲: 월광초 등). 물약 제조에 사용하며, 남는 재료는 거래소에서 판매할 수 있습니다.', go: ['work',  'alch'] },
     { c: '자원', t: '매점', b: '「상점 → 매점」에서 ' + CUR + ' · 별조각으로 마석 꾸러미 · 보급 상자 · 환수의 알 · 마나병 · 토벌 도전권 · 가방 확장 · 휘장 원석 · 연금 재료 상자 · 망각의 차를 삽니다. 토벌 도전권은 하루 2번까지 살 수 있으며, 하루 구매 횟수는 매일 한국 시간(KST) 자정에 초기화됩니다. 출석 · 일일 목표 등 다른 하루 단위 항목도 같은 시각에 초기화됩니다.', go: ['shop'] },
     { c: '자원', t: '소지품 (장비가 아닌 것)', b: '「장비·능력」의 가방 칸은 「장비 가방」과 「소지품」 두 탭입니다. 소지품에는 환수의 알 · 토벌 도전권 · 연금술 물약 · 망각의 차처럼 장비가 아닌 것이 칸 제한 없이 모이며, 장비 가방 40칸과는 따로입니다. 「학점 이전 증서」는 한 과목에 쌓은 수업 경험치를 지금 들을 수 있는 다른 과목으로 모두 옮깁니다(보내는 과목은 0레벨이 되고, 그 과목으로 배운 주문은 주문 칸에서 빠집니다). 기말시험 선택 과목이 도입되기 전에 입학한 학생에게 2장이 지급되었습니다. 칸마다 「바로 부화 · 바로 마시기」로 바로 사용하거나 부화기 · 월드 보스 · 연금술 · 능력치 칸으로 바로 갈 수 있습니다. 새로 들어온 것에는 「새」 표시가 붙고, 우편 · 매점에서 받은 뒤 「소지품에서 보기」로 바로 갈 수 있습니다. 장비 상자 · 휘장 원석 · 재료 상자는 받는 순간 열리며, 재료는 연금 공방의 재료 보관함, 아카데미 휘장은 휘장 보관함에서 봅니다.', go: ['gear', 'bag'] },
-    { c: '자원', t: '분해 · 마석가루 · 재련', b: '사용하지 않는 장비는 판매(' + CUR + ') 대신 분해해 마석과 마석가루를 얻을 수 있습니다. 마석가루는 장비 등급과 장비 레벨에 비례해 나옵니다(등급이 한 단계 오를 때마다 크게 늘고, 같은 등급이면 레벨이 높을수록 많이 나옵니다). 마석가루가 부족하면 매점에서 마석 10개를 마석가루 50개로 교환할 수 있습니다. 마석가루로 장비를 재련하면 등급 · 레벨 · 강화는 유지한 채 옵션만 새로 정해집니다. 한 장비에는 같은 옵션이 두 줄 붙지 않습니다(처음 얻을 때와 재련 모두 · 이전과 같은 옵션이 다시 나올 수는 있습니다). 재련하면 지금 옵션은 사라지고 새 옵션으로 바뀌며 되돌릴 수 없습니다(누르면 사라질 옵션을 먼저 보여 주고, 재련 뒤에는 이전 · 새 옵션을 나란히 보여 줍니다). 분류 마법을 연구하면 자동 처리를 판매 대신 분해로 바꿀 수 있습니다.', go: ['gear'] },
-    { c: '아카데미 생활', t: '수업과 과목', b: '과목 카드의 「강의계획서」에서 아직 열리지 않은 과목도 레벨당 효과 · 레벨별 보상(주문 · 물약 등) · 교수 과제 · 기말시험 학년을 미리 볼 수 있습니다. 수업은 한 번에 하나만 들을 수 있으며, 수업을 들으면 과목 경험치와 지식을 얻습니다. 과목 레벨이 오르면 능력치가 오르고, 특정 레벨에서 새 주문을 배웁니다. 시간별 효율은 30분 · 1시간 100%, 2시간 97%, 3시간 94%입니다.', go: ['lecture'] },
+    { c: '자원', t: '분해 · 마석가루 · 재련', b: '사용하지 않는 장비는 판매(' + CUR + ') 대신 분해해 마석과 마석가루를 얻을 수 있습니다. 마석가루는 장비 등급과 장비 레벨에 비례해 나옵니다(등급이 한 단계 오를 때마다 크게 늘고, 같은 등급이면 레벨이 높을수록 많이 나옵니다). 마석가루가 부족하면 매점에서 마석 10개를 마석가루 50개로 교환할 수 있습니다. 마석가루와 ' + CUR + '로 장비를 재련하면 등급 · 레벨 · 강화는 유지한 채 옵션만 새로 정해집니다(' + CUR + ' 비용은 장비 레벨 · 등급이 높을수록 큽니다). 한 장비에는 같은 옵션이 두 줄 붙지 않습니다(처음 얻을 때와 재련 모두 · 이전과 같은 옵션이 다시 나올 수는 있습니다). 재련하면 지금 옵션은 사라지고 새 옵션으로 바뀌며 되돌릴 수 없습니다(누르면 사라질 옵션을 먼저 보여 주고, 재련 뒤에는 이전 · 새 옵션을 나란히 보여 줍니다). 분류 마법을 연구하면 자동 처리를 판매 대신 분해로 바꿀 수 있습니다.', go: ['gear'] },
+    { c: '아카데미 생활', t: '수업과 과목', b: '모든 과목은 1학년부터 들을 수 있습니다. 과목은 학과 전공(학과마다 4과목, 마법사와 기사가 짝을 이룸)과 공용(9과목)으로 나뉩니다. 과목 카드의 「강의계획서」에서 레벨당 효과 · 레벨별 보상(주문 · 물약 · 효과 등) · 교수 과제 · 기말시험 학년을 미리 볼 수 있습니다. 수업은 한 번에 하나만 들을 수 있으며, 수업을 들으면 과목 경험치와 지식을 얻습니다. 과목 레벨이 오르면 능력치가 오르고, 특정 레벨에서 새 주문이나 효과를 얻습니다. 수업 효율은 과목마다 지력 또는 체력을 따릅니다(학과 전공: 마법사 지력 · 기사 체력, 공용: 결계공학 · 환수생태학 · 성도해석학 · 생명마법학은 지력, 전투체술학 · 체술·비행 · 연금화학 · 전장구호학은 체력, 고대 룬어는 주 능력치). 시간별 효율은 30분 · 1시간 100%, 2시간 97%, 3시간 94%입니다.', go: ['lecture'] },
     { c: '아카데미 생활', t: '함께 듣는 수업', b: '강의실에서 같은 과목을 수강 중인 학생 수를 볼 수 있습니다. 같은 과목을 듣는 다른 학생 1명당 과목 경험치 +1%(최대 +5%)이며, 수업을 시작할 때 정해집니다. 그날 같은 과목을 들은 학생이 많으면 교수가 공지에 한마디를 남깁니다.', go: ['lecture'] },
     { c: '아카데미 생활', t: '시간표 (교시 짜기)', b: '강의실 상단 「시간표」에 시간표를 세 벌까지 저장할 수 있습니다. 「만들기 · 수정」에서 「＋ 교시 추가」를 눌러 교시마다 과목과 시간을 선택하며, 모두 합쳐 4시간까지 짤 수 있습니다(예: 30분 · 1시간 · 30분 · 2시간). 「시간표 듣기」를 누르면 1교시부터 바로 시작하고, 교시가 끝날 때마다 종이 울리며 다음 교시가 저절로 이어집니다. 다음 교시가 시작되고 15분 안에 「제때 입실」을 누르면 그 교시 과목 경험치 +10%를 받습니다. 이미 수업을 듣고 있으면 시간표를 시작할 수 없고, 시간표로 듣는 중에는 다음 교시 예약을 걸 수 없습니다. 중간에 수업을 그만두면 남은 교시도 함께 멈춥니다. 꿈길 중에는 예약한 다음 교시 · 시간표의 남은 교시가 멈췄다가 깨어나는 순간 이어집니다(꿈길 시간만큼 늦어지며, 없어지지는 않습니다).', go: ['lecture'] },
     { c: '아카데미 생활', t: '수업 예약 · 제때 입실', b: '수업 중에 「다음 교시」를 하나 예약할 수 있습니다. 종이 울리면 예약한 수업이 자동으로 시작되며(꿈길 중이면 깨어난 뒤), 예약은 한 칸뿐이므로 그다음 교시는 다시 예약해야 합니다. 시간표로 듣는 중에는 예약을 걸 수 없습니다. 수업이 끝나고 15분 안에 직접 다음 수업을 들으면 「제때 입실」로 과목 경험치 +10%를 받습니다. 예약으로 자동 시작된 교시에는 붙지 않지만, 시간표 교시는 종이 울리고 15분 안에 「제때 입실」 단추를 누르면 받을 수 있습니다. 꿈길 중에는 예약한 다음 교시 · 시간표의 남은 교시가 멈췄다가 깨어나는 순간 이어집니다(꿈길 시간만큼 늦어지며, 없어지지는 않습니다).', go: ['lecture'] },
     { c: '아카데미 생활', t: '중도 취소', b: '진행 중인 작업을 취소하면 지난 시간만큼의 보상 중 절반만 받습니다. 다시 접속할 시간에 맞춰 작업 길이를 선택하세요.' },
-    { c: '아카데미 생활', t: '사역마 · 알 품기 · 환수생태학', b: '환수생태학 수업(1학년부터)을 들어 5레벨이 되거나 레벨 15가 되면 「장비·공방 → 환수 사역장」이 열리고 고드릭 펜 교수가 첫 환수의 알을 줍니다(3학년 이상은 바로). 알을 부화기에 품으면 활동할수록(수업 · 원정 · 연구 · 파견 · 조제 등, 기숙사 대항전 점수와 같은 기준) 진행도가 오르고, 다 차면 마나 없이 깨어납니다. 마나를 불어넣으면 남은 진행도만큼의 마나로 바로 깨울 수도 있습니다. 「품기 취소」를 누르면 품던 알이 보관함으로 돌아가며, 그때까지의 진행도는 사라집니다. 가지고 있는 모든 사역마의 능력 보너스는 동행하지 않아도 항상 적용됩니다. 동행 중인 사역마 한 마리는 전투에서 함께 공격하고(초당 피해에 포함) 활동할 때마다 경험치를 얻으며, 동행하지 않는 사역마는 파견을 보낼 수 있습니다. 사역마는 경험치로 성장합니다. 동행 중인 사역마는 활동할 때마다, 파견한 사역마는 돌아올 때 파견 시간만큼(동행보다 적게) 경험치를 얻으며, 먹이(아르크 또는 같은 양의 마나)와 같은 사역마가 다시 깨어나는 것으로도 레벨이 오릅니다. 환수생태학은 레벨마다 사역마 능력 보너스 +3%, 파견 보상 +2%, 부화 속도 +1%가 붙습니다. 지니고 있는 알(품고 있는 알 포함) 하나마다 경험치 +3%(3개까지)가 붙습니다. 알은 보스 첫 처치, 월드 보스 토벌, 파견, 매점에서 얻으며 「장비 → 소지품」에서 확인할 수 있습니다.', go: ['work', 'fam'] },
+    { c: '아카데미 생활', t: '사역마 · 알 품기 · 환수생태학', b: '환수생태학 수업(1학년부터)을 들어 5레벨이 되거나 레벨 15가 되면 「장비·공방 → 환수 사역장」이 열리고 고드릭 펜 교수가 첫 환수의 알을 줍니다(3학년 이상은 바로). 알을 부화기에 품으면 활동할수록(수업 · 원정 · 연구 · 파견 · 조제 등, 기숙사 대항전 점수와 같은 기준) 진행도가 오르고, 다 차면 마나 없이 깨어납니다. 마나를 불어넣으면 남은 진행도만큼의 마나로 바로 깨울 수도 있습니다. 「품기 취소」를 누르면 품던 알이 보관함으로 돌아가며, 그때까지의 진행도는 사라집니다. 가지고 있는 모든 사역마의 능력 보너스는 동행하지 않아도 항상 적용됩니다. 동행 중인 사역마 한 마리는 전투에서 함께 공격하고(초당 피해에 포함) 활동할 때마다 경험치를 얻으며, 동행하지 않는 사역마는 파견을 보낼 수 있습니다. 사역마는 경험치로 성장합니다. 동행 중인 사역마는 활동할 때마다, 파견한 사역마는 돌아올 때 파견 시간만큼(동행보다 적게) 경험치를 얻으며, 먹이(아르크 또는 같은 양의 마나)와 같은 사역마가 다시 깨어나는 것으로도 레벨이 오릅니다. 환수생태학은 레벨마다 사역마 능력 보너스 +3%, 파견 보상 +2%, 부화 속도 +1%가 붙습니다. 지니고 있는 알(품고 있는 알 포함) 하나마다 경험치 +3%(3개까지)가 붙습니다. 알은 보스 첫 처치, 월드 보스 토벌, 파견, 매점에서 얻으며 「장비 → 소지품」에서 확인할 수 있습니다. 알을 깨운 횟수가 20 · 40 · 80회가 되면 희귀 · 영웅 · 전설 사역마 선택권을 차례로 받으며(이후 80회마다 전설 선택권), 선택권으로 그 등급의 사역마를 골라 얻을 수 있습니다(가지고 있으면 레벨 +1, 최고 레벨인 사역마는 선택 불가).', go: ['work', 'fam'] },
     { c: '아카데미 생활', t: '연구와 사역마 파견 (장시간 방치)', b: '연구는 한 번에 하나만 진행되며 단계마다 몇 시간에서 이틀까지 걸립니다. 진행 중인 연구는 마나(마나 생산 2시간분) 또는 지식(그 단계 지식 비용의 절반)으로 남은 시간을 1시간씩 줄일 수 있으며, 하루(KST) 3회까지 가능합니다. 사역마 파견은 2~12시간 걸립니다. 잠들기 전에 시작해 두면 좋습니다. 사역마마다 「파견 지역」을 정해 둘 수 있으며(정하지 않으면 갈 수 있는 가장 높은 지역), 한 번 정하면 계속 그 지역으로 파견됩니다. 재료는 그 지역의 재료를 가져오고, 아르크는 높은 지역일수록 많습니다. 「숙면의 차」를 마시면 파견 보상 · 마나 재생 · 꿈길 보상이 늘어납니다. 사역마 카드의 「파견 잠금」을 누르면 「모두 파견」에서 빠지고 따로 보낼 수도 없습니다. 파견 중인 사역마는 「귀환」으로 일찍 불러들일 수 있으며, 그때까지 지난 시간만큼의 몫만 받습니다.', go: ['lib'] },
-    { c: '아카데미 생활', t: '물약과 부화', b: '연금 공방에서 재료와 마나가 있으면 물약이 즉시 완성됩니다. 알은 환수 사역장의 부화기에 품어 활동으로 깨우거나, 마나를 불어넣어 바로 깨울 수 있습니다. 물약 효과는 마신 뒤 현실 시간으로 흐르며, 마신 뒤 시작하는 수업 · 원정부터 적용됩니다. 이미 진행 중인 수업 · 원정에는 적용되지 않고, 시작할 때 효과가 남은 시간과 겹치는 만큼 반영됩니다.', go: ['work',  'alch'] },
+    { c: '아카데미 생활', t: '물약과 부화', b: '연금 공방은 연금화학 1레벨부터(수업을 한 번 들으면) 열립니다. 첫 물약으로 수업 효율을 올려 주는 집중의 물약을 만들 수 있습니다. 연금 공방에서 재료와 마나가 있으면 물약이 즉시 완성됩니다. 알은 환수 사역장의 부화기에 품어 활동으로 깨우거나, 마나를 불어넣어 바로 깨울 수 있습니다. 물약 효과는 마신 뒤 현실 시간으로 흐르며, 마신 뒤 시작하는 수업 · 원정부터 적용됩니다. 이미 진행 중인 수업 · 원정에는 적용되지 않고, 시작할 때 효과가 남은 시간과 겹치는 만큼 반영됩니다.', go: ['work',  'alch'] },
     { c: '아카데미 생활', t: '반딧불 정령 병', b: '40분마다 한 마리씩 병에 모이며, 기본 4마리가 되면 가득 찹니다(2시간 40분). 연구 「정령 병 확장」 한 단계마다 병이 1칸 커집니다(최대 8칸). 접속했을 때 「풀어 주기」를 누르면 마나 · ' + CUR + ' · 별조각 · 마석 중 하나씩을 남깁니다. 반딧불 병은 광장 풍경 좌측에 있습니다.', go: ['home',  'care'] },
     { c: '아카데미 생활', t: '일일 목표와 출석', b: '매일 한국 시간(KST) 자정에 일일 목표 세 개가 새로 나오고 출석 도장도 다시 받을 수 있습니다. 목표마다 보상(별조각 · ' + CUR + ')이 표시되며, 「이동」을 누르면 해당 화면으로 이동합니다. 마음에 들지 않는 목표는 「바꾸기」로 교체할 수 있습니다(하루 1회 무료, 이후 별조각 5 · 10 · 20…). 출석은 연속일수록 보상이 커집니다.', go: ['home'] },
     { c: '아카데미 생활', t: '날씨', b: '아카데미의 날씨는 맑음 · 흐림 · 안개 · 비 · 뇌우 · 눈 · 함박눈 일곱 가지이며, 모든 학생이 같은 날씨를 봅니다. 실제 3시간마다 바뀌고, 비나 눈은 흐림을 거쳐 내리고 그칩니다. 안개는 새벽 · 아침에, 함박눈은 겨울(아카데미력 마지막 두 달)에만 나타납니다. 흐림은 마나 재생 +5%, 안개는 사역마 파견 보상 +5%, 비는 조제 속도 +10%, 뇌우는 ' + CUR + ' +5%, 눈은 수업 효율 +5%, 함박눈은 수업 효율 +10%이며, 진행 중인 작업에는 겹친 시간만큼 들어갑니다. 하늘 이벤트가 떠 있는 동안에는 하늘이 맑습니다(날씨 효과 없음). 상단 달력 옆이나 광장 풍경의 날씨를 누르면 다음 날씨와 효과를 볼 수 있습니다.' },
@@ -1012,29 +1140,29 @@ var DATA = (function () {
     { c: '아카데미 생활', t: '별샘 의식', b: '하루 한 번(매일 KST 자정 초기화) 마나를 조금 봉헌해 모두 함께 목표를 채웁니다. 목표를 채우면 봉헌한 모두에게 4시간 동안 경험치 · 지식 +15%, ' + CUR + ' +10% 축복이 적용됩니다. 목표를 채운 뒤에 봉헌해도 축복을 받습니다.', go: ['home',  'events'] },
     { c: '아카데미 생활', t: '잠자리 · 꿈길 (1학년부터)', b: '광장 하단의 「잠자리 · 꿈길」에서 잠들기 전에 6~12시간짜리 꿈을 꿉니다(1시간 단위로 선택). 꿈을 꾸는 동안에는 새로 수업을 듣거나 출정할 수 없습니다(진행 중인 것은 계속되며, 연구 · 물약 · 사역마 파견은 가능). 복습하는 꿈(선택한 과목 경험치 · 지식), 별을 헤아리는 꿈(별조각 · 지식 · 가끔 환수의 알), 구름섬을 떠도는 꿈(' + CUR + ' · 재료 · 마석)이 있습니다. 10% 확률로 자각몽이 되어 1.5배를 받습니다. 도중에 깨우면 아무것도 얻지 못합니다. 꿈길 중에는 예약한 다음 교시 · 시간표의 남은 교시가 멈췄다가 깨어나는 순간 이어집니다(꿈길 시간만큼 늦어지며, 없어지지는 않습니다). 꿈길에 들어가도 듣던 강의는 끝까지 이어지므로, 잠들기 전에 강의를 걸어 두면 강의와 꿈 보상을 함께 받습니다. 복습하는 꿈은 1시간에 강의의 0.4배 경험치를 주고, 깨어난 뒤 3시간 안에 같은 과목 수업을 시작하면 그 수업 경험치가 20% 늘어납니다(복습 효과).', go: ['home',  'dream'] },
     { c: '아카데미 생활', t: '기말시험', b: '이론 30점(시험 과목 평균 레벨) + 실기 40점(시험 과목 레벨) + 대련 30점(시험관과의 전투) 합계 60점 이상이면 진급합니다. 시험 과목은 공통 2과목과 선택 과목 1과목입니다(「선택 과목」 참고). 문제를 풀 필요는 없으며, 시험 과목이 모두 기준 레벨에 도달하면 응시 버튼으로 바로 채점합니다. 기준보다 레벨이 높을수록 점수가 오릅니다. 받은 등급(S · A · B)의 횟수에 따라 업적과 칭호가 있고, 일곱 기말시험을 모두 B 이상 · A 이상으로 마치면 졸업 업적과 칭호를 받습니다. S는 한 번 · 세 번 · 다섯 번 · 일곱 번마다 전용 꾸미기(인장 · 이름 잉크 · 배경 · 테두리)가 지급됩니다.', go: ['exam'] },
-    { c: '아카데미 생활', t: '선택 과목', b: '기말시험 과목은 공통 2과목과 선택 과목 1과목입니다. 선택 과목은 후보(마법 과목 · 검술·방패술 · 전투체술학 · 비전학 · 생명마법학 등) 가운데 하나가 반영되며, 학과 전용 과목은 그 학과에만 후보로 보입니다. 기본값은 「자동」으로, 레벨이 가장 높은 과목이 반영됩니다. 시험장 실기 칸에서 선택 과목을 직접 고르면 그 학년 시험 동안 계속 그 과목으로 보고 계산하며, 진급하면 새 시험은 다시 「자동」에서 시작합니다. 필기 · 실기 점수와 응시 자격 모두 선택한 과목으로 계산합니다. 기사의 검술·방패술과 마법사의 비전학은 모든 학년 시험의 선택 과목 후보에 들어 있습니다.', go: ['exam'] },
-    { c: '아카데미 생활', t: '시험 등급 (S · A · B · C)', b: '95점 이상 S, 85점 A, 75점 B, 60점 C입니다. 합격하면 즉시 다음 학년이 되어 같은 시험은 다시 볼 수 없으므로, 시험장의 「예상 성적」을 확인한 뒤 응시할지 과목 레벨을 더 올릴지 정합니다. S는 별조각 · ' + CUR + ' 2배와 영웅 이상 장비(전설 3%) · 환수의 알, A는 1.5배와 희귀 이상 장비를 받습니다. 보상 장비의 레벨은 응시할 때 연 원정 단계 기준 ±3입니다. S를 받으려면 대련에서 이겨야 합니다. 좋은 성적을 여러 번 받으면 칭호로 남으며(연속이 아니어도 됩니다), S등급으로 진급하면 학년 소식과 공지에 알려집니다.', go: ['exam'] },
-    { c: '아카데미 생활', t: '진급 안내', b: '기말시험에 합격하면 해당 학년에 새로 열린 과목 · 화면 · 연구 · 매점 품목을 모아 보여 주며, 「바로 가기」로 각 화면에 갈 수 있습니다. 창을 닫은 뒤에도 우측 상단 「알림」(종 모양)이나 시험장 「성적표」의 「안내」에서 다시 볼 수 있습니다.', go: ['exam'] },
-    { c: '아카데미 생활', t: '아카데미 휘장', b: '로브 가슴에 다는 브로치입니다. 2학년 기말시험을 통과해 3학년이 되면 아카데미에서 하나를 수여하며, 매점 「휘장 원석」 · 보스 전리품 · 거래소에서도 얻을 수 있습니다. 보석마다 대표 효과가 다릅니다(홍옥 공격력, 청옥 주문 위력, 석류석 물리 공격력, 진주 주문 공격력, 호박 기술 위력, 녹옥 생명력, 자수정 수업 효율, 황옥 ' + CUR + ', 월장석 경험치, 남옥 마나, 흑요석 치명타 피해, 단백석 전리품). 달고 있는 휘장 하나만 효과가 있으며, 원정 · 수업 · 전투에서 별빛을 모아 Lv 20까지 성장합니다. 5 · 10 · 15 · 20레벨에 세공(옵션)이 한 줄씩 붙습니다. 강화 방법: 마석가루와 ' + CUR + '로 「닦기」(별빛 · 레벨), 별조각으로 「광내기」(보석 품질 · 대표 효과, 최대 125%), 별조각으로 「세공 다시 새기기」(옵션 한 줄 재설정). 세공은 중복되지 않습니다: 같은 휘장의 다른 세공 줄과 같은 옵션, 보석의 대표 효과와 같은 옵션은 새겨지지 않습니다(다시 새기는 그 줄의 원래 옵션은 다시 나올 수 있습니다). 거래소에서 사고팔 수 있고, 필요 없는 휘장은 깨뜨려 마석가루로 돌려받습니다. 보관 중인 휘장의 「계승」을 누르면 그 휘장을 재료로 모은 별빛의 60%를 레벨이 더 낮은 휘장에 옮깁니다(재료 휘장은 사라지고 마석가루 사용, 받는 휘장의 보석 · 품질 · 세공은 그대로이며 세공 레벨을 넘으면 새 세공이 새겨집니다. 달고 있거나 잠긴 휘장은 재료로 사용할 수 없습니다). 「잠금」을 걸면 장착 · 해제만 가능하고 닦기 · 광내기 · 세공 · 깨뜨리기 · 거래소가 막힙니다. 원정 · 수업으로 모이는 별빛은 잠금과 관계없이 쌓입니다.', go: ['gear',  'badge'] },
-    { c: '전투', t: '30단계 이후의 원정 · 새 과목', b: '원정 몬스터는 31단계부터 단계마다 공격이 강해집니다(최대 2.2배). 40단계 무렵부터는 함께 원정에서 지원 포지션(보호막 · 치유 주문 장착)이 있어야 선봉이 버틸 수 있을 만큼 아프게 칩니다. 2학년부터 공용 과목 「생명마법학」(3레벨 응급 처치 · 6레벨 치유의 빛 · 12레벨 수호의 기도)과 「전투체술학」(3레벨 정권 지르기 · 5레벨 강철 일격 · 12레벨 대지 가르기, 물리 공격력 기반)을 들을 수 있어, 기사도 지원 포지션을 맡을 수 있습니다.', go: ['explore'] },
+    { c: '아카데미 생활', t: '선택 과목', b: '기말시험 과목은 공통 2과목과 선택 과목 1과목입니다. 공통 과목은 학년마다 지력 수업 1과목과 체력 수업 1과목이며, 다음 학년 시험과 한 과목씩 겹칩니다. 선택 과목은 학과 전공 4과목(마법사: 원소역학 · 주문구문학 · 비전학 · 축복마법학, 기사: 원소검술 · 전술학 · 검술·방패술 · 수호기사학)과 고대 룬어 · 성도해석학 가운데 하나가 반영되며(1 · 2학년은 일부), 학과 전공은 그 학과에만 후보로 보입니다. 기본값은 「자동」으로, 레벨이 가장 높은 과목이 반영됩니다. 시험장 실기 칸에서 선택 과목을 직접 고르면 그 학년 시험 동안 계속 그 과목으로 보고 계산하며, 진급하면 새 시험은 다시 「자동」에서 시작합니다. 필기 · 실기 점수와 응시 자격 모두 선택한 과목으로 계산합니다.', go: ['exam'] },
+    { c: '아카데미 생활', t: '시험 등급 (S · A · B · C)', b: '95점 이상 S, 85점 A, 75점 B, 60점 C입니다. 합격하면 즉시 다음 학년이 되어 같은 시험은 다시 볼 수 없으므로, 시험장의 「예상 성적」을 확인한 뒤 응시할지 과목 레벨을 더 올릴지 정합니다. S는 별조각 · ' + CUR + ' 2배와 영웅 이상 장비(전설 50%) · 환수의 알, A는 1.5배와 희귀 이상 장비를 받습니다. 보상 장비의 레벨은 응시할 때 연 원정 단계 기준 ±3입니다. S를 받으려면 대련에서 이겨야 합니다. 좋은 성적을 여러 번 받으면 칭호로 남으며(연속이 아니어도 됩니다), S등급으로 진급하면 학년 소식과 공지에 알려집니다.', go: ['exam'] },
+    { c: '아카데미 생활', t: '진급 안내', b: '기말시험에 합격하면 해당 학년에 새로 열린 화면 · 연구 · 매점 품목을 모아 보여 주며(과목은 모두 1학년부터 열려 있습니다), 「바로 가기」로 각 화면에 갈 수 있습니다. 창을 닫은 뒤에도 우측 상단 「알림」(종 모양)이나 시험장 「성적표」의 「안내」에서 다시 볼 수 있습니다.', go: ['exam'] },
+    { c: '아카데미 생활', t: '아카데미 휘장', b: '로브 가슴에 다는 브로치입니다. 2학년 기말시험을 통과해 3학년이 되면 아카데미에서 하나를 수여하며, 매점 「휘장 원석」 · 보스 전리품 · 거래소에서도 얻을 수 있습니다. 보석마다 대표 효과가 다릅니다(홍옥 공격력, 청옥 주문 위력, 석류석 물리 공격력, 진주 주문 공격력, 호박 기술 위력, 녹옥 생명력, 자수정 수업 효율, 황옥 ' + CUR + ', 월장석 경험치, 남옥 마나, 흑요석 치명타 피해, 단백석 전리품). 달고 있는 휘장 하나만 효과가 있으며, 원정 · 수업 · 전투에서 별빛을 모아 Lv 20까지 성장합니다. 5 · 10 · 15 · 20레벨에 세공(옵션)이 한 줄씩 붙습니다. 강화 방법: 마석가루와 ' + CUR + '로 「닦기」(별빛 · 레벨), 별조각으로 「광내기」(보석 품질 · 대표 효과, 최대 125%), 별조각과 ' + CUR + '로 「세공 다시 새기기」(옵션 한 줄 재설정 · 새로 새긴 뒤 이전 세공과 새 세공 중 하나를 선택). 세공은 중복되지 않습니다: 같은 휘장의 다른 세공 줄과 같은 옵션, 보석의 대표 효과와 같은 옵션은 새겨지지 않습니다(다시 새기는 그 줄의 원래 옵션은 다시 나올 수 있습니다). 거래소에서 사고팔 수 있고, 필요 없는 휘장은 깨뜨려 마석가루로 돌려받습니다. 보관 중인 휘장의 「계승」을 누르면 그 휘장을 재료로 모은 별빛의 60%를 레벨이 더 낮은 휘장에 옮깁니다(재료 휘장은 사라지고 마석가루 사용, 받는 휘장의 보석 · 품질 · 세공은 그대로이며 세공 레벨을 넘으면 새 세공이 새겨집니다. 달고 있거나 잠긴 휘장은 재료로 사용할 수 없습니다). 「잠금」을 걸면 장착 · 해제만 가능하고 닦기 · 광내기 · 세공 · 깨뜨리기 · 거래소가 막힙니다. 원정 · 수업으로 모이는 별빛은 잠금과 관계없이 쌓입니다.', go: ['gear',  'badge'] },
+    { c: '전투', t: '30단계 이후의 원정 · 새 과목', b: '원정 몬스터는 31단계부터 단계마다 공격이 강해집니다(최대 2.2배). 40단계 무렵부터는 함께 원정에서 지원 포지션(보호막 · 치유 주문 장착)이 있어야 선봉이 버틸 수 있을 만큼 아프게 칩니다. 지원 과목은 공용 「생명마법학」(3레벨 응급 처치 · 6레벨 치유의 빛 · 12레벨 수호의 기도) · 「전장구호학」(4레벨 전열 정비 · 8레벨 재생의 노래)과 학과 전공 「축복마법학」 · 「수호기사학」(3레벨 보호막 · 18레벨 치유)이 있으며, 모두 1학년부터 들을 수 있습니다. 지원 과목은 레벨마다 치유 · 보호막 위력이 오르고, 특정 레벨에서 지원 포지션일 때 파티 공격력 증가 · 파티가 받는 피해 감소 보상을 줍니다.', go: ['explore'] },
     { c: '전투', t: '원정과 보스', b: '원정은 한 번에 하나만 진행할 수 있으며, 선택한 단계에서 정해진 시간 동안 몬스터를 사냥합니다. 원정 화면의 「원정 일지」에 진행 상황이 수십 초마다 한 줄씩 기록됩니다. 일지를 위로 올려 읽는 중에는 자리가 그대로 있고, 새 줄이 오면 「새 줄 ↓」 단추로 맨 아래로 갈 수 있습니다. 원정이 끝나면 「원정 완료」를 눌러야 결과를 받고 다음 원정을 보낼 수 있습니다. 10단계마다 있는 보스를 쓰러뜨려야 다음 구역이 열리며, 학년이 오를수록 더 높은 보스에 도전할 수 있습니다. 결과는 출정 시점의 능력치로 정해집니다.', go: ['explore',  'boss'] },
     { c: '전투', t: '레벨로 여는 원정 단계', b: '원정 단계는 학년 상한(학년×10+9)까지 열리며, 레벨이 그보다 높으면 레벨만큼 더 출정할 수 있습니다(학년 상한 +10단계까지). 보스도 같은 기준이라, 이 범위 안에서는 레벨이 닿으면 도전할 수 있습니다. 예를 들어 1학년은 레벨이 높아도 29단계까지 열리며, 30단계 보스는 2학년 진급 후 Lv 30이 되거나 3학년으로 진급하면 도전할 수 있습니다. 시간당 효율은 대체로 조금 낮은 단계가 좋고, 높은 단계는 장비 레벨과 다음 구역 재료가 좋습니다.', go: ['explore'] },
     { c: '전투', t: '쓰러짐과 귀환', b: '「무모함」 단계로 출정하면 도중에 쓰러질 수 있으며, 쓰러진 원정은 「원정 완료」를 누르면 그때까지 모은 것의 80%를 받습니다. 원정 중 「귀환」을 누르면 그때까지 모은 것을 모두 받고 즉시 돌아옵니다(수업 · 연구 취소는 절반). 이미 끝난 원정에서 「귀환」을 누르면 「원정 완료」와 같습니다.', go: ['explore'] },
     { c: '전투', t: '전투 일지', b: '보스 · 결투제 · 월드 보스 · 실기 대련은 글로 된 전투 일지로 진행됩니다. 주문 · 치명타 · 반격 · 남은 체력이 몇 초마다 한 줄씩 기록되며, 「건너뛰기」를 누르면 바로 결과로 넘어갑니다. 원정 일지에는 실제로 획득한 장비가 해당 시각에 기록됩니다.' },
     { c: '전투', t: '함께 원정', b: '「원정·전투 → 원정」의 「함께 원정」에서 방을 열거나 열린 방에 들어가 최대 4명이 함께 출정합니다. 방장이 「지금 출발」을 누르면 출정하며(혼자여도 가능), 4명이 모이면 15초 뒤 자동으로 출정합니다. 인원이 모이지 않으면 방장이 아카데미 친구(방장 능력의 60%)를 동행시킬 수 있습니다. 처치한 몬스터는 함께 나누되 한 명 늘 때마다 각자 몫이 +5% 늘고, 전리품은 각자 따로 나옵니다. 각자 자신의 원정 슬롯을 사용합니다. 파티에 소속되어 있으면 「파티로 열기 · 파티로 참가」로 출정 가능한 파티원을 함께 데려가고, 「혼자 참가」는 파티를 유지한 채 본인만 참가합니다. 파티 단위 참가는 파티장만 가능하며, 파티장이 파티 화면에서 「파티원도 파티 단위로 원정 참가」를 켜면 파티원도 가능합니다. 방에 있는 동안에는 방 카드가 원정 화면 상단에 표시되고, 원정 슬롯이 「함께 원정 출발 대기」로 설정되므로 혼자 출정할 수 없습니다. 혼자 출정하려면 먼저 방에서 나오세요. 새 버전 배포 등으로 서버가 다시 켜져도 방은 그대로 남으며, 방 사람이 모두 2시간 넘게 접속하지 않으면 닫힙니다. 방에 들어가면 채팅에 「원정」 탭이 생깁니다(원정 중에도 이어짐). 방 카드의 「빈자리 채우기」에서 파티원 함께 참가 · 친구 · 동아리원 초대 · 아카데미 친구 동행을 선택할 수 있으며, 출정한 뒤의 일행 모습은 「함께 원정 일행 현황」을 보세요.', go: ['explore'] },
-    { c: '전투', t: '포지션: 선봉 · 후열 · 지원', b: '선봉: 누구나 선택할 수 있습니다. 몬스터가 80% 확률로 선봉을 노립니다(기사 +5%p, 수호 결계 장착 시 +5%p). 방어 +25%. 후열: 공격 주문을 장착해야 선택할 수 있습니다(마력 화살 · 화염구 · 연쇄 번개 · 얼음 감옥 · 환수 소환 · 별똥별 · 비전 폭발 · 방패 강타 중 하나). 공격 +10%, 받는 피해 +10%. 지원: 보호막 · 치유 주문을 장착해야 선택할 수 있습니다(수호 결계 · 재생의 노래 · 수호의 함성 중 하나). 파티 전체가 받는 피해 −15%, 본인 공격 −15%. 주문은 「원정·전투 → 원정」 하단의 「장착 주문」 칸에 넣어야 하며, 칸 수는 학년에 따라 늘어납니다. 출발할 때 조건이 맞지 않으면 선봉으로 출정합니다. 마법사는 처음부터 마력 화살을 장착하고 있어 후열을 선택할 수 있고, 기사는 방패 강타를 배우면 후열, 수호의 함성을 배우면 지원을 선택할 수 있습니다.', go: ['explore'] },
+    { c: '전투', t: '포지션: 선봉 · 후열 · 지원', b: '선봉: 누구나 선택할 수 있습니다. 몬스터가 80% 확률로 선봉을 노립니다(수호 성향 기사 +12%, 수호 결계 · 수호의 함성 장착 시 각각 +5%, 최대 95%). 방어 +25%. 후열: 공격 주문을 장착해야 선택할 수 있습니다(마력 화살 · 비전 폭발 · 방패 강타 · 화염구 · 별똥별 등 피해를 주는 주문). 공격 +10%, 받는 피해 +10%. 지원: 보호막 · 치유 주문을 장착해야 선택할 수 있습니다(수호 결계 · 응급 처치 · 전열 정비 · 축복의 장막 · 방호 태세 등). 파티 전체가 받는 피해 −15%, 본인 공격 −15%. 지원 과목(축복마법학 · 수호기사학 · 전장구호학)의 레벨 보상이 있으면 지원 포지션일 때 파티 공격력이 오르고 파티가 받는 피해가 추가로 줄어듭니다(파티가 받는 피해 감소는 합계 최대 35%, 파티 공격력 증가는 최대 30%). 주문은 「원정·전투 → 원정」 하단의 「장착 주문」 칸에 넣어야 하며, 칸 수는 학년에 따라 늘어납니다. 출발할 때 조건이 맞지 않으면 선봉으로 출정합니다. 누구나 처음부터 마력 화살을 장착하고 있어 후열을 선택할 수 있고, 마법사는 축복마법학 3레벨, 기사는 수호기사학 3레벨이 되면 지원을 선택할 수 있습니다.', go: ['explore'] },
     { c: '전투', t: '함께 원정 일행 현황', b: '함께 원정으로 출정하면 원정 슬롯에 일행이 한 줄씩 표시됩니다. 다른 학생과 함께 떠난 원정에서는 「귀환 투표」와 「혼자 귀환」을 선택할 수 있습니다. 귀환 투표는 아직 원정 중인 학생의 과반(2명이면 2명, 3명이면 2명, 4명이면 3명)이 찬성하면 모두 함께 귀환하며, 각자 그때까지 모은 것을 모두 받습니다(찬성은 다시 눌러 취소). 혼자 귀환하면 그때까지 모은 것의 50%만 받습니다. 보상 감소는 먼저 귀환한 학생에게만 적용되며, 남은 일행의 원정과 처치 · 보상은 출발할 때 정해진 대로 유지됩니다. 30분 안에 혼자 귀환을 3번 하면 3시간 동안 함께 원정에 참가할 수 없습니다(혼자 원정은 가능). 동행 친구 NPC는 투표하지 않으며, NPC하고만 간 원정은 지금처럼 귀환해 모은 것을 모두 받습니다. 줄마다 피해 순위 · 포지션 · 이름 · 학년 · 레벨 · 학과 · 전투력 · HP 막대와 수치(현재 / 최대)가 나옵니다. 순위는 넣은 피해량 순서로, 싸우는 동안 엎치락뒤치락하며 줄이 위아래로 자리를 바꿉니다. HP는 몬스터에게 맞으면 줄고 쉬는 사이 다시 차오르므로, 몬스터를 끄는 선봉이 얼마나 버티고 있는지 볼 수 있습니다. 이름을 누르면 학생 정보 카드(동행 친구는 NPC 카드)가 열립니다. 원정 중에도 채팅 「원정」 탭에서 일행끼리 대화할 수 있으며, 「원정 완료」로 결과를 받은 학생부터 탭이 사라집니다.', go: ['explore'] },
     { c: '전투', t: '모집 알림 · 초대', b: '채팅 「모집」 탭에는 세 가지 모집 카드가 올라오며, 모집에 관한 일반 대화도 입력할 수 있습니다(카드는 모두 한 줄 메모 추가 가능). 함께 원정: 방에서 「모집 알림」을 누릅니다(방마다 1분에 한 번). 다른 학생은 「살펴보기」로 방 인원의 포지션 · 학과 · 전투력을 확인한 뒤 참가합니다. 동아리 홍보: 동아리 화면의 「모집 홍보」에서 보냅니다(초대 권한이 있는 부원, 동아리마다 10분에 한 번). 카드의 「살펴보기」로 회장 · 소개 · 부원을 보고 가입합니다. 파티원 모집: 파티장이 파티 화면의 「파티원 모집」에서 보냅니다(5분에 한 번). 별의 탑 진행 층이 함께 표시되며, 알림을 본 학생은 30분 동안 초대 없이 「파티 들어가기」로 바로 들어올 수 있습니다. 함께 원정 방에서는 「친구 · 동아리원 초대」로 한 명씩 선택해 초대할 수도 있습니다(이름 검색).', go: ['explore'] },
-    { c: '전투', t: '학과: 기사 · 마법사', b: '입학할 때 선택하는 전투 방식입니다. 기사는 단단하고 몬스터를 잘 끌어 선봉에, 마법사는 주문이 강해 후열 · 지원에 적합합니다. 기사의 평타와 방패 강타는 물리 공격력(체력)을, 마법사의 평타(마력 화살)와 모든 주문은 주문 공격력(지력)을 따릅니다. 기사도 수업으로 배운 주문을 장착하면 검과 주문을 함께 사용하는 마검사가 됩니다(해당 주문은 지력을 따릅니다). 학과마다 전용 수업(기사: 검술·방패술, 마법사: 비전학)과 전용 주문(기사: 방패 강타 · 수호의 함성 · 화염 베기 · 서리 베기, 마법사: 비전 폭발 · 마나 폭주)이 있으며, 원소역학은 마법사에게 지력 · 의지를, 기사에게 체력 · 의지를 올려 주고 기사는 원소를 무기에 싣는 화염 베기(5레벨) · 서리 베기(15레벨)를 배웁니다. 본인 학과의 것만 표시됩니다. 학과를 바꾸려면 내 정보 › 편집의 「전과시험」에서 옮길 학과로 시험관과 대련해 이겨야 합니다(응시료 필요, 패배 시 하루 뒤 재응시). 학과를 선택한 적 없는 기존 학생은 시험 없이 한 번 선택할 수 있습니다.' },
-    { c: '전투', t: '능력치 다섯 가지', b: '1점마다 지력: 주문 공격력 +1%, 수업 효율 +0.08%. 체력: 물리 공격력 +1%, 생명력 +1.2%, 방어력 +0.6%. 민첩: 공격 속도 +1%. 의지: 마나 재생 +4%, 생명력 +0.4%. 행운: 치명타 확률 +0.15%, 전리품 확률 +0.1%, 장비 등급 상승 +0.08%. 능력치 화면에는 지금 수치로 얻는 효과의 합계가 표시됩니다. 피해는 물리와 주문 두 가지이며, 기사의 평타와 방패 강타는 물리 공격력, 마법사의 평타와 모든 주문은 주문 공격력(× 주문 위력)이 적용됩니다. 장비 · 연구 · 물약의 「공격력 +%」(홍옥)는 양쪽 모두에 적용됩니다. 「물리 공격력 +%」(석류석)는 물리 공격력에, 「주문 공격력 +%」(진주)는 주문 공격력에 적용되어 평타까지 오릅니다. 「주문 위력」(청옥)은 마법 주문에만, 「기술 위력」(호박)은 물리 기술에만 적용됩니다. 과목 레벨이 오를 때마다 해당 과목의 능력치가 오르며, 레벨업 포인트는 직접 분배합니다. 「레벨업 시 자동 분배」를 켜면 선택한 프리셋(균형 · 공격 · 생존 · 학구, 학과별 비율)대로 자동 분배됩니다(기본값은 꺼짐). 매점에서 산 「망각의 차」는 소지품에 들어가며, 마시면 분배한 포인트를 모두 돌려받습니다. 다시 직접 나눌 수 있게 자동 분배가 꺼지고 능력치 칸으로 바로 이동합니다.', go: ['gear'] },
-    { c: '전투', t: '전리품 확률', b: '원정에서 얻는 장비 · 재료 · 마석의 양을 늘립니다. 장비는 원정 1회에 최대 12개까지 받으며, 그보다 많이 나온 몫은 가장 낮은 등급 장비의 판매가만큼 ' + CUR + '로 바뀝니다. 대부분의 원정은 이미 12개를 채우므로, 전리품 확률을 더 올리면 장비 수보다 재료 · 마석이 늘어납니다(재료 · 마석은 상한 없음). 장비의 등급은 「장비 등급 상승」이 정합니다.', go: ['explore'] },
-    { c: '전투', t: '공격 능력치 (공격력 · 물리 공격력 · 주문 공격력 · 주문 위력 · 기술 위력)', b: '공격력은 장비 공격력에서 나오며 두 학과 모든 피해의 바탕입니다. 물리 공격력은 공격력에 체력(1점당 +1%)과 「물리 공격력 +%」를 곱한 값으로, 기사의 평타와 물리 기술(검술 · 전투체술 등)에 적용됩니다. 주문 공격력은 공격력에 지력(1점당 +1%)과 「주문 공격력 +%」를 곱한 값으로, 마법사의 평타와 마법 주문에 적용됩니다. 주문 위력은 마법 주문의 피해에만 곱해지는 배율이며, 주문구문학 레벨마다 +2%가 더해집니다. 기술 위력은 물리 기술(기사 주문 · 전투체술학)의 피해에만 곱해지는 배율입니다. 평타에는 주문 위력과 기술 위력이 적용되지 않습니다. 공격 속도는 민첩 1점당 +1% 오릅니다. 치명타 확률은 기본 5%에 행운 1점당 +0.15%가 더해지며, 치명타 피해는 기본 ×1.5입니다. 생명력은 체력 · 의지로, 방어력은 체력으로 오릅니다.', go: ['gear'] },
-    { c: '전투', t: '장비 등급', b: '장비는 일반(회색) · 고급(초록) · 희귀(파랑) · 영웅(보라) · 전설(주황) 다섯 등급입니다. 등급이 높을수록 기본 능력치가 커지고(일반 1배 · 고급 1.3배 · 희귀 1.7배 · 영웅 2.3배 · 전설 3.2배) 붙는 추가 옵션도 늘어납니다(일반 0개 ~ 전설 4개). 원정에서 나오는 비율은 대략 일반 62% · 고급 26% · 희귀 9% · 영웅 2.6% · 전설 0.4%이며, 행운의 물약 · 행운의 별자리 연구 같은 「등급 상승」 효과가 있으면 높은 등급이 더 자주 나옵니다. 같은 등급이라도 장비 레벨(Lv)이 높을수록, 품질이 좋을수록 능력치가 높습니다. 보스 · 떠돌이 상인 경매 · 매점 장비 상자에서는 높은 등급이 나오기 쉽습니다.', go: ['gear'] },
-    { c: '전투', t: '장비와 강화', b: '원정에서 장비가 나옵니다. 장비는 내 레벨 이하(장비 Lv ≤ 내 레벨)만 장착할 수 있으며, 레벨이 모자라는 장비는 가방에 「Lv N 필요」로 표시됩니다(이미 장착 중인 장비는 그대로 유지). 초록 ▲ 표시는 현재보다 전투력이 오르는 장비입니다. 강화에는 ' + CUR + '와 마석이 들며, 실패해도 장비는 사라지지 않습니다. 사용하지 않는 장비는 판매 · 분해하거나 거래소에 올리세요. 무기는 지팡이와 검이 있으며 능력치는 같습니다. 모자 칸에는 모자(지력)와 투구(체력)가, 마도서 칸에는 마도서와 전술서가 있습니다. 모자 칸 장비에는 기본 옵션으로 수업 효율이 붙으며, 등급이 높을수록 · 강화할수록 커집니다. 마도서는 주문 위력(마법 주문 피해)을, 전술서는 기술 위력(검술 · 전투체술 같은 물리 주문 피해)을 올립니다. 기사는 검 · 투구 · 전술서가, 마법사는 지팡이 · 모자 · 마도서가 더 자주 나옵니다. 「장비 프리셋」 세 칸에 지금 장착한 장비와 휘장을 저장해 두면 한 번에 바꿔 낄 수 있습니다. 가방 아래의 일괄 판매 · 분해는 잠긴 장비와 장비 프리셋에 저장된 장비를 제외하며, 확인 창을 거칩니다. 설정 → 화면에서 확인 창을 끌 수 있으나, 영웅 이상 · 강화한 장비가 포함되면 확인 창이 항상 표시됩니다. 아끼는 장비는 「잠금」을 걸면 장착 · 해제만 가능하고 강화 · 재련 · 분해 · 판매 · 거래소 · 동아리 창고 보관이 모두 막힙니다(거래소 판매 목록에도 표시되지 않음).', go: ['gear'] },
+    { c: '전투', t: '학과: 기사 · 마법사', b: '입학할 때 선택하는 전투 방식입니다. 기사는 단단하고 몬스터를 잘 끌어 선봉에, 마법사는 주문이 강해 후열 · 지원에 적합합니다. 기사의 평타와 기사 주문은 물리 공격력(체력)과 기술 위력을, 마법사의 평타와 마법사 주문은 주문 공격력(지력)과 주문 위력을 따릅니다. 공용 과목으로 배우는 공격 주문(마력 화살 · 환수 소환 · 별똥별 · 정권 지르기 등)은 주 공격력(기사: 물리 공격력 · 기술 위력, 마법사: 주문 공격력 · 주문 위력)으로 피해를 줍니다. 학과마다 전공 4과목이 있으며 서로 짝을 이룹니다(비전학 ↔ 검술·방패술, 원소역학 ↔ 원소검술, 주문구문학 ↔ 전술학, 축복마법학 ↔ 수호기사학). 짝을 이루는 두 과목은 효과 수치가 같고, 전과하면 같은 레벨로 이어집니다. 본인 학과의 것만 표시됩니다. 학과마다 성향을 둘 중 하나 고를 수 있습니다(내 정보 › 편집, 하루 한 번 변경). 기사: 「수호」(기본 · 선봉 끌기 +12%) / 「공세」(공격력 +15% · 기술 위력 +30% · 치명타 피해 +20%, 생명력 −15% · 방어 −25%, 선봉 끌기 보너스 없음). 마법사: 「파괴」(기본) / 「축복」(치유 · 보호막 위력 +40% · 생명력 +15% · 방어 +15% · 지원 시 파티 공격력 +6% · 받는 피해 −5%, 주문 위력 −25%). 학과를 바꾸려면 내 정보 › 편집의 「전과시험」에서 옮길 학과로 시험관과 대련해 이겨야 합니다(응시료 필요, 패배 시 하루 뒤 재응시). 합격하면 7일 동안 다시 전과할 수 없고, 전과에 성공할 때마다 응시료가 2배가 됩니다(최대 8배). 전과하면 성향은 새 학과의 기본 성향이 됩니다. 학과를 선택한 적 없는 기존 학생은 시험 없이 한 번 선택할 수 있습니다.' },
+    { c: '전투', t: '능력치 다섯 가지', b: '1점마다 지력: 주문 공격력 +1%, 지력 수업의 수업 효율 +0.08%. 체력: 물리 공격력 +1%, 생명력 +1.2%, 방어력 +0.6%, 체력 수업의 수업 효율 +0.08%. 민첩: 공격 속도 +1%. 의지: 마나 재생 +4%, 생명력 +0.4%. 행운: 치명타 확률 +0.15%, 전리품 확률 +0.1%, 장비 등급 상승 +0.08%. 능력치 화면에는 지금 수치로 얻는 효과의 합계가 표시됩니다. 피해는 물리와 주문 두 가지이며, 기사의 평타와 기사 주문은 물리 공격력(× 기술 위력), 마법사의 평타와 마법사 주문은 주문 공격력(× 주문 위력)이 적용됩니다. 공용 과목으로 배우는 공격 주문은 학과의 주 공격력을 따릅니다. 장비 · 연구 · 물약의 「공격력 +%」(홍옥)는 양쪽 모두에 적용됩니다. 「물리 공격력 +%」(석류석)는 물리 공격력에, 「주문 공격력 +%」(진주)는 주문 공격력에 적용되어 평타까지 오릅니다. 「주문 위력」(청옥)은 마법 주문에만, 「기술 위력」(호박)은 물리 기술에만 적용됩니다. 과목 레벨이 오를 때마다 해당 과목의 능력치가 오르며(공용 과목의 지력 · 체력 몫은 주 능력치: 마법사 지력 · 기사 체력), 레벨업 포인트는 직접 분배합니다. 「레벨업 시 자동 분배」를 켜면 선택한 프리셋(균형 · 공격 · 생존 · 학구, 학과별 비율)대로 자동 분배됩니다(기본값은 꺼짐). 매점에서 산 「망각의 차」는 소지품에 들어가며, 마시면 분배한 포인트를 모두 돌려받습니다. 다시 직접 나눌 수 있게 자동 분배가 꺼지고 능력치 칸으로 바로 이동합니다.', go: ['gear'] },
+    { c: '전투', t: '전리품 확률', b: '원정에서 얻는 장비 · 재료 · 마석의 양을 늘립니다. 장비는 기본으로 적게 나오고 전리품 확률만큼 늘어나며, 원정 1회에 최대 20개까지 받습니다. 원정 화면에서 출정 전에 예상 장비 개수 · 상한 · 지금 전리품 확률을 확인할 수 있습니다. 상한보다 많이 나온 몫은 원정 화면의 「넘친 장비」에서 고른 대로 일반 등급 판매가만큼의 ' + CUR + ' 또는 일반 등급 분해량만큼의 마석가루로 받습니다. 재료 · 마석은 상한이 없습니다. 장비가 많아지면 가방이 빨리 차므로, 매점의 「마법 가방 확장」으로 칸을 늘려 두면 좋습니다. 장비의 등급은 「장비 등급 상승」이 정합니다.', go: ['explore'] },
+    { c: '전투', t: '공격 능력치 (공격력 · 물리 공격력 · 주문 공격력 · 주문 위력 · 기술 위력)', b: '공격력은 장비 공격력에서 나오며 두 학과 모든 피해의 바탕입니다. 물리 공격력은 공격력에 체력(1점당 +1%)과 「물리 공격력 +%」를 곱한 값으로, 기사의 평타와 기사 주문(방패 강타 · 화염 베기 · 연속 베기 등)에 적용됩니다. 주문 공격력은 공격력에 지력(1점당 +1%)과 「주문 공격력 +%」를 곱한 값으로, 마법사의 평타와 마법 주문에 적용됩니다. 주문 위력은 마법사 주문의 피해에만 곱해지는 배율이며, 주문구문학 레벨마다 +2%가 더해집니다. 기술 위력은 기사 주문의 피해에만 곱해지는 배율이며, 전술학 레벨마다 +2%가 더해집니다. 공용 과목의 공격 주문(마력 화살 · 환수 소환 · 별똥별 · 전투체술학 주문)은 마법사는 주문 공격력 × 주문 위력, 기사는 물리 공격력 × 기술 위력으로 피해를 줍니다. 평타에는 주문 위력과 기술 위력이 적용되지 않습니다. 공격 속도는 민첩 1점당 +1% 오릅니다. 치명타 확률은 기본 5%에 행운 1점당 +0.15%가 더해지며, 치명타 피해는 기본 ×1.5입니다. 생명력은 체력 · 의지로, 방어력은 체력으로 오릅니다.', go: ['gear'] },
+    { c: '전투', t: '장비 등급', b: '장비는 일반(회색) · 고급(초록) · 희귀(파랑) · 영웅(보라) · 전설(주황) 다섯 등급입니다. 등급이 높을수록 기본 능력치가 커지고(일반 1배 · 고급 1.3배 · 희귀 1.65배 · 영웅 2.1배 · 전설 2.7배) 붙는 추가 옵션도 늘어납니다(일반 0개 ~ 전설 4개). 원정에서 나오는 비율은 대략 일반 62% · 고급 26% · 희귀 9% · 영웅 2.6% · 전설 0.4%이며, 행운의 물약 · 행운의 별자리 연구 같은 「등급 상승」 효과가 있으면 높은 등급이 더 자주 나옵니다. 같은 등급이라도 장비 레벨(Lv)이 높을수록, 품질이 좋을수록 능력치가 높습니다. 보스 · 떠돌이 상인 경매 · 매점 장비 상자에서는 높은 등급이 나오기 쉽습니다.', go: ['gear'] },
+    { c: '전투', t: '장비와 강화', b: '원정에서 장비가 나옵니다. 장비는 내 레벨 이하(장비 Lv ≤ 내 레벨)만 장착할 수 있으며, 레벨이 모자라는 장비는 가방에 「Lv N 필요」로 표시됩니다(이미 장착 중인 장비는 그대로 유지). 초록 ▲ 표시는 현재보다 전투력이 오르는 장비입니다. 무기 공격력 · 로브 생명력 · 로브 방어력 · 마도서 공격력은 장비 레벨 10~29 · 30~49 · 50~69 · 70~89처럼 2학년 단위 묶음 안에서는 완만하게 오르고(묶음 끝이 시작의 2배), 다음 묶음으로 넘어갈 때 크게 오릅니다. 강화에는 ' + CUR + '와 마석이 들며, 실패해도 장비는 사라지지 않습니다. 사용하지 않는 장비는 판매 · 분해하거나 거래소에 올리세요. 무기는 지팡이와 검이 있으며 능력치는 같습니다. 모자 칸에는 모자(지력)와 투구(체력)가, 마도서 칸에는 마도서와 전술서가 있습니다. 모자 칸 장비에는 기본 옵션으로 수업 효율이 붙으며, 등급이 높을수록 · 강화할수록 커집니다. 마도서는 주문 위력(마법 주문 피해)을, 전술서는 기술 위력(검술 · 전투체술 같은 물리 주문 피해)을 올립니다. 기사는 검 · 투구 · 전술서가, 마법사는 지팡이 · 모자 · 마도서가 더 자주 나옵니다. 「장비 프리셋」 세 칸에 지금 장착한 장비와 휘장을 저장해 두면 한 번에 바꿔 낄 수 있습니다. 가방 아래의 일괄 판매 · 분해는 잠긴 장비와 장비 프리셋에 저장된 장비를 제외하며, 확인 창을 거칩니다. 설정 → 화면에서 확인 창을 끌 수 있으나, 영웅 이상 · 강화한 장비가 포함되면 확인 창이 항상 표시됩니다. 아끼는 장비는 「잠금」을 걸면 장착 · 해제만 가능하고 강화 · 재련 · 분해 · 판매 · 거래소 · 동아리 창고 보관이 모두 막힙니다(거래소 판매 목록에도 표시되지 않음).', go: ['gear'] },
     { c: '전투', t: '월드 보스', b: '매주 월요일 KST 0시에 새 월드 보스가 나타나며, 서버의 모든 학생이 함께 체력을 깎습니다. 도전권은 8시간마다 하나씩 충전되며 최대 3장입니다. 매점 · 우편으로 받은 추가 도전권은 충전 도전권을 다 사용한 뒤에 사용되며, 구매와 사용 모두 한 주에 2번까지입니다(월요일 KST 0시 초기화). 남은 추가 도전권은 다음 주로 넘어갑니다. 보스를 쓰러뜨리는 순간 이번 주에 도전한 학생 모두에게 토벌 보상(별조각 · 환수의 알)이 우편으로 지급됩니다. 보스가 일찍 쓰러지면 운영진이 추가 보스를 부를 수 있고, 추가 보스도 처치할 때마다 토벌 보상이 지급됩니다. 다음 주에 참여 · 토벌 · 피해 순위 보상이 지급됩니다.', go: ['world',  'wb'] },
-    { c: '전투', t: '무한의 탑 (기사의 탑 · 마법사의 탑)', b: '「원정·전투 → 무한의 탑」에서 혼자 오르는 끝없는 개인 탑입니다. 기사는 기사의 탑, 마법사는 마법사의 탑을 오르며, 학과를 바꾸면 그 학과의 탑을 따로 오릅니다. 도전 횟수 제한 없이 한 번에 한 층과 싸우며, 전투력이 되는 만큼 오를 수 있습니다(전투 장면은 「건너뛰기」 가능). 오른 층은 줄어들지 않습니다. 탑의 적은 공격이 매우 강해 화력만큼 생명력과 회복도 중요하며, 60초 안에 쓰러뜨려야 합니다. 50층마다 있는 시련의 층은 탑의 문지기가 지켜 갑자기 어려워지고, 넘고 나면 몇 층은 다시 쉬워집니다. 보상은 층마다 아르크, 2층마다 마석 1, 10층마다 별조각 3이며, 50층마다 칭호와 별조각 30 · 희귀 장비 상자 · 환수의 알을 받습니다. 층 순위는 「기록·랭킹 → 랭킹」의 기사의 탑 · 마법사의 탑 순위에서 볼 수 있습니다.', go: ['ctower'] },
+    { c: '전투', t: '무한의 탑 (기사의 탑 · 마법사의 탑)', b: '「원정·전투 → 무한의 탑」에서 혼자 오르는 끝없는 개인 탑입니다. 기사는 기사의 탑, 마법사는 마법사의 탑을 오르며, 학과를 바꾸면 그 학과의 탑을 따로 오릅니다. 도전 횟수 제한 없이 한 번에 한 층과 싸우며, 전투력이 되는 만큼 오를 수 있습니다(전투 장면은 「건너뛰기」 가능). 오른 층은 줄어들지 않습니다. 탑의 적은 공격이 매우 강해 화력만큼 생명력과 회복도 중요하며, 60초 안에 쓰러뜨려야 합니다. 50층마다 있는 시련의 층은 탑의 문지기가 지켜 갑자기 어려워지고, 넘고 나면 몇 층은 다시 쉬워집니다. 보상은 층마다 아르크, 2층마다 마석 1, 10층마다 별조각 3이며, 50층마다 칭호와 별조각 30 · 희귀 이상 장비 상자(전설 50%) · 환수의 알을 받습니다. 층 순위는 「기록·랭킹 → 랭킹」의 기사의 탑 · 마법사의 탑 순위에서 볼 수 있습니다.', go: ['ctower'] },
     { c: '전투', t: '별의 탑 (파티와 함께)', b: '「원정·전투 → 별의 탑」에서 파티가 함께 1층부터 실시간으로 오르는 탑입니다. 파티에 들어가 있어야 도전할 수 있으며, 혼자서도 파티를 만들 수 있습니다(별의 탑 화면의 「파티 만들기」). 「실전 준비」 또는 「파티 연습 준비」를 누르면 출발 대기가 열리고, 파티원(NPC 제외)이 모두 「준비 완료」를 누르면 15초 뒤 자동으로 출발합니다. 그 사이 한 명이라도 준비를 취소하면 출발이 취소되며, 다시 모두 준비하면 15초부터 다시 셉니다(준비는 15분이 지나면 풀림). 실전은 파티 단위로 하루 1번이며, 출발하는 순간 파티원 모두의 오늘 기회를 사용합니다(KST 자정 초기화 · 결과가 자정을 넘겨 끝나도 출발한 날의 기회로 계산). 파티원 중 한 명이라도 오늘 실전을 했다면 출발할 수 없습니다. 실전은 파티원 기록 중 가장 낮은 층의 다음 층부터 시작해, 파티가 모두 쓰러질 때까지 이어집니다. 전투 시간 제한은 없으며, 한 층에서 15분이 지나도록 결판이 나지 않으면 물러납니다. 전투는 원정 일지처럼 천천히 흘러가고, 층 사이와 휴식층에서는 탑을 둘러보는 장면이 나옵니다. 마지막으로 넘은 층이 각자의 이번 주 기록이 되며(더 높을 때만), 매주 월요일 KST 0시에 초기화됩니다. 그 주에 처음 넘은 층의 보상은 실전이 끝난 뒤 결과 창이나 별의 탑 화면의 「보상 받기」를 누르면 우편으로 한 번에 발송됩니다(원정 귀환처럼 · 10층마다 장비 상자, 20층마다 환수의 알). 받지 않은 채 다음 실전을 시작하면 지난 보상은 자동으로 발송됩니다. 파티가 실전에서 오른 가장 높은 층은 「기록·랭킹 → 랭킹」의 별의 탑 파티 순위에 기록을 세운 때의 파티 이름과 파티원 이름으로 남습니다(이후 이름을 바꾸거나 해산해도 그대로).', go: ['tower'] },
-    { c: '전투', t: '별의 탑 전투 · 포지션', b: '파티원마다 따로 싸웁니다. 포지션은 함께 원정과 같습니다(선봉 · 후열 · 지원). 적은 선봉 한 명(몬스터를 가장 잘 끄는 선봉)을 집중해서 노리고 공격을 여러 번으로 나눠 치며, 나머지 공격은 다른 파티원이 나눠 받고, 8초마다 파티 전체를 공격합니다. 탑에서는 방어력의 효과가 크고, 선봉은 생명력 +30% · 받는 피해 −20%를 받습니다. 지원 포지션의 치유 · 보호막 주문은 가장 위태로운 동료(보호막은 선봉 우선)에게 걸리고, 다른 포지션의 치유 · 보호막 주문은 자신에게 걸립니다. 2명 이상 파티의 지원 포지션이 거는 치유 · 보호막 주문은 탑에서 재사용 대기가 짧아집니다. 치유 · 보호막 주문은 평소에는 아껴 두다가 동료가 쓰러질 공격을 맞기 직전에 준비돼 있으면 먼저 끼어들어 막아 냅니다. 30층마다 시련의 층이 나오며, 차례로 「분노」(10초마다 공격력 증가) · 「집중 표식」(선봉이 아닌 파티원에게 강력한 일격) · 「별빛 재생」(적이 체력을 회복) · 「폭풍」(더 잦고 강한 광역 공격) 기믹이 있습니다(시련의 적은 체력 1.5배 · 보상 추가). 주문 재사용 대기는 층을 넘어 이어집니다. 층 사이에 최대 생명력의 30%를 회복하며(쓰러진 파티원도 30%로 일어남), 5층마다 휴식층(별샘의 쉼터)에서 모두 회복합니다. NPC 파티원은 실전을 시작한 학생 능력의 30%로 후열에서 싸웁니다. 내 포지션은 별의 탑 화면에서 정하고, 장착 주문은 「원정·전투 → 원정」에서 바꿉니다.', go: ['tower'] },
+    { c: '전투', t: '별의 탑 전투 · 포지션', b: '파티원마다 따로 싸웁니다. 포지션은 함께 원정과 같습니다(선봉 · 후열 · 지원). 적은 선봉 한 명(몬스터를 가장 잘 끄는 선봉)을 집중해서 노리고 공격을 여러 번으로 나눠 치며, 나머지 공격은 다른 파티원이 나눠 받고, 8초마다 파티 전체를 공격합니다. 탑에서는 방어력의 효과가 크고, 선봉은 생명력 +30% · 받는 피해 −20%를 받습니다. 지원 포지션의 치유 · 보호막 주문은 가장 위태로운 동료(보호막은 선봉 우선)에게 걸리고, 다른 포지션의 치유 · 보호막 주문은 자신에게 걸립니다. 2명 이상 파티의 지원 포지션이 거는 치유 · 보호막 주문은 탑에서 재사용 대기가 짧아집니다. 지원 과목(축복마법학 · 수호기사학 · 전장구호학)의 레벨 보상이 있으면 지원 포지션일 때 파티 공격력이 오르고 파티가 받는 피해가 추가로 줄어들며, 지원이 쓰러지면 그 효과도 사라집니다. 치유 · 보호막 위력(지원 과목 레벨마다 상승)은 포지션과 관계없이 적용됩니다. 치유 · 보호막 주문은 평소에는 아껴 두다가 동료가 쓰러질 공격을 맞기 직전에 준비돼 있으면 먼저 끼어들어 막아 냅니다. 30층마다 시련의 층이 나오며, 차례로 「분노」(10초마다 공격력 증가) · 「집중 표식」(선봉이 아닌 파티원에게 강력한 일격) · 「별빛 재생」(적이 체력을 회복) · 「폭풍」(더 잦고 강한 광역 공격) 기믹이 있습니다(시련의 적은 체력 1.5배 · 보상 추가). 주문 재사용 대기는 층을 넘어 이어집니다. 층 사이에 최대 생명력의 30%를 회복하며(쓰러진 파티원도 30%로 일어남), 5층마다 휴식층(별샘의 쉼터)에서 모두 회복합니다. NPC 파티원은 실전을 시작한 학생 능력의 30%로 후열에서 싸웁니다. 내 포지션은 별의 탑 화면에서 정하고, 장착 주문은 「원정·전투 → 원정」에서 바꿉니다.', go: ['tower'] },
     { c: '전투', t: '별의 탑 연습 · 함께 보기', b: '연습은 언제든 할 수 있으며 기록 · 보상에 반영되지 않습니다. 오늘 실전을 마친 뒤에도 할 수 있어 포지션 · 주문 조합을 시험하기에 좋습니다. 「파티 연습」은 실전처럼 모두 준비 완료해야 출발하고 파티원 모두가 같은 시각에 같은 장면을 보며, 진행되는 동안에는 다른 실전 · 파티 연습을 시작할 수 없습니다(파티원 누구나 「연습 중단」 가능). 「혼자 연습」은 지금 파티 그대로 내 화면에서만 진행되며 파티를 막지 않습니다. 실전과 연습 모두 실제 시간 그대로 흐르고, 적과 파티원의 체력이 실시간으로 표시됩니다. 대본에는 모든 공격 · 주문 · 치유 · 보호막 · 적의 공격이 표시되며, 「요약만 보기」로 주요 장면만 볼 수 있습니다. 실전과 파티 연습은 건너뛸 수 없어 파티가 끝까지 함께 지켜봅니다. 혼자 연습만 「끝까지 보기」로 바로 결과 장면으로 넘어갈 수 있습니다. 끝난 기록(결과 창 · 최근 기록)은 「기록 내보내기」로 글 파일로 저장할 수 있습니다. 마지막 한 명까지 나가 파티가 해산되어도 각자의 이번 주 기록과 받은 보상은 유지됩니다.', go: ['tower'] },
     { c: '전투', t: '결투제', b: '시험장에서 아카데미의 라이벌들과 차례로 겨룹니다. 이기면 별조각과 ' + CUR + '를 받고, 지면 1시간 뒤 다시 도전할 수 있습니다.', go: ['exam'] },
     { c: '교류', t: '채팅 (공지 · 모집 · RP · 월드 · 파티 · 원정 · 동아리 · 기숙사 · 학과 · 1:1)', b: '채팅창은 모든 화면에 표시되며, 열지 않은 탭의 글도 실시간으로 받습니다. 새 글이 오면 탭에 숫자가 표시되고, 탭을 열면 「여기부터 새 글」 위치부터 보여 줍니다. 공지 탭은 운영진 공지와 월드 보스 소식, 모집 탭은 함께 원정 · 동아리 · 파티 모집 카드가 올라오는 곳으로 직접 작성할 수 없습니다. 함께 원정 방에 들어가 있거나 함께 원정 중일 때는(「원정 완료」를 누를 때까지) 같은 일행끼리 대화하는 「원정」 탭이 생깁니다. 탭이 많아 넘칠 때는 탭 줄 끝이 흐려지며, 옆으로 밀거나(마우스는 휠 · 좌우 화살표) 넘겨 볼 수 있습니다. 파티 · 동아리 · 기숙사 · 학과 탭은 같은 소속끼리 대화하며, 동아리 · 기숙사 · 학과 탭에는 RP와 사담(오너) 채널이 따로 있습니다. 1:1 탭은 친구와 대화합니다. 입력 후 우측 보내기 버튼(또는 Enter)으로 전송합니다. RP에서는 대사 중간에 *별표 사이*로 행동을 넣을 수 있고, /me 로 시작하면 전체가 행동으로 표시됩니다. 이름을 누르면 해당 학생의 정보창이 열립니다. 필요 없는 탭은 설정 › 채팅 탭에서 숨길 수 있고(최소 하나는 유지), 「탭 순서 바꾸기」로 탭 순서를 정할 수 있습니다(이 기기에 저장).' },
@@ -1056,8 +1184,8 @@ var DATA = (function () {
     { c: '교류', t: '기숙사 대항전', b: '모든 활동이 내 기숙사 점수로 쌓입니다. 매주(월요일 KST 0시 기준) 그 주에 100점 이상 활동한 학생들의 평균 점수로 기숙사 순위를 정하므로, 인원이 많은 기숙사가 유리하지 않습니다. 한 학생의 점수는 활동 학생 중간 점수의 3배까지만 반영되며, 활동 학생이 5명보다 적으면 5명으로 나눕니다. 자기 기숙사의 특기 활동은 점수가 1.3배입니다(등불관: 수업 · 연구 · 교수 과제, 물시계관: 사역마 파견 · 물약 조제 · 꿈길, 가시왕관관: 보스 · 월드 보스 · 결투, 거울관: 장비 강화 · 반딧불 정령 · 하늘 올려다보기 · 매점 구매 · 떠돌이 상인 낙찰). 매점 구매는 쓴 별조각만큼(아르크 물건은 5점, 한 주 200점까지), 떠돌이 상인 낙찰은 1회 50점이며, 학생끼리 거래하는 거래소에는 점수가 없습니다. 다음 주에 순위 보상(별조각 18 · 15 · 12 · 10)과 1위 기숙사 장비 보상(내 점수 6,000점 이상 희귀 · 10,000점 이상 영웅, 기숙사 안 개인 1위는 전설 장비, 2~4위 기숙사도 기숙사 안 개인 1위는 영웅 장비), 순위와 별개로 내 점수 구간 보상(2,000점 이상 5 · 6,000점 이상 10 · 10,000점 이상 15 별조각)이 지급됩니다.', go: ['hcup'] },
     { c: '교류', t: '기숙사 성장', b: '기숙사 혜택은 처음에 적힌 효과의 1/10만 받습니다. 대항전 점수가 기숙사에 쌓일수록 혜택이 커져, 기숙사 성장 100%가 되면 적힌 효과를 그대로 받습니다(그 이상 커지지는 않습니다). 기숙사 혜택은 「지금 받는 값 / 최대 값」으로 표시되며, 월드 보스 · 랭킹 화면의 「기숙사 성장」에서 모든 기숙사의 성장을 볼 수 있습니다.', go: ['world'] },
     { c: '교류', t: '게시판', b: '교류 → 게시판. 질문 · 정보 · 토론 · 모집 · 거래 · RP · 잡담 · 건의 말머리를 선택해 글을 작성하며, 말머리별로 보거나 제목+내용 · 제목 · 작성자로 검색할 수 있습니다. 「관리자만 보기」로 작성하면 목록에 나오지 않고 본인과 운영진만 볼 수 있어 문의 · 건의 · 신고 창구로 사용됩니다. 운영진이 답하면 우편으로 알려 드리며, 「내 글」에서 이어서 볼 수 있습니다. 댓글에는 답글을 달 수 있으며(3개 이상이면 2개만 표시되고 「더보기」로 펼침), 내 글에 댓글이 달리거나 내 댓글에 답글이 달리면 알림(종 모양)으로 알려 드리며, 글마다 「알림 받지 않기」를 누르면 그 글의 알림을 받지 않습니다. 글은 30초에 하나, 하루 30개까지 작성할 수 있습니다.' },
-    { c: '교류', t: '거래소', b: '입학 직후부터 구매할 수 있으며, 판매 등록은 입학 24시간 뒤부터 가능합니다. 장비 · 재료 · 연금술 물약 · 아카데미 휘장 · 소지품(환수의 알 · 토벌 도전권 · 망각의 차)을 ' + CUR + '로 사고팝니다(착용 중인 휘장은 등록 불가). 매점에서 별조각으로 산 소지품을 팔아 ' + CUR + '를 마련할 수도 있습니다. 「사기」 목록은 한 줄씩 표시되며, 장비 이름을 누르면 능력치가 펼쳐집니다. 「팔기」에서는 물건마다 최근 30일 시세(판매 가격의 중간값)와 최근 판매 5건을 보여 주며 「시세 넣기」로 가격을 바로 입력할 수 있습니다. 시세와 많이 다른 가격은 표시되며, 판매 기록이 3건 미만이면 표시하지 않습니다. 「실시간 거래」에는 방금 팔린 물건이 표시됩니다(구매자 비공개). 「거래 내역」에서는 최근 30일 동안 내가 판 것 · 산 것과 받은 · 쓴 ' + CUR + ' 합계를 볼 수 있습니다. 가방에서 장비를 누르고 「거래소에서 팔기」로 바로 이동할 수도 있습니다. 판매되면 수수료 5%를 뺀 ' + CUR + '가 들어오며, 3일 안에 팔리지 않으면 돌려받습니다. 한 번에 10개까지 등록할 수 있습니다. 「사기」에서는 장비 종류(지팡이 · 검 · 로브 · 모자 · 투구 · 장신구 · 마도서 · 전술서)와 등급별로 볼 수 있습니다. 「사기」 · 「경매」의 장비 목록에서 「착용 가능만」을 선택하면 내 레벨 이하 장비만 표시되며(선택은 이 기기에 저장됨), 아직 장착할 수 없는 장비는 「Lv N 필요」로 표시됩니다.', go: ['market'] },
-    { c: '교류', t: '거래소 경매', b: '「경매」 탭에서 장비와 휘장을 입찰로 사고팝니다. 판매자는 「팔기」에서 물건마다 「경매」를 눌러 시작가 · 즉시 구매가 · 기간(12 · 24 · 48시간)을 정해 올립니다. 시작가는 상점 판매가 이상, 즉시 구매가는 시작가의 1.2배 이상이어야 하며, 경매는 동시에 3개까지 열 수 있습니다(거래소 등록 한도 10개에 포함). 입찰은 현재가보다 5% 이상 높아야 하며, 입찰한 ' + CUR + '는 맡겨 두었다가 더 높은 입찰이나 즉시 구매가 나오면 돌려받습니다. 즉시 구매는 입찰이 들어온 뒤에도 가능합니다. 마감 5분 안에 입찰이 들어오면 마감이 5분 늦춰집니다. 마감되면 최고 입찰자에게 물건이 전달되고, 판매자에게는 수수료 5%를 뺀 ' + CUR + '가 지급됩니다. 입찰이 없으면 물건은 판매자에게 돌아옵니다. 입찰이 들어온 경매는 취소할 수 없으며, 입찰은 입학 24시간 뒤부터 가능합니다. 「내 물건」에서 내가 올린 경매와 내가 입찰한 경매를 확인할 수 있습니다.', go: ['market'] },
+    { c: '교류', t: '거래소', b: '입학 직후부터 구매할 수 있으며, 판매 등록은 입학 24시간 뒤부터 가능합니다. 장비 · 재료 · 연금술 물약 · 아카데미 휘장 · 소지품(환수의 알 · 토벌 도전권 · 망각의 차)을 ' + CUR + '로 사고팝니다(착용 중인 휘장은 등록 불가). 매점에서 별조각으로 산 소지품을 팔아 ' + CUR + '를 마련할 수도 있습니다. 「사기」 목록은 한 줄씩 표시되며, 장비 이름을 누르면 능력치가 펼쳐집니다. 「팔기」에서는 물건마다 최근 30일 시세(판매 가격의 중간값)와 최근 판매 5건을 보여 주며 「시세 넣기」로 가격을 바로 입력할 수 있습니다. 시세와 많이 다른 가격은 표시되며, 판매 기록이 3건 미만이면 표시하지 않습니다. 「실시간 거래」에는 방금 팔린 물건이 표시됩니다(구매자 비공개). 「거래 내역」에서는 최근 30일 동안 내가 판 것 · 산 것과 받은 · 쓴 ' + CUR + ' 합계를 볼 수 있습니다. 가방에서 장비를 누르고 「거래소에서 팔기」로 바로 이동할 수도 있습니다. 판매되면 수수료를 뺀 ' + CUR + '가 들어오며(누진: 판매가 10만까지 5% · 100만까지 7% · 1000만까지 10% · 1억까지 13% · 그 이상 15%, 구간마다 따로 계산), 3일 안에 팔리지 않으면 돌려받습니다. 한 번에 10개까지 등록할 수 있습니다. 「사기」에서는 장비 종류(지팡이 · 검 · 로브 · 모자 · 투구 · 장신구 · 마도서 · 전술서)와 등급별로 볼 수 있습니다. 「사기」 · 「경매」의 장비 목록에서 「착용 가능만」을 선택하면 내 레벨 이하 장비만 표시되며(선택은 이 기기에 저장됨), 아직 장착할 수 없는 장비는 「Lv N 필요」로 표시됩니다.', go: ['market'] },
+    { c: '교류', t: '거래소 경매', b: '「경매」 탭에서 장비와 휘장을 입찰로 사고팝니다. 판매자는 「팔기」에서 물건마다 「경매」를 눌러 시작가 · 즉시 구매가 · 기간(12 · 24 · 48시간)을 정해 올립니다. 시작가는 상점 판매가 이상, 즉시 구매가는 시작가의 1.2배 이상이어야 하며, 경매는 동시에 3개까지 열 수 있습니다(거래소 등록 한도 10개에 포함). 입찰은 현재가보다 5% 이상 높아야 하며, 입찰한 ' + CUR + '는 맡겨 두었다가 더 높은 입찰이나 즉시 구매가 나오면 돌려받습니다. 즉시 구매는 입찰이 들어온 뒤에도 가능합니다. 마감 5분 안에 입찰이 들어오면 마감이 5분 늦춰집니다. 마감되면 최고 입찰자에게 물건이 전달되고, 판매자에게는 거래소와 같은 누진 수수료를 뺀 ' + CUR + '가 지급됩니다. 입찰이 없으면 물건은 판매자에게 돌아옵니다. 입찰이 들어온 경매는 취소할 수 없으며, 입찰은 입학 24시간 뒤부터 가능합니다. 「내 물건」에서 내가 올린 경매와 내가 입찰한 경매를 확인할 수 있습니다.', go: ['market'] },
     { c: '교류', t: '떠돌이 상인 경매', b: '매일 낮 12시 · 저녁 6시 · 밤 10시에 떠돌이 상인이 찾아와 1시간 동안 귀한 장비를 경매에 붙입니다. 신입생 · 중급 · 상급 세 구간에 영웅 장비 2점과 영웅 또는 전설 장비 1점씩, 모두 아홉 점입니다. 구간마다 장비 레벨이 다르며(최근 활동 학생의 원정 단계 기준), 신입생 · 중급 구간은 원정 최고 단계가 장비 레벨 + 10단계 이하인 학생만 입찰할 수 있습니다. 낙찰하면 기숙사 대항전 점수 50점을 받습니다. 입찰한 ' + CUR + '는 맡겨 두며, 더 높은 입찰이 나오면 즉시 돌려받습니다. 종료 2분 이내에 입찰하면 2분 연장되며, 몇 번이든 이어지고 정해진 1시간이 지나도 계속됩니다. 값을 불렀던 물건은 더 높은 값이 나오거나 마감 5분 전이 되면 알림이 옵니다(설정 → 알림 「경매 입찰」). 구간 머리글을 누르면 접고 펼칠 수 있습니다. 낙찰품은 우편으로 받습니다.', go: ['auction'] },
     { c: '계정·서버', t: '입학과 로그인', b: '초대코드로 가입한 뒤 아이디와 비밀번호로 어느 기기에서든 로그인합니다. 아이디(영문 · 숫자 · 밑줄 4~20자)는 로그인에만 사용되며 다른 학생에게 보이지 않습니다. 게임 안에서 보이는 것은 학생 이름입니다. 이름은 2~12자이며 단어 사이 띄어쓰기를 사용할 수 있고, 같은 이름은 사용할 수 없습니다(대소문자 · 띄어쓰기만 다른 이름도 같은 이름으로 봅니다). 운영진 사칭이나 욕설이 들어간 이름은 사용할 수 없습니다.' },
     { c: '계정·서버', t: '이름 바꾸기', b: '내 정보 → 편집의 「이름 바꾸기」에서 바꿉니다. 처음 정한 이름은 언제든 한 번 바꿀 수 있으며, 이후에는 30일이 지나야 다시 바꿀 수 있습니다. 친구 · 파티 · 동아리는 그대로 유지되며, 이미 올라간 채팅에는 예전 이름이 남습니다.' },
@@ -1067,8 +1195,14 @@ var DATA = (function () {
     { c: '계정·서버', t: '푸시 알림', b: '설정의 「푸시 알림」을 켜면 게임을 닫아 두어도 수업 · 원정 · 연구 등이 끝났을 때 기기로 알림이 옵니다(지원하는 브라우저만, 아이폰 · 아이패드는 홈 화면에 추가한 앱에서만). 비슷한 때 끝난 일은 한 번에 묶어서 보냅니다. 「방해 금지 시간」(기본 켜짐)은 밤 11시~오전 8시에 끝난 일을 아침에 한 번에 알려 줍니다. 기기마다 따로 켜고 끕니다.' },
     { c: '계정·서버', t: '앱처럼 설치하기', b: '설정의 「앱으로 사용하기」에서 홈 화면이나 바탕화면에 모네타 아카데미를 앱처럼 추가할 수 있습니다. 안드로이드 · PC 크롬/엣지는 버튼 한 번, 아이폰은 사파리 공유 버튼 › 「홈 화면에 추가」입니다. 주소창 없이 열릴 뿐 계정과 진행 상황은 웹과 같습니다.' },
     { c: '계정·서버', t: '새 버전과 점검', b: '새 버전이 나오면 화면 상단에 안내 띠가 표시됩니다. 새로고침하면 적용되며, 새로고침하지 않아도 현재 화면으로 계속 플레이할 수 있습니다. 꼭 필요한 업데이트일 때만 10초 뒤 자동으로 새로고침합니다(작성 중인 채팅 글은 유지). 점검이 예정되면 미리 안내 띠로 알려 드리며, 점검 중에는 안내 화면이 표시되다가 끝나면 자동으로 다시 접속합니다. 진행 중인 작업은 시간 기준으로 계산되어 점검 뒤에도 그대로 반영됩니다.' },
-    { c: '계정·서버', t: '마스터 과정', b: '졸업 시험을 통과해도 학적은 초기화되지 않습니다. 마스터 과정 연구생이 되어 끝없는 심연 · 월드 보스 · 랭킹에 도전합니다.' },
-    { c: '계정·서버', t: '숫자 읽는 법', b: '큰 수는 만(10⁴) · 억(10⁸) · 조(10¹²) · 경(10¹⁶) 단위로 표기합니다.' }
+    { c: '계정·서버', t: '마스터 과정', b: '졸업 시험을 통과해도 학적은 초기화되지 않습니다. 마스터 과정 연구생이 되어 끝없는 심연 · 월드 보스 · 랭킹에 도전합니다. 학기 이야기 8장 · 9장(종지기의 해)이 이어지고, 심연 110 · 120 · 130 · 150 · 200단계를 열 때마다 업적 보상을, 121 · 151 · 201단계에 도달하면 칭호를 받습니다.' },
+    { c: '계정·서버', t: '마스터 주간 과제', b: '마스터 과정 연구생에게만 열리는 주간 과제입니다. 광장 「일일 목표」 아래에 이번 주 과제 3개가 표시되며, 매주 월요일 KST 0시에 바뀝니다. 과제마다 별조각 ' + 15 + '개를 받고, 세 과제를 모두 완수하면 별조각 20개를 추가로 받습니다. 4주를 완수하면 정보 카드 배경 「종탑의 새벽」을, 4 · 12 · 30주를 완수하면 칭호를 받습니다.' },
+    { c: '계정·서버', t: '숫자 읽는 법', b: '큰 수는 만(10⁴) · 억(10⁸) · 조(10¹²) · 경(10¹⁶) 단위로 표기합니다.' },
+    { c: '아카데미 생활', t: '환수 교감 (유대)', b: '「장비·공방 → 환수 사역장」의 사역마 카드에서 「교감하기」를 누르면 사역마와 교감할 수 있습니다. 쓰다듬기(하루 3번), 간식 주기(하루 2번), 놀아 주기(하루 1번)로 유대가 오르며, 사역마 한 마리가 하루에 얻는 유대는 10까지입니다. 파견에서 무사히 돌아와도 유대가 1 오릅니다. 유대는 낯섦 · 익숙함 · 친근함 · 신뢰 · 단짝 다섯 단계이며, 능력치에는 영향을 주지 않습니다. 단계가 오를수록 지문이 바뀌고, 「친근함」부터는 광장에 동행 사역마의 지문이 표시됩니다. 사역마마다 좋아하는 간식과 장난감이 있으며, 좋아하는 것을 주면 유대가 더 오릅니다. 「단짝」 단계가 되면 사역마마다 다른 칭호를 받으며(예: 눈송이 강아지 「눈송이가 기다리는 사람」), 단짝이 된 사역마 수가 1 · 5 · 10 · 18마리가 되면 칭호를 추가로 받습니다.' },
+    { c: '아카데미 생활', t: '칸토 섬 환수 용품점', b: '「장비·공방 → 환수 용품점」에서 아르크로 간식 · 장난감 · 꾸밈을 구매할 수 있습니다. 간식은 사용하면 사라지는 소모품이며, 장난감은 한 번 구매하면 모든 사역마와 계속 사용할 수 있습니다. 꾸밈은 사역마 카드에만 보이는 장식입니다. 날마다 한 품목이 「오늘의 추천」으로 10% 할인됩니다. 사역마의 레벨을 올리는 영양 먹이는 환수 사역장의 사역마 카드에서 줄 수 있습니다.' },
+    { c: '아카데미 생활', t: '하늘섬 나들이', b: '「아카데미 광장 → 하늘섬」에서 외출증을 사용해 하늘섬으로 외출합니다. 외출증은 주말(토 · 일, 한국 시간)에 하루 2장, 축제 기간에는 평일에도 하루 1장 발급되며 KST 0시에 초기화됩니다. 섬을 선택하면 이야기 카드 3장이 나오고, 카드마다 선택지를 하나 선택하면 아르크 · 재료 · 별조각 · 마나 · 사역마 간식 가운데 하나를 받습니다. 나들이를 마치면 일정 확률로 그 섬의 기념품을 받습니다. 포르타 마을 · 칸토 섬은 1학년, 테아트론 섬은 2학년, 우라니아 섬은 3학년(밤에만), 클리오 섬은 4학년부터 방문할 수 있고, 테르프시코레 섬은 축제 기간에만 열립니다. 모은 이야기와 기념품은 「여행 수첩」에 기록됩니다.' },
+    { c: '아카데미 생활', t: '시즈널 축제', b: '아카데미력 피리달 · 가면달 · 별무리달 · 침묵달에는 그 달 내내(실제 7일) 축제가 열립니다(종탑 음악제 · 가면 무도회 · 별샘 축제 · 침묵의 등불제). 축제 기간에는 수업 · 원정 · 연구 등 평소 활동으로 축제 표식이 모이며(활동 점수 20점마다 1개, 하루 100개까지), 「아카데미 광장 → 축제」의 축제 교환소에서 칭호 · 정보 카드 인장 · 장난감 · 기념품 · 소모품과 교환할 수 있습니다. 마석가루와 아르크는 개수 제한 없이 교환할 수 있습니다. 모든 학생이 모은 표식이 공동 목표에 닿을 때마다 표식을 모은 모든 학생에게 보상이 우편으로 전달됩니다. 축제가 끝날 때까지 교환하지 않은 표식은 자동으로 아르크로 환산됩니다.' },
+    { c: '교류', t: '기숙사 휴게실 복원', b: '「기록·랭킹 → 휴게실」에서 기숙사생이 함께 휴게실 시설을 복원합니다. 아카데미력 한 달(실제 7일)마다 복원할 시설이 바뀌며, 아르크 · 마나 · 재료를 종류마다 하루 한 번씩 납부할 수 있습니다(1회 10점). 복원 점수가 단계 목표에 닿으면 사감이 기숙사 채팅에 알리고, 휴게실에 새 장면이 열립니다. 목표는 그 달 기숙사의 활동 인원에 맞춰 정해집니다. 달이 바뀌면 30점 이상 납부한 학생에게 완료한 단계마다 별조각 5개가 우편으로 전달됩니다. 휴게실 복원은 기숙사 대항전 점수와 별개입니다.' },
   ];
 
   /* ───────── 아카데미 결투제 ───────── */
@@ -1108,6 +1242,11 @@ var DATA = (function () {
     { id: 'st50', name: '황야를 건넌 자', desc: '50단계 개방', stat: 'maxStageAll', n: 50, r: 20 },
     { id: 'st80', name: '종을 울린 자', desc: '80단계 개방', stat: 'maxStageAll', n: 80, r: 40 },
     { id: 'st100', name: '심연의 방랑자', desc: '100단계 개방', stat: 'maxStageAll', n: 100, r: 60 },
+    { id: 'st110', name: '배지를 단 그림자를 지나', desc: '110단계 개방', stat: 'maxStageAll', n: 110, r: 70 },
+    { id: 'st120', name: '종소리 아래 백이십 층', desc: '120단계 개방', stat: 'maxStageAll', n: 120, r: 80 },
+    { id: 'st130', name: '돌아오지 못한 선배의 길', desc: '130단계 개방', stat: 'maxStageAll', n: 130, r: 90 },
+    { id: 'st150', name: '깊은 곳의 불빛', desc: '150단계 개방', stat: 'maxStageAll', n: 150, r: 120 },
+    { id: 'st200', name: '심연의 바닥', desc: '200단계 개방', stat: 'maxStageAll', n: 200, r: 200 },
     { id: 'gr2', name: '2학년 진급', desc: '1학년 기말시험 통과', stat: 'maxGrade', n: 2, r: 5 },
     { id: 'gr4', name: '상급생', desc: '4학년 진급', stat: 'maxGrade', n: 4, r: 15 },
     { id: 'gr7', name: '졸업반', desc: '7학년 진급', stat: 'maxGrade', n: 7, r: 30 },
@@ -1137,8 +1276,9 @@ var DATA = (function () {
     { id: 'brew200', name: '연금술사', desc: '물약 200개 양조', stat: 'brews', n: 200, r: 25 },
     { id: 'brew300', name: '마도학자', desc: '물약 300개 양조', stat: 'brews', n: 300, r: 35 },
     { id: 'fam3', name: '작은 동물원', desc: '사역마 3종 보유', stat: 'famKinds', n: 3, r: 8 },
-    { id: 'fam8', name: '환수 사육사', desc: '사역마 8종 보유', stat: 'famKinds', n: 8, r: 25 },
-    { id: 'fam12', name: '모든 생명의 친구', desc: '사역마 12종 모두 보유', stat: 'famKinds', n: 12, r: 60 },
+    { id: 'fam8', name: '환수 애호가', desc: '사역마 8종 보유', stat: 'famKinds', n: 8, r: 25 },
+    { id: 'fam12', name: '환수 수집가', desc: '사역마 12종 보유', stat: 'famKinds', n: 12, r: 40 },
+    { id: 'fam18', name: '모든 생명의 친구', desc: '사역마 18종 모두 보유', stat: 'famKinds', n: 18, r: 80 },
     { id: 'disp20', name: '심부름의 달인', desc: '사역마 파견 20번', stat: 'dispatches', n: 20, r: 10 },
     { id: 'spirit20', name: '정령 채집가', desc: '반딧불 정령 20마리 풀어 주기', stat: 'spirits', n: 20, r: 8 },
     { id: 'spirit200', name: '빛을 쫓는 자', desc: '반딧불 정령 200마리 풀어 주기', stat: 'spirits', n: 200, r: 30 },
@@ -1210,6 +1350,15 @@ var DATA = (function () {
      { id, date, title, groups: [{ h: '분류', items: ['문장', { t: '문장', sub: ['세부', '세부'] }] }] } — 정리 방법은 docs/patch-notes.md */
   D.PATCH = [
     { id: 17, date: '2026-10-22', title: '제17차 업데이트', groups: [
+      { h: '전투력 조정', items: [
+        '전투력 표시 기준이 바뀌었습니다. 장비 구간이 열릴 때 전투력 숫자가 한꺼번에 크게 뛰지 않도록 줄여서 표시하며, 순위의 순서는 같은 기준으로 다시 계산됩니다.',
+        '장비 등급 배수가 조정되었습니다: 희귀 1.7배 → 1.65배 · 영웅 2.3배 → 2.1배 · 전설 3.2배 → 2.7배.',
+        '마도서의 주문 위력과 전술서의 기술 위력이 등급 · 강화로 오르는 폭이 줄었습니다. 다른 공격 능력치와 곱해져 같은 구간 안의 격차가 지나치게 벌어지던 문제를 완화합니다.',
+        '무기 공격력 · 로브 생명력 · 로브 방어력 · 마도서 공격력이 장비 레벨에 따라 오르는 방식이 바뀌었습니다. 예전에는 10레벨마다 약 3배씩 올랐으나, 이제 장비 레벨 10~29 · 30~49 · 50~69 · 70~89처럼 2학년 단위로 묶어 묶음 안에서는 완만하게 오르고(묶음 끝이 시작의 2배) 다음 묶음으로 넘어갈 때 한 번에 오릅니다. 같은 묶음 안에서는 잘 강화한 낮은 레벨 장비가 높은 레벨 장비와 크게 차이 나지 않습니다.'
+      ] },
+      { h: '아카데미력', items: [
+        '아카데미력의 한 달이 실제 28일에서 실제 7일(1주)로 바뀌었습니다. 달 축복이 매주 바뀌며, 아홉 달(9주)이 한 해입니다.'
+      ] },
       { h: '서고', items: [
         '서고에 「고서 열람실」이 추가되었습니다(2학년부터). 지식을 사용해 고서를 열람하면 3시간 동안 효과가 적용되며, 전투 · 성장 · 살림 분야의 고서 13종 중에서 선택할 수 있습니다.'
       ] },
@@ -1622,6 +1771,274 @@ var DATA = (function () {
     { q: '기숙사에 떠도는 괴담을 들었습니다.', a: [['사실인지 기록을 찾아본다', 'lanterna'], ['담담하게 흘려듣는다', 'clepsydra'], ['직접 확인하러 간다', 'corona'], ['더 그럴듯하게 다듬어 다른 사람에게 전한다', 'speculum']] },
     { q: '마지막으로, 마음이 끌리는 문장은?', a: [['꺼지지 않는 질문이 길을 밝힌다', 'lanterna'], ['한 방울씩, 그러나 멈추지 않고', 'clepsydra'], ['상처 없는 왕관은 없다', 'corona'], ['보이는 것의 뒤편을 보라', 'speculum']] }
   ];
+
+  /* ───────── 환수 교감: 유대 · 칸토 섬 환수 용품점 ─────────
+     유대는 능력치에 영향을 주지 않는다 (지문 · 칭호 · 꾸밈만). 문장의 {n} = 사역마 이름, {s} = 간식 · 장난감 이름, 뒤의 조사는 받침에 맞춰 바뀐다 */
+  D.BOND_STAGES = [
+    { min: 0, name: '낯섦' }, { min: 15, name: '익숙함' }, { min: 35, name: '친근함' }, { min: 60, name: '신뢰' }, { min: 100, name: '단짝' }
+  ];
+  D.BOND = { max: 100, dayCap: 10, petN: 3, petV: 1, snackN: 2, snackLike: 2, playN: 1, playV: 3, playLike: 5, disp: 1, deal: 0.1 };
+  D.FAM_SNACKS = [
+    { id: 'candy', name: '별사탕', em: '🍬', price: 300, v: 2, desc: '별샘 물로 졸인 작은 사탕입니다.' },
+    { id: 'biscuit', name: '이슬 비스킷', em: '🍪', price: 600, v: 3, desc: '아침 이슬을 넣어 구운 바삭한 비스킷입니다.' },
+    { id: 'jelly', name: '구름 젤리', em: '🍮', price: 900, v: 3, desc: '구름섬의 안개를 굳혀 만든 말랑한 젤리입니다.' },
+    { id: 'seed', name: '반딧불 씨앗', em: '🌰', price: 900, v: 3, desc: '어두운 곳에서 은은하게 빛나는 씨앗입니다.' },
+    { id: 'apple', name: '꿀사과 조각', em: '🍎', price: 1200, v: 3, desc: '포르타 마을 쉼표 여관의 꿀사과를 잘게 썬 것입니다.' },
+    { id: 'fish', name: '은빛 말린 생선', em: '🐟', price: 1200, v: 3, desc: '구름바다에서 잡아 말린 생선입니다.' }
+  ];
+  // fest: 그 축제 교환소에서만 얻는 장난감
+  D.FAM_TOYS = [
+    { id: 'yarn', name: '털실 별', em: '🧶', price: 20000, desc: '굴리면 별 모양으로 풀리는 털실 뭉치입니다.' },
+    { id: 'crane', name: '종이학', em: '🕊️', price: 20000, desc: '종이학 우체국에서 접은, 혼자 날갯짓하는 종이학입니다.' },
+    { id: 'feather', name: '깃털 지팡이', em: '🪶', price: 30000, desc: '흔들 때마다 깃털이 반짝이는 놀이용 지팡이입니다.' },
+    { id: 'bubble', name: '물방울 공', em: '🫧', price: 30000, desc: '터지지 않는 물방울로 만든 공입니다.' },
+    { id: 'bell', name: '은방울 딸랑이', em: '🔔', price: 40000, desc: '흔들면 맑은 소리가 나는 은방울입니다.' },
+    { id: 'kite', name: '구름 연', em: '🪁', price: 40000, desc: '바람이 없어도 떠오르는 작은 연입니다.' },
+    { id: 'music', name: '작은 오르골', em: '🎶', price: 50000, desc: '태엽을 감으면 자장가가 흘러나오는 오르골입니다.' },
+    { id: 'mirror', name: '손거울', em: '🪞', price: 50000, desc: '비출 때마다 다른 풍경이 보이는 손거울입니다.' },
+    { id: 'pipe', name: '풀피리', em: '🎵', fest: 'bell', desc: '종탑 음악제 기념 풀피리입니다.' },
+    { id: 'mask', name: '작은 가면', em: '🎭', fest: 'masque', desc: '가면 무도회 기념 가면입니다. 사역마의 얼굴에 꼭 맞습니다.' },
+    { id: 'lantern', name: '반딧불 등롱', em: '🏮', fest: 'starwell', desc: '별샘 축제 기념 등롱입니다. 반딧불 정령이 한 마리 들어 있습니다.' },
+    { id: 'paperlamp', name: '종이 등', em: '🕯️', fest: 'silence', desc: '침묵의 등불제 기념 종이 등입니다.' }
+  ];
+  // 꾸밈: 사역마 카드에만 보이는 장식 (능력치 없음)
+  D.FAM_ACC = [
+    { id: 'ribbon', name: '리본', em: '🎀', price: 8000 },
+    { id: 'collar', name: '방울 목걸이', em: '📿', price: 8000 },
+    { id: 'scarf', name: '작은 목도리', em: '🧣', price: 15000 },
+    { id: 'wreath', name: '꽃 화관', em: '🌸', price: 15000 },
+    { id: 'hat', name: '꼬마 마법사 모자', em: '🎩', price: 25000 },
+    { id: 'pin', name: '별 장식 핀', em: '⭐', price: 25000 }
+  ];
+  // 사역마마다 좋아하는 간식 · 장난감 (처음에는 숨겨 두고, 좋아하는 것을 주거나 신뢰 단계가 되면 공개)
+  D.FAM_LIKES = {
+    inkbat: ['fish', 'bell'], candlelizard: ['apple', 'feather'], mossturtle: ['seed', 'bubble'], moonrabbit: ['jelly', 'music'],
+    crysowl: ['biscuit', 'mirror'], zapweasel: ['candy', 'yarn'], ashfox: ['fish', 'kite'], dreammoth: ['candy', 'music'],
+    clockcat: ['fish', 'yarn'], shadowcrow: ['biscuit', 'mirror'], starwhale: ['candy', 'bubble'], starwyrm: ['apple', 'kite'],
+    acornmouse: ['seed', 'bell'], lotusfrog: ['jelly', 'bubble'], snowpup: ['biscuit', 'yarn'], herbhog: ['apple', 'music'], moondeer: ['seed', 'kite'], glowbird: ['candy', 'feather']
+  };
+  // 유대 단계별 지문 (사역마 카드 · 광장 동행 사역마)
+  D.BOND_LINES = [
+    ['{n은} 거리를 둔 채 꼬리만 한 번 흔듭니다.', '{n이} 손끝 냄새를 조심스럽게 맡아 봅니다.', '{n은} 책상 모서리에 앉아 이쪽을 가만히 지켜봅니다.'],
+    ['{n이} 부르는 소리에 고개를 돌립니다.', '{n이} 가방 옆에 자리를 잡고 앉습니다.', '{n은} 쓰다듬는 손을 더 이상 피하지 않습니다.'],
+    ['{n이} 책상 위 깃펜을 물어 와 앞에 내려놓습니다.', '{n이} 펼쳐 둔 수업 노트 위에 올라와 자리를 차지합니다.', '{n은} 발소리만 듣고도 문 앞까지 마중을 나옵니다.'],
+    ['{n이} 어깨 위에 올라앉아 함께 창밖을 바라봅니다.', '{n은} 원정 가방을 챙기는 모습을 보고 먼저 문 앞에 섭니다.', '{n이} 낮게 울며 오늘 하루가 어땠는지 묻는 듯합니다.'],
+    ['{n이} 무릎 위에서 잠이 들었습니다. 오늘 공부는 조금 미루어도 좋겠습니다.', '{n은} 이제 눈빛만으로도 무엇을 원하는지 알아챕니다.', '{n과} 함께라면 기숙사 복도의 밤길도 두렵지 않습니다.']
+  ];
+  D.BOND_REACT = {
+    pet: ['{n이} 눈을 가늘게 뜨고 손바닥에 머리를 기댑니다.', '{n이} 기분 좋은 듯 몸을 둥글게 맙니다.', '{n이} 쓰다듬는 손을 따라 고개를 움직입니다.', '{n은} 잠시 가만히 있다가 작게 하품을 합니다.'],
+    snack: ['{n이} {s을} 받아 천천히 먹습니다.', '{n이} {s을} 물고 구석으로 가서 조용히 먹습니다.', '{n이} {s을} 먹고 만족한 듯 입가를 핥습니다.'],
+    snackLike: ['{n이} {s을} 보자마자 귀를 쫑긋 세웁니다. 아주 좋아하는 간식인 것 같습니다.', '{n이} {s을} 순식간에 먹어 치우고 더 달라는 듯 바라봅니다.'],
+    play: ['{n이} {s을} 쫓아 방 안을 한 바퀴 돕니다.', '{n이} {s을} 앞발로 톡톡 건드려 봅니다.', '{n이} {s} 곁에서 한참을 놀다가 지쳐 엎드립니다.'],
+    playLike: ['{n이} {s을} 보자마자 눈을 반짝입니다. 가장 좋아하는 장난감인 것 같습니다.', '{n이} {s을} 품에 안고 놓아주지 않습니다.']
+  };
+  D.TITLES.push(
+    { id: 'bond1', name: '환수의 단짝', stat: 'bondFull', n: 1, how: '사역마 한 마리와 유대 「단짝」 달성' },
+    { id: 'bond5', name: '환수 사육 명인', stat: 'bondFull', n: 5, how: '사역마 다섯 마리와 유대 「단짝」 달성' },
+    { id: 'bond10', name: '환수의 마음을 읽는 자', stat: 'bondFull', n: 10, how: '사역마 열 마리와 유대 「단짝」 달성' },
+    { id: 'bond18', name: '모든 환수의 단짝', stat: 'bondFull', n: 18, how: '사역마 열여덟 종 모두와 유대 「단짝」 달성' }
+  );
+  // 사역마마다 유대 「단짝」(100)이 되면 받는 칭호 (bondFam: 사역마 id)
+  D.FAM_BOND_TITLES = {
+    inkbat: '잉크병 속의 단짝', candlelizard: '꺼지지 않는 촛불지기', mossturtle: '백 년 정원의 정원사', moonrabbit: '보름달 필기 동무',
+    crysowl: '수정 눈의 벗', zapweasel: '정전기에 익숙한 손', ashfox: '황야 여우의 길동무', dreammoth: '꿈길을 함께 걷는 자',
+    clockcat: '세 시 십 분의 약속', shadowcrow: '그림자의 속삭임을 듣는 자', starwhale: '구름바다의 항해사', starwyrm: '성룡을 품은 손',
+    acornmouse: '도토리 주머니의 주인', lotusfrog: '연못 합창단장', snowpup: '눈송이가 기다리는 사람', herbhog: '가시 속 허브 정원사',
+    moondeer: '달빛 숲의 길잡이', glowbird: '노을을 함께 보는 자'
+  };
+  D.FAMILIARS.forEach(function (f) { var nm = D.FAM_BOND_TITLES[f.id]; if (nm) D.TITLES.push({ id: 'bf_' + f.id, name: nm, bondFam: f.id, how: f.name + (((f.name.charCodeAt(f.name.length - 1) - 0xAC00) % 28) ? '과' : '와') + ' 유대 「단짝」 달성' }); });
+
+  /* ───────── 하늘섬 나들이 (주말 외출) ─────────
+     주말(토 · 일, KST)에는 외출증이 하루 2장, 축제 기간에는 평일에도 1장. 섬을 고르면 이야기 카드 3장이 나오고, 카드마다 선택지를 하나씩 고른다.
+     보상은 작게: gold = 일일 목표 보상의 일부, mats = 재료 3개, shard = 별조각 1, mana = 마나 15분분, snack = 사역마 간식 1 (s: 간식 id) */
+  D.TRIP = { weekend: 2, festDay: 1, cards: 3, souvChance: 0.4, goldX: 0.15, manaSec: 900, mats: 3 };
+  D.ISLES = [
+    { id: 'porta', name: '포르타 마을', grade: 1, desc: '종탑역에서 가장 가까운 섬입니다. 반음 찻집과 꿀사과주를 파는 쉼표 여관이 있습니다.' },
+    { id: 'canto', name: '칸토 섬', grade: 1, shop: 1, desc: '현악 골목을 따라 지팡이 공방, 중고 마도서 가게, 사역마 먹이 상점, 교복 수선집, 종이학 우체국이 늘어서 있습니다.' },
+    { id: 'theatron', name: '테아트론 섬', grade: 2, desc: '연극과 서커스, 기숙사 대항 결투 대회가 열리는 섬입니다.' },
+    { id: 'urania', name: '우라니아 섬', grade: 3, night: 1, desc: '밤에만 열차가 서는 천문대 섬입니다. 한국 시간 18시부터 다음 날 5시까지 방문할 수 있습니다.' },
+    { id: 'clio', name: '클리오 섬', grade: 4, desc: '역대 졸업 앨범과 옛 신문을 모아 둔 기록 보관소가 있는 섬입니다.' },
+    { id: 'terpsi', name: '테르프시코레 섬', grade: 1, fest: 1, desc: '학기 말 무도회장이 있는 섬입니다. 축제 기간에만 열차가 섭니다.' }
+  ];
+  D.TRIP_EVENTS = [
+    { id: 'p1', isle: 'porta', t: '쉼표 여관의 부탁', d: '쉼표 여관 주인이 꿀사과주 한 통을 지하 창고로 옮겨 달라고 부탁합니다. "허리가 예전 같지 않아서 말이야."', ch: [
+      { l: '마법으로 띄워 옮긴다', r: 'gold', x: '주문 연습 삼아 통을 띄워 무사히 옮겼습니다. 주인이 수고비를 건넵니다.' },
+      { l: '직접 들어 옮긴다', r: 'snack', s: 'apple', x: '땀을 흘리며 통을 옮겼습니다. 주인이 꿀사과 조각 한 봉지를 챙겨 줍니다.' },
+      { l: '정중히 사양한다', r: 'mana', x: '사양하고 여관 마루에서 잠시 쉬었습니다. 난로 곁에서 마나가 조금 회복되었습니다.' }] },
+    { id: 'p2', isle: 'porta', t: '반음 찻집', d: '반음 찻집의 찻잔은 저마다 다른 음으로 울립니다. 점원이 오늘의 차를 고르라고 권합니다.', ch: [
+      { l: '낮은 음의 홍차', r: 'mana', x: '묵직한 향이 마음을 가라앉힙니다. 마나가 조금 회복되었습니다.' },
+      { l: '높은 음의 꽃차', r: 'shard', x: '찻잔 바닥에서 작은 별조각 하나가 반짝입니다. 점원이 가져가도 좋다고 합니다.' },
+      { l: '벽에 걸린 악보를 구경한다', r: 'gold', x: '흐트러진 악보를 정리하는 일을 도와 수고비를 받았습니다.' }] },
+    { id: 'p3', isle: 'porta', t: '정류장의 분실물', d: '포르타 정류장 벤치에 누군가 두고 간 가방이 있습니다. 가방 끈에 기숙사 문장이 달려 있습니다.', ch: [
+      { l: '역무원에게 맡긴다', r: 'shard', x: '역무원이 고마움의 표시로 별조각을 건넵니다. "주인이 꼭 찾아갈 겁니다."' },
+      { l: '주인을 직접 찾아 나선다', r: 'gold', x: '마을을 한 바퀴 돈 끝에 주인을 찾았습니다. 주인이 사례금을 건넵니다.' }] },
+    { id: 'p4', isle: 'porta', t: '길 잃은 반딧불 정령', d: '마을 골목에서 반딧불 정령 하나가 길을 잃고 맴돌고 있습니다.', ch: [
+      { l: '유리병에 넣어 쉬게 한다', r: 'mana', x: '정령이 병 안에서 잠시 쉬다가, 마나를 조금 남기고 날아갔습니다.' },
+      { l: '간식을 나누어 준다', r: 'snack', s: 'seed', x: '정령이 사라진 자리에 반딧불 씨앗 하나가 떨어져 있습니다.' },
+      { l: '종탑 쪽으로 길을 알려 준다', r: 'shard', x: '정령이 반짝이며 별조각을 떨어뜨리고 종탑 쪽으로 날아갔습니다.' }] },
+    { id: 'c1', isle: 'canto', t: '중고 마도서 가게', d: '먼지 쌓인 서가에서 제목이 지워진 마도서 한 권이 눈에 띕니다. 주인은 "값은 마음대로 정하게"라고만 합니다.', ch: [
+      { l: '넉넉히 값을 치른다', r: 'shard', x: '책 사이에 끼워진 별조각을 발견했습니다. 주인은 그것도 책값에 포함이라며 웃습니다.' },
+      { l: '가게 정리를 돕는다', r: 'mats', x: '서가를 정리하다 오래된 재료 꾸러미를 발견했습니다. 주인이 가져가라고 합니다.' }] },
+    { id: 'c2', isle: 'canto', t: '지팡이 공방', d: '지팡이 공방 장인이 새로 깎은 지팡이를 시험해 달라고 부탁합니다.', ch: [
+      { l: '불꽃 주문을 시험한다', r: 'gold', x: '지팡이가 훌륭하게 작동했습니다. 장인이 시험 사용의 대가를 건넵니다.' },
+      { l: '결계 주문을 시험한다', r: 'mats', x: '결계가 공방 바닥의 부스러기를 한데 모았습니다. 장인이 쓸 만한 재료를 나누어 줍니다.' }] },
+    { id: 'c3', isle: 'canto', t: '교복 수선집', d: '교복 수선집 재봉사가 소매를 잡아끕니다. "학생, 단추가 떨어졌어요. 그대로 다니면 사감 선생님께 혼나요."', ch: [
+      { l: '수선을 맡긴다', r: 'mana', x: '수선을 기다리는 동안 따뜻한 차를 얻어 마셨습니다. 마나가 조금 회복되었습니다.' },
+      { l: '직접 꿰매 보겠다고 한다', r: 'shard', x: '재봉사가 솜씨를 칭찬하며 반짇고리 속 별조각을 하나 건넵니다.' }] },
+    { id: 'c4', isle: 'canto', t: '종이학 우체국', d: '종이학 우체국 창구에 오늘 부칠 종이학이 산더미처럼 쌓여 있습니다.', ch: [
+      { l: '종이학 접기를 돕는다', r: 'gold', x: '종이학 백 마리를 접었습니다. 우체국장이 일당을 건넵니다.' },
+      { l: '날아오르는 종이학을 구경한다', r: 'snack', s: 'candy', x: '창밖으로 날아오른 종이학 한 마리가 별사탕을 물어다 놓고 갑니다.' }] },
+    { id: 't1', isle: 'theatron', t: '서커스 천막', d: '서커스 단장이 관객 가운데 한 명을 무대로 부르려 합니다. 시선이 이쪽으로 향합니다.', ch: [
+      { l: '무대로 올라간다', r: 'gold', x: '공중그네에서 떨어지는 단원을 주문으로 받아 냈습니다. 박수와 함께 출연료를 받았습니다.' },
+      { l: '자리를 지킨다', r: 'mana', x: '편안히 공연을 즐겼습니다. 마나가 조금 회복되었습니다.' }] },
+    { id: 't2', isle: 'theatron', t: '결투 연습 경기', d: '원형 경기장에서 기숙사 대항 결투 연습 경기가 열리고 있습니다.', ch: [
+      { l: '우리 기숙사를 응원한다', r: 'shard', x: '응원석에서 기숙사 깃발을 흔들었습니다. 경기가 끝나자 선배가 별조각을 하나 건넵니다.' },
+      { l: '경기장 정리를 돕는다', r: 'mats', x: '경기장 바닥에 흩어진 결투 부산물을 정리하고 쓸 만한 재료를 얻었습니다.' }] },
+    { id: 't3', isle: 'theatron', t: '연극 리허설', d: '연극단이 대사를 잊은 배우를 대신할 사람을 찾고 있습니다.', ch: [
+      { l: '대역을 맡는다', r: 'gold', x: '무대에 서서 대사 세 줄을 무사히 마쳤습니다. 연출가가 출연료를 건넵니다.' },
+      { l: '무대 뒤에서 대사를 알려 준다', r: 'shard', x: '배우가 무사히 장면을 마쳤습니다. 배우가 고맙다며 분장함 속 별조각을 건넵니다.' }] },
+    { id: 't4', isle: 'theatron', t: '분장실의 소동', d: '분장실에서 의상 한 벌이 사라졌다는 소동이 벌어졌습니다.', ch: [
+      { l: '탐지 주문으로 찾는다', r: 'shard', x: '옷걸이 뒤에 숨은 꼬마 정령이 의상을 물고 있었습니다. 단원들이 별조각으로 감사를 표합니다.' },
+      { l: '의상 정리를 돕는다', r: 'gold', x: '뒤섞인 의상을 모두 정리했습니다. 의상 담당자가 수고비를 건넵니다.' }] },
+    { id: 'u1', isle: 'urania', t: '별자리 기록', d: '천문대 관측사가 오늘 밤 별자리 기록을 도와 달라고 부탁합니다.', ch: [
+      { l: '망원경을 맡는다', r: 'shard', x: '렌즈 너머로 새 별 하나를 찾아냈습니다. 관측사가 기념으로 별조각을 건넵니다.' },
+      { l: '기록지를 맡는다', r: 'gold', x: '밤새 별의 위치를 받아 적었습니다. 관측사가 기록 수당을 건넵니다.' }] },
+    { id: 'u2', isle: 'urania', t: '떨어진 유성 조각', d: '천문대 정원에 작은 유성 조각이 떨어졌습니다. 아직 따뜻합니다.', ch: [
+      { l: '조심스럽게 주워 맡긴다', r: 'mats', x: '관측사가 조각을 살피더니, 연구에 쓰고 남은 재료를 나누어 줍니다.' },
+      { l: '조각을 쥐고 소원을 빈다', r: 'mana', x: '손바닥이 따뜻해지며 마나가 조금 회복되었습니다.' }] },
+    { id: 'u3', isle: 'urania', t: '별고래의 노래', d: '구름 아래에서 별고래의 낮은 노랫소리가 들려옵니다.', ch: [
+      { l: '난간에 기대어 듣는다', r: 'mana', x: '노래가 끝날 때까지 가만히 들었습니다. 마나가 조금 회복되었습니다.' },
+      { l: '노래를 악보로 옮긴다', r: 'shard', x: '악보를 본 관측사가 감탄하며 별조각 하나와 바꾸자고 합니다.' }] },
+    { id: 'u4', isle: 'urania', t: '밤 열차 승무원', d: '밤 열차 승무원이 마지막 열차 시각을 알려 주며 승객들에게 간식을 나누어 줍니다.', ch: [
+      { l: '감사 인사를 한다', r: 'snack', s: 'candy', x: '승무원이 별사탕 한 봉지를 건넵니다. "사역마 몫도 챙겨 가세요."' },
+      { l: '열차 점검을 돕는다', r: 'gold', x: '현 위를 달리는 바퀴를 함께 닦았습니다. 승무원이 수고비를 건넵니다.' }] },
+    { id: 'l1', isle: 'clio', t: '옛 신문 열람', d: '기록 보관소 사서가 수십 년 전 신문 한 묶음을 꺼내 줍니다.', ch: [
+      { l: '기숙사 대항전 기사를 찾는다', r: 'shard', x: '수십 년 전 우승 기숙사의 사진을 찾았습니다. 사서가 열람 기념으로 별조각을 건넵니다.' },
+      { l: '처음 보는 기숙사 이름을 찾는다', r: 'mana', x: '「잿불관」이라는 낯선 이름이 적힌 기사를 찾았지만, 기사의 절반이 지워져 있습니다. 한참을 들여다보다 보관소를 나섭니다.' }] },
+    { id: 'l2', isle: 'clio', t: '졸업 앨범', d: '역대 졸업 앨범 가운데 한 권이 저절로 펼쳐집니다.', ch: [
+      { l: '사진 속 얼굴을 찾아본다', r: 'gold', x: '앨범 사이에 끼워진 옛 수업 쪽지를 발견해 사서에게 전했습니다. 사서가 기록 정리 수고비를 건넵니다.' },
+      { l: '조용히 덮는다', r: 'mana', x: '앨범이 다시 스르르 닫힙니다. 보관소의 고요함 속에서 마나가 조금 회복되었습니다.' }] },
+    { id: 'l3', isle: 'clio', t: '무너진 서가', d: '사서가 무너진 서가를 정리할 일손을 찾고 있습니다.', ch: [
+      { l: '정리를 돕는다', r: 'mats', x: '서가 아래에서 오래된 재료 상자가 나왔습니다. 사서가 가져가도 좋다고 합니다.' },
+      { l: '분류 주문을 시험한다', r: 'shard', x: '책들이 스스로 제자리를 찾아갑니다. 사서가 감탄하며 별조각을 건넵니다.' }] },
+    { id: 'l4', isle: 'clio', t: '「열지 마시오」', d: '보관소 구석에 「열지 마시오」라고 적힌 상자가 있습니다.', ch: [
+      { l: '열어 본다', r: 'gold', x: '상자 안에는 오래된 동전 몇 닢과 「열지 말라고 했지요」라는 쪽지가 들어 있습니다.' },
+      { l: '사서에게 알린다', r: 'shard', x: '사서가 상자를 받아 들며 별조각을 건넵니다. "현명한 선택입니다."' }] },
+    { id: 'd1', isle: 'terpsi', t: '무도회 연습', d: '무도회장에서 춤 연습이 한창입니다. 한 학생이 함께 연습하자고 손을 내밉니다.', ch: [
+      { l: '손을 잡는다', r: 'shard', x: '서툴지만 한 곡을 끝까지 함께 추었습니다. 상대가 기념으로 별조각을 건넵니다.' },
+      { l: '벽 쪽에서 구경한다', r: 'mana', x: '음악을 들으며 쉬었습니다. 마나가 조금 회복되었습니다.' }] },
+    { id: 'd2', isle: 'terpsi', t: '샹들리에 손질', d: '무도회장 샹들리에의 수정 하나가 빛을 잃었습니다.', ch: [
+      { l: '빛 주문으로 되살린다', r: 'mats', x: '수정에 다시 빛이 돌아왔습니다. 관리인이 남은 수정 조각을 나누어 줍니다.' },
+      { l: '사다리를 붙잡아 준다', r: 'gold', x: '관리인이 무사히 수정을 갈아 끼웠습니다. 관리인이 수고비를 건넵니다.' }] },
+    { id: 'd3', isle: 'terpsi', t: '무도회장 다과', d: '다과 탁자에 처음 보는 디저트가 가득합니다.', ch: [
+      { l: '하나씩 맛본다', r: 'snack', s: 'jelly', x: '구름 젤리가 특히 맛있었습니다. 남은 것을 한 봉지 챙겼습니다.' },
+      { l: '사역마 몫을 챙긴다', r: 'snack', s: 'fish', x: '관리인이 사역마용 말린 생선을 따로 싸 줍니다.' }] }
+  ];
+  // 기념품: 섬 · 축제마다 모으는 수집품 (나들이를 마치면 일정 확률로, 축제 기념품은 축제 교환소에서)
+  D.SOUVENIRS = [
+    { id: 'sv_cider', isle: 'porta', name: '꿀사과주 병', em: '🍯' }, { id: 'sv_cup', isle: 'porta', name: '반음 찻잔', em: '☕' }, { id: 'sv_card', isle: 'porta', name: '포르타 마을 엽서', em: '🖼️' },
+    { id: 'sv_tome', isle: 'canto', name: '낡은 마도서', em: '📕' }, { id: 'sv_wood', isle: 'canto', name: '지팡이 나뭇조각', em: '🪵' }, { id: 'sv_stamp', isle: 'canto', name: '종이학 우표', em: '✉️' },
+    { id: 'sv_ticket', isle: 'theatron', name: '서커스 입장권', em: '🎟️' }, { id: 'sv_flag', isle: 'theatron', name: '결투 대회 깃발', em: '🚩' }, { id: 'sv_script', isle: 'theatron', name: '연극 대본', em: '📜' },
+    { id: 'sv_starmap', isle: 'urania', name: '별자리 지도', em: '🗺️' }, { id: 'sv_lens', isle: 'urania', name: '망원경 렌즈', em: '🔭' }, { id: 'sv_meteor', isle: 'urania', name: '유성 조각', em: '☄️' },
+    { id: 'sv_paper', isle: 'clio', name: '옛 신문 한 장', em: '📰' }, { id: 'sv_photo', isle: 'clio', name: '졸업 앨범 사진', em: '📷' }, { id: 'sv_key', isle: 'clio', name: '기록 보관소 열쇠', em: '🗝️' },
+    { id: 'sv_invite', isle: 'terpsi', name: '무도회 초대장', em: '💌' }, { id: 'sv_shoes', isle: 'terpsi', name: '무도회 구두 장식', em: '🩰' }, { id: 'sv_crystal', isle: 'terpsi', name: '샹들리에 수정', em: '💎' },
+    { id: 'sv_score', fest: 'bell', name: '음악제 악보', em: '🎼' }, { id: 'sv_corsage', fest: 'masque', name: '무도회 꽃장식', em: '💐' },
+    { id: 'sv_wellwater', fest: 'starwell', name: '별샘 물병', em: '🫙' }, { id: 'sv_wish', fest: 'silence', name: '소원 쪽지', em: '📝' }
+  ];
+
+  /* ───────── 시즈널 축제 (아카데미 달력으로 자동) ─────────
+     mi = 달 순서(0 서사달 ~ 8 침묵달). 축제는 그 달 내내 열린다(한 달 = 실제 D.WORLD.monthDays일). 평소 활동 점수(기숙사 대항전 점수와 같은 활동)로 축제 표식을 모은다.
+     표식은 축제 교환소에서 꾸밈 · 칭호 · 장난감 · 기념품 · 소모품과 바꾼다. 모든 학생의 표식 합계가 공동 목표를 넘을 때마다 참여한 학생 모두에게 우편 보상.
+     표식 수치: 하루 내내 접속하는 학생(수면 7시간, 기숙사 대항전 점수 하루 약 2,000점 이상)이 한 축제에 한정 품목을 모두 받고도 표식이 남게 (100개 × 7일 = 700 > 한정 품목 550).
+     남은 표식은 축제 교환소에서 마석가루 · 아르크로 개수 제한 없이 바꿀 수 있고, 그래도 남은 표식은 축제가 끝날 때 아르크로 바뀐다 (1개당 일일 목표 아르크 보상의 5%) */
+  D.FEST_TOK = { per: 20, dayCap: 100, goals: [30, 90, 180], minActive: 10, leftover: 0.05, dust: 3 };
+  D.FEST_REWARDS = [{ shard: 10 }, { shard: 15, stone: 30 }, { shard: 20, egg: 1 }];
+  D.FESTIVALS = [
+    { id: 'bell', name: '종탑 음악제', mi: 2,
+      desc: '피리달 한 주 동안 라디아 종탑역 광장에서 음악제가 열립니다. 해마다 오선 철도의 현을 조율하는 행사로, 학생들의 음이 모일수록 현이 맑게 울립니다.',
+      scenes: [{ who: '아스트라 노엘 교수', sc: '"현이 반음 낮게 운다고 걱정들 하더군요. 올해는 여러분의 음으로 다시 맞춰 봅시다."' },
+        { sc: '종탑역 승강장 기둥마다 악보가 걸렸습니다. 첫 열차가 지나가자 현이 한결 맑게 울립니다.' },
+        { sc: '오선 철도의 다섯 현이 화음을 이룹니다. 하늘섬마다 같은 음이 메아리칩니다.' },
+        { who: '오렐 미스트 교수', sc: '"들립니까? 올해 현은 반음도 어긋나지 않았습니다. 모두의 덕분입니다."' }],
+      shop: [{ k: 'title', id: 'fest_bell', price: 200 }, { k: 'toy', id: 'pipe', price: 150 }, { k: 'deco', id: 's_fbell', price: 120 }, { k: 'souv', id: 'sv_score', price: 80 }] },
+    { id: 'masque', name: '가면 무도회', mi: 4,
+      desc: '가면달 한 주 동안 테르프시코레 섬의 무도회장이 문을 엽니다. 가면을 쓴 동안에는 학년도 기숙사도 묻지 않는 것이 이 무도회의 오랜 규칙입니다.',
+      scenes: [{ sc: '무도회장 입구에 가면 진열대가 놓였습니다. 「오늘 밤만큼은 이름 대신 가면으로 불립니다」라는 안내문이 붙어 있습니다.' },
+        { sc: '무도회장 샹들리에에 불이 하나씩 켜집니다. 누가 누구인지 아무도 묻지 않습니다.' },
+        { sc: '현악단이 왈츠를 시작합니다. 가시왕관관과 거울관 학생이 같은 줄에서 춤을 춥니다.' },
+        { who: '루미아 세렌 교수', sc: '"가면을 벗기 전에, 오늘 함께 춤춘 상대에게 인사를 건네세요. 그게 이 무도회의 마지막 순서랍니다."' }],
+      shop: [{ k: 'title', id: 'fest_masque', price: 200 }, { k: 'toy', id: 'mask', price: 150 }, { k: 'deco', id: 's_fmask', price: 120 }, { k: 'souv', id: 'sv_corsage', price: 80 }] },
+    { id: 'starwell', name: '별샘 축제', mi: 7,
+      desc: '별무리달 한 주 동안 일곱 별샘이 한 해 가운데 가장 밝게 빛납니다. 학생들은 반딧불 정령과 함께 별샘 순례를 떠나고, 모인 빛은 별의 종에 바쳐집니다.',
+      scenes: [{ who: '아스트라 노엘 교수', sc: '"이번 한 주는 하늘을 자주 올려다보세요. 별샘이 이렇게 가까운 날은 일 년에 한 번뿐입니다."' },
+        { sc: '반딧불 정령들이 시간의 탑 둘레를 맴돌기 시작합니다.' },
+        { sc: '일곱 별샘의 빛이 탑 꼭대기에 모여 무지개처럼 겹칩니다.' },
+        { sc: '별의 종이 아주 작게, 한 번 울렸습니다. 종을 친 사람은 아무도 없었습니다.' }],
+      shop: [{ k: 'title', id: 'fest_starwell', price: 200 }, { k: 'toy', id: 'lantern', price: 150 }, { k: 'deco', id: 's_fwell', price: 120 }, { k: 'souv', id: 'sv_wellwater', price: 80 }] },
+    { id: 'silence', name: '침묵의 등불제', mi: 8,
+      desc: '별샘이 하나도 보이지 않는 침묵달 한 주 동안 학생들은 종이 등에 한 해의 기억을 적어 하늘에 띄웁니다. 등불이 별샘의 빈자리를 대신 밝힙니다.',
+      scenes: [{ who: '이름 없는 사서', sc: '"…올해 기억할 일을 하나만 고르십시오. 등은 하나뿐입니다."' },
+        { sc: '기숙사 창가마다 종이 등이 하나둘 떠오릅니다.' },
+        { sc: '하늘을 메운 등불이 섬 아래 구름바다에 비칩니다. 별샘이 없는 밤인데도 어둡지 않습니다.' },
+        { who: '마르텐 오웰 교수', sc: '"한 해 동안 수고 많았습니다. 등불은 내일 아침이면 별이 되어 있을 겁니다."' }],
+      shop: [{ k: 'title', id: 'fest_silence', price: 200 }, { k: 'toy', id: 'paperlamp', price: 150 }, { k: 'deco', id: 's_flamp', price: 120 }, { k: 'souv', id: 'sv_wish', price: 80 }] }
+  ];
+  // 모든 축제 공통 교환 품목: max = 축제 한 번에 바꿀 수 있는 횟수 (0 = 제한 없음 · 여러 개를 한꺼번에)
+  D.FEST_SHOP = [
+    { k: 'dust', id: 'dust', name: '마석가루 ' + D.FEST_TOK.dust + '개', n: D.FEST_TOK.dust, price: 1, max: 0 },
+    { k: 'gold', id: 'gold', name: CUR + ' (일일 목표 ' + CUR + ' 보상의 ' + Math.round(D.FEST_TOK.leftover * 100) + '%)', price: 1, max: 0 },
+    { k: 'snack', id: 'snackbag', name: '간식 꾸러미 (무작위 간식 3개)', n: 3, price: 20, max: 5 },
+    { k: 'shard', id: 'shard3', name: '별조각 3개', n: 3, price: 30, max: 5 },
+    { k: 'stone', id: 'stone20', name: '마석 20개', n: 20, price: 25, max: 4 }
+  ];
+  D.TITLES.push(
+    { id: 'fest_bell', name: '현을 맞춘 자', festT: 1, how: '종탑 음악제 교환소' },
+    { id: 'fest_masque', name: '가면 너머의 춤꾼', festT: 1, how: '가면 무도회 교환소' },
+    { id: 'fest_starwell', name: '별샘 순례자', festT: 1, how: '별샘 축제 교환소' },
+    { id: 'fest_silence', name: '등불을 띄운 자', festT: 1, how: '침묵의 등불제 교환소' },
+    { id: 'trip10', name: '하늘섬 여행자', stat: 'tripStamps', n: 10, how: '하늘섬 나들이 이야기 10가지' },
+    { id: 'tripall', name: '하늘섬 기록가', stat: 'tripStamps', n: D.TRIP_EVENTS.length, how: '하늘섬 나들이 이야기 ' + D.TRIP_EVENTS.length + '가지 모두' }
+  );
+  /* ───────── 기숙사 휴게실 복원 (아카데미력 한 달 = 실제 D.WORLD.monthDays일 단위 협동 목표) ─────────
+     기숙사생이 하루에 한 번씩 아르크 · 마나 · 재료를 납부해 휴게실 시설을 되살린다 (납부 1회 = per점).
+     단계 목표 = 그 달 첫날의 활동 기숙사생 수(최근 7일 접속, 최소 minMembers명) × goals. 능력치 보상은 없다.
+     달이 바뀌면 minPts점 이상 납부한 학생에게 단계마다 별조각 shard개를 우편으로 보낸다 */
+  D.LOUNGE = { per: 10, goals: [20, 50, 90, 130], minMembers: 3, minPts: 30, shard: 5, goldX: 0.5, matN: 5 };   // goals: 1인당 (한 달 = 7일, 하루 최대 30점)
+  D.LOUNGE_KINDS = [{ id: 'gold', name: CUR + ' 납부' }, { id: 'mana', name: '마나 납부' }, { id: 'mat', name: '재료 납부' }];
+  D.LOUNGE_PROJECTS = [
+    { id: 'hearth', name: '벽난로 복원', em: '🔥', desc: '휴게실 한쪽에 오래 꺼져 있던 벽난로가 있습니다. 굴뚝부터 손보아 다시 불을 지핍니다.',
+      stages: [{ name: '굴뚝 청소', sc: '굴뚝에서 백 년 묵은 그을음이 쏟아져 나왔습니다. 모두 얼굴이 새까맣습니다.' },
+        { name: '벽돌 보수', sc: '갈라진 벽돌 사이를 새 회반죽으로 메웠습니다. 바람 새는 소리가 멎었습니다.' },
+        { name: '불씨 들이기', sc: '별샘의 불씨를 옮겨 와 처음으로 불을 지폈습니다. 휴게실에 온기가 돕니다.' },
+        { name: '벽난로 완공', sc: '휴게실에 다시 벽난로 불빛이 일렁입니다. 저녁마다 난로 앞 자리 다툼이 벌어집니다.' }] },
+    { id: 'greenhouse', name: '창가 온실 가꾸기', em: '🌿', desc: '햇빛이 잘 드는 창가를 작은 온실로 꾸밉니다. 달빛 약초가 자라면 휴게실에 은은한 향이 감돕니다.',
+      stages: [{ name: '화분 정리', sc: '깨진 화분을 치우고 새 화분을 줄지어 놓았습니다.' },
+        { name: '유리 지붕 수리', sc: '창가 위로 유리 지붕을 덧대었습니다. 비 오는 날에도 빛이 잘 듭니다.' },
+        { name: '달빛 약초 심기', sc: '속삭이는 숲에서 옮겨 온 달빛 약초가 뿌리를 내렸습니다.' },
+        { name: '온실 완성', sc: '창가 온실에 꽃이 피었습니다. 휴게실에 약초 향이 은은하게 감돕니다.' }] },
+    { id: 'telescope', name: '천체 망원경 조립', em: '🔭', desc: '휴게실 발코니에 기숙사 전용 망원경을 세웁니다. 다 세우면 하늘 이벤트를 휴게실에서 함께 지켜볼 수 있습니다.',
+      stages: [{ name: '부품 모으기', sc: '침몰한 천문대에서 건져 온 부품이 탁자 위에 가득 쌓였습니다.' },
+        { name: '경통 조립', sc: '놋쇠 경통이 발코니 위에 세워졌습니다. 아직 렌즈가 없습니다.' },
+        { name: '렌즈 연마', sc: '밤새 렌즈를 갈았습니다. 렌즈 너머로 별샘이 또렷하게 보입니다.' },
+        { name: '첫 관측', sc: '기숙사생들이 발코니에 모여 첫 관측을 했습니다. 누군가 별고래를 보았다고 외칩니다.' }] },
+    { id: 'piano', name: '낡은 피아노 조율', em: '🎹', desc: '휴게실 구석에서 먼지를 뒤집어쓴 피아노를 되살립니다. 다 고치면 저녁마다 누군가 연주합니다.',
+      stages: [{ name: '먼지 털기', sc: '덮개를 걷어 내자 먼지가 구름처럼 피어올랐습니다. 피아노 상판에 옛 기숙사생의 이름이 새겨져 있습니다.' },
+        { name: '건반 수리', sc: '눌리지 않던 건반 열두 개를 모두 고쳤습니다.' },
+        { name: '현 조율', sc: '오선 철도의 현과 같은 음으로 조율을 마쳤습니다. 화음이 맑게 울립니다.' },
+        { name: '첫 연주회', sc: '휴게실에서 첫 연주회가 열렸습니다. 사감도 맨 뒷자리에서 조용히 박수를 칩니다.' }] }
+  ];
+  D.TITLES.push(
+    { id: 'lounge300', name: '휴게실 복원 위원', stat: 'loungePts', n: 300, how: '기숙사 휴게실 복원에 300점 납부' },
+    { id: 'lounge1000', name: '기숙사의 기둥', stat: 'loungePts', n: 1000, how: '기숙사 휴게실 복원에 1,000점 납부' }
+  );
+
+  // 축제 인장 (정보 카드 꾸미기): 아르크로는 살 수 없고 축제 교환소에서만
+  D.DECO.push(
+    { id: 's_fbell', slot: 'stamp', name: '음표', price: 0, glyph: '♫', fest: 'bell' },
+    { id: 's_fmask', slot: 'stamp', name: '무도회', price: 0, glyph: '❦', fest: 'masque' },
+    { id: 's_fwell', slot: 'stamp', name: '별샘', price: 0, glyph: '✧', fest: 'starwell' },
+    { id: 's_flamp', slot: 'stamp', name: '등불', price: 0, glyph: '✺', fest: 'silence' }
+  );
 
   return D;
 })();
