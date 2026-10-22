@@ -53,7 +53,8 @@ function create(dbx, sec, opts) {
     const out = (p) => memo ? Object.assign(brief(p, me), { body: p.body, canDel: p.pid === me || op, coms: dbx.q.bdComLast.all(p.id, LIM.MEMO_COMS).map((c) => comOut(c, me)) }) : brief(p, me);
     return { list: arr.slice((page - 1) * LIM.PAGE, page * LIM.PAGE).map(out), total, page, pages, op, privN };
   }
-  function comOut(c, me) { return { id: c.id, author: nameOf(c.pid), aid: c.pid, op: !!c.op, badge: c.pid === 'staff' ? '' : (opts.badgeOf || (() => ''))(c.pid), mine: c.pid === me, body: sec.dec(c.body), created: c.created, parent: c.parent || 0 }; }
+  function comOut(c, me) { return { id: c.id, author: nameOf(c.pid), aid: c.pid, op: !!c.op, badge: c.pid === 'staff' ? '' : (opts.badgeOf || (() => ''))(c.pid), mine: c.pid === me, body: sec.dec(c.body), created: c.created, parent: c.parent || 0, pa: c.parent ? paOf(c.parent) : '' }; }
+  function paOf(id) { const pc = dbx.q.bdComGet.get(id); return !pc ? '' : pc.pid === 'staff' ? '운영진' : nameOf(pc.pid); }   // 답글이 달린 원래 댓글의 작성자 (RP 게시판에서 「↳ 이름」으로 보인다)
   // 알림: 내 글에 댓글 · 내 댓글에 답글이 달리면 알림 칸에 (우편은 보내지 않는다)
   function note(to, text, post) { if (!to || to === 'staff' || mutes.has(post + ':' + to)) return; (opts.note || (() => {}))(to, 'board', text, { view: 'board', post: post }); }
   function get(me, id) {
