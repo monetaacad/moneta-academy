@@ -4318,11 +4318,13 @@
     var rv = R.rival(S.P);
     act('duel').then(function (r) {
       if (!r) return;
-      replay({ title: '결투제 ' + r.k + '회전', sub: rv.name, enemy: { id: 'rv' + r.k, arch: ['wisp', 'beast', 'golem', 'eye', 'construct', 'book', 'blob'][r.k % 7], c1: '#c0a0e0', c2: '#3a2a5a', name: rv.name }, ev: r.ev, maxHp: r.maxHp, cc: r.cc }, function () {
-        Snd.play(r.win ? 'pass' : 'fail');
-        modal(mhead(r.win ? '승리!' : '패배', '결투제 ' + r.k + '회전 · ' + esc(r.rival)) + '<p style="font-style:italic;color:var(--ink2);margin-bottom:10px">“' + esc(r.win ? r.lose : r.hello) + '”</p>' +
+      // 전투 일지는 끝난 뒤에도 남겨 두고, 결과는 같은 창 아래에 붙인다 (확인을 눌러야 닫힘 · 무한의 탑과 같음)
+      replay({ title: '결투제 ' + r.k + '회전', sub: rv.name, enemy: { id: 'rv' + r.k, arch: ['wisp', 'beast', 'golem', 'eye', 'construct', 'book', 'blob'][r.k % 7], c1: '#c0a0e0', c2: '#3a2a5a', name: rv.name }, ev: r.ev, maxHp: r.maxHp, cc: r.cc, keep: true }, function () {
+        Snd.play(r.win ? 'pass' : 'fail'); render();
+        return '<h3 class="' + (r.win ? 'good' : 'bad') + '">' + (r.win ? '승리했습니다' : '패배했습니다') + ' <span class="small faint">· ' + esc(r.rival) + '</span></h3>' +
+          '<p style="font-style:italic;color:var(--ink2);margin:6px 0 8px">“' + esc(r.win ? r.lose : r.hello) + '”</p>' +
           (r.win ? '<p class="small">별조각 +' + r.reward.shard + (r.reward.first ? ' (첫 승리 보너스)' : '') + ', ' + MONEY(r.reward.gold, '+') + '</p>' : '<p class="small muted">상대 체력이 ' + Math.round(r.mHp * 100) + '% 남았습니다. 1시간 뒤 다시 도전할 수 있습니다.</p>') +
-          '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>');
+          '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>';
       });
     });
   };
@@ -5943,7 +5945,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102325;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102326;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
