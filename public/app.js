@@ -84,7 +84,7 @@
   function icon(k) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IC[k] + '</svg>'; }
   var VIEWS = [
     { id: 'home', name: '아카데미 광장' }, { id: 'lecture', name: '강의실' }, { id: 'explore', name: '원정' }, { id: 'tower', name: '별의 탑' }, { id: 'ctower', name: '무한의 탑' }, { id: 'exam', name: '시험·결투' },
-    { id: 'world', name: '월드 보스' }, { id: 'party', name: '파티' }, { id: 'guild', name: '동아리' }, { id: 'friends', name: '친구' }, { id: 'board', name: '게시판' }, { id: 'idea', name: '건의함' }, { id: 'auction', name: '떠돌이 상인' }, { id: 'market', name: '거래소' }, { id: 'gear', name: '장비·능력' }, { id: 'alch', name: '연금 공방', grade: 2 }, { id: 'fam', name: '환수 사역장', fam: true }, { id: 'lib', name: '연구' },
+    { id: 'world', name: '월드 보스' }, { id: 'party', name: '파티' }, { id: 'guild', name: '동아리' }, { id: 'friends', name: '친구' }, { id: 'board', name: '게시판' }, { id: 'rp', name: 'RP 게시판' }, { id: 'idea', name: '건의함' }, { id: 'auction', name: '떠돌이 상인' }, { id: 'market', name: '거래소' }, { id: 'gear', name: '장비·능력' }, { id: 'alch', name: '연금 공방', grade: 2 }, { id: 'fam', name: '환수 사역장', fam: true }, { id: 'lib', name: '연구' },
     { id: 'shop', name: '매점' }, { id: 'lore', name: '세계관' }, { id: 'rec', name: '기록실' }, { id: 'rank', name: '랭킹' }, { id: 'hcup', name: '기숙사' }
   ];
   function viewOpen(v) { return v.fam ? R.famOpen(S.P) : !v.grade || S.P.grade >= v.grade; }   // 환수 사역장은 사역마가 열리면(레벨)
@@ -94,11 +94,11 @@
     { id: 'study', name: '수업·연구', short: '수업', icon: 'lecture', tabs: ['lecture', 'lib', 'exam'] },
     { id: 'adv', name: '원정·전투', short: '원정', icon: 'explore', tabs: ['explore', 'tower', 'ctower', 'world'] },
     { id: 'craft', name: '장비·공방', short: '장비', icon: 'gear', tabs: ['gear', 'alch', 'fam'] },
-    { id: 'social', name: '교류', short: '교류', icon: 'party', tabs: ['party', 'guild', 'friends', 'board'] },
+    { id: 'social', name: '교류', short: '교류', icon: 'party', tabs: ['party', 'guild', 'friends', 'board', 'rp'] },
     { id: 'store', name: '상점', short: '상점', icon: 'shop', tabs: ['market', 'auction', 'shop'] },
     { id: 'book', name: '기록·랭킹', short: '기록', icon: 'lore', tabs: ['lore', 'rec', 'rank', 'hcup'] }
   ];
-  var TAB_NAMES = { auction: '떠돌이 상인', home: '광장', lecture: '강의실', lib: '연구', explore: '원정', tower: '별의 탑', ctower: '무한의 탑', exam: '시험 · 결투제', world: '월드 보스', rank: '랭킹', hcup: '기숙사', gear: '장비 · 능력치', alch: '연금 공방', fam: '환수 사역장', party: '파티', guild: '동아리', friends: '친구', board: '게시판', market: '거래소', shop: '매점', lore: '세계관', rec: '업적 · 도감' };
+  var TAB_NAMES = { auction: '떠돌이 상인', home: '광장', lecture: '강의실', lib: '연구', explore: '원정', tower: '별의 탑', ctower: '무한의 탑', exam: '시험 · 결투제', world: '월드 보스', rank: '랭킹', hcup: '기숙사', gear: '장비 · 능력치', alch: '연금 공방', fam: '환수 사역장', party: '파티', guild: '동아리', friends: '친구', board: '게시판', rp: 'RP 게시판', market: '거래소', shop: '매점', lore: '세계관', rec: '업적 · 도감' };
   S.gtab = {};
   var IDEA_GROUP = { id: 'idea', name: '건의함', tabs: ['idea'] };   // 건의함: 안내도 밖(상단 아이콘)에서 연다
   function groupOf(v) { return GROUPS.find(function (g) { return g.tabs.indexOf(v) >= 0; }) || (v === 'idea' ? IDEA_GROUP : GROUPS[0]); }
@@ -5062,15 +5062,15 @@
      말머리(질문·모집·거래·RP·잡담·건의)와 「관리자만 보기」(문의: 쓴 사람과 운영진만). 목록 → 글 → 댓글, 글쓰기는 같은 화면 안에서. */
   var BTAG = {}; D.BOARD_TAGS.forEach(function (t) { BTAG[t.id] = t; });
   // 게시판과 건의함은 같은 글 저장소를 쓰고 화면만 나눈다 (건의 말머리 글 = 건의함). 화면마다 목록 상태를 따로 둔다
-  function bdNew() { return { tag: '', st: '', q: '', qt: 'all', page: 1, data: null, at: 0, post: null, mode: 'list', draft: null, com: '' }; }
+  function bdNew() { return { tag: '', st: '', sort: '', q: '', qt: 'all', page: 1, data: null, at: 0, post: null, mode: 'list', draft: null, com: '' }; }
   S.bd = bdNew(); S.bdSpace = 'board'; S.bdStore = {};
   function bdUse(sp) { if (S.bdSpace === sp) return; S.bdStore[S.bdSpace] = S.bd; S.bd = S.bdStore[sp] || bdNew(); S.bdSpace = sp; }
-  function bdView() { return S.view === 'board' || S.view === 'idea'; }
+  function bdView() { return S.view === 'board' || S.view === 'idea' || S.view === 'rp'; }
   function bdTag(id) { var t = BTAG[id]; return t ? '<span class="btag" style="--tc:' + t.c + '">' + t.name + '</span>' : ''; }
   function bdWhen(t) { var d = Date.now() / 1000 - t; return d < 86400 ? ago(t) : new Date(t * 1000).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' }); }
   function loadBoard() {
     var b = S.bd; b.at = Date.now(); if (!API.board) return;
-    API.board({ tag: b.tag, q: b.q, qt: b.q ? b.qt : '', page: b.page, hd: bdHideDone() ? 1 : '', sp: S.bdSpace === 'idea' ? 'idea' : '', st: S.bdSpace === 'idea' ? b.st || '' : '' }).then(function (j) { if (j.error) { b.err = j.error; } else { b.err = ''; b.data = j; } if (bdView() && !S.modal && b.mode === 'list') render(); });
+    API.board({ tag: b.tag, q: b.q, qt: b.q ? b.qt : '', page: b.page, hd: bdHideDone() ? 1 : '', sp: S.bdSpace === 'board' ? '' : S.bdSpace, st: S.bdSpace === 'idea' ? b.st || '' : '', sort: b.sort || '' }).then(function (j) { if (j.error) { b.err = j.error; } else { b.err = ''; b.data = j; } if (bdView() && !S.modal && b.mode === 'list') render(); });
   }
   // 건의 처리 상태 (학생회장이 붙인다) · 해결 완료 · 반영 안 함 숨기기(이 기기에 기억)
   var BD_ST = { review: '검토 중', wip: '확인 중', done: '해결 완료', no: '반영 안 함', norepro: '재현 안 됨' };
@@ -5078,21 +5078,26 @@
   function bdHideDone() { try { return localStorage.getItem('arc_bdhd') === '1'; } catch (e) { return !!S.bdHd; } }
   ACT.bdhd = function () { var v = !bdHideDone(); S.bdHd = v; try { localStorage.setItem('arc_bdhd', v ? '1' : '0'); } catch (e) { } S.bd.page = 1; loadBoard(); };
   ACT.bdst = function (id, st) { API.boardOp({ op: 'status', id: +id, st: st || '' }).then(function (j) { if (j.error) { toast('게시판', j.error); return; } if (j.post) S.bd.post = j.post; S.bd.data = null; render(); toast(st ? '「' + BD_ST[st] + '」 표시를 붙였습니다' : '상태 표시를 뗐습니다', '', 1600); }); };
-  function openPost(id) { API.board({ id: id }).then(function (j) { if (j.error) { toast('게시판', j.error); return; } var want = j.post.tag === 'idea' ? 'idea' : 'board'; bdUse(want); var b = S.bd; if (S.view !== want) ACT.nav(want); b.post = j.post; b.mode = 'post'; b.com = ''; if (bdView()) { render(); window.scrollTo(0, 0); } }); }
+  function openPost(id) { API.board({ id: id }).then(function (j) { if (j.error) { toast('게시판', j.error); return; } var want = j.post.tag === 'idea' || j.post.tag === 'rp' ? j.post.tag : 'board'; bdUse(want); var b = S.bd; if (S.view !== want) ACT.nav(want); b.post = j.post; b.mode = 'post'; b.com = ''; if (bdView()) { render(); window.scrollTo(0, 0); } }); }
   V.board = function () { bdUse('board'); return boardView(false); };
   V.idea = function () { bdUse('idea'); return boardView(true); };
+  V.rp = function () { bdUse('rp'); return rpBoardView(); };
+  var BD_OWN = { idea: 1, rp: 1 };   // 따로 화면이 있는 말머리 (건의함 · RP 게시판): 게시판 말머리 목록에서 뺀다
+  // 정렬: 새 글 순 · 새 댓글 순 (화면마다 따로)
+  function bdSortSel() { return '<select class="bdsort" aria-label="정렬" style="width:auto;margin-right:6px">' + [['', S.bdSpace === 'rp' ? '새 메모 순' : '새 글 순'], ['act', '새 댓글 순']].map(function (o) { return '<option value="' + o[0] + '"' + ((S.bd.sort || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>'; }
+  ACT.bdsort = function (v) { S.bd.sort = v || ''; S.bd.page = 1; S.bd.data = null; render(); loadBoard(); };
   var IDEA_ST = [['', '전체'], ['review', '검토 중'], ['wip', '확인 중'], ['done', '해결 완료'], ['no', '반영 안 함'], ['norepro', '재현 안 됨']];
   function boardView(idea) {
     var b = S.bd, d = b.data;
-    var h = idea ? pageHead('학생회 건의함', '건의함', '불편한 점 · 바라는 점 · 버그 제보') : pageHead('묻고 · 모이고 · 나누는 곳', '게시판', '질문 · 정보 · 토론 · 모집 · 거래 · RP · 잡담 · 문의 <span class="tiny faint">· 건의는 상단 건의함에서</span>');
+    var h = idea ? pageHead('학생회 건의함', '건의함', '불편한 점 · 바라는 점 · 버그 제보') : pageHead('묻고 · 모이고 · 나누는 곳', '게시판', '질문 · 정보 · 토론 · 모집 · 거래 · 잡담 · 문의 <span class="tiny faint">· 역극은 RP 게시판, 건의는 상단 건의함에서</span>');
     if (b.mode === 'write') return h + bdWrite();
     if (b.mode === 'post' && b.post) return h + bdPost(b.post);
     if (!d || Date.now() - b.at > 30000) { if (Date.now() - b.at > 1500) loadBoard(); }
-    var op = d && d.op, filters = idea ? [['', '전체'], ['mine', '내 건의']] : [['', '전체']].concat(D.BOARD_TAGS.filter(function (t) { return t.id !== 'idea'; }).map(function (t) { return [t.id, t.name]; })).concat([['mine', '내 글']]);
+    var op = d && d.op, filters = idea ? [['', '전체'], ['mine', '내 건의']] : [['', '전체']].concat(D.BOARD_TAGS.filter(function (t) { return !BD_OWN[t.id]; }).map(function (t) { return [t.id, t.name]; })).concat([['mine', '내 글'], ['cmt', '내 댓글']]);
     if (op) filters.push(['priv', '관리자만 보기' + (d.privN ? ' ' + d.privN : '')]);
-    h += '<div class="card bdtop"><div class="row"><div class="filters">' + filters.map(function (f) { return '<button class="btn sm ghost' + (b.tag === f[0] ? ' on' : '') + (f[0] === 'priv' ? ' bdpriv' : '') + '" data-act="bdtag" data-a="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '</div><span class="spacer"></span><label class="tog tiny" style="margin-right:6px"><input type="checkbox" data-act="bdhd"' + (bdHideDone() ? ' checked' : '') + '> 해결 완료 · 반영 안 함 숨기기</label><button class="btn sm primary" data-act="bdwrite">글쓰기</button></div>' +
+    h += '<div class="card bdtop"><div class="row"><div class="filters">' + filters.map(function (f) { return '<button class="btn sm ghost' + (b.tag === f[0] ? ' on' : '') + (f[0] === 'priv' ? ' bdpriv' : '') + '" data-act="bdtag" data-a="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '</div><span class="spacer"></span>' + (idea ? '' : bdSortSel()) + '<label class="tog tiny" style="margin-right:6px"><input type="checkbox" data-act="bdhd"' + (bdHideDone() ? ' checked' : '') + '> 해결 완료 · 반영 안 함 숨기기</label><button class="btn sm primary" data-act="bdwrite">글쓰기</button></div>' +
       '<div class="row bdsearch"><select id="bd-qt" aria-label="검색 범위" style="width:auto">' + [['all', '제목+내용'], ['title', '제목'], ['author', '작성자']].map(function (o) { return '<option value="' + o[0] + '"' + (b.qt === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select><input id="bd-q" maxlength="30" placeholder="검색어" value="' + esc(b.q) + '"><button class="btn sm" data-act="bdsearch">검색</button>' + (b.q ? '<button class="btn sm ghost" data-act="bdclear">검색 지우기</button>' : '') + '</div>' +
-      (b.tag === 'mine' ? '<p class="tiny faint" style="margin-top:6px">내가 작성한 글입니다. 「관리자만 보기」로 남긴 문의와 운영진 답변도 여기서 봅니다.</p>' : b.tag === 'priv' ? '<p class="tiny gold" style="margin-top:6px">운영진에게만 보이는 문의·건의입니다. 일반 목록에는 나오지 않습니다.</p>' : '') + '</div>';
+      (b.tag === 'cmt' ? '<p class="tiny faint" style="margin-top:6px">내가 댓글 · 답글을 단 글입니다.</p>' : b.tag === 'mine' ? '<p class="tiny faint" style="margin-top:6px">내가 작성한 글입니다. 「관리자만 보기」로 남긴 문의와 운영진 답변도 여기서 봅니다.</p>' : b.tag === 'priv' ? '<p class="tiny gold" style="margin-top:6px">운영진에게만 보이는 문의·건의입니다. 일반 목록에는 나오지 않습니다.</p>' : '') + '</div>';
     if (idea) h += '<div class="filters bdstf" style="margin:-4px 0 10px">' + IDEA_ST.map(function (x) { return '<button class="btn sm ghost' + ((b.st || '') === x[0] ? ' on' : '') + '" data-act="bdstf" data-a="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div>';   // 처리 상태로 보기
     if (b.err) h += '<p class="small bad">' + esc(b.err) + '</p>';
     if (!d) return h + '<div class="empty">불러오는 중…</div>';
@@ -5108,6 +5113,82 @@
     }
     setTimeout(function () { var q = $('#bd-q'); if (q && !q.__k) { q.__k = 1; q.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); ACT.bdsearch(); } }); } }, 0);
     return h;
+  };
+  /* ───────── 교류 › RP 게시판 ─────────
+     RP 말머리 글을 메모 형식으로: 제목 없이 본문(500자)만 남기고, 목록에서 바로 댓글로 이어 쓴다. 최근 댓글 3개만 보이고 「이전 댓글 더 보기」로 펼친다 */
+  function rpBoardView() {
+    var b = S.bd, d = b.data, op = d && d.op;
+    var h = pageHead('짧게 남기고 이어 쓰는 역극', 'RP 게시판', '메모 500자 · 댓글로 이어 쓰기 · 대사 *행동*');
+    if (b.mode === 'write') return h + bdWrite();   // 예전 RP 글(제목 있는 긴 글) 수정
+    if (b.mode === 'post' && b.post) return h + bdPost(b.post);
+    if (!d || Date.now() - b.at > 30000) { if (Date.now() - b.at > 1500) loadBoard(); }
+    var memo = b.memo || '';
+    h += '<div class="card rpnew"><textarea id="rp-new" maxlength="500" rows="3" placeholder="역극 메모 (500자) · 대사 *행동* — 다른 학생이 댓글로 이어 씁니다">' + esc(memo) + '</textarea>' +
+      '<div class="row" style="margin-top:6px"><span class="tiny faint">채팅처럼 <i class="act">*별표 사이*</i>는 행동 지문으로 보입니다.</span><span class="spacer"></span><span class="tiny faint num" id="rp-n">' + memo.length + ' / 500</span><button class="btn sm primary" data-act="rpnew">남기기</button></div></div>';
+    h += '<div class="card bdtop"><div class="row"><div class="filters">' + [['', '전체'], ['mine', '내 메모'], ['cmt', '내 댓글']].map(function (f) { return '<button class="btn sm ghost' + (b.tag === f[0] ? ' on' : '') + '" data-act="bdtag" data-a="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '</div><span class="spacer"></span>' + bdSortSel() + '</div>' +
+      '<div class="row bdsearch"><select id="bd-qt" aria-label="검색 범위" style="width:auto">' + [['all', '내용'], ['author', '작성자']].map(function (o) { return '<option value="' + o[0] + '"' + (b.qt === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select><input id="bd-q" maxlength="30" placeholder="검색어" value="' + esc(b.q) + '"><button class="btn sm" data-act="bdsearch">검색</button>' + (b.q ? '<button class="btn sm ghost" data-act="bdclear">검색 지우기</button>' : '') + '</div>' +
+      (b.tag === 'cmt' ? '<p class="tiny faint" style="margin-top:6px">내가 댓글을 단 메모입니다.</p>' : '') + '</div>';
+    if (b.err) h += '<p class="small bad">' + esc(b.err) + '</p>';
+    setTimeout(rpKeys, 0);
+    if (!d) return h + '<div class="empty">불러오는 중…</div>';
+    if (!d.list.length) return h + '<div class="empty">' + (b.q ? '찾는 메모가 없습니다.' : b.tag ? '아직 해당하는 메모가 없습니다.' : '아직 메모가 없습니다. 첫 역극을 남길 차례.') + '</div>';
+    h += d.list.map(function (m) { return rpMemo(m, op); }).join('');
+    if (d.pages > 1) h += '<div class="row bdpages">' + (d.page > 1 ? '<button class="btn sm ghost" data-act="bdpage" data-a="' + (d.page - 1) + '">이전</button>' : '') + '<span class="tiny faint num">' + d.page + ' / ' + d.pages + '</span>' + (d.page < d.pages ? '<button class="btn sm ghost" data-act="bdpage" data-a="' + (d.page + 1) + '">다음</button>' : '') + '<span class="tiny faint">' + d.total + '개</span></div>';
+    return h;
+  }
+  function rpWho(aid, name, badge) { return '<button class="cn" data-act="prof" data-a="' + esc(aid) + '">' + esc(name) + '</button>' + (badge && R.OP_TITLES[badge] ? ' <span class="ttl' + R.opTitleCls(badge) + '">' + esc(badge) + '</span>' : ''); }
+  function rpMemo(m, op) {
+    var b = S.bd, full = (b.full || {})[m.id], coms = full ? full.comments : m.coms || [], hidden = full ? 0 : Math.max(0, m.ncom - coms.length), ed = b.medit && b.medit.id === m.id, armed = S.confirm['bd' + m.id] > Date.now();
+    var titled = m.title && m.body.indexOf(m.title.replace(/…$/, '')) !== 0;   // 예전 RP 글: 제목이 따로 있으면 위에 보인다
+    var h = '<article class="card rpmemo"><div class="row" style="gap:6px"><b class="small">' + rpWho(m.aid, m.author, m.aop) + '</b><span class="tiny faint">' + bdWhen(m.created) + (m.updated > m.created + 60 ? ' · 고침' : '') + '</span><span class="spacer"></span>' +
+      '<button class="linkbtn tiny" data-act="bdopen" data-a="' + m.id + '">글로 보기</button>' +
+      (m.mine && m.body.length <= 500 && !ed ? '<button class="linkbtn tiny" data-act="rpedit" data-a="' + m.id + '">수정</button>' : '') +
+      (m.canDel ? '<button class="linkbad tiny" data-act="bddel" data-a="' + m.id + '">' + (armed ? '한 번 더 누르면 지웁니다' : '지우기') + '</button>' : '') + '</div>';
+    if (ed) h += '<div class="rpedit"><textarea id="rp-ed" maxlength="500" rows="3">' + esc(b.medit.body) + '</textarea><div class="row" style="gap:6px;margin-top:6px"><span class="spacer"></span><button class="btn sm ghost" data-act="rpedit" data-a="">취소</button><button class="btn sm primary" data-act="rpsave" data-a="' + m.id + '">저장</button></div></div>';
+    else h += (titled ? '<div class="rptitle">' + esc(m.title) + '</div>' : '') + '<div class="rpbody">' + rpText(m.body) + '</div>';
+    h += '<div class="rpcoms">' + (hidden ? '<button class="linkbtn tiny" data-act="rpmore" data-a="' + m.id + '">이전 댓글 ' + hidden + '개 더 보기 ▾</button>' : full && full.comments.length > 3 ? '<button class="linkbtn tiny" data-act="rpmore" data-a="' + m.id + '">이전 댓글 접기 ▴</button>' : '') +
+      coms.map(function (c) {
+        var ca = S.confirm['bdc' + c.id] > Date.now();
+        return '<div class="rpcom' + (c.op ? ' op' : '') + '"><span class="small rpcw">' + (c.aid === 'staff' ? '운영진' + opBadge() : rpWho(c.aid, c.author, c.badge)) + '</span><span class="small rpct">' + rpText(c.body) + '</span><span class="tiny faint rpcm">' + bdWhen(c.created) +
+          (c.mine || op ? ' <button class="linkbad tiny" data-act="rpcdel" data-a="' + c.id + '" data-b="' + m.id + '">' + (ca ? '한 번 더 누르면 지웁니다' : '지우기') + '</button>' : '') + '</span></div>';
+      }).join('') +
+      (b.mo === m.id ? '<div class="bdcform rpcform"><textarea id="rp-com" maxlength="500" rows="2" placeholder="이어 쓰기 (500자) · 대사 *행동*">' + esc(b.mcx || '') + '</textarea><div class="stack" style="gap:4px"><button class="btn sm primary" data-act="rpcom" data-a="' + m.id + '">등록</button><button class="btn sm ghost" data-act="rpco" data-a="">취소</button></div></div>'
+        : '<button class="btn sm ghost rpgo" data-act="rpco" data-a="' + m.id + '">이어 쓰기' + (m.ncom ? ' <span class="faint num">' + m.ncom + '</span>' : '') + '</button>') + '</div></article>';
+    return h;
+  }
+  function rpKeys() {
+    var q = $('#bd-q'); if (q && !q.__k) { q.__k = 1; q.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); ACT.bdsearch(); } }); }
+    var t = $('#rp-new'); if (t && !t.__k) { t.__k = 1; t.addEventListener('input', function () { S.bd.memo = t.value; var n = $('#rp-n'); if (n) n.textContent = t.value.length + ' / 500'; }); }
+    var c = $('#rp-com'); if (c && !c.__k) { c.__k = 1; c.addEventListener('input', function () { S.bd.mcx = c.value; }); }
+    var e = $('#rp-ed'); if (e && !e.__k) { e.__k = 1; e.addEventListener('input', function () { if (S.bd.medit) S.bd.medit.body = e.value; }); }
+  }
+  // 메모 하나를 서버가 돌려준 글로 맞춘다 (댓글 수 · 최근 댓글 3개 · 펼친 댓글)
+  function rpPatch(post) {
+    var b = S.bd, l = b.data && b.data.list || [];
+    l.forEach(function (m) { if (m.id === post.id) { m.body = post.body; m.title = post.title; m.updated = post.updated; m.ncom = post.comments.length; m.coms = post.comments.slice(-3); } });
+    if (b.full && b.full[post.id]) b.full[post.id] = post;
+  }
+  ACT.rpnew = function () {
+    var b = S.bd, t = $('#rp-new'), txt = t ? t.value.trim() : ''; if (!txt) { toast('RP 게시판', '내용 입력 필요'); return; } if (S.busy) return; S.busy = true;
+    API.boardOp({ op: 'write', memo: 1, body: txt }).then(function (j) { S.busy = false; if (j.error) { toast('RP 게시판', j.error); return; } b.memo = ''; b.data = null; b.page = 1; toast('메모가 등록되었습니다', '', 1600); render(); loadBoard(); }, function () { S.busy = false; });
+  };
+  ACT.rpco = function (id) { var b = S.bd; b.mo = id ? +id : null; b.mcx = ''; render(); setTimeout(function () { var t = $('#rp-com'); if (t) t.focus(); }, 0); };
+  ACT.rpmore = function (id) {
+    var b = S.bd, f = b.full || (b.full = {}); id = +id; if (f[id]) { delete f[id]; render(); return; }
+    API.board({ id: id }).then(function (j) { if (j.error) { toast('RP 게시판', j.error); return; } f[id] = j.post; rpPatch(j.post); render(); });
+  };
+  ACT.rpcom = function (id) {
+    var b = S.bd, t = $('#rp-com'), txt = t ? t.value.trim() : ''; if (!txt) return; if (S.busy) return; S.busy = true;
+    API.boardOp({ op: 'comment', id: +id, text: txt }).then(function (j) { S.busy = false; if (j.error) { toast('댓글', j.error); return; } b.mcx = ''; b.mo = null; if (j.post) rpPatch(j.post); render(); }, function () { S.busy = false; });
+  };
+  ACT.rpcdel = function (cid, id) {
+    var k = 'bdc' + cid; if (!(S.confirm[k] > Date.now())) { S.confirm[k] = Date.now() + 4000; render(); setTimeout(render, 4100); return; }
+    S.confirm[k] = 0; API.boardOp({ op: 'cdel', cid: +cid, id: +id }).then(function (j) { if (j.error) { toast('댓글', j.error); return; } if (j.post) rpPatch(j.post); render(); });
+  };
+  ACT.rpedit = function (id) { var b = S.bd, m = id && (b.data && b.data.list || []).filter(function (x) { return x.id === +id; })[0]; b.medit = m ? { id: m.id, body: m.body } : null; render(); };
+  ACT.rpsave = function (id) {
+    var b = S.bd; if (!b.medit || S.busy) return; var t = $('#rp-ed'), txt = (t ? t.value : b.medit.body).trim(); if (!txt) { toast('RP 게시판', '내용 입력 필요'); return; } S.busy = true;
+    API.boardOp({ op: 'edit', id: +id, memo: 1, body: txt }).then(function (j) { S.busy = false; if (j.error) { toast('RP 게시판', j.error); return; } b.medit = null; if (j.post) rpPatch(j.post); toast('수정되었습니다', '', 1500); render(); }, function () { S.busy = false; });
   };
   function bdPost(p) {
     var b = S.bd, armed = S.confirm['bd' + p.id] > Date.now();
@@ -5138,7 +5219,7 @@
   function bdWrite() {
     var b = S.bd, dr = b.draft || { tag: S.bdSpace === 'idea' ? 'idea' : 'q', title: '', body: '', priv: false };
     var h = '<div class="card bdwrite"><div class="row between"><h3>' + (dr.id ? '글 수정' : '글쓰기') + '</h3><button class="btn sm ghost" data-act="bdcancel">취소</button></div>' +
-      (S.bdSpace === 'idea' ? '<p class="tiny faint" style="margin-top:6px">건의 · 버그 제보는 운영진이 확인한 뒤 처리 상태(검토 중 · 확인 중 · 해결 완료 등)를 붙입니다.</p>' : '<div class="filters" role="radiogroup" aria-label="말머리" style="margin-top:8px">' + D.BOARD_TAGS.filter(function (t) { return t.id !== 'idea'; }).map(function (t) { return '<button class="btn sm ghost' + (dr.tag === t.id ? ' on' : '') + '" role="radio" aria-checked="' + (dr.tag === t.id) + '" data-act="bdwtag" data-a="' + t.id + '">' + t.name + '</button>'; }).join('') + '</div>') +
+      (S.bdSpace === 'idea' ? '<p class="tiny faint" style="margin-top:6px">건의 · 버그 제보는 운영진이 확인한 뒤 처리 상태(검토 중 · 확인 중 · 해결 완료 등)를 붙입니다.</p>' : '<div class="filters" role="radiogroup" aria-label="말머리" style="margin-top:8px">' + D.BOARD_TAGS.filter(function (t) { return !BD_OWN[t.id] || dr.tag === t.id; }).map(function (t) { return '<button class="btn sm ghost' + (dr.tag === t.id ? ' on' : '') + '" role="radio" aria-checked="' + (dr.tag === t.id) + '" data-act="bdwtag" data-a="' + t.id + '">' + t.name + '</button>'; }).join('') + '</div>') +
       '<div class="field" style="margin-top:10px"><label class="small muted" for="bd-title">제목 <span class="faint">(40자)</span></label><input id="bd-title" maxlength="40" value="' + esc(dr.title) + '"></div>' +
       '<div class="field" style="margin-top:10px"><label class="small muted" for="bd-body">내용 <span class="faint" id="bd-n">' + dr.body.length + ' / 3000</span></label><textarea id="bd-body" maxlength="3000" rows="10" style="font-family:var(--f-body);font-size:14px"' + (dr.tag === 'rp' ? ' placeholder="대사 *행동* — 채팅처럼 별표 사이는 행동 지문"' : '') + '>' + esc(dr.body) + '</textarea>' + (dr.tag === 'rp' ? '<span class="tiny faint">RP 글은 채팅처럼 <i class="act">*별표 사이*</i>가 행동 지문으로 보입니다.</span>' : '') + '</div>' +
       '<label class="tog" style="margin-top:10px"><input type="checkbox" id="bd-priv"' + (dr.priv ? ' checked' : '') + '> 관리자만 보기 <span class="tiny faint">문의·건의·신고처럼 운영진에게만 보내는 글. 목록에 나오지 않고, 나와 운영진만 볼 수 있습니다.</span></label>' +
@@ -5156,7 +5237,7 @@
   ACT.bdpage = function (n) { S.bd.page = +n; S.bd.data = null; render(); loadBoard(); window.scrollTo(0, 0); };
   ACT.bdopen = function (id) { openPost(+id); };
   ACT.bdback = function () { S.bd.mode = 'list'; S.bd.post = null; render(); loadBoard(); };
-  ACT.bdwrite = function () { var b = S.bd; if (!b.draft || b.draft.id) b.draft = { tag: S.bdSpace === 'idea' ? 'idea' : b.tag && BTAG[b.tag] && b.tag !== 'idea' ? b.tag : 'q', title: '', body: '', priv: b.tag === 'priv' }; b.mode = 'write'; render(); window.scrollTo(0, 0); };
+  ACT.bdwrite = function () { var b = S.bd; if (!b.draft || b.draft.id) b.draft = { tag: S.bdSpace === 'idea' ? 'idea' : b.tag && BTAG[b.tag] && !BD_OWN[b.tag] ? b.tag : 'q', title: '', body: '', priv: b.tag === 'priv' }; b.mode = 'write'; render(); window.scrollTo(0, 0); };
   ACT.bdedit = function () { var p = S.bd.post; if (!p) return; S.bd.draft = { id: p.id, tag: p.tag, title: p.title, body: p.body, priv: p.priv }; S.bd.mode = 'write'; render(); };
   ACT.bdcancel = function () { var b = S.bd, wasEdit = b.draft && b.draft.id; b.draft = null; b.mode = wasEdit && b.post ? 'post' : 'list'; render(); };
   ACT.bdwtag = function (t) { bdKeep(); S.bd.draft.tag = t; render(); };
@@ -5542,7 +5623,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102283;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102284;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
@@ -5686,6 +5767,7 @@
     else if (el.dataset.act === 'exampick') act('examPick', { s: el.value }).then(function (r) { if (r) { toast('선택 과목', el.value ? R.SUBJ[el.value].name + ' 과목으로 응시합니다' : '가장 레벨이 높은 과목이 자동으로 반영됩니다'); render(); } });
     else if (el.dataset.act === 'tfpick') ACT.tfpick(el.dataset.a, null, el);
     else if (el.dataset.act === 'famzone') act('famZone', { id: el.dataset.a, z: el.value }).then(function (r) { if (r) { toast('파견 지역', (el.value ? R.dispZoneOf(S.P, el.dataset.a, el.value).name : '갈 수 있는 가장 높은 지역') + '으로 정했습니다. 다음 파견부터 적용됩니다'); render(); } });
+    else if (el.classList.contains('bdsort')) ACT.bdsort(el.value);
     else if (el.dataset.act === 'autosell') ACT.autosell();
     else if (el.dataset.act === 'automode') ACT.automode();
     else if (el.id === 'pe-file' && el.files && el.files[0]) onAvatarFile(el.files[0]);
