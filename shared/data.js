@@ -1669,6 +1669,70 @@ var DATA = (function () {
     { q: '마지막으로, 마음이 끌리는 문장은?', a: [['꺼지지 않는 질문이 길을 밝힌다', 'lanterna'], ['한 방울씩, 그러나 멈추지 않고', 'clepsydra'], ['상처 없는 왕관은 없다', 'corona'], ['보이는 것의 뒤편을 보라', 'speculum']] }
   ];
 
+  /* ───────── 환수 교감: 유대 · 칸토 섬 환수 용품점 ─────────
+     유대는 능력치에 영향을 주지 않는다 (지문 · 칭호 · 꾸밈만). 문장의 {n} = 사역마 이름, {s} = 간식 · 장난감 이름, 뒤의 조사는 받침에 맞춰 바뀐다 */
+  D.BOND_STAGES = [
+    { min: 0, name: '낯섦' }, { min: 15, name: '익숙함' }, { min: 35, name: '친근함' }, { min: 60, name: '신뢰' }, { min: 100, name: '단짝' }
+  ];
+  D.BOND = { max: 100, dayCap: 10, petN: 3, petV: 1, snackN: 2, snackLike: 2, playN: 1, playV: 3, playLike: 5, disp: 1, deal: 0.1 };
+  D.FAM_SNACKS = [
+    { id: 'candy', name: '별사탕', em: '🍬', price: 300, v: 2, desc: '별샘 물로 졸인 작은 사탕입니다.' },
+    { id: 'biscuit', name: '이슬 비스킷', em: '🍪', price: 600, v: 3, desc: '아침 이슬을 넣어 구운 바삭한 비스킷입니다.' },
+    { id: 'jelly', name: '구름 젤리', em: '🍮', price: 900, v: 3, desc: '구름섬의 안개를 굳혀 만든 말랑한 젤리입니다.' },
+    { id: 'seed', name: '반딧불 씨앗', em: '🌰', price: 900, v: 3, desc: '어두운 곳에서 은은하게 빛나는 씨앗입니다.' },
+    { id: 'apple', name: '꿀사과 조각', em: '🍎', price: 1200, v: 3, desc: '포르타 마을 쉼표 여관의 꿀사과를 잘게 썬 것입니다.' },
+    { id: 'fish', name: '은빛 말린 생선', em: '🐟', price: 1200, v: 3, desc: '구름바다에서 잡아 말린 생선입니다.' }
+  ];
+  // fest: 그 축제 교환소에서만 얻는 장난감
+  D.FAM_TOYS = [
+    { id: 'yarn', name: '털실 별', em: '🧶', price: 20000, desc: '굴리면 별 모양으로 풀리는 털실 뭉치입니다.' },
+    { id: 'crane', name: '종이학', em: '🕊️', price: 20000, desc: '종이학 우체국에서 접은, 혼자 날갯짓하는 종이학입니다.' },
+    { id: 'feather', name: '깃털 지팡이', em: '🪶', price: 30000, desc: '흔들 때마다 깃털이 반짝이는 놀이용 지팡이입니다.' },
+    { id: 'bubble', name: '물방울 공', em: '🫧', price: 30000, desc: '터지지 않는 물방울로 만든 공입니다.' },
+    { id: 'bell', name: '은방울 딸랑이', em: '🔔', price: 40000, desc: '흔들면 맑은 소리가 나는 은방울입니다.' },
+    { id: 'kite', name: '구름 연', em: '🪁', price: 40000, desc: '바람이 없어도 떠오르는 작은 연입니다.' },
+    { id: 'music', name: '작은 오르골', em: '🎶', price: 50000, desc: '태엽을 감으면 자장가가 흘러나오는 오르골입니다.' },
+    { id: 'mirror', name: '손거울', em: '🪞', price: 50000, desc: '비출 때마다 다른 풍경이 보이는 손거울입니다.' },
+    { id: 'pipe', name: '풀피리', em: '🎵', fest: 'bell', desc: '종탑 음악제 기념 풀피리입니다.' },
+    { id: 'mask', name: '작은 가면', em: '🎭', fest: 'masque', desc: '가면 무도회 기념 가면입니다. 사역마의 얼굴에 꼭 맞습니다.' },
+    { id: 'lantern', name: '반딧불 등롱', em: '🏮', fest: 'starwell', desc: '별샘 축제 기념 등롱입니다. 반딧불 정령이 한 마리 들어 있습니다.' },
+    { id: 'paperlamp', name: '종이 등', em: '🕯️', fest: 'silence', desc: '침묵의 등불제 기념 종이 등입니다.' }
+  ];
+  // 꾸밈: 사역마 카드에만 보이는 장식 (능력치 없음)
+  D.FAM_ACC = [
+    { id: 'ribbon', name: '리본', em: '🎀', price: 8000 },
+    { id: 'collar', name: '방울 목걸이', em: '📿', price: 8000 },
+    { id: 'scarf', name: '작은 목도리', em: '🧣', price: 15000 },
+    { id: 'wreath', name: '꽃 화관', em: '🌸', price: 15000 },
+    { id: 'hat', name: '꼬마 마법사 모자', em: '🎩', price: 25000 },
+    { id: 'pin', name: '별 장식 핀', em: '⭐', price: 25000 }
+  ];
+  // 사역마마다 좋아하는 간식 · 장난감 (처음에는 숨겨 두고, 좋아하는 것을 주거나 신뢰 단계가 되면 공개)
+  D.FAM_LIKES = {
+    inkbat: ['fish', 'bell'], candlelizard: ['apple', 'feather'], mossturtle: ['seed', 'bubble'], moonrabbit: ['jelly', 'music'],
+    crysowl: ['biscuit', 'mirror'], zapweasel: ['candy', 'yarn'], ashfox: ['fish', 'kite'], dreammoth: ['candy', 'music'],
+    clockcat: ['fish', 'yarn'], shadowcrow: ['biscuit', 'mirror'], starwhale: ['candy', 'bubble'], starwyrm: ['apple', 'kite']
+  };
+  // 유대 단계별 지문 (사역마 카드 · 광장 동행 사역마)
+  D.BOND_LINES = [
+    ['{n은} 거리를 둔 채 꼬리만 한 번 흔듭니다.', '{n이} 손끝 냄새를 조심스럽게 맡아 봅니다.', '{n은} 책상 모서리에 앉아 이쪽을 가만히 지켜봅니다.'],
+    ['{n이} 부르는 소리에 고개를 돌립니다.', '{n이} 가방 옆에 자리를 잡고 앉습니다.', '{n은} 쓰다듬는 손을 더 이상 피하지 않습니다.'],
+    ['{n이} 책상 위 깃펜을 물어 와 앞에 내려놓습니다.', '{n이} 펼쳐 둔 수업 노트 위에 올라와 자리를 차지합니다.', '{n은} 발소리만 듣고도 문 앞까지 마중을 나옵니다.'],
+    ['{n이} 어깨 위에 올라앉아 함께 창밖을 바라봅니다.', '{n은} 원정 가방을 챙기는 모습을 보고 먼저 문 앞에 섭니다.', '{n이} 낮게 울며 오늘 하루가 어땠는지 묻는 듯합니다.'],
+    ['{n이} 무릎 위에서 잠이 들었습니다. 오늘 공부는 조금 미루어도 좋겠습니다.', '{n은} 이제 눈빛만으로도 무엇을 원하는지 알아챕니다.', '{n과} 함께라면 기숙사 복도의 밤길도 두렵지 않습니다.']
+  ];
+  D.BOND_REACT = {
+    pet: ['{n이} 눈을 가늘게 뜨고 손바닥에 머리를 기댑니다.', '{n이} 기분 좋은 듯 몸을 둥글게 맙니다.', '{n이} 쓰다듬는 손을 따라 고개를 움직입니다.', '{n은} 잠시 가만히 있다가 작게 하품을 합니다.'],
+    snack: ['{n이} {s을} 받아 천천히 먹습니다.', '{n이} {s을} 물고 구석으로 가서 조용히 먹습니다.', '{n이} {s을} 먹고 만족한 듯 입가를 핥습니다.'],
+    snackLike: ['{n이} {s을} 보자마자 귀를 쫑긋 세웁니다. 아주 좋아하는 간식인 것 같습니다.', '{n이} {s을} 순식간에 먹어 치우고 더 달라는 듯 바라봅니다.'],
+    play: ['{n이} {s을} 쫓아 방 안을 한 바퀴 돕니다.', '{n이} {s을} 앞발로 톡톡 건드려 봅니다.', '{n이} {s} 곁에서 한참을 놀다가 지쳐 엎드립니다.'],
+    playLike: ['{n이} {s을} 보자마자 눈을 반짝입니다. 가장 좋아하는 장난감인 것 같습니다.', '{n이} {s을} 품에 안고 놓아주지 않습니다.']
+  };
+  D.TITLES.push(
+    { id: 'bond1', name: '환수의 단짝', stat: 'bondFull', n: 1, how: '사역마 한 마리와 유대 「단짝」 달성' },
+    { id: 'bond5', name: '환수 사육 명인', stat: 'bondFull', n: 5, how: '사역마 다섯 마리와 유대 「단짝」 달성' }
+  );
+
   return D;
 })();
 if (typeof module !== 'undefined') module.exports = DATA;

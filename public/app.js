@@ -84,7 +84,7 @@
   function icon(k) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IC[k] + '</svg>'; }
   var VIEWS = [
     { id: 'home', name: '아카데미 광장' }, { id: 'lecture', name: '강의실' }, { id: 'explore', name: '원정' }, { id: 'tower', name: '별의 탑' }, { id: 'ctower', name: '무한의 탑' }, { id: 'exam', name: '시험·결투' },
-    { id: 'world', name: '월드 보스' }, { id: 'party', name: '파티' }, { id: 'guild', name: '동아리' }, { id: 'friends', name: '친구' }, { id: 'board', name: '게시판' }, { id: 'idea', name: '건의함' }, { id: 'auction', name: '떠돌이 상인' }, { id: 'market', name: '거래소' }, { id: 'gear', name: '장비·능력' }, { id: 'alch', name: '연금 공방', alch: true }, { id: 'fam', name: '환수 사역장', fam: true }, { id: 'lib', name: '연구' },
+    { id: 'world', name: '월드 보스' }, { id: 'party', name: '파티' }, { id: 'guild', name: '동아리' }, { id: 'friends', name: '친구' }, { id: 'board', name: '게시판' }, { id: 'idea', name: '건의함' }, { id: 'auction', name: '떠돌이 상인' }, { id: 'market', name: '거래소' }, { id: 'gear', name: '장비·능력' }, { id: 'alch', name: '연금 공방', alch: true }, { id: 'fam', name: '환수 사역장', fam: true }, { id: 'famshop', name: '환수 용품점', fam: true }, { id: 'lib', name: '연구' },
     { id: 'shop', name: '매점' }, { id: 'lore', name: '세계관' }, { id: 'rec', name: '기록실' }, { id: 'rank', name: '랭킹' }, { id: 'hcup', name: '기숙사' }
   ];
   function viewOpen(v) { return v.fam ? R.famOpen(S.P) : v.alch ? R.alchOpen(S.P) : !v.grade || S.P.grade >= v.grade; }   // 환수 사역장은 사역마가 열리면(레벨), 연금 공방은 연금화학 R.ALCH_OPEN레벨부터
@@ -93,12 +93,12 @@
     { id: 'home', name: '아카데미 광장', short: '광장', icon: 'home', tabs: ['home'] },
     { id: 'study', name: '수업·연구', short: '수업', icon: 'lecture', tabs: ['lecture', 'lib', 'exam'] },
     { id: 'adv', name: '원정·전투', short: '원정', icon: 'explore', tabs: ['explore', 'tower', 'ctower', 'world'] },
-    { id: 'craft', name: '장비·공방', short: '장비', icon: 'gear', tabs: ['gear', 'alch', 'fam'] },
+    { id: 'craft', name: '장비·공방', short: '장비', icon: 'gear', tabs: ['gear', 'alch', 'fam', 'famshop'] },
     { id: 'social', name: '교류', short: '교류', icon: 'party', tabs: ['party', 'guild', 'friends', 'board'] },
     { id: 'store', name: '상점', short: '상점', icon: 'shop', tabs: ['market', 'auction', 'shop'] },
     { id: 'book', name: '기록·랭킹', short: '기록', icon: 'lore', tabs: ['lore', 'rec', 'rank', 'hcup'] }
   ];
-  var TAB_NAMES = { auction: '떠돌이 상인', home: '광장', lecture: '강의실', lib: '연구', explore: '원정', tower: '별의 탑', ctower: '무한의 탑', exam: '시험 · 결투제', world: '월드 보스', rank: '랭킹', hcup: '기숙사', gear: '장비 · 능력치', alch: '연금 공방', fam: '환수 사역장', party: '파티', guild: '동아리', friends: '친구', board: '게시판', market: '거래소', shop: '매점', lore: '세계관', rec: '업적 · 도감' };
+  var TAB_NAMES = { auction: '떠돌이 상인', home: '광장', lecture: '강의실', lib: '연구', explore: '원정', tower: '별의 탑', ctower: '무한의 탑', exam: '시험 · 결투제', world: '월드 보스', rank: '랭킹', hcup: '기숙사', gear: '장비 · 능력치', alch: '연금 공방', fam: '환수 사역장', famshop: '환수 용품점', party: '파티', guild: '동아리', friends: '친구', board: '게시판', market: '거래소', shop: '매점', lore: '세계관', rec: '업적 · 도감' };
   S.gtab = {};
   var IDEA_GROUP = { id: 'idea', name: '건의함', tabs: ['idea'] };   // 건의함: 안내도 밖(상단 아이콘)에서 연다
   function groupOf(v) { return GROUPS.find(function (g) { return g.tabs.indexOf(v) >= 0; }) || (v === 'idea' ? IDEA_GROUP : GROUPS[0]); }
@@ -1439,13 +1439,14 @@
   // 사역마 파견은 시간표와 따로 접을 수 있는 칸으로 (사역마가 많으면 길어진다). 접혀 있어도 요약 줄에 마릿수 · 다음 귀환
   function famCard() {
     var P = S.P; if (!R.famOpen(P)) return '';
-    var ids = Object.keys(P.fam.disp), idle = R.famIdle(P).length;
-    if (!ids.length && !idle) return '';
+    var ids = Object.keys(P.fam.disp), idle = R.famIdle(P).length, ac = P.fam.act && P.fam.own[P.fam.act];
+    var bub = ac && R.bondStage(ac.bond) >= 2 ? '<div class="fambub" data-act="fambond" data-a="' + P.fam.act + '" role="button" tabindex="0">' + esc(bondLineToday(P.fam.act)) + '</div>' : '';   // 유대 「친근함」부터 동행 사역마의 오늘 지문
+    if (!ids.length && !idle) return bub ? fold('famdisp', '사역마', bub, true, '', '', R.famLabel(P, P.fam.act)) : '';
     var rows = ids.map(function (id) { return tline('파견', R.FAM[id].name + ' 파견', P.fam.disp[id], 'work:fam'); });
     if (idle) rows.push(tline('파견', '쉬고 있는 사역마 ' + idle + '마리', null, 'work:fam', '파견 보낼 수 있습니다'));
     var next = ids.reduce(function (m, id) { return Math.min(m, P.fam.disp[id].end); }, Infinity);
     var sum = (ids.length ? '파견 ' + ids.length + (isFinite(next) ? ' · 다음 귀환 ' + clock(next) : '') : '') + (idle ? (ids.length ? ' · ' : '') + '대기 ' + idle : '');
-    return fold('famdisp', '사역마 파견', '<div class="timetable" style="margin-top:8px">' + rows.join('') + '</div>', false, '', '', sum);
+    return fold('famdisp', '사역마 파견', bub + '<div class="timetable" style="margin-top:8px">' + rows.join('') + '</div>', false, '', '', sum);
   }
   function goals() {
     var P = S.P, out = [], c = C(), ex = R.examFor(P);
@@ -2343,8 +2344,8 @@
       var o = P.fam.own[f.id], fr = D.FAM_RARITY[f.r];
       if (!o) { h += '<div class="card famcard unk"><div><div class="small">???</div><div class="tiny" style="color:' + fr.color + '">' + fr.name + '</div><div class="tiny faint">' + D.BONUS_NAMES[f.bonus] + '</div></div></div>'; return; }
       var act2 = P.fam.act === f.id, disp = P.fam.disp[f.id], cost = o.lv < 20 ? R.feedCost(P, f.id) : 0;
-      h += '<div class="card famcard' + (act2 ? ' act' : '') + '"><div style="flex:1;min-width:0"><div class="row" style="gap:6px;flex-wrap:wrap"><b>' + esc(o.nm || f.name) + '</b>' + (o.nm ? '<span class="tiny faint">' + f.name + '</span>' : '') + '<span class="num tiny gold">Lv ' + o.lv + '</span><button class="btn ghost sm famnm" data-act="famname" data-a="' + f.id + '">이름 짓기</button></div><div class="tiny" style="color:' + fr.color + '">' + fr.name + '</div>' +
-        '<div class="small">' + D.BONUS_NAMES[f.bonus] + ' +' + pct(R.famBonus(f, o.lv, P)) + '</div>' + famXpBar(f, o, act2, disp) + (disp ? '<div class="tiny gold">파견 중 · ' + R.dispZoneOf(P, f.id, disp.z).name + ' · ' + clock(disp.end) + ' 귀환</div>' : '<div class="tiny faint">' + f.desc + '</div>') +
+      h += '<div class="card famcard' + (act2 ? ' act' : '') + '"><div style="flex:1;min-width:0"><div class="row" style="gap:6px;flex-wrap:wrap"><b>' + (o.acc && R.FACC[o.acc] ? '<span title="' + esc(R.FACC[o.acc].name) + '">' + R.FACC[o.acc].em + '</span> ' : '') + esc(o.nm || f.name) + '</b>' + (o.nm ? '<span class="tiny faint">' + f.name + '</span>' : '') + '<span class="num tiny gold">Lv ' + o.lv + '</span><button class="btn ghost sm famnm" data-act="famname" data-a="' + f.id + '">이름 짓기</button></div><div class="tiny" style="color:' + fr.color + '">' + fr.name + '</div>' +
+        '<div class="small">' + D.BONUS_NAMES[f.bonus] + ' +' + pct(R.famBonus(f, o.lv, P)) + '</div>' + famXpBar(f, o, act2, disp) + bondRow(f.id, o, disp) + (disp ? '<div class="tiny gold">파견 중 · ' + R.dispZoneOf(P, f.id, disp.z).name + ' · ' + clock(disp.end) + ' 귀환</div>' : '<div class="tiny faint">' + f.desc + '</div>') +
         (act2 || (o.lock && !disp) ? '' : (function () { var zs = R.dispZones(P), cur = P.fam.zone && P.fam.zone[f.id], top = zs[zs.length - 1];   // 파견 지역 (사역마마다 저장, 파견 잠금이면 숨김)
           return '<div class="row tiny" style="gap:6px;margin-top:6px"><span class="faint">파견 지역</span><select data-act="famzone" data-a="' + f.id + '" style="width:auto;flex:1;min-width:0"><option value=""' + (cur ? '' : ' selected') + '>자동 · ' + (top ? top.name : '') + '</option>' + zs.map(function (z) { return '<option value="' + z.id + '"' + (cur === z.id ? ' selected' : '') + '>' + z.name + ' · ' + D.MATS[z.mat].name + '</option>'; }).join('') + '</select></div>'; })()) +
         '<div class="row" style="margin-top:6px;gap:6px">' + (o.lv < 20 ? '<button class="btn sm primary" data-act="do" data-a="feed" data-b="' + f.id + '"' + (P.res.gold >= cost ? '' : ' disabled') + '>먹이 <span class="cost">' + fmt(cost) + ' ' + CUR + '</span></button><button class="btn sm" data-act="do" data-a="feed" data-b="' + f.id + ':mana"' + (predMana() >= cost ? '' : ' disabled') + ' title="아르크 대신 같은 양의 마나로 먹이를 줍니다">마나로 <span class="cost">' + fmt(cost) + ' 마나</span></button>' : '<span class="tag br">최대 레벨</span>') +
@@ -2353,6 +2354,71 @@
     });
     return h + '</div>';
   }
+  /* ── 환수 교감: 유대 (능력치 효과 없음) ── */
+  function bondStageName(v) { return D.BOND_STAGES[R.bondStage(v)].name; }
+  // 오늘의 지문: 날짜 · 사역마마다 하나 (유대 단계에 맞춰)
+  function bondLineToday(id) { var o = S.P.fam.own[id], pool = D.BOND_LINES[R.bondStage(o.bond)]; return R.fillLine(pool[R.hash32(R.dayKST(now()) * 13 + id.length * 977 + id.charCodeAt(0)) % pool.length], R.famLabel(S.P, id)); }
+  function bondBar(o) { var v = o.bond || 0, st = R.bondStage(v), nx = D.BOND_STAGES[st + 1]; return '<div class="bar bond" style="height:5px;margin-top:2px"><b style="width:' + Math.min(100, v / D.BOND.max * 100).toFixed(1) + '%"></b></div><div class="tiny faint" style="margin-top:2px">' + (nx ? '다음 단계 「' + nx.name + '」까지 ' + (nx.min - v) : '최고 단계') + '</div>'; }
+  function bondRow(id, o, disp) {
+    var t = R.bondToday(S.P, id, now()), left = Math.max(0, D.BOND.dayCap - t.got);
+    return '<div class="famxp"><div class="row tiny"><span class="faint">유대</span><b class="bondst">' + bondStageName(o.bond) + '</b><span class="spacer"></span><span class="num">' + (o.bond || 0) + ' / ' + D.BOND.max + '</span></div>' + bondBar(o) +
+      (disp ? '' : '<div class="row tiny" style="margin-top:4px;gap:6px"><span class="faint">오늘 ' + (left ? '유대 +' + left + '까지' : '교감 완료') + '</span><span class="spacer"></span><button class="btn sm" data-act="fambond" data-a="' + id + '">교감하기</button></div>') + '</div>';
+  }
+  // 좋아하는 것: 알아낸 것만 (신뢰 단계부터는 모두)
+  function bondLikes(id, o) {
+    var lk = D.FAM_LIKES[id] || [], all = R.bondStage(o.bond) >= 3, k = o.lk || {};
+    var sn = R.SNACK[lk[0]], ty = R.TOY[lk[1]];
+    return '<div class="row small" style="gap:6px;flex-wrap:wrap;margin-top:6px"><span class="faint">좋아하는 간식</span><b>' + (sn && (all || k.s) ? sn.em + ' ' + sn.name : '?') + '</b><span class="faint" style="margin-left:6px">좋아하는 장난감</span><b>' + (ty && (all || k.t) ? ty.em + ' ' + ty.name : '?') + '</b></div>';
+  }
+  function bondModalHtml(id, said) {
+    var P = S.P, o = P.fam.own[id], f = R.FAM[id]; if (!o || !f) return '';
+    var t = R.bondToday(P, id, now()), cap = t.got >= D.BOND.dayCap && (o.bond || 0) < D.BOND.max, disp = P.fam.disp[id];
+    var sn = P.fam.snacks || {}, toys = P.fam.toys || {}, accs = P.fam.accs || {};
+    var h = mhead('교감하기', esc(R.famLabel(P, id)) + ' · 유대 「' + bondStageName(o.bond) + '」') +
+      '<div class="card inset"><p class="small bondline">' + esc(said || bondLineToday(id)) + '</p>' + '<div class="row tiny" style="margin-top:8px"><span class="faint">유대</span><span class="spacer"></span><span class="num">' + (o.bond || 0) + ' / ' + D.BOND.max + '</span></div>' + bondBar(o) + bondLikes(id, o) + '</div>' +
+      '<p class="tiny faint" style="margin:8px 0">유대는 능력치에 영향을 주지 않습니다. 단계가 오를수록 지문이 바뀌며, 「단짝」 단계에서 칭호를 받습니다. 한 마리와 하루에 쌓을 수 있는 유대는 ' + D.BOND.dayCap + '까지이며, 오늘 ' + t.got + '만큼 쌓았습니다.</p>';
+    if (disp) return h + '<div class="empty">파견 중입니다. 돌아온 뒤에 교감할 수 있습니다.</div>';
+    h += '<div class="section-t">쓰다듬기 <span class="tiny faint">오늘 ' + t.pet + ' / ' + D.BOND.petN + '</span></div><div class="row" style="gap:6px"><button class="btn sm primary" data-act="fampet" data-a="' + id + '"' + (t.pet < D.BOND.petN && !cap ? '' : ' disabled') + '>쓰다듬기</button></div>';
+    var sl = D.FAM_SNACKS.filter(function (x) { return sn[x.id] > 0; });
+    h += '<div class="section-t" style="margin-top:10px">간식 주기 <span class="tiny faint">오늘 ' + t.snack + ' / ' + D.BOND.snackN + '</span></div>' + (sl.length ? '<div class="row" style="gap:6px;flex-wrap:wrap">' + sl.map(function (x) { return '<button class="btn sm" data-act="famsnack" data-a="' + id + '" data-b="' + x.id + '"' + (t.snack < D.BOND.snackN && !cap ? '' : ' disabled') + '>' + x.em + ' ' + x.name + ' <span class="cost">×' + sn[x.id] + '</span></button>'; }).join('') + '</div>' : '<p class="tiny faint">가지고 있는 간식이 없습니다. 칸토 섬 환수 용품점에서 구매할 수 있습니다.</p>');
+    var tl = D.FAM_TOYS.filter(function (x) { return toys[x.id]; });
+    h += '<div class="section-t" style="margin-top:10px">놀아 주기 <span class="tiny faint">오늘 ' + t.play + ' / ' + D.BOND.playN + '</span></div>' + (tl.length ? '<div class="row" style="gap:6px;flex-wrap:wrap">' + tl.map(function (x) { return '<button class="btn sm" data-act="famplay" data-a="' + id + '" data-b="' + x.id + '"' + (t.play < D.BOND.playN && !cap ? '' : ' disabled') + '>' + x.em + ' ' + x.name + '</button>'; }).join('') + '</div>' : '<p class="tiny faint">가지고 있는 장난감이 없습니다. 장난감은 한 번 구매하면 모든 사역마와 계속 사용할 수 있습니다.</p>');
+    var al = D.FAM_ACC.filter(function (x) { return accs[x.id]; });
+    if (al.length) h += '<div class="section-t" style="margin-top:10px">꾸밈 <span class="tiny faint">사역마 카드에만 표시됩니다</span></div><div class="row" style="gap:6px;flex-wrap:wrap">' + al.map(function (x) { return '<button class="btn sm' + (o.acc === x.id ? ' on' : ' ghost') + '" data-act="famacc" data-a="' + id + '" data-b="' + (o.acc === x.id ? '' : x.id) + '">' + x.em + ' ' + x.name + (o.acc === x.id ? ' (해제)' : '') + '</button>'; }).join('') + '</div>';
+    return h + '<div class="row" style="justify-content:flex-end;margin-top:14px;gap:6px"><button class="btn ghost" data-act="nav" data-a="famshop">환수 용품점</button><button class="btn primary" data-act="modal-close">닫기</button></div>';
+  }
+  ACT.fambond = function (id) { if (!S.P.fam.own[id]) return; S.bondId = id; modal(bondModalHtml(id)); };
+  function bondDone(id, r) {
+    if (!r) return; if (r.up) { toast('유대 「' + D.BOND_STAGES[r.up].name + '」', R.josa(R.famLabel(S.P, id), '과', '와') + '의 유대가 깊어졌습니다', 3000); Snd.play('ach'); }
+    if (S.modal && S.bondId === id) { var m = $('#modal .mbox') || $('#modal > div'); var html = bondModalHtml(id, r.line + (r.gain ? ' (유대 +' + r.gain + ')' : '')); if (m) m.innerHTML = html; else modal(html); } else toast('교감', r.line, 2600);
+  }
+  ACT.fampet = function (id) { act('famPet', { id: id }).then(function (r) { bondDone(id, r); }); };
+  ACT.famsnack = function (id, s) { act('famSnack', { id: id, s: s }).then(function (r) { bondDone(id, r); }); };
+  ACT.famplay = function (id, t) { act('famPlay', { id: id, t: t }).then(function (r) { bondDone(id, r); }); };
+  ACT.famacc = function (id, acc) { act('famAcc', { id: id, acc: acc || '' }).then(function (r) { if (r) bondDone(id, { line: acc ? R.josa(R.famLabel(S.P, id), '이', '가') + ' ' + R.josa(R.FACC[acc].name, '을', '를') + ' 착용했습니다.' : '꾸밈을 해제했습니다.' }); }); };
+  /* ── 칸토 섬 환수 용품점 ── */
+  V.famshop = function () {
+    var P = S.P, t = now(), deal = R.famDeal(t), sn = P.fam.snacks || {}, toys = P.fam.toys || {}, accs = P.fam.accs || {};
+    var h = pageHead('칸토 섬 현악 골목', '환수 용품점', '보유 ' + MONEY(P.res.gold));
+    h += '<p class="small muted" style="margin:-4px 0 12px">현악 골목 끝, 종이학 우체국 옆에 자리한 사역마 먹이 상점입니다. 주인 할머니가 사역마마다 좋아하는 것이 다르다고 귀띔합니다. 「오늘의 추천」 한 품목은 ' + Math.round(D.BOND.deal * 100) + '% 할인됩니다.</p>';
+    function price(x) { var p = R.famShopPrice(x.id, t); return (x.id === deal ? '<s class="faint">' + fmt(x.price) + '</s> ' : '') + fmt(p) + ' ' + CUR; }
+    function tagDeal(x) { return x.id === deal ? ' <span class="tag ok">오늘의 추천</span>' : ''; }
+    h += '<div class="card" style="margin-bottom:12px"><h3>영양 먹이</h3><p class="small muted" style="margin-top:4px">사역마의 레벨을 1 올리는 먹이는 「환수 사역장」의 사역마 카드에서 바로 줄 수 있습니다.</p><div class="row" style="margin-top:8px"><button class="btn sm" data-act="nav" data-a="fam">환수 사역장으로 이동</button></div></div>';
+    h += '<div class="section-t">간식 <span class="tiny faint">교감할 때 사용하는 소모품입니다 · 하루 ' + D.BOND.snackN + '번까지 줄 수 있습니다</span></div><div class="grid gauto">' + D.FAM_SNACKS.map(function (x) {
+      var p = R.famShopPrice(x.id, t);
+      return '<div class="card"><h4>' + x.em + ' ' + x.name + tagDeal(x) + '</h4><p class="small muted" style="margin:4px 0 6px">' + x.desc + ' 유대 +' + x.v + '</p><p class="tiny faint">보유 ' + (sn[x.id] || 0) + '개</p><div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap">' +
+        [1, 5].map(function (n) { return '<button class="btn sm primary" data-act="famshopbuy" data-a="' + x.id + '" data-b="' + n + '"' + (P.res.gold >= p * n ? '' : ' disabled') + '>×' + n + ' <span class="cost">' + fmt(p * n) + ' ' + CUR + '</span></button>'; }).join('') + '</div></div>';
+    }).join('') + '</div>';
+    h += '<div class="section-t" style="margin-top:14px">장난감 <span class="tiny faint">한 번 구매하면 모든 사역마와 계속 사용할 수 있습니다 · 하루 ' + D.BOND.playN + '번 놀아 줄 수 있습니다</span></div><div class="grid gauto">' + D.FAM_TOYS.map(function (x) {
+      if (x.fest) return '<div class="card"' + (toys[x.id] ? '' : ' style="opacity:.6"') + '><h4>' + x.em + ' ' + x.name + ' <span class="tag br">축제 한정</span></h4><p class="small muted" style="margin-top:4px">' + x.desc + '</p><p class="tiny faint" style="margin-top:6px">' + (toys[x.id] ? '보유 중' : (R.FEST && R.FEST[x.fest] ? R.FEST[x.fest].name : '축제') + ' 교환소에서만 얻을 수 있습니다') + '</p></div>';
+      return '<div class="card"><h4>' + x.em + ' ' + x.name + tagDeal(x) + '</h4><p class="small muted" style="margin:4px 0 10px">' + x.desc + '</p>' + (toys[x.id] ? '<span class="tag ok">보유 중</span>' : '<button class="btn sm primary" data-act="famshopbuy" data-a="' + x.id + '"' + (P.res.gold >= R.famShopPrice(x.id, t) ? '' : ' disabled') + '>구매 <span class="cost">' + price(x) + '</span></button>') + '</div>';
+    }).join('') + '</div>';
+    h += '<div class="section-t" style="margin-top:14px">꾸밈 <span class="tiny faint">사역마 카드에만 보이는 장식입니다 · 능력치 효과는 없습니다</span></div><div class="grid gauto">' + D.FAM_ACC.map(function (x) {
+      return '<div class="card"><h4>' + x.em + ' ' + x.name + tagDeal(x) + '</h4><div style="margin-top:8px">' + (accs[x.id] ? '<span class="tag ok">보유 중</span>' : '<button class="btn sm primary" data-act="famshopbuy" data-a="' + x.id + '"' + (P.res.gold >= R.famShopPrice(x.id, t) ? '' : ' disabled') + '>구매 <span class="cost">' + price(x) + '</span></button>') + '</div></div>';
+    }).join('') + '</div>';
+    return h;
+  };
+  ACT.famshopbuy = function (id, n) { act('famShop', { id: id, n: n ? +n : undefined }).then(function (r) { if (!r) return; var x = R.SNACK[id] || R.TOY[id] || R.FACC[id]; toast('구매가 완료되었습니다', x.em + ' ' + x.name + (r.n > 1 ? ' ×' + r.n : '') + ' · ' + MONEY(r.price, '−'), 2200); render(); }); };
 
   /* ── 서고 ── */
   // 연구 가속: 마나 · 지식으로 남은 시간 1시간 단축 (하루 3회)
