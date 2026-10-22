@@ -3093,16 +3093,24 @@
           (q.got ? '<span class="tag ok">받음</span>' : done && okMe ? '<button class="btn sm primary" data-act="gwq" data-a="' + q.id + '">보상 받기</button>' : '') + '</div></div>';
       }).join('') + '</div>';
   }
+  ACT.gmsort = function (k) { S.gmSort = k; render(); };
   function gMembersTab(g, L) {
     var owner = g.myRole === 'owner', staff = owner || g.myRole === 'officer', canKick = staff || (g.perms && g.perms.kick), ranks = g.ranks || { base: { name: '부원' }, list: [] };
-    return '<div class="card">' + g.members.map(function (m) {
+    // 정렬: 역할(기본) · 기여도 · 레벨 · 전투력 · 가입 순
+    var SORTS = [['role', '역할순'], ['contrib', '기여도순'], ['lvl', '레벨순'], ['power', '전투력순'], ['joined', '가입순']], so = S.gmSort || 'role';
+    var rkOrd = function (m) { return m.role === 'owner' ? 0 : m.role === 'officer' ? 1 : m.rank ? 2 + ranks.list.findIndex(function (r) { return r.id === m.rank; }) : 99; };
+    var list = g.members.slice().sort(function (a, b) {
+      var d = so === 'contrib' ? (b.contrib || 0) - (a.contrib || 0) : so === 'lvl' ? (b.lvl || 0) - (a.lvl || 0) : so === 'power' ? (b.power || 0) - (a.power || 0) : so === 'joined' ? (a.joined || 0) - (b.joined || 0) : rkOrd(a) - rkOrd(b);
+      return d || (b.contrib || 0) - (a.contrib || 0);
+    });
+    return '<div class="card"><div class="filters" style="margin-bottom:8px">' + SORTS.map(function (x) { return '<button class="btn sm ghost' + (so === x[0] ? ' on' : '') + '" data-act="gmsort" data-a="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div>' + list.map(function (m) {
       var me = m.id === S.P.id, act2 = '';
       if (!me) {
         if (owner && (!m.npc || L.demo)) act2 += (m.role === 'officer' ? '<button class="btn sm ghost" data-act="gop" data-a="role" data-b="' + esc(m.id) + '" data-c="member">부회장 해제</button>' : '<button class="btn sm ghost" data-act="gop" data-a="role" data-b="' + esc(m.id) + '" data-c="officer">부회장으로</button>') + '<button class="btn sm ghost" data-act="gop" data-a="transfer" data-b="' + esc(m.id) + '">회장 넘기기</button>';
         if (staff && m.role === 'member' && ranks.list.length) act2 += '<select class="gsel" data-act="grank" data-a="' + esc(m.id) + '" aria-label="역할"><option value="">' + esc(ranks.base.name) + '</option>' + ranks.list.map(function (r) { return '<option value="' + r.id + '"' + (m.rank === r.id ? ' selected' : '') + '>' + esc(r.name) + '</option>'; }).join('') + '</select>';
         if ((owner && m.role !== 'owner') || (canKick && m.role === 'member')) act2 += '<button class="btn sm danger" data-act="gop" data-a="kick" data-b="' + esc(m.id) + '">내보내기</button>';
       }
-      return '<div class="frow gmrow">' + (m.npc ? '<span class="av av0" style="width:36px;height:36px;font-size:15px;--hc:' + (R.HOUSE[m.house] ? R.HOUSE[m.house].color : '#d6ad5f') + '">' + esc(m.name.slice(0, 1)) + '</span>' : '<button class="avbtn" data-act="prof" data-a="' + esc(m.id) + '">' + avatarHtml(m, 36) + '</button>') + '<div style="flex:1;min-width:0">' + (m.title && m.title !== 'NPC' ? '<span class="ttl' + R.opTitleCls(m.title) + '">' + esc(m.title) + '</span>' : '') + '<b>' + esc(m.name) + '</b>' + (m.npc ? ' <span class="tag npc">NPC</span>' : '') + (m.online ? ' <span class="odot"></span>' : '') + ' ' + gRankTag(m) + '<div class="tiny faint">' + (m.grade >= 8 ? '마스터' : m.grade + '학년') + ' · Lv ' + m.lvl + ' · 기여도 ' + fmt(m.contrib || 0) + '</div></div><span class="frbtns">' + act2 + '</span></div>';
+      return '<div class="frow gmrow">' + (m.npc ? '<span class="av av0" style="width:36px;height:36px;font-size:15px;--hc:' + (R.HOUSE[m.house] ? R.HOUSE[m.house].color : '#d6ad5f') + '">' + esc(m.name.slice(0, 1)) + '</span>' : '<button class="avbtn" data-act="prof" data-a="' + esc(m.id) + '">' + avatarHtml(m, 36) + '</button>') + '<div style="flex:1;min-width:0">' + (m.title && m.title !== 'NPC' ? '<span class="ttl' + R.opTitleCls(m.title) + '">' + esc(m.title) + '</span>' : '') + '<b>' + esc(m.name) + '</b>' + (m.npc ? ' <span class="tag npc">NPC</span>' : '') + (m.online ? ' <span class="odot"></span>' : '') + ' ' + gRankTag(m) + '<div class="tiny faint">' + (m.grade >= 8 ? '마스터' : m.grade + '학년') + ' · Lv ' + m.lvl + (m.power ? ' · 전투력 ' + fmt(m.power) : '') + ' · 기여도 ' + fmt(m.contrib || 0) + (m.joined ? ' · ' + new Date(m.joined * 1000).toLocaleDateString('ko-KR', { year: '2-digit', month: 'numeric', day: 'numeric' }) + ' 가입' : '') + '</div></div><span class="frbtns">' + act2 + '</span></div>';
     }).join('') + (L.demo && staff ? '<div class="filters" style="margin-top:10px">' + D.RIVALS.map(function (r, k) { return !/학년|쌍둥이/.test(r.who) || g.members.some(function (m) { return m.id === 'npc:' + k; }) ? '' : '<button class="btn sm ghost" data-act="gop" data-a="npcAdd" data-b="' + k + '">+ ' + esc(r.name) + '</button>'; }).join('') + '</div><p class="tiny faint">데모: NPC 학생을 부원으로 불러 볼 수 있습니다.</p>' : '') + '</div>';
   }
   function gStoreTab(g) {
@@ -5787,7 +5795,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102296;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102297;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
