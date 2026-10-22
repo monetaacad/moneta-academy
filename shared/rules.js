@@ -2169,22 +2169,30 @@
     return o;
   };
   // 재련: 등급·레벨·강화는 그대로 두고 옵션만 새로 굴린다 (옵션이 없는 일반 등급은 못 함)
-  R.reforgeCost = function (it) { return Math.floor(8 * (it.r + 1) * (it.r + 1) * (1 + it.ilvl / 20)); };
+  // 옵션 줄 잠금(keep: 줄 번호): 잠근 줄은 그대로 두고 나머지만 굴린다. 잠근 줄이 많을수록 비용 ×3씩, 모든 줄을 잠글 수는 없다
+  R.REFORGE_KEEP_MULT = 3;
+  R.reforgeCost = function (it, k) { return Math.floor(8 * (it.r + 1) * (it.r + 1) * (1 + it.ilvl / 20)) * Math.pow(R.REFORGE_KEEP_MULT, k || 0); };
   A.reforge = function (P, W, now, a) {
     var it = R.findItem(P, str(a.u)); if (!it) err('장비가 없습니다'); if (it.lock) err('잠긴 장비입니다. 잠금을 풀면 재련할 수 있습니다');
     var n = D.RARITY[it.r].affix; if (!n) err('옵션이 없는 장비는 재련할 수 없습니다');
-    var cost = R.reforgeCost(it); if ((P.res.dust || 0) < cost) err('마석가루가 모자랍니다 (' + cost + '개 필요)');
+    var old = it.aff || [], keep = {}, k = 0;
+    (Array.isArray(a.keep) ? a.keep : []).forEach(function (x) { x = parseInt(x, 10); if (x >= 0 && x < n && old[x] && !keep[x]) { keep[x] = 1; k++; } });
+    if (k >= n) err('모든 옵션을 잠글 수는 없습니다');
+    var cost = R.reforgeCost(it, k); if ((P.res.dust || 0) < cost) err('마석가루가 모자랍니다 (' + cost + '개 필요)');
     P.res.dust -= cost;
-    var pool = D.AFFIXES.slice(); it.aff = [];
-    for (var i = 0; i < n && pool.length; i++) {
+    var pool = D.AFFIXES.filter(function (af) { return !old.some(function (o, j) { return keep[j] && o.id === af.id; }); }), aff = [];
+    for (var i = 0; i < n; i++) {
+      if (keep[i]) { aff.push(old[i]); continue; }
+      if (!pool.length) continue;
       var af = pool.splice(Math.floor(rnd(P) * pool.length), 1)[0], v;
       if (af.flat) v = af.flat * (1 + it.ilvl * 0.07) * (0.7 + rnd(P) * 0.6) * (1 + it.r * 0.1);
       else v = (af.pct[0] + (af.pct[1] - af.pct[0]) * rnd(P)) * (1 + Math.min(it.ilvl, 200) * 0.004);
-      it.aff.push({ id: af.id, v: Math.round(v * 10000) / 10000 });
+      aff.push({ id: af.id, v: Math.round(v * 10000) / 10000 });
     }
+    it.aff = aff;
     it.name = (it.aff.length ? AFF[it.aff[0].id].prefix + ' ' : '') + R.baseName(it);
     P.st.reforged = (P.st.reforged || 0) + 1;
-    return { name: it.name, cost: cost, aff: it.aff };
+    return { name: it.name, cost: cost, aff: it.aff, kept: k };
   };
   // 자동 처리: 판매 또는 분해 (분류 마법)
   A.autoMode = function (P, W, now, a) { if (!P.rs.sorter) err('분류 마법이 필요합니다'); P.autoDis = !!a.dis; return { ok: true }; };

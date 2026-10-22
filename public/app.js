@@ -2189,7 +2189,7 @@
       h += '<button class="btn sm" data-act="enh" data-a="' + it.u + '"' + (okc ? '' : why(P.res.gold < cost.gold ? CUR + '가 부족합니다' : '마석이 부족합니다')) + '>강화 <span class="cost">' + fmt(cost.gold) + ' ' + CUR + ' · ' + cost.stone + ' 마석</span></button><button class="btn sm ghost" data-act="enh" data-a="' + it.u + '" data-b="until"' + (okc ? '' : why(P.res.gold < cost.gold ? CUR + '가 부족합니다' : '마석이 부족합니다')) + '>성공할 때까지</button>';
     }
     h += '<button class="btn sm ghost" data-act="do" data-a="lock" data-b="' + it.u + '">' + (it.lock ? '잠금 해제' : '잠금') + '</button>';
-    if (D.RARITY[it.r].affix && !it.lock) { var rf = R.reforgeCost(it); h += '<button class="btn sm" data-act="reforge" data-a="' + it.u + '"' + ((P.res.dust || 0) >= rf ? '' : ' disabled') + ' title="지금 옵션은 사라지고 새 옵션으로 바뀝니다 (등급·레벨·강화는 그대로)">재련 <span class="cost">' + fmt(rf) + ' 마석가루</span></button>'; }
+    if (D.RARITY[it.r].affix && !it.lock) { var rf = R.reforgeCost(it); h += '<button class="btn sm" data-act="reforge" data-a="' + it.u + '"' + ((P.res.dust || 0) >= rf ? '' : ' disabled') + ' title="잠그지 않은 옵션을 새로 굴립니다 (등급·레벨·강화는 그대로)">재련 <span class="cost">' + fmt(rf) + ' 마석가루~</span></button>'; }
     // 영웅 이상 · 강화한 장비는 분해 · 판매 전에 경고 창 (실수 방지)
     var risky = it.r >= 3 || it.enh > 0;
     if (!eqd && !it.lock) { var dy = R.dismantleYield(it); h += '<button class="btn sm" data-act="' + (risky ? 'itemarm' : 'do') + '" data-a="dismantle" data-b="' + it.u + '">분해 <span class="cost">' + dy.stone + ' 마석 · ' + dy.dust + ' 마석가루</span></button>'; }
@@ -4233,18 +4233,32 @@
   ACT.automode = function () { act('autoMode', { dis: $('#automode').value === 'dis' }).then(render); };
   // 재련: 먼저 지금 옵션이 사라진다는 확인 창 → 재련하면 이전 · 새 옵션을 나란히 보여 준다
   function affList(it) { return (it.aff || []).map(function (a) { var nm = D.BONUS_NAMES[a.id] || D.STAT_NAMES[a.id] || a.id, val = (a.id === 'atk' || a.id === 'hp' || a.id === 'def' || D.STAT_NAMES[a.id]) ? '+' + fmt(a.v) : '+' + pct(a.v); return '<div class="statline"><span>' + nm + '</span><span class="d">' + val + '</span></div>'; }).join('') || '<p class="tiny faint">옵션 없음</p>'; }
+  // 재련: 옵션 줄마다 「잠금」을 걸면 그 줄은 그대로 두고 나머지만 새로 굴린다 (잠근 줄 하나마다 비용 ×3, 모든 줄을 잠글 수는 없다)
+  function affVal(a) { return (a.id === 'atk' || a.id === 'hp' || a.id === 'def' || D.STAT_NAMES[a.id]) ? '+' + fmt(a.v) : '+' + pct(a.v); }
+  function rfKeep(u) { if (!S.rfKeep || S.rfKeep.u !== u) S.rfKeep = { u: u, k: {} }; return S.rfKeep.k; }
+  function rfBody(u) {
+    var it = R.findItem(S.P, u); if (!it) return ''; var kp = rfKeep(u), n = D.RARITY[it.r].affix, k = Object.keys(kp).length, rf = R.reforgeCost(it, k), ok = (S.P.res.dust || 0) >= rf;
+    var rows = (it.aff || []).map(function (a, i) {
+      var on = !!kp[i], dis = !on && k >= n - 1;
+      return '<div class="statline rfrow' + (on ? ' on' : '') + '"><span>' + (D.BONUS_NAMES[a.id] || D.STAT_NAMES[a.id] || a.id) + ' <span class="d">' + affVal(a) + '</span></span>' +
+        '<button class="btn sm' + (on ? ' primary' : ' ghost') + '" data-act="rfkeep" data-a="' + esc(u) + '" data-b="' + i + '"' + (dis ? ' disabled title="모든 옵션을 잠글 수는 없습니다"' : '') + '>' + (on ? '잠금 해제' : '잠금') + '</button></div>';
+    }).join('') || '<p class="tiny faint">옵션 없음</p>';
+    return '<p class="small">잠그지 않은 옵션은 <b class="bad">사라지고</b> 새로 굴린 옵션으로 바뀝니다. 되돌릴 수 없습니다. 등급 · 레벨 · 강화 · 기본 능력치는 그대로이며, 한 장비에 같은 옵션이 두 줄 붙지 않습니다.</p>' +
+      '<p class="tiny faint" style="margin-top:4px">「잠금」을 건 옵션은 그대로 유지됩니다. 잠근 옵션 하나마다 비용이 ' + R.REFORGE_KEEP_MULT + '배가 되며, 모든 옵션을 잠글 수는 없습니다.</p>' +
+      '<div class="section-t" style="margin-top:10px">현재 옵션</div><div class="rfold">' + rows + '</div>' +
+      '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px;flex-wrap:wrap"><span class="tiny faint" style="margin-right:auto">보유 마석가루 ' + fmt(S.P.res.dust || 0) + '</span><button class="btn ghost" data-act="modal-close">취소</button><button class="btn primary" data-act="reforge-go" data-a="' + esc(u) + '"' + (ok ? '' : ' disabled') + '>재련하기 <span class="cost">' + fmt(rf) + ' 마석가루</span></button></div>';
+  }
   ACT.reforge = function (u) {
-    var it = R.findItem(S.P, u); if (!it) return; var rf = R.reforgeCost(it);
-    modal(mhead('재련', esc(it.name)) + '<p class="small"><b class="bad">지금 옵션은 사라지고</b> 새로 굴린 옵션으로 바뀝니다. 되돌릴 수 없습니다. 등급 · 레벨 · 강화 · 기본 능력치는 그대로이며, 한 장비에 같은 옵션이 두 줄 붙지 않습니다.</p>' +
-      '<div class="section-t" style="margin-top:10px">사라질 옵션</div><div class="rfold">' + affList(it) + '</div>' +
-      '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn ghost" data-act="modal-close">취소</button><button class="btn primary" data-act="reforge-go" data-a="' + esc(u) + '">재련하기 <span class="cost">' + fmt(rf) + ' 마석가루</span></button></div>');
+    var it = R.findItem(S.P, u); if (!it) return; S.rfKeep = null;
+    modal(mhead('재련', esc(it.name)) + '<div id="rfbody">' + rfBody(u) + '</div>');
   };
+  ACT.rfkeep = function (u, i) { var kp = rfKeep(u); if (kp[i]) delete kp[i]; else kp[i] = 1; var b = $('#rfbody'); if (b) b.innerHTML = rfBody(u); };
   ACT['reforge-go'] = function (u) {
-    var it0 = R.findItem(S.P, u), old = it0 ? affList(it0) : '';
-    act('reforge', { u: u }).then(function (r) {
-      if (!r) { closeModal(); render(); return; } Snd.play('enh'); var it = R.findItem(S.P, u);
-      modal(mhead('재련 완료', esc(r.name) + ' · 마석가루 -' + fmt(r.cost)) + '<div class="grid g2" style="gap:10px"><div><div class="section-t">이전 옵션 (사라짐)</div><div class="rfold">' + old + '</div></div><div><div class="section-t">새 옵션</div><div class="rfnew">' + (it ? affList(it) : '') + '</div></div></div>' +
-        '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn primary" data-act="modal-close">확인</button></div>');
+    var it0 = R.findItem(S.P, u), kp = rfKeep(u), keep = Object.keys(kp).map(Number), old = it0 ? (it0.aff || []).map(function (a, i) { return '<div class="statline"><span>' + (D.BONUS_NAMES[a.id] || D.STAT_NAMES[a.id] || a.id) + (kp[i] ? ' <span class="tag br">잠금 유지</span>' : '') + '</span><span class="d">' + affVal(a) + '</span></div>'; }).join('') : '';
+    act('reforge', { u: u, keep: keep }).then(function (r) {
+      if (!r) { closeModal(); render(); return; } Snd.play('enh'); var it = R.findItem(S.P, u); S.rfKeep = null;
+      modal(mhead('재련 완료', esc(r.name) + ' · 마석가루 -' + fmt(r.cost)) + '<div class="grid g2" style="gap:10px"><div><div class="section-t">이전 옵션</div><div class="rfold">' + old + '</div></div><div><div class="section-t">새 옵션</div><div class="rfnew">' + (it ? affList(it) : '') + '</div></div></div>' +
+        '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn ghost" data-act="reforge" data-a="' + esc(u) + '">다시 재련</button><button class="btn primary" data-act="modal-close">확인</button></div>');
       render();
     });
   };
@@ -5623,7 +5637,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102284;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102285;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
