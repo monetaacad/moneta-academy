@@ -1998,26 +1998,26 @@ button.lzitem { cursor: pointer; } button.lzitem:hover { border-color: var(--lin
 .chipb { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line2); background: var(--sunk); color: var(--muted); font: inherit; font-size: 12px; cursor: pointer; }
 .chipb.on { color: var(--ink); border-color: var(--brass); }
 #fxscene { display: flex; flex-direction: column; gap: 8px; }
-.fxscene { position: relative; height: 210px; border-radius: 14px; overflow: hidden; border: 1px solid var(--line2);
+.fxscene { position: relative; height: 140px; border-radius: 14px; overflow: hidden; border: 1px solid var(--line2);
   background: radial-gradient(ellipse at 50% 110%, rgba(30, 60, 110, .9), transparent 70%), linear-gradient(180deg, #172447 0%, #1d3b6b 55%, #1b4a78 100%); }
 :root[data-skintone="light"] .fxscene { background: radial-gradient(ellipse at 50% 110%, rgba(60, 120, 190, .9), transparent 70%), linear-gradient(180deg, #9cc4ea 0%, #6fa3d6 55%, #4f88c2 100%); }
 .fxwater { position: absolute; inset: 0; background: repeating-radial-gradient(ellipse at 50% 60%, rgba(255, 255, 255, .06) 0 2px, transparent 2px 22px); animation: lzwave 6s linear infinite; }
 @keyframes lzwave { from { background-position: 0 0; } to { background-position: 0 22px; } }
-.fxspot { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(1.25); opacity: .95; }
-.fxbob { position: absolute; left: 50%; top: 40%; width: 12px; height: 16px; margin-left: -6px; border-radius: 6px 6px 7px 7px; background: linear-gradient(180deg, #ff6b5b 0 48%, #fff 48% 100%); box-shadow: 0 0 0 1px rgba(0, 0, 0, .35); animation: lzfloat 1.8s ease-in-out infinite; z-index: 2; }
-.fxbob::after { content: ''; position: absolute; left: 50%; top: 100%; width: 40px; height: 10px; margin-left: -20px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .35); animation: lzring 1.8s ease-out infinite; }
+.fxspot { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); opacity: .95; }
+.fxbob { position: absolute; left: 50%; top: 42%; width: 8px; height: 11px; margin-left: -4px; border-radius: 6px 6px 7px 7px; background: linear-gradient(180deg, #ff6b5b 0 48%, #fff 48% 100%); box-shadow: 0 0 0 1px rgba(0, 0, 0, .35); animation: lzfloat 1.8s ease-in-out infinite; z-index: 2; }
+.fxbob::after { content: ''; position: absolute; left: 50%; top: 100%; width: 24px; height: 6px; margin-left: -12px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .35); animation: lzring 1.8s ease-out infinite; }
 @keyframes lzfloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(2px); } }
 @keyframes lzring { from { transform: scale(.5); opacity: .8; } to { transform: scale(1.6); opacity: 0; } }
 .fxbob.nib { animation: none; transform: translateY(6px); transition: transform .08s; }
 .fxscene.bite .fxbob { animation: lzdip .35s ease-in-out infinite; }
 @keyframes lzdip { 0%, 100% { transform: translateY(8px); } 50% { transform: translateY(14px); } }
-.fxsplash { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); z-index: 3; animation: lzsplash .5s ease-out; }
+.fxsplash { position: absolute; left: 50%; top: 30%; transform: translateX(-50%); z-index: 3; animation: lzsplash .5s ease-out; }
 @keyframes lzsplash { from { transform: translateX(-50%) scale(.4); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
 .fxshadow { position: absolute; left: 50%; top: 50%; border-radius: 50%; background: rgba(5, 10, 25, .45); filter: blur(3px); transform: translateX(-50%); animation: lzswim 3.2s ease-in-out infinite; opacity: 0; }
 .fxscene.wait .fxshadow { animation: lzswim 3.2s ease-in-out infinite, lzfade 2.5s ease-in 1s forwards; }
 .fxscene.bite .fxshadow { opacity: 1; }
-.fxshadow.s1 { width: 26px; height: 9px; } .fxshadow.s2 { width: 38px; height: 12px; } .fxshadow.s3 { width: 52px; height: 15px; } .fxshadow.s4 { width: 70px; height: 19px; } .fxshadow.s5 { width: 92px; height: 24px; } .fxshadow.s6 { width: 130px; height: 32px; }
-@keyframes lzswim { 0%, 100% { margin-left: -14px; } 50% { margin-left: 14px; } }
+.fxshadow.s1 { width: 14px; height: 5px; } .fxshadow.s2 { width: 20px; height: 7px; } .fxshadow.s3 { width: 28px; height: 9px; } .fxshadow.s4 { width: 38px; height: 11px; } .fxshadow.s5 { width: 52px; height: 14px; } .fxshadow.s6 { width: 72px; height: 18px; }
+@keyframes lzswim { 0%, 100% { margin-left: -8px; } 50% { margin-left: 8px; } }
 @keyframes lzfade { to { opacity: 1; } }
 .fxpop { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 4; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 64%; max-width: 92%; padding: 12px 14px; border-radius: 12px; text-align: center;
   background: var(--panel); border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0, 0, 0, .4); animation: lzpop .25s ease-out; }

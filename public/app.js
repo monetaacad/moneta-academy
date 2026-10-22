@@ -2506,8 +2506,8 @@
   function fxScene() {
     var x = S.fx, spot = R.SPOT[fxSpot()], ph = x.phase || 'idle', pop = x.pop && x.pop.until > Date.now() ? x.pop : null, sh = x.sh || 1;
     var btn = ph === 'wait' || ph === 'bite' ? '<button class="btn fxbtn' + (ph === 'bite' ? ' bite primary' : '') + '" data-act="fxreel">' + (ph === 'bite' ? '챔질!' : '기다리는 중… (지금 당기면 놓칩니다)') + '</button>' : ph === 'reel' ? '<button class="btn fxbtn" disabled>당기는 중…</button>' : '<button class="btn fxbtn primary" data-act="fxcast"' + (lzSta().n > 0 ? '' : why('낚시 기운이 부족합니다 (10분마다 1씩 찹니다)')) + '>던지기 · 기운 1</button>';
-    return '<div class="fxscene ' + ph + '"><div class="fxwater"></div>' + spr(spot.sp, 128, 'fxspot') +
-      (ph === 'wait' || ph === 'bite' ? '<span class="fxshadow s' + sh + '"></span><span class="fxbob"></span>' + (ph === 'bite' ? spr('w:40', 64, 'fxsplash') : '') : '') +
+    return '<div class="fxscene ' + ph + '"><div class="fxwater"></div>' + spr(spot.sp, 64, 'fxspot') +
+      (ph === 'wait' || ph === 'bite' ? '<span class="fxshadow s' + sh + '"></span><span class="fxbob"></span>' + (ph === 'bite' ? spr('w:40', 32, 'fxsplash') : '') : '') +
       (pop ? '<div class="fxpop">' + pop.html + '</div>' : '') + '</div>' + btn;
   }
   function fxDraw() { var el = $('#fxscene'); if (el && S.view === 'fish') el.innerHTML = fxScene(); }
@@ -2523,7 +2523,7 @@
   function fxGotHtml(r) {
     var g = r.got; if (!g) return '<b class="bad">' + (r.res === 'early' ? '너무 일찍 당겨 놓쳤습니다' : '놓쳤습니다') + '</b><span class="tiny faint">' + (r.sh >= 5 ? '거대한 그림자였습니다…' : r.sh >= 3 ? '꽤 큰 그림자였습니다' : '') + '</span>';
     var tag = (r.res === 'perfect' ? '<span class="tag gold">완벽한 챔질</span>' : '') + (g.first ? '<span class="tag gold">새로 발견!</span>' : '') + (g.record ? '<span class="tag ok">최고 기록!</span>' : '');
-    if (g.k === 'loot') { var L = D.FISH_LOOT.filter(function (q) { return q.id === g.id; })[0]; return spr(L.sp, 48) + '<b>' + R.josa(esc(L.name), '을', '를') + ' 건졌습니다</b><span class="tiny">' + lootText(g.give) + '</span>' + tag; }
+    if (g.k === 'loot') { var L = D.FISH_LOOT.filter(function (q) { return q.id === g.id; })[0]; return spr(L.sp, 32) + '<b>' + R.josa(esc(L.name), '을', '를') + ' 건졌습니다</b><span class="tiny">' + lootText(g.give) + '</span>' + tag; }
     if (g.k === 'rare') { var Rr = R.RARE[g.id]; return spr(Rr.sp, 72, 'bob') + '<b class="' + (g.leg ? 'gold' : 'good') + '">' + (g.leg ? '전설! ' : '희귀 생물! ') + esc(Rr.name) + '</b><span class="tiny num">' + g.sz + 'cm' + (g.shard ? ' · 별조각 +' + g.shard : g.gold ? ' · ' + MONEY(g.gold, '+') : '') + '</span>' + tag; }
     var F = R.FISH[g.id]; return spr(F.sp, 48, 'bob') + '<b style="color:' + (F.weed ? '#7fa58a' : tcol(F.t, D.FISH_TIERS)) + '">' + esc(F.name) + '</b><span class="tiny num">' + g.sz + 'cm · 경험치 +' + g.xp + '</span>' + tag;
   }
@@ -2555,7 +2555,7 @@
     var h = '<div class="card" data-anchor="fxidle"><div class="row between"><h3>찌 낚시</h3><span class="tiny faint">맡겨 두면 혼자 낚습니다 · 시간당 약 ' + R.LZ.IDLE_RATE + '마리</span></div>';
     if (j) {
       var got = j.c.filter(function (k) { return k.k; }), done = now() >= j.end;
-      h += '<div class="row" style="gap:10px;margin-top:6px">' + spr(R.SPOT[j.spot].sp, 48) + '<div style="flex:1"><b>' + R.SPOT[j.spot].name + '</b> <span class="tiny faint">' + (j.bait ? R.BAIT[j.bait].name + ' · ' : '') + j.c.length + '번 입질 예정</span>' +
+      h += '<div class="row" style="gap:10px;margin-top:6px">' + spr(R.SPOT[j.spot].sp, 32) + '<div style="flex:1"><b>' + R.SPOT[j.spot].name + '</b> <span class="tiny faint">' + (j.bait ? R.BAIT[j.bait].name + ' · ' : '') + j.c.length + '번 입질 예정</span>' +
         '<div class="bar"><b data-b="prog:' + j.start + ':' + j.end + '"></b></div><div class="tiny muted">' + (done ? '<b class="gold">끝났습니다 · 그물을 걷으십시오</b>' : '남은 시간 <span class="num" data-l="left:' + j.end + '">' + left(j.end) + '</span> · ' + clock(j.end) + ' 끝') + '</div></div></div>';
       if (got.length) h += '<div class="lzcatch">' + got.slice(-14).map(function (k) { var sp = k.k === 'rare' ? R.RARE[k.id].sp : k.k === 'loot' ? D.FISH_LOOT.filter(function (q) { return q.id === k.id; })[0].sp : R.FISH[k.id].sp; return spr(sp, k.k === 'rare' ? 36 : 32, '', ''); }).join('') + (got.length > 14 ? '<span class="tiny faint">외 ' + (got.length - 14) + '</span>' : '') + '</div>';
       h += '<div class="row" style="justify-content:flex-end;margin-top:8px"><button class="btn sm ' + (done ? 'primary' : 'ghost') + '" data-act="fxclaim">' + (done ? '그물 걷기' : '일찍 걷기 (지금까지 낚은 것만)') + '</button></div>';
@@ -5834,7 +5834,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102277;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102278;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
