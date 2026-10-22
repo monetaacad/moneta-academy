@@ -5317,11 +5317,19 @@
     var vf = peVis(src, 'visFull'); if (vf === 'none') { delete me.full; hid.push('전체 능력치'); } else if (vf === 'friend') fo.push('전체 능력치');
     return '<p class="tiny faint" style="margin-bottom:10px">다른 학생이 채팅이나 친구 목록에서 내 이름을 누르면 이렇게 보입니다.' + (hid.length ? ' ' + hid.join(' · ') + '은(는) 숨겨 두었습니다.' : '') + (fo.length ? ' ' + fo.join(' · ') + '은(는) 친구에게만 보입니다.' : '') + (S.peDraft || S.peAv !== undefined ? ' <span class="gold">편집 탭에 저장하지 않은 변경이 있습니다.</span>' : '') + '</p>' + profileCard(me, null);
   }
+  // 접속 중인 친구가 지금 하는 일 (원정 중이면 파티 초대 전에 확인)
+  function frAct(f) {
+    var x = f.act; if (!x) return '';
+    if (x.k === 'exp') return ' <span class="tag br" title="원정에서 돌아오면 함께 원정에 참여할 수 있습니다">' + (x.pt ? '함께 원정 중' : '원정 중') + ' · ' + x.s + '단계 · <span data-l="left:' + x.end + '"></span></span>';
+    if (x.k === 'room') return ' <span class="tag br">함께 원정 방 대기 중</span>';
+    if (x.k === 'dream') return ' <span class="tag">꿈길 중</span>';
+    return ' <span class="tag ok">출정 가능</span>';
+  }
   function loadFriends() {
     API.friends().then(function (j) {
       var box = $('#flist'); if (!box) return;
       if (j.error) { box.innerHTML = '<p class="small bad">' + esc(j.error) + '</p>'; return; }
-      function row(f, btns) { return '<div class="frow"><button class="avbtn" data-act="prof" data-a="' + esc(f.id) + '">' + avatarHtml(f, 36) + '</button><div style="flex:1;min-width:0"><button class="cn" style="color:' + (R.HOUSE[f.house] ? R.HOUSE[f.house].color : 'inherit') + '" data-act="prof" data-a="' + esc(f.id) + '">' + esc(f.name) + '</button>' + (f.online ? ' <span class="odot" title="접속 중"></span>' : '') + ' <span class="tiny faint">' + (f.grade >= 8 ? '마스터' : f.grade + '학년') + ' · Lv ' + f.lvl + '</span>' + (f.status ? '<div class="tiny muted ell">' + esc(f.status) + '</div>' : f.seen && !f.online ? '<div class="tiny faint">마지막 접속 ' + clock(f.seen) + '</div>' : '') + (f.memo != null && !j.demo ? '<div class="fmemo" id="fm-' + esc(f.id) + '">' + fmemoView(f) + '</div>' : '') + '</div>' + btns + '</div>'; }
+      function row(f, btns) { return '<div class="frow"><button class="avbtn" data-act="prof" data-a="' + esc(f.id) + '">' + avatarHtml(f, 36) + '</button><div style="flex:1;min-width:0"><button class="cn" style="color:' + (R.HOUSE[f.house] ? R.HOUSE[f.house].color : 'inherit') + '" data-act="prof" data-a="' + esc(f.id) + '">' + esc(f.name) + '</button>' + (f.online ? ' <span class="odot" title="접속 중"></span>' : '') + ' <span class="tiny faint">' + (f.grade >= 8 ? '마스터' : f.grade + '학년') + ' · Lv ' + f.lvl + '</span>' + frAct(f) + (f.status ? '<div class="tiny muted ell">' + esc(f.status) + '</div>' : f.seen && !f.online ? '<div class="tiny faint">마지막 접속 ' + clock(f.seen) + '</div>' : '') + (f.memo != null && !j.demo ? '<div class="fmemo" id="fm-' + esc(f.id) + '">' + fmemoView(f) + '</div>' : '') + '</div>' + btns + '</div>'; }
       S.frMemo = {}; j.friends.concat(j.out).forEach(function (f) { S.frMemo[f.id] = f.memo || ''; });
       var h = '';
       if (j.demo) h += '<p class="small muted">데모에서는 친구를 맺을 수 없습니다. 서버를 열면 검색하거나 채팅에서 이름을 눌러 친구 신청을 할 수 있습니다.</p>';
@@ -5922,7 +5930,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102318;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102319;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
