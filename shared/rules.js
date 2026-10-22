@@ -765,7 +765,7 @@
   R.EXP_POS = {
     van: { id: 'van', name: '선봉', dps: 1, def: 1.25, take: 1, red: 0, desc: '몬스터가 80% 확률로 선봉을 노림 · 방어 +25%' },
     rear: { id: 'rear', name: '후열', dps: 1.1, def: 1, take: 1.1, red: 0, need: 'dmg', desc: '공격 주문을 장착해야 선택할 수 있습니다 · 공격 +10% · 받는 피해 +10%' },
-    sup: { id: 'sup', name: '지원', dps: 0.85, def: 1, take: 1, red: 0.15, need: 'care', desc: '보호막·치유 주문을 장착해야 선택할 수 있습니다 · 파티가 받는 피해 −15% · 공격 −15%' }
+    sup: { id: 'sup', name: '지원', dps: 0.85, def: 1, take: 1, red: 0.15, need: 'care', desc: '보호막·치유 주문을 장착해야 선택할 수 있습니다 · 파티가 받는 피해 −15%(지원 여러 명은 합산 · 최대 −30%) · 공격 −15%' }
   };
   R.PARTY_GOLD = 0.03; R.PARTY_XP = 0.01;   // 파티 보너스: 사람 파티원 1명당 (최대 3명분)
   R.EXP_PARTY_MAX = 4; R.EXP_PARTY_BONUS = 0.05; R.EXP_AGGRO = 0.8;
