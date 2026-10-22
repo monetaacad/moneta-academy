@@ -513,7 +513,7 @@ var DATA = (function () {
     { id: 'ashfox', name: '잿빛여우', r: 2, bonus: 'dropPct', base: 0.06, desc: '황야에서 온 여우. 숨겨진 보물 냄새를 맡는다.', c1: '#b0a8a0' },
     { id: 'dreammoth', name: '꿈나방', r: 2, bonus: 'offlineEff', base: 0.06, desc: '잠든 주인의 꿈속에서도 공부를 이어 간다. (꿈길 보상 증가)', c1: '#c0a0e0' },
     { id: 'clockcat', name: '태엽 고양이', r: 2, bonus: 'critC', base: 0.025, desc: '정확히 세 시 십 분마다 하품한다. 사냥은 그보다 정확하다.', c1: '#d0b070' },
-    { id: 'shadowcrow', name: '그림자까마귀', r: 3, bonus: 'critD', base: 0.12, desc: '주인의 그림자 속에 사는 까마귀. 적의 약점을 속삭인다.', c1: '#3a3450' },
+    { id: 'shadowcrow', name: '그림자까마귀', r: 3, bonus: 'critD', base: 0.15, desc: '주인의 그림자 속에 사는 까마귀. 적의 약점을 속삭인다.', c1: '#3a3450' },
     { id: 'starwhale', name: '새끼 별고래', r: 3, bonus: 'manaPct', base: 0.15, desc: '구름바다를 헤엄치는 별고래의 새끼. 숨을 쉴 때마다 마나가 흩날린다.', c1: '#6a8aff' },
     { id: 'starwyrm', name: '작은 성룡', r: 3, bonus: 'atkPct', base: 0.12, desc: '별샘에서 태어난다는 용의 새끼. 아직은 손바닥만 하다.', c1: '#ff9a6a' },
     { id: 'acornmouse', name: '도토리쥐', r: 0, bonus: 'defPct', base: 0.04, desc: '볼주머니에 도토리를 가득 채우고 다니는 생쥐. 위험하면 도토리 껍데기 속에 쏙 숨는다.', c1: '#a8805a' },
