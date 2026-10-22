@@ -1053,6 +1053,7 @@ button.mkn:hover { text-decoration: underline; }
 .sysrow .btn { background: rgba(0, 0, 0, .14); border-color: rgba(0, 0, 0, .28); color: inherit; padding: 3px 10px; font-size: 12.5px; }
 .sysrow .btn:hover { background: rgba(0, 0, 0, .26); }
 .sysrow .btn.ghost { background: transparent; }
+.sysrow a { color: inherit; text-decoration: underline; word-break: break-all; }
 @media (min-width: 1001px), (min-width: 901px) and (pointer: fine), (min-width: 901px) and (pointer: none) {
   .top { top: calc(env(safe-area-inset-top, 0px) + var(--sysh, 0px)); }
   .nav { top: calc(108px + var(--sysh, 0px)); }
@@ -1062,6 +1063,7 @@ button.mkn:hover { text-decoration: underline; }
 #maint .mcard { width: min(460px, 100%); text-align: center; display: flex; flex-direction: column; gap: 12px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 28px 22px; }
 #maint h1 { font-size: 24px; }
 #maint .mmsg { white-space: pre-wrap; color: var(--ink2); }
+#maint .mmsg a { color: var(--brass2); text-decoration: underline; word-break: break-all; }
 
 /* 접힌 카드의 한 줄 요약 (열리면 숨김) */
 details.fold > summary .foldsum { display: none; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1 1 0; text-align: right; }
