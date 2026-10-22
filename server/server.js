@@ -2394,7 +2394,7 @@ routes['POST /api/admin/plog'] = async (req, res) => {
   try { dbx.db.prepare(`SELECT item, price, ends FROM auction WHERE bidder = ? AND done = 1 ORDER BY ends DESC LIMIT 20`).all(row.id).forEach((r) => { try { const it = JSON.parse(r.item); bought.push(itemOut(it, { t: r.ends, price: r.price, from: '떠돌이 상인', have: null })); } catch (e) { } }); } catch (e) { }
   bought.sort((x, y) => y.t - x.t);
   const auto = P.rs && P.rs.sorter ? { on: P.autoSell >= 0, upto: P.autoSell >= 0 ? RN[P.autoSell] + ' 이하' : '꺼짐', mode: P.autoDis ? '분해' : '판매' } : null;
-  send(req, res, 200, { name: row.name, card, dlog, auto, bought, log: (P.log || []).slice(0, 50).map((l) => ({ t: l.t, m: l.m, k: l.k, n: l.n || 1 })), high, st: { expJobs: P.st.expJobs || 0, epicFound: P.st.epicFound || 0, legendFound: P.st.legendFound || 0 } });
+  send(req, res, 200, { name: row.name, card, dlog, auto, bought, log: (P.log || []).slice(0, 50).map((l) => ({ t: l.t, m: l.m, k: l.k, n: l.n || 1 })), glog: (P.glog || []).slice(0, 100), high, st: { expJobs: P.st.expJobs || 0, epicFound: P.st.epicFound || 0, legendFound: P.st.legendFound || 0 } });
 };
 // 운영실: 비밀번호를 잃어버린 학생에게 임시 비밀번호를 발급한다. 모든 기기에서 로그아웃되고, 로그인하면 비밀번호를 바꾸라고 안내한다
 routes['POST /api/admin/resetpw'] = async (req, res) => {
