@@ -1939,9 +1939,9 @@
   // 광장 상단 띠: 축제 진행 중 · 오늘 외출증
   function festHome() {
     var P = S.P, t = now(), cur = R.festAt(wctx(), t), tl = R.tripLeft(P, wctx(), t), out = [];
-    if (cur) out.push('<button class="festband" data-act="nav" data-a="fest"><span class="em">' + cur.f.em + '</span><span><b>' + cur.f.name + '</b> 진행 중 · 축제 표식 ' + fmt(P.fest && P.fest.k === cur.k ? P.fest.tok : 0) + '개</span><span class="tiny faint" data-l="left:' + cur.end + '"></span></button>');
-    if (P.trip && P.trip.cur) out.push('<button class="festband" data-act="nav" data-a="trip"><span class="em">' + R.ISLE[P.trip.cur.isle].em + '</span><span><b>' + R.ISLE[P.trip.cur.isle].name + '</b> 나들이 중 · 이야기를 이어서 진행할 수 있습니다</span></button>');
-    else if (tl) out.push('<button class="festband" data-act="nav" data-a="trip"><span class="em">🎫</span><span>오늘 외출증 <b>' + tl + '</b>장 · 하늘섬 나들이를 떠날 수 있습니다</span></button>');
+    if (cur) out.push('<button class="festband" data-act="nav" data-a="fest"><span><b>' + cur.f.name + '</b> 진행 중 · 축제 표식 ' + fmt(P.fest && P.fest.k === cur.k ? P.fest.tok : 0) + '개</span><span class="tiny faint" data-l="left:' + cur.end + '"></span></button>');
+    if (P.trip && P.trip.cur) out.push('<button class="festband" data-act="nav" data-a="trip"><span><b>' + R.ISLE[P.trip.cur.isle].name + '</b> 나들이 중 · 이야기를 이어서 진행할 수 있습니다</span></button>');
+    else if (tl) out.push('<button class="festband" data-act="nav" data-a="trip"><span>오늘 외출증 <b>' + tl + '</b>장 · 하늘섬 나들이를 떠날 수 있습니다</span></button>');
     return out.length ? '<div class="festbands">' + out.join('') + '</div>' : '';
   }
   /* ── 하늘섬 나들이 (주말 외출) ── */
@@ -1954,7 +1954,7 @@
     if (S.tripRes) { var x = S.tripRes; h += '<div class="card hl" style="margin-bottom:12px"><p class="small bondline">' + esc(x.text) + '</p><div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap">' + rwText(x.rw) + (x.souv ? '<span class="tag br">기념품 ' + R.SOUV[x.souv].em + ' ' + esc(R.SOUV[x.souv].name) + '</span>' : '') + (x.done ? '<span class="tiny faint">나들이를 마쳤습니다</span>' : '') + '</div></div>'; }
     if (cur) {
       var isl = R.ISLE[cur.isle], ev = R.TEV[cur.ev[cur.i]];
-      h += '<div class="card hl trip"><div class="row between"><h3>' + isl.em + ' ' + isl.name + '</h3><span class="tiny faint">이야기 ' + (cur.i + 1) + ' / ' + cur.ev.length + '</span></div>' +
+      h += '<div class="card hl trip"><div class="row between"><h3>' + isl.name + '</h3><span class="tiny faint">이야기 ' + (cur.i + 1) + ' / ' + cur.ev.length + '</span></div>' +
         (ev ? '<h4 style="margin-top:8px">' + esc(ev.t) + '</h4><p class="small" style="margin-top:4px;line-height:1.7">' + esc(ev.d) + '</p><div class="stack" style="gap:6px;margin-top:10px">' + ev.ch.map(function (c, i) { return '<button class="btn" style="justify-content:flex-start;white-space:normal;text-align:left" data-act="trippick" data-a="' + i + '">' + esc(c.l) + '</button>'; }).join('') + '</div>' : '') +
         '<div class="row" style="justify-content:flex-end;margin-top:10px">' + (function () { var arm = S.confirm.tripleave > Date.now(); return '<button class="btn sm' + (arm ? ' danger' : ' ghost') + '" data-act="tripleave">' + (arm ? '한 번 더 누르면 나들이를 마칩니다 · 사용한 외출증은 돌아오지 않습니다' : '나들이 그만두기') + '</button>'; })() + '</div></div>';
     } else if (!max) {
@@ -1963,7 +1963,7 @@
     }
     if (!cur) h += '<div class="grid gauto">' + D.ISLES.map(function (x) {
       var why = R.isleWhy(P, W, t, x.id), evs = R.isleEvents(x.id), seen = evs.filter(function (e) { return tr.seen[e.id]; }).length, sv = D.SOUVENIRS.filter(function (v) { return v.isle === x.id; });
-      return '<div class="card"' + (why && why.indexOf('학년') >= 0 ? ' style="opacity:.6"' : '') + '><h4>' + x.em + ' ' + x.name + '</h4><p class="small muted" style="margin:4px 0 8px">' + x.desc + '</p><div class="row tiny" style="gap:8px;flex-wrap:wrap"><span class="faint">이야기 ' + seen + ' / ' + evs.length + '</span><span class="faint">기념품</span>' + sv.map(function (v) { return tr.souv[v.id] ? '<span title="' + esc(v.name) + '">' + v.em + '</span>' : '<span class="faint" title="아직 모으지 못한 기념품">?</span>'; }).join(' ') + '</div>' +
+      return '<div class="card"' + (why && why.indexOf('학년') >= 0 ? ' style="opacity:.6"' : '') + '><h4>' + x.name + '</h4><p class="small muted" style="margin:4px 0 8px">' + x.desc + '</p><div class="row tiny" style="gap:8px;flex-wrap:wrap"><span class="faint">이야기 ' + seen + ' / ' + evs.length + '</span><span class="faint">기념품</span>' + sv.map(function (v) { return tr.souv[v.id] ? '<span title="' + esc(v.name) + '">' + v.em + '</span>' : '<span class="faint" title="아직 모으지 못한 기념품">?</span>'; }).join(' ') + '</div>' +
         '<div class="row" style="margin-top:8px;gap:6px">' + (why ? '<span class="tag">' + esc(why) + '</span>' : '<button class="btn sm primary" data-act="tripgo" data-a="' + x.id + '"' + (lft > 0 ? '' : why2(max)) + '>외출하기 <span class="cost">외출증 1장</span></button>') + (x.shop ? '<button class="btn sm ghost" data-act="nav" data-a="famshop">환수 용품점</button>' : '') + '</div></div>';
     }).join('') + '</div>';
     function why2(m) { return ' disabled data-why="' + (m ? '오늘 외출증을 모두 사용했습니다' : '외출증은 주말과 축제 기간에만 발급됩니다') + '"'; }
@@ -1984,32 +1984,35 @@
     var P = S.P, t = now(), W = wctx(), cur = R.festAt(W, t), FS = S.fest;
     if (!cur) {
       var nx = R.festNext(W, t), h0 = pageHead('아카데미력 축제', '축제', '');
-      if (nx) h0 += '<div class="card hl"><div class="eyebrow tiny gold">다음 축제</div><h3>' + nx.f.em + ' ' + nx.f.name + '</h3><p class="small" style="margin-top:6px;line-height:1.7">' + esc(nx.f.desc) + '</p><p class="small muted" style="margin-top:8px">' + calDate(nx.start) + ' ~ ' + calDate(nx.end - 1) + ' · 시작까지 <b data-l="left:' + nx.start + '"></b></p></div>';
+      if (nx) h0 += '<div class="card hl"><div class="eyebrow tiny gold">다음 축제</div><h3>' + nx.f.name + '</h3><p class="small" style="margin-top:6px;line-height:1.7">' + esc(nx.f.desc) + '</p><p class="small muted" style="margin-top:8px">' + calDate(nx.start) + ' ~ ' + calDate(nx.end - 1) + ' · 시작까지 <b data-l="left:' + nx.start + '"></b></p></div>';
       if (FS && FS.fin && R.FEST[FS.id]) h0 += '<div class="card inset" style="margin-top:12px"><h4>지난 축제 · ' + R.FEST[FS.id].name + '</h4><p class="small muted" style="margin-top:4px">모든 학생이 모은 축제 표식 ' + fmt(FS.total) + '개 · 공동 목표 ' + FS.stage + ' / ' + FS.goals.length + '단계 달성 · 참여 ' + fmt(FS.n) + '명</p></div>';
       h0 += festCalendar(t);
       return h0;
     }
     var f = cur.f, my = P.fest && P.fest.k === cur.k ? P.fest : { tok: 0, got: 0, dg: 0, buy: {} }, fs = FS && FS.k === cur.k ? FS : null, stage = fs ? fs.stage : 0, sc = f.scenes[Math.min(stage, f.scenes.length - 1)];
     var today = my.day === R.dayKST(t) ? my.dg : 0;
-    var h = pageHead('아카데미력 축제 · ' + calDate(cur.start) + ' ~ ' + calDate(cur.end - 1), f.em + ' ' + f.name, '끝나기까지 <b data-l="left:' + cur.end + '"></b>');
+    var h = pageHead('아카데미력 축제 · ' + calDate(cur.start) + ' ~ ' + calDate(cur.end - 1), f.name, '끝나기까지 <b data-l="left:' + cur.end + '"></b>');
     h += '<div class="card hl"><p class="small" style="line-height:1.7">' + esc(f.desc) + '</p><p class="mqtext" style="margin-top:10px">' + (sc.who ? '<span class="mqwho">' + esc(sc.who) + '</span>' : '') + esc(sc.sc) + '</p></div>';
     h += '<div class="grid g2" style="margin-top:12px"><div class="card"><h3>내 축제 표식</h3><p style="margin-top:6px"><b class="num gold" style="font-size:22px">' + fmt(my.tok) + '</b> <span class="tiny faint">개 보유 · 이번 축제에서 모은 표식 ' + fmt(my.got) + '개</span></p>' +
       '<p class="small muted" style="margin-top:6px">수업 · 원정 · 연구 · 파견 · 조제 등 평소 활동으로 모입니다(활동 점수 ' + D.FEST_TOK.per + '점마다 1개). 하루에 ' + D.FEST_TOK.dayCap + '개까지 모을 수 있으며, 오늘 ' + today + '개를 모았습니다.</p>' +
-      '<p class="tiny faint" style="margin-top:6px">축제가 끝나면 남은 표식은 1개당 일일 목표 ' + CUR + ' 보상의 ' + Math.round(D.FEST_TOK.leftover * 100) + '%로 자동 환산됩니다.</p></div>';
+      '<p class="tiny faint" style="margin-top:6px">남은 표식은 교환소에서 마석가루 · ' + CUR + '로 개수 제한 없이 교환할 수 있습니다. 축제가 끝날 때까지 교환하지 않은 표식은 1개당 ' + MONEY(R.festGold(P)) + '로 자동 환산됩니다.</p></div>';
     h += '<div class="card"><h3>공동 목표</h3><p class="small muted" style="margin-top:4px">모든 학생이 모은 표식 <b class="num">' + fmt(fs ? fs.total : 0) + '</b>개' + (fs ? ' · 참여 ' + fmt(fs.n) + '명' : '') + '</p><div class="stack" style="gap:8px;margin-top:8px">' + (fs ? fs.goals : []).map(function (g, i) {
       var done = stage > i, p = Math.min(1, (fs.total - (i ? fs.goals[i - 1] : 0)) / (g - (i ? fs.goals[i - 1] : 0)));
       return '<div><div class="row small"><b>' + (i + 1) + '단계</b><span class="tiny faint">' + fmt(g) + '개</span><span class="spacer"></span>' + (done ? '<span class="tag ok">달성</span>' : '') + '</div><div class="bar brass" style="height:6px;margin-top:3px"><b style="width:' + (done ? 100 : Math.max(0, p * 100)).toFixed(1) + '%"></b></div><div class="tiny faint" style="margin-top:2px">보상 ' + R.rewardText(D.FEST_REWARDS[i]) + '</div></div>';
     }).join('') + '</div><p class="tiny faint" style="margin-top:8px">단계를 달성하면 축제 표식을 모은 모든 학생에게 보상이 우편으로 전달됩니다. 늦게 참여한 학생도 축제가 끝날 때 이미 달성한 단계의 보상을 받습니다.</p></div></div>';
     h += '<div class="section-t" style="margin-top:14px">축제 교환소 <span class="tiny faint">보유 표식 ' + fmt(my.tok) + '개</span></div><div class="grid gauto">' + R.festItems(cur.id).map(function (x) {
-      var owned = R.festOwned(P, x), nb = my.buy[x.id] || 0, max = x.max || 1, out = owned || nb >= max, pv = x.k === 'title' ? '' : x.k === 'deco' ? (R.DECO[x.id] ? '<span class="stamp-pv">' + R.DECO[x.id].glyph + '</span> ' : '') : x.k === 'toy' ? R.TOY[x.id].em + ' ' : x.k === 'souv' ? R.SOUV[x.id].em + ' ' : (x.em || '') + ' ';
+      var owned = R.festOwned(P, x), nb = my.buy[x.id] || 0, max = x.max == null ? 1 : x.max, out = owned || (max && nb >= max), pv = x.k === 'deco' ? (R.DECO[x.id] ? '<span class="stamp-pv">' + R.DECO[x.id].glyph + '</span> ' : '') : x.k === 'toy' ? R.TOY[x.id].em + ' ' : x.k === 'souv' ? R.SOUV[x.id].em + ' ' : '';
+      if (!max) return '<div class="card"><h4>' + esc(x.k === 'gold' ? CUR : '마석가루') + '</h4><p class="tiny faint" style="margin:4px 0 8px">표식 1개 = ' + (x.k === 'gold' ? MONEY(R.festGold(P)) : '마석가루 ' + x.n + '개') + ' · 개수 제한 없음</p><div class="row" style="gap:6px;flex-wrap:wrap"><input type="number" id="fq-' + x.id + '" min="1" max="' + Math.max(1, my.tok) + '" value="' + Math.max(1, my.tok) + '" style="width:90px"' + (my.tok > 0 ? '' : ' disabled') + '><button class="btn sm primary" data-act="festbuyn" data-a="' + x.id + '"' + (my.tok > 0 ? '' : ' disabled data-why="축제 표식이 부족합니다"') + '>교환</button></div></div>';
       return '<div class="card"><h4>' + pv + esc(R.festItemName(x)) + '</h4><p class="tiny faint" style="margin:4px 0 8px">' + (max > 1 ? '이번 축제 ' + nb + ' / ' + max + '번' : '한 번만 교환할 수 있습니다') + '</p>' + (out ? '<span class="tag ok">' + (owned ? '보유 중' : '교환 완료') + '</span>' : '<button class="btn sm primary" data-act="festbuy" data-a="' + x.id + '"' + (my.tok >= x.price ? '' : ' disabled data-why="축제 표식이 부족합니다"') + '>교환 <span class="cost">표식 ' + x.price + '개</span></button>') + '</div>';
     }).join('') + '</div>';
     return h + festCalendar(t);
   };
   function festCalendar(t) {
-    var cal = R.calendar(wctx(), t);
-    return '<div class="card inset" style="margin-top:14px"><h4>축제 달력</h4><div class="mcal" style="margin-top:6px">' + D.FESTIVALS.map(function (f) { return '<div class="mrow' + (f.mi === cal.mi && cal.d >= f.from && cal.d <= f.to ? ' now' : '') + '"><span class="mn">' + D.WORLD.calendarMonths[f.mi] + '</span><span class="small">' + f.em + ' ' + f.name + ' <span class="tiny faint">' + f.from + '~' + f.to + '일</span></span><span></span></div>'; }).join('') + '</div><p class="tiny faint" style="margin-top:6px">아카데미력 한 달은 실제 28일이며, 축제는 그 달 마지막 주(22~28일)에 열립니다.</p></div>';
+    var cal = R.calendar(wctx(), t), NM = D.WORLD.calendarMonths.length;
+    return '<div class="card inset" style="margin-top:14px"><h4>축제 달력</h4><div class="mcal" style="margin-top:6px">' + D.FESTIVALS.map(function (f) { var k = (f.mi - cal.mi + NM) % NM, st = R.dayKST(t) - (cal.d - 1) + k * cal.md; return '<div class="mrow' + (k === 0 ? ' now' : '') + '"><span class="mn">' + D.WORLD.calendarMonths[f.mi] + '</span><span class="small">' + f.name + '</span>' + (k === 0 ? '<span class="tag ok">진행 중</span>' : '<span class="tiny faint">' + clockDate(st * 86400 - R.K.TZ) + '부터</span>') + '</div>'; }).join('') + '</div><p class="tiny faint" style="margin-top:6px">아카데미력 한 달은 실제 ' + cal.md + '일이며, 축제는 그 달 내내 열립니다.</p></div>';
   }
+  function clockDate(t) { var d = new Date((t + R.K.TZ) * 1000); return (d.getUTCMonth() + 1) + '월 ' + d.getUTCDate() + '일'; }   // 한국 시간 날짜
+  ACT.festbuyn = function (id) { var el = $('#fq-' + id), n = Math.floor(+(el && el.value) || 0); if (n < 1) { toast('축제 교환소', '개수 입력 필요'); return; } act('festBuy', { id: id, n: n }).then(function (r) { if (!r) return; Snd.play('ach'); toast('축제 교환소', '표식 ' + fmt(r.price) + '개 → ' + r.name, 2600); render(); }); };
   ACT.festbuy = function (id) { act('festBuy', { id: id }).then(function (r) { if (!r) return; Snd.play('ach'); toast('축제 교환소', r.name + (r.got ? ' · ' + r.got.join(', ') : '') + ' 교환 완료', 2600); render(); }); };
 
   /* ── 기숙사 휴게실 복원 ── */
@@ -4293,11 +4296,11 @@
   ACT.respecuse = function () { var k = 'rsp'; if (!(S.confirm[k] > Date.now())) { S.confirm[k] = Date.now() + 4000; render(); setTimeout(render, 4100); return; } S.confirm[k] = 0; act('useRespec', {}).then(function (r) { if (r) respecDone(r.respec); else render(); }); };
   ACT['do-login'] = function () { ACT['do']('login'); };
   ACT.blesshelp = function () {
-    var cal = R.calendar(wctx(), now()), left0 = 28 - cal.d + 1, wd = R.weekday(now()), DAYN = ['일', '월', '화', '수', '목', '금', '토'];
-    var rows = []; for (var NM = D.WORLD.calendarMonths.length, k = 0; k < NM; k++) { var mi = (cal.mi + k) % NM; rows.push('<div class="mrow' + (k === 0 ? ' now' : '') + '"><span class="mn">' + D.WORLD.calendarMonths[mi] + '</span><span class="small">' + D.MONTH_BONUS[mi].text.replace(/^[^—]+— /, '') + '</span>' + (k === 0 ? '<span class="tag ok">지금 · ' + left0 + '일 남음</span>' : '<span class="tiny faint">' + (left0 + (k - 1) * 28) + '일 뒤</span>') + '</div>'); }
+    var cal = R.calendar(wctx(), now()), left0 = cal.md - cal.d + 1, wd = R.weekday(now()), DAYN = ['일', '월', '화', '수', '목', '금', '토'];
+    var rows = []; for (var NM = D.WORLD.calendarMonths.length, k = 0; k < NM; k++) { var mi = (cal.mi + k) % NM; rows.push('<div class="mrow' + (k === 0 ? ' now' : '') + '"><span class="mn">' + D.WORLD.calendarMonths[mi] + '</span><span class="small">' + D.MONTH_BONUS[mi].text.replace(/^[^—]+— /, '') + '</span>' + (k === 0 ? '<span class="tag ok">지금 · ' + left0 + '일 남음</span>' : '<span class="tiny faint">' + (left0 + (k - 1) * cal.md) + '일 뒤</span>') + '</div>'); }
     var days = [1, 2, 3, 4, 5, 6, 0].map(function (d) { var we = d === 0 || d === 6; return '<div class="mrow' + (d === wd ? ' now' : '') + '"><span class="mn">' + DAYN[d] + '요일</span><span class="small' + (we ? '' : ' faint') + '">' + (we ? D.WEEKEND.text.replace(/^[^—]+— /, '').replace(/ \(토·일\)$/, '') : '요일 축복 없음') + '</span>' + (d === wd ? '<span class="tag ok">오늘</span>' : '<span></span>') + '</div>'; });
     modal(mhead('축복 달력', '달 축복과 요일 축복은 따로 겹쳐서 적용됩니다') +
-      '<div class="section-t">달 축복 <span class="tiny faint">아카데미력 한 달 = 실제 28일, 아홉 달이 한 해</span></div><div class="mcal">' + rows.join('') + '</div>' +
+      '<div class="section-t">달 축복 <span class="tiny faint">아카데미력 한 달 = 실제 ' + cal.md + '일, 아홉 달이 한 해</span></div><div class="mcal">' + rows.join('') + '</div>' +
       '<div class="section-t" style="margin-top:14px">요일 축복 <span class="tiny faint">한국 시간 기준</span></div><div class="mcal">' + days.join('') + '</div>' +
       '<p class="tiny faint" style="margin-top:10px">수업·원정의 축복은 시작할 때 겹친 시간만큼 반영됩니다. 예를 들어 금요일 밤에 3시간 원정에 출정하면 토요일에 걸친 부분만 유성우 효과를 받습니다.</p>');
   };
@@ -5750,7 +5753,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102295;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102296;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

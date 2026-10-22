@@ -86,9 +86,9 @@
   R.nextMidnight = function (t) { return (R.dayKST(t) + 1) * 86400 - K.TZ; };
   R.calendar = function (W, t) {
     var dn = Math.max(0, R.dayKST(t) - R.dayKST(W.epoch));
-    var NM = D.WORLD.calendarMonths.length, mo = Math.floor(dn / 28) % NM;
+    var NM = D.WORLD.calendarMonths.length, MD = D.WORLD.monthDays || 28, mo = Math.floor(dn / MD) % NM;
     var secOfDay = (t + K.TZ) % 86400;
-    return { day: dn, year: D.WORLD.baseYear + Math.floor(dn / (28 * NM)), mi: mo, month: D.WORLD.calendarMonths[mo], d: dn % 28 + 1,
+    return { day: dn, year: D.WORLD.baseYear + Math.floor(dn / (MD * NM)), mi: mo, month: D.WORLD.calendarMonths[mo], d: dn % MD + 1, md: MD,
       period: clamp(Math.floor((secOfDay - 9 * 3600) / 3600) + 1, 0, 9), weekend: R.isWeekend(t), bonus: D.MONTH_BONUS[mo] };
   };
   function weekendFrac(t0, t1) {
@@ -2692,16 +2692,16 @@
     if (!W || W.epoch == null) return null;
     var ff = W.festF; if (ff && FEST[ff.id] && t >= ff.start && t < ff.end) return { id: ff.id, f: FEST[ff.id], start: ff.start, end: ff.end, k: ff.id + ':t' + ff.start };
     if (t < W.epoch) return null;
-    var cal = R.calendar(W, t), f = D.FESTIVALS.filter(function (x) { return x.mi === cal.mi && cal.d >= x.from && cal.d <= x.to; })[0]; if (!f) return null;
-    var d0 = R.dayKST(t) - (cal.d - f.from), start = d0 * 86400 - K.TZ;
-    return { id: f.id, f: f, start: start, end: start + (f.to - f.from + 1) * 86400, k: f.id + ':' + cal.year };
+    var cal = R.calendar(W, t), f = D.FESTIVALS.filter(function (x) { return x.mi === cal.mi; })[0]; if (!f) return null;   // 축제 달에는 그 달 내내
+    var d0 = R.dayKST(t) - (cal.d - 1), start = d0 * 86400 - K.TZ;
+    return { id: f.id, f: f, start: start, end: start + cal.md * 86400, k: f.id + ':' + cal.year };
   };
-  // 다음 축제 (화면 안내용): 오늘부터 한 해(252일) 안에서 처음 열리는 축제
-  R.festNext = function (W, t) { if (!W || W.epoch == null) return null; var NM = D.WORLD.calendarMonths.length; for (var k = 1; k <= 28 * NM; k++) { var x = R.festAt(W, R.dayKST(t) * 86400 - K.TZ + k * 86400 + 3600); if (x) return x; } return null; };
+  // 다음 축제 (화면 안내용): 오늘부터 한 해 안에서 처음 열리는 축제
+  R.festNext = function (W, t) { if (!W || W.epoch == null) return null; var NM = D.WORLD.calendarMonths.length, MD = D.WORLD.monthDays || 28; for (var k = 1; k <= MD * NM; k++) { var x = R.festAt(W, R.dayKST(t) * 86400 - K.TZ + k * 86400 + 3600); if (x) return x; } return null; };
   R.festSync = function (P, W, now) {
     var cur = R.festAt(W, now), f = P.fest;
     if (f && f.k && !f.closed && (!cur || cur.k !== f.k)) {   // 끝난 축제: 남은 표식을 아르크로
-      var g = Math.floor((f.tok || 0) * R.dailyReward(P).gold * FT.leftover); f.closed = 1;
+      var g = (f.tok || 0) * R.festGold(P); f.closed = 1;
       if (f.tok > 0) { addGold(P, g); log(P, Math.min(now, f.end || now), (FEST[f.id] ? '「' + FEST[f.id].name + '」' : '축제') + '가 끝나 남은 축제 표식 ' + f.tok + '개를 ' + R.fmt(g) + ' ' + CUR + '로 바꾸었습니다.', 'news'); }
       f.left = f.tok; f.tok = 0;
     }
@@ -2716,6 +2716,7 @@
     n = Math.min(n, FT.dayCap - f.dg); if (n <= 0) { f.fr = 0; return; }
     f.tok += n; f.got += n; f.dg += n;
   }
+  R.festGold = function (P) { return Math.max(1, Math.floor(R.dailyReward(P).gold * FT.leftover)); };   // 표식 1개 = 아르크 (교환소 · 축제가 끝날 때 같은 값)
   R.festItems = function (fid) { var f = FEST[fid]; return (f ? f.shop : []).concat(D.FEST_SHOP); };
   R.festItem = function (fid, id) { return R.festItems(fid).filter(function (x) { return x.id === id; })[0] || null; };
   R.festItemName = function (x) { if (!x) return ''; if (x.name) return x.name; var o = x.k === 'title' ? D.TITLES.filter(function (t) { return t.id === x.id; })[0] : x.k === 'toy' ? R.TOY[x.id] : x.k === 'deco' ? DECO[x.id] : x.k === 'souv' ? SOUV[x.id] : null; return o ? (x.k === 'title' ? '칭호 「' + o.name + '」' : x.k === 'deco' ? '정보 카드 인장 「' + o.name + '」' : x.k === 'toy' ? '장난감 「' + o.name + '」' : '기념품 「' + o.name + '」') : x.id; };
@@ -2724,10 +2725,10 @@
   A.festBuy = function (P, W, now, a) {
     var cur = R.festSync(P, W, now); if (!cur || !P.fest || P.fest.k !== cur.k) err('지금은 열린 축제가 없습니다');
     var x = R.festItem(cur.id, str(a.id, 30)); if (!x) err('교환할 수 없는 품목입니다');
-    var f = P.fest, nb = f.buy[x.id] || 0, max = x.max || 1;
-    if (R.festOwned(P, x)) err('이미 가지고 있습니다'); if (nb >= max) err('이번 축제에서는 더 바꿀 수 없습니다');
-    if (f.tok < x.price) err('축제 표식이 부족합니다 (' + x.price + '개 필요)');
-    f.tok -= x.price; f.buy[x.id] = nb + 1; var out = { id: x.id, k: x.k, name: R.festItemName(x) };
+    var f = P.fest, nb = f.buy[x.id] || 0, max = x.max == null ? 1 : x.max, cnt = max === 0 ? (a.n == null ? 1 : int(a.n, 1, 100000)) : 1, cost = x.price * cnt;   // max 0 = 제한 없이 여러 개
+    if (R.festOwned(P, x)) err('이미 가지고 있습니다'); if (max && nb >= max) err('이번 축제에서는 더 바꿀 수 없습니다');
+    if (f.tok < cost) err('축제 표식이 부족합니다 (' + cost + '개 필요)');
+    f.tok -= cost; f.buy[x.id] = nb + cnt; var out = { id: x.id, k: x.k, name: R.festItemName(x), cnt: cnt, price: cost };
     if (x.k === 'title') (P.festT || (P.festT = [])).push(x.id);
     else if (x.k === 'toy') (P.fam.toys || (P.fam.toys = {}))[x.id] = 1;
     else if (x.k === 'deco') decoOf(P).own[x.id] = 1;
@@ -2735,7 +2736,9 @@
     else if (x.k === 'snack') { var sn = P.fam.snacks || (P.fam.snacks = {}); out.got = []; for (var i = 0; i < x.n; i++) { var s = pick(P, D.FAM_SNACKS); sn[s.id] = (sn[s.id] || 0) + 1; out.got.push(s.name); } }
     else if (x.k === 'shard') P.res.shard += x.n;
     else if (x.k === 'stone') P.res.stone += x.n;
-    log(P, now, '축제 교환소: ' + R.josa(out.name, '을', '를') + ' 받았습니다 (축제 표식 ' + x.price + '개)', 'news');
+    else if (x.k === 'dust') { out.dust = x.n * cnt; P.res.dust = (P.res.dust || 0) + out.dust; out.name = '마석가루 ' + R.fmt(out.dust) + '개'; }
+    else if (x.k === 'gold') { out.gold = R.festGold(P) * cnt; addGold(P, out.gold); out.name = R.fmt(out.gold) + ' ' + CUR; }
+    log(P, now, '축제 교환소: ' + R.josa(out.name, '을', '를') + ' 받았습니다 (축제 표식 ' + cost + '개)', 'news');
     return out;
   };
 
@@ -2793,8 +2796,8 @@
   /* ── 기숙사 휴게실 복원: 납부는 서버가 기숙사 진행도와 함께 처리한다 (POST /api/lounge). 여기서는 값 · 검사 · 학생 쪽 차감만 ── */
   var LG = D.LOUNGE;
   R.loungeMonth = function (W, t) {
-    if (!W || W.epoch == null) return null; var cal = R.calendar(W, t), mk = Math.floor(cal.day / 28), d0 = R.dayKST(W.epoch) + mk * 28;
-    return { mk: mk, p: D.LOUNGE_PROJECTS[mk % D.LOUNGE_PROJECTS.length], start: d0 * 86400 - K.TZ, end: (d0 + 28) * 86400 - K.TZ, month: cal.month };
+    if (!W || W.epoch == null) return null; var cal = R.calendar(W, t), mk = Math.floor(cal.day / cal.md), d0 = R.dayKST(W.epoch) + mk * cal.md;
+    return { mk: mk, p: D.LOUNGE_PROJECTS[mk % D.LOUNGE_PROJECTS.length], start: d0 * 86400 - K.TZ, end: (d0 + cal.md) * 86400 - K.TZ, month: cal.month };
   };
   R.loungeCost = function (P, W, now) { var z = R.zoneOf(Math.min(P.maxStage, R.stageCap(P))); return { gold: Math.max(100, Math.floor(R.dailyReward(P).gold * LG.goldX)), mana: R.ritualCost(P, W, now), mat: z.mat, matN: LG.matN }; };
   function loungeOf(P, W, now) { var m = R.loungeMonth(W, now), l = P.lounge; if (!l || l.mk !== m.mk) l = P.lounge = { mk: m.mk, day: -1, k: {}, pts: 0 }; var d = R.dayKST(now); if (l.day !== d) { l.day = d; l.k = {}; } return l; }

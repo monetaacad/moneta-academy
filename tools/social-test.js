@@ -29,17 +29,21 @@ function student(t) { const P = R.newPlayer('p' + t, '시험', 'lanterna', t, 7)
 // 2) 축제: 달력으로 열림 · 표식 하루 상한 · 교환 · 끝나면 남은 표식 환산
 {
   const t0 = Date.parse('2026-10-22T12:00:00+09:00') / 1000, nx = R.festNext(W, t0);
-  ok(nx && nx.id === 'bell' && R.calendar(W, nx.start + 60).d === 22, '첫 축제는 피리달 22일 종탑 음악제');
+  ok(nx && nx.id === 'bell' && R.calendar(W, nx.start + 60).mi === 2 && R.calendar(W, nx.start + 60).d === 1 && nx.end - nx.start === (D.WORLD.monthDays || 28) * 86400, '축제는 피리달 내내 (종탑 음악제)');
   ok(!R.festAt(W, nx.start - 60) && R.festAt(W, nx.start + 60) && !R.festAt(W, nx.end + 60), '축제 기간');
   const t = nx.start + 3600; W.now = t; const P = student(t - 10); R.advance(P, W, t);
   ok(P.fest && P.fest.k === nx.k, '축제 기록 시작');
   for (let i = 0; i < 100; i++) R.cupAdd(P, 20, 'lec');
   ok(P.fest.tok === D.FEST_TOK.dayCap, '표식 하루 상한');
+  ok(P.fest.got === D.FEST_TOK.dayCap && D.FEST_TOK.dayCap * (D.WORLD.monthDays || 28) > D.FESTIVALS[0].shop.reduce((a, x) => a + x.price, 0), '한 축제에 한정 품목을 모두 받고도 남는 표식');
   P.fest.tok = 1000;
   R.act(P, W, t, 'festBuy', { id: 'fest_bell' }); ok(R.titleOk(P, 'fest_bell'), '축제 칭호');
   R.act(P, W, t, 'festBuy', { id: 's_fbell' }); ok(P.deco.own.s_fbell, '축제 인장');
   ok(/교환소/.test(errOf(() => R.act(P, W, t, 'decoBuy', { id: 's_fmask' }))), '축제 인장은 아르크로 살 수 없음');
   ok(/이미/.test(errOf(() => R.act(P, W, t, 'festBuy', { id: 'fest_bell' }))), '한 번만');
+  const d0 = P.res.dust || 0; R.act(P, W, t, 'festBuy', { id: 'dust', n: 100 }); ok(P.res.dust === d0 + 100 * D.FEST_TOK.dust, '마석가루 무제한 교환');
+  const g1 = P.res.gold; R.act(P, W, t, 'festBuy', { id: 'gold', n: 50 }); ok(P.res.gold === g1 + 50 * R.festGold(P), '아르크 무제한 교환');
+  R.act(P, W, t, 'festBuy', { id: 'dust', n: 10 }); ok(P.fest.buy.dust === 110, '여러 번 교환');
   const g0 = P.res.gold, left = P.fest.tok, te = nx.end + 100; W.now = te; R.advance(P, W, te);
   ok(P.fest.closed && P.fest.tok === 0 && P.res.gold > g0 && left > 0, '남은 표식 환산');
   ok(/열린 축제가 없습니다/.test(errOf(() => R.act(P, W, te, 'festBuy', { id: 'shard3' }))), '축제가 끝나면 교환 불가');
