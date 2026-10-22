@@ -2673,7 +2673,9 @@
     return out;
   };
   A.inboxAck = function (P, W, now, a) { var upto = Number(a.upto); if (!isFinite(upto)) upto = Infinity; P.inbox = P.inbox.filter(function (o) { return o.t > upto; }); return { ok: true }; };
-  A.storySeen = function (P, W, now, a) { P.story = Math.max(P.story, int(a.n, 0, 8)); return { ok: true }; };
+  // 읽을 수 있는 세계관 이야기 수: 학년마다 한 장(8장까지), 9장은 학기 이야기 9장(종지기의 해)을 시작하면
+  R.storyAvail = function (P) { return Math.min(P.grade, 8) + (P.grade >= 8 && P.mq && P.mq.g >= 9 ? 1 : 0); };
+  A.storySeen = function (P, W, now, a) { P.story = Math.max(P.story, Math.min(int(a.n, 0, D.STORY.length), R.storyAvail(P))); return { ok: true }; };
 
   A.dailyReroll = function (P, W, now, a) {
     var i = int(a.i, 0, 2), q = P.daily.q[i]; if (!q || q.done) err('바꿀 수 없는 의뢰입니다');
@@ -2884,7 +2886,7 @@
     if (P.mq) { var ch = D.MQ[P.mq.g - 1]; if (ch && P.mq.i >= ch.steps.length) { P.mq.i = ch.steps.length - 1; mqBase(P); } return; }   // 장의 단계 수가 줄었을 때: 그 장 마지막 단계로
     P.mq = { g: Math.max(1, Math.min(8, P.grade || 1)), i: 0, b: {} }; mqBase(P);
   };
-  var MQ_ST = { lecJobs: ['수업', '교시 마치기'], expJobs: ['원정', '번 마치기'], researchDone: ['연구', '번 마치기'], brews: ['물약', '병 만들기'], dispatches: ['사역마 파견', '번 다녀오기'], tasksDone: ['교수님 과제', '개 제출하기'] };
+  var MQ_ST = { lecJobs: ['수업', '교시 마치기'], expJobs: ['원정', '번 마치기'], researchDone: ['연구', '번 마치기'], brews: ['물약', '병 만들기'], dispatches: ['사역마 파견', '번 다녀오기'], tasksDone: ['교수님 과제', '개 제출하기'], wbAttacks: ['월드 보스', '번 도전하기'], duelWins: ['결투제 상대', '명 이기기'] };
   // 목표 하나: { text, cur, need, ok }
   R.mqGoal = function (P, q, g) {
     var b = (P.mq && P.mq.b) || {}, st = P.st || {}, run = function (arr) { return (arr || []).some(Boolean); };
