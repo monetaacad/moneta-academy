@@ -570,23 +570,23 @@ var DATA = (function () {
     { id: 'beast', name: '환수 사육 일지', desc: '부화 효율 +15%, 파견 보상 +10%', eff: { hatchSpd: 0.15, dispPct: 0.10 }, color: '#e3a86b' }
   ];
   D.RESEARCH = [
-    { id: 'manaspring', name: '마나 샘 개척', desc: '마나 재생 +15%', eff: { manaPct: 0.15 }, mana: 400, know: 0, g: 1.42, max: 60, time: 300, tg: 1.32 },
+    { id: 'manaspring', name: '마나 샘 개척', desc: '마나 재생 +6%', eff: { manaPct: 0.06 }, mana: 400, know: 0, g: 1.42, max: 60, time: 300, tg: 1.32 },
     { id: 'storage', name: '마나 저장고 확장', desc: '마나 저장 한도 +3시간분', eff: { manaCap: 10800 }, mana: 1500, know: 40, g: 1.9, max: 8, time: 1800, tg: 1.6 },
     { id: 'speedread', name: '속독술', desc: '수업 효율 +2%', eff: { lectureSpd: 0.02 }, mana: 800, know: 30, g: 1.4, max: 50, time: 600, tg: 1.3 },
-    { id: 'combat', name: '전투 마법 이론', desc: '공격력 +8%', eff: { atkPct: 0.08 }, mana: 1000, know: 40, g: 1.38, max: 80, time: 600, tg: 1.28 },
-    { id: 'sigil', name: '수호 문양학', desc: '생명력 +8%, 방어력 +4%', eff: { hpPct: 0.08, defPct: 0.04 }, mana: 1000, know: 40, g: 1.38, max: 80, time: 600, tg: 1.28 },
-    { id: 'merchant', name: '상인의 화술', desc: CUR + ' 획득 +10%', eff: { goldPct: 0.1 }, mana: 1500, know: 60, g: 1.42, max: 50, time: 900, tg: 1.3 },
-    { id: 'focus', name: '집중 명상', desc: '지식 획득 +10%', eff: { knowPct: 0.1 }, mana: 1800, know: 50, g: 1.42, max: 50, time: 900, tg: 1.3 },
-    { id: 'veteran', name: '실전 경험록', desc: '경험치 +10%', eff: { xpPct: 0.1 }, mana: 1800, know: 70, g: 1.42, max: 50, time: 900, tg: 1.3 },
-    { id: 'luckystar', name: '행운의 별자리', desc: '전리품 확률 +5%, 등급 상승', eff: { dropPct: 0.05, rarity: 0.05 }, mana: 6000, know: 200, g: 1.5, max: 30, time: 3600, tg: 1.35, grade: 2 },
-    { id: 'brewing', name: '연금 효율', desc: '양조 비용 -13%', eff: { brewSpd: 0.15 }, mana: 5000, know: 150, g: 1.55, max: 20, time: 3600, tg: 1.35, grade: 2 },
-    { id: 'hatching', name: '부화 촉진', desc: '부화 비용 -13%', eff: { hatchSpd: 0.15 }, mana: 9000, know: 250, g: 1.55, max: 20, time: 5400, tg: 1.35, grade: 3 },
+    { id: 'combat', name: '전투 마법 이론', desc: '공격력 +4%', eff: { atkPct: 0.04 }, mana: 1000, know: 40, g: 1.38, max: 80, time: 600, tg: 1.28 },
+    { id: 'sigil', name: '수호 문양학', desc: '생명력 +4%, 방어력 +2%', eff: { hpPct: 0.04, defPct: 0.02 }, mana: 1000, know: 40, g: 1.38, max: 80, time: 600, tg: 1.28 },
+    { id: 'merchant', name: '상인의 화술', desc: CUR + ' 획득 +4%', eff: { goldPct: 0.04 }, mana: 1500, know: 60, g: 1.42, max: 50, time: 900, tg: 1.3 },
+    { id: 'focus', name: '집중 명상', desc: '지식 획득 +4%', eff: { knowPct: 0.04 }, mana: 1800, know: 50, g: 1.42, max: 50, time: 900, tg: 1.3 },
+    { id: 'veteran', name: '실전 경험록', desc: '경험치 +4%', eff: { xpPct: 0.04 }, mana: 1800, know: 70, g: 1.42, max: 50, time: 900, tg: 1.3 },
+    { id: 'luckystar', name: '행운의 별자리', desc: '전리품 확률 +2.5%, 등급 상승', eff: { dropPct: 0.025, rarity: 0.025 }, mana: 6000, know: 200, g: 1.5, max: 30, time: 3600, tg: 1.35, grade: 2 },
+    { id: 'brewing', name: '연금 효율', desc: '양조 비용 -7%', eff: { brewSpd: 0.075 }, mana: 5000, know: 150, g: 1.55, max: 20, time: 3600, tg: 1.35, grade: 2 },
+    { id: 'hatching', name: '부화 촉진', desc: '부화 비용 -7%', eff: { hatchSpd: 0.075 }, mana: 9000, know: 250, g: 1.55, max: 20, time: 5400, tg: 1.35, grade: 3 },
     { id: 'jarcap', name: '정령 병 확장', desc: '반딧불 정령 병 +1칸', eff: { jarCap: 1 }, mana: 4000, know: 120, g: 2.2, max: 4, time: 3600, tg: 1.6 },
     { id: 'bag', name: '공간 확장 주문', desc: '가방 칸 +5', eff: { bag: 5 }, mana: 3000, know: 80, g: 1.8, max: 10, time: 1800, tg: 1.5 },
     { id: 'dual', gone: true, name: '이중 수강 허가', desc: '수업 슬롯 +1', eff: { lectureSlot: 1 }, mana: 60000, know: 3000, g: 25, max: 2, time: 43200, tg: 3, grade: 2 },
     { id: 'assistant', gone: true, name: '연구 조교 고용', desc: '연구를 두 개 동시에 진행', eff: { researchSlot: 1 }, mana: 60000, know: 2000, g: 1, max: 1, time: 43200, tg: 1, grade: 3 },
     { id: 'expedition', gone: true, name: '원정대 편성', desc: '원정 슬롯 +1', eff: { expSlot: 1 }, mana: 250000, know: 8000, g: 1, max: 1, time: 86400, tg: 1, grade: 4 },
-    { id: 'abyss', name: '심연 연구', desc: '공격력·생명력 +4% (마스터 과정, 단계 제한 없음)', eff: { atkPct: 0.04, hpPct: 0.04 }, mana: 2000000, know: 100000, g: 1.08, max: 999, time: 86400, tg: 1, grade: 8 },
+    { id: 'abyss', name: '심연 연구', desc: '공격력·생명력 +2% (마스터 과정, 단계 제한 없음)', eff: { atkPct: 0.02, hpPct: 0.02 }, mana: 2000000, know: 100000, g: 1.08, max: 999, time: 86400, tg: 1, grade: 8 },
     { id: 'sorter', name: '분류 마법', desc: '자동 판매 기능 해금', eff: { autosell: 1 }, mana: 2000, know: 50, g: 1, max: 1, time: 1200, tg: 1 },
     { id: 'runeforge', name: '룬 각인술', desc: '강화 성공률 +3%', eff: { enhBonus: 0.03 }, mana: 40000, know: 1500, g: 1.7, max: 10, time: 14400, tg: 1.4, grade: 4 }
   ];
