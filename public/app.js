@@ -363,13 +363,25 @@
   /* ───────── 렌더 ───────── */
   var V = {}, ACT = {}; window.__ACT = ACT;
   ACT.sidetog = function () { SIDE_OPEN = !SIDE_OPEN; try { localStorage.setItem('arc_side', SIDE_OPEN ? '1' : '0'); } catch (e) { } updateSide(); };
+  // 실시간 거래 목록: 내려 둔 상태면 보고 있던 줄(data-id)을 기억했다가 다시 그린 뒤 같은 자리에 둔다. 맨 위를 보고 있으면 새 거래가 바로 보이게 둔다
+  function trAnchor() {
+    var l = $('.trlist'); if (!l || l.scrollTop <= 2) return null;
+    var lt = l.getBoundingClientRect().top, a = [].find.call(l.querySelectorAll('.trrow[data-id]'), function (e) { return e.getBoundingClientRect().bottom > lt + 1; });
+    return { top: l.scrollTop, id: a ? a.dataset.id : null, off: a ? a.getBoundingClientRect().top - lt : 0 };
+  }
+  function trRestore(k) {
+    var l = $('.trlist'); if (!l) return;
+    var a = k.id != null && l.querySelector('.trrow[data-id="' + k.id + '"]');
+    l.scrollTop = a ? l.scrollTop + (a.getBoundingClientRect().top - l.getBoundingClientRect().top) - k.off : k.top;
+  }
   function render() {
     if (!S.P || !$('#view')) return;
     S.rPend = 0;   // 미뤄 둔 softRender가 있었다면 이걸로 끝
     var v = VIEWS.find(function (x) { return x.id === S.view; }) || VIEWS[0];
-    var sy = window.scrollY;
+    var sy = window.scrollY, tra = trAnchor();   // 실시간 거래 목록: 내려 둔 위치 유지
     $('#view').innerHTML = groupTabs() + (viewOpen(v) ? V[v.id]() : pageHead('잠긴 구역', v.name, '') + '<div class="card"><p>' + R.josa(v.name, '은', '는') + ' ' + (v.fam ? R.FAM_OPEN_TEXT : v.grade + '학년') + '부터 출입할 수 있습니다.</p></div>');
     if (Math.abs(window.scrollY - sy) > 2) window.scrollTo(0, sy);
+    if (tra) trRestore(tra);
     afterRender(); updateLive(); updateBadges(); updateSide();
   }
   function pageHead(eyebrow, title, aside) { return '<div class="page-head"><div><div class="eyebrow">' + eyebrow + '</div><h2>' + title + '</h2></div>' + (aside ? '<div class="aside">' + aside + '</div>' : '') + '</div>'; }
@@ -3471,7 +3483,7 @@
       var tr = m.trades;
       h += '<div class="card"><div class="row between"><h3>실시간 거래</h3><span class="tiny faint"><span class="odot"></span> 팔리는 대로 올라옵니다 · 산 사람은 보이지 않습니다</span></div>';
       h += !tr ? '<div class="empty">불러오는 중…</div>' : !tr.length ? '<div class="empty">아직 거래가 없습니다.</div>' : '<div class="trlist">' + tr.map(function (x) {
-        return '<div class="trrow' + (x.fresh && Date.now() - x.fresh < 4000 ? ' fresh' : '') + '"><span class="tiny faint num trt">' + ago(x.t) + '</span><span class="ell trn"' + (x.kind === 'item' ? ' style="color:' + rcol(x.r) + '"' : '') + '>' + esc(x.name) + (x.kind !== 'item' ? ' <span class="num faint">×' + fmt(x.qty) + '</span>' : ' <span class="tiny faint">' + R.slotName(x.item || x) + ' Lv ' + x.ilvl + '</span>') + '</span><b class="num gold">' + fmt(x.price) + '</b></div>';
+        return '<div class="trrow' + (x.fresh && Date.now() - x.fresh < 4000 ? ' fresh' : '') + '" data-id="' + esc(String(x.id)) + '"><span class="tiny faint num trt">' + ago(x.t) + '</span><span class="ell trn"' + (x.kind === 'item' ? ' style="color:' + rcol(x.r) + '"' : '') + '>' + esc(x.name) + (x.kind !== 'item' ? ' <span class="num faint">×' + fmt(x.qty) + '</span>' : ' <span class="tiny faint">' + R.slotName(x.item || x) + ' Lv ' + x.ilvl + '</span>') + '</span><b class="num gold">' + fmt(x.price) + '</b></div>';
       }).join('') + '</div>';
       h += '</div>';
     } else {
@@ -5729,7 +5741,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102287;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102288;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
