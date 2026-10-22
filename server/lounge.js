@@ -1,5 +1,5 @@
 'use strict';
-// 기숙사 휴게실 복원: 아카데미력 한 달(28일)마다 기숙사별 협동 목표. 학생은 하루에 한 번씩 아르크 · 마나 · 재료를 납부한다 (R.loungeGive).
+// 기숙사 휴게실 복원: 아카데미력 한 달(실제 D.WORLD.monthDays일)마다 기숙사별 협동 목표. 학생은 하루에 한 번씩 아르크 · 마나 · 재료를 납부한다 (R.loungeGive).
 // 단계를 넘으면 사감이 기숙사 채팅에 알리고, 달이 바뀌면 일정 점수 이상 납부한 학생에게 별조각 우편을 보낸다
 const R = require('../shared/rules.js');
 const D = require('../shared/data.js');
