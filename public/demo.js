@@ -516,7 +516,7 @@
     mk.list.forEach(function (x) {
       if (x.status !== 'open') return;
       if (x.expires <= now) { x.status = 'expired'; x.done = now; if (x.mineL) { mkGive(P, x); } }
-      else if (x.mineL && x.buyAt && now >= x.buyAt) { x.status = 'sold'; x.done = now; var got = Math.floor(x.price * 0.95); P.res.gold += got; self._note('market', '거래소에서 ' + x.name + (x.kind !== 'item' ? ' ' + x.qty + '개' : '') + '가 팔렸습니다 · ' + Rules.fmt(got) + ' ' + CUR, { view: 'market' }); Rules.log(P, now, '거래소: ' + x.name + ' 팔림 (+' + Rules.fmt(got) + ' ' + CUR + ')', 'good'); }
+      else if (x.mineL && x.buyAt && now >= x.buyAt) { x.status = 'sold'; x.done = now; var got = x.price - window.Rules.marketFee(x.price); P.res.gold += got; self._note('market', '거래소에서 ' + x.name + (x.kind !== 'item' ? ' ' + x.qty + '개' : '') + '가 팔렸습니다 · ' + Rules.fmt(got) + ' ' + CUR, { view: 'market' }); Rules.log(P, now, '거래소: ' + x.name + ' 팔림 (+' + Rules.fmt(got) + ' ' + CUR + ')', 'good'); }
     });
     var open = mk.list.filter(function (x) { return x.status === 'open' && !x.mineL; }), mats = open.filter(function (x) { return x.kind === 'mat'; }).length;
     var stage = Math.max(1, Math.min(P.maxStage, Rules.stageCap(P))), dummy = { rng: (Math.random() * 2147483647) | 1 };
