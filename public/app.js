@@ -1543,7 +1543,7 @@
         var p = R.dailyProg(P, q);
         return '<div class="quest"><div><div class="small">' + q.name + ' <span class="num muted">' + Math.max(0, p) + ' / ' + q.goal + '</span>' + (q.done ? '' : ' ' + rwTag) + '</div><div class="bar brass" style="margin-top:4px"><b style="width:' + Math.max(0, p / q.goal * 100) + '%"></b></div></div>' +
           (q.done ? '<span class="tag ok">완료</span>' : p >= q.goal ? '<button class="btn sm primary" data-act="do" data-a="daily" data-b="' + i + '">보상</button>' : '<span class="row" style="gap:4px;flex-wrap:nowrap">' + goBtn(q.type) + '<button class="btn sm ghost" data-act="reroll" data-a="' + i + '" title="다른 목표로 바꾸기">바꾸기' + (R.rerollCost(P) ? ' <span class="cost">✦' + R.rerollCost(P) + '</span>' : '') + '</button></span>') + '</div>';
-      }).join('') + '</div><p class="tiny faint" style="margin-top:10px">출석 · 일일 목표는 매일 한국 시간(KST) 자정에 바뀝니다. 목표 바꾸기는 하루 1번 무료, 그다음부터 별조각 ' + (R.rerollCost(P) || 5) + '개' + (R.rerollCost(P) ? '' : '부터') + '.</p>';
+      }).join('') + '</div><p class="tiny faint" style="margin-top:10px">출석 · 일일 목표는 매일 한국 시간(KST) 자정에 바뀝니다. 목표 바꾸기는 하루 1번 무료이며, 이후에는 바꿀 때마다 별조각 5 · 10 · 20 · 40개(최대 40개)가 필요합니다. 다음 바꾸기: <b>' + (R.rerollCost(P) ? '별조각 ' + R.rerollCost(P) + '개' : '무료') + '</b></p>';
     var qDone = P.daily.q.filter(function (q) { return q.done; }).length;
     var dailyH = fold('daily', '일일 목표', dq, true, '<span class="tag br daily-st">출석 ' + P.daily.streak + '일째</span>' + (P.daily.login || claim ? '<span class="tag ok">받을 보상</span>' : ''), '', '<b class="num">' + qDone + '/' + P.daily.q.length + '</b>' + (qDone >= P.daily.q.length ? ' 완료' : ''), 'daily');
     // 내 정보 · 능력치 · 기숙사는 왼쪽 「내 정보」에, 하늘 · 오늘의 축복은 풍경 위에. 잠자리 · 꿈길은 평소엔 볼 일이 없어 맨 아래
@@ -2025,6 +2025,11 @@
       var st = i < P.duel.rank ? '<span class="tag ok">승리</span>' : i === P.duel.rank ? '<span class="tag br">다음 상대</span>' : '<span class="faint tiny">' + rv.stage + '단계</span>';
       return '<div class="row small" style="padding:2px 0;flex-wrap:nowrap"><span class="num faint" style="width:22px">' + (i + 1) + '</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap' + (i > P.duel.rank ? ';color:var(--faint)' : '') + '">' + (i <= P.duel.rank ? rv.name : '???') + '</span>' + st + '</div>';
     }).join('') + '</div></div></div>';
+    // 결투 준비: 무한의 탑처럼 같은 화면에서 전투 물약 · 장비 프리셋 · 장착 주문을 바꾼다
+    if (r) h += '<div class="card" style="margin-top:14px"><div class="row between"><h3>결투 준비</h3><span class="tiny faint">바꾼 뒤 위의 승산이 다시 계산됩니다</span></div>' +
+      '<div style="margin-top:8px">' + gearSetRow() + '</div>' +
+      '<div class="small" style="margin-top:12px">장착 주문 <span class="tiny faint">· 칸을 누르면 주문을 바꿉니다</span></div>' + spellBar(P) + spellSetBar(P) +
+      '<div class="small" style="margin-top:12px">전투 물약</div><div style="margin-top:6px">' + potBar(['atkPct', 'hpPct', 'defPct']) + '</div></div>';
     return h;
   };
 
@@ -4327,11 +4332,13 @@
     var rv = R.rival(S.P);
     act('duel').then(function (r) {
       if (!r) return;
-      replay({ title: '결투제 ' + r.k + '회전', sub: rv.name, enemy: { id: 'rv' + r.k, arch: ['wisp', 'beast', 'golem', 'eye', 'construct', 'book', 'blob'][r.k % 7], c1: '#c0a0e0', c2: '#3a2a5a', name: rv.name }, ev: r.ev, maxHp: r.maxHp, cc: r.cc }, function () {
-        Snd.play(r.win ? 'pass' : 'fail');
-        modal(mhead(r.win ? '승리!' : '패배', '결투제 ' + r.k + '회전 · ' + esc(r.rival)) + '<p style="font-style:italic;color:var(--ink2);margin-bottom:10px">“' + esc(r.win ? r.lose : r.hello) + '”</p>' +
+      // 전투 일지는 끝난 뒤에도 남겨 두고, 결과는 같은 창 아래에 붙인다 (확인을 눌러야 닫힘 · 무한의 탑과 같음)
+      replay({ title: '결투제 ' + r.k + '회전', sub: rv.name, enemy: { id: 'rv' + r.k, arch: ['wisp', 'beast', 'golem', 'eye', 'construct', 'book', 'blob'][r.k % 7], c1: '#c0a0e0', c2: '#3a2a5a', name: rv.name }, ev: r.ev, maxHp: r.maxHp, cc: r.cc, keep: true }, function () {
+        Snd.play(r.win ? 'pass' : 'fail'); render();
+        return '<h3 class="' + (r.win ? 'good' : 'bad') + '">' + (r.win ? '승리했습니다' : '패배했습니다') + ' <span class="small faint">· ' + esc(r.rival) + '</span></h3>' +
+          '<p style="font-style:italic;color:var(--ink2);margin:6px 0 8px">“' + esc(r.win ? r.lose : r.hello) + '”</p>' +
           (r.win ? '<p class="small">별조각 +' + r.reward.shard + (r.reward.first ? ' (첫 승리 보너스)' : '') + ', ' + MONEY(r.reward.gold, '+') + '</p>' : '<p class="small muted">상대 체력이 ' + Math.round(r.mHp * 100) + '% 남았습니다. 1시간 뒤 다시 도전할 수 있습니다.</p>') +
-          '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>');
+          '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>';
       });
     });
   };
@@ -5952,7 +5959,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102326;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102329;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
