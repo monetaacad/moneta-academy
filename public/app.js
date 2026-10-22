@@ -234,7 +234,7 @@
     var nm = function (it) { return '<span style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</span>' + (RES_TAG[it.res] ? '<span class="tiny faint">(' + RES_TAG[it.res] + ')</span>' : ''); };
     return arr.slice(0, 3).map(nm).join(', ') + (arr.length > 3 ? '<span class="exmore"> 외 ' + (arr.length - 3) + '개 <button class="exmb" data-act="exmore" aria-expanded="false" title="나머지 장비 보기">+</button><span class="exrest" hidden>: ' + arr.slice(3).map(nm).join(', ') + '</span></span>' : '');
   }
-  function expReportLine(o) { return '<li><b>' + o.s + '단계 원정</b> ' + (o.fell ? '<span class="bad">쓰러져 귀환 (80%)</span>' : '귀환') + ' — ' + fmt(o.kills) + '마리, ' + MONEY(o.gold, '+') + (o.items.length ? ', 장비 ' + itemNames(o.items) + (o.items.some(function (it) { return it.res === 'mail'; }) ? ' <span class="tiny gold">(가방이 가득 차 ' + o.items.filter(function (it) { return it.res === 'mail'; }).length + '개는 우편함으로)</span>' : '') : '') + '</li>'; }
+  function expReportLine(o) { return '<li><b>' + o.s + '단계 원정</b> ' + (o.fell ? '<span class="bad">쓰러져 귀환 (80%)</span>' : '귀환') + ' — ' + fmt(o.kills) + '마리, ' + MONEY(o.gold, '+') + (o.items.length ? ', 장비 ' + itemNames(o.items) + (o.items.some(function (it) { return it.res === 'mail'; }) ? ' <span class="tiny gold">(가방이 가득 차 ' + o.items.filter(function (it) { return it.res === 'mail'; }).length + '개는 우편함으로)</span>' : '') : '') + (o.sold ? ' <span class="tiny faint">· 상한을 넘친 장비 ' + o.sold + '개 → ' + (o.ovDust ? '마석가루 +' + fmt(o.ovDust) : CUR + '로 판매') + '</span>' : '') + '</li>'; }
   function inboxReport() {
     var items = S.P.inbox.slice(), lines = [];
     S.inboxUpto = items.reduce(function (m, o) { return Math.max(m, o.t || 0); }, 0);
@@ -1535,6 +1535,14 @@
     }).join('') + '</div>';
     return h;
   };
+  // 원정 장비: 예상 개수 · 상한 · 넘친 장비를 아르크 / 마석가루 중 무엇으로 받을지
+  function lootLine(pv, s) {
+    var P = S.P, n = pv.kills * R.K.ITEM_RATE * pv.drop, cap = R.K.ITEM_CAP, over = Math.max(0, n - cap), dust = !!P.ovfDust;
+    return '<div class="tiny faint lootline">장비 약 <b class="num">' + fmt(Math.round(n * 10) / 10) + '</b>개 · 상한 ' + cap + '개 · 전리품 확률 ×' + pv.drop.toFixed(2) +
+      (over >= 0.5 ? ' · <span class="gold">넘치는 약 ' + fmt(Math.round(over)) + '개는 ' + (dust ? '마석가루 ' + fmt(Math.round(over * R.overflowEach(s, true))) + '개' : MONEY(Math.round(over * R.overflowEach(s, false)))) + '로</span>' : '') +
+      ' <span class="row" style="display:inline-flex;gap:4px;vertical-align:middle">넘친 장비: <button class="btn sm' + (dust ? ' ghost' : ' primary') + '" data-act="ovf" data-a="gold">' + CUR + '</button><button class="btn sm' + (dust ? ' primary' : ' ghost') + '" data-act="ovf" data-a="dust">마석가루</button></span></div>';
+  }
+  ACT.ovf = function (k) { act('ovfMode', { dust: k === 'dust' }).then(render); };
   // 다음 교시 예약 칸 (수업 중인 슬롯 아래)
   // 꿈길 중이면: 예약 교시 · 시간표 다음 교시는 깨어난 뒤 이어진다
   function dreamWake() { var d = S.P.dream; return d && d.end > now() ? d.end : 0; }
@@ -1825,6 +1833,7 @@
           '<span class="tag ' + rc + '">' + pv.label + '</span>' + (s > R.gradeCap(P) ? '<span class="tag br" title="학년 상한 너머 · 레벨로 연 단계">상한 너머</span>' : '') + '<button class="btn sm ghost" data-act="es-best" data-a="' + i + '">추천 단계</button></div>' +
           '<div class="tiny faint">' + R.zoneOf(s).name + ' · 재료: ' + D.MATS[R.zoneOf(s).mat].name + '</div>' + durPicker('ed' + i, D.DURATIONS, '1h') +
           '<div class="small">예상: ' + fmt(Math.round(pv.kills)) + '마리 · <b class="num">+' + fmt(pv.gold) + '</b> ' + CUR + ' · 경험치 +' + fmt(pv.xp) + '</div>' +
+          lootLine(pv, s) +
           (pv.risk > 1 ? '<p class="tiny bad">무모한 단계입니다. 처치 수가 ' + Math.round((1 - pv.surv) * 100) + '% 줄고, 도중에 쓰러져 돌아올 수 있습니다 (그때까지 모은 것의 80%).</p>' : pv.risk > 0.5 ? '<p class="tiny bad">위험한 단계입니다. 자주 쓰러져 처치 수가 ' + Math.round((1 - pv.surv) * 100) + '% 줄어듭니다.</p>' : '') +
           (P.grade < 8 && P.maxStage > cap ? '<p class="tiny gold">보스로 ' + P.maxStage + '단계까지 열었지만, 학년 상한(' + R.gradeCap(P) + '단계) 너머는 레벨(지금 ' + P.lvl + ')만큼만 갈 수 있어 지금은 ' + (R.isBoss(cap) ? cap - 1 : cap) + '단계까지입니다. 레벨이 오르면 한 단계씩, 시험장에서 진급하면 한꺼번에 열립니다.</p>' : P.grade < 8 && cap < R.gradeCap(P) + R.STAGE_OVER ? '<p class="tiny faint">레벨이 학년 상한보다 높으면 레벨만큼 더 깊이 갈 수 있습니다 (최대 ' + (R.gradeCap(P) + R.STAGE_OVER) + '단계).</p>' : '') +
           (R.dreaming(P, now()) ? '<p class="tiny gold">꿈길 중에는 출정할 수 없습니다. <span data-l="left:' + P.dream.end + '"></span> 뒤에 깹니다.</p><button class="btn primary" disabled>' + d.label + ' 출정</button></div>' : '<button class="btn primary" data-act="exp-start" data-a="' + i + '">' + d.label + ' 출정</button></div>');
@@ -5727,7 +5736,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102290;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102291;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

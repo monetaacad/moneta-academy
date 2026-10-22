@@ -28,7 +28,7 @@
     EXP_GOLD: 0.7, DISP_GOLD: 0.3, SPIRIT_GOLD: 0.5,   // 원정 처치 · 사역마 파견 · 정령의 아르크 배율 (아르크는 적게 벌리게)
     FALL_KEEP: 0.8,        // 원정 중 쓰러지면 그때까지 모은 것의 80%
     KILL_XP: 0.12, G_XP: 1.128,
-    MAT_RATE: 4, STONE_RATE: 0.6, ITEM_RATE: 1.2,   // 처치 1회당 (KILL_PACK 반영)
+    MAT_RATE: 4, STONE_RATE: 0.6, ITEM_RATE: 0.4, ITEM_CAP: 20,   // 2차 베타: 장비는 기본 드랍을 낮추고(1.2 → 0.4) 상한을 올려(12 → 20) 전리품 확률만큼 실제로 더 받는다   // 처치 1회당 (KILL_PACK 반영)
     // 몬스터
     MON_HP: 15, G_HP: 1.24, MON_ATK: 2.4, G_ATK: 1.155,
     BOSS_HP: 7, BOSS_ATK: 1.6, BOSS_TIME: 30,
@@ -835,12 +835,19 @@
     var j = P.exp[slot] = { s: s, start: now, end: now + d.s, dur: d.s, eff: d.eff, kps: pv.kps, gEach: pv.gEach, xEach: pv.xEach, drop: pv.drop, rarity: pv.rarity, killMana: pv.killMana, risk: pv.risk, pt: info };
     j.cb = R.expCombat(P, null, now);   // 원정 일지에 보일 전투 수치 (출발할 때 그대로)
     var fa = fallAt(P, now, d.s, pv.risk); if (fa) j.fallAt = fa;
-    var kills = Math.floor(j.kps * j.dur * j.eff + 0.5), n = Math.floor(kills * K.ITEM_RATE * j.drop + rnd(P)), made = Math.min(n, 12);
+    var kills = Math.floor(j.kps * j.dur * j.eff + 0.5), n = Math.floor(kills * K.ITEM_RATE * j.drop + rnd(P)), made = Math.min(n, K.ITEM_CAP);
     j.nItems = n; j.loot = [];
     for (var q = 0; q < made; q++) j.loot.push({ at: Math.floor(now + d.s * (q + 0.3 + rnd(P) * 0.6) / made), it: makeItem(P, pick(P, D.SLOTS).id, s, rollRarity(P, j.rarity)) });
     log(P, now, '함께 원정 출발: ' + s + '단계 · ' + info.n + '명 · ' + (R.EXP_POS[info.pos] || R.EXP_POS.van).name, 'good');
     return j;
   };
+  // 원정 장비 상한(K.ITEM_CAP)을 넘친 장비: 학생이 고른 대로 아르크(일반 등급 판매가) 또는 마석가루(일반 등급 분해량)로
+  R.overflowEach = function (ilvl, dust) { return dust ? R.dismantleYield({ r: 0, ilvl: ilvl }).dust : R.sellPrice({ ilvl: ilvl, r: 0, enh: 0 }); };
+  function overflowGive(P, n, ilvl, out) {
+    if (P.ovfDust) { var dd = n * R.overflowEach(ilvl, true); P.res.dust = (P.res.dust || 0) + dd; out.ovDust = dd; }
+    else { var g = n * R.overflowEach(ilvl, false); addGold(P, g); out.gold += Math.floor(g); }
+    out.sold = n;
+  }
   function expFinish(P, j, t, frac, mode) {
     var keep = mode === 'recall' ? 1 : mode === 'leave' ? R.EXP_LEAVE_KEEP : mode === 'fall' ? K.FALL_KEEP : mode ? K.CANCEL_KEEP : 1, canceled = !!mode;
     var kills = Math.floor(j.kps * j.dur * j.eff * frac * keep + rnd(P));   // 처치 수가 작아 소수점은 확률로
@@ -861,18 +868,18 @@
       var got = j.loot.filter(function (x) { return !canceled || x.at <= t; }); if (canceled) got = got.slice(0, Math.floor(got.length * keep));
       got.forEach(function (x) { var res2 = gainItem(P, x.it, t, '원정 ' + j.s + '단계', j.rarity); out.items.push({ name: x.it.name, r: x.it.r, res: res2 }); });
       var rest = Math.max(0, (j.nItems || 0) - j.loot.length); if (canceled) rest = Math.floor(rest * frac * keep);
-      if (rest) { var ex2 = rest * R.sellPrice({ ilvl: j.s, r: 0, enh: 0 }); addGold(P, ex2); out.gold += Math.floor(ex2); out.sold = rest; }
+      if (rest) overflowGive(P, rest, j.s, out);
       if (!canceled) { P.st.expJobs++; nightJob(P, t); }
       return out;
     }
     // (예전 방식) 기대 개수만큼 굴리되 상위 12개만 실제 생성, 나머지는 판매가로
     var n = Math.floor(kills * K.ITEM_RATE * j.drop + rnd(P));
-    var made = Math.min(n, 12);
+    var made = Math.min(n, K.ITEM_CAP);
     for (var i = 0; i < made; i++) {
       var it = makeItem(P, pick(P, D.SLOTS).id, j.s, rollRarity(P, j.rarity));
       var res = gainItem(P, it, t, '원정 ' + j.s + '단계', j.rarity); out.items.push({ name: it.name, r: it.r, res: res });
     }
-    if (n > made) { var extra = (n - made) * R.sellPrice({ ilvl: j.s, r: 0, enh: 0 }); addGold(P, extra); out.gold += Math.floor(extra); out.sold = n - made; }
+    if (n > made) overflowGive(P, n - made, j.s, out);
     if (!canceled) { P.st.expJobs++; nightJob(P, t); }
     return out;
   }
@@ -2002,7 +2009,7 @@
     j.cb = R.expCombat(P, W, now);   // 원정 일지에 보일 전투 수치 (출발할 때 그대로)
     var fa = fallAt(P, now, d.s, pv.risk); if (fa) j.fallAt = fa;
     // 전리품은 떠날 때 미리 정해 둔다 (원정 일지에 언제 무엇을 주웠는지 그대로 보여 주려고). 실제로 받는 건 돌아올 때.
-    var kills = Math.floor(j.kps * j.dur * j.eff + 0.5), n = Math.floor(kills * K.ITEM_RATE * j.drop + rnd(P)), made = Math.min(n, 12);
+    var kills = Math.floor(j.kps * j.dur * j.eff + 0.5), n = Math.floor(kills * K.ITEM_RATE * j.drop + rnd(P)), made = Math.min(n, K.ITEM_CAP);
     j.nItems = n; j.loot = [];
     for (var q = 0; q < made; q++) j.loot.push({ at: Math.floor(now + d.s * (q + 0.3 + rnd(P) * 0.6) / made), it: makeItem(P, pick(P, D.SLOTS).id, s, rollRarity(P, j.rarity)) });
     return { ok: true };
@@ -2253,6 +2260,7 @@
     return { u: it.u, keep: take ? 'new' : 'old', name: it.name, aff: it.aff };
   };
   // 자동 처리: 판매 또는 분해 (분류 마법)
+  A.ovfMode = function (P, W, now, a) { P.ovfDust = !!a.dust; return { ok: true, dust: P.ovfDust }; };   // 넘친 장비: 아르크 / 마석가루
   A.autoMode = function (P, W, now, a) { if (!P.rs.sorter) err('분류 마법이 필요합니다'); P.autoDis = !!a.dis; return { ok: true }; };
   A.lock = function (P, W, now, a) { var it = R.findItem(P, str(a.u)); if (!it) err('장비가 없습니다'); it.lock = !it.lock; return { lock: it.lock }; };
   A.enhance = function (P, W, now, a) {
