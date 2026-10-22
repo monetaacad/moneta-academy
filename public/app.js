@@ -1941,13 +1941,33 @@
     else if (pv.toS < 0) a.push('<span class="gold">' + (pv.toA < 0 && pv.letter !== 'A' ? 'A·S' : 'S') + '는 대련에서 이겨야 받을 수 있습니다</span> (장비·능력치·주문)');
     return a.join(' · ');
   }
+  // 등급별로 더 필요한 것: 부족한 과목과, 등급마다 시험 과목 레벨 합계가 얼마나 더 필요한지
+  function examPlanHtml(P) {
+    var pl = R.examPlan(P, wctx(), now()); if (!pl) return '';
+    var nm = function (k) { return R.SUBJ[k].name; }, low = pl.subj.slice().sort(function (a, b) { return Math.max(P.subj[a].lv, pl.req) - Math.max(P.subj[b].lv, pl.req); })[0];
+    var h = '<hr class="sep"><div class="section-t">더 필요한 것 <span class="tiny faint">필기 · 실기는 시험 과목 평균 레벨로만 채점합니다</span></div><div class="stack" style="gap:6px">';
+    h += '<div class="small"><b>응시 자격</b> ' + (pl.lack.length ? pl.lack.map(function (x) { return '<span class="tag br">' + nm(x.sid) + ' Lv ' + x.lv + ' → ' + pl.req + ' (+' + (pl.req - x.lv) + ')</span>'; }).join(' ') : '<span class="good">충족</span> <span class="tiny faint">(모든 시험 과목 Lv ' + pl.req + ' 이상)</span>') + '</div>';
+    ['S', 'A', 'B'].forEach(function (k) {
+      var nd = pl.need[k], body;
+      if (nd < 0) body = '<span class="gold">시험 과목 레벨만으로는 받을 수 없습니다.</span> 대련에서 승리해야 합니다 (장비 · 능력치 · 주문).';
+      else if (nd <= pl.sum && !pl.lack.length) body = '<span class="good">달성</span>';
+      else {
+        var d = nd - pl.sum, ex2 = Math.max(P.subj[low].lv, pl.req) + (nd - pl.base);
+        body = '시험 과목 레벨 합계 <b class="num">' + pl.sum + ' → ' + nd + '</b> (+' + d + ' · 평균 Lv ' + (nd / pl.n).toFixed(1) + ')' +
+          '<div class="tiny faint">' + (pl.lack.length ? '부족한 과목을 Lv ' + pl.req + '까지 올린 뒤, ' : '') + '어느 과목을 올려도 같습니다. 예: ' + nm(low) + ' Lv ' + ex2 + (pl.lack.length ? '' : ' (지금 ' + P.subj[low].lv + ')') + '</div>';
+      }
+      h += '<div class="row small" style="flex-wrap:nowrap;align-items:flex-start;gap:8px"><b style="width:16px;flex:none">' + k + '</b><div style="flex:1;min-width:0">' + body + '</div></div>';
+    });
+    h += '<p class="tiny faint">필기는 평균이 기준 +3, 실기는 기준 +4일 때 만점입니다 (기준 Lv ' + pl.req + '). 그보다 높은 레벨은 점수에 더해지지 않습니다.' + (pl.duelWin ? '' : ' 대련에서 지면 대련 점수가 크게 줄어 필요한 레벨이 늘어납니다.') + '</p></div>';
+    return h;
+  }
   function examCast(P, elig) {
     var pv = R.examPredict(P, wctx(), now()); if (!pv) return '';
     var lc = pv.letter === 'F' ? 'bad' : pv.letter === 'S' || pv.letter === 'A' ? 'gold' : '';
     return '<hr class="sep"><div class="section-t">예상 성적 <span class="tiny faint">' + (elig ? '지금 응시하면' : '응시 자격을 채웠을 때 어림') + '</span></div>' +
       '<div class="row" style="gap:14px;align-items:center;flex-wrap:nowrap"><div class="letter ' + lc + '" style="font-size:44px">' + pv.letter + '</div><div style="flex:1;min-width:0"><div class="small">총점 약 <b class="num">' + pv.total + '</b>점 <span class="tiny faint">· 대련 ' + (pv.duelWin ? '승리 예상' : '패배 위험') + (pv.bonus ? ' · 침묵달 +' + pv.bonus : '') + '</span></div><div class="small" style="margin-top:2px">' + examHint(pv) + '</div></div></div>' +
       '<div class="stack" style="gap:2px;margin-top:8px">' + ['S', 'A', 'B', 'C'].map(function (k) { return '<div class="row tiny' + (k === pv.letter ? ' gold' : ' faint') + '" style="flex-wrap:nowrap"><b style="width:16px">' + k + '</b><span style="width:52px">' + { S: '95점~', A: '85점~', B: '75점~', C: '60점~' }[k] + '</span><span style="flex:1;min-width:0">' + R.EXAM_REWARD[k].text + '</span></div>'; }).join('') + '</div>' +
-      '<p class="tiny faint" style="margin-top:6px">합격하면 바로 다음 학년이 되어 이 시험은 다시 볼 수 없습니다. 지금 볼지, 레벨을 더 올려 S를 노릴지 정할 수 있습니다.</p>';
+      '<p class="tiny faint" style="margin-top:6px">합격하면 바로 다음 학년이 되어 이 시험은 다시 볼 수 없습니다. 지금 볼지, 레벨을 더 올려 S를 노릴지 정할 수 있습니다.</p>' + examPlanHtml(P);
   }
 
   /* ── 월드 ── */
@@ -5765,7 +5785,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102293;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102294;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
