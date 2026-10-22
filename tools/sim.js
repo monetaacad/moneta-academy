@@ -1,6 +1,7 @@
 /* 밸런스 시뮬레이터: 접속 패턴별 봇이 실제 규칙(shared/rules.js의 R.act)으로 N일 동안 플레이한다.
-   사용법: node tools/sim.js [일수=120] [casual|steady|hardcore] [--csv 파일.csv] [--cls mage|knight] [--seed 숫자] [--spread] [--switch 일]
+   사용법: node tools/sim.js [일수=120] [casual|steady|hardcore|active] [--csv 파일.csv] [--cls mage|knight] [--seed 숫자] [--spread] [--switch 일]
      --spread: 시험 과목이 기준 레벨을 넘으면 모든 과목 중 가장 낮은 과목부터 (기본은 시험 과목 +4까지) · --switch N: N일째부터 다른 학과로 전과시험 (질 때마다 다음 날 다시)
+   active: 정해진 시각이 아니라 수업 · 원정 · 연구가 끝날 때마다(1~5분 뒤) 돌아오는 학생 (깨어 있는 8~24시). 알림을 켜 둔 상위권 학생 기준
      예) node tools/sim.js 120 steady --csv out.csv
    출력: 주요 날짜(1·3·7·14·21·30·45·60·90·120…)의 성장표, --csv를 주면 날마다 한 줄씩 CSV로 저장한다.
    gearPow%: 전투력 중 장비 몫 (장착 장비를 모두 뺀 전투력과 비교). V=1이면 진급 · 보스 기록을 출력한다. SAVE=파일이면 마지막 상태를 JSON으로 저장한다.
@@ -15,9 +16,11 @@ const DAYS = +(pos[0] || 120), PROFILE = pos[1] || 'steady', VERBOSE = process.e
 const PROFILES = {
   casual: [8, 12.5, 19, 23],                                // 출근 전 · 점심 · 퇴근 후 · 자기 전
   steady: [8, 10, 12, 14, 16, 18, 20, 22, 23.5],           // 깨어 있는 동안 2시간마다
-  hardcore: Array.from({ length: 17 }, (_, i) => 8 + i)    // 깨어 있는 동안 1시간마다
+  hardcore: Array.from({ length: 17 }, (_, i) => 8 + i),   // 깨어 있는 동안 1시간마다
+  active: []                                                // 접속 시각을 미리 정하지 않는다 (작업이 끝날 때마다 · nextActive)
 };
-if (!PROFILES[PROFILE]) { console.error('profile: casual | steady | hardcore'); process.exit(1); }
+if (!PROFILES[PROFILE]) { console.error('profile: casual | steady | hardcore | active'); process.exit(1); }
+const ACTIVE = PROFILE === 'active';
 const hours = PROFILES[PROFILE];
 const EPOCH = Date.UTC(2026, 10, 2, 0, 0, 0) / 1000 - 9 * 3600; // 2026-11-02(월) 00:00 KST
 const W = { epoch: EPOCH, now: EPOCH, wbAlive: true, results: {}, lecPeers: {} };
@@ -26,6 +29,11 @@ const P = R.newPlayer('bot', '봇', 'lanterna', EPOCH + 9 * 3600, 777);
 R.clsStart(P, CLS);
 const checkins = [];
 for (let d = 0; d < DAYS; d++) for (const h of hours) checkins.push(EPOCH + d * 86400 + h * 3600 + Math.floor(mr() * 600));
+// active: 8~24시에 깨어 있다. 자는 동안 끝난 작업은 다음 날 8시(+0~10분)에 받는다
+const T_END = EPOCH + DAYS * 86400, WAKE = 8 * 3600;
+const awake = (t) => (t - EPOCH) % 86400 >= WAKE;
+const nextWake = (t) => { const d0 = EPOCH + Math.floor((t - EPOCH) / 86400) * 86400; return (awake(t) ? d0 + 86400 : d0) + WAKE + Math.floor(mr() * 600); };
+const backAt = (end) => awake(end) ? end + 60 + Math.floor(mr() * 240) : nextWake(end);
 const ms = {}, rows = [], errs = {};
 function act(type, a, now) {
   try { return R.act(P, W, now, type, a); }
@@ -39,7 +47,8 @@ function bestDur(now, nextIdx) {
   let best = '1h', bv = 0;
   for (const d of D.DURATIONS) {
     const end = now + d.s; let back = null;
-    for (let k = nextIdx; k < checkins.length; k++) if (checkins[k] >= end) { back = checkins[k]; break; }
+    if (ACTIVE) back = awake(end) ? end : nextWake(end);
+    else for (let k = nextIdx; k < checkins.length; k++) if (checkins[k] >= end) { back = checkins[k]; break; }
     if (!back) back = end;
     const v = d.s * d.eff / (back - now);
     if (v > bv + 1e-9) { bv = v; best = d.k; }
@@ -77,7 +86,7 @@ function placeSpells() {
 function bot(now, ci) {
   W.now = now;
   R.advance(P, W, now);
-  const gap = ci + 1 < checkins.length ? checkins[ci + 1] - now : 43200, night = gap > 6 * 3600;
+  const gap = ACTIVE ? (awake(now + 3600) ? 3600 : nextWake(now) - now) : ci + 1 < checkins.length ? checkins[ci + 1] - now : 43200, night = gap > 6 * 3600;
   if (P.daily.login) act('login', {}, now);
   P.daily.q.forEach((q, i) => { if (!q.done && R.dailyProg(P, q) >= q.goal) act('daily', { i }, now); });
   if (P.wkPrev && !P.wkPrev.claimed) { W.results[P.wkPrev.id] = { cup: ['lanterna', 'corona', 'speculum', 'clepsydra'].sort(() => mr() - 0.5), killed: true, tiers: [1e30, 1e30, 0] }; act('weekClaim', {}, now); }
@@ -167,7 +176,7 @@ function bot(now, ci) {
   const ld = bestDur(now, ci + 1);
   for (let i = 0; i < c.lecSlots; i++) {
     if (!P.lec[i]) { const s = want.find(x => !P.lec.some(l => l && l.s === x)) || avail.find(x => !P.lec.some(l => l && l.s === x)); if (s) act('lecStart', { slot: i, s, d: ld }, now); }
-    const j = P.lec[i]; if (j && !(P.lecQ && P.lecQ[i]) && j.end < now + gap) act('lecQueue', { slot: i, s: j.s, d: night ? '3h' : ld }, now);
+    const j = P.lec[i]; if (j && !ACTIVE && !(P.lecQ && P.lecQ[i]) && j.end < now + gap) act('lecQueue', { slot: i, s: j.s, d: night ? '3h' : ld }, now);   // 다음 교시 예약 (active는 끝날 때 돌아와 과목을 다시 고른다)
   }
   // 원정: 가장 효율 좋은 단계
   const bs = R.bestStage(P, W), ed = bestDur(now, ci + 1);
@@ -198,10 +207,18 @@ function snapshot(t) {
 
 const t0 = Date.now();
 const dayOf = (t) => Math.floor(DAY(t - 4 * 3600)) + 1;   // 하루는 새벽 4시에 끝난다 (자정 넘은 접속은 그날로). day 1 = 첫날
-checkins.forEach((t, i) => {
+// active: 다음 접속 = 수업 · 원정 · 연구 중 가장 먼저 끝나는 때 (자는 동안이면 다음 날 아침)
+function nextActive(now) {
+  const ends = [].concat(P.lec.map(j => j && j.end), P.exp.map(j => j && R.expEnd(j)), P.rsq.map(q => q && q.end)).filter(e => e > now);
+  return Math.max(now + 60, backAt(ends.length ? Math.min(...ends) : now + 1800));
+}
+for (let i = 0, t = ACTIVE ? EPOCH + WAKE : checkins[0]; t != null && (!ACTIVE || t < T_END); i++) {
+  if (ACTIVE) checkins[i] = t;
   bot(t, i);
-  if (i + 1 >= checkins.length || dayOf(checkins[i + 1]) !== dayOf(t)) { const r = snapshot(t); r.day = dayOf(t); rows.push(r); }   // 그날 마지막 접속 뒤 상태
-});
+  const nt = ACTIVE ? nextActive(t) : checkins[i + 1];
+  if (nt == null || (ACTIVE && nt >= T_END) || dayOf(nt) !== dayOf(t)) { const r = snapshot(t); r.day = dayOf(t); rows.push(r); }   // 그날 마지막 접속 뒤 상태
+  t = nt;
+}
 const MILES = [1, 3, 7, 14, 21, 30, 45, 60, 75, 90, 105, 120, 150, 180, 240, 365].filter(d => d <= DAYS);
 if (!MILES.includes(DAYS)) MILES.push(DAYS);
 const F = R.fmt;
