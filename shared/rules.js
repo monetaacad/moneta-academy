@@ -328,7 +328,8 @@
     } else P.spells = P.spells.map(function (s) { return ok(s) ? s : null; });
     if (!P.spells.some(Boolean)) P.spells[0] = 'bolt';
     var off = before.filter(function (s) { return P.spells.indexOf(s) < 0; }).map(function (s) { return SPELL[s] ? SPELL[s].name : s; });
-    var pts = allocReset(P, id); if (pts) log(P, now, '학과를 옮겨 능력치 포인트를 모두 돌려받았습니다. 새 학과에 맞게 다시 분배할 수 있습니다.', 'news');
+    var wasAuto = !!P.opt.autoAlloc; P.opt.autoAlloc = false;   // 전과하면 자동 분배를 끈다 (켜 둔 채면 돌려받자마자 예전 비율로 다시 나뉘어 직접 나눌 수 없었다)
+    var pts = allocReset(P, id); if (pts) log(P, now, '학과를 옮겨 능력치 포인트를 모두 돌려받았습니다. 새 학과에 맞게 다시 분배할 수 있습니다.' + (wasAuto ? ' 자동 분배는 꺼 두었습니다.' : ''), 'news');
     log(P, now, R.CLS[id].name + ' 학과로 옮겼습니다' + (how ? ' (' + how + ')' : '') + '.', 'story');
     if (restored) log(P, now, '이전에 ' + R.CLS[id].name + ' 학과에서 사용하던 주문 구성을 다시 장착했습니다.', 'news');
     if (off.length) log(P, now, '주문 칸에서 해제된 주문: ' + off.join(', ') + '. 장착 주문을 확인하십시오.', 'news');
