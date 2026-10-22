@@ -1194,7 +1194,7 @@
     // 반딧불 정령 병: 40분마다 한 마리씩 모인다 (예전 방식 상태는 바꿔 준다)
     R.spiritJar(P, now);
     P.at = now;
-    if (W) { R.ensureWeek(P, W, now); R.ensureDaily(P, now); }
+    if (W) { R.ensureWeek(P, W, now); R.ensureDaily(P, now, W); }
     R.famGift(P, now);   // 이미 레벨이 닿은 학생도 다음 접속 때 첫 알
     checkAch(P, now);
     return P;
@@ -1223,13 +1223,20 @@
     if (P.wk.id && (P.wk.cup > 0 || P.wk.att > 0)) P.wkPrev = { id: P.wk.id, cup: P.wk.cup, dmg: P.wk.dmg, att: P.wk.att, house: P.house, claimed: false };
     P.wk = { id: w, cup: 0, dmg: 0, att: 0 };
   };
-  R.ensureDaily = function (P, now) {
+  /* 지금 할 수 없는 일일 목표: 월드 보스가 이미 토벌됐으면 「월드 보스 공격」, 원정 보스가 잠겨 있고 결투제도 모두 마쳤으면 「보스 또는 결투 도전」.
+     새 목표로 나오지 않고, 이미 받은 목표라면 별조각 없이(무료 횟수도 쓰지 않고) 바꿀 수 있다. W = { wbAlive } (없으면 월드 보스는 따지지 않는다) */
+  R.dailyBlocked = function (P, W, type) {
+    if (type === 'wbAttacks') return !!W && W.wbAlive === false;
+    if (type === 'bossTries') return !R.rival(P) && !R.canChallenge(P);
+    return false;
+  };
+  R.ensureDaily = function (P, now, W) {
     var day = R.dayKST(now);
     if (P.daily.day === day) return false;
     P.daily.streak = P.daily.day === day - 1 ? P.daily.streak + 1 : 1;
     if (P.daily.streak > P.st.streak) P.st.streak = P.daily.streak;
     P.daily.day = day; P.daily.login = true; P.daily.rr = 0;
-    var pool = D.DAILY.filter(function (d) { return !d.grade || P.grade >= d.grade; }), q = [];
+    var pool = D.DAILY.filter(function (d) { return (!d.grade || P.grade >= d.grade) && !R.dailyBlocked(P, W, d.type); }), q = [];
     while (q.length < 3 && pool.length) {
       var d = pool.splice(Math.floor(rnd(P) * pool.length), 1)[0];
       q.push({ type: d.type, name: d.name, goal: d.base, base: P.st[d.type] || 0, done: false });
@@ -1257,6 +1264,7 @@
     return false;
   };
   R.rerollCost = function (P) { var n = P.daily.rr || 0; return n === 0 ? 0 : Math.min(40, 5 * Math.pow(2, n - 1)); };
+  R.rerollCostOf = function (P, W, q) { return q && R.dailyBlocked(P, W, q.type) ? 0 : R.rerollCost(P); };   // 할 수 없는 목표는 별조각 없이
   // 칭호
   // 운영 등급: P.op (서버가 정한다. 1 학생회 · 2 학생회장). 운영진 칭호는 등급이 맞는 학생에게만 보이고 낄 수 있다
   function opLv(P) { return P && P.op ? (P.op >= 2 ? 2 : 1) : 0; }
@@ -2576,12 +2584,12 @@
 
   A.dailyReroll = function (P, W, now, a) {
     var i = int(a.i, 0, 2), q = P.daily.q[i]; if (!q || q.done) err('바꿀 수 없는 의뢰입니다');
-    var cost = R.rerollCost(P); if (P.res.shard < cost) err('별조각이 부족합니다');
+    var blocked = R.dailyBlocked(P, W, q.type), cost = blocked ? 0 : R.rerollCost(P); if (P.res.shard < cost) err('별조각이 부족합니다');
     var have = P.daily.q.map(function (x) { return x.type; });
-    var pool = D.DAILY.filter(function (d) { return (!d.grade || P.grade >= d.grade) && have.indexOf(d.type) < 0; }); if (!pool.length) err('바꿀 의뢰가 없습니다');
-    var d = pick(P, pool); P.res.shard -= cost; P.daily.rr = (P.daily.rr || 0) + 1;
+    var pool = D.DAILY.filter(function (d) { return (!d.grade || P.grade >= d.grade) && have.indexOf(d.type) < 0 && !R.dailyBlocked(P, W, d.type); }); if (!pool.length) err('바꿀 의뢰가 없습니다');
+    var d = pick(P, pool); P.res.shard -= cost; if (!blocked) P.daily.rr = (P.daily.rr || 0) + 1;
     P.daily.q[i] = { type: d.type, name: d.name, goal: d.base, base: P.st[d.type] || 0, done: false };
-    return { cost: cost, name: d.name };
+    return { cost: cost, name: d.name, blocked: blocked };
   };
   A.title = function (P, W, now, a) { var id = a.id ? str(a.id, 20) : ''; if (id && !R.titleOk(P, id)) err('아직 얻지 못한 칭호입니다'); P.title = id; return { title: R.titleName(P, id) }; };
   A.skyLook = function (P, W, now) {
