@@ -1680,13 +1680,13 @@
   function expVoting(j) { return !!(j && j.pt && j.pt.ck && (j.pt.with || []).some(function (w) { return w && w.id && !w.npc; }) && !(S.expSolo && S.expSolo[j.pt.ck])); }
   function expVoteBtn(i, j) {
     var v = j.pt.vote, mine = !!(v && v.yes && v.yes.indexOf(S.P.id) >= 0);
-    return '<button class="btn sm ' + (mine ? 'primary' : 'ghost') + '" data-act="expvote" data-a="' + i + '" data-b="' + (mine ? 0 : 1) + '" title="아직 원정 중인 학생의 과반이 찬성하면 모두 함께 귀환합니다">' + (mine ? '귀환 찬성 취소' : '귀환 투표') + (v ? ' <span class="cost">' + v.yes.length + '/' + v.need + '</span>' : '') + '</button>';
+    return '<button class="btn sm ' + (mine ? 'primary' : 'ghost') + '" data-act="expvote" data-a="' + i + '" data-b="' + (mine ? 0 : 1) + '" title="아직 원정 중인 학생(동행 친구 제외)의 과반이 찬성하면 모두 함께 귀환합니다">' + (mine ? '귀환 찬성 취소' : '귀환 투표') + (v ? ' <span class="cost">' + v.yes.length + '/' + v.need + '</span>' : '') + '</button>';
   }
   ACT.expvote = function (i, on) {
     var j = S.P.exp[+i]; if (!j || !j.pt) return;
     API.expVote({ slot: +i, on: on === '1' }).then(function (r) {
       if (r.error) { if (/다른 학생이 없습니다/.test(r.error)) { (S.expSolo = S.expSolo || {})[j.pt.ck] = 1; toast('함께 원정', '다른 학생이 모두 돌아와 혼자 귀환할 수 있습니다', 2400); render(); return; } toast('귀환 투표', r.error, 2400); return; }
-      absorb(r); toast(r.done ? '원정에서 귀환했습니다' : '귀환 투표', r.done ? '과반이 찬성해 모두 함께 귀환했습니다' : (on === '1' ? '귀환에 찬성했습니다' : '찬성을 취소했습니다') + ' · ' + r.yes + '/' + r.need + '명 (과반이 찬성하면 모두 귀환)', 2600); render();
+      absorb(r); toast(r.done ? '원정에서 귀환했습니다' : '귀환 투표', r.done ? '과반이 찬성해 모두 함께 귀환했습니다' : (on === '1' ? '귀환에 찬성했습니다' : '찬성을 취소했습니다') + ' · 찬성 ' + r.yes + '명 / 필요 ' + r.need + '명 (학생 ' + r.n + '명 중 과반 · 동행 친구 제외)', 2600); render();
     });
   };
   function cancelBtn(key, type, a, leave) {   // leave: 함께 원정에서 혼자 먼저 귀환 (모은 것의 50%)
@@ -5861,7 +5861,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102315;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102316;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
