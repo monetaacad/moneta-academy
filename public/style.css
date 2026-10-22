@@ -1094,8 +1094,9 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 .pcard { position: relative; }
 .pcard.deco { padding: 14px; border-radius: 14px; border: 2px solid transparent; }
 .pstamp { position: absolute; right: 10px; top: 8px; font-size: 22px; line-height: 1; color: var(--brass); opacity: .85; font-family: var(--f-display); }
-.fr-aurora { border-color: transparent !important; animation: decoAur 6s linear infinite; }
-.fr-spring { border-color: transparent !important; animation: decoSpr 7s linear infinite; }
+/* 테두리 빛은 움직임(애니메이션)으로만 그리므로, 「애니메이션 효과 끄기」(움직임 줄이기) 기기에서도 보이게 첫 빛깔을 기본으로 깔아 둔다 */
+.fr-aurora { border-color: transparent !important; box-shadow: 0 0 0 2px #7cf0c0, 0 0 16px rgba(124, 240, 192, .4); animation: decoAur 6s linear infinite; }
+.fr-spring { border-color: transparent !important; box-shadow: 0 0 0 2px #f2c84b, 0 0 18px rgba(242, 200, 75, .35); animation: decoSpr 7s linear infinite; }
 @keyframes decoAur { 0%, 100% { box-shadow: 0 0 0 2px #7cf0c0, 0 0 16px rgba(124, 240, 192, .4); } 50% { box-shadow: 0 0 0 2px #9fb8ff, 0 0 16px rgba(159, 184, 255, .45); } }
 @keyframes decoSpr { 0%, 100% { box-shadow: 0 0 0 2px #ff7a5a, 0 0 18px rgba(255, 122, 90, .35); } 17% { box-shadow: 0 0 0 2px #f2c84b, 0 0 18px rgba(242, 200, 75, .35); } 34% { box-shadow: 0 0 0 2px #8ad08a, 0 0 18px rgba(138, 208, 138, .35); } 51% { box-shadow: 0 0 0 2px #7fc8ff, 0 0 18px rgba(127, 200, 255, .35); } 68% { box-shadow: 0 0 0 2px #b8a8e8, 0 0 18px rgba(184, 168, 232, .35); } 85% { box-shadow: 0 0 0 2px #c084fc, 0 0 18px rgba(192, 132, 252, .35); } }
 /* 이름 잉크: 그라데이션은 글자에만, 반짝이는 잉크는 천천히 흐른다 */
