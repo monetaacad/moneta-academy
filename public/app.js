@@ -2945,14 +2945,14 @@
       '<p class="tiny faint" style="margin-top:2px">끝없이 이어지는 ' + R.CLS[cl].name + ' 전용 탑입니다. 도전 횟수 제한 없이 한 층씩 싸우며, 전투력이 되는 만큼 오를 수 있습니다. 오른 층은 줄어들지 않습니다. 탑의 적은 공격이 매우 강해 화력만큼 생명력과 회복도 중요합니다(' + R.CT_TIME + '초 제한).</p>' +
       '<div class="twnext" style="margin-top:10px"><div class="twf num">' + f + '<span>층</span></div><div style="flex:1;min-width:0"><b' + (foe.wall ? ' class="gold"' : '') + '>' + esc(foe.name) + '</b><div class="tiny faint">' + foe.stage + '단계 수준 · 체력 ' + fmt(foe.hp) + (foe.wall ? ' · <span class="bad">시련의 층: 탑의 문지기가 지킵니다</span>' : '') + '</div>' +
       '<div class="small" style="margin-top:4px">' + (pv.win && pv.ttk < R.CT_TIME ? '<span class="good">승산 있음</span> — 약 ' + pv.ttk.toFixed(1) + '초' : '<span class="bad">아직 버겁습니다</span>') + '</div>' +
-      '<div class="tiny" style="margin-top:4px">이 층 보상 <span class="rwd">' + esc(R.rewardText(rw)) + '</span></div></div></div>' +
-      '<div class="row" style="margin-top:12px"><span class="tiny faint">' + (mt ? nextMile + '층 돌파 시 칭호 「' + esc(mt.name) + '」 · 별조각 30 · 희귀 장비 상자 · 환수의 알' : nextMile + '층 돌파 시 별조각 30 · 희귀 장비 상자 · 환수의 알') + '</span><span class="spacer"></span><button class="btn ghost" data-act="ctauto" title="패배하거나 중지할 때까지 다음 층에 계속 도전합니다">패배할 때까지 연속 도전</button><button class="btn primary" data-act="ctower"' + '' + '>' + f + '층 도전</button></div></div>';
+      '<div class="tiny" style="margin-top:4px">이 층 보상 ' + (f <= R.ctPaid(P) ? '<span class="faint">없음 (다른 학과의 탑에서 이미 받은 층 · ' + R.ctPaid(P) + '층까지)</span>' : '<span class="rwd">' + esc(R.rewardText(rw)) + '</span>') + '</div></div></div>' +
+      '<div class="row" style="margin-top:12px"><span class="tiny faint">' + (nextMile <= R.ctPaid(P) ? (mt ? nextMile + '층 돌파 시 칭호 「' + esc(mt.name) + '」 (보상은 다른 학과의 탑에서 받음)' : '') : mt ? nextMile + '층 돌파 시 칭호 「' + esc(mt.name) + '」 · 별조각 30 · 희귀 장비 상자 · 환수의 알' : nextMile + '층 돌파 시 별조각 30 · 희귀 장비 상자 · 환수의 알') + '</span><span class="spacer"></span><button class="btn ghost" data-act="ctauto" title="패배하거나 중지할 때까지 다음 층에 계속 도전합니다">패배할 때까지 연속 도전</button><button class="btn primary" data-act="ctower"' + '' + '>' + f + '층 도전</button></div></div>';
     h += '<div class="card" style="margin-top:14px"><div class="row between"><h3>장착 주문</h3><span class="tiny faint">칸을 누르면 주문을 바꿉니다 · 바꾼 뒤 위의 승산이 다시 계산됩니다</span></div>' + spellBar(P) + spellSetBar(P) + '</div>';   // 탑에서도 바로 주문을 바꾼다
     var got = D.TITLES.filter(function (t) { return t.stat === R.ctKey(cl); });
     // 탑 칭호는 칭호 도감에 모두 있으므로 여기서는 한 줄 (획득 수 · 다음 칭호)
     var gotN = got.filter(function (t) { return best >= t.n; }).length, nextT = got.filter(function (t) { return best < t.n; }).sort(function (x, y) { return x.n - y.n; })[0];
     h += '<div class="card" style="margin-top:14px"><div class="row between" style="gap:8px;flex-wrap:wrap"><span class="small"><b>' + nm + ' 칭호</b> <span class="num gold">' + gotN + ' / ' + got.length + '</span>' + (nextT ? ' <span class="tiny faint">· 다음 「' + esc(nextT.name) + '」 ' + nextT.n + '층</span>' : ' <span class="tiny good">· 모두 획득</span>') + '</span><button class="btn sm ghost" data-act="cttitles">칭호 도감</button></div>' +
-      '<p class="tiny faint" style="margin-top:8px">보상: 층마다 ' + CUR + ', 2층마다 마석 1, 10층마다 별조각 3, ' + R.CT_MILE + '층마다 칭호와 추가 보상. 시련의 층(50층마다)은 탑의 문지기가 지켜 갑자기 어려워지고, 넘은 뒤 몇 층은 다시 쉬워집니다. 학과를 바꾸면 그 학과의 탑을 따로 오릅니다. 순위는 「기록·랭킹 → 랭킹」에서 볼 수 있습니다.</p></div>';
+      '<p class="tiny faint" style="margin-top:8px">보상: 층마다 ' + CUR + ', 2층마다 마석 1, 10층마다 별조각 3, ' + R.CT_MILE + '층마다 칭호와 추가 보상. 시련의 층(50층마다)은 탑의 문지기가 지켜 갑자기 어려워지고, 넘은 뒤 몇 층은 다시 쉬워집니다. 학과를 바꾸면 그 학과의 탑을 따로 오르며, 층 보상은 두 탑을 합쳐 처음 오르는 층에서만 받습니다(칭호는 탑마다). 순위는 「기록·랭킹 → 랭킹」에서 볼 수 있습니다.</p></div>';
     return h;
   };
   ACT.ctower = function () {
@@ -2966,7 +2966,7 @@
         return '<h3 class="' + (r.win ? 'good' : 'bad') + '">' + (r.win ? '돌파했습니다' : '이번에는 오르지 못했습니다') + '</h3>' +
           '<p style="margin-top:4px">' + (r.win ? '<span class="good">' + esc(R.josa(fo.name, '을', '를')) + '</span> ' + (Math.round(r.t * 10) / 10) + '초 만에 쓰러뜨렸습니다.' : esc(fo.name) + '의 체력을 ' + r.pct + '% 깎았습니다. ' + (r.dead ? '생명력이 바닥났습니다.' : R.CT_TIME + '초 안에 쓰러뜨리지 못했습니다.')) + '</p>' +
           (r.titles.length ? '<p class="gold" style="margin-top:8px">새 칭호: ' + r.titles.map(function (t) { return '「' + esc(t) + '」'; }).join(' ') + '</p>' : '') +
-          (rwT ? '<p class="small" style="margin-top:8px">보상: ' + esc(rwT) + '</p>' : '') + ((r.items || []).length ? '<p class="small">' + r.items.map(function (it) { return '<span style="color:' + rcol(it.r) + '">' + esc(it.name) + '</span>'; }).join(', ') + '</p>' : '') +
+          (rwT ? '<p class="small" style="margin-top:8px">보상: ' + esc(rwT) + '</p>' : r.paid ? '<p class="tiny faint" style="margin-top:8px">다른 학과의 탑에서 이미 보상을 받은 층이라 보상이 없습니다.</p>' : '') + ((r.items || []).length ? '<p class="small">' + r.items.map(function (it) { return '<span style="color:' + rcol(it.r) + '">' + esc(it.name) + '</span>'; }).join(', ') + '</p>' : '') +
           (!r.win && r.dead ? '<p class="tiny faint" style="margin-top:6px">탑의 적은 공격이 강합니다. 생명력 · 방어력을 올리거나 보호막 · 치유 주문을 장착하면 더 오래 버틸 수 있습니다.</p>' : '') +
           '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>';
       });
@@ -5922,7 +5922,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102318;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102319;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

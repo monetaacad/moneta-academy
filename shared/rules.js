@@ -278,6 +278,7 @@
     // 슬롯 늘리기 연구 폐지 (BUILD 30): 이미 쌓은 단계의 마나 · 지식을 돌려준다
     if (!P.slotV && P.rs && P.res) { P.slotV = 1; var back = { mana: 0, know: 0 }; D.RESEARCH.forEach(function (r) { if (!r.gone) return; var L = P.rs[r.id] || 0; for (var lv = 0; lv < L; lv++) { var c0 = R.resCost(P, r.id, lv); back.mana += c0.mana; back.know += c0.know; } if (L) delete P.rs[r.id]; }); if (back.mana || back.know) { P.res.mana += back.mana; P.res.know += back.know; if (P.log) log(P, P.at || 0, '수업 · 원정 · 연구가 한 자리씩으로 바뀌어, 슬롯을 늘리던 연구의 마나 ' + R.fmt(back.mana) + ' · 지식 ' + R.josa(R.fmt(back.know), '을', '를') + ' 돌려드렸습니다.', 'news'); } }
     // 보스 처치(P.st.bosses)에 월드 보스 공격 · 결투제 승리 · 개인 탑 문지기층을 함께 센다 (2026-10-22): 지금까지의 기록을 한 번 더해 준다
+    if (P.st && P.st.ctPaid == null) P.st.ctPaid = Math.max(P.st.twK || 0, P.st.twM || 0);   // 탑 보상을 받은 최고 층 (두 탑 합산)
     if (!P.bossV && P.st) { P.bossV = 1; P.st.bosses = (P.st.bosses || 0) + (P.st.wbAttacks || 0) + (P.st.duelWins || 0) + Math.floor((P.st.twK || 0) / R.CT_MILE) + Math.floor((P.st.twM || 0) / R.CT_MILE); }
     if (!P.physV) { P.physV = 1; if (P.cls === 'knight' && P.alloc && P.log && (P.alloc.int || 0) > 0 && allocReset(P, 'knight')) log(P, P.at || 0, '기사의 공격력이 지력 대신 체력을 따르게 바뀌어 능력치 포인트를 모두 돌려드렸습니다.', 'news'); }
     D.SUBJECTS.forEach(function (s) { if (!P.subj[s.id]) P.subj[s.id] = { lv: 0, xp: 0 }; });
@@ -2009,6 +2010,8 @@
   R.ctCls = function (P) { return P.cls === 'knight' ? 'knight' : 'mage'; };
   R.ctKey = function (cls) { return cls === 'knight' ? 'twK' : 'twM'; };
   R.ctBest = function (P, cls) { return (P.st && P.st[R.ctKey(cls || R.ctCls(P))]) || 0; };
+  // 층 보상은 두 탑을 합쳐 처음 오르는 층에서만 (전과해 다른 학과 탑을 다시 올라 보상을 두 번 받지 않도록). 층 기록 · 칭호는 학과마다 따로
+  R.ctPaid = function (P) { var st = P.st || {}; return st.ctPaid != null ? st.ctPaid : Math.max(st.twK || 0, st.twM || 0); };
   R.ctLeft = function () { return Infinity; };   // 무한의 탑: 도전 횟수 제한 없음
   R.ctStage = function (f) {
     var s; if (f >= 40) s = 32 + (f - 40) * 0.3;
@@ -2035,7 +2038,7 @@
     var out = { cls: cls, f: f, foe: foe, win: !!r.win, cc: !!r.cc, ev: r.ev, t: r.t, dead: !!r.dead, pct: Math.round((1 - r.mHp) * 100), rw: {}, titles: [] };
     if (!r.win) return out;   // 휘장 별빛은 이겼을 때만 (도전 횟수 제한이 없어 지기만 반복해 휘장을 키울 수 있었다)
     badgeGain(P, R.BADGE_XP.fight, now);
-    P.st[key] = f; if (foe.wall) P.st.bosses++; var g = R.ctReward(f), rw = out.rw;
+    P.st[key] = f; if (foe.wall) P.st.bosses++; var paid = f <= R.ctPaid(P), g = paid ? {} : R.ctReward(f), rw = out.rw; if (paid) out.paid = true; else P.st.ctPaid = f;
     if (g.gold) { addGold(P, g.gold); rw.gold = g.gold; } if (g.stone) { P.res.stone += g.stone; rw.stone = g.stone; } if (g.shard) { P.res.shard += g.shard; rw.shard = g.shard; }
     if (g.gear || g.egg) { var gm = R.grantMail(P, W, now, { gear: g.gear, egg: g.egg }); if (g.egg) rw.egg = g.egg; out.items = gm.items; }
     if (f % R.CT_MILE === 0) { var tt = R.ctTitle(cls, f); if (tt) { out.titles.push(tt.name); log(P, now, R.CT_NAME[cls] + ' ' + f + '층 돌파! 칭호 「' + tt.name + '」를 얻었습니다', 'legend'); } }
