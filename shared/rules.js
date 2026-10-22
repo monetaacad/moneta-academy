@@ -301,6 +301,7 @@
     if (P.tfV == null && P.subj) { P.tfV = 1; if (P.created && P.created < R.EXAM_OPT_AT) { var tkf = P.tok || (P.tok = {}); tkf.transfer = (tkf.transfer || 0) + R.TRANSFER_GIVE; if (P.log) log(P, P.at || P.created, '선택 과목 도입 전에 입학한 학생에게 학점 이전 증서 ' + R.TRANSFER_GIVE + '장이 지급되었습니다. 소지품에서 사용할 수 있습니다', 'story'); } }
     if (!P.badges) P.badges = [];
     if (P.grade >= 3 && !P.badgeGot && P.res && P.log) { P.badgeGot = 1; gainBadge(P, makeBadge(P), P.at || 0, '아카데미 휘장 수여'); }
+    if (P.fam && P.fam.tixV == null) { P.fam.tixV = 1; for (var tn = 1; tn <= (P.fam.hatched || 0); tn++) { var tr = R.famTixAt(tn); if (tr > 0) { P.fam.tix = P.fam.tix || {}; P.fam.tix[tr] = (P.fam.tix[tr] || 0) + 1; } } }   // 선택권: 이미 지난 횟수만큼 소급
     if (P.st && P.st.aGrades == null) P.st.aGrades = Object.keys(P.scores || {}).filter(function (g) { var l = P.scores[g].letter; return l === 'S' || l === 'A'; }).length;
     if (P.spells && P.cls) P.spells = P.spells.map(function (sid) { return sid && R.spellUnlocked(P, sid) ? sid : null; });
     return P;
@@ -964,8 +965,15 @@
   R.potionUnlocked = function (P, id) { return R.alchOpen(P) && P.subj.alch.lv >= POT[id].unlock; };
   R.eggCost = function (P) { return Math.floor(5000 * Math.pow(1.2, Math.min(P.fam.hatched, 30))); };   // 깨운 수마다 1.2배 (예전 1.45배)
   R.feedCost = function (P, id) { var f = FAM[id], o = P.fam.own[id]; return Math.floor(2000 * Math.pow(1.45, o.lv) * (f.r + 1)); };
+  /* 천장 · 선택권: 알을 깨운 횟수가 20 · 40 · 80회가 되면 희귀 · 영웅 · 전설 선택권을 차례로 준다 (그 뒤로는 80회마다 전설 선택권).
+     선택권으로 그 등급의 사역마 하나를 골라 얻는다 (가지고 있으면 레벨 +1, 최고 레벨인 사역마는 고를 수 없다) */
+  R.FAM_TIX = [[20, 1], [40, 2], [80, 3]]; R.FAM_TIX_EVERY = 80;
+  R.famTixAt = function (n) { for (var i = 0; i < R.FAM_TIX.length; i++) if (R.FAM_TIX[i][0] === n) return R.FAM_TIX[i][1]; var last = R.FAM_TIX[R.FAM_TIX.length - 1][0]; return n > last && (n - last) % R.FAM_TIX_EVERY === 0 ? 3 : -1; };
+  R.famTixNext = function (P) { var n = (P.fam.hatched || 0) + 1; while (R.famTixAt(n) < 0) n++; return { n: n, r: R.famTixAt(n) }; };
+  function famTixGive(P, r, t) { var x = P.fam.tix || (P.fam.tix = {}); x[r] = (x[r] || 0) + 1; log(P, t, '알을 ' + P.fam.hatched + '번 깨워 ' + D.FAM_RARITY[r].name + ' 사역마 선택권을 받았습니다. 환수 사역장에서 원하는 사역마를 고를 수 있습니다.', 'good'); }
   function hatch(P, t) {
     P.fam.egg = null; P.fam.hatched++;
+    var tixR = R.famTixAt(P.fam.hatched); if (tixR > 0) famTixGive(P, tixR, t);
     var luck = 0;
     var ws = D.FAM_RARITY.map(function (r, i) { return r.w * (i >= 1 ? 1 + luck : 1); });
     var tot = ws.reduce(function (a, b) { return a + b; }, 0), x = rnd(P) * tot, r = 0;
@@ -978,6 +986,7 @@
     else { P.res.shard += 10; res = { f: f.id, isNew: false, max: true }; }
     P.st.famKinds = Object.keys(P.fam.own).length;
     log(P, t, '알이 부화했습니다: ' + f.name + (res.isNew ? ' (새로운 사역마!)' : ' (성장)'), 'good');
+    if (tixR > 0) res.tix = tixR;
     return res;
   }
   // 파견 지역: 사역마마다 정해 둘 수 있다 (P.fam.zone[fid] = 지역 id, 없으면 갈 수 있는 가장 높은 지역). 출발할 때 정해진 지역으로 다녀온다
@@ -2315,7 +2324,16 @@
   A.eggHatch = function (P, W, now) {
     var inc = P.fam.inc; if (!inc) err('품고 있는 알이 없습니다'); if (inc.prog < inc.need) err('아직 깨어날 준비가 되지 않았습니다');
     P.fam.inc = null; return hatch(P, now);
+  };  A.famPick = function (P, W, now, a) {
+    var r = int(a.r, 1, 3), f = FAM[str(a.id)], x = P.fam.tix || {};
+    if (!(x[r] > 0)) err('선택권이 없습니다'); if (!f || f.r !== r) err(D.FAM_RARITY[r].name + ' 등급 사역마만 고를 수 있습니다');
+    var own = P.fam.own[f.id]; if (own && own.lv >= 20) err('이미 최고 레벨인 사역마입니다');
+    x[r]--; if (!own) { P.fam.own[f.id] = { lv: 1 }; if (!P.fam.act) P.fam.act = f.id; } else own.lv++;
+    P.st.famKinds = Object.keys(P.fam.own).length;
+    log(P, now, D.FAM_RARITY[r].name + ' 선택권으로 ' + R.josa(f.name, '을', '를') + ' 골랐습니다' + (own ? ' (레벨 ' + own.lv + ')' : ' (새 사역마)'), 'good');
+    return { f: f.id, isNew: !own, lv: own ? own.lv : 1, left: x[r] };
   };
+
   // 품기 취소: 품던 알을 보관함으로 되돌린다. 진행도는 사라진다(소모한 자원이 없고, 종은 깨어날 때 정해지므로 다시 품어도 얻는 것이 없다)
   A.eggCancel = function (P, W, now) {
     var inc = P.fam.inc; if (!inc) err('품고 있는 알이 없습니다');

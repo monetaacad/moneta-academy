@@ -1946,3 +1946,7 @@ table.sjtop .sjmeta { white-space: nowrap; }
 .lgstage { padding: 6px 10px; border-radius: 8px; border: 1px dashed var(--line, rgba(255,255,255,.14)); }
 .lgstage.done { border-style: solid; background: rgba(120, 200, 150, .06); }
 .stamp-pv { display: inline-block; min-width: 1.2em; text-align: center; }
+
+/* 사역마 선택권 (천장) */
+.famtix { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--line2); }
+.famtixrow { padding: 6px 8px; border-radius: 8px; background: var(--sunk); }
