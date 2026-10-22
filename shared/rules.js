@@ -2471,6 +2471,7 @@
     if (x.need) err('살 수 없는 꾸미기입니다. ' + x.needText + '을 달성하면 지급됩니다');
     if (x.house && x.house !== P.house) err(HOUSE[x.house].name + ' 학생만 살 수 있습니다');   // 기숙사 문장 테두리
     if (x.fest) err('축제 교환소에서만 얻을 수 있습니다');
+    if (x.off) err('판매가 끝난 꾸미기입니다');
     if (x.mw) err('마스터 주간 과제를 ' + x.mw + '주 모두 완수하면 받는 꾸미기입니다');
     if (P.res.gold < x.price) err(CUR + '가 부족합니다');
     P.res.gold -= x.price; d.own[id] = 1; d.on[x.slot] = id; log(P, now, R.josa('꾸미기 「' + x.name + '」', '을', '를') + ' 샀습니다 (' + R.fmt(x.price) + ' ' + CUR + ')', 'news');

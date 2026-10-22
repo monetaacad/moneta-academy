@@ -52,8 +52,8 @@ var DATA = (function () {
     { id: 'f_neon', slot: 'frame', name: '꽃잎 등롱', price: 12000, c: '#f9b9c3', st: 'neon' },
     { id: 'f_breath', slot: 'frame', name: '숨 쉬는 별빛', price: 15000, c: '#ffe08a', st: 'pulse' },
     { id: 'f_gild', slot: 'frame', name: '금박 장식', price: 20000, c: '#e8c060', st: 'gild' },
-    { id: 'f_aurora', slot: 'frame', name: '오로라', price: 30000, c: '#7cf0c0', st: 'aurora' },
-    { id: 'f_spring', slot: 'frame', name: '일곱 별샘', price: 50000, c: '#f2c84b', st: 'spring' },
+    { id: 'f_aurora', slot: 'frame', name: '오로라', price: 30000, c: '#7cf0c0', st: 'aurora', off: true },   // 판매 종료 (움직이는 여러 빛깔 테두리는 전용 꾸미기만). 이미 산 학생은 그대로
+    { id: 'f_spring', slot: 'frame', name: '일곱 별샘', price: 50000, c: '#f2c84b', st: 'spring', off: true },   // 판매 종료
     { id: 'f_exam7', slot: 'frame', name: '별샘에 새긴 금테', price: 0, need: { stat: 'sGrades', n: 7 }, needText: '기말시험 S 일곱 번', c: '#f2c84b', st: 'seven' },   // 기말 S 횟수 전용 (달성하면 지급)
     { id: 'b_parch', slot: 'bg', name: '양피지', price: 1000, g: ['#e8d6aa', '#c4a064'], pat: 'lines' },
     { id: 'b_mint', slot: 'bg', name: '박하', price: 3000, g: ['#c8f0e0', '#7fd0b8'] },
