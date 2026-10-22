@@ -166,6 +166,9 @@ function open(dir) {
   const pcols = db.prepare(`PRAGMA table_info(parties)`).all().map((c) => c.name);
   if (pcols.indexOf('npcs') < 0) db.exec(`ALTER TABLE parties ADD COLUMN npcs TEXT NOT NULL DEFAULT '[]'`);
   if (pcols.indexOf('allgo') < 0) db.exec(`ALTER TABLE parties ADD COLUMN allgo INTEGER NOT NULL DEFAULT 0`);   // 파티원도 원정에 파티를 데려갈 수 있음
+  // 별의 탑 순위 대기 기록: 실전이 끝나는 시각(pt)이 지나야 정식 기록(floor · name · members · t)으로 옮긴다 (진행 중에 순위가 먼저 바뀌지 않게)
+  const trcols = db.prepare(`PRAGMA table_info(tower_rank)`).all().map((c) => c.name);
+  if (trcols.length && trcols.indexOf('pfloor') < 0) db.exec(`ALTER TABLE tower_rank ADD COLUMN pfloor INTEGER NOT NULL DEFAULT 0; ALTER TABLE tower_rank ADD COLUMN pt INTEGER NOT NULL DEFAULT 0; ALTER TABLE tower_rank ADD COLUMN pname TEXT NOT NULL DEFAULT ''; ALTER TABLE tower_rank ADD COLUMN pmembers TEXT NOT NULL DEFAULT '[]'`);
   const mcols = db.prepare(`PRAGMA table_info(market)`).all().map((c) => c.name);
   if (mcols.indexOf('seller_name') < 0) db.exec(`ALTER TABLE market ADD COLUMN seller_name TEXT NOT NULL DEFAULT ''`);
   // 학생 경매: 거래소 물건 중 auc = 1. price = 즉시 구매가, start_price = 시작가, bid = 현재 입찰가(입찰한 학생의 아르크는 맡겨 둔다), expires = 마감
@@ -348,6 +351,10 @@ function open(dir) {
       members TEXT NOT NULL DEFAULT '[]',
       floor INTEGER NOT NULL,
       t INTEGER NOT NULL,
+      pfloor INTEGER NOT NULL DEFAULT 0,
+      pt INTEGER NOT NULL DEFAULT 0,
+      pname TEXT NOT NULL DEFAULT '',
+      pmembers TEXT NOT NULL DEFAULT '[]',
       PRIMARY KEY (week, party)
     );
     -- 성장 스냅샷: 하루(한국 날짜) 한 번, 학생마다 한 줄 (레벨 · 전투력 · 누적 통계). 성장곡선 분석용
@@ -394,9 +401,11 @@ function open(dir) {
     topCt: db.prepare(`SELECT id, name, house, grade, CAST(json_extract(state, ?) AS INTEGER) AS f FROM players WHERE banned = 0 AND CAST(json_extract(state, ?) AS INTEGER) > 0 ORDER BY f DESC, power DESC LIMIT ?`),
     topStage: db.prepare(`SELECT id, name, house, power, lvl, grade, max_stage FROM players WHERE banned = 0 ORDER BY max_stage DESC, power DESC LIMIT ?`),
     // 별의 탑 파티 순위 (높은 층, 같으면 먼저 오른 파티)
-    twRankPut: db.prepare(`INSERT INTO tower_rank (week, party, name, members, floor, t) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(week, party) DO UPDATE SET name = excluded.name, members = excluded.members, floor = excluded.floor, t = excluded.t WHERE excluded.floor > tower_rank.floor`),
-    twRankTop: db.prepare(`SELECT party, name, members, floor, t FROM tower_rank WHERE week = ? ORDER BY floor DESC, t ASC LIMIT ?`),
-    twRankGet: db.prepare(`SELECT floor, t FROM tower_rank WHERE week = ? AND party = ?`),
+    // 실전 기록은 대기(pfloor · pt = 끝나는 시각)로 넣고, twRankSettle이 끝난 것만 정식 기록으로 옮긴다 (처음 오른 파티는 floor 0인 줄로 시작)
+    twRankPend: db.prepare(`INSERT INTO tower_rank (week, party, name, members, floor, t, pfloor, pt, pname, pmembers) VALUES (?, ?, '', '[]', 0, 0, ?, ?, ?, ?) ON CONFLICT(week, party) DO UPDATE SET pfloor = excluded.pfloor, pt = excluded.pt, pname = excluded.pname, pmembers = excluded.pmembers WHERE excluded.pfloor > MAX(tower_rank.floor, tower_rank.pfloor)`),
+    twRankSettle: db.prepare(`UPDATE tower_rank SET floor = CASE WHEN pfloor > floor THEN pfloor ELSE floor END, name = CASE WHEN pfloor > floor THEN pname ELSE name END, members = CASE WHEN pfloor > floor THEN pmembers ELSE members END, t = CASE WHEN pfloor > floor THEN pt ELSE t END, pfloor = 0, pt = 0 WHERE pt > 0 AND pt <= ?`),
+    twRankTop: db.prepare(`SELECT party, name, members, floor, t FROM tower_rank WHERE week = ? AND floor > 0 ORDER BY floor DESC, t ASC LIMIT ?`),
+    twRankGet: db.prepare(`SELECT floor, t FROM tower_rank WHERE week = ? AND party = ? AND floor > 0`),
     twRankOf: db.prepare(`SELECT COUNT(*) + 1 AS r FROM tower_rank WHERE week = ? AND (floor > ? OR (floor = ? AND t < ?))`),
     rankPower: db.prepare(`SELECT COUNT(*) + 1 AS r FROM players WHERE banned = 0 AND power > ?`),
     topLvl: db.prepare(`SELECT id, name, house, power, lvl, grade, max_stage FROM players WHERE banned = 0 ORDER BY lvl DESC, max_stage DESC, power DESC LIMIT ?`),

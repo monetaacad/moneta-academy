@@ -46,7 +46,7 @@
 
   /* ───────── 색인 ───────── */
   function idx(arr) { var o = {}; arr.forEach(function (x) { o[x.id] = x; }); return o; }
-  var SUBJ = R.SUBJ = idx(D.SUBJECTS), SPELL = R.SPELL = idx(D.SPELLS), RES = R.RES = idx(D.RESEARCH);
+  var SUBJ = R.SUBJ = idx(D.SUBJECTS), SPELL = R.SPELL = idx(D.SPELLS), RES = R.RES = idx(D.RESEARCH), BOOK = R.BOOK = idx(D.BOOKS);
   var POT = R.POT = idx(D.POTIONS), FAM = R.FAM = idx(D.FAMILIARS), HOUSE = R.HOUSE = idx(D.HOUSES);
   R.D = D;
   var SLOT = R.SLOT = idx(D.SLOTS), AFF = R.AFF = idx(D.AFFIXES), SHOP = R.SHOP_IDX = idx(D.SHOP);
@@ -215,7 +215,7 @@
   R.ritualGoal = function (active) { return Math.max(5, Math.ceil((active || 0) * 0.35)); };
   R.ritualCost = function (P, W, now) { return Math.floor(calc(P, W, now).mana * 1800); };   // 마나 30분 분
   // 효과 묶음 → 「경험치 +50%, 수업 효율 +100%」 (버프 · 날씨 설명용)
-  var EFF_NAME = { xpPct: '경험치', goldPct: CUR, knowPct: '지식', lectureSpd: '수업 효율', manaPct: '마나 재생', manaCap: '마나 저장', hpPct: '체력', atkPct: '공격력', defPct: '방어력', physPct: '물리 공격력', matkPct: '주문 공격력', spellPct: '주문 위력', skillPct: '기술 위력', dropPct: '전리품', dispPct: '파견 보상', hatchSpd: '부화 속도', brewSpd: '조제 속도', enhBonus: '강화 성공률', bossDmg: '보스 피해', cdr: '재사용 대기', leech: '흡혈' };
+  var EFF_NAME = { xpPct: '경험치', goldPct: CUR, knowPct: '지식', lectureSpd: '수업 효율', manaPct: '마나 재생', manaCap: '마나 저장', hpPct: '생명력', atkPct: '공격력', defPct: '방어력', physPct: '물리 공격력', matkPct: '주문 공격력', spellPct: '주문 위력', skillPct: '기술 위력', dropPct: '전리품', dispPct: '파견 보상', hatchSpd: '부화 속도', brewSpd: '조제 속도', enhBonus: '강화 성공률', bossDmg: '보스 피해', critC: '치명타 확률', cdr: '재사용 대기', leech: '흡혈' };
   R.effText = function (eff) {
     var out = []; for (var k in eff || {}) { var v = eff[k]; if (!v || !EFF_NAME[k]) { if (k === 'examBonus' && v) out.push('시험 +' + v + '점'); continue; } out.push(EFF_NAME[k] + ' ' + (v > 0 ? '+' : '−') + (k === 'manaCap' ? Math.round(Math.abs(v) / 3600 * 10) / 10 + '시간' : Math.round(Math.abs(v) * 1000) / 10 + '%')); }
     return out.join(', ');
@@ -485,7 +485,7 @@
   };
 
   /* ───────── 후배 장학금: 서버 진행보다 두 학년 이상 뒤처진 학생 지원 ───────── */
-  R.PACE = [1.8, 4.3, 9.9, 16.5, 28.9, 49.9, 91.9]; // 성실한 학생이 각 시험을 통과하는 개교 후 날짜
+  R.PACE = [2.9, 4.5, 14.2, 19.5, 30.7, 43.6, 73.5]; // 성실한 학생이 각 시험을 통과하는 개교 후 날짜
   R.SCHOLAR_EFF = { lectureSpd: 0.6, xpPct: 0.6, goldPct: 0.3 };
   R.expectedGrade = function (W, t) { var d = (t - W.epoch) / 86400, g = 1; R.PACE.forEach(function (x) { if (d >= x) g++; }); return g; };
   R.scholarship = function (P, W, t) { return !!W && P.grade < 8 && P.grade <= R.expectedGrade(W, t) - 2; };
@@ -863,11 +863,14 @@
   R.subjStats = function (P, s) { return P && P.cls === 'knight' && s.kstat ? [s.kstat, s.kstat2 || s.stat2] : [s.stat, s.stat2]; };   // 과목이 올려 주는 능력치 (원소역학은 학과마다 다르다)
   R.subjVisible = function (P, s) { return !s.cls || s.cls === (P.cls || 'mage'); };   // 학과 전용 수업은 그 학과에게만
   R.availableSubjects = function (P) { return D.SUBJECTS.filter(function (s) { return s.unlock <= Math.min(P.grade, 7) && R.subjVisible(P, s); }); };
+  // 학년별 수업 경험치 배율 (1학년부터 · 8 = 마스터 과정). 1~3학년은 느리게, 6학년 이후는 빠르게 (2차 베타)
+  R.LEC_GRADE = [0.6, 0.65, 0.8, 1.3, 1.7, 2.4, 2.8, 2.8];
+  R.lecGradeMul = function (g) { return R.LEC_GRADE[clamp(g | 0, 1, R.LEC_GRADE.length) - 1]; };
   R.lecPreview = function (P, W, sid, durK, t0) {
     var d = DUR[durK] || DUR['1h']; t0 = t0 || P.at;
     var c = calc(P, W, t0, t0 + d.s), h = d.s / 3600;
     var L = P.subj[sid].lv;
-    return { dur: d.s, eff: d.eff, xp: K.LEC_XP * c.lecSpd * (1 + P.grade * 0.08) * h * d.eff, know: (K.LEC_KNOW + L * K.LEC_KNOW_LV) * c.know * c.lecSpd * h * d.eff };
+    return { dur: d.s, eff: d.eff, xp: K.LEC_XP * c.lecSpd * R.lecGradeMul(P.grade) * h * d.eff, know: (K.LEC_KNOW + L * K.LEC_KNOW_LV) * c.know * c.lecSpd * h * d.eff };
   };
   function subjGain(P, sid, xp, t) {
     var sj = P.subj[sid], ups = 0; sj.xp += xp;
@@ -1382,7 +1385,7 @@
      전투는 파티원마다 따로 계산한다:
      - 적은 선봉 한 명(몬스터를 가장 잘 끄는 선봉)을 집중해서 노리고, 공격을 여러 번(R.TW.HITS)으로 나눠 친다 → 치유 · 보호막이 끼어들 틈이 있다. 8초마다 광역 공격.
      - 받는 피해 = 공격² ÷ (공격 + 방어 × R.TW.DEFX): 탑에서는 방어 효과가 크다. 선봉은 생명력 +30% · 받는 피해 −20%(탑 전용 선봉 보정).
-     - 지원은 치유 · 보호막을 가장 위태로운 동료(보호막은 선봉 우선)에게, 다른 포지션은 자신에게 건다. 탑에서는 치유 · 보호막 재사용 대기가 짧고(×R.TW.CARE_CD),
+     - 지원은 치유 · 보호막을 가장 위태로운 동료(보호막은 선봉 우선)에게, 다른 포지션은 자신에게 건다. 파티(2명 이상)의 지원이 거는 치유 · 보호막은 재사용 대기가 짧고(×R.TW.CARE_CD),
        평소에는 아껴 두다가 쓰러질 한 대를 맞기 직전에 준비돼 있으면 바로 끼어든다.
      - 주문 재사용 대기는 층을 넘어 이어진다. 층 사이에 최대 체력의 30% 회복(쓰러진 동료도 일어남), 5층마다 휴식층. 30층마다 시련의 층(특수 기믹).
      - 전투 시간 제한은 없다(오래 버티며 조금씩 깎는 전략도 인정). 계산이 끝나지 않는 일이 없도록 전투 시간 R.TW.TIME초가 지나면 물러난다.
@@ -1433,7 +1436,7 @@
     for (var i = 0; i < ns; i++) {
       var s = SPELL[P.spells[i]]; if (!s || !R.spellUnlocked(P, s.id)) continue;
       var lm = spellLvMult(P, s);
-      sp.push({ id: s.id, name: s.name, type: s.type, cd: s.cd * (1 - c.cdr) * (s.type === 'heal' || s.type === 'shield' ? R.TW.CARE_CD : 1), hit: s.type === 'dmg' || s.type === 'stun' ? R.spellHit(c, s) * s.mult * lm : 0, mult: s.mult * Math.min(2, lm), stun: s.stun || 0, stunP: s.stunP || 0, dur: s.dur || 0 });
+      sp.push({ id: s.id, name: s.name, type: s.type, cd: s.cd * (1 - c.cdr), hit: s.type === 'dmg' || s.type === 'stun' ? R.spellHit(c, s) * s.mult * lm : 0, mult: s.mult * Math.min(2, lm), stun: s.stun || 0, stunP: s.stunP || 0, dur: s.dur || 0 });
     }
     return { id: P.id, name: P.name, house: P.house, cls: P.cls, pos: pos || R.twPos(P), aggro: R.expAggro(P), hp: c.hp, def: c.def, regen: c.regen, atk: c.atk, aps: c.aps, critC: c.critC, critD: c.critD,
       bossDmg: c.bossDmg, leech: c.leech || 0, fam: P.fam.act && P.fam.own[P.fam.act] ? c.atk * famAtkMult(P) : 0, sp: sp, power: c.totalDps };
@@ -1491,7 +1494,7 @@
     }
     // 치유 · 보호막 주문 하나를 거는 일 (sp: 주문, i: 거는 사람, tg: 받는 사람)
     function care(i2, k2, tg, urgent) {
-      var m = ms[i2], sp = m.sp[k2]; cd[i2][sp.id] = sp.cd;
+      var m = ms[i2], sp = m.sp[k2]; cd[i2][sp.id] = sp.cd * (n > 1 && m.pos === 'sup' ? R.TW.CARE_CD : 1);   // 재사용 대기 단축은 파티의 지원만
       if (sp.type === 'shield') { var sv = mx[tg] * sp.mult; sh[tg] = Math.max(sh[tg], sv); ev(4, i2, sv, tg, k2); if (!urgent && t - healAt[i2] > 6) { healAt[i2] = t; line(m.name + '의 「' + sp.name + '」 — ' + (tg === i2 ? '' : ms[tg].name + '에게 ') + '보호막 ' + R.fmt(sv), 'p'); } }
       else { var hv = Math.min(mx[tg] - hp[tg], mx[tg] * sp.mult); hp[tg] += hv; ev(3, i2, hv, tg, k2); if (!urgent && t - healAt[i2] > 6) { healAt[i2] = t; line(m.name + '의 「' + sp.name + '」 — ' + (tg === i2 ? '' : ms[tg].name + ' ') + '생명력 +' + R.fmt(hv), 'p'); } }
     }
@@ -2045,6 +2048,21 @@
   R.RUSH_N = 3; R.RUSH_SEC = 3600;
   R.rushLeft = function (P, now) { var d = R.dayKST(now), r = P.rush; return R.RUSH_N - (r && r.d === d ? r.n : 0); };
   R.rushCost = function (P, W, now, q) { var c = calc(P, W, now), rc = R.resCost(P, q.id, P.rs[q.id] || 0); return { mana: Math.max(1000, Math.floor(c.mana * 7200)), know: Math.max(200, Math.floor(rc.know * 0.5)) }; };
+  /* 고서 열람실: 지식으로 3시간 버프 (한 번에 한 권 · 같은 책은 이어 읽기 최대 9시간 · 다른 책은 바꿔 펼침) */
+  R.BOOK_DUR = 10800; R.BOOK_MAX = 32400; R.BOOK_GRADE = 2;
+  // 값: 학년마다 1.62배 (2학년 1,600 · 4학년 4,100 · 6학년 10,800 · 8학년 28,000). 시뮬레이션의 하루 남는 지식 1/6쯤
+  R.bookCost = function (P) { return Math.round(600 * Math.pow(1.62, Math.max(2, P.grade)) / 100) * 100; };
+  A.bookRead = function (P, W, now, a) {
+    var id = str(a.id), b = BOOK[id]; if (!b) err('없는 책입니다');
+    if (P.grade < R.BOOK_GRADE) err(R.BOOK_GRADE + '학년부터 열람할 수 있습니다');
+    var cost = R.bookCost(P); if (P.res.know < cost) err('지식이 부족합니다 (' + R.fmt(cost) + ' 필요)');
+    var cur = P.buffs.book, same = cur && cur.end > now && cur.id === id;
+    if (same && cur.end - now > R.BOOK_MAX - R.BOOK_DUR) err('이 책은 최대 ' + (R.BOOK_MAX / 3600) + '시간까지 이어 읽을 수 있습니다');
+    P.res.know -= cost;
+    P.buffs.book = { id: id, name: b.name, eff: b.eff, start: same ? cur.start : now, end: (same ? cur.end : now) + R.BOOK_DUR, color: b.color };
+    P.st.books = (P.st.books || 0) + 1;
+    return { ok: true, id: id, end: P.buffs.book.end, paid: cost, swapped: !!(cur && cur.end > now && !same) };
+  };
   A.resRush = function (P, W, now, a) {
     var i = int(a.i, 0, 3), q = P.rsq[i], by = str(a.by); if (!q || q.end <= now) err('진행 중인 연구가 없습니다'); if (by !== 'mana' && by !== 'know') err('잘못된 요청');
     if (R.rushLeft(P, now) <= 0) err('오늘은 더 가속할 수 없습니다 (하루 ' + R.RUSH_N + '회 · KST 자정 초기화)');
@@ -2283,7 +2301,7 @@
     var d = DRDUR[durK] || DRDUR['8h']; t0 = t0 || P.at;
     var h = d.s / 3600, c = calc(P, W, t0, t0 + d.s), out = { dur: d.s };
     var subs = R.availableSubjects(P), top = subs.slice().sort(function (a, b) { return P.subj[b.id].lv - P.subj[a.id].lv; })[0];
-    function lec(id) { var L = P.subj[id].lv; return { xp: K.LEC_XP * c.lecSpd * (1 + P.grade * 0.08), know: (K.LEC_KNOW + L * K.LEC_KNOW_LV) * c.know * c.lecSpd }; }
+    function lec(id) { var L = P.subj[id].lv; return { xp: K.LEC_XP * c.lecSpd * R.lecGradeMul(P.grade), know: (K.LEC_KNOW + L * K.LEC_KNOW_LV) * c.know * c.lecSpd }; }
     if (kind === 'study') { var one = lec(SUBJ[sid] ? sid : top.id); out.xp = one.xp * h * R.DREAM_STUDY; out.know = one.know * h * 0.25; }
     else if (kind === 'stars') { out.shard = Math.floor(h * 0.6); out.know = lec(top.id).know * h * 0.3; out.egg = h * 0.004; }
     else { var z = R.zoneOf(Math.min(P.maxStage, R.stageCap(P))); out.mat = z.mat; out.mats = Math.floor(h * 3.5); out.stones = Math.floor(h * 0.45); out.gold = Math.floor(h * 22 * K.KILL_GOLD * Math.pow(K.G_GOLD, z.from - 1) * (1 + (c.b.goldPct || 0))); }

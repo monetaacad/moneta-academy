@@ -1461,6 +1461,7 @@
     if (S.rit && !S.rit.mine) out.push({ t: '별샘 의식에 마나 봉헌', s: '모두 함께 ' + S.rit.n + ' / ' + S.rit.goal + '명 · 채우면 ' + R.RITUAL_BUFF.text, act: 'ritual', btn: '봉헌' });
     if (S.auc && S.auc.active) out.push({ t: '떠돌이 상인이 와 있습니다', s: '구간별 귀한 장비 아홉 점 경매 · ' + left(S.auc.end) + ' 남음', go: 'auction' });
     (function () { var cf = R.ctBest(P) + 1, fo = R.ctFoe(cf, R.ctCls(P)), pv2 = R.duelPreview(P, wctx(), fo.stage, R.K.BOSS_HP * 0.6 * (fo.wall ? 1.8 : 1), R.K.BOSS_ATK * 3 * (fo.wall ? 1.4 : 1)); if (pv2.win && pv2.ttk < R.CT_TIME) out.push({ t: '무한의 탑 ' + cf + '층에 도전할 수 있습니다', s: R.CT_NAME[R.ctCls(P)] + ' · 승산 있음', go: 'ctower' }); })();
+    if (P.twPend && Date.now() / 1000 >= P.twPend.end) out.push({ t: '별의 탑 실전 보상을 받을 수 있습니다', s: '끝난 실전의 보상은 「보상 받기」를 눌러야 우편으로 발송됩니다', go: 'tower' });
     if (S.party && !R.twUsed(P, now())) out.push({ t: '별의 탑 실전 가능 (오늘 1회)', s: '파티가 쓰러질 때까지 이어 오르는 실전 · 연습은 언제든 가능', go: 'tower' });
     var idleR = 0; for (var r = 0; r < c.resSlots; r++) if (!P.rsq[r]) idleR++;
     if (idleR) out.push({ t: '비어 있는 연구 자리 ' + idleR + '개', s: '', go: 'lib' });
@@ -2358,6 +2359,7 @@
     var h = pageHead('이름 없는 사서의 서가 · 서고', '연구', '연구 자리 <b class="num gold">' + used + ' / ' + c.resSlots + '</b>');
     var running = P.rsq.map(function (q, i) { return q ? '<div class="tl"><span class="tli">연구</span><div class="tlb"><div class="row small"><span>' + R.RES[q.id].name + ' ' + ((P.rs[q.id] || 0) + 1) + '단계</span><span class="spacer"></span><span class="num faint" data-l="left:' + q.end + '"></span></div><div class="bar" style="margin-top:4px;height:6px"><b data-b="prog:' + q.start + ':' + q.end + '"></b></div><div class="row tiny faint" style="margin-top:2px"><span>' + clock(q.end) + ' 완료</span><span class="spacer"></span>' + (P.tok && P.tok.rsDone > 0 ? '<button class="btn sm primary" data-act="rsnow" data-a="' + i + '" title="운영진 보상 물약">즉시 완료 <span class="cost">' + P.tok.rsDone + ' 물약</span></button>' : '') + cancelBtn('rs' + i, 'resCancel', { slot: i }) + '</div></div></div>' : ''; }).join('');
     if (running) h += '<div class="card hl timetable" style="margin-bottom:14px">' + running + '</div>';
+    h += bookCard();
     h += '<div class="grid gauto">' + D.RESEARCH.filter(function (r) { return !r.gone; }).map(function (r) {
       var lv = P.rs[r.id] || 0, av = R.resAvailable(P, r.id), max = lv >= r.max, cost = R.resCost(P, r.id), q = R.resQueued(P, r.id);
       var can = av && !max && !q && used < c.resSlots && predMana() >= cost.mana && P.res.know >= cost.know;
@@ -2370,6 +2372,29 @@
       return hh + '<div class="row"><button class="btn sm primary" data-act="do" data-a="resStart" data-b="' + r.id + '" data-can="res:' + r.id + '"' + (can ? '' : why(rwhy)) + '>' + (lv + 1) + '단계 연구 <span class="cost">' + R.fmtTime(cost.time) + '</span></button></div><div class="tiny faint" style="margin-top:4px">비용 · ' + fmt(cost.mana) + ' 마나' + (cost.know ? ' · ' + fmt(cost.know) + ' 지식' : '') + ' <span class="faint">(시작할 때 냄)</span></div></div>';
     }).join('') + '</div>';
     return h;
+  };
+
+  /* 고서 열람실: 지식으로 3시간 버프. 한 번에 한 권 (다른 책은 한 번 더 눌러 바꿔 펼침), 같은 책은 이어 읽기 최대 9시간 */
+  function bookCard() {
+    var P = S.P, t = now(), cur = P.buffs.book && P.buffs.book.end > t ? P.buffs.book : null, cost = R.bookCost(P), lock = P.grade < R.BOOK_GRADE;
+    var h = '<p class="tiny faint" style="margin:0 0 10px">지식을 사용해 고서를 열람하면 ' + R.BOOK_DUR / 3600 + '시간 동안 효과가 적용됩니다. 한 번에 한 권만 펼칠 수 있으며, 같은 책을 다시 열람하면 효과 시간이 이어집니다(최대 ' + R.BOOK_MAX / 3600 + '시간). 열람 비용 <b class="num gold">지식 ' + fmt(cost) + '</b> · 보유 <b class="num">' + fmt(P.res.know) + '</b></p>';
+    if (lock) h += '<span class="tag">' + R.BOOK_GRADE + '학년부터</span>';
+    else {
+      if (cur) h += '<div class="row small" style="margin-bottom:8px;gap:6px"><i class="bdot" style="background:' + esc(cur.color || '#e8c36a') + '"></i><span>열람 중: <b>' + esc(cur.name) + '</b> · ' + esc(R.BOOK[cur.id] ? R.BOOK[cur.id].desc : R.effText(cur.eff)) + '</span><span class="spacer"></span><span class="num faint" data-l="left:' + cur.end + '"></span></div>';
+      h += '<div class="booklist">' + D.BOOKS.map(function (b) {
+        var same = cur && cur.id === b.id, full = same && cur.end - t > R.BOOK_MAX - R.BOOK_DUR, swap = cur && !same, armed = S.confirm['bk' + b.id] > Date.now();
+        var ok = P.res.know >= cost && !full, label = full ? '최대 시간' : armed ? '한 번 더 누르면 바꿔 펼칩니다' : same ? '이어 읽기' : swap ? '바꿔 펼치기' : '열람하기';
+        return '<div class="bookrow' + (same ? ' on' : '') + '"><i class="bdot" style="background:' + b.color + '"></i><span class="bkname"><b>' + b.name + '</b> <span class="small muted">' + b.desc + '</span></span>' +
+          '<button class="btn sm' + (armed ? ' danger' : same ? ' primary' : '') + '" data-act="bookread" data-a="' + b.id + '"' + (ok ? '' : ' disabled') + '>' + label + '</button></div>';
+      }).join('') + '</div>';
+    }
+    return fold('bookroom', '고서 열람실', h, true, cur ? '<span class="tiny faint">' + esc(cur.name) + '</span>' : '', 'bookroom');
+  }
+  ACT.bookread = function (id) {
+    var P = S.P, cur = P.buffs.book && P.buffs.book.end > now() ? P.buffs.book : null, k = 'bk' + id;
+    if (cur && cur.id !== id && !(S.confirm[k] > Date.now())) { S.confirm[k] = Date.now() + 4000; render(); setTimeout(render, 4100); return; }
+    S.confirm[k] = 0;
+    act('bookRead', { id: id }).then(function (r) { if (r) { var b = R.BOOK[id]; toast(R.josa('「' + b.name + '」', '을', '를') + ' 열람했습니다', b.desc + ' · 남은 효과 ' + left(r.end) + ' · 지식 -' + fmt(r.paid)); Snd.play('drink'); } render(); });
   };
 
   /* ── 매점 ── */
@@ -2701,10 +2726,26 @@
     if (twEl(r) >= r.d && r.kind !== 'solo') render();
   }
   function twResult(r) {
-    Snd.play(r.cleared >= r.start ? 'pass' : 'fail'); sync(true); S.towerAt = 0; loadTower();
+    Snd.play(r.cleared >= r.start ? 'pass' : 'fail'); sync(true); S.towerAt = 0;
     var got = r.cleared >= r.start;
-    modal(mhead('별의 탑 실전 종료', r.start + '층부터 시작') + '<p>' + (got ? '<b class="gold">' + r.cleared + '층</b>까지 올랐습니다.' : '첫 층을 넘지 못했습니다.') + ' 각자의 이번 주 기록보다 높으면 기록이 갱신되고, 처음 넘은 층의 보상은 우편으로 전달됩니다.</p>' +
-      '<div class="row" style="justify-content:flex-end;margin-top:14px;gap:6px;flex-wrap:wrap"><button class="btn" data-act="twexport" data-a="' + r.id + '">전투 기록 내보내기</button><button class="btn" data-act="mailbox">우편함 열기</button><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>');
+    loadTower().then(function () {
+      var pd = S.towerD && S.towerD.pend, mine = pd && pd.id === r.id && pd.to;
+      modal(mhead('별의 탑 실전 종료', r.start + '층부터 시작') + '<p>' + (got ? '<b class="gold">' + r.cleared + '층</b>까지 올랐습니다.' : '첫 층을 넘지 못했습니다.') + '</p>' +
+        (mine ? '<p class="small" style="margin-top:6px">이번 주 기록이 <b>' + pd.to + '층</b>으로 갱신되었습니다. 처음 넘은 ' + pd.from + '~' + pd.to + '층의 보상: <span class="rwd">' + esc(pd.reward) + '</span></p>' : '<p class="small muted" style="margin-top:6px">이번 주 기록보다 높이 오르지 못해 새 보상은 없습니다.</p>') +
+        '<div class="row" style="justify-content:flex-end;margin-top:14px;gap:6px;flex-wrap:wrap"><button class="btn" data-act="twexport" data-a="' + r.id + '">전투 기록 내보내기</button>' + (mine ? '<button class="btn primary" data-act="twclaim" autofocus>보상 받기</button>' : '<button class="btn primary" data-act="modal-close" autofocus>확인</button>') + '</div>');
+    });
+  }
+  // 실전 보상 받기: 끝난 뒤 눌러야 우편으로 발송된다 (원정 귀환처럼)
+  ACT.twclaim = function () {
+    API.towerOp({ mode: 'claim' }).then(function (j) {
+      if (j.error) { toast('별의 탑', j.error); return; }
+      if (S.P) delete S.P.twPend; Snd.play('ach'); toast('별의 탑 보상', j.claimed + '층까지의 보상을 우편으로 보냈습니다', 2600);
+      S.towerD = Object.assign(S.towerD || {}, { pend: null }); S.towerAt = 0; sync(true); closeModal(); ACT.mailbox();
+    });
+  };
+  function twPendCard() {
+    var pd = S.towerD && S.towerD.pend; if (!pd || !pd.to) return '';
+    return '<div class="card hl" style="margin-bottom:14px"><div class="row between" style="gap:8px;flex-wrap:wrap"><div><b>실전 보상을 받을 수 있습니다</b><div class="small" style="margin-top:4px">' + pd.from + '~' + pd.to + '층 · <span class="rwd">' + esc(pd.reward) + '</span></div></div><button class="btn primary" data-act="twclaim">보상 받기</button></div></div>';
   }
   // 별의 탑 화면 (원정·전투): 파티가 있으면 일지 · 도전 칸, 없으면 파티와 함께 오른다는 안내
   /* ── 무한의 탑 (개인): 기사의 탑 · 마법사의 탑 ── */
@@ -2747,8 +2788,9 @@
   V.tower = function () {
     var h = pageHead('파티와 함께 오르는 탑', '<span class="phimg">' + dotImg('tower', 40, '', 'twimg') + '별의 탑</span>', '실전 하루 1회 · 월요일 KST 0시 기록 초기화');
     if (!S.partyD || Date.now() - S.partyAt > 20000) { if (Date.now() - S.partyAt > 1500) loadParty(); }
-    if (!S.party) return h + '<div class="card hl"><h3>파티와 함께 오르는 탑</h3><p class="small" style="margin-top:4px">별의 탑은 파티가 함께 1층부터 실시간으로 오르는 곳입니다. 실전은 파티 단위로 하루 1번이며, 파티가 쓰러질 때까지 층을 이어 오릅니다. 연습은 언제든 할 수 있습니다.</p><p class="small muted" style="margin-top:6px">파티에 들어가 있어야 도전할 수 있습니다. 혼자서도 파티를 만들 수 있고, 빈자리는 아카데미 친구(NPC)를 불러 채울 수 있습니다.</p><div class="row" style="margin-top:10px;gap:6px"><button class="btn primary" data-act="twparty">파티 만들기</button><button class="btn ghost" data-act="nav" data-a="party">파티 화면으로</button></div></div>';
-    return h + towerStage() + towerCard() + twPrep() + towerRuns() + '<div class="row" style="margin-top:10px"><span class="tiny faint">파티원 · 초대 · 아카데미 친구는 파티 화면에서 관리합니다. 파티 이름은 파티장이 이곳이나 파티 화면에서 바꿀 수 있습니다.</span><span class="spacer"></span><button class="btn sm ghost" data-act="nav" data-a="party">파티 화면</button></div>';
+    if (!S.party && S.P.twPend && (!S.towerD || Date.now() - S.towerAt > 30000) && Date.now() - (S.towerAt || 0) > 1500) loadTower();   // 파티를 나갔어도 받지 않은 실전 보상
+    if (!S.party) return h + twPendCard() + '<div class="card hl"><h3>파티와 함께 오르는 탑</h3><p class="small" style="margin-top:4px">별의 탑은 파티가 함께 1층부터 실시간으로 오르는 곳입니다. 실전은 파티 단위로 하루 1번이며, 파티가 쓰러질 때까지 층을 이어 오릅니다. 연습은 언제든 할 수 있습니다.</p><p class="small muted" style="margin-top:6px">파티에 들어가 있어야 도전할 수 있습니다. 혼자서도 파티를 만들 수 있고, 빈자리는 아카데미 친구(NPC)를 불러 채울 수 있습니다.</p><div class="row" style="margin-top:10px;gap:6px"><button class="btn primary" data-act="twparty">파티 만들기</button><button class="btn ghost" data-act="nav" data-a="party">파티 화면으로</button></div></div>';
+    return h + twPendCard() + towerStage() + towerCard() + twPrep() + towerRuns() + '<div class="row" style="margin-top:10px"><span class="tiny faint">파티원 · 초대 · 아카데미 친구는 파티 화면에서 관리합니다. 파티 이름은 파티장이 이곳이나 파티 화면에서 바꿀 수 있습니다.</span><span class="spacer"></span><button class="btn sm ghost" data-act="nav" data-a="party">파티 화면</button></div>';
   };
   ACT.twparty = function () { API.partyOp({ op: 'create', name: (S.P.name + '의 파티').slice(0, 12) }).then(function (j) { if (j.error) { toast('파티', j.error); return; } S.party = (j.party && j.party.id) || 'p'; S.partyAt = 0; S.towerAt = 0; S.towerD = null; renderDock(); toast('파티', '파티를 만들었습니다 · 이제 별의 탑에 도전할 수 있습니다', 2600); sync(true); render(); }); };
   function towerCard() {
@@ -2791,10 +2833,10 @@
       ['출발 취소', '그 사이 한 명이라도 준비를 취소하면 출발이 취소되고, 다시 모두 준비하면 ' + n + '초부터 다시 셉니다. 준비는 ' + Math.round((t.readyTtl || 900) / 60) + '분이 지나면 풀립니다.'],
       ['실전 횟수', '파티 단위로 하루 1번이며, 출발하는 순간 파티원 모두의 오늘 기회를 사용합니다(KST 자정 초기화 · 결과가 자정을 넘겨 끝나도 출발한 날의 기회로 계산). 파티원 중 한 명이라도 오늘 실전을 했다면 출발할 수 없습니다.'],
       ['진행', '파티원 기록 중 가장 낮은 층의 다음 층부터 시작해 파티가 모두 쓰러질 때까지 이어집니다. 전투 시간 제한은 없으며, 한 층이 ' + Math.round(R.TW.TIME * R.TW.PACE / 60) + '분을 넘기면 물러납니다. 실전과 파티 연습은 건너뛸 수 없습니다.'],
-      ['기록 · 보상', '마지막으로 넘은 층이 각자의 이번 주 기록이 되며(더 높을 때만), 처음 넘은 층의 보상은 우편으로 전달됩니다. 파티 기록은 랭킹의 별의 탑 파티 순위에 남습니다.'],
+      ['기록 · 보상', '마지막으로 넘은 층이 각자의 이번 주 기록이 되며(더 높을 때만), 처음 넘은 층의 보상은 실전이 끝난 뒤 「보상 받기」를 누르면 우편으로 발송됩니다. 파티 기록은 랭킹의 별의 탑 파티 순위에 남습니다.'],
       ['회복', '층 사이에 최대 생명력의 ' + Math.round(R.TW.HEAL * 100) + '%를 회복하고(쓰러진 파티원도 일어납니다), ' + R.TW.REST + '층마다 휴식층에서 모두 회복합니다.'],
       ['전투', '적은 선봉 한 명을 집중해서 노리며 공격을 여러 번으로 나눠 치고, 주기적으로 파티 전체를 공격합니다. 탑에서는 방어력의 효과가 크고, 선봉은 생명력 +' + Math.round(R.TW.VAN_HP * 100) + '% · 받는 피해 −' + Math.round((1 - R.TW.VAN_TAKE) * 100) + '%를 받습니다.'],
-      ['치유 · 보호막', '재사용 대기가 짧아지며, 동료가 쓰러질 공격을 맞기 직전에 준비돼 있으면 먼저 끼어듭니다.'],
+      ['치유 · 보호막', '2명 이상 파티의 지원 포지션이 걸면 재사용 대기가 짧아집니다. 동료가 쓰러질 공격을 맞기 직전에 준비돼 있으면 먼저 끼어듭니다.'],
       ['시련의 층', R.TW.TRIAL + '층마다 특수한 기믹이 있는 시련의 층이 나옵니다.'],
       ['연습', '언제든 할 수 있고 기록 · 보상에 반영되지 않습니다. 파티 연습은 파티원 모두가 함께 보고, 혼자 연습은 내 화면에서만 진행됩니다.']
     ];
@@ -3258,7 +3300,7 @@
     if (m.tab === 'auc') h += aucTab(d, low);
     else if (m.tab === 'buy') {
       h += '<div class="card mkfilt" style="margin-bottom:10px"><div class="row"><div class="filters"><button class="btn sm ghost' + (m.kind === 'item' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="item">장비</button><button class="btn sm ghost' + (m.kind === 'mat' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="mat">재료</button><button class="btn sm ghost' + (m.kind === 'pot' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="pot">물약</button><button class="btn sm ghost' + (m.kind === 'badge' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="badge">휘장</button><button class="btn sm ghost' + (m.kind === 'tok' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="tok">소지품</button></div><span class="spacer"></span>' + (m.kind === 'item' ? mkWearTog() : '') +
-        '<select id="mk-sort" data-act="mksel" data-a="sort" style="width:auto"><option value="price"' + (m.sort === 'price' ? ' selected' : '') + '>' + (m.kind !== 'item' ? '개당 가격 낮은 순' : '가격 낮은 순') + '</option><option value="high"' + (m.sort === 'high' ? ' selected' : '') + '>' + (m.kind !== 'item' ? '개당 가격 높은 순' : '가격 높은 순') + '</option><option value="new"' + (m.sort === 'new' ? ' selected' : '') + '>새로 올라온 순</option>' + (m.kind === 'item' ? '<option value="lvl"' + (m.sort === 'lvl' ? ' selected' : '') + '>장비 레벨 높은 순</option>' : '') + '</select></div>';
+        '<select id="mk-sort" data-act="mksel" data-a="sort" style="width:auto"><option value="price"' + (m.sort === 'price' ? ' selected' : '') + '>' + (m.kind !== 'item' ? '개당 가격 낮은 순' : '가격 낮은 순') + '</option><option value="high"' + (m.sort === 'high' ? ' selected' : '') + '>' + (m.kind !== 'item' ? '개당 가격 높은 순' : '가격 높은 순') + '</option><option value="new"' + (m.sort === 'new' ? ' selected' : '') + '>새로 올라온 순</option>' + (m.kind === 'item' ? '<option value="lvl"' + (m.sort === 'lvl' ? ' selected' : '') + '>장비 레벨 높은 순</option><option value="pow"' + (m.sort === 'pow' ? ' selected' : '') + '>전투력 상승순</option>' : '') + '</select></div>';
       if (m.kind === 'item') h += '<div class="filters" style="margin-top:6px">' + MK_SLOT_F.map(function (f) { return '<button class="btn sm ghost' + (m.slot === f[0] ? ' on' : '') + '" data-act="mkf" data-a="slot" data-b="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '<span class="fsep"></span>' +
         [['', '모든 등급', 'inherit']].concat(D.RARITY.map(function (r) { return [String(r.id), r.name, r.color]; })).map(function (f) { return '<button class="btn sm ghost' + (String(m.r) === f[0] ? ' on' : '') + '" data-act="mkf" data-a="r" data-b="' + f[0] + '" style="color:' + f[2] + '">' + f[1] + '</button>'; }).join('') + '</div>' +
         mkAffRow(m) +
@@ -3284,7 +3326,7 @@
         else if (x.kind === 'tok') { info = '<span class="mkn">' + esc(x.name) + ' <span class="num">×' + fmt(x.qty) + '</span></span>'; sub = '개당 ' + fmt(x.price / x.qty) + ' · 가진 수 ' + fmt(tokHave(x.tok)); }
         else { info = '<span class="mkn">' + esc(x.name) + ' <span class="num">×' + fmt(x.qty) + '</span></span>'; sub = '개당 ' + fmt(x.price / x.qty) + ' · 가진 수 ' + fmt(x.mat === 'stone' ? P.res.stone : (P.mats[x.mat] || 0)); }
         var tap = x.kind === 'item' && x.item;   // 장비는 줄(이름·요약) 어디를 눌러도 옵션이 펼쳐진다 (휴대폰에서 이름만 누르기 어려워서)
-        return '<div class="mkrow' + (open ? ' open' : '') + '"><div class="mki' + (tap ? ' tap" data-act="mkopen" data-a="' + x.id + '" role="button" tabindex="0" aria-expanded="' + !!open + '"' : '"') + '>' + info + '<div class="tiny faint ell">' + sub + ' · ' + esc(x.seller) + (x.npc ? ' <span class="tag npc">NPC</span>' : '') + ' · ' + R.fmtTime(Math.max(0, x.expires - Date.now() / 1000)) + '</div>' + (open && x.item ? '<div class="mkst">' + statLines(x.item) + '</div>' + cmpBlock(x.item) : '') + '</div>' +
+        return '<div class="mkrow' + (open ? ' open' : '') + '"><div class="mki' + (tap ? ' tap" data-act="mkopen" data-a="' + x.id + '" role="button" tabindex="0" aria-expanded="' + !!open + '"' : '"') + '>' + info + '<div class="tiny faint mksub">' + sub + ' · ' + R.fmtTime(Math.max(0, x.expires - Date.now() / 1000)) + ' 남음 · ' + esc(x.seller) + (x.npc ? ' <span class="tag npc">NPC</span>' : '') + '</div>' + (open && x.item ? '<div class="mkst">' + statLines(x.item) + '</div>' + cmpBlock(x.item) : '') + '</div>' +
           '<b class="num gold mkpr">' + fmt(x.price) + '</b>' + (bw ? '<span class="tag no" title="최근 30일 시세(판매가 중간값) ' + fmt(bw.avg) + (x.qty > 1 ? ' (개당)' : '') + '">시세의 ' + bw.txt + '</span>' : '') + (x.mine ? '<span class="tag">내 물건</span>' : '<button class="btn sm primary' + (armed ? ' armed' : '') + '" data-act="mkbuy" data-a="' + x.id + '"' + (bw && bw.high ? ' data-warn="' + bw.txt + '"' : '') + (can ? '' : why(low ? '학년이 낮아 살 수 없습니다' : CUR + '가 부족합니다')) + '>' + (armed ? '한 번 더 누르면 구매' : '사기') + '</button>') + '</div>';
       }).join('') + '</div>';
     } else if (m.tab === 'sell') {
@@ -3348,7 +3390,7 @@
   function aucTab(d, low) {
     var m = S.mk, ak = m.akind || 'item', h = '<div class="card mkfilt" style="margin-bottom:10px"><div class="row"><div class="filters">' + [['item', '장비'], ['badge', '휘장']].map(function (f) { return '<button class="btn sm ghost' + (ak === f[0] ? ' on' : '') + '" data-act="mkf" data-a="akind" data-b="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '</div><span class="spacer"></span>' +
       (ak === 'item' ? mkWearTog() : '') + '<label class="tog tiny" style="margin-right:6px"><input type="checkbox" data-act="mknobid"' + (m.nobid ? ' checked' : '') + '> 입찰 없는 것만</label>' +
-      '<select data-act="mksel" data-a="asort" style="width:auto" aria-label="정렬">' + AUC_SORTS.map(function (o) { return '<option value="' + o[0] + '"' + ((m.asort || 'end') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></div>';
+      '<select data-act="mksel" data-a="asort" style="width:auto" aria-label="정렬">' + AUC_SORTS.concat(ak === 'item' ? [['pow', '전투력 상승순']] : []).map(function (o) { return '<option value="' + o[0] + '"' + ((m.asort || 'end') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></div>';
     if (ak === 'item') h += '<div class="filters" style="margin-top:6px">' + MK_SLOT_F.map(function (f) { return '<button class="btn sm ghost' + (m.slot === f[0] ? ' on' : '') + '" data-act="mkf" data-a="slot" data-b="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '</div><div class="filters" style="margin-top:6px">' +
       [['', '모든 등급', 'inherit']].concat(D.RARITY.map(function (r) { return [String(r.id), r.name, r.color]; })).map(function (f) { return '<button class="btn sm ghost' + (String(m.r) === f[0] ? ' on' : '') + '" data-act="mkf" data-a="r" data-b="' + f[0] + '" style="color:' + f[2] + '">' + f[1] + '</button>'; }).join('') + '</div>' +
       mkAffRow(m) + '<div class="row" style="margin-top:6px"><input id="mk-q" maxlength="20" placeholder="이름 검색" value="' + esc(m.q || '') + '" style="flex:1;min-width:120px"><button class="btn sm" data-act="mkq">검색</button></div>';
@@ -3375,7 +3417,7 @@
       act += '<button class="btn sm primary' + (armed ? ' armed' : '') + '" data-act="mkbuyout" data-a="' + x.id + '"' + (canBuy ? '' : why(low ? '학년이 낮아 살 수 없습니다' : CUR + '가 부족합니다')) + '>' + (armed ? '한 번 더 누르면 구매' : '즉시 구매') + '</button>';
     }
     return '<div class="mkrow mkauc' + (open ? ' open' : '') + '"><div class="mki' + (tap ? ' tap" data-act="mkopen" data-a="' + x.id + '" role="button" tabindex="0" aria-expanded="' + !!open + '"' : '"') + '>' + info +
-      '<div class="tiny faint ell">' + sub + (x.seller ? ' · ' + esc(x.seller) : '') + (ended ? '' : ' · ' + (left > 0 ? R.fmtTime(left) + ' 남음' : '마감 처리 중')) + '</div>' + (open && x.item ? '<div class="mkst">' + statLines(x.item) + '</div>' + cmpBlock(x.item) : '') + '</div>' +
+      '<div class="tiny faint mksub">' + sub + (ended ? '' : ' · ' + (left > 0 ? R.fmtTime(left) + ' 남음' : '마감 처리 중')) + (x.seller ? ' · ' + esc(x.seller) : '') + '</div>' + (open && x.item ? '<div class="mkst">' + statLines(x.item) + '</div>' + cmpBlock(x.item) : '') + '</div>' +
       '<div class="mkap"><div class="tiny faint">' + (x.bids ? '현재가 · 입찰 ' + x.bids + '건' : '시작가 · 입찰 없음') + '</div><b class="num gold">' + fmt(x.bids ? x.bid : x.start) + '</b><div class="tiny faint">즉시 구매가 <b class="num">' + fmt(x.price) + '</b></div></div>' +
       '<div class="mkab">' + st + act + '</div></div>';
   }
@@ -3468,7 +3510,7 @@
       sel.map(function (id) { return '<button class="btn sm on" data-act="mkaffx" data-a="' + id + '" title="빼기">' + (R.AFF[id] ? R.AFF[id].name : id) + ' ×</button>'; }).join('') + (sel.length ? '<span class="tiny faint">고른 옵션을 모두 가진 장비</span>' : '') + '</div>';
   }
   ACT.mkaffx = function (id) { S.mk.aff = (S.mk.aff || '').split(',').filter(function (x) { return x && x !== id; }).join(','); S.mk.data = null; render(); loadMarket(); };
-  ACT.mkf = function (k, v) { S.mk[k] = v; if (k === 'kind' || k === 'akind') { S.mk.slot = ''; S.mk.r = ''; S.mk.aff = ''; S.mk.mat = ''; S.mk.pot = ''; S.mk.tok = ''; S.mk.gem = ''; S.mk.q = ''; if (S.mk.sort === 'lvl') S.mk.sort = 'price'; } S.mk.data = null; render(); loadMarket(); };
+  ACT.mkf = function (k, v) { S.mk[k] = v; if (k === 'kind' || k === 'akind') { S.mk.slot = ''; S.mk.r = ''; S.mk.aff = ''; S.mk.mat = ''; S.mk.pot = ''; S.mk.tok = ''; S.mk.gem = ''; S.mk.q = ''; if (S.mk.sort === 'lvl' || S.mk.sort === 'pow') S.mk.sort = 'price'; if (S.mk.asort === 'pow') S.mk.asort = 'end'; } S.mk.data = null; render(); loadMarket(); };
   ACT.mkq = function () { S.mk.q = ($('#mk-q') || {}).value || ''; loadMarket(); };
   function mkDone(j, msg) { if (j.error) { toast('거래소', j.error); return; } absorb(j); toast(msg, '', 2000); Snd.play('click'); loadMarket(); render(); }
   // 사기: 한 번 누르면 바로 산다 (누르는 사이 두 번 사지 않게 잠깐 잠근다)
@@ -3524,7 +3566,7 @@
     },
     know: function () {
       var r = perHour();
-      return '<b>' + dotImg('know', 18) + '지식</b><p>서고의 연구에 사용합니다.</p><dl class="kv"><dt>지금 수업에서</dt><dd class="' + (r.nl ? 'good' : 'faint') + '">' + (r.nl ? '시간당 약 +' + fmt(r.know) + ' (' + r.nl + '과목)' : '진행 중인 수업 없음') + '</dd></dl>' +
+      return '<b>' + dotImg('know', 18) + '지식</b><p>서고의 연구와 고서 열람실에서 사용합니다.</p><dl class="kv"><dt>지금 수업에서</dt><dd class="' + (r.nl ? 'good' : 'faint') + '">' + (r.nl ? '시간당 약 +' + fmt(r.know) + ' (' + r.nl + '과목)' : '진행 중인 수업 없음') + '</dd></dl>' +
         '<p class="tt-src">얻는 법: 수업(과목 레벨이 높을수록 많이), 꿈길(복습하는 꿈)<br>늘리는 법: 연구 「집중 명상」, 등불관, 등불달, 현자의 물약</p>';
     },
     stone: function () { return '<b>' + dotImg('stone', 18) + '마석</b><p>장비 강화에 사용합니다. 지금 ' + fmt(S.P.res.stone) + '개.</p><p class="tt-src">얻는 법: 원정 중 가끔, 장비 분해, 반딧불 정령, 사역마 파견, 보스 처치, 출석, 매점 「마석 꾸러미」, 거래소<br>마석가루(지금 ' + fmt(S.P.res.dust || 0) + '): 장비를 분해하면 나오고, 재련에 사용합니다</p>'; },
@@ -4483,7 +4525,7 @@
       ['.potbar', '전투 물약', '실전 · 연습 버튼을 누르는 순간 켜져 있는 물약 효과가 전투에 반영되며, 진행 중에 물약 시간이 끝나도 그 실행이 끝날 때까지 유지됩니다.'],
       ['[data-anchor="tower"] .twteam', '파티원', '파티원마다 포지션 · 이번 주 기록 · 오늘 실전 여부가 표시됩니다. 실전은 파티원 기록 중 가장 낮은 층의 다음 층부터 시작합니다. 접속하지 않은 파티원도 함께 싸웁니다.'],
       ['[data-anchor="tower"] .filters', '내 포지션', '선봉은 적의 공격을 집중해서 받으며 탑에서 생명력 +30% · 받는 피해 −20%를 받습니다. 후열은 공격 주문, 지원은 치유 · 보호막 주문을 장착해야 선택할 수 있습니다. 지원의 치유 · 보호막은 동료가 쓰러질 공격을 맞기 직전에 먼저 끼어들어 막아 냅니다. 장착 주문은 「원정·전투 → 원정」에서 바꿉니다.'],
-      ['[data-act="twgo"][data-a="real"]', '실전', '파티 단위로 하루 1번입니다. 「실전 준비」를 누르면 출발 대기가 열리고, 파티원 모두가 「준비 완료」를 누르면 15초 뒤 자동으로 출발합니다(그 사이 한 명이라도 준비를 취소하면 출발이 취소됩니다). 출발하는 순간 파티원 모두의 오늘 기회를 사용하며, 파티원 중 한 명이라도 오늘 실전을 했다면 출발할 수 없습니다. 마지막으로 넘은 층이 각자의 이번 주 기록이 되고, 처음 넘은 층의 보상은 우편으로 전달됩니다. 파티 기록은 랭킹의 「별의 탑 파티 순위」에 파티 이름과 함께 남습니다.'],
+      ['[data-act="twgo"][data-a="real"]', '실전', '파티 단위로 하루 1번입니다. 「실전 준비」를 누르면 출발 대기가 열리고, 파티원 모두가 「준비 완료」를 누르면 15초 뒤 자동으로 출발합니다(그 사이 한 명이라도 준비를 취소하면 출발이 취소됩니다). 출발하는 순간 파티원 모두의 오늘 기회를 사용하며, 파티원 중 한 명이라도 오늘 실전을 했다면 출발할 수 없습니다. 마지막으로 넘은 층이 각자의 이번 주 기록이 되고, 처음 넘은 층의 보상은 실전이 끝난 뒤 「보상 받기」를 누르면 우편으로 발송됩니다. 파티 기록은 랭킹의 「별의 탑 파티 순위」에 파티 이름과 함께 남습니다.'],
       ['[data-act="twgo"][data-a="party"]', '연습', '「파티 연습 준비」도 실전처럼 모두 준비 완료해야 출발하며 파티원 모두가 함께 보고, 「혼자 연습」은 내 화면에서만 진행됩니다. 오늘 실전을 마친 뒤에도 할 수 있어 포지션 · 주문 · 물약 조합을 시험하기 좋습니다.'],
       ['[data-anchor="twlog"]', '진행 화면', '적과 파티원의 체력이 실시간으로 표시되고, 모든 공격 · 치유 · 보호막이 대본으로 올라옵니다. 실전과 파티 연습은 건너뛸 수 없어 파티가 끝까지 함께 봅니다(혼자 연습만 「끝까지 보기」 가능). 「요약만 보기」로 주요 장면만 볼 수 있고, 끝난 기록은 「기록 내보내기」로 저장할 수 있습니다. 5층마다 휴식층, 30층마다 특수 기믹이 있는 시련의 층이 나옵니다.']
     ],
@@ -4587,7 +4629,7 @@
   ACT['tut-skip'] = function () { tutEnd(); toast('화면 둘러보기', '가이드 › 처음에서 다시 볼 수 있습니다'); };
   // 가입 화면: 기숙사 보너스에 나오는 말(마나 · 지식 · 아르크 …)을 처음 보는 학생을 위한 짧은 풀이
   function glossCard() {
-    var G = [['마나', '시간이 지나면 자동으로 차오르는 자원. 연구 · 물약 · 알 부화에 사용합니다.'], ['지식', '수업을 들으면 쌓입니다. 서고의 연구에 사용합니다.'], [CUR, '게임 내 화폐. 원정에서 몬스터를 처치해 얻고, 장비 강화 · 매점 · 거래소에서 사용합니다.'],
+    var G = [['마나', '시간이 지나면 자동으로 차오르는 자원. 연구 · 물약 · 알 부화에 사용합니다.'], ['지식', '수업을 들으면 쌓입니다. 서고의 연구와 고서 열람실에서 사용합니다.'], [CUR, '게임 내 화폐. 원정에서 몬스터를 처치해 얻고, 장비 강화 · 매점 · 거래소에서 사용합니다.'],
       ['수업 효율', '수업 시간은 그대로이고, 한 번에 얻는 경험치 · 지식이 그만큼 늘어납니다.'], ['사역마 파견', '키운 사역마를 몇 시간 파견해 재료와 ' + CUR + '를 받아 옵니다.'], ['공격력 · 생명력', '원정 · 보스 전투에 쓰이는 능력치. 높을수록 더 높은 단계에 출정할 수 있습니다.'], ['전리품', '원정에서 떨어지는 장비와 재료. 확률이 오르면 더 자주 나옵니다.']];
     return '<details class="card inset gloss" style="margin-bottom:12px"><summary><b>처음 보는 고유명사가 있나요?</b> <span class="small muted">마나 · 지식 · ' + CUR + ' 등</span></summary>' +
       '<dl>' + G.map(function (g) { return '<dt>' + g[0] + '</dt><dd>' + g[1] + '</dd>'; }).join('') + '</dl>' +
@@ -5480,7 +5522,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102271;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102279;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
