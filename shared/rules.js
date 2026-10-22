@@ -1448,10 +1448,11 @@
     return { id: P.id, name: P.name, house: P.house, cls: P.cls, pos: pos || R.twPos(P), aggro: R.expAggro(P), hp: c.hp, def: c.def, regen: c.regen, atk: c.atk, aps: c.aps, critC: c.critC, critD: c.critD,
       bossDmg: c.bossDmg, leech: c.leech || 0, spAtk: Math.max(c.patk, c.matk), fam: P.fam.act && P.fam.own[P.fam.act] ? c.atk * famAtkMult(P) : 0, sp: sp, power: c.totalDps };
   };
-  // 동행 친구(NPC): 기준 학생 힘의 30%, 주문 없이 평타만 (후열)
-  R.twNpc = function (base, id, name, house) {
+  // 동행 친구(NPC): 기준 학생 힘의 30%, 주문 없이 평타만. 포지션은 선봉 · 후열 (치유 주문이 없어 지원은 안 됨, 기본 후열)
+  R.TW_NPC_POS = ['van', 'rear'];
+  R.twNpc = function (base, id, name, house, pos) {
     var f = R.NPC_FRAC.tower, m = {}; for (var k in base) m[k] = base[k];
-    m.id = id; m.name = name; m.house = house; m.cls = ''; m.npc = true; m.pos = 'rear'; m.aggro = R.EXP_AGGRO; m.sp = []; m.leech = 0;
+    m.id = id; m.name = name; m.house = house; m.cls = ''; m.npc = true; m.pos = R.TW_NPC_POS.indexOf(pos) >= 0 ? pos : 'rear'; m.aggro = R.EXP_AGGRO; m.sp = []; m.leech = 0;
     m.hp = base.hp * f; m.def = base.def * f; m.atk = base.atk * f; m.fam = 0; m.power = base.power * f;
     return m;
   };

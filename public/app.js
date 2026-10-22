@@ -2980,7 +2980,7 @@
       '<div class="twteam">' + t.members.map(function (m) {
         var pos = R.EXP_POS[m.pos];
         return '<div class="twm"><span class="small ell" style="color:' + (R.HOUSE[m.house] ? R.HOUSE[m.house].color : 'inherit') + '">' + esc(m.name) + (m.npc ? ' <span class="tag npc">NPC</span>' : '') + (m.me ? ' <span class="tag">나</span>' : '') + '</span>' +
-          '<span class="tiny"><span class="tag' + (m.pos === 'van' ? ' br' : m.pos === 'sup' ? ' ok' : '') + '">' + (pos ? pos.name : '') + '</span> ' + (m.npc ? '<span class="faint">내 힘의 30%</span>' : '<span class="faint">기록</span> <b class="num">' + m.best + '층</b>' + (m.used ? ' · <span class="gold">오늘 실전 완료</span>' : '')) + ' ' + (lob ? (m.ready ? '<span class="tag ok">준비 완료</span>' : '<span class="tag">준비 중</span>') : '') + '</span>' +
+          '<span class="tiny"><span class="tag' + (m.pos === 'van' ? ' br' : m.pos === 'sup' ? ' ok' : '') + '">' + (pos ? pos.name : '') + '</span> ' + (m.npc ? '<span class="faint">내 힘의 30%</span> ' + R.TW_NPC_POS.filter(function (k) { return k !== m.pos; }).map(function (k) { return '<button class="btn sm ghost" data-act="twnpcpos" data-a="' + esc(String(m.id).replace('npc:', '')) + '" data-b="' + k + '">' + R.josa(R.EXP_POS[k].name, '으로', '로') + '</button>'; }).join('') : '<span class="faint">기록</span> <b class="num">' + m.best + '층</b>' + (m.used ? ' · <span class="gold">오늘 실전 완료</span>' : '')) + ' ' + (lob ? (m.ready ? '<span class="tag ok">준비 완료</span>' : '<span class="tag">준비 중</span>') : '') + '</span>' +
           '<span class="tiny faint num">초당 피해 ' + fmt(m.power) + ' · 생명력 ' + fmt(m.hp) + '</span></div>';
       }).join('') + '</div>' +
       '<div style="margin-top:10px"><div class="small">내 포지션</div><div class="filters" style="margin-top:4px">' + ['van', 'rear', 'sup'].map(function (k) {
@@ -3027,6 +3027,7 @@
   }
   ACT.twready = function (on) { API.towerOp({ mode: 'ready', on: on === '1' }).then(function (j) { if (j.error) { toast('별의 탑', j.error); return; } S.towerAt = 0; loadTower(); }); };
   function twCountText(lob) { if (lob.at) { var left = Math.max(0, Math.ceil(lob.at - twNow())); return '<b class="gold">출발까지 ' + left + '초</b>'; } return lob.notReady.length ? '<span class="faint">대기: ' + esc(lob.notReady.join(', ')) + '</span>' : '<span class="good">모두 준비 완료</span>'; }
+  ACT.twnpcpos = function (k, pos) { API.towerOp({ mode: 'npcpos', k: +k, pos: pos }).then(function (j) { if (j.error) { toast('별의 탑', j.error); return; } S.towerAt = 0; loadTower(); }); };
   ACT.twpos = function (k) { API.towerOp({ mode: 'pos', pos: k }).then(function (j) { if (j.error) { toast('별의 탑', j.error); return; } S.P.opt.twPos = k; S.towerAt = 0; loadTower(); }); };
   ACT.twgo = function (mode) {
     if (mode === 'real' && !(S.confirm.twreal > Date.now())) { S.confirm.twreal = Date.now() + 4000; toast('별의 탑', '한 번 더 누르면 실전 출발을 준비합니다 · 모두 준비 완료하면 ' + ((S.towerD && S.towerD.count) || 15) + '초 뒤 파티원 모두의 오늘 기회를 사용해 출발합니다', 4000); return; }

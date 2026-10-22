@@ -1380,7 +1380,8 @@ function towerTeam(party, me, now) {
   const pa = dbx.q.partyGet.get(party), ctx = world.ctx(now), ms = [], ps = [];
   dbx.q.partyMembers.all(party).forEach((m) => { const Q = m.id === me ? loadPlayer(me, now) : store.get(m.id); if (!Q) return; ps.push(Q); ms.push(R.twMember(Q, ctx, now)); });
   const base = ms.find((m) => m.id === me) || ms[0];
-  if (base) partyNpcs(pa).forEach((k) => { const n = NPCS[k]; ms.push(R.twNpc(base, 'npc:' + k, n.name, n.house)); });
+  const np = dbx.kvGet('twnp:' + party, {});   // 동행 친구 포지션 (파티마다, 파티원 누구나 바꿀 수 있다)
+  if (base) partyNpcs(pa).forEach((k) => { const n = NPCS[k]; ms.push(R.twNpc(base, 'npc:' + k, n.name, n.house, np[k])); });
   return { pa, ms, ps };
 }
 function towerView(me, now) {
@@ -1502,6 +1503,13 @@ routes['POST /api/tower'] = async (req, res) => {
     return send(req, res, 200, Object.assign(towerView(me, now), { claimed: to, pend: null }));
   }
   const party = partyOf.get(me); if (!party) return fail(req, res, 400, '파티에 들어가 있어야 별의 탑에 오를 수 있습니다');
+  if (mode === 'npcpos') {   // 동행 친구(NPC) 포지션: 선봉 · 후열
+    const k = Number(b.k), pos = String(b.pos || ''), pa = dbx.q.partyGet.get(party);
+    if (partyNpcs(pa).indexOf(k) < 0) return fail(req, res, 404, '파티에 없는 동행 친구입니다');
+    if (R.TW_NPC_POS.indexOf(pos) < 0) return fail(req, res, 400, '동행 친구는 선봉 · 후열만 맡을 수 있습니다 (치유 주문이 없어 지원은 불가)');
+    const np = dbx.kvGet('twnp:' + party, {}); np[k] = pos; dbx.kvSet('twnp:' + party, np);
+    return send(req, res, 200, towerView(me, now));
+  }
   if (mode === 'pos') {
     const pos = String(b.pos || ''); if (!R.EXP_POS[pos]) return fail(req, res, 400, '포지션 선택 필요');
     if (R.expPositions(P).indexOf(pos) < 0) return fail(req, res, 400, R.EXP_POS[pos].name + ' 포지션은 ' + R.EXP_POS[pos].desc.split(' · ')[0]);
