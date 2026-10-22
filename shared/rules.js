@@ -908,6 +908,7 @@
     if (ups) {
       log(P, t, SUBJ[sid].name + ' ' + sj.lv + '레벨', 'good');
       if (sid === 'beast') R.famGift(P, t);
+      if (sid === 'alch' && sj.lv >= R.ALCH_OPEN && sj.lv - ups < R.ALCH_OPEN) log(P, t, '연금 공방이 열렸습니다. 재료와 마나로 물약을 만들 수 있습니다', 'story');
       D.SPELLS.forEach(function (sp) {
         if (sp.req && sp.req[0] === sid && sj.lv >= sp.req[1] && sj.lv - ups < sp.req[1]) {
           log(P, t, '새 주문 습득: ' + sp.name, 'story');
@@ -947,7 +948,10 @@
 
   /* ───────── 연금술 · 사역마 ───────── */
   R.cauldrons = function (P) { var a = P.subj.alch.lv; return 1 + (a >= 10 ? 1 : 0) + (a >= 20 ? 1 : 0); };
-  R.potionUnlocked = function (P, id) { return P.grade >= 2 && P.subj.alch.lv >= POT[id].unlock; };
+  // 연금 공방: 연금화학 R.ALCH_OPEN레벨부터 (2차 베타: 예전에는 2학년부터)
+  R.ALCH_OPEN = 3;
+  R.alchOpen = function (P) { return !!(P && P.subj && P.subj.alch && P.subj.alch.lv >= R.ALCH_OPEN); };
+  R.potionUnlocked = function (P, id) { return R.alchOpen(P) && P.subj.alch.lv >= POT[id].unlock; };
   R.eggCost = function (P) { return Math.floor(5000 * Math.pow(1.2, Math.min(P.fam.hatched, 30))); };   // 깨운 수마다 1.2배 (예전 1.45배)
   R.feedCost = function (P, id) { var f = FAM[id], o = P.fam.own[id]; return Math.floor(2000 * Math.pow(1.45, o.lv) * (f.r + 1)); };
   function hatch(P, t) {

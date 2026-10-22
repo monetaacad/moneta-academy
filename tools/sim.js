@@ -143,7 +143,7 @@ function bot(now, ci) {
   }
   // 물약: 밤이면 숙면의 차, 낮이면 집중 · 투지 · 황금 · 행운 · 현자
   const DAYPOT = ['focus', 'valor', 'gilded', 'fortune', 'sage'];
-  if (P.grade >= 2) {
+  if (R.alchOpen ? R.alchOpen(P) : P.grade >= 2) {
     const want = night ? ['sleep'] : DAYPOT;
     for (const id of want) if ((P.shelf[id] || 0) > 0 && !(P.buffs['p_' + id] && P.buffs['p_' + id].end > now + 1800)) act('drink', { id }, now);
     for (const id of ['sleep'].concat(DAYPOT)) if (R.potionUnlocked(P, id) && (P.shelf[id] || 0) < 2 && P.res.mana > R.brewMana(P, W, now, id) * 4 && Object.keys(R.POT[id].mats).every(m => (P.mats[m] || 0) >= R.POT[id].mats[m] * 2)) act('brew', { id, n: 2 }, now);

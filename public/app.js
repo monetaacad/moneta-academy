@@ -84,10 +84,10 @@
   function icon(k) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IC[k] + '</svg>'; }
   var VIEWS = [
     { id: 'home', name: '아카데미 광장' }, { id: 'lecture', name: '강의실' }, { id: 'explore', name: '원정' }, { id: 'tower', name: '별의 탑' }, { id: 'ctower', name: '무한의 탑' }, { id: 'exam', name: '시험·결투' },
-    { id: 'world', name: '월드 보스' }, { id: 'party', name: '파티' }, { id: 'guild', name: '동아리' }, { id: 'friends', name: '친구' }, { id: 'board', name: '게시판' }, { id: 'idea', name: '건의함' }, { id: 'auction', name: '떠돌이 상인' }, { id: 'market', name: '거래소' }, { id: 'gear', name: '장비·능력' }, { id: 'alch', name: '연금 공방', grade: 2 }, { id: 'fam', name: '환수 사역장', fam: true }, { id: 'lib', name: '연구' },
+    { id: 'world', name: '월드 보스' }, { id: 'party', name: '파티' }, { id: 'guild', name: '동아리' }, { id: 'friends', name: '친구' }, { id: 'board', name: '게시판' }, { id: 'idea', name: '건의함' }, { id: 'auction', name: '떠돌이 상인' }, { id: 'market', name: '거래소' }, { id: 'gear', name: '장비·능력' }, { id: 'alch', name: '연금 공방', alch: true }, { id: 'fam', name: '환수 사역장', fam: true }, { id: 'lib', name: '연구' },
     { id: 'shop', name: '매점' }, { id: 'lore', name: '세계관' }, { id: 'rec', name: '기록실' }, { id: 'rank', name: '랭킹' }, { id: 'hcup', name: '기숙사' }
   ];
-  function viewOpen(v) { return v.fam ? R.famOpen(S.P) : !v.grade || S.P.grade >= v.grade; }   // 환수 사역장은 사역마가 열리면(레벨)
+  function viewOpen(v) { return v.fam ? R.famOpen(S.P) : v.alch ? R.alchOpen(S.P) : !v.grade || S.P.grade >= v.grade; }   // 환수 사역장은 사역마가 열리면(레벨), 연금 공방은 연금화학 R.ALCH_OPEN레벨부터
   // 안내도: 비슷한 곳끼리 묶고, 안에서 탭으로 옮겨 다닌다. short = 모바일 하단 바 이름 (모바일은 광장이 가운데: style.css의 order)
   var GROUPS = [
     { id: 'home', name: '아카데미 광장', short: '광장', icon: 'home', tabs: ['home'] },
@@ -326,7 +326,7 @@
     S.rPend = 0;   // 미뤄 둔 softRender가 있었다면 이걸로 끝
     var v = VIEWS.find(function (x) { return x.id === S.view; }) || VIEWS[0];
     var sy = window.scrollY;
-    $('#view').innerHTML = groupTabs() + (viewOpen(v) ? V[v.id]() : pageHead('잠긴 구역', v.name, '') + '<div class="card"><p>' + R.josa(v.name, '은', '는') + ' ' + v.grade + '학년부터 출입할 수 있습니다.</p></div>');
+    $('#view').innerHTML = groupTabs() + (viewOpen(v) ? V[v.id]() : pageHead('잠긴 구역', v.name, '') + '<div class="card"><p>' + R.josa(v.name, '은', '는') + ' ' + (v.alch ? '연금화학 ' + R.ALCH_OPEN + '레벨부터 출입할 수 있습니다. 연금화학은 1학년부터 수강할 수 있습니다(지금 Lv ' + S.P.subj.alch.lv + ').' : v.grade + '학년부터 출입할 수 있습니다.') + '</p></div>');
     if (Math.abs(window.scrollY - sy) > 2) window.scrollTo(0, sy);
     afterRender(); updateLive(); updateBadges(); updateSide();
   }
@@ -1339,7 +1339,7 @@
       '<p class="tiny faint">수업 효율은 ' + LST_NAME[S2.lst || 'int'] + '을 따릅니다 · 이 과목으로 배우는 주문은 과목 레벨마다 위력 +3%</p>';
     var rows = [];
     D.SPELLS.forEach(function (sp) { if (sp.req && sp.req[0] === sid) rows.push([sp.req[1], '주문 「' + sp.name + '」 — ' + sp.desc + (sp.cls ? '' : ''), sp.cls && sp.cls.indexOf(cls) < 0]); });
-    if (sid === 'alch') { D.POTIONS.forEach(function (p) { rows.push([p.unlock, '물약 「' + p.name + '」 조제 — ' + p.desc]); }); rows.push([0, '연금 공방(물약 조제)은 2학년부터 사용할 수 있습니다']); rows.push([10, '가마솥 2개']); rows.push([20, '가마솥 3개']); }
+    if (sid === 'alch') { D.POTIONS.forEach(function (p) { rows.push([p.unlock, '물약 「' + p.name + '」 조제 — ' + p.desc]); }); rows.push([R.ALCH_OPEN, '연금 공방 개방 (물약 조제)']); rows.push([10, '가마솥 2개']); rows.push([20, '가마솥 3개']); }
     if (sid === 'beast') rows.push([R.FAM_SUBJ, '사역마 · 첫 환수의 알 (또는 레벨 ' + R.FAM_LV + ' · 3학년)']);
     (S2.perk || []).forEach(function (pk) { rows.push([pk[0], '레벨 보상 — ' + R.effText(pk[1])]); });
     rows.sort(function (a, b) { return a[0] - b[0]; });
@@ -1354,8 +1354,9 @@
   function subjMiles(sid) {
     var P = S.P, lv = P.subj[sid].lv, a = [], ex = R.examFor(P), cls = P.cls || 'mage';
     D.SPELLS.forEach(function (sp) { if (sp.req && sp.req[0] === sid && lv < sp.req[1] && (!sp.cls || sp.cls.indexOf(cls) >= 0)) a.push([sp.req[1], '주문 「' + sp.name + '」']); });
-    if (sid === 'alch') D.POTIONS.forEach(function (p) { if (lv < p.unlock) a.push([p.unlock, '물약 「' + p.name + '」' + (P.grade < 2 ? '(연금 공방 2학년부터)' : '')]); });
+    if (sid === 'alch') D.POTIONS.forEach(function (p) { if (lv < p.unlock) a.push([p.unlock, '물약 「' + p.name + '」']); });
     if (sid === 'beast' && !R.famOpen(P)) a.push([R.FAM_SUBJ, '사역마 · 첫 환수의 알']);
+    if (sid === 'alch' && !R.alchOpen(P)) a.push([R.ALCH_OPEN, '연금 공방']);
     (R.SUBJ[sid].perk || []).forEach(function (pk) { if (lv < pk[0]) a.push([pk[0], R.effText(pk[1])]); });
     if (ex && P.grade < 8 && lv < ex.req) { if (ex.subj.indexOf(sid) >= 0) a.push([ex.req, '기말 기준']); else if (R.examOpt(P, ex) === sid) a.push([ex.req, '기말 선택 과목']); }
     var s = R.mqStep(P); if (s) s.st.g.forEach(function (q) { if (q.k === 'subj' && R.subjFor(P, q.s) === sid && lv < q.n) a.push([q.n, '학기 이야기']); });
@@ -2291,7 +2292,7 @@
   /* ── 연금 공방 · 환수 사역장 ── */
   V.alch = function () {
     var h = pageHead('연금화학 실습실', '연금 공방', '');
-    return h + (S.P.grade >= 2 ? alchView() : '<div class="card inset"><p class="small muted">연금 공방은 2학년부터 사용할 수 있습니다. 재료와 마나로 물약을 만들고, 거래소에 내다 팔 수도 있습니다.</p></div>');
+    return h + (R.alchOpen(S.P) ? alchView() : '<div class="card inset"><p class="small muted">연금 공방은 연금화학 ' + R.ALCH_OPEN + '레벨부터 사용할 수 있습니다(지금 Lv ' + S.P.subj.alch.lv + ', 1학년부터 수강 가능). 재료와 마나로 물약을 만들고, 거래소에 내다 팔 수도 있습니다.</p></div>');
   };
   V.fam = function () { return pageHead('환수 사육장', '환수 사역장', '') + potBar(['dispPct']) + famView(); };
   function matTag(m, need) { var have = S.P.mats[m] || 0; return '<span class="tag ' + (have >= need ? 'ok' : 'no') + '">' + D.MATS[m].name + ' ' + fmt(have) + '/' + need + '</span>'; }
@@ -3982,7 +3983,7 @@
 
   /* ───────── 행동 ───────── */
   ACT.nav = function (a) { if (String(a).indexOf(':') > 0) { var sp = String(a).split(':'); ACT.goto(sp[0], sp[1]); return; }   // 'work:fam' = 공방 사역마 탭처럼 탭까지 지정
-    if (a === 'work') a = S.P && S.P.grade >= 2 ? 'alch' : 'fam';   // 예전 「공방」
+    if (a === 'work') a = S.P && R.alchOpen(S.P) ? 'alch' : 'fam';   // 예전 「공방」
     if (!VIEWS.some(function (v) { return v.id === a; })) a = 'home'; if (a !== S.view) histView(a); S.gtab[groupOf(a).id] = a; S.view = a; S.sel = S.view === 'gear' ? S.sel : null; renderNav(); render(); window.scrollTo(0, 0); viewTut(a); if (a === 'world') refreshWorld(); };
   ACT.loretab = function (t) { S.loreTab = t; render(); };
   ACT['modal-close'] = function () { if (S.modalLocked) return; tryClose(); };
@@ -4387,7 +4388,6 @@
   function promoItems(g) {
     var P = S.P, out = [];
     D.SUBJECTS.forEach(function (x) { if (x.unlock === g && R.subjVisible(P, x)) out.push(['새 과목 「' + x.name + '」', x.prof + ' · ' + x.desc, 'lecture', '']); });
-    if (g === 2) { out.push(['연금 공방', '재료와 마나로 물약을 만들고, 거래소에 내다 팔 수도 있습니다.', 'alch', '']); }
     // 거래소는 서버에서 정한 학년(기본 1학년)부터 — 그 학년일 때만 새로 열린 것으로 보인다
     if (g === ((S.mk && S.mk.data && S.mk.data.grade) || 1)) out.push(['거래소 사고팔기', '장비 · 재료 · 물약 · 휘장을 다른 학생과 ' + CUR + '로 거래합니다.', 'market', '']);
     if (g === 3) { out.push(['아카데미 휘장 수여', '2학년을 마친 기념으로 브로치를 수여합니다. 달고 있으면 별빛을 모아 성장합니다.', 'gear', 'badge']); }
@@ -5509,7 +5509,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102275;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102276;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
