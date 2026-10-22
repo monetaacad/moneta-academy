@@ -363,13 +363,25 @@
   /* ───────── 렌더 ───────── */
   var V = {}, ACT = {}; window.__ACT = ACT;
   ACT.sidetog = function () { SIDE_OPEN = !SIDE_OPEN; try { localStorage.setItem('arc_side', SIDE_OPEN ? '1' : '0'); } catch (e) { } updateSide(); };
+  // 실시간 거래 목록: 내려 둔 상태면 보고 있던 줄(data-id)을 기억했다가 다시 그린 뒤 같은 자리에 둔다. 맨 위를 보고 있으면 새 거래가 바로 보이게 둔다
+  function trAnchor() {
+    var l = $('.trlist'); if (!l || l.scrollTop <= 2) return null;
+    var lt = l.getBoundingClientRect().top, a = [].find.call(l.querySelectorAll('.trrow[data-id]'), function (e) { return e.getBoundingClientRect().bottom > lt + 1; });
+    return { top: l.scrollTop, id: a ? a.dataset.id : null, off: a ? a.getBoundingClientRect().top - lt : 0 };
+  }
+  function trRestore(k) {
+    var l = $('.trlist'); if (!l) return;
+    var a = k.id != null && l.querySelector('.trrow[data-id="' + k.id + '"]');
+    l.scrollTop = a ? l.scrollTop + (a.getBoundingClientRect().top - l.getBoundingClientRect().top) - k.off : k.top;
+  }
   function render() {
     if (!S.P || !$('#view')) return;
     S.rPend = 0;   // 미뤄 둔 softRender가 있었다면 이걸로 끝
     var v = VIEWS.find(function (x) { return x.id === S.view; }) || VIEWS[0];
-    var sy = window.scrollY;
+    var sy = window.scrollY, tra = trAnchor();   // 실시간 거래 목록: 내려 둔 위치 유지
     $('#view').innerHTML = groupTabs() + (viewOpen(v) ? V[v.id]() : pageHead('잠긴 구역', v.name, '') + '<div class="card"><p>' + R.josa(v.name, '은', '는') + ' ' + (v.fam ? R.FAM_OPEN_TEXT : v.grade + '학년') + '부터 출입할 수 있습니다.</p></div>');
     if (Math.abs(window.scrollY - sy) > 2) window.scrollTo(0, sy);
+    if (tra) trRestore(tra);
     afterRender(); updateLive(); updateBadges(); updateSide();
   }
   function pageHead(eyebrow, title, aside) { return '<div class="page-head"><div><div class="eyebrow">' + eyebrow + '</div><h2>' + title + '</h2></div>' + (aside ? '<div class="aside">' + aside + '</div>' : '') + '</div>'; }
@@ -2386,7 +2398,7 @@
     return '<div class="famxp"><div class="row tiny"><span class="faint">경험치' + (act2 ? ' · 동행 중 활동할 때마다' : disp ? ' · 귀환 시 파견 1시간당 +' + R.FAM_DISP_XP + ' 지급' : '') + '</span><span class="spacer"></span><span class="num">' + fmt(xp) + ' / ' + fmt(need) + '</span></div><div class="bar" style="height:5px;margin-top:2px"><b style="width:' + Math.min(100, xp / need * 100).toFixed(1) + '%"></b></div></div>';
   }
   function famView() {
-    var P = S.P, eh = R.eggHold(P), hold = '<p class="small" style="margin-top:8px">알 품기: 지니고 있는 알 <b class="num">' + P.fam.eggs + '</b>개' + (eh ? ' · <span class="good">경험치 +' + Math.round(eh * R.EGG_HOLD_EACH * 100) + '%</span>' : '') + ' <span class="tiny faint">(부화시키지 않은 알 하나마다 경험치 +' + Math.round(R.EGG_HOLD_EACH * 100) + '%, ' + R.EGG_HOLD_MAX + '개까지)</span></p>' + (P.subj.beast.lv ? '<p class="small" style="margin-top:4px">환수생태학 ' + P.subj.beast.lv + '레벨: 사역마 능력 보너스 +' + Math.round(P.subj.beast.lv * R.BEAST_FAM * 100) + '% · 파견 보상 +' + Math.round(P.subj.beast.lv * R.BEAST_DISP * 100) + '% · 부화 속도 +' + P.subj.beast.lv + '%</p>' : '<p class="tiny faint" style="margin-top:4px">환수생태학을 들으면 레벨마다 사역마 능력 보너스 +' + Math.round(R.BEAST_FAM * 100) + '%, 파견 보상 +' + Math.round(R.BEAST_DISP * 100) + '%, 부화 속도 +1%</p>');
+    var P = S.P, eh = R.eggHold(P), hold = '<p class="small" style="margin-top:8px">알 품기: 지니고 있는 알 <b class="num">' + P.fam.eggs + '</b>개' + (eh ? ' · <span class="good">경험치 +' + Math.round(eh * R.EGG_HOLD_EACH * 100) + '%</span>' : '') + ' <span class="tiny faint">(부화시키지 않은 알 하나마다 경험치 +' + Math.round(R.EGG_HOLD_EACH * 100) + '%, 경험치 보너스는 ' + R.EGG_HOLD_MAX + '개까지)</span></p>' + (P.subj.beast.lv ? '<p class="small" style="margin-top:4px">환수생태학 ' + P.subj.beast.lv + '레벨: 사역마 능력 보너스 +' + Math.round(P.subj.beast.lv * R.BEAST_FAM * 100) + '% · 파견 보상 +' + Math.round(P.subj.beast.lv * R.BEAST_DISP * 100) + '% · 부화 속도 +' + P.subj.beast.lv + '%</p>' : '<p class="tiny faint" style="margin-top:4px">환수생태학을 들으면 레벨마다 사역마 능력 보너스 +' + Math.round(R.BEAST_FAM * 100) + '%, 파견 보상 +' + Math.round(R.BEAST_DISP * 100) + '%, 부화 속도 +1%</p>');
     if (!R.famOpen(P)) return '<div class="card"><h3>사역마는 ' + R.FAM_OPEN_TEXT + '부터</h3><p class="small muted" style="margin-top:4px">환수생태학 수업을 들어 ' + R.FAM_SUBJ + '레벨이 되거나 레벨 ' + R.FAM_LV + '이 되면 고드릭 펜 교수가 첫 환수의 알을 주고, 알을 부화시켜 동행하거나 파견할 수 있습니다. 지금 환수생태학 ' + P.subj.beast.lv + '레벨 · 레벨 ' + P.lvl + '.</p><div class="row" style="margin-top:8px"><button class="btn sm primary" data-act="nav" data-a="lecture">수업 듣기</button></div>' + hold + '</div>';
     var price = R.eggManaCost(P, wctx(), now()), inc = P.fam.inc;
     var h = '<div class="grid g2" style="margin-bottom:14px"><div class="card hl"><h3>부화기</h3><p class="small muted">보관 중인 알 <b class="num gold">' + P.fam.eggs + '</b>개. 보스 첫 처치, 월드 보스 토벌, 12시간 파견, 매점에서 얻습니다. 알을 품으면 활동할수록(수업 · 원정 · 연구 · 파견 · 조제 등) 진행도가 오르고, 다 차면 마나 없이 깨어납니다. 마나를 불어넣으면 남은 진행도만큼의 마나로 바로 깨어납니다.</p>' + hold;
@@ -3491,7 +3503,7 @@
       var tr = m.trades;
       h += '<div class="card"><div class="row between"><h3>실시간 거래</h3><span class="tiny faint"><span class="odot"></span> 팔리는 대로 올라옵니다 · 산 사람은 보이지 않습니다</span></div>';
       h += !tr ? '<div class="empty">불러오는 중…</div>' : !tr.length ? '<div class="empty">아직 거래가 없습니다.</div>' : '<div class="trlist">' + tr.map(function (x) {
-        return '<div class="trrow' + (x.fresh && Date.now() - x.fresh < 4000 ? ' fresh' : '') + '"><span class="tiny faint num trt">' + ago(x.t) + '</span><span class="ell trn"' + (x.kind === 'item' ? ' style="color:' + rcol(x.r) + '"' : '') + '>' + esc(x.name) + (x.kind !== 'item' ? ' <span class="num faint">×' + fmt(x.qty) + '</span>' : ' <span class="tiny faint">' + R.slotName(x.item || x) + ' Lv ' + x.ilvl + '</span>') + '</span><b class="num gold">' + fmt(x.price) + '</b></div>';
+        return '<div class="trrow' + (x.fresh && Date.now() - x.fresh < 4000 ? ' fresh' : '') + '" data-id="' + esc(String(x.id)) + '"><span class="tiny faint num trt">' + ago(x.t) + '</span><span class="ell trn"' + (x.kind === 'item' ? ' style="color:' + rcol(x.r) + '"' : '') + '>' + esc(x.name) + (x.kind !== 'item' ? ' <span class="num faint">×' + fmt(x.qty) + '</span>' : ' <span class="tiny faint">' + R.slotName(x.item || x) + ' Lv ' + x.ilvl + '</span>') + '</span><b class="num gold">' + fmt(x.price) + '</b></div>';
       }).join('') + '</div>';
       h += '</div>';
     } else {
@@ -4265,7 +4277,7 @@
   function invItems() {
     var P = S.P, tk = P.tok || {}, out = [], g3 = R.famOpen(P);
     function B(act, a, b, label, primary) { return '<button class="btn sm' + (primary ? ' primary' : ' ghost') + '" data-act="' + act + '"' + (a != null ? ' data-a="' + a + '"' : '') + (b != null ? ' data-b="' + b + '"' : '') + '>' + label + '</button>'; }
-    if (P.fam.eggs > 0) out.push({ k: 'egg', name: '환수의 알', n: P.fam.eggs, desc: (g3 ? '환수 사역장의 부화기에서 마나로 부화시켜 사역마로 키웁니다.' : R.FAM_OPEN_TEXT + '부터 환수 사역장에서 부화할 수 있습니다. 그때까지 여기에 보관됩니다.') + ' 지니고 있는 동안 알 품기로 경험치 +' + Math.round(R.EGG_HOLD_EACH * 100) + '%(' + R.EGG_HOLD_MAX + '개까지).', acts: (g3 && !P.fam.egg ? invEggBtn(P) : '') + B('goto', 'work', 'fam', '부화기로') });
+    if (P.fam.eggs > 0) out.push({ k: 'egg', name: '환수의 알', n: P.fam.eggs, desc: (g3 ? '환수 사역장의 부화기에서 마나로 부화시켜 사역마로 키웁니다.' : R.FAM_OPEN_TEXT + '부터 환수 사역장에서 부화할 수 있습니다. 그때까지 여기에 보관됩니다.') + ' 지니고 있는 동안 알 품기로 경험치 +' + Math.round(R.EGG_HOLD_EACH * 100) + '%(경험치 보너스는 ' + R.EGG_HOLD_MAX + '개까지).', acts: (g3 && !P.fam.egg ? invEggBtn(P) : '') + B('goto', 'work', 'fam', '부화기로') });
     if (P.wb.tickets + (P.wb.extra || 0) > 0) out.push({ k: 'ticket', name: '토벌 도전권', n: P.wb.tickets + (P.wb.extra || 0), desc: '충전 도전권 ' + P.wb.tickets + ' / ' + R.K.WB_TICKET_MAX + (P.wb.extra > 0 ? ' · 추가 도전권 ' + P.wb.extra + '장 (이번 주 ' + R.wbExtraLeft(P, now()) + '번 더 사용 가능)' : '') + '. 월드 보스에 한 번 도전할 때 1장씩 사용합니다. 충전 도전권은 8시간마다 3장까지 차고, 매점 · 우편으로 받은 추가 도전권은 충전 도전권을 다 사용한 뒤 한 주에 ' + R.K.WB_EXTRA_USE + '번까지 사용할 수 있으며 남은 것은 다음 주로 넘어갑니다.', acts: B('goto', 'world', null, '월드 보스로', true) });
     if (tk.respec > 0) out.push({ k: 'respec', name: '망각의 차', n: tk.respec, desc: '마시면 분배한 능력치 포인트를 모두 돌려받고 자동 분배가 꺼집니다.', acts: B('respecuse', null, null, S.confirm.rsp > Date.now() ? '한 번 더 누르면 마십니다' : '바로 마시기', true) + B('goto', 'gear', 'alloc', '능력치 칸으로') });
     D.POTIONS.forEach(function (p) { if (P.shelf[p.id] > 0) out.push({ k: 'pot:' + p.id, name: p.name, n: P.shelf[p.id], desc: p.desc, dot: p.color, acts: B('do', 'drink', p.id, '바로 마시기', true) + B('goto', 'alch', '', '연금 공방으로') }); });
@@ -5273,15 +5285,37 @@
     if (ed) h += '<div class="rpedit"><textarea id="rp-ed" maxlength="500" rows="3">' + esc(b.medit.body) + '</textarea><div class="row" style="gap:6px;margin-top:6px"><span class="spacer"></span><button class="btn sm ghost" data-act="rpedit" data-a="">취소</button><button class="btn sm primary" data-act="rpsave" data-a="' + m.id + '">저장</button></div></div>';
     else h += (titled ? '<div class="rptitle">' + esc(m.title) + '</div>' : '') + '<div class="rpbody">' + rpText(m.body) + '</div>';
     h += '<div class="rpcoms">' + (hidden ? '<button class="linkbtn tiny" data-act="rpmore" data-a="' + m.id + '">이전 댓글 ' + hidden + '개 더 보기 ▾</button>' : full && full.comments.length > 3 ? '<button class="linkbtn tiny" data-act="rpmore" data-a="' + m.id + '">이전 댓글 접기 ▴</button>' : '') +
-      coms.map(function (c) {
-        var ca = S.confirm['bdc' + c.id] > Date.now();
-        return '<div class="rpcom' + (c.op ? ' op' : '') + '"><span class="small rpcw">' + (c.aid === 'staff' ? '운영진' + opBadge() : rpWho(c.aid, c.author, c.badge)) + '</span><span class="small rpct">' + rpText(c.body) + '</span><span class="tiny faint rpcm">' + bdWhen(c.created) +
-          (c.mine || op ? ' <button class="linkbad tiny" data-act="rpcdel" data-a="' + c.id + '" data-b="' + m.id + '">' + (ca ? '한 번 더 누르면 지웁니다' : '지우기') + '</button>' : '') + '</span></div>';
+      rpThread(coms).map(function (c) {
+        var ca = S.confirm['bdc' + c.id] > Date.now(), rp = c.parent && coms.some(function (x) { return x.id === c.parent; });
+        return '<div class="rpcom' + (c.op ? ' op' : '') + (c.parent ? ' reply' : '') + '">' + (c.parent ? '<span class="tiny faint rpto">↳' + (rp || !c.pa ? '' : ' ' + esc(c.pa)) + '</span>' : '') + '<span class="small rpcw">' + (c.aid === 'staff' ? '운영진' + opBadge() : rpWho(c.aid, c.author, c.badge)) + '</span>' + (cedOn(c) ? cedBox(m.id) : '<span class="small rpct">' + rpText(c.body) + '</span>') + '<span class="tiny faint rpcm">' + bdWhen(c.created) + (c.edited ? ' · 고침' : '') +
+          (c.mine && !cedOn(c) ? ' <button class="linkbtn tiny" data-act="ced" data-a="' + c.id + '">수정</button>' : '') +
+          ' <button class="linkbtn tiny" data-act="rprep" data-a="' + m.id + '" data-b="' + c.id + '">답글</button>' +
+          (c.mine || op ? ' <button class="linkbad tiny" data-act="rpcdel" data-a="' + c.id + '" data-b="' + m.id + '">' + (ca ? '한 번 더 누르면 지웁니다' : '지우기') + '</button>' : '') + '</span></div>' +
+          (b.mo === m.id && b.mrep === c.id ? rpForm(m.id, c.author) : '');
       }).join('') +
-      (b.mo === m.id ? '<div class="bdcform rpcform"><textarea id="rp-com" maxlength="500" rows="2" placeholder="이어 쓰기 (500자) · 대사 *행동*">' + esc(b.mcx || '') + '</textarea><div class="stack" style="gap:4px"><button class="btn sm primary" data-act="rpcom" data-a="' + m.id + '">등록</button><button class="btn sm ghost" data-act="rpco" data-a="">취소</button></div></div>'
+      (b.mo === m.id && !b.mrep ? rpForm(m.id)
         : '<button class="btn sm ghost rpgo" data-act="rpco" data-a="' + m.id + '">이어 쓰기' + (m.ncom ? ' <span class="faint num">' + m.ncom + '</span>' : '') + '</button>') + '</div></article>';
     return h;
   }
+  // 댓글을 줄기로: 원래 댓글 바로 밑에 답글 (원래 댓글이 접혀 있으면 그 자리에 「↳ 이름」으로)
+  function rpThread(coms) {
+    var ids = {}; coms.forEach(function (c) { ids[c.id] = 1; });
+    var out = []; coms.forEach(function (c) { if (c.parent && ids[c.parent]) return; out.push(c); coms.forEach(function (x) { if (x.parent === c.id) out.push(x); }); });
+    return out;
+  }
+  function rpForm(mid, to) { return '<div class="bdcform rpcform' + (to ? ' reply' : '') + '"><textarea id="rp-com" maxlength="500" rows="2" placeholder="' + (to ? esc(to) + ' 님에게 답글 (500자) · 대사 *행동*' : '이어 쓰기 (500자) · 대사 *행동*') + '">' + esc(S.bd.mcx || '') + '</textarea><div class="stack" style="gap:4px"><button class="btn sm primary" data-act="rpcom" data-a="' + mid + '">등록</button><button class="btn sm ghost" data-act="rpco" data-a="">취소</button></div></div>'; }
+  // 내 댓글 · 답글 고치기: 그 자리에서 입력칸으로 바뀐다 (게시판 · RP 게시판 공용)
+  function cedOn(c) { return S.bd.ced && S.bd.ced.id === c.id; }
+  function cedBox(pid) { setTimeout(function () { var t = $('#bd-ced'); if (t && !t.__k) { t.__k = 1; t.focus(); t.addEventListener('input', function () { if (S.bd.ced) S.bd.ced.body = t.value; }); } }, 0); return '<div class="bdcform cedform"><textarea id="bd-ced" maxlength="500" rows="2">' + esc(S.bd.ced.body) + '</textarea><div class="stack" style="gap:4px"><button class="btn sm primary" data-act="cedsave" data-a="' + pid + '">저장</button><button class="btn sm ghost" data-act="ced" data-a="">취소</button></div></div>'; }
+  ACT.ced = function (cid) {
+    var b = S.bd; cid = +cid; if (!cid) { b.ced = null; render(); return; }
+    var all = (b.post && b.post.comments || []).slice(); (b.data && b.data.list || []).forEach(function (m) { all = all.concat(m.coms || []); }); Object.keys(b.full || {}).forEach(function (k) { all = all.concat(b.full[k].comments); });
+    var c = all.filter(function (x) { return x.id === cid; })[0]; b.ced = c ? { id: c.id, body: c.body } : null; render();
+  };
+  ACT.cedsave = function (pid) {
+    var b = S.bd, t = $('#bd-ced'), txt = (t ? t.value : b.ced && b.ced.body || '').trim(); if (!b.ced || !txt || S.busy) return; S.busy = true;
+    API.boardOp({ op: 'cedit', cid: b.ced.id, id: +pid, text: txt }).then(function (j) { S.busy = false; if (j.error) { toast('댓글', j.error); return; } b.ced = null; if (j.post) { if (b.post && b.post.id === j.post.id) b.post = j.post; if (S.bdSpace === 'rp') rpPatch(j.post); } toast('수정되었습니다', '', 1500); render(); }, function () { S.busy = false; });
+  };
   function rpKeys() {
     var q = $('#bd-q'); if (q && !q.__k) { q.__k = 1; q.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); ACT.bdsearch(); } }); }
     var t = $('#rp-new'); if (t && !t.__k) { t.__k = 1; t.addEventListener('input', function () { S.bd.memo = t.value; var n = $('#rp-n'); if (n) n.textContent = t.value.length + ' / 500'; }); }
@@ -5298,14 +5332,15 @@
     var b = S.bd, t = $('#rp-new'), txt = t ? t.value.trim() : ''; if (!txt) { toast('RP 게시판', '내용 입력 필요'); return; } if (S.busy) return; S.busy = true;
     API.boardOp({ op: 'write', memo: 1, body: txt }).then(function (j) { S.busy = false; if (j.error) { toast('RP 게시판', j.error); return; } b.memo = ''; b.data = null; b.page = 1; toast('메모가 등록되었습니다', '', 1600); render(); loadBoard(); }, function () { S.busy = false; });
   };
-  ACT.rpco = function (id) { var b = S.bd; b.mo = id ? +id : null; b.mcx = ''; render(); setTimeout(function () { var t = $('#rp-com'); if (t) t.focus(); }, 0); };
+  ACT.rprep = function (id, cid) { var b = S.bd; b.mo = +id; b.mrep = +cid; b.mcx = ''; render(); setTimeout(function () { var t = $('#rp-com'); if (t) t.focus(); }, 0); };
+  ACT.rpco = function (id) { var b = S.bd; b.mo = id ? +id : null; b.mrep = null; b.mcx = ''; render(); setTimeout(function () { var t = $('#rp-com'); if (t) t.focus(); }, 0); };
   ACT.rpmore = function (id) {
     var b = S.bd, f = b.full || (b.full = {}); id = +id; if (f[id]) { delete f[id]; render(); return; }
     API.board({ id: id }).then(function (j) { if (j.error) { toast('RP 게시판', j.error); return; } f[id] = j.post; rpPatch(j.post); render(); });
   };
   ACT.rpcom = function (id) {
     var b = S.bd, t = $('#rp-com'), txt = t ? t.value.trim() : ''; if (!txt) return; if (S.busy) return; S.busy = true;
-    API.boardOp({ op: 'comment', id: +id, text: txt }).then(function (j) { S.busy = false; if (j.error) { toast('댓글', j.error); return; } b.mcx = ''; b.mo = null; if (j.post) rpPatch(j.post); render(); }, function () { S.busy = false; });
+    API.boardOp({ op: 'comment', id: +id, text: txt, parent: b.mrep || 0 }).then(function (j) { S.busy = false; if (j.error) { toast(b.mrep ? '답글' : '댓글', j.error); return; } b.mcx = ''; b.mo = null; b.mrep = null; if (j.post) rpPatch(j.post); render(); }, function () { S.busy = false; });
   };
   ACT.rpcdel = function (cid, id) {
     var k = 'bdc' + cid; if (!(S.confirm[k] > Date.now())) { S.confirm[k] = Date.now() + 4000; render(); setTimeout(render, 4100); return; }
@@ -5328,9 +5363,10 @@
     var tops = p.comments.filter(function (c) { return !c.parent || !p.comments.some(function (x) { return x.id === c.parent; }); });
     function comHtml(c, isReply, root) {
       var ca = S.confirm['bdc' + c.id] > Date.now();
-      return '<div class="bdcom' + (c.op ? ' op' : '') + (isReply ? ' reply' : '') + '"><div class="row" style="gap:6px">' + (isReply ? '<span class="tiny faint">↳</span>' : '') + '<b class="small">' + (c.aid === 'staff' ? '운영진' : '<button class="cn" data-act="prof" data-a="' + esc(c.aid) + '">' + esc(c.author) + '</button>') + '</b>' + (c.aid === 'staff' ? opBadge() : c.badge && R.OP_TITLES[c.badge] ? '<span class="ttl' + R.opTitleCls(c.badge) + '">' + esc(c.badge) + '</span>' : '') + '<span class="tiny faint">' + bdWhen(c.created) + '</span><span class="spacer"></span>' +
+      return '<div class="bdcom' + (c.op ? ' op' : '') + (isReply ? ' reply' : '') + '"><div class="row" style="gap:6px">' + (isReply ? '<span class="tiny faint">↳</span>' : '') + '<b class="small">' + (c.aid === 'staff' ? '운영진' : '<button class="cn" data-act="prof" data-a="' + esc(c.aid) + '">' + esc(c.author) + '</button>') + '</b>' + (c.aid === 'staff' ? opBadge() : c.badge && R.OP_TITLES[c.badge] ? '<span class="ttl' + R.opTitleCls(c.badge) + '">' + esc(c.badge) + '</span>' : '') + '<span class="tiny faint">' + bdWhen(c.created) + (c.edited ? ' · 고침' : '') + '</span><span class="spacer"></span>' +
+        (c.mine && !cedOn(c) ? '<button class="linkbtn tiny" data-act="ced" data-a="' + c.id + '">수정</button>' : '') +
         (p.priv ? '' : '<button class="linkbtn tiny" data-act="bdreplyto" data-a="' + c.id + '" data-b="' + (root || c.id) + '">답글</button>') +
-        (c.mine || (S.bd.data && S.bd.data.op) ? '<button class="linkbad tiny" data-act="bdcdel" data-a="' + c.id + '">' + (ca ? '한 번 더 누르면 지웁니다' : '지우기') + '</button>' : '') + '</div><div class="small bdct">' + (p.tag === 'rp' ? rpText(c.body) : esc(c.body)) + '</div>' +
+        (c.mine || (S.bd.data && S.bd.data.op) ? '<button class="linkbad tiny" data-act="bdcdel" data-a="' + c.id + '">' + (ca ? '한 번 더 누르면 지웁니다' : '지우기') + '</button>' : '') + '</div>' + (cedOn(c) ? cedBox(p.id) : '<div class="small bdct">' + (p.tag === 'rp' ? rpText(c.body) : esc(c.body)) + '</div>') +
         (!isReply && S.bd.replyTo === c.id ? '<div class="bdcform reply"><textarea id="bd-rep" maxlength="500" rows="2" placeholder="' + esc((p.comments.filter(function (x) { return x.id === S.bd.replyFrom; })[0] || c).author) + ' 님에게 답글 (500자)">' + esc(S.bd.rep || '') + '</textarea><div class="stack" style="gap:4px"><button class="btn sm primary" data-act="bdrep" data-a="' + (S.bd.replyFrom || c.id) + '" data-b="' + c.id + '">답글 등록</button><button class="btn sm ghost" data-act="bdreplyto" data-a="">취소</button></div></div>' : '') + '</div>';
     }
     h += '<div class="card"><h3>댓글 ' + p.comments.length + '</h3><div class="bdcoms">' + (tops.length ? tops.map(function (c) {
@@ -5749,7 +5785,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102288;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102294;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

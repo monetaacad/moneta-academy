@@ -1773,7 +1773,7 @@ routes['POST /api/board'] = async (req, res) => {
   if (store.isBanned(me)) return fail(req, res, 403, '이용이 정지된 계정입니다');
   const b = await readJson(req, 16384), op = String(b.op || ''), now = Math.floor(Date.now() / 1000), meta = dbx.q.playerMeta.get(me);
   if (!meta || meta.banned) return fail(req, res, 403, '사용할 수 없습니다');
-  if ((op === 'write' || op === 'edit' || op === 'comment') && meta.muted_until && meta.muted_until > now) return fail(req, res, 403, '채팅·글쓰기가 금지된 상태입니다 (' + Math.ceil((meta.muted_until - now) / 60) + '분 남음)');
+  if ((op === 'write' || op === 'edit' || op === 'comment' || op === 'cedit') && meta.muted_until && meta.muted_until > now) return fail(req, res, 403, '채팅·글쓰기가 금지된 상태입니다 (' + Math.ceil((meta.muted_until - now) / 60) + '분 남음)');
   if (op === 'write' && limited('bdw:' + me, 1 / 30, 1)) return fail(req, res, 429, '글은 30초에 하나씩 작성할 수 있습니다');
   if (op === 'comment' && limited('bdc:' + me, 1 / 4, 3)) return fail(req, res, 429, '댓글을 너무 빨리 달고 있습니다');
   if (limited('bdp:' + me, 1, 10)) return fail(req, res, 429, '잠시 후 다시 시도');
@@ -1783,6 +1783,7 @@ routes['POST /api/board'] = async (req, res) => {
     else if (op === 'edit') id = board.edit(me, b, now);
     else if (op === 'del') board.del(me, b.id);
     else if (op === 'comment') id = board.comment(me, b.id, b.text, now, b.parent);
+    else if (op === 'cedit') { if (limited('bdc:' + me, 1 / 4, 3)) return fail(req, res, 429, '잠시 후 다시 시도'); id = board.cedit(me, b.cid, b.text, now); }
     else if (op === 'cdel') { board.cdel(me, b.cid); id = Number(b.id) | 0; }
     else if (op === 'status') id = board.setStatus(me, b.id, b.st);
     else if (op === 'mute') id = board.mute(me, b.id, !!b.on);

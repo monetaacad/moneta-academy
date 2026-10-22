@@ -73,6 +73,8 @@
 /* 글씨 다듬기: 어두운 화면은 회색조 안티앨리어싱, 밝은 화면은 굵기가 실제로 있는 글꼴로
    (본문 글꼴 고운돋움은 굵기가 하나뿐이라, 굵은 글씨를 브라우저가 흉내 내면 밝은 바탕에서 번져 보인다) */
 html { text-rendering: optimizeLegibility; -webkit-text-size-adjust: 100%; }
+/* 화면 폭보다 넓은 요소가 하나라도 생기면 모바일 브라우저가 페이지 전체를 축소 · 확장해 하단 안내도가 화면 밖으로 밀린다 → 가로 넘침을 잘라 막는다 */
+@media (max-width: 900px), (pointer: coarse) and (max-width: 1000px) { #app { overflow-x: clip; } }   /* html · body에 걸면 고정 머리말(sticky)이 풀려서 #app에만 */
 :root[data-skintone="dark"] body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 :root[data-skintone="light"] { --f-body: 'IBM Plex Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif; }
 :root[data-skintone="light"] body { -webkit-font-smoothing: auto; -moz-osx-font-smoothing: auto; font-weight: 450; }
@@ -1968,3 +1970,7 @@ table.sjtop .sjmeta { white-space: nowrap; }
 .rpcm { margin-left: auto; flex: none; }
 .rpcform { width: 100%; margin-top: 4px; }
 .rpgo { margin-top: 4px; }
+.rpcom.reply { margin-left: 18px; width: calc(100% - 18px); }
+.rpcform.reply { margin-left: 18px; width: calc(100% - 18px); }
+.rpto { flex: none; }
+.rpcom .cedform { flex: 1 1 100%; }
