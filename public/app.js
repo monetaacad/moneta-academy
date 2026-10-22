@@ -2036,7 +2036,7 @@
       if (S.rankTab === 'subj') return h + subjRankCard();
     }
     h += '<div class="grid g2"><div class="stack">';
-    h += '<div class="card">' + rkHead('전투력 순위', '장비 · 능력치 · 배운 주문을 모두 반영한 전투력입니다(주문은 장착 구성과 관계없이 배운 주문 중 가장 좋은 구성으로 계산). 물약 · 의식 같은 시간제 효과는 순위에서 제외합니다.', MR.power || S.rank) + rankList((W.topPower || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: fmt(r.power), sub: R.gradeLabel({ grade: r.grade }) + ' · Lv ' + r.lvl }; }), 'power', { rank: MR.power || S.rank, v: fmt(C().power), sub: '' }) + '</div>';
+    h += '<div class="card">' + rkHead('전투력 순위', '장비 · 능력치를 반영한 전투력입니다(주문은 포함하지 않음). 물약 · 의식 같은 시간제 효과는 순위에서 제외합니다.', MR.power || S.rank) + rankList((W.topPower || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: fmt(r.power), sub: R.gradeLabel({ grade: r.grade }) + ' · Lv ' + r.lvl }; }), 'power', { rank: MR.power || S.rank, v: fmt(C().power), sub: '' }) + '</div>';
     h += '<div class="card">' + rkHead('레벨 순위', '학생 레벨 순위입니다. 같은 레벨이면 원정 최고 단계, 그다음 전투력이 높은 학생이 앞섭니다. 이름 옆에 학년과 원정 최고 단계를 함께 표시합니다.', MR.lvl) + rankList((W.topLvl || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: 'Lv ' + r.lvl, sub: R.gradeLabel({ grade: r.grade }) + ' · 원정 ' + r.stage + '단계' }; }), 'lvl', { rank: MR.lvl, v: 'Lv ' + P.lvl, sub: R.gradeLabel({ grade: P.grade }) + ' · 원정 ' + P.maxStage + '단계' }) + '</div>';
     h += '<div class="card">' + rkHead('이번 주 월드 보스 피해 순위', '이번 주(월요일 KST 0시~) 월드 보스에 입힌 피해 합계입니다.', MR.dmg, P.wk.dmg > 0 ? '' : '이번 주 기록 없음') + rankList((W.topDmg || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: fmt(r.dmg) }; }), 'dmg', { rank: MR.dmg, v: fmt(P.wk.dmg) }) + '</div>';
     h += '</div><div class="stack">';
@@ -3731,7 +3731,7 @@
     },
     stone: function () { return '<b>' + dotImg('stone', 18) + '마석</b><p>장비 강화에 사용합니다. 지금 ' + fmt(S.P.res.stone) + '개.</p><p class="tt-src">얻는 법: 원정 중 가끔, 장비 분해, 반딧불 정령, 사역마 파견, 보스 처치, 출석, 매점 「마석 꾸러미」, 거래소<br>마석가루(지금 ' + fmt(S.P.res.dust || 0) + '): 장비를 분해하면 나오고, 재련에 사용합니다</p>'; },
     shard: function () { return '<b>' + dotImg('shard', 18) + '별조각</b><p>매점에서 환수의 알, 가방 확장 등을 삽니다. 지금 ' + fmt(S.P.res.shard) + '개.</p><p class="tt-src">얻는 법: 업적, 일일 목표, 출석, 보스 첫 처치, 기말시험, 결투제, 교수님 과제, 월드 보스, 기숙사 대항전</p>'; },
-    power: function () { var c = C(); return '<b>전투력</b><p>공격력·생명력·배운 주문을 합친 강함의 척도이고 랭킹 기준입니다. 주문은 지금 장착한 것과 관계없이 배운 주문 중 가장 좋은 구성으로 계산하므로, 주문을 바꿔 끼워도 전투력은 바뀌지 않습니다.</p><dl class="kv"><dt>초당 피해</dt><dd>' + fmt(c.totalDps) + '</dd><dt>생명력</dt><dd>' + fmt(c.hp) + '</dd></dl><p class="tt-src">올리는 법: 장비 교체·강화, 능력치 분배, 과목 레벨, 사역마, 연구</p>'; },
+    power: function () { var c = C(); return '<b>전투력</b><p>평타 공격 · 사역마 · 생명력 · 방어력을 합친 강함의 척도이고 랭킹 기준입니다. 주문은 전투력에 포함하지 않으며, 장착한 주문은 초당 피해에만 반영됩니다.</p><dl class="kv"><dt>초당 피해</dt><dd>' + fmt(c.totalDps) + '</dd><dt>생명력</dt><dd>' + fmt(c.hp) + '</dd></dl><p class="tt-src">올리는 법: 장비 교체·강화, 능력치 분배, 과목 레벨, 사역마, 연구</p>'; },
     buffall: function () { var t = now(), ks = Object.keys(S.P.buffs).filter(function (k) { return /^p_/.test(k) && S.P.buffs[k].end > t; }).sort(function (a, b) { return S.P.buffs[a].end - S.P.buffs[b].end; });
       return '<b>물약 효과 ' + ks.length + '개</b><dl class="kv">' + ks.map(function (k) { var b = S.P.buffs[k]; return '<dt><i class="bdot" style="background:' + esc(b.color || '#e8c36a') + '"></i> ' + esc(b.name) + '</dt><dd>' + left(b.end) + '</dd><dd class="tiny faint" style="grid-column:1/-1;margin-top:-2px">' + esc(R.effText(b.eff)) + '</dd>'; }).join('') + '</dl><p class="tiny faint">누르면 적용 중인 효과를 모두 봅니다</p>'; },
     buff: function (id) { var b = S.P.buffs[id]; if (!b) return ''; return '<b>' + esc(b.name) + '</b><p>' + esc(R.effText(b.eff)) + '</p><dl class="kv"><dt>남은 시간</dt><dd>' + left(b.end) + '</dd></dl><p class="tiny faint">누르면 적용 중인 효과를 모두 봅니다</p>'; }
@@ -5813,7 +5813,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102299;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102300;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
