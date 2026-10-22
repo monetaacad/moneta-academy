@@ -834,6 +834,7 @@ var DATA = (function () {
     { id: 'honor', name: '교수들의 기대주', stat: 'sGrades', n: 3, how: '기말시험 S 세 번' },
     { id: 'sstar5', name: '아카데미의 자랑', stat: 'sGrades', n: 5, how: '기말시험 S 다섯 번' },
     { id: 'summa', name: '별샘에 이름을 새긴 자', stat: 'sGrades', n: 7, how: '일곱 기말시험 모두 S' },
+    { id: 'top100', name: '수석 중의 수석', stat: 'exam100', n: 1, how: '기말시험 100점 한 번' },
     { id: 'loyal', name: '개근상', stat: 'streak', n: 30, how: '30일 연속 출석' },
     { id: 'loyal100', name: '1년 개근', stat: 'streak', n: 100, how: '100일 연속 출석' },
     { id: 'deep', name: '심연의 끝을 걷는 자', stat: 'maxStageAll', n: 101, how: '원정 101단계 도달' },
