@@ -2016,6 +2016,11 @@
       var st = i < P.duel.rank ? '<span class="tag ok">승리</span>' : i === P.duel.rank ? '<span class="tag br">다음 상대</span>' : '<span class="faint tiny">' + rv.stage + '단계</span>';
       return '<div class="row small" style="padding:2px 0;flex-wrap:nowrap"><span class="num faint" style="width:22px">' + (i + 1) + '</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap' + (i > P.duel.rank ? ';color:var(--faint)' : '') + '">' + (i <= P.duel.rank ? rv.name : '???') + '</span>' + st + '</div>';
     }).join('') + '</div></div></div>';
+    // 결투 준비: 무한의 탑처럼 같은 화면에서 전투 물약 · 장비 프리셋 · 장착 주문을 바꾼다
+    if (r) h += '<div class="card" style="margin-top:14px"><div class="row between"><h3>결투 준비</h3><span class="tiny faint">바꾼 뒤 위의 승산이 다시 계산됩니다</span></div>' +
+      '<div style="margin-top:8px">' + gearSetRow() + '</div>' +
+      '<div class="small" style="margin-top:12px">장착 주문 <span class="tiny faint">· 칸을 누르면 주문을 바꿉니다</span></div>' + spellBar(P) + spellSetBar(P) +
+      '<div class="small" style="margin-top:12px">전투 물약</div><div style="margin-top:6px">' + potBar(['atkPct', 'hpPct', 'defPct']) + '</div></div>';
     return h;
   };
 
@@ -4318,11 +4323,13 @@
     var rv = R.rival(S.P);
     act('duel').then(function (r) {
       if (!r) return;
-      replay({ title: '결투제 ' + r.k + '회전', sub: rv.name, enemy: { id: 'rv' + r.k, arch: ['wisp', 'beast', 'golem', 'eye', 'construct', 'book', 'blob'][r.k % 7], c1: '#c0a0e0', c2: '#3a2a5a', name: rv.name }, ev: r.ev, maxHp: r.maxHp, cc: r.cc }, function () {
-        Snd.play(r.win ? 'pass' : 'fail');
-        modal(mhead(r.win ? '승리!' : '패배', '결투제 ' + r.k + '회전 · ' + esc(r.rival)) + '<p style="font-style:italic;color:var(--ink2);margin-bottom:10px">“' + esc(r.win ? r.lose : r.hello) + '”</p>' +
+      // 전투 일지는 끝난 뒤에도 남겨 두고, 결과는 같은 창 아래에 붙인다 (확인을 눌러야 닫힘 · 무한의 탑과 같음)
+      replay({ title: '결투제 ' + r.k + '회전', sub: rv.name, enemy: { id: 'rv' + r.k, arch: ['wisp', 'beast', 'golem', 'eye', 'construct', 'book', 'blob'][r.k % 7], c1: '#c0a0e0', c2: '#3a2a5a', name: rv.name }, ev: r.ev, maxHp: r.maxHp, cc: r.cc, keep: true }, function () {
+        Snd.play(r.win ? 'pass' : 'fail'); render();
+        return '<h3 class="' + (r.win ? 'good' : 'bad') + '">' + (r.win ? '승리했습니다' : '패배했습니다') + ' <span class="small faint">· ' + esc(r.rival) + '</span></h3>' +
+          '<p style="font-style:italic;color:var(--ink2);margin:6px 0 8px">“' + esc(r.win ? r.lose : r.hello) + '”</p>' +
           (r.win ? '<p class="small">별조각 +' + r.reward.shard + (r.reward.first ? ' (첫 승리 보너스)' : '') + ', ' + MONEY(r.reward.gold, '+') + '</p>' : '<p class="small muted">상대 체력이 ' + Math.round(r.mHp * 100) + '% 남았습니다. 1시간 뒤 다시 도전할 수 있습니다.</p>') +
-          '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>');
+          '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>';
       });
     });
   };
@@ -5368,7 +5375,7 @@
     var b = S.bd; b.at = Date.now(); if (!API.board) return;
     API.board({ tag: b.tag, q: b.q, qt: b.q ? b.qt : '', page: b.page, hd: bdHideDone() ? 1 : '', sp: S.bdSpace === 'board' ? '' : S.bdSpace, st: S.bdSpace === 'idea' ? b.st || '' : '', sort: b.sort || '' }).then(function (j) { if (j.error) { b.err = j.error; } else { b.err = ''; b.data = j; } if (bdView() && !S.modal && b.mode === 'list') render(); });
   }
-  // 건의 처리 상태 (학생회장이 붙인다) · 해결 완료 · 반영 안 함 숨기기(이 기기에 기억)
+  // 건의 처리 상태 (학생회장이 붙인다) · 해결 완료 · 반영 안 함 · 재현 안 됨 숨기기(이 기기에 기억)
   var BD_ST = { review: '검토 중', wip: '확인 중', done: '해결 완료', no: '반영 안 함', norepro: '재현 안 됨' };
   function bdSt(st) { return BD_ST[st] ? '<span class="btag st-' + st + '">' + BD_ST[st] + '</span>' : ''; }
   function bdHideDone() { try { return localStorage.getItem('arc_bdhd') === '1'; } catch (e) { return !!S.bdHd; } }
@@ -5391,7 +5398,7 @@
     if (!d || Date.now() - b.at > 30000) { if (Date.now() - b.at > 1500) loadBoard(); }
     var op = d && d.op, filters = idea ? [['', '전체'], ['mine', '내 건의']] : [['', '전체']].concat(D.BOARD_TAGS.filter(function (t) { return !BD_OWN[t.id]; }).map(function (t) { return [t.id, t.name]; })).concat([['mine', '내 글'], ['cmt', '내 댓글']]);
     if (op) filters.push(['priv', '관리자만 보기' + (d.privN ? ' ' + d.privN : '')]);
-    h += '<div class="card bdtop"><div class="row"><div class="filters">' + filters.map(function (f) { return '<button class="btn sm ghost' + (b.tag === f[0] ? ' on' : '') + (f[0] === 'priv' ? ' bdpriv' : '') + '" data-act="bdtag" data-a="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '</div><span class="spacer"></span>' + (idea ? '' : bdSortSel()) + '<label class="tog tiny" style="margin-right:6px"><input type="checkbox" data-act="bdhd"' + (bdHideDone() ? ' checked' : '') + '> 해결 완료 · 반영 안 함 숨기기</label><button class="btn sm primary" data-act="bdwrite">글쓰기</button></div>' +
+    h += '<div class="card bdtop"><div class="row"><div class="filters">' + filters.map(function (f) { return '<button class="btn sm ghost' + (b.tag === f[0] ? ' on' : '') + (f[0] === 'priv' ? ' bdpriv' : '') + '" data-act="bdtag" data-a="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '</div><span class="spacer"></span>' + (idea ? '' : bdSortSel()) + '<label class="tog tiny" style="margin-right:6px"><input type="checkbox" data-act="bdhd"' + (bdHideDone() ? ' checked' : '') + '> 해결 완료 · 반영 안 함 · 재현 안 됨 숨기기</label><button class="btn sm primary" data-act="bdwrite">글쓰기</button></div>' +
       '<div class="row bdsearch"><select id="bd-qt" aria-label="검색 범위" style="width:auto">' + [['all', '제목+내용'], ['title', '제목'], ['author', '작성자']].map(function (o) { return '<option value="' + o[0] + '"' + (b.qt === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select><input id="bd-q" maxlength="30" placeholder="검색어" value="' + esc(b.q) + '"><button class="btn sm" data-act="bdsearch">검색</button>' + (b.q ? '<button class="btn sm ghost" data-act="bdclear">검색 지우기</button>' : '') + '</div>' +
       (b.tag === 'cmt' ? '<p class="tiny faint" style="margin-top:6px">내가 댓글 · 답글을 단 글입니다.</p>' : b.tag === 'mine' ? '<p class="tiny faint" style="margin-top:6px">내가 작성한 글입니다. 「관리자만 보기」로 남긴 문의와 운영진 답변도 여기서 봅니다.</p>' : b.tag === 'priv' ? '<p class="tiny gold" style="margin-top:6px">운영진에게만 보이는 문의·건의입니다. 일반 목록에는 나오지 않습니다.</p>' : '') + '</div>';
     if (idea) h += '<div class="filters bdstf" style="margin:-4px 0 10px">' + IDEA_ST.map(function (x) { return '<button class="btn sm ghost' + ((b.st || '') === x[0] ? ' on' : '') + '" data-act="bdstf" data-a="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div>';   // 처리 상태로 보기
@@ -5943,7 +5950,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102324;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102328;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
