@@ -201,6 +201,19 @@
     if (j.noteN !== undefined) { S.noteN = j.noteN; setTimeout(updateNoteBadge, 0); }
     if (j.guild !== undefined && j.guild !== S.guild) { S.guild = j.guild; S.gdAt = 0; if ($('#chatdock')) renderDock(); }
   }
+  // 허수아비(딜 측정): 장비 · 주문을 바꾼 뒤 바로 실제 피해를 확인한다 (보상 · 대기 없음)
+  ACT.dummy = function (boss) {
+    act('dummy', { boss: boss === '1' }).then(function (r) {
+      if (!r) return; var tot = r.dealt || 1, pc = function (v) { return Math.round((v || 0) / tot * 100) + '%'; };
+      var cs = Object.keys(r.casts).map(function (id) { var sp = R.SPELL[id]; return (sp ? sp.name : id) + ' ' + r.casts[id] + '회'; }).join(' · ');
+      modal(mhead('허수아비', r.t + '초 동안 반격하지 않는 허수아비와 싸운 결과입니다' + (r.boss ? ' (보스 피해 적용)' : '')) +
+        '<dl class="kv"><dt>초당 피해</dt><dd><b class="num gold">' + fmt(r.dps) + '</b> <span class="tiny faint">· 계산상 ' + fmt(r.est) + '</span></dd><dt>' + r.t + '초 총 피해</dt><dd class="num">' + fmt(r.dealt) + '</dd>' +
+        '<dt>피해 비중</dt><dd>평타 ' + pc(r.part.a) + ' · 주문 ' + pc(r.part.p) + (r.part.f ? ' · 사역마 ' + pc(r.part.f) : '') + '</dd>' +
+        '<dt>치명타</dt><dd>' + r.crits + ' / ' + r.hits + '회</dd>' + (cs ? '<dt>사용한 주문</dt><dd class="small">' + esc(cs) + '</dd>' : '') + '</dl>' +
+        '<p class="tiny faint" style="margin-top:8px">치명타 운은 매번 같게 맞추므로, 장비 · 주문 · 능력치를 바꾼 뒤 다시 재면 바뀐 만큼만 차이가 납니다. 보상과 대기 시간은 없으며 기록에도 남지 않습니다.</p>' +
+        '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:12px"><button class="btn ghost" data-act="dummy" data-a="' + (r.boss ? '' : '1') + '">' + (r.boss ? '일반 상대로 다시' : '보스 상대로') + '</button><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>');
+    });
+  };
   function act(type, a) {
     if (S.busy && type !== 'inboxAck') return Promise.resolve(null);
     S.busy = true;
@@ -1966,7 +1979,7 @@
     h += '<div class="grid g2" style="margin-top:16px"><div class="card"><h3>지역</h3><div class="zonelist" style="margin-top:8px">' + D.ZONES.map(function (zz, zi) {
       var to = zz.abyss ? '∞' : D.ZONES[zi + 1].from - 1, un = P.maxStage >= zz.from;
       return '<div class="zone' + (un ? '' : ' lockz') + '"><div style="min-width:0"><div class="small">' + zz.name + '</div><div class="tiny faint">재료: ' + D.MATS[zz.mat].name + '</div></div><span class="zr">' + zz.from + '–' + to + '</span></div>';
-    }).join('') + '</div></div><div class="card"><div class="row between"><h3>전투 능력</h3><button class="btn sm ghost" data-act="fullstat">전체 능력치</button></div><dl class="kv" style="margin-top:6px"><dt>초당 피해</dt><dd>' + fmt(c.totalDps) + '</dd><dt>' + statTerm('물리 공격력') + '</dt><dd>' + fmt(c.patk) + (S.P.cls === 'knight' ? ' <span class="tiny faint">평타</span>' : '') + '</dd><dt' + (c.skill === 1 ? ' class="kvz"' : '') + '>' + statTerm('기술 위력') + '</dt><dd' + (c.skill === 1 ? ' class="kvz"' : '') + '>×' + c.skill.toFixed(2) + '</dd><dt>' + statTerm('주문 공격력') + '</dt><dd>' + fmt(c.matk) + (S.P.cls !== 'knight' ? ' <span class="tiny faint">평타</span>' : '') + '</dd><dt' + (c.spell === 1 ? ' class="kvz"' : '') + '>' + statTerm('주문 위력') + '</dt><dd' + (c.spell === 1 ? ' class="kvz"' : '') + '>×' + c.spell.toFixed(2) + '</dd><dt>' + statTerm('공격 속도') + '</dt><dd>' + c.aps.toFixed(2) + '/초</dd><dt>치명타</dt><dd>' + pct(c.critC) + ' · ×' + c.critD.toFixed(2) + '</dd><dt>생명력 · 방어력</dt><dd>' + fmt(c.hp) + ' · ' + fmt(c.def) + '</dd><dt>사역마</dt><dd>' + (P.fam.act ? R.FAM[P.fam.act].name : '없음') + '</dd></dl><p class="tiny faint" style="margin-top:8px">원정은 출정 시점의 능력치로 결과가 정해집니다. 장비를 바꾸면 다음 원정부터 반영됩니다.</p></div></div>';
+    }).join('') + '</div></div><div class="card"><div class="row between"><h3>전투 능력</h3><span class="row" style="gap:6px"><button class="btn sm ghost" data-act="dummy" title="반격하지 않는 허수아비와 싸워 실제 피해를 잽니다 (보상 · 대기 없음)">허수아비</button><button class="btn sm ghost" data-act="fullstat">전체 능력치</button></span></div><dl class="kv" style="margin-top:6px"><dt>초당 피해</dt><dd>' + fmt(c.totalDps) + '</dd><dt>' + statTerm('물리 공격력') + '</dt><dd>' + fmt(c.patk) + (S.P.cls === 'knight' ? ' <span class="tiny faint">평타</span>' : '') + '</dd><dt' + (c.skill === 1 ? ' class="kvz"' : '') + '>' + statTerm('기술 위력') + '</dt><dd' + (c.skill === 1 ? ' class="kvz"' : '') + '>×' + c.skill.toFixed(2) + '</dd><dt>' + statTerm('주문 공격력') + '</dt><dd>' + fmt(c.matk) + (S.P.cls !== 'knight' ? ' <span class="tiny faint">평타</span>' : '') + '</dd><dt' + (c.spell === 1 ? ' class="kvz"' : '') + '>' + statTerm('주문 위력') + '</dt><dd' + (c.spell === 1 ? ' class="kvz"' : '') + '>×' + c.spell.toFixed(2) + '</dd><dt>' + statTerm('공격 속도') + '</dt><dd>' + c.aps.toFixed(2) + '/초</dd><dt>치명타</dt><dd>' + pct(c.critC) + ' · ×' + c.critD.toFixed(2) + '</dd><dt>생명력 · 방어력</dt><dd>' + fmt(c.hp) + ' · ' + fmt(c.def) + '</dd><dt>사역마</dt><dd>' + (P.fam.act ? R.FAM[P.fam.act].name : '없음') + '</dd></dl><p class="tiny faint" style="margin-top:8px">원정은 출정 시점의 능력치로 결과가 정해집니다. 장비를 바꾸면 다음 원정부터 반영됩니다.</p></div></div>';
     return h;
   };
 
@@ -5930,7 +5943,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102319;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102320;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
