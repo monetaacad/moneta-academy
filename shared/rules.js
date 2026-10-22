@@ -607,7 +607,12 @@
     var critMul = 1 + c.critC * (c.critD - 1);
     c.dps = c.atk * c.aps * critMul;
     c.spellDps = 0;
-    var ns = R.spellSlots(P);
+    var ns = R.spellSlots(P), baseDps = c.dps;
+    // 전투력용 주문 몫: 지금 장착한 주문이 아니라 배운 주문 중 가장 좋은 구성(칸 수만큼)으로 어림 → 주문을 바꿔 끼워도 전투력은 그대로
+    var spVal = []; for (var sid0 in SPELL) { var s0 = SPELL[sid0]; if (!R.spellUnlocked(P, sid0)) continue;
+      if (s0.type === 'dmg' || s0.type === 'stun') spVal.push(R.spellHit(c, s0) * s0.mult * spellLvMult(P, s0) * critMul / (s0.cd * (1 - c.cdr)));
+      else if (s0.type === 'haste' || s0.type === 'amp') spVal.push(baseDps * s0.dur / s0.cd); }
+    spVal.sort(function (x, y) { return y - x; }); var powSpell = 0; for (var q0 = 0; q0 < Math.min(ns, spVal.length); q0++) powSpell += spVal[q0];
     for (var i = 0; i < ns; i++) {
       var sp = SPELL[P.spells[i]]; if (!sp || !R.spellUnlocked(P, sp.id)) continue;
       if (sp.type === 'dmg' || sp.type === 'stun') c.spellDps += R.spellHit(c, sp) * sp.mult * spellLvMult(P, sp) * critMul / (sp.cd * (1 - c.cdr));
@@ -615,7 +620,7 @@
     }
     c.famDps = P.fam.act && P.fam.own[P.fam.act] ? c.atk * famAtkMult(P) / 1.5 : 0;
     c.totalDps = c.dps + c.spellDps + c.famDps;
-    c.power = Math.floor(c.totalDps * 3 + c.hp * 0.6 + c.def * 4);
+    c.power = Math.floor((baseDps + powSpell + c.famDps) * 3 + c.hp * 0.6 + c.def * 4);   // 초당 피해(totalDps)는 실제 장착 주문 그대로
     return c;
   }
   R.calc = calc;
