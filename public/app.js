@@ -210,8 +210,8 @@
         '<dl class="kv"><dt>초당 피해</dt><dd><b class="num gold">' + fmt(r.dps) + '</b> <span class="tiny faint">· 계산상 ' + fmt(r.est) + '</span></dd><dt>' + r.t + '초 총 피해</dt><dd class="num">' + fmt(r.dealt) + '</dd>' +
         '<dt>피해 비중</dt><dd>평타 ' + pc(r.part.a) + ' · 주문 ' + pc(r.part.p) + (r.part.f ? ' · 사역마 ' + pc(r.part.f) : '') + '</dd>' +
         '<dt>치명타</dt><dd>' + r.crits + ' / ' + r.hits + '회</dd>' + (cs ? '<dt>사용한 주문</dt><dd class="small">' + esc(cs) + '</dd>' : '') + '</dl>' +
-        '<p class="tiny faint" style="margin-top:8px">치명타 · 주문 순서에 따라 결과가 조금씩 달라집니다. 보상과 대기 시간은 없으며 기록에도 남지 않습니다.</p>' +
-        '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:12px"><button class="btn ghost" data-act="dummy" data-a="' + (r.boss ? '' : '1') + '">' + (r.boss ? '일반 상대로 다시' : '보스 상대로') + '</button><button class="btn" data-act="dummy" data-a="' + (r.boss ? '1' : '') + '">다시 측정</button><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>');
+        '<p class="tiny faint" style="margin-top:8px">치명타 운은 매번 같게 맞추므로, 장비 · 주문 · 능력치를 바꾼 뒤 다시 재면 바뀐 만큼만 차이가 납니다. 보상과 대기 시간은 없으며 기록에도 남지 않습니다.</p>' +
+        '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:12px"><button class="btn ghost" data-act="dummy" data-a="' + (r.boss ? '' : '1') + '">' + (r.boss ? '일반 상대로 다시' : '보스 상대로') + '</button><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>');
     });
   };
   function act(type, a) {
