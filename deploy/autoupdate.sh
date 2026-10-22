@@ -10,5 +10,7 @@ export HOME=/root
 cd /opt/moneta
 git fetch -q origin main
 [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] && exit 0
+# 켜지지 않아 되돌린 커밋이면 다시 받지 않는다 (main에 새 커밋이 올라오면 다시 시도)
+[ -f /var/lib/moneta-bad-commit ] && [ "$(cat /var/lib/moneta-bad-commit)" = "$(git rev-parse origin/main)" ] && exit 0
 echo "▶ 새 커밋 발견: $(git log -1 --format='%h %s' origin/main)"
 exec sh /opt/moneta/deploy/update.sh
