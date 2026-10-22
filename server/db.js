@@ -139,7 +139,7 @@ function open(dir) {
     CREATE INDEX IF NOT EXISTS market_exp ON market(status, expires);
   `);
   // 이전 버전 DB에 새 열 추가
-  { const bc = db.prepare(`PRAGMA table_info(board_comments)`).all().map((c) => c.name); if (bc.length && bc.indexOf('parent') < 0) db.exec(`ALTER TABLE board_comments ADD COLUMN parent INTEGER NOT NULL DEFAULT 0`); }
+  { const bc = db.prepare(`PRAGMA table_info(board_comments)`).all().map((c) => c.name); if (bc.length && bc.indexOf('parent') < 0) db.exec(`ALTER TABLE board_comments ADD COLUMN parent INTEGER NOT NULL DEFAULT 0`); if (bc.length && bc.indexOf('edited') < 0) db.exec(`ALTER TABLE board_comments ADD COLUMN edited INTEGER NOT NULL DEFAULT 0`); }
   const cols = db.prepare(`PRAGMA table_info(players)`).all().map((c) => c.name);
   if (cols.indexOf('guest') < 0) db.exec(`ALTER TABLE players ADD COLUMN guest INTEGER NOT NULL DEFAULT 0`);
   if (cols.indexOf('invite') < 0) db.exec(`ALTER TABLE players ADD COLUMN invite TEXT NOT NULL DEFAULT ''`);
@@ -211,7 +211,8 @@ function open(dir) {
       body TEXT NOT NULL,                  -- 암호화
       created INTEGER NOT NULL,
       deleted INTEGER NOT NULL DEFAULT 0,
-      parent INTEGER NOT NULL DEFAULT 0    -- 답글이면 원래 댓글 id
+      parent INTEGER NOT NULL DEFAULT 0,   -- 답글이면 원래 댓글 id
+      edited INTEGER NOT NULL DEFAULT 0    -- 마지막으로 고친 때
     );
     CREATE INDEX IF NOT EXISTS board_com ON board_comments(post, id);
     CREATE TABLE IF NOT EXISTS board_mute (post INTEGER NOT NULL, pid TEXT NOT NULL, PRIMARY KEY (post, pid));   -- 이 글의 알림 받지 않기
@@ -641,6 +642,7 @@ function open(dir) {
     bdComMineN: db.prepare(`SELECT COUNT(*) AS n FROM board_comments WHERE post = ? AND pid = ? AND deleted = 0`),
     bdComLast: db.prepare(`SELECT * FROM (SELECT * FROM board_comments WHERE post = ? AND deleted = 0 ORDER BY id DESC LIMIT ?) ORDER BY id ASC`),
     bdComInsert: db.prepare(`INSERT INTO board_comments (post, pid, op, body, created, parent) VALUES (?, ?, ?, ?, ?, ?)`),
+    bdComEdit: db.prepare(`UPDATE board_comments SET body = ?, edited = ? WHERE id = ?`),
     bdComDel: db.prepare(`UPDATE board_comments SET deleted = 1 WHERE id = ?`),
     bdTodayBy: db.prepare(`SELECT COUNT(*) AS n FROM board_posts WHERE pid = ? AND created > ?`),
     getKV: db.prepare(`SELECT v FROM kv WHERE k = ?`),

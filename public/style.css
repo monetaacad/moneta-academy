@@ -1971,3 +1971,4 @@ table.sjtop .sjmeta { white-space: nowrap; }
 .rpcom.reply { margin-left: 18px; width: calc(100% - 18px); }
 .rpcform.reply { margin-left: 18px; width: calc(100% - 18px); }
 .rpto { flex: none; }
+.rpcom .cedform { flex: 1 1 100%; }
