@@ -5922,7 +5922,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102319;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102320;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
@@ -5966,8 +5966,14 @@
   }
   // 연결이 끊겼는데 예고된 점검 시각이면 서버가 내려간 것으로 보고 점검 화면을 띄운다
   function downHint() { var n = SB.notice; if (n && !n.on && realNow() >= n.start - 30) enterMaint(Object.assign({}, n, { on: true })); }
-  // 점검 안내 글: http(s) 주소는 누를 수 있는 링크로 (나머지는 그대로 이스케이프)
-  function linkMsg(s) { return esc(s).replace(/https?:\/\/(?:(?!&quot;|&#39;|&lt;|&gt;)\S)+/g, function (u) { var t = u.match(/[.,)!?]+$/), tail = t ? t[0] : ''; u = u.slice(0, u.length - tail.length); return '<a href="' + u + '" target="_blank" rel="noopener noreferrer">' + u + '</a>' + tail; }); }
+  // 점검 안내 글: [글자](https://주소)는 그 글자에, 그냥 쓴 http(s) 주소는 주소 그대로 링크로 (나머지는 그대로 이스케이프)
+  function linkMsg(s) {
+    var a = function (u, t) { return '<a href="' + u + '" target="_blank" rel="noopener noreferrer">' + t + '</a>'; };
+    return esc(s).replace(/\[([^\]\n]+)\]\((https?:\/\/(?:(?!&quot;|&#39;|&lt;|&gt;)[^\s)])+)\)|https?:\/\/(?:(?!&quot;|&#39;|&lt;|&gt;)\S)+/g, function (m, t, u) {
+      if (t) return a(u, t);
+      var e = m.match(/[.,)!?]+$/), tail = e ? e[0] : ''; m = m.slice(0, m.length - tail.length); return a(m, m) + tail;
+    });
+  }
   function maintHtml(m) {
     var t = realNow(), until = m.until && m.until > t;
     return '<div class="mcard"><img src="' + LOGO_URL + '" width="72" height="72" alt=""><h1>아카데미 점검 중</h1>' +
