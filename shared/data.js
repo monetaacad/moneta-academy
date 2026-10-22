@@ -505,7 +505,7 @@ var DATA = (function () {
   /* ───────── 사역마 ───────── */
   D.FAMILIARS = [
     { id: 'inkbat', name: '잉크박쥐', r: 0, bonus: 'goldPct', base: 0.05, desc: '잉크병 속에서 잠드는 작은 박쥐. 반짝이는 동전을 좋아한다.', c1: '#4a5a9a' },
-    { id: 'candlelizard', name: '촛불도마뱀', r: 0, bonus: 'cdr', base: 0.015, desc: '꼬리 끝에 영원히 꺼지지 않는 촛불을 단 도마뱀. 촛불이 흔들리면 주문을 다시 외울 때가 되었다는 뜻이다.', c1: '#e09a4a' },
+    { id: 'candlelizard', name: '촛불도마뱀', r: 0, bonus: 'atkPct', base: 0.04, desc: '꼬리 끝에 영원히 꺼지지 않는 촛불을 단 도마뱀.', c1: '#e09a4a' },
     { id: 'mossturtle', name: '이끼거북', r: 0, bonus: 'hpPct', base: 0.05, desc: '등 위에 작은 정원을 키우는 거북. 백 년째 같은 꽃이 핀다.', c1: '#6a9a5a' },
     { id: 'moonrabbit', name: '달토끼', r: 1, bonus: 'lectureSpd', base: 0.05, desc: '보름달이 뜨면 강의 노트를 대신 정리해 준다.', c1: '#e0e0f0' },
     { id: 'crysowl', name: '수정올빼미', r: 1, bonus: 'knowPct', base: 0.06, desc: '눈이 수정으로 된 올빼미. 한 번 본 문장은 잊지 않는다.', c1: '#9ad0f0' },
