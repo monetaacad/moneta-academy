@@ -795,6 +795,7 @@
         updateUnread();
       },
       ritual: function (d) { if (S.rit) { S.rit.n = d.n; S.rit.goal = d.goal; if (d.done && !S.rit.done) { S.rit.done = d.done; sync(true); } } if (S.view === 'home' && !S.modal) render(); },
+      mk: function () { if (S.view !== 'market' || !S.mk) return; var ae = document.activeElement; if (S.modal || (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName))) { S.mk.at = 0; return; } loadMarket(); },   // 거래소 목록이 바뀜 (입력 중이면 다음 확인 때)
       auction: function () { if (S.view === 'auction' && !S.modal && Date.now() - (S.aucAt || 0) > 1500) loadAuction(); },
       aucsoon: function (d) { toast('떠돌이 상인 · 마감 5분 전', (d.name || '') + (d.top ? ' — 지금 가장 높은 값을 부른 상태입니다. 막판에 밀리지 않는지 확인하세요' : ' — 지금 가장 높은 값은 ' + fmt(d.price || 0) + ' ' + CUR + '입니다. 다시 값을 부를 수 있습니다'), 6000); if (S.view === 'auction') loadAuction(); },
       outbid: function (d) { toast('떠돌이 상인', (d.name || '') + ' — 더 높은 입찰이 나와 맡겨 둔 ' + CUR + '를 돌려받았습니다', 4000); sync(true); if (S.view === 'auction') loadAuction(); },
@@ -3486,7 +3487,7 @@
     else if (m.tab === 'buy') {
       h += '<div class="card mkfilt" style="margin-bottom:10px"><div class="row"><div class="filters"><button class="btn sm ghost' + (m.kind === 'item' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="item">장비</button><button class="btn sm ghost' + (m.kind === 'mat' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="mat">재료</button><button class="btn sm ghost' + (m.kind === 'pot' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="pot">물약</button><button class="btn sm ghost' + (m.kind === 'badge' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="badge">휘장</button><button class="btn sm ghost' + (m.kind === 'tok' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="tok">소지품</button></div><span class="spacer"></span>' + (m.kind === 'item' ? mkWearTog() : '') +
         '<select id="mk-sort" data-act="mksel" data-a="sort" style="width:auto"><option value="price"' + (m.sort === 'price' ? ' selected' : '') + '>' + (m.kind !== 'item' ? '개당 가격 낮은 순' : '가격 낮은 순') + '</option><option value="high"' + (m.sort === 'high' ? ' selected' : '') + '>' + (m.kind !== 'item' ? '개당 가격 높은 순' : '가격 높은 순') + '</option><option value="new"' + (m.sort === 'new' ? ' selected' : '') + '>새로 올라온 순</option>' + (m.kind === 'item' ? '<option value="lvl"' + (m.sort === 'lvl' ? ' selected' : '') + '>장비 레벨 높은 순</option><option value="pow"' + (m.sort === 'pow' ? ' selected' : '') + '>전투력 상승순</option>' : '') + '</select></div>';
-      if (m.kind === 'item') h += '<div class="filters" style="margin-top:6px">' + MK_SLOT_F.map(function (f) { return '<button class="btn sm ghost' + (m.slot === f[0] ? ' on' : '') + '" data-act="mkf" data-a="slot" data-b="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '<span class="fsep"></span>' +
+      if (m.kind === 'item') h += '<div class="filters" style="margin-top:6px">' + MK_SLOT_F.map(function (f) { return '<button class="btn sm ghost' + (m.slot === f[0] ? ' on' : '') + '" data-act="mkf" data-a="slot" data-b="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '</div><div class="filters" style="margin-top:6px">' +
         [['', '모든 등급', 'inherit']].concat(D.RARITY.map(function (r) { return [String(r.id), r.name, r.color]; })).map(function (f) { return '<button class="btn sm ghost' + (String(m.r) === f[0] ? ' on' : '') + '" data-act="mkf" data-a="r" data-b="' + f[0] + '" style="color:' + f[2] + '">' + f[1] + '</button>'; }).join('') + '</div>' +
         mkAffRow(m) +
         '<div class="row" style="margin-top:6px"><input id="mk-q" maxlength="20" placeholder="이름 검색" value="' + esc(m.q) + '" style="flex:1;min-width:120px"><button class="btn sm" data-act="mkq">검색</button></div>';
@@ -5860,7 +5861,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102314;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102315;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
@@ -5986,8 +5987,8 @@
     if (S.auc && now() >= (S.auc.active ? S.auc.end : S.auc.start) + 1 && n - S.lastSync > 5000) sync(true);
     if (n - S.lastSync > 120000) sync();
     if (S.view === 'world' && n - S.lastWorld > 60000) refreshWorld();
-    // 거래소: 보고 있는 동안 15초마다 목록을 다시 받는다 (입력 중이거나 창이 떠 있으면 건너뜀)
-    if (S.view === 'market' && S.mk && !S.modal && n - (S.mk.at || 0) > 15000) { var ae = document.activeElement; if (!(ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName))) loadMarket(); }
+    // 거래소: 목록이 바뀌면 서버가 알려 준다(mk). 놓친 경우를 위해 60초마다 한 번 더 받는다 (입력 중이거나 창이 떠 있으면 건너뜀)
+    if (S.view === 'market' && S.mk && !S.modal && n - (S.mk.at || 0) > 60000) { var ae = document.activeElement; if (!(ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName))) loadMarket(); }
     if (n - liveT > 1000) { liveT = n; updateBadges(); updateExpLogs(); erTick(); }
     if (S.twMine || S.twSolo || S.view === 'tower') twTick();
   }
