@@ -505,7 +505,7 @@ var DATA = (function () {
   /* ───────── 사역마 ───────── */
   D.FAMILIARS = [
     { id: 'inkbat', name: '잉크박쥐', r: 0, bonus: 'goldPct', base: 0.05, desc: '잉크병 속에서 잠드는 작은 박쥐. 반짝이는 동전을 좋아한다.', c1: '#4a5a9a' },
-    { id: 'candlelizard', name: '촛불도마뱀', r: 0, bonus: 'atkPct', base: 0.04, desc: '꼬리 끝에 영원히 꺼지지 않는 촛불을 단 도마뱀.', c1: '#e09a4a' },
+    { id: 'candlelizard', name: '촛불도마뱀', r: 0, bonus: 'cdr', base: 0.015, desc: '꼬리 끝에 영원히 꺼지지 않는 촛불을 단 도마뱀. 촛불이 흔들리면 주문을 다시 외울 때가 되었다는 뜻이다.', c1: '#e09a4a' },
     { id: 'mossturtle', name: '이끼거북', r: 0, bonus: 'hpPct', base: 0.05, desc: '등 위에 작은 정원을 키우는 거북. 백 년째 같은 꽃이 핀다.', c1: '#6a9a5a' },
     { id: 'moonrabbit', name: '달토끼', r: 1, bonus: 'lectureSpd', base: 0.05, desc: '보름달이 뜨면 강의 노트를 대신 정리해 준다.', c1: '#e0e0f0' },
     { id: 'crysowl', name: '수정올빼미', r: 1, bonus: 'knowPct', base: 0.06, desc: '눈이 수정으로 된 올빼미. 한 번 본 문장은 잊지 않는다.', c1: '#9ad0f0' },
@@ -513,15 +513,15 @@ var DATA = (function () {
     { id: 'ashfox', name: '잿빛여우', r: 2, bonus: 'dropPct', base: 0.06, desc: '황야에서 온 여우. 숨겨진 보물 냄새를 맡는다.', c1: '#b0a8a0' },
     { id: 'dreammoth', name: '꿈나방', r: 2, bonus: 'offlineEff', base: 0.06, desc: '잠든 주인의 꿈속에서도 공부를 이어 간다. (꿈길 보상 증가)', c1: '#c0a0e0' },
     { id: 'clockcat', name: '태엽 고양이', r: 2, bonus: 'critC', base: 0.025, desc: '정확히 세 시 십 분마다 하품한다. 사냥은 그보다 정확하다.', c1: '#d0b070' },
-    { id: 'shadowcrow', name: '그림자까마귀', r: 3, bonus: 'critD', base: 0.18, desc: '주인의 그림자 속에 사는 까마귀. 적의 약점을 속삭인다.', c1: '#3a3450' },
+    { id: 'shadowcrow', name: '그림자까마귀', r: 3, bonus: 'critD', base: 0.12, desc: '주인의 그림자 속에 사는 까마귀. 적의 약점을 속삭인다.', c1: '#3a3450' },
     { id: 'starwhale', name: '새끼 별고래', r: 3, bonus: 'manaPct', base: 0.15, desc: '구름바다를 헤엄치는 별고래의 새끼. 숨을 쉴 때마다 마나가 흩날린다.', c1: '#6a8aff' },
     { id: 'starwyrm', name: '작은 성룡', r: 3, bonus: 'atkPct', base: 0.12, desc: '별샘에서 태어난다는 용의 새끼. 아직은 손바닥만 하다.', c1: '#ff9a6a' },
     { id: 'acornmouse', name: '도토리쥐', r: 0, bonus: 'defPct', base: 0.04, desc: '볼주머니에 도토리를 가득 채우고 다니는 생쥐. 위험하면 도토리 껍데기 속에 쏙 숨는다.', c1: '#a8805a' },
-    { id: 'lotusfrog', name: '연잎개구리', r: 0, bonus: 'manaPct', base: 0.06, desc: '연잎 위에서만 잠드는 작은 개구리. 울음소리마다 연잎에 마나 방울이 맺힌다.', c1: '#7ac8a8' },
+    { id: 'lotusfrog', name: '연잎개구리', r: 0, bonus: 'hatchSpd', base: 0.06, desc: '연잎 위에서만 잠드는 작은 개구리. 알 곁에 앉아 노래를 불러 주면 알이 더 빨리 깨어난다.', c1: '#7ac8a8' },
     { id: 'snowpup', name: '눈송이 강아지', r: 1, bonus: 'dispPct', base: 0.06, desc: '갓 내린 눈처럼 온몸이 새하얀 강아지. 주인의 발소리를 누구보다 먼저 알아채고 꼬리를 흔든다.', c1: '#f4f2ec' },
-    { id: 'herbhog', name: '허브고슴도치', r: 2, bonus: 'brewSpd', base: 0.08, desc: '가시마다 말린 허브를 꽂고 다니는 고슴도치. 솥 냄새만 맡아도 무엇이 빠졌는지 안다.', c1: '#8aa860' },
+    { id: 'herbhog', name: '허브고슴도치', r: 2, bonus: 'brewSpd', base: 0.05, desc: '가시마다 말린 허브를 꽂고 다니는 고슴도치. 솥 냄새만 맡아도 무엇이 빠졌는지 안다.', c1: '#8aa860' },
     { id: 'moondeer', name: '달빛사슴', r: 2, bonus: 'bossDmg', base: 0.06, desc: '뿔 끝에 달빛이 고여 은은하게 빛나는 어린 사슴. 큰 적 앞에서도 물러서지 않는다.', c1: '#c8d0f0' },
-    { id: 'glowbird', name: '노을불새', r: 3, bonus: 'hpPct', base: 0.12, desc: '해가 질 무렵에만 깃털이 노을빛으로 타오르는 불새의 새끼. 다친 주인 곁을 떠나지 않는다.', c1: '#ff9a5a' }
+    { id: 'glowbird', name: '노을불새', r: 3, bonus: 'leech', base: 0.012, desc: '해가 질 무렵에만 깃털이 노을빛으로 타오르는 불새의 새끼. 주인이 다치면 따뜻한 깃털로 상처를 감싼다.', c1: '#ff9a5a' }
   ];
   D.FAM_RARITY = [
     { name: '평범', color: '#b9bccb', w: 60 },
