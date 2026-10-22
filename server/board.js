@@ -53,7 +53,8 @@ function create(dbx, sec, opts) {
     const out = (p) => memo ? Object.assign(brief(p, me), { body: p.body, canDel: p.pid === me || op, coms: dbx.q.bdComLast.all(p.id, LIM.MEMO_COMS).map((c) => comOut(c, me)) }) : brief(p, me);
     return { list: arr.slice((page - 1) * LIM.PAGE, page * LIM.PAGE).map(out), total, page, pages, op, privN };
   }
-  function comOut(c, me) { return { id: c.id, author: nameOf(c.pid), aid: c.pid, op: !!c.op, badge: c.pid === 'staff' ? '' : (opts.badgeOf || (() => ''))(c.pid), mine: c.pid === me, body: sec.dec(c.body), created: c.created, parent: c.parent || 0 }; }
+  function comOut(c, me) { return { id: c.id, author: nameOf(c.pid), aid: c.pid, op: !!c.op, badge: c.pid === 'staff' ? '' : (opts.badgeOf || (() => ''))(c.pid), mine: c.pid === me, body: sec.dec(c.body), created: c.created, edited: c.edited || 0, parent: c.parent || 0, pa: c.parent ? paOf(c.parent) : '' }; }
+  function paOf(id) { const pc = dbx.q.bdComGet.get(id); return !pc ? '' : pc.pid === 'staff' ? '운영진' : nameOf(pc.pid); }   // 답글이 달린 원래 댓글의 작성자 (RP 게시판에서 「↳ 이름」으로 보인다)
   // 알림: 내 글에 댓글 · 내 댓글에 답글이 달리면 알림 칸에 (우편은 보내지 않는다)
   function note(to, text, post) { if (!to || to === 'staff' || mutes.has(post + ':' + to)) return; (opts.note || (() => {}))(to, 'board', text, { view: 'board', post: post }); }
   function get(me, id) {
@@ -122,6 +123,13 @@ function create(dbx, sec, opts) {
     const k = p.id + ':' + me; if (on) { mutes.add(k); dbx.q.bdMuteOn.run(p.id, me); } else { mutes.delete(k); dbx.q.bdMuteOff.run(p.id, me); }
     return p.id;
   }
+  // 내 댓글 · 답글 고치기 (작성자만)
+  function cedit(me, cid, text, now) {
+    const c = dbx.q.bdComGet.get(Number(cid) | 0); if (!c || c.deleted || c.pid !== me) fail('고칠 수 없는 댓글입니다');
+    const p = posts.get(c.post); if (!p || !canSee(me, p)) fail('없는 글입니다');
+    const body = clean(text, LIM.COM); if (!body) fail('댓글 입력 필요');
+    dbx.q.bdComEdit.run(sec.enc(body), now, c.id); return p.id;
+  }
   function cdel(me, cid) {
     const c = dbx.q.bdComGet.get(Number(cid) | 0); if (!c || c.deleted) fail('없는 댓글입니다');
     if (!(c.pid === me || isOp(me) || me === 'staff')) fail('지울 수 없는 댓글입니다');
@@ -141,6 +149,6 @@ function create(dbx, sec, opts) {
     }).join('\n\n---\n\n');
   }
   function deleteBy(pid) { comBy.delete(pid); [...posts.values()].filter((p) => p.pid === pid).forEach((p) => { dbx.q.bdDel.run(p.id); posts.delete(p.id); }); }
-  return { list, get, write, edit, del, mute, setStatus, exportIdeas, comment, cdel, adminList, deleteBy, forgetName: (pid) => names.delete(pid), LIM };
+  return { list, get, write, edit, del, mute, setStatus, exportIdeas, comment, cedit, cdel, adminList, deleteBy, forgetName: (pid) => names.delete(pid), LIM };
 }
 module.exports = { create };
