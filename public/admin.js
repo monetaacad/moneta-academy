@@ -145,12 +145,12 @@
   try { if (localStorage.getItem('arc_admin_bdhide') === '1') $('#bdhide').checked = true; } catch (e) { }
   $('#bdhide').addEventListener('change', function () { try { localStorage.setItem('arc_admin_bdhide', $('#bdhide').checked ? '1' : '0'); } catch (e) { } bdshow(BDJ); });
   function bdload() { api('GET', '/api/admin/board').then(bdshow); }
-  // 문의 상태: 답변 여부 · 답변 뒤 새 댓글 · 게시판 처리 상태(확인 중 / 해결 완료)와 연동. 숨기기를 켜면 답변함 · 해결 완료는 숨기되 새 댓글이 있으면 보인다
+  // 문의 상태: 답변 여부 · 답변 뒤 새 댓글 · 게시판 처리 상태(확인 중 / 해결 완료)와 연동. 숨기기를 켜면 답변함 · 해결 완료 · 재현 안 됨은 숨기되 새 댓글이 있으면 보인다
   var ST = { review: '검토 중', wip: '확인 중', done: '해결 완료', no: '반영 안 함', norepro: '재현 안 됨' };
   function bdstate(p) {
     var lastOp = -1; p.comments.forEach(function (c, i) { if (c.op) lastOp = i; });
     var answered = lastOp >= 0, fresh = answered && p.comments.slice(lastOp + 1).some(function (c) { return !c.op; });
-    return { answered: answered, fresh: fresh, hide: !fresh && (answered || p.st === 'done') };
+    return { answered: answered, fresh: fresh, hide: !fresh && (answered || p.st === 'done' || p.st === 'norepro') };
   }
   function bdshow(j) {
     BDJ = j; var all = (j && j.posts) || [], hide = $('#bdhide').checked, list = hide ? all.filter(function (p) { return !bdstate(p).hide; }) : all;

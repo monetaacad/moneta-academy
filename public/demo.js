@@ -592,7 +592,7 @@
     function out(p, full) { var o = { id: p.id, tag: p.tag, priv: p.priv, title: p.title, author: p.pid === me ? P.name : p.author, aid: p.pid, aop: false, mine: p.pid === me, created: p.created, updated: p.updated, ncom: p.coms.length, st: p.st || '' }; if (full) Object.assign(o, { body: p.body, canEdit: p.pid === me, canDel: p.pid === me, comments: p.coms.map(function (c) { return Object.assign({}, c, { mine: c.aid === me }); }) }); return o; }
     if (f.id) { var p = b.posts.filter(function (x) { return x.id === +f.id; })[0]; return Promise.resolve(p && (!p.priv || p.pid === me) ? { post: out(p, true) } : { error: '없는 글이거나 볼 수 없는 글입니다' }); }
     var q = String(f.q || '').toLowerCase(), list = b.posts.filter(function (p) {
-      if (f.hd && p.st === 'done') return false;
+      if (f.hd && (p.st === 'done' || p.st === 'no' || p.st === 'norepro')) return false;
       if (f.tag === 'mine') { if (p.pid !== me) return false; } else { if (p.priv) return false; if (f.tag && p.tag !== f.tag) return false; }
       if (q) { var a = (p.pid === me ? P.name : p.author).toLowerCase(), hay = f.qt === 'author' ? a : f.qt === 'title' ? p.title.toLowerCase() : (p.title + '\n' + p.body).toLowerCase(); if (hay.indexOf(q) < 0) return false; }
       return true;
