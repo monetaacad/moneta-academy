@@ -179,8 +179,10 @@
   LocalApi.prototype.mailOp = function (o) {
     var P = this.d && this.d.P; if (!P) return Promise.resolve({ error: '로그인이 필요합니다' });
     var now = this._now(), l = this._mailList(), pick = o.op === 'claimAll' ? l.filter(function (x) { return !x.claimed; }) : l.filter(function (x) { return x.id === +o.id; });
-    if (!pick.length && o.op !== 'claimAll') return Promise.resolve({ error: '없는 우편이거나 기한이 지났습니다' });
+    if (!pick.length && o.op !== 'claimAll' && o.op !== 'delRead') return Promise.resolve({ error: '없는 우편이거나 기한이 지났습니다' });
     if (o.op === 'read') { pick.forEach(function (x) { x.read = true; }); this._save(); return Promise.resolve({ ok: true }); }
+    var done = function (x) { return x.read && (x.claimed || !Rules.rewardText(x.rewards)); }, ml = this.d.mail.list;
+    if (o.op === 'delRead' || o.op === 'del') { var ds = (o.op === 'del' ? pick : l).filter(done); if (o.op === 'del' && !ds.length) return Promise.resolve({ error: '받지 않은 보상이 있는 우편은 삭제할 수 없습니다' }); this.d.mail.list = ml.filter(function (x) { return ds.indexOf(x) < 0; }); this._save(); return Promise.resolve({ ok: true, n: ds.length }); }
     var W = this._world(now); Rules.advance(P, W, now); var got = [];
     var bag = Rules.calc(P, W, now).bag, full = 0;
     pick.forEach(function (x) { if (x.claimed) return; var need = Rules.mailNeedSlots(x.rewards); if (need && P.inv.length + need > bag) { full++; return; } x.claimed = true; x.read = true; var g = Rules.grantMail(P, W, now, x.rewards); Rules.log(P, now, '우편 「' + x.title + '」 보상을 받았습니다' + (g.text ? ': ' + g.text : ''), 'news'); got.push({ id: x.id, text: g.text, items: g.items }); });
