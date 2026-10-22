@@ -1415,6 +1415,7 @@ setInterval(twRankSettle, 60000).unref(); setTimeout(twRankSettle, 1000).unref()
 // 별의 탑 실전 보상 맡겨 두기: P.twPend = { id, end(실제 시각), from, to, pname }. 끝난 뒤 「보상 받기」로 우편 발송
 function twPendMail(Q) {
   const p = Q.twPend; if (!p) return; delete Q.twPend;
+  for (let f = p.from; f <= p.to; f++) if (R.twTrial(f)) Q.st.bosses = (Q.st.bosses || 0) + 1;   // 시련의 층(보스층)은 보스 처치로 센다
   sendMail(Q.id, '별의 탑', '별의 탑 ' + p.to + '층 기록', '파티 「' + p.pname + '」의 실전에서 별의 탑 ' + p.to + '층까지 올랐습니다.\n이번 주에 처음 넘은 ' + p.from + '~' + p.to + '층의 보상입니다.', R.twRewardSum(p.from, p.to), Math.floor(Date.now() / 1000) + 7 * 86400, true);
   store.markDirty(Q.id);
 }
