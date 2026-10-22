@@ -2457,7 +2457,7 @@ routes['POST /api/admin/plog'] = async (req, res) => {
   bought.sort((x, y) => y.t - x.t);
   const auto = P.rs && P.rs.sorter ? { on: P.autoSell >= 0, upto: P.autoSell >= 0 ? RN[P.autoSell] + ' 이하' : '꺼짐', mode: P.autoDis ? '분해' : '판매' } : null;
   let acct = null; try { acct = acctRecord(row.id, P); } catch (e) { log('운영실 계정 기록 실패', e); }
-  send(req, res, 200, { name: row.name, acct, card, dlog, auto, bought, log: (P.log || []).slice(0, 50).map((l) => ({ t: l.t, m: l.m, k: l.k, n: l.n || 1 })), high, st: { expJobs: P.st.expJobs || 0, epicFound: P.st.epicFound || 0, legendFound: P.st.legendFound || 0 } });
+  send(req, res, 200, { name: row.name, acct, card, dlog, auto, bought, log: (P.log || []).slice(0, 50).map((l) => ({ t: l.t, m: l.m, k: l.k, n: l.n || 1 })), glog: (P.glog || []).slice(0, 100), high, st: { expJobs: P.st.expJobs || 0, epicFound: P.st.epicFound || 0, legendFound: P.st.legendFound || 0 } });
 };
 // 운영실: 비밀번호를 잃어버린 학생에게 임시 비밀번호를 발급한다. 모든 기기에서 로그아웃되고, 로그인하면 비밀번호를 바꾸라고 안내한다
 routes['POST /api/admin/resetpw'] = async (req, res) => {
