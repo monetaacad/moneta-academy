@@ -2271,40 +2271,28 @@
     return o;
   };
   // 재련: 등급·레벨·강화는 그대로 두고 옵션만 새로 굴린다 (옵션이 없는 일반 등급은 못 함)
-  // 굴린 옵션은 바로 붙이지 않고 P.rfPend = {u, aff, name, cost}에 두었다가, 학생이 이전 · 새 옵션 중 하나를 고르면(A.reforgePick) 정한다
   R.reforgeCost = function (it) { return Math.floor(8 * (it.r + 1) * (it.r + 1) * (1 + it.ilvl / 20)); };
   // 거래소 수수료: 누진 (판매가의 구간마다 다른 비율을 더한다. 세금 구간처럼 경계에서 받는 돈이 거꾸로 줄지 않는다)
   R.MK_FEE = [[1e5, 0.05], [1e6, 0.07], [1e7, 0.10], [1e8, 0.13], [Infinity, 0.15]];
   R.marketFee = function (price) { var fee = 0, lo = 0; for (var i = 0; i < R.MK_FEE.length && price > lo; i++) { var hi = R.MK_FEE[i][0]; fee += (Math.min(price, hi) - lo) * R.MK_FEE[i][1]; lo = hi; } return Math.floor(fee); };
   R.marketFeeText = '5%(10만까지) · 7%(100만까지) · 10%(1000만까지) · 13%(1억까지) · 15%(그 이상), 구간별 누진';
   R.reforgeGold = function (it) { return Math.floor(40 * (it.r + 1) * goldPow(it.ilvl - 1)); };   // 재련 아르크 (2차 베타 아르크 소비처: 그 단계 하루 원정 수입의 약 1%)
-  R.rfPending = function (P) { var p = P.rfPend; return p && R.findItem(P, p.u) ? p : null; };   // 장비가 사라졌으면(판매 · 분해 · 거래소) 없는 것으로 본다
   A.reforge = function (P, W, now, a) {
     var it = R.findItem(P, str(a.u)); if (!it) err('장비가 없습니다'); if (it.lock) err('잠긴 장비입니다. 잠금을 풀면 재련할 수 있습니다');
-    if (P.rfPend && !R.rfPending(P)) P.rfPend = null;
-    if (P.rfPend) err('이전 재련 결과(' + R.findItem(P, P.rfPend.u).name + ')를 먼저 선택해야 합니다');
     var n = D.RARITY[it.r].affix; if (!n) err('옵션이 없는 장비는 재련할 수 없습니다');
     var cost = R.reforgeCost(it), gc = R.reforgeGold(it); if ((P.res.dust || 0) < cost) err('마석가루가 모자랍니다 (' + cost + '개 필요)');
     if (P.res.gold < gc) err(CUR + '가 모자랍니다 (' + R.fmt(gc) + ' 필요)');
     P.res.dust -= cost; P.res.gold -= gc;
-    var pool = D.AFFIXES.slice(), aff = [];
+    var pool = D.AFFIXES.slice(); it.aff = [];
     for (var i = 0; i < n && pool.length; i++) {
       var af = pool.splice(Math.floor(rnd(P) * pool.length), 1)[0], v;
       if (af.flat) v = af.flat * (1 + it.ilvl * 0.07) * (0.7 + rnd(P) * 0.6) * (1 + it.r * 0.1);
       else v = (af.pct[0] + (af.pct[1] - af.pct[0]) * rnd(P)) * (1 + Math.min(it.ilvl, 200) * 0.004);
-      aff.push({ id: af.id, v: Math.round(v * 10000) / 10000 });
+      it.aff.push({ id: af.id, v: Math.round(v * 10000) / 10000 });
     }
-    var name = (aff.length ? AFF[aff[0].id].prefix + ' ' : '') + R.baseName(it);
-    P.rfPend = { u: it.u, aff: aff, name: name, cost: cost };
+    it.name = (it.aff.length ? AFF[it.aff[0].id].prefix + ' ' : '') + R.baseName(it);
     P.st.reforged = (P.st.reforged || 0) + 1;
-    return { u: it.u, name: name, cost: cost, aff: aff, was: it.aff, wasName: it.name };
-  };
-  // 재련 결과 선택: keep = 'new'(새 옵션 적용) | 'old'(이전 옵션 유지)
-  A.reforgePick = function (P, W, now, a) {
-    var p = R.rfPending(P); if (!p) { P.rfPend = null; err('선택할 재련 결과가 없습니다'); }
-    var it = R.findItem(P, p.u), take = a.keep === 'new'; P.rfPend = null;
-    if (take) { it.aff = p.aff; it.name = p.name; }
-    return { u: it.u, keep: take ? 'new' : 'old', name: it.name, aff: it.aff };
+    return { name: it.name, cost: cost, aff: it.aff };
   };
   // 자동 처리: 판매 또는 분해 (분류 마법)
   A.ovfMode = function (P, W, now, a) { P.ovfDust = !!a.dust; return { ok: true, dust: P.ovfDust }; };   // 넘친 장비: 아르크 / 마석가루
