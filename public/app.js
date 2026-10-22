@@ -3300,7 +3300,7 @@
     if (m.tab === 'auc') h += aucTab(d, low);
     else if (m.tab === 'buy') {
       h += '<div class="card mkfilt" style="margin-bottom:10px"><div class="row"><div class="filters"><button class="btn sm ghost' + (m.kind === 'item' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="item">장비</button><button class="btn sm ghost' + (m.kind === 'mat' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="mat">재료</button><button class="btn sm ghost' + (m.kind === 'pot' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="pot">물약</button><button class="btn sm ghost' + (m.kind === 'badge' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="badge">휘장</button><button class="btn sm ghost' + (m.kind === 'tok' ? ' on' : '') + '" data-act="mkf" data-a="kind" data-b="tok">소지품</button></div><span class="spacer"></span>' + (m.kind === 'item' ? mkWearTog() : '') +
-        '<select id="mk-sort" data-act="mksel" data-a="sort" style="width:auto"><option value="price"' + (m.sort === 'price' ? ' selected' : '') + '>' + (m.kind !== 'item' ? '개당 가격 낮은 순' : '가격 낮은 순') + '</option><option value="high"' + (m.sort === 'high' ? ' selected' : '') + '>' + (m.kind !== 'item' ? '개당 가격 높은 순' : '가격 높은 순') + '</option><option value="new"' + (m.sort === 'new' ? ' selected' : '') + '>새로 올라온 순</option>' + (m.kind === 'item' ? '<option value="lvl"' + (m.sort === 'lvl' ? ' selected' : '') + '>장비 레벨 높은 순</option>' : '') + '</select></div>';
+        '<select id="mk-sort" data-act="mksel" data-a="sort" style="width:auto"><option value="price"' + (m.sort === 'price' ? ' selected' : '') + '>' + (m.kind !== 'item' ? '개당 가격 낮은 순' : '가격 낮은 순') + '</option><option value="high"' + (m.sort === 'high' ? ' selected' : '') + '>' + (m.kind !== 'item' ? '개당 가격 높은 순' : '가격 높은 순') + '</option><option value="new"' + (m.sort === 'new' ? ' selected' : '') + '>새로 올라온 순</option>' + (m.kind === 'item' ? '<option value="lvl"' + (m.sort === 'lvl' ? ' selected' : '') + '>장비 레벨 높은 순</option><option value="pow"' + (m.sort === 'pow' ? ' selected' : '') + '>전투력 상승순</option>' : '') + '</select></div>';
       if (m.kind === 'item') h += '<div class="filters" style="margin-top:6px">' + MK_SLOT_F.map(function (f) { return '<button class="btn sm ghost' + (m.slot === f[0] ? ' on' : '') + '" data-act="mkf" data-a="slot" data-b="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '<span class="fsep"></span>' +
         [['', '모든 등급', 'inherit']].concat(D.RARITY.map(function (r) { return [String(r.id), r.name, r.color]; })).map(function (f) { return '<button class="btn sm ghost' + (String(m.r) === f[0] ? ' on' : '') + '" data-act="mkf" data-a="r" data-b="' + f[0] + '" style="color:' + f[2] + '">' + f[1] + '</button>'; }).join('') + '</div>' +
         mkAffRow(m) +
@@ -3390,7 +3390,7 @@
   function aucTab(d, low) {
     var m = S.mk, ak = m.akind || 'item', h = '<div class="card mkfilt" style="margin-bottom:10px"><div class="row"><div class="filters">' + [['item', '장비'], ['badge', '휘장']].map(function (f) { return '<button class="btn sm ghost' + (ak === f[0] ? ' on' : '') + '" data-act="mkf" data-a="akind" data-b="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '</div><span class="spacer"></span>' +
       (ak === 'item' ? mkWearTog() : '') + '<label class="tog tiny" style="margin-right:6px"><input type="checkbox" data-act="mknobid"' + (m.nobid ? ' checked' : '') + '> 입찰 없는 것만</label>' +
-      '<select data-act="mksel" data-a="asort" style="width:auto" aria-label="정렬">' + AUC_SORTS.map(function (o) { return '<option value="' + o[0] + '"' + ((m.asort || 'end') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></div>';
+      '<select data-act="mksel" data-a="asort" style="width:auto" aria-label="정렬">' + AUC_SORTS.concat(ak === 'item' ? [['pow', '전투력 상승순']] : []).map(function (o) { return '<option value="' + o[0] + '"' + ((m.asort || 'end') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></div>';
     if (ak === 'item') h += '<div class="filters" style="margin-top:6px">' + MK_SLOT_F.map(function (f) { return '<button class="btn sm ghost' + (m.slot === f[0] ? ' on' : '') + '" data-act="mkf" data-a="slot" data-b="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '</div><div class="filters" style="margin-top:6px">' +
       [['', '모든 등급', 'inherit']].concat(D.RARITY.map(function (r) { return [String(r.id), r.name, r.color]; })).map(function (f) { return '<button class="btn sm ghost' + (String(m.r) === f[0] ? ' on' : '') + '" data-act="mkf" data-a="r" data-b="' + f[0] + '" style="color:' + f[2] + '">' + f[1] + '</button>'; }).join('') + '</div>' +
       mkAffRow(m) + '<div class="row" style="margin-top:6px"><input id="mk-q" maxlength="20" placeholder="이름 검색" value="' + esc(m.q || '') + '" style="flex:1;min-width:120px"><button class="btn sm" data-act="mkq">검색</button></div>';
@@ -3510,7 +3510,7 @@
       sel.map(function (id) { return '<button class="btn sm on" data-act="mkaffx" data-a="' + id + '" title="빼기">' + (R.AFF[id] ? R.AFF[id].name : id) + ' ×</button>'; }).join('') + (sel.length ? '<span class="tiny faint">고른 옵션을 모두 가진 장비</span>' : '') + '</div>';
   }
   ACT.mkaffx = function (id) { S.mk.aff = (S.mk.aff || '').split(',').filter(function (x) { return x && x !== id; }).join(','); S.mk.data = null; render(); loadMarket(); };
-  ACT.mkf = function (k, v) { S.mk[k] = v; if (k === 'kind' || k === 'akind') { S.mk.slot = ''; S.mk.r = ''; S.mk.aff = ''; S.mk.mat = ''; S.mk.pot = ''; S.mk.tok = ''; S.mk.gem = ''; S.mk.q = ''; if (S.mk.sort === 'lvl') S.mk.sort = 'price'; } S.mk.data = null; render(); loadMarket(); };
+  ACT.mkf = function (k, v) { S.mk[k] = v; if (k === 'kind' || k === 'akind') { S.mk.slot = ''; S.mk.r = ''; S.mk.aff = ''; S.mk.mat = ''; S.mk.pot = ''; S.mk.tok = ''; S.mk.gem = ''; S.mk.q = ''; if (S.mk.sort === 'lvl' || S.mk.sort === 'pow') S.mk.sort = 'price'; if (S.mk.asort === 'pow') S.mk.asort = 'end'; } S.mk.data = null; render(); loadMarket(); };
   ACT.mkq = function () { S.mk.q = ($('#mk-q') || {}).value || ''; loadMarket(); };
   function mkDone(j, msg) { if (j.error) { toast('거래소', j.error); return; } absorb(j); toast(msg, '', 2000); Snd.play('click'); loadMarket(); render(); }
   // 사기: 한 번 누르면 바로 산다 (누르는 사이 두 번 사지 않게 잠깐 잠근다)
@@ -5521,7 +5521,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102276;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102277;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
