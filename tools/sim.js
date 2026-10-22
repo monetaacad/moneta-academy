@@ -1,5 +1,6 @@
 /* 밸런스 시뮬레이터: 접속 패턴별 봇이 실제 규칙(shared/rules.js의 R.act)으로 N일 동안 플레이한다.
-   사용법: node tools/sim.js [일수=120] [casual|steady|hardcore] [--csv 파일.csv] [--cls mage|knight] [--seed 숫자]
+   사용법: node tools/sim.js [일수=120] [casual|steady|hardcore] [--csv 파일.csv] [--cls mage|knight] [--seed 숫자] [--spread] [--switch 일]
+     --spread: 시험 과목이 기준 레벨을 넘으면 모든 과목 중 가장 낮은 과목부터 (기본은 시험 과목 +4까지) · --switch N: N일째부터 다른 학과로 전과시험 (질 때마다 다음 날 다시)
      예) node tools/sim.js 120 steady --csv out.csv
    출력: 주요 날짜(1·3·7·14·21·30·45·60·90·120…)의 성장표, --csv를 주면 날마다 한 줄씩 CSV로 저장한다.
    gearPow%: 전투력 중 장비 몫 (장착 장비를 모두 뺀 전투력과 비교). V=1이면 진급 · 보스 기록을 출력한다. SAVE=파일이면 마지막 상태를 JSON으로 저장한다.
@@ -10,7 +11,7 @@ const R = require('../shared/rules.js'), D = require('../shared/data.js');
 
 const argv = process.argv.slice(2), flags = {}, pos = [];
 for (let i = 0; i < argv.length; i++) { if (argv[i].startsWith('--')) flags[argv[i].slice(2)] = argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[++i] : true; else pos.push(argv[i]); }
-const DAYS = +(pos[0] || 120), PROFILE = pos[1] || 'steady', VERBOSE = process.env.V === '1', CLS = flags.cls === 'knight' ? 'knight' : 'mage';
+const DAYS = +(pos[0] || 120), PROFILE = pos[1] || 'steady', VERBOSE = process.env.V === '1', CLS = flags.cls === 'knight' ? 'knight' : 'mage', SPREAD = !!flags.spread, SWITCH = +(flags.switch || 0);
 const PROFILES = {
   casual: [8, 12.5, 19, 23],                                // 출근 전 · 점심 · 퇴근 후 · 자기 전
   steady: [8, 10, 12, 14, 16, 18, 20, 22, 23.5],           // 깨어 있는 동안 2시간마다
@@ -95,6 +96,8 @@ function bot(now, ci) {
     const pr = R.examPredict(P, W, now);
     if (pr && pr.total >= 64) { const r = act('exam', {}, now); if (r && r.pass) { ms['g' + P.grade] = DAY(now); note(now, `${r.grade}학년 시험 ${r.letter} ${r.total} lv${P.lvl} stage${P.maxStage}`); } }
   }
+  // 전과: --switch N일째부터 다른 학과로 (시험에 지면 하루 뒤 다시)
+  if (SWITCH && DAY(now) >= SWITCH && P.cls === CLS && (P.clsCd || 0) <= now) { const to = CLS === 'knight' ? 'mage' : 'knight', r = act('clsExam', { cls: to }, now); if (P.cls === to) { ms.switch = DAY(now); note(now, '전과 ' + to + ' ' + JSON.stringify(R.availableSubjects(P).filter(s => s.cls).map(s => s.id + P.subj[s.id].lv))); } }
   // 보스
   // 미리보기(45초 기준)는 실제 전투(30초)보다 보수적이라 체력의 절반 이상 깎을 수 있으면 도전한다 (지면 10분 대기뿐)
   for (let k = 0; k < 5; k++) {
@@ -140,7 +143,7 @@ function bot(now, ci) {
   }
   // 물약: 밤이면 숙면의 차, 낮이면 집중 · 투지 · 황금 · 행운 · 현자
   const DAYPOT = ['focus', 'valor', 'gilded', 'fortune', 'sage'];
-  if (P.grade >= 2) {
+  if (R.alchOpen ? R.alchOpen(P) : P.grade >= 2) {
     const want = night ? ['sleep'] : DAYPOT;
     for (const id of want) if ((P.shelf[id] || 0) > 0 && !(P.buffs['p_' + id] && P.buffs['p_' + id].end > now + 1800)) act('drink', { id }, now);
     for (const id of ['sleep'].concat(DAYPOT)) if (R.potionUnlocked(P, id) && (P.shelf[id] || 0) < 2 && P.res.mana > R.brewMana(P, W, now, id) * 4 && Object.keys(R.POT[id].mats).every(m => (P.mats[m] || 0) >= R.POT[id].mats[m] * 2)) act('brew', { id, n: 2 }, now);
@@ -159,7 +162,7 @@ function bot(now, ci) {
   // 수업: 시험 과목(선택 과목 포함) 중 낮은 것부터, 끝나면 다음 교시 예약
   const c = R.calc(P, W, now), avail = R.availableSubjects(P).map(s => s.id);
   let want = ex && P.grade < 8 ? R.examSubjs(P, ex) : avail.slice();
-  if (ex && P.grade < 8 && want.every(s => P.subj[s].lv >= ex.req + 4)) want = avail.slice();
+  if (ex && P.grade < 8 && want.every(s => P.subj[s].lv >= ex.req + (SPREAD ? 0 : 4))) want = avail.slice();
   want.sort((a, b) => P.subj[a].lv - P.subj[b].lv);
   const ld = bestDur(now, ci + 1);
   for (let i = 0; i < c.lecSlots; i++) {
@@ -207,7 +210,7 @@ console.table(rows.filter(r => MILES.includes(r.day)).map(r => ({
   badge: r.badge, gold: F(r.gold), mana: F(r.mana), kills: F(r.kills), subj: r.subjMin + '/' + r.subjAvg + '/' + r.subjMax, tower: r.tower
 })));
 const end = rows[rows.length - 1];
-console.log(PROFILE, CLS, 'milestones(day):', JSON.stringify(Object.fromEntries(Object.entries(ms).filter(([k]) => k[0] === 'g').map(([k, v]) => [k, +v.toFixed(1)]))),
+console.log(PROFILE, CLS + (ms.switch ? '→' + P.cls + '(day ' + ms.switch.toFixed(1) + ')' : ''), 'milestones(day):', JSON.stringify(Object.fromEntries(Object.entries(ms).filter(([k]) => k[0] === 'g').map(([k, v]) => [k, +v.toFixed(1)]))),
   '| bosses', end.bosses, 'expJobs', end.expJobs, 'lecJobs', end.lecJobs, 'duel', end.duel, 'rs', end.rs, 'fam', end.fam, 'slots', end.slots, 'overLv(eq ilvl>lvl)', Math.max(...rows.map(r => r.overLv)),
   '| realtime', (Date.now() - t0) + 'ms');
 if (VERBOSE) console.log('거절된 행동(횟수):', JSON.stringify(errs));
