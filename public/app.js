@@ -1847,8 +1847,13 @@
   };
 
   /* ── 시험 · 결투 ── */
+  // 시험장 「응시」 표시: 응시할 수 있게 된 뒤 시험장을 한 번 열어 보면 사라진다 (학년 · 재응시 대기가 바뀌면 다시 표시)
+  function examKey() { return S.P.grade + ':' + (S.P.examCd || 0); }
+  function examSeen() { if (S.exSeenFor !== S.P.id) { S.exSeenFor = S.P.id; try { S.exSeen = localStorage.getItem('arc_exseen_' + S.P.id) || ''; } catch (e) { S.exSeen = ''; } } return S.exSeen; }
+  function examMarkSeen() { var k = examKey(); if (examSeen() === k) return; S.exSeen = k; try { localStorage.setItem('arc_exseen_' + S.P.id, k); } catch (e) { } setTimeout(updateBadges, 0); }
   V.exam = function () {
     var P = S.P, ex = R.examFor(P);
+    if (ex && P.grade < 8 && P.examCd <= now() && R.examEligible(P, ex)) examMarkSeen();
     var h = pageHead('학기말 평가 · 아카데미 결투제', '시험장', '합격선 60점');
     if (P.tok && P.tok.gradeUp > 0 && P.grade < 8) { var ga = S.confirm.gup > Date.now(); h += '<div class="card hl" style="margin-bottom:14px"><div class="row" style="gap:10px;flex-wrap:wrap"><div style="flex:1;min-width:200px"><h4>학년 진급 물약 <span class="tag br num">' + P.tok.gradeUp + '개</span></h4><p class="small muted">운영진 보상입니다. 마시면 시험 없이 바로 ' + (P.grade + 1 >= 8 ? '마스터 과정' : (P.grade + 1) + '학년') + '이 됩니다 (시험 보상 · 성적표 기록은 없음).</p></div><button class="btn ' + (ga ? 'danger' : 'primary') + '" data-act="gradeup">' + (ga ? '한 번 더 누르면 마십니다' : '물약 마시기') + '</button></div></div>'; }
     if (P.grade >= 8 || !ex) h += '<div class="card hl"><h3>모든 시험을 통과했습니다</h3><p class="muted">마스터 과정 연구생입니다. 심연과 월드 보스, 결투제에 도전할 수 있습니다.</p></div>';
@@ -3817,7 +3822,7 @@
     b.lecture = il ? '빈 슬롯' : ''; b.explore = ed ? '완료' : S.erInv ? '초대 ' + S.erInv : ie ? '빈 슬롯' : '';
     b.home = P.mq && R.mqReady(P) ? '이야기' : jar().n >= R.jarMax(S.P) ? '정령' : (P.daily.login || P.daily.q.some(function (q) { return !q.done && R.dailyProg(P, q) >= q.goal; })) ? '보상' : '';
     b.lore = storyUnread() ? '새 글' : '';
-    var ex = R.examFor(P); if (ex && P.grade < 8 && P.examCd <= now() && R.examEligible(P, ex)) b.exam = '응시';
+    var ex = R.examFor(P); if (ex && P.grade < 8 && P.examCd <= now() && R.examEligible(P, ex) && examSeen() !== examKey()) b.exam = '응시';
     b.gear = P.pts > 0 ? P.pts + '점' : invNew().length ? '새 소지품' : '';
     b.party = S.pinv ? '초대 ' + S.pinv : '';
     b.friends = S.fr ? '신청 ' + S.fr : '';
@@ -5637,7 +5642,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102285;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102286;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
