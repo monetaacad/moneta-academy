@@ -1,15 +1,18 @@
 'use strict';
-// 게시판: 질문 · 모집 · 거래 · RP · 잡담 · 건의. 「관리자만 보기」 글(문의)은 쓴 사람과 운영진만 본다.
+// 게시판: 질문 · 모집 · 거래 · RP · 잡담 · 건의. 건의 말머리는 건의함, RP 말머리는 RP 게시판(제목 없는 메모 + 이어 쓰는 댓글)에 보인다. 「관리자만 보기」 글(문의)은 쓴 사람과 운영진만 본다.
 // 제목·본문·댓글은 DB에 암호화해서 두고, 목록·검색은 서버 메모리에 푼 사본으로 한다 (최근 5,000개).
 const R = require('../shared/rules.js');
 
 const TAGS = R.D.BOARD_TAGS.map((t) => t.id);
-const LIM = { TITLE: 40, BODY: 3000, COM: 500, PAGE: 10, DAY: 30 };
+const LIM = { TITLE: 40, BODY: 3000, MEMO: 500, COM: 500, PAGE: 10, DAY: 30, MEMO_COMS: 3 };
 
 function create(dbx, sec, opts) {
   const isOp = opts.isOp, sendMail = opts.sendMail || (() => {}), log = opts.log || (() => {});
   const posts = new Map();   // id → {id, pid, tag, priv, title, body, created, updated, last, ncom}
   dbx.q.bdAll.all().forEach((r) => { try { posts.set(r.id, { id: r.id, pid: r.pid, tag: r.tag, priv: !!r.priv, title: sec.dec(r.title), body: sec.dec(r.body), created: r.created, updated: r.updated, last: r.last, ncom: r.ncom, st: r.st || '' }); } catch (e) { } });
+  const comBy = new Map();   // 학생 → 댓글을 단 글 id (「내 댓글」 보기)
+  const comAdd = (pid, post) => { let st = comBy.get(pid); if (!st) comBy.set(pid, st = new Set()); st.add(post); };
+  dbx.q.bdComPids.all().forEach((r) => comAdd(r.pid, r.post));
   const mutes = new Set(); dbx.q.bdMuteAll.all().forEach((r) => mutes.add(r.post + ':' + r.pid));   // 「알림 받지 않기」한 글 (글 id : 학생)
   const names = new Map();
   function nameOf(pid) {
@@ -23,15 +26,17 @@ function create(dbx, sec, opts) {
   function brief(p, me) {
     return { id: p.id, tag: p.tag, priv: p.priv, title: p.title, author: nameOf(p.pid), aid: p.pid, aop: (opts.badgeOf || (() => ''))(p.pid), mine: p.pid === me, created: p.created, updated: p.updated, last: p.last, ncom: p.ncom, st: p.st || '' };
   }
-  // f: {tag: ''|태그|'priv'|'mine', q, qt: 'author'|'title'|'all', page}
+  const spaceOf = (p) => p.tag === 'idea' ? 'idea' : p.tag === 'rp' ? 'rp' : '';
+  // f: {tag: ''|태그|'priv'|'mine'|'cmt', q, qt: 'author'|'title'|'all', page, sp: ''|'idea'|'rp', sort: ''(새 글)|'act'(새 댓글)}
   function list(me, f) {
     const op = isOp(me), tag = String(f.tag || ''), q = String(f.q || '').trim().toLowerCase().slice(0, 30), qt = f.qt === 'author' || f.qt === 'title' ? f.qt : 'all';
     let arr = [];
     posts.forEach((p) => {
       if (tag === 'priv') { if (!op || !p.priv) return; }
       else if (tag === 'mine') { if (p.pid !== me) return; }
+      else if (tag === 'cmt') { const st = comBy.get(me); if (!st || !st.has(p.id) || !canSee(me, p)) return; }   // 내가 댓글을 단 글
       else { if (p.priv) return; if (tag && p.tag !== tag) return; }   // 관리자만 보기 글은 일반 목록에 나오지 않는다 (운영진 포함)
-      if (f.sp === 'idea' ? p.tag !== 'idea' : p.tag === 'idea') return;   // 건의함(건의 말머리)과 게시판(나머지)을 나눠 보인다
+      if (spaceOf(p) !== (f.sp || '')) return;   // 게시판 · 건의함(건의 말머리) · RP 게시판(RP 말머리)을 나눠 보인다
       if (f.st && (p.st || '') !== f.st) return;   // 건의함: 처리 상태로 보기
       if (f.hideDone && !f.st && (p.st === 'done' || p.st === 'no')) return;   // 해결 완료 · 반영 안 함 숨기기 (처리 상태를 직접 골랐을 때는 그대로 보인다)
       if (q) {
@@ -41,10 +46,12 @@ function create(dbx, sec, opts) {
       }
       arr.push(p);
     });
-    arr.sort((a, b) => b.id - a.id);
+    arr.sort(f.sort === 'act' ? (a, b) => b.last - a.last || b.id - a.id : (a, b) => b.id - a.id);
     const total = arr.length, pages = Math.max(1, Math.ceil(total / LIM.PAGE)), page = Math.min(pages, Math.max(1, Number(f.page) | 0 || 1));
     const privN = op ? [...posts.values()].filter((p) => p.priv).length : 0;
-    return { list: arr.slice((page - 1) * LIM.PAGE, page * LIM.PAGE).map((p) => brief(p, me)), total, page, pages, op, privN };
+    const memo = f.sp === 'rp';   // RP 게시판: 목록에서 바로 읽도록 본문과 최근 댓글을 함께 보낸다
+    const out = (p) => memo ? Object.assign(brief(p, me), { body: p.body, canDel: p.pid === me || op, coms: dbx.q.bdComLast.all(p.id, LIM.MEMO_COMS).map((c) => comOut(c, me)) }) : brief(p, me);
+    return { list: arr.slice((page - 1) * LIM.PAGE, page * LIM.PAGE).map(out), total, page, pages, op, privN };
   }
   function comOut(c, me) { return { id: c.id, author: nameOf(c.pid), aid: c.pid, op: !!c.op, badge: c.pid === 'staff' ? '' : (opts.badgeOf || (() => ''))(c.pid), mine: c.pid === me, body: sec.dec(c.body), created: c.created, parent: c.parent || 0 }; }
   // 알림: 내 글에 댓글 · 내 댓글에 답글이 달리면 알림 칸에 (우편은 보내지 않는다)
@@ -65,6 +72,8 @@ function create(dbx, sec, opts) {
   }
   function fail(msg) { const e = new Error(msg); e.status = 400; throw e; }
   function check(b) {
+    // RP 메모: 제목 없이 본문만(500자). 목록 · 검색 · 알림용 제목은 본문 첫 줄로 만든다
+    if (b.memo) { const body = clean(b.body, LIM.MEMO); if (!body) fail('내용 입력 필요'); const t = body.split('\n')[0].replace(/\s+/g, ' ').trim(); return { tag: 'rp', title: t.length > LIM.TITLE ? t.slice(0, LIM.TITLE - 1) + '…' : t, body, priv: false }; }
     const tag = String(b.tag || ''), title = clean(b.title, LIM.TITLE).replace(/\n/g, ' '), body = clean(b.body, LIM.BODY);
     if (TAGS.indexOf(tag) < 0) fail('말머리 선택 필요');
     if (title.length < 2) fail('제목은 두 글자 이상');
@@ -81,6 +90,7 @@ function create(dbx, sec, opts) {
   }
   function edit(me, b, now) {
     const p = posts.get(Number(b.id) | 0); if (!p || p.pid !== me) fail('고칠 수 없는 글입니다');
+    if (b.memo && p.tag !== 'rp') fail('고칠 수 없는 글입니다');
     const x = check(b); dbx.q.bdEdit.run(x.tag, x.priv ? 1 : 0, sec.enc(x.title), sec.enc(x.body), now, p.id);
     Object.assign(p, x, { updated: now }); return p.id;
   }
@@ -94,7 +104,7 @@ function create(dbx, sec, opts) {
     const op = me === 'staff' || (isOp(me) && p.pid !== me);
     let parent = 0, pc = null;
     if (parentId) { pc = dbx.q.bdComGet.get(Number(parentId) | 0); if (!pc || pc.deleted || pc.post !== p.id) fail('답글을 달 댓글이 없어졌습니다'); parent = pc.parent || pc.id; if (pc.parent) pc = dbx.q.bdComGet.get(pc.parent) || pc; }   // 답글의 답글은 같은 줄기에
-    dbx.q.bdComInsert.run(p.id, me, op ? 1 : 0, sec.enc(body), now, parent);
+    dbx.q.bdComInsert.run(p.id, me, op ? 1 : 0, sec.enc(body), now, parent); comAdd(me, p.id);
     p.ncom++; p.last = now; dbx.q.bdCount.run(p.ncom, now, p.id);
     // 문의에 운영진이 답하면 쓴 학생에게 우편으로 알린다
     const who = me === 'staff' ? '운영진' : nameOf(me), snip = body.replace(/\s+/g, ' ').slice(0, 120);
@@ -115,7 +125,8 @@ function create(dbx, sec, opts) {
   function cdel(me, cid) {
     const c = dbx.q.bdComGet.get(Number(cid) | 0); if (!c || c.deleted) fail('없는 댓글입니다');
     if (!(c.pid === me || isOp(me) || me === 'staff')) fail('지울 수 없는 댓글입니다');
-    dbx.q.bdComDel.run(c.id); const p = posts.get(c.post); if (p) { p.ncom = Math.max(0, p.ncom - 1); dbx.q.bdCount.run(p.ncom, p.last, p.id); }
+    dbx.q.bdComDel.run(c.id); if (!Number(dbx.q.bdComMineN.get(c.post, c.pid).n)) { const st = comBy.get(c.pid); if (st) st.delete(c.post); }
+    const p = posts.get(c.post); if (p) { p.ncom = Math.max(0, p.ncom - 1); dbx.q.bdCount.run(p.ncom, p.last, p.id); }
   }
   // 운영실(관리자 토큰): 관리자만 보기 글 전부, 본문·댓글 포함
   function adminList() {
@@ -129,7 +140,7 @@ function create(dbx, sec, opts) {
       return '#' + p.id + (p.priv ? ' (관리자만)' : ' (건의)') + (ST[p.st] || '') + ' ' + p.title + '\n' + p.body + (coms.length ? '\n' + coms.join('\n') : '');
     }).join('\n\n---\n\n');
   }
-  function deleteBy(pid) { [...posts.values()].filter((p) => p.pid === pid).forEach((p) => { dbx.q.bdDel.run(p.id); posts.delete(p.id); }); }
+  function deleteBy(pid) { comBy.delete(pid); [...posts.values()].filter((p) => p.pid === pid).forEach((p) => { dbx.q.bdDel.run(p.id); posts.delete(p.id); }); }
   return { list, get, write, edit, del, mute, setStatus, exportIdeas, comment, cdel, adminList, deleteBy, forgetName: (pid) => names.delete(pid), LIM };
 }
 module.exports = { create };
