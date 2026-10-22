@@ -1122,10 +1122,16 @@ function mkSearch(f, now) {
     : f.sort === 'new' ? 'm.id DESC' : f.sort === 'lvl' ? 'm.ilvl DESC, m.price ASC' : f.kind === 'mat' || f.kind === 'pot' || f.kind === 'tok' ? 'm.price / m.qty ' + dir : 'm.price ' + dir;
   const sql = `SELECT m.id, m.kind, m.data, m.name, m.slot, m.rarity, m.ilvl, m.qty, m.price, m.created, m.expires, m.seller, m.auc, m.start_price, m.bid, m.bids, m.bidder, COALESCE(p.name, m.seller_name) AS seller_name FROM market m LEFT JOIN players p ON p.id = m.seller WHERE ${where.join(' AND ')} ORDER BY ${order} LIMIT 60`;
   let st = mkQueries.get(sql); if (!st) { st = dbx.db.prepare(sql); mkQueries.set(sql, st); }
-  return st.all(...args);
+  if (f.sort !== 'pow' || !f.powP) return st.all(...args);
+  // 전투력 상승순: 찾는 학생의 지금 장비 대신 끼었을 때 전투력이 얼마나 오르는지 (장비만 · 넉넉히 꺼내 계산한 뒤 60개)
+  const P = f.powP, t = nowSec(), ctx = world.ctx(t), base = R.calc(P, ctx, t).power;
+  const rows = (mkQueries.get(sql + '#pow') || (mkQueries.set(sql + '#pow', dbx.db.prepare(sql.replace(/LIMIT 60$/, 'LIMIT 600'))), mkQueries.get(sql + '#pow'))).all(...args);
+  rows.forEach((r) => { r._dp = null; if (r.kind !== 'item') return; try { r._dp = Math.round(R.powerWith(P, JSON.parse(r.data), ctx, t) - base); } catch (e) { } });
+  return rows.sort((a, b) => (b._dp == null ? -1e18 : b._dp) - (a._dp == null ? -1e18 : a._dp) || a.price - b.price).slice(0, 60);
 }
 function mkOut(r, me) {
   const o = { id: r.id, kind: r.kind, name: r.name, slot: r.slot, r: r.rarity, ilvl: r.ilvl, qty: r.qty, price: r.price, created: r.created, expires: r.expires, seller: r.seller_name, npc: String(r.seller).startsWith('npc:'), mine: r.seller === me, status: r.status };
+  if (r._dp != null) o.dp = r._dp;   // 전투력 상승순: 장착 시 전투력 변화
   if (r.auc) { o.auc = 1; o.start = r.start_price; o.bid = r.bid; o.bids = r.bids; o.top = !!me && r.bidder === me; o.min = mkAucMin(r); o.won = r.status === 'sold' && r.buyer === me; }   // 입찰한 학생 이름은 보이지 않는다
   if (r.kind === 'item') { try { const it = JSON.parse(r.data); delete it.lock; delete it.u; o.item = it; } catch (e) { } } else if (r.kind === 'badge') { try { const bd = JSON.parse(r.data); delete bd.u; o.badge = bd; o.gem = bd.gem; o.lv = bd.lv; } catch (e) { } } else if (r.kind === 'pot') o.pot = r.data; else if (r.kind === 'tok') o.tok = r.data; else o.mat = r.data;
   return o;
@@ -1144,6 +1150,7 @@ routes['GET /api/market'] = (req, res) => {
   const u = new URL(req.url, 'http://x'), g = (k) => u.searchParams.get(k) || '', now = Date.now() / 1000;
   const f = { kind: g('kind'), slot: g('slot'), r: g('r') === '' ? -1 : Number(g('r')), mat: g('mat'), pot: g('pot'), tok: g('tok'), gem: g('gem'), q: g('q').slice(0, 20), aff: g('aff').split(',').filter((x, i, a) => R.AFF[x] && a.indexOf(x) === i).slice(0, 3), sort: g('sort'), auc: g('auc') === '1', nobid: g('nobid') === '1', wear: 0 };
   if (g('wear') === '1') { const P = store.get(me); f.wear = Math.max(1, (P && P.lvl) || 1); }   // 레벨은 서버가 아는 값으로
+  if (f.sort === 'pow') { if (limited('mkpow:' + me, 0.5, 4)) return fail(req, res, 429, '잠시 후 다시 시도'); f.powP = loadPlayer(me, nowSec()); }   // 전투력 상승순은 계산이 많아 조금 더 아껴 쓴다
   send(req, res, 200, { list: mkSearch(f, now).map((r) => mkOut(r, me)), mine: dbx.q.mkMine.all(me, Math.floor(now) - 3 * 86400).map((r) => mkOut(Object.assign({ seller_name: '' }, r, { seller: me }), me)), myBids: dbx.q.mkMyBids.all(me).map((r) => mkOut(r, me)),
     fee: MK.FEE, days: MK.DAYS, maxOpen: MK.MAX_OPEN, grade: MK.GRADE, auc: { max: MK_AUC.MAX, hours: MK_AUC.HOURS, up: MK_AUC.MIN_UP, buyoutX: MK_AUC.BUYOUT_X } });
 };
