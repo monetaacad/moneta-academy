@@ -949,7 +949,7 @@
   /* ───────── 연금술 · 사역마 ───────── */
   R.cauldrons = function (P) { var a = P.subj.alch.lv; return 1 + (a >= 10 ? 1 : 0) + (a >= 20 ? 1 : 0); };
   // 연금 공방: 연금화학 R.ALCH_OPEN레벨부터 (2차 베타: 예전에는 2학년부터)
-  R.ALCH_OPEN = 3;
+  R.ALCH_OPEN = 1;   // 연금화학 수업을 한 번이라도 들어 1레벨이 되면
   R.alchOpen = function (P) { return !!(P && P.subj && P.subj.alch && P.subj.alch.lv >= R.ALCH_OPEN); };
   R.potionUnlocked = function (P, id) { return R.alchOpen(P) && P.subj.alch.lv >= POT[id].unlock; };
   R.eggCost = function (P) { return Math.floor(5000 * Math.pow(1.2, Math.min(P.fam.hatched, 30))); };   // 깨운 수마다 1.2배 (예전 1.45배)
