@@ -4293,11 +4293,11 @@
   ACT.respecuse = function () { var k = 'rsp'; if (!(S.confirm[k] > Date.now())) { S.confirm[k] = Date.now() + 4000; render(); setTimeout(render, 4100); return; } S.confirm[k] = 0; act('useRespec', {}).then(function (r) { if (r) respecDone(r.respec); else render(); }); };
   ACT['do-login'] = function () { ACT['do']('login'); };
   ACT.blesshelp = function () {
-    var cal = R.calendar(wctx(), now()), left0 = 28 - cal.d + 1, wd = R.weekday(now()), DAYN = ['일', '월', '화', '수', '목', '금', '토'];
-    var rows = []; for (var NM = D.WORLD.calendarMonths.length, k = 0; k < NM; k++) { var mi = (cal.mi + k) % NM; rows.push('<div class="mrow' + (k === 0 ? ' now' : '') + '"><span class="mn">' + D.WORLD.calendarMonths[mi] + '</span><span class="small">' + D.MONTH_BONUS[mi].text.replace(/^[^—]+— /, '') + '</span>' + (k === 0 ? '<span class="tag ok">지금 · ' + left0 + '일 남음</span>' : '<span class="tiny faint">' + (left0 + (k - 1) * 28) + '일 뒤</span>') + '</div>'); }
+    var cal = R.calendar(wctx(), now()), left0 = cal.md - cal.d + 1, wd = R.weekday(now()), DAYN = ['일', '월', '화', '수', '목', '금', '토'];
+    var rows = []; for (var NM = D.WORLD.calendarMonths.length, k = 0; k < NM; k++) { var mi = (cal.mi + k) % NM; rows.push('<div class="mrow' + (k === 0 ? ' now' : '') + '"><span class="mn">' + D.WORLD.calendarMonths[mi] + '</span><span class="small">' + D.MONTH_BONUS[mi].text.replace(/^[^—]+— /, '') + '</span>' + (k === 0 ? '<span class="tag ok">지금 · ' + left0 + '일 남음</span>' : '<span class="tiny faint">' + (left0 + (k - 1) * cal.md) + '일 뒤</span>') + '</div>'); }
     var days = [1, 2, 3, 4, 5, 6, 0].map(function (d) { var we = d === 0 || d === 6; return '<div class="mrow' + (d === wd ? ' now' : '') + '"><span class="mn">' + DAYN[d] + '요일</span><span class="small' + (we ? '' : ' faint') + '">' + (we ? D.WEEKEND.text.replace(/^[^—]+— /, '').replace(/ \(토·일\)$/, '') : '요일 축복 없음') + '</span>' + (d === wd ? '<span class="tag ok">오늘</span>' : '<span></span>') + '</div>'; });
     modal(mhead('축복 달력', '달 축복과 요일 축복은 따로 겹쳐서 적용됩니다') +
-      '<div class="section-t">달 축복 <span class="tiny faint">아카데미력 한 달 = 실제 28일, 아홉 달이 한 해</span></div><div class="mcal">' + rows.join('') + '</div>' +
+      '<div class="section-t">달 축복 <span class="tiny faint">아카데미력 한 달 = 실제 ' + cal.md + '일, 아홉 달이 한 해</span></div><div class="mcal">' + rows.join('') + '</div>' +
       '<div class="section-t" style="margin-top:14px">요일 축복 <span class="tiny faint">한국 시간 기준</span></div><div class="mcal">' + days.join('') + '</div>' +
       '<p class="tiny faint" style="margin-top:10px">수업·원정의 축복은 시작할 때 겹친 시간만큼 반영됩니다. 예를 들어 금요일 밤에 3시간 원정에 출정하면 토요일에 걸친 부분만 유성우 효과를 받습니다.</p>');
   };
@@ -5750,7 +5750,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102293;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102294;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
