@@ -3326,7 +3326,7 @@
         else if (x.kind === 'tok') { info = '<span class="mkn">' + esc(x.name) + ' <span class="num">×' + fmt(x.qty) + '</span></span>'; sub = '개당 ' + fmt(x.price / x.qty) + ' · 가진 수 ' + fmt(tokHave(x.tok)); }
         else { info = '<span class="mkn">' + esc(x.name) + ' <span class="num">×' + fmt(x.qty) + '</span></span>'; sub = '개당 ' + fmt(x.price / x.qty) + ' · 가진 수 ' + fmt(x.mat === 'stone' ? P.res.stone : (P.mats[x.mat] || 0)); }
         var tap = x.kind === 'item' && x.item;   // 장비는 줄(이름·요약) 어디를 눌러도 옵션이 펼쳐진다 (휴대폰에서 이름만 누르기 어려워서)
-        return '<div class="mkrow' + (open ? ' open' : '') + '"><div class="mki' + (tap ? ' tap" data-act="mkopen" data-a="' + x.id + '" role="button" tabindex="0" aria-expanded="' + !!open + '"' : '"') + '>' + info + '<div class="tiny faint ell">' + sub + ' · ' + esc(x.seller) + (x.npc ? ' <span class="tag npc">NPC</span>' : '') + ' · ' + R.fmtTime(Math.max(0, x.expires - Date.now() / 1000)) + '</div>' + (open && x.item ? '<div class="mkst">' + statLines(x.item) + '</div>' + cmpBlock(x.item) : '') + '</div>' +
+        return '<div class="mkrow' + (open ? ' open' : '') + '"><div class="mki' + (tap ? ' tap" data-act="mkopen" data-a="' + x.id + '" role="button" tabindex="0" aria-expanded="' + !!open + '"' : '"') + '>' + info + '<div class="tiny faint mksub">' + sub + ' · ' + R.fmtTime(Math.max(0, x.expires - Date.now() / 1000)) + ' 남음 · ' + esc(x.seller) + (x.npc ? ' <span class="tag npc">NPC</span>' : '') + '</div>' + (open && x.item ? '<div class="mkst">' + statLines(x.item) + '</div>' + cmpBlock(x.item) : '') + '</div>' +
           '<b class="num gold mkpr">' + fmt(x.price) + '</b>' + (bw ? '<span class="tag no" title="최근 30일 시세(판매가 중간값) ' + fmt(bw.avg) + (x.qty > 1 ? ' (개당)' : '') + '">시세의 ' + bw.txt + '</span>' : '') + (x.mine ? '<span class="tag">내 물건</span>' : '<button class="btn sm primary' + (armed ? ' armed' : '') + '" data-act="mkbuy" data-a="' + x.id + '"' + (bw && bw.high ? ' data-warn="' + bw.txt + '"' : '') + (can ? '' : why(low ? '학년이 낮아 살 수 없습니다' : CUR + '가 부족합니다')) + '>' + (armed ? '한 번 더 누르면 구매' : '사기') + '</button>') + '</div>';
       }).join('') + '</div>';
     } else if (m.tab === 'sell') {
@@ -3417,7 +3417,7 @@
       act += '<button class="btn sm primary' + (armed ? ' armed' : '') + '" data-act="mkbuyout" data-a="' + x.id + '"' + (canBuy ? '' : why(low ? '학년이 낮아 살 수 없습니다' : CUR + '가 부족합니다')) + '>' + (armed ? '한 번 더 누르면 구매' : '즉시 구매') + '</button>';
     }
     return '<div class="mkrow mkauc' + (open ? ' open' : '') + '"><div class="mki' + (tap ? ' tap" data-act="mkopen" data-a="' + x.id + '" role="button" tabindex="0" aria-expanded="' + !!open + '"' : '"') + '>' + info +
-      '<div class="tiny faint ell">' + sub + (x.seller ? ' · ' + esc(x.seller) : '') + (ended ? '' : ' · ' + (left > 0 ? R.fmtTime(left) + ' 남음' : '마감 처리 중')) + '</div>' + (open && x.item ? '<div class="mkst">' + statLines(x.item) + '</div>' + cmpBlock(x.item) : '') + '</div>' +
+      '<div class="tiny faint mksub">' + sub + (ended ? '' : ' · ' + (left > 0 ? R.fmtTime(left) + ' 남음' : '마감 처리 중')) + (x.seller ? ' · ' + esc(x.seller) : '') + '</div>'   // 판매자 이름이 길어도 남은 시간이 먼저 보이게 · 줄바꿈 허용 + (open && x.item ? '<div class="mkst">' + statLines(x.item) + '</div>' + cmpBlock(x.item) : '') + '</div>' +
       '<div class="mkap"><div class="tiny faint">' + (x.bids ? '현재가 · 입찰 ' + x.bids + '건' : '시작가 · 입찰 없음') + '</div><b class="num gold">' + fmt(x.bids ? x.bid : x.start) + '</b><div class="tiny faint">즉시 구매가 <b class="num">' + fmt(x.price) + '</b></div></div>' +
       '<div class="mkab">' + st + act + '</div></div>';
   }
@@ -5521,7 +5521,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102275;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102276;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
