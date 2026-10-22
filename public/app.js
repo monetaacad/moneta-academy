@@ -2224,15 +2224,16 @@
   };
   ACT.gsnamesave = function (i) { var x = $('#gs-nm'); act('gearSet', { op: 'name', i: +i, name: x ? x.value : '' }).then(function (r) { if (r) toast('프리셋 이름', r.name ? R.josa('「' + r.name + '」', '으로', '로') + ' 바꿨습니다' : '번호로 표시합니다', 1600); gsRedraw(); }); };
   ACT.gsnameback = function () { gsRedraw(); };
+  function gsLabel(i) { var st = (S.P.gearSets || [])[+i]; return '프리셋 ' + (+i + 1) + (st && st.name ? ' 「' + st.name + '」' : ''); }   // 알림에 붙여 둔 이름도 표시
   function gsRedraw() { var b = $('#gsedit'); if (b) b.innerHTML = gsEditBody(); render(); }
   ACT.gsedit = function () { modal(mhead('장비 프리셋', '지금 장착한 장비와 휘장을 칸에 저장하고, 장비 화면의 1 · 2 · 3으로 한 번에 바꿔 낍니다') + '<div id="gsedit">' + gsEditBody() + '</div>'); };
   ACT.gssave = function (i) {
     var st = (S.P.gearSets || [])[+i], k = 'gs' + i;
     if (st && !(S.confirm[k] > Date.now())) { S.confirm[k] = Date.now() + 4000; gsRedraw(); setTimeout(gsRedraw, 4100); return; }
-    S.confirm[k] = 0; act('gearSet', { op: 'save', i: +i }).then(function (r) { if (r) toast('프리셋 ' + (+i + 1) + '에 저장했습니다', '', 1600); gsRedraw(); });
+    S.confirm[k] = 0; act('gearSet', { op: 'save', i: +i }).then(function (r) { if (r) toast(gsLabel(i) + '에 저장했습니다', '', 1600); gsRedraw(); });
   };
   ACT.gsclear = function (i) { act('gearSet', { op: 'clear', i: +i }).then(function (r) { if (r) toast('프리셋 ' + (+i + 1) + '을 비웠습니다', '', 1400); gsRedraw(); }); };
-  ACT.gsload = function (i) { act('gearSet', { op: 'load', i: +i }).then(function (r) { if (r) toast('프리셋 ' + (+i + 1) + ' 장착', r.moved + '칸을 바꿨습니다' + (r.miss ? ' · 가방에 없는 장비 ' + r.miss + '개는 그대로 두었습니다' : '') + (r.low ? ' · 레벨이 모자라는 장비 ' + r.low + '개는 장착하지 않았습니다' : ''), 2400); render(); }); };
+  ACT.gsload = function (i) { act('gearSet', { op: 'load', i: +i }).then(function (r) { if (r) toast(gsLabel(i) + ' 장착', r.moved + '칸을 바꿨습니다' + (r.miss ? ' · 가방에 없는 장비 ' + r.miss + '개는 그대로 두었습니다' : '') + (r.low ? ' · 레벨이 모자라는 장비 ' + r.low + '개는 장착하지 않았습니다' : ''), 2400); render(); }); };
   // 일괄 판매 · 분해 확인 (다시 보지 않기 · 설정에서 다시 켤 수 있음)
   // 일괄 판매 · 분해 확인: 「다시 보지 않기」를 켜 두어도 영웅 이상 · 강화한 장비가 들어 있으면 반드시 한 번 더 확인한다
   ACT.bulkask = function (type, r) {
