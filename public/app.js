@@ -2767,7 +2767,7 @@
       '<div class="twnext" style="margin-top:10px"><div class="twf num">' + f + '<span>층</span></div><div style="flex:1;min-width:0"><b' + (foe.wall ? ' class="gold"' : '') + '>' + esc(foe.name) + '</b><div class="tiny faint">' + foe.stage + '단계 수준 · 체력 ' + fmt(foe.hp) + (foe.wall ? ' · <span class="bad">시련의 층: 탑의 문지기가 지킵니다</span>' : '') + '</div>' +
       '<div class="small" style="margin-top:4px">' + (pv.win && pv.ttk < R.CT_TIME ? '<span class="good">승산 있음</span> — 약 ' + pv.ttk.toFixed(1) + '초' : '<span class="bad">아직 버겁습니다</span>') + '</div>' +
       '<div class="tiny" style="margin-top:4px">이 층 보상 <span class="rwd">' + esc(R.rewardText(rw)) + '</span></div></div></div>' +
-      '<div class="row" style="margin-top:12px"><span class="tiny faint">' + (mt ? nextMile + '층 돌파 시 칭호 「' + esc(mt.name) + '」 · 별조각 30 · 희귀 장비 상자 · 환수의 알' : nextMile + '층 돌파 시 별조각 30 · 희귀 장비 상자 · 환수의 알') + '</span><span class="spacer"></span><button class="btn primary" data-act="ctower"' + '' + '>' + f + '층 도전</button></div></div>';
+      '<div class="row" style="margin-top:12px"><span class="tiny faint">' + (mt ? nextMile + '층 돌파 시 칭호 「' + esc(mt.name) + '」 · 별조각 30 · 희귀 장비 상자 · 환수의 알' : nextMile + '층 돌파 시 별조각 30 · 희귀 장비 상자 · 환수의 알') + '</span><span class="spacer"></span><button class="btn ghost" data-act="ctauto" title="패배하거나 중지할 때까지 다음 층에 계속 도전합니다">패배할 때까지 연속 도전</button><button class="btn primary" data-act="ctower"' + '' + '>' + f + '층 도전</button></div></div>';
     h += '<div class="card" style="margin-top:14px"><div class="row between"><h3>장착 주문</h3><span class="tiny faint">칸을 누르면 주문을 바꿉니다 · 바꾼 뒤 위의 승산이 다시 계산됩니다</span></div>' + spellBar(P) + '</div>';   // 탑에서도 바로 주문을 바꾼다
     var got = D.TITLES.filter(function (t) { return t.stat === R.ctKey(cl); });
     // 탑 칭호는 칭호 도감에 모두 있으므로 여기서는 한 줄 (획득 수 · 다음 칭호)
@@ -2793,6 +2793,56 @@
       });
     });
   };
+  /* 무한의 탑 연속 도전: 패배 · 오류 · 「중지」 전까지 다음 층에 계속 도전한다 (강화 「성공할 때까지」처럼).
+     전투 장면은 생략하고 오른 층을 한 줄씩 쌓는다. 서버 행동 제한(초당 12회)에 걸리지 않게 도전 사이에 잠시 쉰다. */
+  var CT_AUTO_GAP = 350;
+  ACT.ctauto = function () {
+    if (S.ctAuto || S.busy) return;
+    var cl = R.ctCls(S.P), nm = R.CT_NAME[cl], A2 = S.ctAuto = { cls: cl, from: R.ctBest(S.P, cl), n: 0, rw: {}, titles: [], items: [], lines: [], stop: false, last: null, why: '' };
+    modal(mhead(nm + ' 연속 도전', '패배하거나 「중지」를 누를 때까지 다음 층에 계속 도전합니다', true) +
+      '<div class="card twjournal live btjournal" id="cta-box" style="margin-top:4px"><div class="row between"><h4 class="gold"><span class="livedot"></span> 연속 도전 일지</h4><span class="tiny faint num" id="cta-st"></span></div>' +
+      '<div class="explog twlines" id="cta-lines" aria-live="polite"></div></div>' +
+      '<div class="row" id="cta-row" style="justify-content:flex-end;margin-top:12px"><button class="btn danger" data-act="ctstop" id="cta-stop">중지</button></div>', true, true);
+    function paint() {
+      var st = $('#cta-st'); if (st) st.textContent = A2.from + '층 → ' + R.ctBest(S.P, cl) + '층 · ' + A2.n + '층 돌파';
+      var box = $('#cta-lines'); if (box) { box.innerHTML = A2.lines.map(function (x) { return '<div class="el k' + x[1] + '"><span class="et num">' + x[2] + '층</span><span>' + esc(x[0]) + '</span></div>'; }).join('') + (A2.stop || A2.why ? '' : '<div class="el faint twdots"><span class="et"></span><span>…</span></div>'); box.scrollTop = box.scrollHeight; }
+    }
+    function finish() {
+      if (S.ctAuto !== A2) return; S.ctAuto = null;
+      var to = R.ctBest(S.P, cl), r = A2.last, rwT = R.rewardText(A2.rw), j = $('#cta-box'); if (j) j.classList.remove('live');
+      paint(); Snd.play(A2.n ? 'pass' : 'fail');
+      var why = A2.why === 'lose' && r ? esc(r.foe.name) + '의 체력을 ' + r.pct + '% 깎았습니다. ' + (r.dead ? '생명력이 바닥났습니다.' : R.CT_TIME + '초 안에 쓰러뜨리지 못했습니다.') : A2.why === 'stop' ? '「중지」를 눌러 연속 도전을 멈췄습니다.' : A2.why === 'gone' ? '창을 벗어나 연속 도전을 멈췄습니다.' : '오류로 연속 도전을 멈췄습니다.';
+      var row = $('#cta-row'); if (!row) { render(); return; }
+      row.outerHTML = '<div class="rpres" id="cta-res"><h3 class="' + (A2.n ? 'good' : 'bad') + '">' + (A2.n ? A2.from + '층 → ' + to + '층 · ' + A2.n + '층 돌파' : '이번에는 오르지 못했습니다') + '</h3>' +
+        '<p class="small" style="margin-top:4px">' + why + '</p>' +
+        (A2.titles.length ? '<p class="gold" style="margin-top:8px">새 칭호: ' + A2.titles.map(function (t) { return '「' + esc(t) + '」'; }).join(' ') + '</p>' : '') +
+        (rwT ? '<p class="small" style="margin-top:8px">획득 보상 합계: ' + esc(rwT) + '</p>' : '') + (A2.items.length ? '<p class="small">' + A2.items.map(function (it) { return '<span style="color:' + rcol(it.r) + '">' + esc(it.name) + '</span>'; }).join(', ') + '</p>' : '') +
+        (A2.why === 'lose' && r && r.dead ? '<p class="tiny faint" style="margin-top:6px">탑의 적은 공격이 강합니다. 생명력 · 방어력을 올리거나 보호막 · 치유 주문을 장착하면 더 오래 버틸 수 있습니다.</p>' : '') +
+        '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn primary" data-act="modal-close" autofocus>확인</button></div></div>';
+      S.modalLocked = false; S.rpKeep = true;   // 「확인」으로만 닫힌다
+      var b = $('#cta-res [data-act="modal-close"]'); if (b) setTimeout(function () { b.focus({ preventScroll: true }); }, 30);
+      scrollHints(); render();
+    }
+    function step() {
+      if (S.ctAuto !== A2) return;
+      if (!S.modal || !$('#cta-lines')) { A2.why = 'gone'; S.ctAuto = null; return; }
+      if (A2.stop) { A2.why = 'stop'; finish(); return; }
+      if (S.busy) { setTimeout(step, CT_AUTO_GAP); return; }   // 다른 요청이 처리 중이면 잠시 뒤 다시
+      act('ctower').then(function (r) {
+        if (S.ctAuto !== A2) return;
+        if (!r || !r.foe) { A2.why = 'err'; finish(); return; }
+        A2.last = r;
+        if (!r.win) { A2.lines.push([r.foe.name + ' · 체력 ' + r.pct + '% · ' + (r.dead ? '패배' : '시간 초과'), 'bad', r.f]); A2.why = 'lose'; finish(); return; }
+        A2.n++; Object.keys(r.rw || {}).forEach(function (k) { A2.rw[k] = (A2.rw[k] || 0) + r.rw[k]; });
+        (r.titles || []).forEach(function (t) { A2.titles.push(t); }); (r.items || []).forEach(function (it) { A2.items.push(it); });
+        A2.lines.push([r.foe.name + ' · ' + (Math.round(r.t * 10) / 10) + '초 돌파' + (r.titles.length ? ' · 칭호 획득' : ''), r.titles.length ? 'legend' : 'good', r.f]);
+        if (A2.lines.length > 200) A2.lines.shift();
+        paint(); setTimeout(step, CT_AUTO_GAP);
+      });
+    }
+    paint(); step();
+  };
+  ACT.ctstop = function () { var A2 = S.ctAuto; if (!A2) return; A2.stop = true; var b = $('#cta-stop'); if (b) { b.disabled = true; b.textContent = '중지하는 중…'; } };
   V.tower = function () {
     var h = pageHead('파티와 함께 오르는 탑', '<span class="phimg">' + dotImg('tower', 40, '', 'twimg') + '별의 탑</span>', '실전 하루 1회 · 월요일 KST 0시 기록 초기화');
     if (!S.partyD || Date.now() - S.partyAt > 20000) { if (Date.now() - S.partyAt > 1500) loadParty(); }
@@ -5637,7 +5687,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102285;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102286;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
