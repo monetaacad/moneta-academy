@@ -2813,8 +2813,15 @@
       '<div class="row tiny faint" style="margin-top:6px;gap:6px;flex-wrap:wrap"><span>' + (r.kind === 'real' ? '실전은 건너뛸 수 없으며, 결과는 대본이 끝나면 알려 드립니다.' : r.kind === 'party' ? '파티 연습은 건너뛸 수 없으며, 기록 · 보상에 반영되지 않습니다.' : '연습은 기록 · 보상에 반영되지 않습니다.') + '</span><span class="spacer"></span>' +
       '<button class="btn sm ghost" data-act="twfull">' + (S.twFull === false ? '전체 기록 보기' : '요약만 보기') + '</button>' +
       (r.kind === 'party' ? '<button class="btn sm ghost" data-act="twstop">연습 중단</button>' : '') + (r.kind === 'solo' ? '<button class="btn sm ghost" data-act="twclose">연습 닫기</button>' : '') +
-      (twEl(r) >= r.d ? '<button class="btn sm ghost" data-act="twexport" data-a="' + r.id + '">기록 내보내기</button>' : r.kind === 'solo' ? '<button class="btn sm ghost" data-act="twskip" data-a="' + r.id + '">끝까지 보기</button>' : '') + '</div></div>';   // 실전 · 파티 연습은 건너뛸 수 없다 (파티가 끝까지 함께 본다)
+      (twEl(r) >= r.d ? '<button class="btn sm ghost" data-act="twexport" data-a="' + r.id + '">기록 내보내기</button>' : r.kind === 'solo' ? twJumpBtns(r) + '<button class="btn sm ghost" data-act="twskip" data-a="' + r.id + '">끝까지 보기</button>' : '') + '</div></div>';   // 실전 · 파티 연습은 건너뛸 수 없다 (파티가 끝까지 함께 본다)
   }
+  // 혼자 연습: 50층 단위로 건너뛰어 그 층부터 보기 (지금 층보다 앞, 실제로 도달한 층까지)
+  function twJumpBtns(r) {
+    var a = twAt(r, twEl(r)), cur = a ? a.fl.f : 0, fs = r.floors || [], top = fs.length ? fs[fs.length - 1].f : 0, out = '';
+    for (var f = Math.floor(cur / 50) * 50 + 50, k = 0; f <= top && k < 4; f += 50, k++) out += '<button class="btn sm ghost" data-act="twjump" data-a="' + r.id + '" data-b="' + f + '">' + f + '층부터</button>';
+    return out;
+  }
+  ACT.twjump = function (id, f) { var r = twRunById(id); if (!r || r.kind !== 'solo') return; var fl = (r.floors || []).filter(function (x) { return x.f >= +f; })[0]; if (!fl) return; r.t0local = Date.now() / 1000 - fl.t; twTick(true); render(); };
   ACT.twwatch = function (w) { S.twWatch = w; render(); };
   ACT.twskip = function (id) { var r = twRunById(id); if (!r || r.kind !== 'solo') return; (S.twSkip || (S.twSkip = {}))[id] = 1; twTick(true); render(); };   // 혼자 연습만
   ACT.twclose = function () { if (S.twSolo) S.twSolo.closed = true; S.twSolo = null; render(); };
@@ -5813,7 +5820,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102297;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102298;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
