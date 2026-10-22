@@ -2519,14 +2519,14 @@
   /* ── 매점 ── */
   V.shop = function () {
     var P = S.P, h = pageHead('부엉이 매점', '매점', '주인 부엉이는 “부엉”이라고만 말합니다');
-    h += '<p class="small muted" style="margin:-4px 0 12px">토벌 도전권은 한 주에 ' + R.K.WB_BUY_MAX + '번까지 살 수 있으며, 매주 <b>월요일 한국 시간(KST) 0시</b>에 초기화됩니다.</p>';
+    h += '<p class="small muted" style="margin:-4px 0 12px">일부 물건은 하루 구매 횟수가 정해져 있으며 매일 <b>한국 시간(KST) 0시</b>에 초기화됩니다. 토벌 도전권은 한 주에 ' + R.K.WB_BUY_MAX + '번까지 살 수 있으며, 매주 <b>월요일 한국 시간(KST) 0시</b>에 초기화됩니다.</p>';
     var tkLeft = R.wbBuyLeft(P, now()), sbDone = P.sbDay === R.dayKST(now());
     h += '<div class="grid gauto">' + D.SHOP.map(function (s) {
-      var locked = s.grade && P.grade < s.grade, price = R.shopPrice(P, s.id), cur = s.cur === 'gold' ? 'gold' : s.cur === 'stone' ? 'stone' : 'shard';
+      var locked = s.grade && P.grade < s.grade, dl = R.shopLeft(P, s.id, now()), price = R.shopPrice(P, s.id), cur = s.cur === 'gold' ? 'gold' : s.cur === 'stone' ? 'stone' : 'shard';
       if (s.multi) return '<div class="card"><h4>' + s.name + '</h4><p class="small muted" style="margin:4px 0 10px">' + s.desc + ' <span class="tiny faint">(보유 마석 ' + fmt(P.res.stone) + ' · 마석가루 ' + fmt(P.res.dust || 0) + ')</span></p><div class="row" style="gap:6px;flex-wrap:wrap">' +
         [1, s.multi].map(function (k) { return '<button class="btn sm primary" data-act="do" data-a="buy" data-b="' + s.id + ':' + k + '"' + (P.res.stone >= price * k ? '' : ' disabled') + '>×' + (k * 10) + ' <span class="cost">' + fmt(price * k) + ' 마석</span></button>'; }).join('') + '</div></div>';
       return '<div class="card"' + (locked ? ' style="opacity:.55"' : '') + '><h4>' + s.name + '</h4><p class="small muted" style="margin:4px 0 10px">' + s.desc + '</p>' +
-        (locked ? '<span class="tag">' + s.grade + '학년부터</span>' : '<button class="btn sm primary" data-act="do" data-a="buy" data-b="' + s.id + '"' + (P.res[cur] >= price && (s.id !== 'ticket' || tkLeft > 0) && !(s.id === 'shardbag' && sbDone) ? '' : ' disabled') + '>' + (s.id === 'shardbag' && sbDone ? '오늘 구매 완료' : '구매') + ' <span class="cost">' + fmt(price) + (cur === 'gold' ? ' ' + CUR : ' 별조각') + '</span></button>' + (s.id === 'ticket' ? ' <span class="tiny faint">이번 주 ' + tkLeft + ' / ' + R.K.WB_BUY_MAX + '</span>' : '')) + '</div>';
+        (locked ? '<span class="tag">' + s.grade + '학년부터</span>' : '<button class="btn sm primary" data-act="do" data-a="buy" data-b="' + s.id + '"' + (P.res[cur] >= price && (s.id !== 'ticket' || tkLeft > 0) && !(s.id === 'shardbag' && sbDone) && dl > 0 ? '' : ' disabled') + '>' + ((s.id === 'shardbag' && sbDone) || dl <= 0 ? '오늘 구매 완료' : '구매') + ' <span class="cost">' + fmt(price) + (cur === 'gold' ? ' ' + CUR : ' 별조각') + '</span></button>' + (s.id === 'ticket' ? ' <span class="tiny faint">이번 주 ' + tkLeft + ' / ' + R.K.WB_BUY_MAX + '</span>' : '') + (s.day ? ' <span class="tiny faint">오늘 ' + dl + ' / ' + s.day + '</span>' : '')) + '</div>';
     }).join('') + '</div><div class="card inset" style="margin-top:14px"><p class="small muted">별조각은 업적, 일일 목표, 출석, 보스 첫 처치, 시험, 결투제, 과제, 월드 보스, 기숙사 대항전에서 얻습니다.</p></div>';
     return h;
   };
@@ -5860,7 +5860,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102313;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102314;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

@@ -1768,6 +1768,8 @@
   R.taskProg = function (P, sid, t) { return t.k === 'subj' ? P.subj[sid].lv : t.k === 'stage' ? P.st.maxStageAll : (P.st[t.s] || 0); };
 
   /* ───────── 상점 ───────── */
+  // 하루 구매 한도(day)가 있는 물건: 오늘 남은 횟수 (한국 시간 0시 초기화)
+  R.shopLeft = function (P, id, now) { var s = SHOP[id]; if (!s || !s.day) return Infinity; var t = P.shopD; return Math.max(0, s.day - (t && t.d === R.dayKST(now) ? t.n[id] || 0 : 0)); };
   R.shopPrice = function (P, id) {
     var s = SHOP[id];
     if (s.price === 'stone') return Math.floor(400 * Math.pow(1.11, P.maxStage - 1));
@@ -2466,9 +2468,11 @@
     if (id === 'badgebox' && (P.badges || []).length >= R.BADGE_HOLD) err('휘장 보관함이 가득 찼습니다 (' + R.BADGE_HOLD + '개)');
     if (id === 'ticket' && R.wbBuyLeft(P, now) <= 0) err('이번 주에는 더 살 수 없습니다 (월요일 KST 0시 초기화)');
     if (id === 'shardbag' && P.sbDay === R.dayKST(now)) err('오늘은 이미 구매했습니다 (KST 0시 초기화)');
+    if (R.shopLeft(P, id, now) <= 0) err('오늘은 더 구매할 수 없습니다 (하루 ' + s.day + '번 · KST 0시 초기화)');
     var n = s.multi ? (a.n == null ? 1 : int(a.n, 1, s.multi)) : 1;   // 여러 번 한꺼번에 (마석가루 교환 ×100 = 10회)
     var price = R.shopPrice(P, id) * n, cur = s.cur === 'gold' ? 'gold' : s.cur === 'stone' ? 'stone' : 'shard'; if (P.res[cur] < price) err((cur === 'gold' ? CUR + '가' : cur === 'stone' ? '마석이' : '별조각이') + ' 부족합니다');
     P.res[cur] -= price; var out = { id: id, n: n };
+    if (s.day) { var dk = R.dayKST(now); if (!P.shopD || P.shopD.d !== dk) P.shopD = { d: dk, n: {} }; P.shopD.n[id] = (P.shopD.n[id] || 0) + 1; }
     if (id === 'stone10') P.res.stone += 10;
     else if (id === 'dust10') { var dg = s.give.dust * n; P.res.dust = (P.res.dust || 0) + dg; out.dust = dg; }
     else if (id === 'gearbox') { var gb = calc(P, W, now).rarity + 0.4, it = makeItem(P, pick(P, D.SLOTS).id, R.rewardIlvl(P), Math.max(1, rollRarity(P, gb)), 1); out.item = { name: it.name, r: it.r, res: gainItem(P, it, now, '장비 상자', gb) }; }
