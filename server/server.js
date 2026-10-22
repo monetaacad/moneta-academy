@@ -2938,6 +2938,24 @@ function shutdown(sig) {
 process.on('SIGINT', () => shutdown('SIGINT'));
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 
+// 한 번만: 별의 탑 층 보상에 마석가루가 들어가기 전(#364)에 받은 이번 주 「별의 탑」 보상 우편의 마석가루를 학생마다 한 통으로 추가 지급
+// 본문의 「처음 넘은 a~b층」으로 층 범위를 읽고, 이미 마석가루가 든 우편(패치 뒤)은 건너뛴다. 끝나면 kv 'twDustFix'에 기록 (운영자 승인: 2026-10-23)
+function twDustBackfill() {
+  if (dbx.kvGet('twDustFix', 0)) return;
+  const since = R.weekStart(R.weekId(nowSec())), per = new Map(); let mails = 0;
+  dbx.db.prepare("SELECT target, body, rewards FROM mail WHERE sender = '별의 탑' AND deleted = 0 AND target != '*' AND created_g >= ?").all(since).forEach((r) => {
+    let rw = {}; try { rw = JSON.parse(r.rewards || '{}'); } catch (e) { } if (rw.dust) return;
+    let body = ''; try { body = sec.dec(r.body); } catch (e) { return; }
+    const m = /처음 넘은 (\d+)~(\d+)층/.exec(body); if (!m) return;
+    const d = R.twRewardSum(+m[1], +m[2]).dust || 0; if (d > 0) { per.set(r.target, (per.get(r.target) || 0) + d); mails++; }
+  });
+  let total = 0;
+  per.forEach((d, pid) => { total += d; sendMail(pid, '별의 탑', '별의 탑 마석가루 추가 지급', '별의 탑 층 보상에 마석가루가 추가되었습니다. 이번 주에 이미 넘은 층의 마석가루를 추가로 지급합니다.', { dust: d }, Math.floor(Date.now() / 1000) + 7 * 86400, true); });
+  dbx.kvSet('twDustFix', { at: Math.floor(Date.now() / 1000), students: per.size, mails, dust: total });
+  oplog('system', '시스템', 'twDustFix', '별의 탑 마석가루 소급: 학생 ' + per.size + '명 · 우편 ' + mails + '통 기준 · 마석가루 ' + total);
+}
+try { twDustBackfill(); } catch (e) { log('별의 탑 마석가루 소급 실패', e); }
+
 server.listen(cfg.port, cfg.host, () => {
   log(`모네타 서버 시작: http://${cfg.host}:${cfg.port}  (데이터: ${cfg.dataDir}${cfg.timeScale !== 1 ? ', 시간 배속 ×' + cfg.timeScale : ''})`);
   if (!cfg.adminToken) log('알림: ADMIN_TOKEN이 없어 관리자 API가 꺼져 있습니다');
