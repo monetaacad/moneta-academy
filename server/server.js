@@ -1838,7 +1838,11 @@ routes['POST /api/mail'] = async (req, res) => {
   if (limited('mailp:' + me, 2, 10)) return fail(req, res, 429, '잠시 후 다시 시도');
   const b = await readJson(req, 1024), op = String(b.op || ''), now = nowSec(), real = Math.floor(Date.now() / 1000);
   const mine = dbx.q.mailFor.all(me, me, createdOf(me), real);
+  // 읽은 우편 지우기: 읽었고 보상이 없거나 이미 받은 우편만 (내 우편함에서만 사라진다)
+  const done = (r) => { let rw = {}; try { rw = JSON.parse(r.rewards); } catch (e) { } return !!r.rd && (!!r.cl || !R.rewardText(rw)); };
+  if (op === 'delRead') { const ds = mine.filter(done); ds.forEach((r) => dbx.q.mailGone.run(r.id, me)); return send(req, res, 200, { ok: true, n: ds.length }); }
   const pick = op === 'claimAll' ? mine.filter((r) => !r.cl) : mine.filter((r) => r.id === Number(b.id));
+  if (op === 'del') { if (!pick.length) return fail(req, res, 404, '없는 우편이거나 기한이 지났습니다'); if (!done(pick[0])) return fail(req, res, 400, '받지 않은 보상이 있는 우편은 삭제할 수 없습니다'); dbx.q.mailGone.run(pick[0].id, me); return send(req, res, 200, { ok: true, n: 1 }); }
   if (!pick.length) return op === 'claimAll' ? send(req, res, 200, { ok: true, got: [], n: 0 }) : fail(req, res, 404, '없는 우편이거나 기한이 지났습니다');
   if (op === 'read') { pick.forEach((r) => dbx.q.mailRead.run(r.id, me)); return send(req, res, 200, { ok: true }); }
   if (op !== 'claim' && op !== 'claimAll') return fail(req, res, 400, '알 수 없는 요청입니다');
