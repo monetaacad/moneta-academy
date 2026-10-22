@@ -1283,7 +1283,7 @@
   R.dailyReward = function (P) { return { shard: 4 + Math.min(P.grade, 8), gold: Math.floor(300 * K.KILL_GOLD * Math.pow(K.G_GOLD, Math.min(P.maxStage, R.stageCap(P)) - 1)) }; };
   R.loginReward = function (P) { var s = Math.min(P.daily.streak, 7); return { shard: 3 + s * 2, stone: 3 + s }; };
   // 우편 보상 (운영진 우편 · 별의 탑 등). 값은 정수, 너무 큰 값은 잘라 낸다.
-  R.MAIL_REWARDS = [['shard', '별조각', 100000], ['gold', CUR, 1e15], ['stone', '마석', 100000], ['mana', '마나', 1e15], ['know', '지식', 1e15], ['egg', '환수의 알', 100], ['ticket', '토벌 도전권', 100], ['gear', '희귀 장비 상자', 50], ['rsDone', '연구 즉시 완료 물약', 100], ['respec', '망각의 차', 100], ['gradeUp', '학년 진급 물약', 10]];   // 물약 두 가지는 운영진 보상 전용 (매점에서 팔지 않음)
+  R.MAIL_REWARDS = [['shard', '별조각', 100000], ['gold', CUR, 1e15], ['stone', '마석', 100000], ['dust', '마석가루', 1000000], ['mana', '마나', 1e15], ['know', '지식', 1e15], ['egg', '환수의 알', 100], ['ticket', '토벌 도전권', 100], ['gear', '희귀 장비 상자', 50], ['rsDone', '연구 즉시 완료 물약', 100], ['respec', '망각의 차', 100], ['gradeUp', '학년 진급 물약', 10]];   // 물약 두 가지는 운영진 보상 전용 (매점에서 팔지 않음)
   R.cleanRewards = function (o) { var r = {}; o = o || {}; R.MAIL_REWARDS.forEach(function (k) { var v = Math.floor(Number(o[k[0]]) || 0); if (v > 0) r[k[0]] = Math.min(v, k[2]); });
     if (Array.isArray(o.items)) { var its = o.items.filter(function (it) { return it && SLOT[it.slot] && typeof it.name === 'string' && Array.isArray(it.aff) && D.RARITY[it.r]; }).slice(0, 10); if (its.length) r.items = its; }
     return r; };
@@ -1299,7 +1299,7 @@
   R.mailNeedSlots = function (rw) { rw = rw || {}; return (Array.isArray(rw.items) ? rw.items.length : 0) + (Math.floor(Number(rw.gear) || 0)); };
   R.grantMail = function (P, W, now, rw) {
     rw = R.cleanRewards(rw); var out = { items: [] }; R.noMailQ = true;   // 우편에서 받는 장비는 다시 우편으로 돌리지 않는다 (받기 전에 가방 칸을 확인)
-    if (rw.shard) P.res.shard += rw.shard; if (rw.gold) addGold(P, rw.gold); if (rw.stone) P.res.stone += rw.stone;
+    if (rw.shard) P.res.shard += rw.shard; if (rw.gold) addGold(P, rw.gold); if (rw.stone) P.res.stone += rw.stone; if (rw.dust) P.res.dust = (P.res.dust || 0) + rw.dust;
     if (rw.mana) addMana(P, rw.mana); if (rw.know) P.res.know += rw.know; if (rw.egg) P.fam.eggs += rw.egg; if (rw.ticket) P.wb.extra = (P.wb.extra || 0) + rw.ticket;
     if (rw.rsDone || rw.gradeUp || rw.respec) { var tk = P.tok || (P.tok = {}); if (rw.rsDone) tk.rsDone = (tk.rsDone || 0) + rw.rsDone; if (rw.gradeUp) tk.gradeUp = (tk.gradeUp || 0) + rw.gradeUp; if (rw.respec) tk.respec = (tk.respec || 0) + rw.respec; }
     for (var i = 0; i < (rw.gear || 0); i++) { var it = makeItem(P, pick(P, D.SLOTS).id, R.rewardIlvl(P), Math.max(2, rollRarity(P, 0.6)), 2); out.items.push({ name: it.name, r: it.r, res: gainItem(P, it, now, '우편 (무작위 장비)', 0.6) }); }
@@ -1425,7 +1425,7 @@
   // 층 보상 (그 주에 처음 넘은 층만, 실전이 끝난 뒤 우편으로 한 번에)
   R.twReward = function (f) {
     if (R.twRest(f)) return { shard: 2 };
-    var s = R.twStage(f), r = { gold: Math.floor(60 * K.KILL_GOLD * Math.pow(K.G_GOLD, s - 1)), shard: 1 + Math.floor(f / 10) + (R.twTrial(f) ? 10 : 0) };
+    var s = R.twStage(f), r = { gold: Math.floor(60 * K.KILL_GOLD * Math.pow(K.G_GOLD, s - 1)), shard: 1 + Math.floor(f / 10) + (R.twTrial(f) ? 10 : 0), dust: f * 2 + (R.twTrial(f) ? 100 : 0) };   // 마석가루: 층 × 2 (시련의 층 +100)
     if (f % 2 === 0) r.stone = 1 + Math.floor(f / 20); if (f % 10 === 0) r.gear = 1; if (f % 20 === 0) r.egg = 1;
     return r;
   };
@@ -2190,9 +2190,9 @@
     return o;
   };
   // 재련: 등급·레벨·강화는 그대로 두고 옵션만 새로 굴린다 (옵션이 없는 일반 등급은 못 함)
-  // 옵션 줄 잠금(keep: 줄 번호): 잠근 줄은 그대로 두고 나머지만 굴린다. 잠근 줄이 많을수록 비용 ×3씩, 모든 줄을 잠글 수는 없다
-  R.REFORGE_KEEP_MULT = 3;
-  R.reforgeCost = function (it, k) { return Math.floor(8 * (it.r + 1) * (it.r + 1) * (1 + it.ilvl / 20)) * Math.pow(R.REFORGE_KEEP_MULT, k || 0); };
+  // 옵션 줄 잠금(keep: 줄 번호): 잠근 줄은 그대로 두고 나머지만 굴린다. 잠근 줄이 많을수록 비용 ×2.5씩, 모든 줄을 잠글 수는 없다
+  R.REFORGE_KEEP_MULT = 2.5; R.REFORGE_BASE = 6;
+  R.reforgeCost = function (it, k) { return Math.floor(R.REFORGE_BASE * (it.r + 1) * (it.r + 1) * (1 + it.ilvl / 20) * Math.pow(R.REFORGE_KEEP_MULT, k || 0)); };
   A.reforge = function (P, W, now, a) {
     var it = R.findItem(P, str(a.u)); if (!it) err('장비가 없습니다'); if (it.lock) err('잠긴 장비입니다. 잠금을 풀면 재련할 수 있습니다');
     var n = D.RARITY[it.r].affix; if (!n) err('옵션이 없는 장비는 재련할 수 없습니다');

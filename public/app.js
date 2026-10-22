@@ -4409,7 +4409,7 @@
   ACT.automode = function () { act('autoMode', { dis: $('#automode').value === 'dis' }).then(render); };
   // 재련: 먼저 지금 옵션이 사라진다는 확인 창 → 재련하면 이전 · 새 옵션을 나란히 보여 준다
   function affList(it) { return (it.aff || []).map(function (a) { var nm = D.BONUS_NAMES[a.id] || D.STAT_NAMES[a.id] || a.id, val = (a.id === 'atk' || a.id === 'hp' || a.id === 'def' || D.STAT_NAMES[a.id]) ? '+' + fmt(a.v) : '+' + pct(a.v); return '<div class="statline"><span>' + nm + '</span><span class="d">' + val + '</span></div>'; }).join('') || '<p class="tiny faint">옵션 없음</p>'; }
-  // 재련: 옵션 줄마다 「잠금」을 걸면 그 줄은 그대로 두고 나머지만 새로 굴린다 (잠근 줄 하나마다 비용 ×3, 모든 줄을 잠글 수는 없다)
+  // 재련: 옵션 줄마다 「잠금」을 걸면 그 줄은 그대로 두고 나머지만 새로 굴린다 (잠근 줄 하나마다 비용 ×R.REFORGE_KEEP_MULT, 모든 줄을 잠글 수는 없다)
   function affVal(a) { return (a.id === 'atk' || a.id === 'hp' || a.id === 'def' || D.STAT_NAMES[a.id]) ? '+' + fmt(a.v) : '+' + pct(a.v); }
   function rfKeep(u) { if (!S.rfKeep || S.rfKeep.u !== u) S.rfKeep = { u: u, k: {} }; return S.rfKeep.k; }
   function rfBody(u) {
