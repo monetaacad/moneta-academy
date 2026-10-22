@@ -107,7 +107,7 @@ function create(dbx, log, opts) {
     clients.forEach((c) => {
       let s2 = pub;
       if (c.watch && lz[c.watch]) s2 += lz[c.watch];
-      if (grp) ['party', 'guild', 'house', 'cls'].forEach((kd) => { const g = OF[kd](c.pid), k = kd + ':' + g; if (g && grp.has(k)) s2 += grp.get(k); });
+      if (grp) ['party', 'exr', 'guild', 'house', 'cls'].forEach((kd) => { const g = OF[kd](c.pid), k = kd + ':' + g; if (g && grp.has(k)) s2 += grp.get(k); });
       if (s2) raw(c, s2);
     });
   }
