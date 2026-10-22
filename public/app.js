@@ -115,9 +115,46 @@
     var box = $('#toasts'); if (!box) return;
     var el = document.createElement('div'); el.className = 'toast';
     el.innerHTML = '<b>' + esc(title) + '</b>' + (body ? '<span>' + esc(body) + '</span>' : '');
-    box.appendChild(el); while (box.children.length > 3) box.removeChild(box.firstChild);
+    syncTopH(); box.appendChild(el); while (box.children.length > 3) box.removeChild(box.firstChild);
     setTimeout(function () { el.classList.add('out'); setTimeout(function () { el.remove(); }, 320); }, ms || 3200);
   }
+  /* ── 전광판 (모바일): 학교 전체 소식(운영진 공지 · S등급 진급)을 상단에 한 줄로 흘려 보낸다. 하단 안내도 · 채팅을 가리지 않게.
+     여러 건이면 차례로 보여 주고, 다 지나가면 사라진다. 누르면 공지 채팅을 연다. PC는 기존 알림(토스트) 그대로 */
+  var BC = { q: [], on: false, t: 0 };
+  function bcast(kind, text) {
+    text = String(text || '').replace(/\s+/g, ' ').trim(); if (!text) return;
+    if (!mobNav()) { toast('아카데미 공지', text.slice(0, 80), 5000); return; }
+    BC.q.push({ k: kind, text: text.slice(0, 300) }); if (BC.q.length > 5) BC.q.shift();
+    if (!BC.on) bcNext();
+  }
+  function bcNext() {
+    var old = $('#bcast'); if (old) old.remove();
+    var n = BC.q.shift(); document.body.classList.toggle('bc-on', !!n); BC.on = !!n; if (!n) return;
+    syncTopH();
+    var el = document.createElement('button'); el.id = 'bcast'; el.type = 'button'; el.className = 'bcast ' + n.k; el.setAttribute('role', 'status'); el.setAttribute('aria-live', 'polite');
+    el.setAttribute('aria-label', (n.k === 'notice' ? '운영진 공지' : '아카데미 소식') + ': ' + n.text + ' · 누르면 공지 채팅을 엽니다');
+    el.innerHTML = '<span class="tk-tag ' + (n.k === 'notice' ? 'notice' : 'news') + '">' + (n.k === 'notice' ? '공지' : '소식') + '</span><span class="bc-vp"><span class="bc-tx">' + esc(n.text) + '</span></span>';
+    el.onclick = function () { clearTimeout(BC.t); BC.q.length = 0; bcDone(el); if (S.P && ACT.chattab) ACT.chattab('notice'); };
+    document.body.appendChild(el);
+    var vp = el.querySelector('.bc-vp'), tx = el.querySelector('.bc-tx'), over = tx.scrollWidth - vp.clientWidth, still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches, ms = 5500;
+    if (over > 4 && !still) {   // 넘치는 만큼만 왼쪽으로 흘린다: 처음 · 끝에서 잠시 멈춘다
+      var dur = Math.min(30, Math.max(5, over / 55 + 3)); ms = dur * 1000 + 1200;
+      tx.style.setProperty('--bcx', -over + 'px'); tx.style.animationDuration = dur + 's'; tx.classList.add('run');
+    } else if (over > 4) { el.classList.add('wrap'); ms = 8000; }   // 움직임 줄이기: 흘리지 않고 두 줄까지 보여 준다
+    BC.t = setTimeout(function () { bcDone(el); }, ms);
+  }
+  function bcDone(el) { if (el.dataset.done) return; el.dataset.done = '1'; el.classList.add('out'); setTimeout(bcNext, 320); }
+  // 모바일: 상단 막대(점검 안내 포함)의 보이는 아래 끝을 재서 전광판 · 알림이 그 아래에 오게 한다 (--toph). 막대가 스크롤로 사라지면 화면 맨 위
+  var topRaf = 0;
+  function syncTopH() {
+    var root = document.documentElement;
+    if (!mobNav()) { root.style.removeProperty('--toph'); return; }
+    var b = 0; ['.top', '#sysbar'].forEach(function (q) { var e = $(q); if (e) b = Math.max(b, e.getBoundingClientRect().bottom); });
+    b = Math.max(0, Math.min(Math.round(b), Math.round(window.innerHeight * .4)));
+    if (root.style.getPropertyValue('--toph') !== b + 'px') root.style.setProperty('--toph', b + 'px');
+  }
+  window.addEventListener('scroll', function () { if (topRaf) return; topRaf = requestAnimationFrame(function () { topRaf = 0; syncTopH(); }); }, { passive: true });
+  window.addEventListener('resize', syncTopH);
   function modal(html, wide, locked) {
     var m = $('#modal'); m.innerHTML = '<div class="mbox' + (wide ? ' wide' : '') + '" role="dialog" aria-modal="true">' + html + '</div>';
     m.hidden = false; S.modal = true; S.modalLocked = !!locked; scrollHints(); histModal();
@@ -724,7 +761,7 @@
           if (log) { var pend = mine && m.nonce && /^[\w-]+$/.test(m.nonce) ? log.querySelector('[data-nonce="' + m.nonce + '"]') : null; if (pend) pend.outerHTML = msgHtml(m); else queueLog(msgHtml(m), mine); }
           markRead(m.ch);
         } else if (S.chat.ch === m.ch) { markRead(m.ch); }   // 접어 둔 채팅창의 고른 탭: 숫자를 쌓지 않는다 (아래 한 줄 미리보기는 갱신된다)
-        else { S.chat.unread[m.ch] = countUnread(m.ch); if (!mine && m.ch === 'notice') toast('아카데미 공지', m.text.slice(0, 80), 5000); }
+        else { S.chat.unread[m.ch] = countUnread(m.ch); if (!mine && m.ch === 'notice') { if (m.kind === 'staff' || (m.kind === 'sys' && /S등급/.test(m.text))) bcast(m.kind === 'staff' ? 'notice' : 'news', m.text); else toast('아카데미 공지', m.text.slice(0, 80), 5000); } }
         updateUnread();
       },
       dm: function (m) {
