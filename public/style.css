@@ -1934,3 +1934,7 @@ table.sjtop .sjmeta { white-space: nowrap; }
 .potb { display: inline-flex; align-items: center; gap: 6px; }
 .potb .pot-ic { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
 .mksub { white-space: normal; overflow-wrap: anywhere; line-height: 1.5; }   /* 거래소 · 경매 줄의 부가 정보: 판매자 이름이 길면 줄바꿈 */
+
+/* 재련: 옵션 줄 잠금 */
+.rfrow { align-items: center; gap: 8px; padding: 3px 0; }
+.rfrow.on > span:first-child { color: var(--brass2); font-weight: 600; }
