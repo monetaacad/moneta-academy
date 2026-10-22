@@ -1938,3 +1938,16 @@ table.sjtop .sjmeta { white-space: nowrap; }
 /* 재련: 옵션 줄 잠금 */
 .rfrow { align-items: center; gap: 8px; padding: 3px 0; }
 .rfrow.on > span:first-child { color: var(--brass2); font-weight: 600; }
+/* 교류 › RP 게시판: 메모 + 이어 쓰는 댓글 */
+.rpnew textarea, .rpedit textarea { width: 100%; font-family: var(--f-body); font-size: 14px; }
+.rpmemo { margin-bottom: 10px; }
+.rptitle { margin-top: 8px; font-weight: 700; word-break: break-word; }
+.rpbody { margin-top: 8px; white-space: pre-wrap; word-break: break-word; line-height: 1.7; }
+.rpcoms { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--line2); display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.rpcom { width: 100%; display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: baseline; padding: 5px 8px; border-radius: 6px; background: var(--sunk); }
+.rpcom.op { box-shadow: inset 2px 0 0 var(--brass); }
+.rpcw { font-weight: 700; flex: none; }
+.rpct { flex: 1 1 200px; min-width: 0; white-space: pre-wrap; word-break: break-word; }
+.rpcm { margin-left: auto; flex: none; }
+.rpcform { width: 100%; margin-top: 4px; }
+.rpgo { margin-top: 4px; }
