@@ -1059,7 +1059,7 @@
     API.rels().then(function (j) {
       var box = $('#rlist'); if (!box) return;
       if (j.error) { box.innerHTML = '<p class="small bad">' + esc(j.error) + '</p>'; return; }
-      function row(r, sub, btns) { return '<div class="frow"><button class="avbtn" data-act="prof" data-a="' + esc(r.id) + '">' + avatarHtml(r, 36) + '</button><div style="flex:1;min-width:0"><button class="cn" style="color:' + (R.HOUSE[r.house] ? R.HOUSE[r.house].color : 'inherit') + '" data-act="prof" data-a="' + esc(r.id) + '">' + esc(r.name) + '</button><div class="tiny faint">' + sub + '</div></div>' + btns + '</div>'; }
+      function row(r, sub, btns) { return '<div class="frow relrow"><button class="avbtn" data-act="prof" data-a="' + esc(r.id) + '">' + avatarHtml(r, 36) + '</button><div style="flex:1;min-width:0"><button class="cn" style="color:' + (R.HOUSE[r.house] ? R.HOUSE[r.house].color : 'inherit') + '" data-act="prof" data-a="' + esc(r.id) + '">' + esc(r.name) + '</button><div class="tiny faint">' + sub + '</div></div><div class="relbtns">' + btns + '</div></div>'; }
       var lab = function (r) { return '나는 ' + esc(r.mine) + ' · ' + esc(r.name) + ' 님은 ' + esc(r.theirs); };
       var h = j.demo ? '<p class="small muted">데모에서는 관계를 맺을 수 없습니다. 서버를 열면 학생 정보창에서 신청할 수 있습니다.</p>' : '<p class="small muted">학생 정보창의 「관계 신청」으로 신청하고, 상대가 수락하면 두 학생의 정보창 「관계」 탭에 표시됩니다.</p>';
       if (j.inc.length) h += '<div class="section-t">받은 신청 ' + j.inc.length + '</div>' + j.inc.map(function (r) { return row(r, lab(r), '<button class="btn sm primary" data-act="relop" data-a="accept" data-b="' + r.rid + '">수락</button><button class="btn sm ghost" data-act="relop" data-a="decline" data-b="' + r.rid + '">거절</button>'); }).join('');
@@ -1069,7 +1069,7 @@
         var p = r.prop, sub = lab(r) + (p ? '<br><span class="gold">' + (p.dir === 'in' ? '받은 수정 제안' : '보낸 수정 제안 · 수락 대기') + ': 나는 ' + esc(p.mine) + ' · ' + esc(r.name) + ' 님은 ' + esc(p.theirs) + '</span>' : '');
         var btns = p && p.dir === 'in' ? '<button class="btn sm primary" data-act="relop" data-a="paccept" data-b="' + r.rid + '">수정 수락</button><button class="btn sm ghost" data-act="relop" data-a="pdecline" data-b="' + r.rid + '">거절</button>'
           : p ? '<button class="btn sm ghost" data-act="relop" data-a="pcancel" data-b="' + r.rid + '">제안 취소</button>' : '<button class="btn sm ghost" data-act="reledit" data-a="' + r.rid + '">수정 제안</button>';
-        return row(r, sub, '<span class="tag br">' + esc(r.theirs) + '</span>' + btns + '<button class="btn sm ghost" data-act="relop" data-a="remove" data-b="' + r.rid + '">끊기</button>');
+        return row(r, sub, btns + '<button class="btn sm ghost" data-act="relop" data-a="remove" data-b="' + r.rid + '">끊기</button>');
       }).join('') : '<p class="small faint">아직 맺은 관계가 없습니다.</p>';
       if (j.out.length) h += '<div class="section-t" style="margin-top:12px">보낸 신청</div>' + j.out.map(function (r) { return row(r, lab(r) + ' · 수락 대기', '<button class="btn sm ghost" data-act="relop" data-a="cancel" data-b="' + r.rid + '">취소</button>'); }).join('');
       box.innerHTML = h;
@@ -5961,7 +5961,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102330;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102331;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
