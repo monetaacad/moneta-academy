@@ -1383,14 +1383,14 @@
      시작하면 파티원 모두의 기회를 쓴다. 파티가 모두 쓰러질 때까지 층을 이어 오르고, 마지막으로 넘은 층이 각자의 이번 주 기록이 된다(더 높을 때만 · 월요일 KST 0시에 초기화).
      실전 시작 층 = 파티원 기록 중 가장 낮은 층 + 1. 연습(파티가 함께 보는 연습 · 혼자 보는 연습)은 언제나 할 수 있고 기록 · 보상이 없다.
      전투는 파티원마다 따로 계산한다:
-     - 적은 선봉 한 명(몬스터를 가장 잘 끄는 선봉)을 집중해서 노리고, 공격을 여러 번(R.TW.HITS)으로 나눠 친다 → 치유 · 보호막이 끼어들 틈이 있다. 8초마다 광역 공격.
+     - 적은 선봉 한 명(몬스터를 가장 잘 끄는 선봉)을 집중해서 노리고, 공격을 여러 번(R.TW.HITS)으로 나눠 친다 → 치유 · 보호막이 끼어들 틈이 있다. 8초마다 광역 공격(선봉이 살아 있으면 다른 파티원은 R.TW.GUARD × 선봉 어그로만큼 덜 맞는다).
      - 받는 피해 = 공격² ÷ (공격 + 방어 × R.TW.DEFX): 탑에서는 방어 효과가 크다. 선봉은 생명력 +30% · 받는 피해 −20%(탑 전용 선봉 보정).
      - 지원은 치유 · 보호막을 가장 위태로운 동료(체력 비율이 가장 낮은 동료)에게, 다른 포지션은 자신에게 건다. 보호막량은 받는 사람이 아니라 시전자의 공격력(주문 · 물리 중 높은 쪽) × R.TW.SHIELD_ATK × 주문 배율. 파티(2명 이상)의 지원이 거는 치유 · 보호막은 재사용 대기가 짧고(×R.TW.CARE_CD),
        평소에는 아껴 두다가 쓰러질 한 대를 맞기 직전에 준비돼 있으면 바로 끼어든다.
      - 주문 재사용 대기는 층을 넘어 이어진다. 층 사이에 최대 체력의 30% 회복(쓰러진 동료도 일어남), 5층마다 휴식층. 30층마다 시련의 층(특수 기믹).
      - 전투 시간 제한은 없다(오래 버티며 조금씩 깎는 전략도 인정). 계산이 끝나지 않는 일이 없도록 전투 시간 R.TW.TIME초가 지나면 물러난다.
      적은 무한의 탑 곡선 기준 체력 ×5 · 공격 ×2. 대본은 전투 시간의 R.TW.PACE배로 천천히 흐르고, 층 사이 · 휴식층에는 탑을 둘러보는 대사가 나온다. */
-  R.TW = { TIME: 180, HEAL: 0.3, REST: 5, GAP: 2, REST_D: 5, HPX: 5, ATKX: 2, MAX_F: 500, AOE: 8, AOE_K: 0.5, PACE: 5, HITS: 3, DEFX: 4, VAN_HP: 0.3, VAN_TAKE: 0.8, TRIAL: 30, HEAL_AT: 0.4, SHIELD_AT: 0.7, CARE_CD: 0.4, SHIELD_ATK: 2 };
+  R.TW = { TIME: 180, HEAL: 0.3, REST: 5, GAP: 2, REST_D: 5, HPX: 5, ATKX: 2, MAX_F: 500, AOE: 8, AOE_K: 0.5, PACE: 5, HITS: 3, DEFX: 4, VAN_HP: 0.3, VAN_TAKE: 0.8, TRIAL: 30, HEAL_AT: 0.4, SHIELD_AT: 0.7, CARE_CD: 0.4, SHIELD_ATK: 2, GUARD: 0.5, STORM_EVERY: 6, STORM_K: 1.2 };
   R.TOWER_FOES = [
     { name: '탑의 문지기 석상', arch: 'golem', c1: '#b8a98a', c2: '#4a4236' }, { name: '별빛 갑옷 기사', arch: 'construct', c1: '#cfd8ff', c2: '#3a4470' },
     { name: '거울 속 쌍둥이', arch: 'wisp', c1: '#d8c8ff', c2: '#3a2a6a' }, { name: '시간을 먹는 올빼미', arch: 'beast', c1: '#c9a26b', c2: '#4a3418' },
@@ -1402,7 +1402,7 @@
     { id: 'rage', name: '분노', desc: '10초마다 공격력이 15%씩 강해집니다' },
     { id: 'mark', name: '집중 표식', desc: '12초마다 선봉이 아닌 파티원 한 명에게 표식을 새기고 3초 뒤 강력한 일격(단일 공격의 3배)을 날립니다' },
     { id: 'regen', name: '별빛 재생', desc: '1초마다 최대 체력의 1.5%를 회복합니다' },
-    { id: 'storm', name: '폭풍', desc: '광역 공격이 4초마다 더 강하게(평소의 1.5배) 몰아칩니다' }
+    { id: 'storm', name: '폭풍', desc: '광역 공격이 6초마다 더 강하게(평소의 1.2배) 몰아칩니다' }
   ];
   R.twTrial = function (f) { return f % R.TW.TRIAL === 0 ? R.TW_TRIALS[(f / R.TW.TRIAL - 1) % R.TW_TRIALS.length] : null; };
   function toRoman(n) { return ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'][n] || String(n); }
@@ -1558,11 +1558,12 @@
         mT += dt * 0.85 * R.TW.HITS; aT += dt; gT += dt;
         var hitAtk = foe.atk * rage / R.TW.HITS;
         while (mT >= 1) { mT -= 1; var j2 = target(); if (j2 < 0) break; hurt(j2, dmgTo(j2, hitAtk), 6); }
-        var aoeEvery = tr && tr.id === 'storm' ? 4 : R.TW.AOE, aoeK = R.TW.AOE_K * (tr && tr.id === 'storm' ? 1.5 : 1);
+        var aoeEvery = tr && tr.id === 'storm' ? R.TW.STORM_EVERY : R.TW.AOE, aoeK = R.TW.AOE_K * (tr && tr.id === 'storm' ? R.TW.STORM_K : 1);
         if (aT >= aoeEvery) {   // 광역 공격: 살아 있는 모두에게 한 번씩
           aT -= aoeEvery;
           if (!told.aoe) { told.aoe = 1; line(jo(foe.name, '이', '가') + ' 파티 전체를 휩쓴다!', 'x'); }
-          for (var j3 = 0; j3 < n; j3++) if (hp[j3] > 0) hurt(j3, dmgTo(j3, foe.atk * rage * aoeK), 7);
+          var tk3 = tankOf();   // 선봉이 광역 공격을 막아 준다: 다른 파티원은 선봉 어그로에 비례해 덜 맞는다
+          for (var j3 = 0; j3 < n; j3++) if (hp[j3] > 0) hurt(j3, dmgTo(j3, foe.atk * rage * aoeK) * (tk3 >= 0 && j3 !== tk3 ? 1 - R.TW.GUARD * ms[tk3].aggro : 1), 7);
         }
         if (tr && tr.id === 'rage' && gT >= 10) { gT -= 10; rage *= 1.15; line(jo(foe.name, '이', '가') + ' 분노한다! 공격력이 ' + Math.round((rage - 1) * 100) + '% 강해졌다.', 'm'); }
         if (tr && tr.id === 'mark') {
