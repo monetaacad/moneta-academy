@@ -2261,6 +2261,18 @@
     P.res.mana -= cost; if (P.fam.inc) P.fam.inc = null; else P.fam.eggs--;
     var o = hatch(P, now); o.mana = cost; return o;
   };
+  // 마나로 조금씩 앞당기기: 품고 있는 알의 진행도를 R.EGG_RUSH_PCT만큼 채운다 (바로 깨우기와 같은 비율의 마나 · 하루 R.EGG_RUSH_N회 · KST 자정 초기화)
+  R.EGG_RUSH_PCT = 0.15; R.EGG_RUSH_N = 3;
+  R.eggRushLeft = function (P, now) { var e = P.eggRush, d = R.dayKST(now); return R.EGG_RUSH_N - (e && e.d === d ? e.n : 0); };
+  R.eggRushCost = function (P, W, now) { var inc = P.fam.inc; if (!inc) return 0; var add = Math.min(inc.need * R.EGG_RUSH_PCT, Math.max(0, inc.need - inc.prog)); return Math.ceil(R.eggPrice(P, W, now) * add / inc.need); };
+  A.eggRush = function (P, W, now) {
+    var inc = P.fam.inc; if (!inc) err('품고 있는 알이 없습니다'); if (inc.prog >= inc.need) err('이미 깨어날 준비가 되었습니다');
+    if (R.eggRushLeft(P, now) <= 0) err('오늘은 더 앞당길 수 없습니다 (하루 ' + R.EGG_RUSH_N + '회 · KST 자정 초기화)');
+    var cost = R.eggRushCost(P, W, now); if (P.res.mana < cost) err('마나가 부족합니다');
+    P.res.mana -= cost; inc.prog = Math.min(inc.need, inc.prog + inc.need * R.EGG_RUSH_PCT);
+    var d = R.dayKST(now); P.eggRush = { d: d, n: (P.eggRush && P.eggRush.d === d ? P.eggRush.n : 0) + 1 };
+    return { paid: cost, prog: inc.prog, need: inc.need, left: R.eggRushLeft(P, now) };
+  };
   A.eggInc = function (P, W, now) {
     if (!R.famOpen(P)) err(R.FAM_OPEN_TEXT + '부터 할 수 있습니다'); if (P.fam.inc) err('이미 품고 있는 알이 있습니다'); if (P.fam.eggs <= 0) err('알이 없습니다');
     P.fam.eggs--; P.fam.inc = { need: R.eggNeed(P), prog: 0, start: now }; return { need: P.fam.inc.need };
