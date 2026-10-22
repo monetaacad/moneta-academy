@@ -1374,7 +1374,7 @@
     return '<div class="row small" style="gap:6px;margin-top:6px">' + gterm('선택 과목') + '<select data-act="exampick" style="width:auto"><option value=""' + (mine ? '' : ' selected') + '>자동 (가장 높은 과목)</option>' + o.map(function (k) { return '<option value="' + k + '"' + (mine === k ? ' selected' : '') + '>' + R.SUBJ[k].name + ' Lv ' + P.subj[k].lv + '</option>'; }).join('') + '</select></div>';
   }
   function examReady(P, ex) {
-    var th = R.examTheory(P, ex), pr = R.examPractical(P, ex), du = R.duelPreview(P, wctx(), ex.duel), avg = 0;
+    var th = R.examTheory(P, ex), pr = R.examPractical(P, ex), du = exDuel(P, ex), avg = 0;
     var xs = R.examSubjs(P, ex), xo = R.examOpt(P, ex); xs.forEach(function (s) { avg += P.subj[s].lv / xs.length; });
     function dots(v, max) { var n = Math.max(0, Math.min(4, Math.round(v / max * 4))); return '<span class="rdots" aria-label="4칸 중 ' + n + '칸">' + [0, 1, 2, 3].map(function (k) { return '<i class="' + (k < n ? 'on' : '') + '"></i>'; }).join('') + '</span>'; }
     function row(name, d, body, btn) { return '<div class="rrow"><b class="small rname">' + name + '</b>' + d + '<div class="small rbody">' + body + '</div>' + (btn || '') + '</div>'; }
@@ -1384,7 +1384,7 @@
       '<div class="small" style="padding-bottom:8px;border-bottom:1px solid var(--line)"><b>시험 과목</b> ' + chips + (xo ? examPickHtml(P, ex, xo) : '') + '<span class="faint tiny">필기 · 실기 모두 이 과목들의 레벨로 채점합니다.</span></div>' +
       row('필기', dots(th, 30), '시험 과목 평균 Lv <b class="num">' + avg.toFixed(1) + '</b> <span class="faint">· 기준보다 3 높으면 만점</span>', th < 29.5 ? '<button class="btn sm ghost" data-act="nav" data-a="lecture">수업 가기</button>' : '') +
       row('실기', dots(pr, 40), '기준 Lv ' + ex.req + ' 달성 <b class="num">' + okN + '/' + xs.length + '</b> <span class="faint">· 모두 채우면 절반 이상, 평균이 기준 +4면 만점</span>', pr < 39.5 ? '<button class="btn sm ghost" data-act="nav" data-a="lecture">수업 가기</button>' : '') +
-      row('대련', dots(du.win ? 30 : 30 * du.frac * 0.85, 30), (du.win ? '<span class="good">승산 있음</span> · 약 ' + du.ttk.toFixed(1) + '초' : '<span class="bad">버거움</span> · 시험관 체력의 약 ' + Math.round(du.frac * 100) + '%까지') + ' <span class="faint">· ' + esc(ex.examiner) + '</span>', du.win ? '' : '<button class="btn sm ghost" data-act="nav" data-a="gear">장비 가기</button>') +
+      row('대련', dots(R.duelScore(du.mode, du.win, du.frac, du.surv), 30), (du.mode === 'hold' ? (du.win ? '<span class="good">버틸 수 있음</span>' : '<span class="bad">버거움</span> · 약 ' + Math.round(du.surv * R.DUEL_T) + '초 버팀') + ' <span class="faint">· 버티기 과제</span>' : (du.win ? '<span class="good">승산 있음</span> · 약 ' + du.ttk.toFixed(1) + '초' : '<span class="bad">버거움</span> · 시험관 체력의 약 ' + Math.round(du.frac * 100) + '%까지')) + ' <span class="faint">· ' + esc(ex.examiner) + '</span>', du.win ? '' : '<button class="btn sm ghost" data-act="nav" data-a="gear">장비 가기</button>') +
       '</div>';
   }
   V.home = function () {
@@ -1698,7 +1698,7 @@
       h += '<div class="erroom mine"><div class="row between"><b>' + mine.s + '단계 <span class="small muted">' + esc(mine.zone) + ' · ' + R.DUR[mine.d].label + '</span></b><span class="small"><b class="num gold" data-erleft="' + mine.id + '">' + erLeftTxt(mine) + '</b></span></div>' +
         '<div class="ermembers">' + mine.members.map(function (m) { return '<span class="erm' + (m.me ? ' me' : '') + (m.npc ? ' npc' : '') + '"><span class="postag p-' + m.pos + '">' + R.EXP_POS[m.pos].name + '</span>' + erName(m) + (m.host ? ' <span class="tiny faint">방장</span>' : '') + (m.npc ? ' <span class="tiny faint">동행</span>' + (m.mineNpc ? '<button class="erx" data-act="ernpcdel" data-a="' + m.k + '" aria-label="돌려보내기">×</button>' : '') : '') + '</span>'; }).join('') +
         Array(Math.max(0, mine.max - mine.n) + 1).join('<span class="erm empty">빈자리</span>') + '</div>' +
-        (e ? '<div class="small" style="margin-top:6px">지금 출정하면 내 몫: 약 ' + fmt(Math.round(e.kills)) + '마리 · <b class="num">' + MONEY(e.gold, '+') + '</b> · 경험치 +' + fmt(e.xp) + ' · <span class="tag ' + (e.risk <= 0.25 ? 'ok' : e.risk <= 0.5 ? 'br' : 'no') + '">' + e.label + '</span>' + '<div class="tiny muted" style="margin-top:2px">몬스터가 나를 노릴 확률 약 ' + Math.round((e.frac || 0) * 100) + '%' + (e.red ? ' · 지원 덕에 받는 피해 −' + Math.round(e.red * 100) + '%' : '') + '</div></div>' : '') +
+        (e ? '<div class="small" style="margin-top:6px">지금 출정하면 내 몫: 약 ' + fmt(Math.round(e.kills)) + '마리 · <b class="num">' + MONEY(e.gold, '+') + '</b> · 경험치 +' + xpShow(e.xp) + ' · <span class="tag ' + (e.risk <= 0.25 ? 'ok' : e.risk <= 0.5 ? 'br' : 'no') + '">' + e.label + '</span>' + '<div class="tiny muted" style="margin-top:2px">몬스터가 나를 노릴 확률 약 ' + Math.round((e.frac || 0) * 100) + '%' + (e.red ? ' · 지원 덕에 받는 피해 −' + Math.round(e.red * 100) + '%' : '') + '</div></div>' : '') +
         '<p class="tiny faint" style="margin-top:4px">방장이 「지금 출발」을 누르면 출정하며, 4명이 모이면 15초 뒤 자동으로 출정합니다. 인원이 모이지 않으면 방에 있는 학생 누구나 아카데미 친구(부른 학생 힘의 60%)를 동행시킬 수 있습니다. 한 명 늘 때마다 각자 몫 +' + Math.round(R.EXP_PARTY_BONUS * 100) + '%.</p>' +
         (mine.n < mine.max && !mine.party ? '<div class="row errec" style="margin-top:8px;gap:6px"><input id="er-note" type="text" name="note-er-note" autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-form-type="other" maxlength="60" placeholder="모집 알림에 한 줄 덧붙이기 (선택 · 60자)" style="flex:1;min-width:140px" value="' + esc(S.erNote || '') + '"><button class="btn sm" data-act="errecruit">모집 알림</button></div>' : '') +
         (mine.n < mine.max ? '<div class="tiny gold" style="margin-top:10px">빈자리 채우기</div><div class="erfill">' +
@@ -1845,7 +1845,7 @@
           '<div class="stagectl"><button class="btn sm" data-act="es" data-a="' + i + '" data-b="-1" aria-label="이전 단계">◀</button><span class="big num">' + s + '</span><button class="btn sm" data-act="es" data-a="' + i + '" data-b="1" aria-label="다음 단계">▶</button>' +
           '<span class="tag ' + rc + '">' + pv.label + '</span>' + (s > R.gradeCap(P) ? '<span class="tag br" title="학년 상한 너머 · 레벨로 연 단계">상한 너머</span>' : '') + '<button class="btn sm ghost" data-act="es-best" data-a="' + i + '">추천 단계</button></div>' +
           '<div class="tiny faint">' + R.zoneOf(s).name + ' · 재료: ' + D.MATS[R.zoneOf(s).mat].name + '</div>' + durPicker('ed' + i, D.DURATIONS, '1h') +
-          '<div class="small">예상: ' + fmt(Math.round(pv.kills)) + '마리 · <b class="num">+' + fmt(pv.gold) + '</b> ' + CUR + ' · 경험치 +' + fmt(pv.xp) + '</div>' +
+          '<div class="small">예상: ' + fmt(Math.round(pv.kills)) + '마리 · <b class="num">+' + fmt(pv.gold) + '</b> ' + CUR + ' · 경험치 +' + xpShow(pv.xp) + '</div>' +
           lootLine(pv, s) +
           (pv.risk > 1 ? '<p class="tiny bad">무모한 단계입니다. 처치 수가 ' + Math.round((1 - pv.surv) * 100) + '% 줄고, 도중에 쓰러져 돌아올 수 있습니다 (그때까지 모은 것의 80%).</p>' : pv.risk > 0.5 ? '<p class="tiny bad">위험한 단계입니다. 자주 쓰러져 처치 수가 ' + Math.round((1 - pv.surv) * 100) + '% 줄어듭니다.</p>' : '') +
           (P.grade < 8 && P.maxStage > cap ? '<p class="tiny gold">보스로 ' + P.maxStage + '단계까지 열었지만, 학년 상한(' + R.gradeCap(P) + '단계) 너머는 레벨(지금 ' + P.lvl + ')만큼만 갈 수 있어 지금은 ' + (R.isBoss(cap) ? cap - 1 : cap) + '단계까지입니다. 레벨이 오르면 한 단계씩, 시험장에서 진급하면 한꺼번에 열립니다.</p>' : P.grade < 8 && cap < R.gradeCap(P) + R.STAGE_OVER ? '<p class="tiny faint">레벨이 학년 상한보다 높으면 레벨만큼 더 깊이 갈 수 있습니다 (최대 ' + (R.gradeCap(P) + R.STAGE_OVER) + '단계).</p>' : '') +
@@ -1877,8 +1877,8 @@
     if (P.tok && P.tok.gradeUp > 0 && P.grade < 8) { var ga = S.confirm.gup > Date.now(); h += '<div class="card hl" style="margin-bottom:14px"><div class="row" style="gap:10px;flex-wrap:wrap"><div style="flex:1;min-width:200px"><h4>학년 진급 물약 <span class="tag br num">' + P.tok.gradeUp + '개</span></h4><p class="small muted">운영진 보상입니다. 마시면 시험 없이 바로 ' + (P.grade + 1 >= 8 ? '마스터 과정' : (P.grade + 1) + '학년') + '이 됩니다 (시험 보상 · 성적표 기록은 없음).</p></div><button class="btn ' + (ga ? 'danger' : 'primary') + '" data-act="gradeup">' + (ga ? '한 번 더 누르면 마십니다' : '물약 마시기') + '</button></div></div>'; }
     if (P.grade >= 8 || !ex) h += '<div class="card hl"><h3>모든 시험을 통과했습니다</h3><p class="muted">마스터 과정 연구생입니다. 심연과 월드 보스, 결투제에 도전할 수 있습니다.</p></div>';
     else {
-      var pr = R.examPractical(P, ex), du = R.duelPreview(P, wctx(), ex.duel), elig = R.examEligible(P, ex);
-      h += '<div class="grid g2"><div class="card hl"><div class="eyebrow tiny gold">' + P.grade + '학년</div><h3>' + ex.title + '</h3><p class="small muted">실기 대련 상대: ' + ex.examiner + ' (원정 ' + ex.duel + '단계 보스급)</p>' +
+      var pr = R.examPractical(P, ex), du = exDuel(P, ex), elig = R.examEligible(P, ex);
+      h += '<div class="grid g2"><div class="card hl"><div class="eyebrow tiny gold">' + P.grade + '학년</div><h3>' + ex.title + '</h3><p class="small muted">실기 대련 상대: ' + ex.examiner + ' (원정 ' + ex.duel + '단계 보스급) · 과제: ' + duelTask(P) + '</p>' +
         '<p class="small ' + (elig ? 'good' : 'gold') + '" style="margin-top:8px">응시 자격: 시험 과목 모두 Lv ' + ex.req + ' 이상' + (elig ? ' — 충족' : '') + '</p>' +
         '<hr class="sep"><div class="section-t">준비도 <span class="tiny faint">세 칸이 차면 높은 등급</span></div>' + examReady(P, ex) +
         examCast(P, elig) +
@@ -1908,14 +1908,14 @@
     var a = [];
     if (pv.letter !== 'A' && pv.toA > 0) a.push('A까지 시험 과목 <b>Lv +' + pv.toA + '</b>');
     if (pv.toS > 0) a.push('S까지 <b>Lv +' + pv.toS + '</b>');
-    else if (pv.toS < 0) a.push('<span class="gold">' + (pv.toA < 0 && pv.letter !== 'A' ? 'A·S' : 'S') + '는 대련에서 이겨야 받을 수 있습니다</span> (장비·능력치·주문)');
+    else if (pv.toS < 0) a.push('<span class="gold">' + (pv.toA < 0 && pv.letter !== 'A' ? 'A·S' : 'S') + '는 대련 과제를 통과해야 받을 수 있습니다</span> (장비·능력치·주문)');
     return a.join(' · ');
   }
   function examCast(P, elig) {
     var pv = R.examPredict(P, wctx(), now()); if (!pv) return '';
     var lc = pv.letter === 'F' ? 'bad' : pv.letter === 'S' || pv.letter === 'A' ? 'gold' : '';
     return '<hr class="sep"><div class="section-t">예상 성적 <span class="tiny faint">' + (elig ? '지금 응시하면' : '응시 자격을 채웠을 때 어림') + '</span></div>' +
-      '<div class="row" style="gap:14px;align-items:center;flex-wrap:nowrap"><div class="letter ' + lc + '" style="font-size:44px">' + pv.letter + '</div><div style="flex:1;min-width:0"><div class="small">총점 약 <b class="num">' + pv.total + '</b>점 <span class="tiny faint">· 대련 ' + (pv.duelWin ? '승리 예상' : '패배 위험') + (pv.bonus ? ' · 침묵달 +' + pv.bonus : '') + '</span></div><div class="small" style="margin-top:2px">' + examHint(pv) + '</div></div></div>' +
+      '<div class="row" style="gap:14px;align-items:center;flex-wrap:nowrap"><div class="letter ' + lc + '" style="font-size:44px">' + pv.letter + '</div><div style="flex:1;min-width:0"><div class="small">총점 약 <b class="num">' + pv.total + '</b>점 <span class="tiny faint">· 대련 ' + (pv.duelWin ? '통과 예상' : '통과 어려움') + (pv.bonus ? ' · 침묵달 +' + pv.bonus : '') + '</span></div><div class="small" style="margin-top:2px">' + examHint(pv) + '</div></div></div>' +
       '<div class="stack" style="gap:2px;margin-top:8px">' + ['S', 'A', 'B', 'C'].map(function (k) { return '<div class="row tiny' + (k === pv.letter ? ' gold' : ' faint') + '" style="flex-wrap:nowrap"><b style="width:16px">' + k + '</b><span style="width:52px">' + { S: '95점~', A: '85점~', B: '75점~', C: '60점~' }[k] + '</span><span style="flex:1;min-width:0">' + R.EXAM_REWARD[k].text + '</span></div>'; }).join('') + '</div>' +
       '<p class="tiny faint" style="margin-top:6px">합격하면 바로 다음 학년이 되어 이 시험은 다시 볼 수 없습니다. 지금 볼지, 레벨을 더 올려 S를 노릴지 정할 수 있습니다.</p>';
   }
@@ -2401,7 +2401,7 @@
     knight: { balance: '물리 공격력과 생존을 함께 올리는 체력을 중심으로, 민첩 · 의지를 보탭니다.', attack: '체력 · 민첩 · 행운으로 평타 화력과 치명타를 끌어올립니다.', guard: '체력과 의지를 높여 선봉에서 오래 버팁니다. 함께 원정의 선봉에 적합합니다.', scholar: '의지로 마나 재생을, 지력으로 수업 효율을 올려 성장 속도에 집중합니다.' }
   };
   // 능력치 효과: 지금 수치(나눠 보는 중이면 그만큼 더해서)로 얻는 합계
-  function sdesc(k, v) { return (R.STAT_FX[k] || []).map(function (x) { return x[0] + ' +' + R.fmtPct(x[1] * v, 1); }).join(', '); }
+  function sdesc(k, v) { return (R.STAT_FX[k] || []).map(function (x) { return x[0] + ' +' + R.fmtPct(R.statFx(x[1], v), 1); }).join(', '); }
   // 능력치 출처: 기본(시작 5 + 레벨) · 분배(직접 찍은 포인트) · 과목 · 장비
   function statSplit(c, k) {
     var al = S.P.alloc[k] || 0, sj = (c.statSubj && c.statSubj[k]) || 0, gr = c.statGear[k] || 0, pl = function (v) { return v ? '<span class="good">+' + fmt(v) + '</span>' : '+0'; };
@@ -4164,7 +4164,7 @@
       while (k < ev.length && ev[k][0] <= end) {
         var e = ev[k++];
         if (e[1] === 'h') { dealt += e[2]; if (e[3] === 'p') d.p += e[2]; else if (e[3] === 'f') d.f += e[2]; else d.n += e[2]; if (e[4] && e[2] > d.crit) d.crit = e[2]; }
-        else if (e[1] === 's') { var sp = R.SPELL[e[2]]; if (sp && d.sp.indexOf(sp.name) < 0) d.sp.push(sp.name); if (sp && sp.type === 'heal') { d.r += e[3] || 0; php = Math.min(1, php + (e[3] || 0) / pHpMax); } else if (sp && sp.type === 'shield') d.g += e[3] || 0; }
+        else if (e[1] === 's') { var sp = R.SPELL[e[2]]; if (sp && d.sp.indexOf(sp.name) < 0) d.sp.push(sp.name); if (sp && sp.type === 'heal') { d.r += e[3] || 0; php = Math.min(1, php + (e[3] || 0) / pHpMax); } else if (sp && (sp.type === 'shield' || sp.type === 'pshield')) d.g += e[3] || 0; }
         else if (e[1] === 'x') { d.x += e[2]; php = Math.max(0, php - e[2] / pHpMax); }
       }
       var t = Math.min(total, end), txt = '', kind = '';
@@ -4405,6 +4405,8 @@
       '<p class="tiny faint">과목 레벨은 높을수록 다음 레벨까지 필요한 경험치가 커서, 낮은 레벨 과목끼리 합치면 레벨이 그대로 더해지지는 않습니다.</p>' +
       '<div class="row" style="justify-content:flex-end;margin-top:12px;gap:8px"><button class="btn" data-act="modal-close">닫기</button><button class="btn ' + (armed ? 'danger' : 'primary') + '" data-act="tfgo"' + (why ? ' disabled title="' + esc(why) + '"' : '') + '>' + (armed ? '한 번 더 누르면 옮깁니다' : '학점 이전 증서 사용') + '</button></div>';
   }
+  // 원정 경험치 예상: 레벨이 갈 수 있는 단계보다 많이 높으면 줄어든 값과 감소율을 함께 표시 (R.xpGapMul)
+  function xpShow(x) { var m = R.xpGapMul(S.P); return fmt(x * m) + (m < 1 ? ' <span class="tiny faint">(레벨 차이 −' + Math.round((1 - m) * 100) + '%)</span>' : ''); }
   function tfRedraw() { var b = $('#tfbox'); if (b) b.innerHTML = tfBody(); }
   ACT.tfopen = function () { S.tf = {}; modal(mhead('학점 이전 증서', '수업 경험치를 다른 과목으로 옮깁니다') + '<div id="tfbox">' + tfBody() + '</div>'); };
   ACT.tfpick = function (k, b, el) { (S.tf = S.tf || {})[k] = el.value; S.confirm.tf = 0; tfRedraw(); };
@@ -4626,10 +4628,13 @@
   ACT.creport = function (id) { var rs = $('#crp-reason'); API.chatReport(+id || id, rs ? rs.value.trim().slice(0, 200) : '').then(function (j) { closeModal(); toast(j.error ? '신고하지 못했습니다' : '신고가 접수되었습니다', j.error || '관리자가 확인합니다', 2200); }); };
   ACT['rp-skip'] = function () { if (S.replay) S.replay.skip(); };
   ACT.spirit = function () { act('spirit').then(function (r) { if (!r) return; Snd.play('spirit'); var g = []; if (r.mana) g.push('마나 +' + fmt(r.mana)); if (r.know) g.push('지식 +' + fmt(r.know)); if (r.gold) g.push('' + MONEY(r.gold, '+')); if (r.shard) g.push('별조각 +' + r.shard); if (r.stone) g.push('마석 +' + r.stone); toast('정령 ' + r.n + '마리를 풀어 주었습니다', g.join(' · '), 2600); render(); }); };
+  // 기말 대련 과제 (학과 성향): 처치는 제한 시간 안에 쓰러뜨리기, 버티기는 강해진 시험관을 상대로 제한 시간 버티기
+  function exDuel(P, ex) { var m = R.examDuelMode(P); return R.duelPreview(P, wctx(), ex.duel, null, m === 'hold' ? 1.4 * R.HOLD_ATK : null, undefined, m); }
+  function duelTask(P) { return R.examDuelMode(P) === 'hold' ? R.DUEL_T + '초 동안 버티기(시험관 공격 ×' + R.HOLD_ATK + ')' : R.DUEL_T + '초 안에 쓰러뜨리기'; }
   // 기말시험: 문제 풀이 없이 버튼 하나로 채점 (이론 30 · 실기 40 · 대련 30)
   ACT.exam = function () {
     var ex = R.examFor(S.P), th = R.examTheory(S.P, ex), pr = R.examPractical(S.P, ex), pv = R.examPredict(S.P, wctx(), now());
-    modal(mhead(ex.title, '이론·실기는 시험 과목 레벨로, 대련은 시험관과의 전투로 채점합니다.') + '<dl class="kv"><dt>예상 이론</dt><dd>' + th.toFixed(1) + ' / 30</dd><dt>예상 실기</dt><dd>' + pr.toFixed(1) + ' / 40</dd><dt>예상 대련</dt><dd>' + (pv ? pv.duel.toFixed(1) + ' / 30 · ' + (pv.duelWin ? '승리 예상' : '패배 위험') + ' · ' : '') + '시험관 ' + ex.examiner + '</dd>' + (pv && pv.bonus ? '<dt>추가 점수</dt><dd>+' + (Math.round(pv.bonus * 10) / 10) + '</dd>' : '') + (pv ? '<dt>예상 등급</dt><dd><b class="gold">' + pv.letter + '</b> · 약 ' + pv.total + '점</dd>' : '') + '</dl>' +
+    modal(mhead(ex.title, '이론·실기는 시험 과목 레벨로, 대련은 시험관과의 전투로 채점합니다. 대련 과제: ' + duelTask(S.P) + '.') + '<dl class="kv"><dt>예상 이론</dt><dd>' + th.toFixed(1) + ' / 30</dd><dt>예상 실기</dt><dd>' + pr.toFixed(1) + ' / 40</dd><dt>예상 대련</dt><dd>' + (pv ? pv.duel.toFixed(1) + ' / 30 · ' + (pv.duelWin ? '통과 예상' : '통과 어려움') + ' · ' : '') + '시험관 ' + ex.examiner + '</dd>' + (pv && pv.bonus ? '<dt>추가 점수</dt><dd>+' + (Math.round(pv.bonus * 10) / 10) + '</dd>' : '') + (pv ? '<dt>예상 등급</dt><dd><b class="gold">' + pv.letter + '</b> · 약 ' + pv.total + '점</dd>' : '') + '</dl>' +
       (pv && pv.letter !== 'S' ? '<p class="small" style="margin-top:8px">' + examHint(pv) + '</p><p class="tiny faint">합격하면 이 시험은 다시 볼 수 없습니다. S 보상: ' + R.EXAM_REWARD.S.text + '</p>' : '') +
       '<p class="small muted" style="margin-top:8px">60점 이상이면 진급합니다. 떨어지면 1시간 뒤 다시 볼 수 있습니다.</p><div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn ghost" data-act="modal-close">나중에</button><button class="btn primary" data-act="exam-go" autofocus>응시</button></div>');
   };
@@ -4640,7 +4645,7 @@
       replay({ title: '실기 대련', sub: ex.examiner, enemy: { id: 'ex' + r.grade, arch: 'golem', c1: '#d6ad5f', c2: '#4a3a10', boss: true, name: ex.examiner }, ev: r.ev, maxHp: r.maxHp, cc: r.cc }, function () {
         Snd.play(r.pass ? 'pass' : 'fail');
         var h = mhead(r.pass ? '합격!' : '불합격', ex.title);
-        h += '<div class="row" style="gap:20px;align-items:center"><div class="letter ' + (r.pass ? 'gold' : 'bad') + '">' + r.letter + '</div><div class="score-row" style="flex:1"><span>이론</span><b class="num">' + r.written.toFixed(1) + ' / 30</b><span>실기</span><b class="num">' + r.practical.toFixed(1) + ' / 40</b><span>대련 ' + (r.duelWin ? '(승리)' : '(패배)') + '</span><b class="num">' + r.duel.toFixed(1) + ' / 30</b>' + (r.bonus ? '<span>침묵달 가산점</span><b class="num">+' + r.bonus + '</b>' : '') + '<span><b>총점</b></span><b class="num gold">' + r.total + '</b></div></div>';
+        h += '<div class="row" style="gap:20px;align-items:center"><div class="letter ' + (r.pass ? 'gold' : 'bad') + '">' + r.letter + '</div><div class="score-row" style="flex:1"><span>이론</span><b class="num">' + r.written.toFixed(1) + ' / 30</b><span>실기</span><b class="num">' + r.practical.toFixed(1) + ' / 40</b><span>대련 ' + (r.duelMode === 'hold' ? (r.duelWin ? '(버팀)' : '(쓰러짐)') : (r.duelWin ? '(승리)' : '(패배)')) + '</span><b class="num">' + r.duel.toFixed(1) + ' / 30</b>' + (r.bonus ? '<span>침묵달 가산점</span><b class="num">+' + r.bonus + '</b>' : '') + '<span><b>총점</b></span><b class="num gold">' + r.total + '</b></div></div>';
         if (r.pass) h += '<hr class="sep"><p class="small">보상: 별조각 +' + r.reward.shard + ', ' + MONEY(r.reward.gold, '+') + ', <span style="color:' + rcol(r.reward.item.r) + '">' + esc(r.reward.item.name) + '</span>' + (r.reward.egg ? ', <span class="gold">환수의 알</span>' : '') + '</p>' + (r.badge ? '<p class="small gold" style="margin-top:6px">2학년을 마친 기념으로 아카데미가 ' + R.josa('「' + esc(r.badge) + '」', '을', '를') + ' 수여했습니다. 장비 · 능력 화면에서 볼 수 있습니다.</p>' : '') + (r.letter === 'S' ? '<p class="tiny gold" style="margin-top:4px">수석 성적! S 보상을 받았습니다.</p>' : '') + '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn" data-act="exampromo">새로 열린 것</button><button class="btn primary" data-act="examstory" data-a="' + (Math.min(S.P.grade, 8) - 1) + '" autofocus>다음 이야기</button></div>';
         else h += '<p class="small muted" style="margin-top:8px">60점 이상이면 합격입니다. 1시간 뒤 다시 응시할 수 있습니다.</p><div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>';
         if (r.pass) { S.examRes = { h: h, g: S.P.grade, seenP: false }; S.afterClose = examResClose; }
@@ -5812,7 +5817,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102306;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102310;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
