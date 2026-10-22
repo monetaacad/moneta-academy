@@ -1677,7 +1677,7 @@
       h += '<div class="erroom mine"><div class="row between"><b>' + mine.s + '단계 <span class="small muted">' + esc(mine.zone) + ' · ' + R.DUR[mine.d].label + '</span></b><span class="small"><b class="num gold" data-erleft="' + mine.id + '">' + erLeftTxt(mine) + '</b></span></div>' +
         '<div class="ermembers">' + mine.members.map(function (m) { return '<span class="erm' + (m.me ? ' me' : '') + (m.npc ? ' npc' : '') + '"><span class="postag p-' + m.pos + '">' + R.EXP_POS[m.pos].name + '</span>' + erName(m) + (m.host ? ' <span class="tiny faint">방장</span>' : '') + (m.npc ? ' <span class="tiny faint">동행</span>' + (m.mineNpc ? '<button class="erx" data-act="ernpcdel" data-a="' + m.k + '" aria-label="돌려보내기">×</button>' : '') : '') + '</span>'; }).join('') +
         Array(Math.max(0, mine.max - mine.n) + 1).join('<span class="erm empty">빈자리</span>') + '</div>' +
-        (e ? '<div class="small" style="margin-top:6px">지금 출정하면 내 몫: 약 ' + fmt(Math.round(e.kills)) + '마리 · <b class="num">' + MONEY(e.gold, '+') + '</b> · 경험치 +' + fmt(e.xp) + ' · <span class="tag ' + (e.risk <= 0.25 ? 'ok' : e.risk <= 0.5 ? 'br' : 'no') + '">' + e.label + '</span>' + '<div class="tiny muted" style="margin-top:2px">몬스터가 나를 노릴 확률 약 ' + Math.round((e.frac || 0) * 100) + '%' + (e.red ? ' · 지원 덕에 받는 피해 −' + Math.round(e.red * 100) + '%' : '') + '</div></div>' : '') +
+        (e ? '<div class="small" style="margin-top:6px">지금 출정하면 내 몫: 약 ' + fmt(Math.round(e.kills)) + '마리 · <b class="num">' + MONEY(e.gold, '+') + '</b> · 경험치 +' + xpShow(e.xp) + ' · <span class="tag ' + (e.risk <= 0.25 ? 'ok' : e.risk <= 0.5 ? 'br' : 'no') + '">' + e.label + '</span>' + '<div class="tiny muted" style="margin-top:2px">몬스터가 나를 노릴 확률 약 ' + Math.round((e.frac || 0) * 100) + '%' + (e.red ? ' · 지원 덕에 받는 피해 −' + Math.round(e.red * 100) + '%' : '') + '</div></div>' : '') +
         '<p class="tiny faint" style="margin-top:4px">방장이 「지금 출발」을 누르면 출정하며, 4명이 모이면 15초 뒤 자동으로 출정합니다. 인원이 모이지 않으면 방에 있는 학생 누구나 아카데미 친구(부른 학생 힘의 60%)를 동행시킬 수 있습니다. 한 명 늘 때마다 각자 몫 +' + Math.round(R.EXP_PARTY_BONUS * 100) + '%.</p>' +
         (mine.n < mine.max && !mine.party ? '<div class="row errec" style="margin-top:8px;gap:6px"><input id="er-note" type="text" name="note-er-note" autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-form-type="other" maxlength="60" placeholder="모집 알림에 한 줄 덧붙이기 (선택 · 60자)" style="flex:1;min-width:140px" value="' + esc(S.erNote || '') + '"><button class="btn sm" data-act="errecruit">모집 알림</button></div>' : '') +
         (mine.n < mine.max ? '<div class="tiny gold" style="margin-top:10px">빈자리 채우기</div><div class="erfill">' +
@@ -1824,7 +1824,7 @@
           '<div class="stagectl"><button class="btn sm" data-act="es" data-a="' + i + '" data-b="-1" aria-label="이전 단계">◀</button><span class="big num">' + s + '</span><button class="btn sm" data-act="es" data-a="' + i + '" data-b="1" aria-label="다음 단계">▶</button>' +
           '<span class="tag ' + rc + '">' + pv.label + '</span>' + (s > R.gradeCap(P) ? '<span class="tag br" title="학년 상한 너머 · 레벨로 연 단계">상한 너머</span>' : '') + '<button class="btn sm ghost" data-act="es-best" data-a="' + i + '">추천 단계</button></div>' +
           '<div class="tiny faint">' + R.zoneOf(s).name + ' · 재료: ' + D.MATS[R.zoneOf(s).mat].name + '</div>' + durPicker('ed' + i, D.DURATIONS, '1h') +
-          '<div class="small">예상: ' + fmt(Math.round(pv.kills)) + '마리 · <b class="num">+' + fmt(pv.gold) + '</b> ' + CUR + ' · 경험치 +' + fmt(pv.xp) + '</div>' +
+          '<div class="small">예상: ' + fmt(Math.round(pv.kills)) + '마리 · <b class="num">+' + fmt(pv.gold) + '</b> ' + CUR + ' · 경험치 +' + xpShow(pv.xp) + '</div>' +
           (pv.risk > 1 ? '<p class="tiny bad">무모한 단계입니다. 처치 수가 ' + Math.round((1 - pv.surv) * 100) + '% 줄고, 도중에 쓰러져 돌아올 수 있습니다 (그때까지 모은 것의 80%).</p>' : pv.risk > 0.5 ? '<p class="tiny bad">위험한 단계입니다. 자주 쓰러져 처치 수가 ' + Math.round((1 - pv.surv) * 100) + '% 줄어듭니다.</p>' : '') +
           (P.grade < 8 && P.maxStage > cap ? '<p class="tiny gold">보스로 ' + P.maxStage + '단계까지 열었지만, 학년 상한(' + R.gradeCap(P) + '단계) 너머는 레벨(지금 ' + P.lvl + ')만큼만 갈 수 있어 지금은 ' + (R.isBoss(cap) ? cap - 1 : cap) + '단계까지입니다. 레벨이 오르면 한 단계씩, 시험장에서 진급하면 한꺼번에 열립니다.</p>' : P.grade < 8 && cap < R.gradeCap(P) + R.STAGE_OVER ? '<p class="tiny faint">레벨이 학년 상한보다 높으면 레벨만큼 더 깊이 갈 수 있습니다 (최대 ' + (R.gradeCap(P) + R.STAGE_OVER) + '단계).</p>' : '') +
           (R.dreaming(P, now()) ? '<p class="tiny gold">꿈길 중에는 출정할 수 없습니다. <span data-l="left:' + P.dream.end + '"></span> 뒤에 깹니다.</p><button class="btn primary" disabled>' + d.label + ' 출정</button></div>' : '<button class="btn primary" data-act="exp-start" data-a="' + i + '">' + d.label + ' 출정</button></div>');
@@ -4354,6 +4354,8 @@
       '<p class="tiny faint">과목 레벨은 높을수록 다음 레벨까지 필요한 경험치가 커서, 낮은 레벨 과목끼리 합치면 레벨이 그대로 더해지지는 않습니다.</p>' +
       '<div class="row" style="justify-content:flex-end;margin-top:12px;gap:8px"><button class="btn" data-act="modal-close">닫기</button><button class="btn ' + (armed ? 'danger' : 'primary') + '" data-act="tfgo"' + (why ? ' disabled title="' + esc(why) + '"' : '') + '>' + (armed ? '한 번 더 누르면 옮깁니다' : '학점 이전 증서 사용') + '</button></div>';
   }
+  // 원정 경험치 예상: 레벨이 갈 수 있는 단계보다 많이 높으면 줄어든 값과 감소율을 함께 표시 (R.xpGapMul)
+  function xpShow(x) { var m = R.xpGapMul(S.P); return fmt(x * m) + (m < 1 ? ' <span class="tiny faint">(레벨 차이 −' + Math.round((1 - m) * 100) + '%)</span>' : ''); }
   function tfRedraw() { var b = $('#tfbox'); if (b) b.innerHTML = tfBody(); }
   ACT.tfopen = function () { S.tf = {}; modal(mhead('학점 이전 증서', '수업 경험치를 다른 과목으로 옮깁니다') + '<div id="tfbox">' + tfBody() + '</div>'); };
   ACT.tfpick = function (k, b, el) { (S.tf = S.tf || {})[k] = el.value; S.confirm.tf = 0; tfRedraw(); };
@@ -5727,7 +5729,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102290;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102291;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
