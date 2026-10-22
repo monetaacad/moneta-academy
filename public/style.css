@@ -1068,6 +1068,24 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 .pstamp { position: absolute; right: 10px; top: 8px; font-size: 22px; line-height: 1; color: var(--brass); opacity: .85; font-family: var(--f-display); }
 .fr-aurora { border-color: transparent !important; animation: decoAur 6s linear infinite; }
 .fr-spring { border-color: transparent !important; animation: decoSpr 7s linear infinite; }
+/* 별샘에 새긴 금테 (기말 S 일곱 번): 금빛 · 보랏빛 · 별샘 푸른빛이 테두리를 따라 돌고, 일곱 개의 별이 차례로 반짝인다 */
+@property --fa { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+.fr-seven { border-color: transparent !important; position: relative; isolation: isolate; box-shadow: 0 0 14px rgba(242, 200, 75, .35); }
+.fr-seven::before { content: ''; position: absolute; inset: -2px; border-radius: inherit; padding: 2.5px; pointer-events: none; z-index: 1;
+  background: conic-gradient(from var(--fa), #f2c84b, #fff3c4, #b48cff, #8fd0ff, #f2c84b, #fff3c4, #f2c84b);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  animation: decoSeven 8s linear infinite; }
+.fr-seven::after { content: ''; position: absolute; inset: -5px; pointer-events: none; z-index: 2; animation: decoTwinkle 3.5s ease-in-out infinite;
+  background: radial-gradient(3px 3px at 9% 4px, #fff8dc, rgba(242, 200, 75, .6) 60%, transparent), radial-gradient(3px 3px at 37% 4px, #fff8dc, rgba(242, 200, 75, .6) 60%, transparent), radial-gradient(3px 3px at 66% 4px, #fff8dc, rgba(242, 200, 75, .6) 60%, transparent), radial-gradient(3px 3px at 93% 4px, #fff8dc, rgba(242, 200, 75, .6) 60%, transparent),
+    radial-gradient(3px 3px at 22% calc(100% - 4px), #fff8dc, rgba(180, 140, 255, .6) 60%, transparent), radial-gradient(3px 3px at 52% calc(100% - 4px), #fff8dc, rgba(180, 140, 255, .6) 60%, transparent), radial-gradient(3px 3px at 80% calc(100% - 4px), #fff8dc, rgba(180, 140, 255, .6) 60%, transparent); }
+.dsw.fr-seven::after { display: none; }
+@keyframes decoSeven { to { --fa: 360deg; } }
+@keyframes decoTwinkle { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+/* 기대주의 금청 잉크 (기말 S 세 번): 금빛 글자에 별샘 푸른빛이 훑고 지나가며 은은하게 빛난다 */
+.ink.shine { background-size: 260% 100%; animation: inkShine 4.2s ease-in-out infinite; filter: drop-shadow(0 0 3px rgba(242, 200, 75, .55)); }
+@keyframes inkShine { 0%, 15% { background-position: 100% 50%; } 60%, 100% { background-position: 0% 50%; } }
+.stsvg { width: 1.4em; height: 1.4em; display: block; }
+.dsw .stsvg { width: 20px; height: 20px; }
 @keyframes decoAur { 0%, 100% { box-shadow: 0 0 0 2px #7cf0c0, 0 0 16px rgba(124, 240, 192, .4); } 50% { box-shadow: 0 0 0 2px #9fb8ff, 0 0 16px rgba(159, 184, 255, .45); } }
 @keyframes decoSpr { 0%, 100% { box-shadow: 0 0 0 2px #ff7a5a, 0 0 18px rgba(255, 122, 90, .35); } 17% { box-shadow: 0 0 0 2px #f2c84b, 0 0 18px rgba(242, 200, 75, .35); } 34% { box-shadow: 0 0 0 2px #8ad08a, 0 0 18px rgba(138, 208, 138, .35); } 51% { box-shadow: 0 0 0 2px #7fc8ff, 0 0 18px rgba(127, 200, 255, .35); } 68% { box-shadow: 0 0 0 2px #b8a8e8, 0 0 18px rgba(184, 168, 232, .35); } 85% { box-shadow: 0 0 0 2px #c084fc, 0 0 18px rgba(192, 132, 252, .35); } }
 /* 이름 잉크: 그라데이션은 글자에만, 반짝이는 잉크는 천천히 흐른다 */
@@ -1083,7 +1101,7 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 .fr-gild { border-radius: 16px; }
 .fr-neon { box-shadow: 0 0 6px var(--fc), 0 0 18px var(--fc2), inset 0 0 6px var(--fc2); animation: decoNeon 5s ease-in-out infinite; }   /* 꽃잎 등롱: 은은하게 숨 쉬듯 */
 @keyframes decoNeon { 0%, 100% { box-shadow: 0 0 6px var(--fc), 0 0 18px var(--fc2), inset 0 0 6px var(--fc2); } 50% { box-shadow: 0 0 4px var(--fc), 0 0 11px var(--fc2), inset 0 0 3px var(--fc2); } }
-@media (prefers-reduced-motion: reduce) { .fr-aurora, .fr-spring, .fr-pulse, .fr-neon, .ink.anim { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .fr-aurora, .fr-spring, .fr-pulse, .fr-neon, .ink.anim, .ink.shine, .fr-seven::before, .fr-seven::after { animation: none; } }
 /* 꾸미기 탭: 위에 미리보기와 할 일, 아래에 칸마다 작은 칩 */
 .decoprev { position: sticky; top: -18px; z-index: 2; background: var(--panel); padding: 6px 0 8px; }
 @media (max-width: 700px) { .decoprev { position: static; } }   /* 모바일: 미리보기가 화면 대부분을 덮고 있어 위쪽을 밀어도 아래 목록만 움직이던 문제 → 함께 스크롤 */

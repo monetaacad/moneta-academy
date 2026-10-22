@@ -54,7 +54,7 @@ var DATA = (function () {
     { id: 'f_gild', slot: 'frame', name: '금박 장식', price: 20000, c: '#e8c060', st: 'gild' },
     { id: 'f_aurora', slot: 'frame', name: '오로라', price: 30000, c: '#7cf0c0', st: 'aurora' },
     { id: 'f_spring', slot: 'frame', name: '일곱 별샘', price: 50000, c: '#f2c84b', st: 'spring' },
-    { id: 'f_exam7', slot: 'frame', name: '별샘에 새긴 이름', price: 0, need: { stat: 'sGrades', n: 7 }, needText: '기말시험 S 일곱 번', c: '#ffe08a', st: 'aurora' },   // 기말 S 횟수 전용 (달성하면 지급)
+    { id: 'f_exam7', slot: 'frame', name: '별샘에 새긴 금테', price: 0, need: { stat: 'sGrades', n: 7 }, needText: '기말시험 S 일곱 번', c: '#f2c84b', st: 'seven' },   // 기말 S 횟수 전용 (달성하면 지급)
     { id: 'b_parch', slot: 'bg', name: '양피지', price: 1000, g: ['#e8d6aa', '#c4a064'], pat: 'lines' },
     { id: 'b_mint', slot: 'bg', name: '박하', price: 3000, g: ['#c8f0e0', '#7fd0b8'] },
     { id: 'b_lav', slot: 'bg', name: '라벤더 밭', price: 3000, g: ['#d8c8f0', '#9b7fd0'] },
@@ -69,7 +69,7 @@ var DATA = (function () {
     { id: 'b_deep', slot: 'bg', name: '심연의 서고', price: 15000, g: ['#28143c', '#0a0c1e'], pat: 'stars' },
     { id: 'b_gold', slot: 'bg', name: '금박 장부', price: 20000, g: ['#f6dc9c', '#b98c3e'], pat: 'lines' },
     { id: 'b_void', slot: 'bg', name: '별의 틈', price: 30000, g: ['#05051a', '#4a2a8a', '#05051a'], pat: 'stars' },
-    { id: 'b_exam5', slot: 'bg', name: '아카데미의 자랑', price: 0, need: { stat: 'sGrades', n: 5 }, needText: '기말시험 S 다섯 번', g: ['#1c1440', '#5a3a9a', '#f2c84b'], pat: 'stars' },
+    { id: 'b_exam5', slot: 'bg', name: '아카데미 자랑의 별자리', price: 0, need: { stat: 'sGrades', n: 5 }, needText: '기말시험 S 다섯 번', g: ['#2a2f6a', '#161b3e', '#0b0e1e'], pat: 'const' },
     { id: 'b_bell', slot: 'bg', name: '종탑의 새벽', price: 0, mw: 4, g: ['#f3d9a4', '#7d6bb8', '#1c1840'], pat: 'stars' },   // 마스터 주간 과제 4주 완수 (살 수 없다)
     { id: 's_moon', slot: 'stamp', name: '초승달', price: 500, glyph: '☾' },
     { id: 's_quill', slot: 'stamp', name: '깃펜', price: 1000, glyph: '✒' },
@@ -82,7 +82,7 @@ var DATA = (function () {
     { id: 's_rune', slot: 'stamp', name: '룬', price: 8000, glyph: '❖' },
     { id: 's_lily', slot: 'stamp', name: '백합 문장', price: 12000, glyph: '⚜' },
     { id: 's_crown', slot: 'stamp', name: '왕관', price: 20000, glyph: '♛' },
-    { id: 's_exam1', slot: 'stamp', name: '첫 번째 별', price: 0, need: { stat: 'sGrades', n: 1 }, needText: '기말시험 S 한 번', glyph: '✪' },
+    { id: 's_exam1', slot: 'stamp', name: '첫 번째 별 월계 인장', price: 0, need: { stat: 'sGrades', n: 1 }, needText: '기말시험 S 한 번', glyph: '❦', svg: 'laurel' },
     { id: 'i_rose', slot: 'ink', name: '장밋빛', price: 1500, c: ['#ff8fa3'] },
     { id: 'i_coral', slot: 'ink', name: '산호', price: 1500, c: ['#ff9a7a'] },
     { id: 'i_peach', slot: 'ink', name: '복숭아', price: 1500, c: ['#ffb88a'] },
@@ -107,7 +107,7 @@ var DATA = (function () {
     { id: 'i_aurora', slot: 'ink', name: '오로라', price: 12000, c: ['#7cf0c0', '#9fb8ff', '#c79bff'] },
     { id: 'i_gold', slot: 'ink', name: '금박', price: 15000, c: ['#f6dc9c', '#b98c3e', '#fff0b8'] },
     { id: 'i_star', slot: 'ink', name: '별빛', price: 30000, c: ['#fff4c8', '#f0cf8a', '#ffffff', '#f0cf8a'], anim: true },
-    { id: 'i_exam3', slot: 'ink', name: '기대주의 금빛', price: 0, need: { stat: 'sGrades', n: 3 }, needText: '기말시험 S 세 번', c: ['#fff3b8', '#f2c84b', '#fff8d8', '#f2c84b'], anim: true },
+    { id: 'i_exam3', slot: 'ink', name: '기대주의 금청 잉크', price: 0, need: { stat: 'sGrades', n: 3 }, needText: '기말시험 S 세 번', c: ['#f2c84b', '#ffe9a8', '#8fd0ff', '#f2c84b'], shine: true },
     { id: 'i_spring', slot: 'ink', name: '일곱 별샘', price: 50000, c: ['#ff7a5a', '#f2c84b', '#8ad08a', '#7fc8ff', '#b8a8e8', '#c084fc', '#ff7a5a'], anim: true }
   ];
 
@@ -1170,7 +1170,7 @@ var DATA = (function () {
     { c: '교류', t: '우편함', b: '화면 우측 상단의 편지 모양 버튼입니다. 운영진 선물(오픈 보상, 점검 보상 등), 별의 탑 보상, 경매 낙찰품을 받습니다. 친구 신청 · 거래소 판매 같은 소식은 우편이 아닌 알림(종 모양)으로 옵니다. 우편을 열어 봐도 보상은 기한 안에 언제든 받을 수 있으며, 새 우편이 오면 버튼에 숫자가 표시됩니다. 남은 기한은 우편마다 표시됩니다. 희귀 장비 상자는 받는 순간 열려 장비가 바로 장착되거나 장비 가방에 들어가며(가방이 가득 차면 판매), 환수의 알은 「장비·공방 → 환수 사역장」의 부화기에 보관됩니다. 받으면 어디에 들어갔는지 창으로 알려 줍니다.' },
     { c: '교류', t: '내 정보와 두상', b: '상단의 내 이름을 누르면 다른 학생에게 보이는 내 정보가 먼저 표시되며, 「편집」 탭에서 두상 · 한 줄 소개 · 자기소개 · 공개 범위를 설정합니다. 두상은 선택한 그림의 가운데를 100×100으로 줄여 올립니다. 레벨·전투력 · 능력치 · 장비 · 휘장은 항목마다 「전체 · 친구만 · 비공개」 중에서 공개 범위를 선택합니다. 휘장을 공개하면 착용한 휘장의 레벨 · 효과 · 세공이 장비 칸 옆에 표시됩니다. 자기소개는 친구에게만 공개할 수도 있습니다.' },
     { c: '교류', t: '학생 정보 카드', b: '채팅이나 목록에서 이름을 누르면 정보 카드가 열립니다. 기숙사 · 학년 · 학과(기사 · 마법사), 동아리 이름과 직책이 표시되며, 친구 추가 · 1:1 대화(친구끼리) · 파티 초대(파티가 없으면 새로 만들어 초대) · 동아리 초대(권한이 있을 때) 버튼이 있습니다. 상대가 능력치나 장비를 공개했다면 「능력치 · 장비」 탭이 표시되며, 장비 칸을 누르면 상세가 펼쳐지고 「내 장비와 비교」로 같은 칸의 내 장비와 능력치 차이를 한 줄로 확인할 수 있습니다.' },
-    { c: '교류', t: '정보 카드 꾸미기', b: '내 정보 → 꾸미기에서 ' + CUR + '로 테두리 · 배경 · 인장 · 이름 잉크를 구입합니다. 항목을 눌러 미리 착용해 본 뒤 상단의 「사기」를 누르며, 구입한 것은 언제든 바꿔 달거나 해제할 수 있습니다. 모두 5만 ' + CUR + ' 이하입니다. 기말시험 S 횟수 전용 꾸미기(첫 번째 별 · 기대주의 금빛 · 아카데미의 자랑 · 별샘에 새긴 이름)는 살 수 없고, 조건을 채우면 지급됩니다. 다른 학생이 내 이름을 누르면 꾸민 카드가 보이며, 이름 잉크는 채팅 이름에도 적용됩니다.' },
+    { c: '교류', t: '정보 카드 꾸미기', b: '내 정보 → 꾸미기에서 ' + CUR + '로 테두리 · 배경 · 인장 · 이름 잉크를 구입합니다. 항목을 눌러 미리 착용해 본 뒤 상단의 「사기」를 누르며, 구입한 것은 언제든 바꿔 달거나 해제할 수 있습니다. 모두 5만 ' + CUR + ' 이하입니다. 기말시험 S 횟수 전용 꾸미기(첫 번째 별 월계 인장 · 기대주의 금청 잉크 · 아카데미 자랑의 별자리 · 별샘에 새긴 금테)는 살 수 없고, 조건을 채우면 지급됩니다. 다른 학생이 내 이름을 누르면 꾸민 카드가 보이며, 이름 잉크는 채팅 이름에도 적용됩니다.' },
     { c: '교류', t: '칭호', b: '조건을 채우면 칭호가 열립니다. 기록 → 칭호 도감의 「달기」나 내 정보 → 편집에서 선택해 이름 앞에 붙일 수 있습니다. 채팅에서 칭호를 보고 싶지 않으면 설정에서 내 칭호 · 다른 학생 칭호를 각각 숨길 수 있습니다(정보창에는 그대로 표시).' },
     { c: '교류', t: '친구', b: '교류 → 친구 탭(또는 내 정보 → 친구)에서 이름 일부로 학생을 검색해 정보창을 열고 「친구 추가」를 누르거나, 채팅에서 이름을 눌러 신청합니다. 1:1 탭은 안 읽은 대화 수가 빨간 숫자로 표시됩니다. 상대가 수락하면 접속 중인 친구가 상단에 표시되며, 1:1 대화와 파티 초대를 바로 할 수 있습니다.' },
     { c: '교류', t: '파티', b: '최대 4명입니다. 파티원 한 명당 원정 ' + CUR + '가 3%씩(최대 9%), 경험치가 1%씩(최대 3%) 오르며, 파티 전용 채팅을 사용할 수 있습니다. 「교류 → 파티」에서 만들고, 이름으로 초대하거나 정보창의 「파티 초대」로 초대합니다. 빈자리에는 결투제 대진표의 아카데미 친구(NPC)를 부를 수 있습니다(보너스 제외). 파티장은 파티 이름을 바꾸거나(파티 · 별의 탑 화면의 「이름 변경」) 파티원을 내보내거나 파티장을 넘길 수 있고, 「파티원 모집」으로 채팅 「모집」 탭에 모집 카드를 올릴 수 있습니다(알림을 본 학생은 30분 동안 초대 없이 들어올 수 있음). 파티와 함께 오르는 별의 탑은 「원정·전투 → 별의 탑」에 있습니다.', go: ['party'] },
