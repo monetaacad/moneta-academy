@@ -1,0 +1,23 @@
+# 화면 점검: PR과 main에 올라온 코드로 시험 서버를 띄워 실제 브라우저로 화면을 열어 본다 (tools/smoke.js)
+name: 화면 점검
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: 문법 확인
+        run: for f in server/*.js shared/*.js public/*.js tools/smoke.js; do node --check "$f"; done
+      - name: 브라우저 도구 설치
+        run: npm install --no-save --no-package-lock playwright-core@1.56.1
+      - name: 화면 열어 보기
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+        run: node tools/smoke.js

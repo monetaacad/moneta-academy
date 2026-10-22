@@ -18,6 +18,7 @@
 - 건의 · 문의 처리: 운영실 「건의 · 문의 전체 복사」로 사용자가 붙여 주면, 건마다 따로 PR을 만들고 **머지하지 않고 둔다** (사용자가 골라서 머지 = 배포)
 - 시험 서버: `sh tools/srv.sh start e 8098 TIME_SCALE=60 TEST_MODE=1 ADMIN_TOKEN=test-admin-token-0123456789abcdef ADMIN_NAMES=운영자` (끄기 `sh tools/srv.sh stop e`, 초기화 `rm -rf /tmp/arc-e`)
 - 시험: `tools/e2e.py`, `e2e_guild.py`, `e2e_chat.py`, `api_exproom.py`, `api_npc.py`, `api_hchat.py`, `e2e_bulk.py`(일괄 판매 · 분해 버튼) (시험 서버 필요), `api_auction.py`(거래소 경매 · 시간 배율 큰 새 서버: `sh tools/srv.sh start a 8097 TIME_SCALE=3600 TEST_MODE=1 ADMIN_TOKEN=test-admin-token-0123456789abcdef`), `e2e_mail.py`(ADMIN_NAMES 없이 새 서버), `e2e_party_demo.py` · `e2e_onb_demo.py`(미리보기를 `http://127.0.0.1:8765/demo.html`로 띄워서)
+- **PR을 올리기 전에 반드시 `node tools/smoke.js`** (새 시험 서버를 띄워 실제 브라우저로 로그인 전 · 후 화면과 하단 메뉴를 열어 본다. 화면 스크립트 오류가 하나라도 나면 실패). GitHub에서도 PR마다 「화면 점검」으로 자동 실행된다 — 실패한 PR은 머지하지 않는다
 - 프로세스 종료는 `pkill -f` 금지 — 특정 pid만 `kill <pid>`
 
 ## 아티팩트 동시 수정
