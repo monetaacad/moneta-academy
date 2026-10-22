@@ -1950,3 +1950,10 @@ table.sjtop .sjmeta { white-space: nowrap; }
 /* 사역마 선택권 (천장) */
 .famtix { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--line2); }
 .famtixrow { padding: 6px 8px; border-radius: 8px; background: var(--sunk); }
+
+/* 사역마 도트 */
+.famimg { image-rendering: pixelated; image-rendering: crisp-edges; flex: none; object-fit: contain; }
+.famimg.sil { filter: brightness(0); opacity: .22; }
+.famcard > .famimg { align-self: flex-start; }
+.fambub { display: flex; gap: 8px; align-items: center; }
+.pfam .famimg, .spfam .famimg { vertical-align: middle; margin-right: 4px; }
