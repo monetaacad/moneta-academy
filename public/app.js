@@ -4197,7 +4197,7 @@
       while (k < ev.length && ev[k][0] <= end) {
         var e = ev[k++];
         if (e[1] === 'h') { dealt += e[2]; if (e[3] === 'p') d.p += e[2]; else if (e[3] === 'f') d.f += e[2]; else d.n += e[2]; if (e[4] && e[2] > d.crit) d.crit = e[2]; }
-        else if (e[1] === 's') { var sp = R.SPELL[e[2]]; if (sp && d.sp.indexOf(sp.name) < 0) d.sp.push(sp.name); if (sp && sp.type === 'heal') { d.r += e[3] || 0; php = Math.min(1, php + (e[3] || 0) / pHpMax); } else if (sp && sp.type === 'shield') d.g += e[3] || 0; }
+        else if (e[1] === 's') { var sp = R.SPELL[e[2]]; if (sp && d.sp.indexOf(sp.name) < 0) d.sp.push(sp.name); if (sp && sp.type === 'heal') { d.r += e[3] || 0; php = Math.min(1, php + (e[3] || 0) / pHpMax); } else if (sp && (sp.type === 'shield' || sp.type === 'pshield')) d.g += e[3] || 0; }
         else if (e[1] === 'x') { d.x += e[2]; php = Math.max(0, php - e[2] / pHpMax); }
       }
       var t = Math.min(total, end), txt = '', kind = '';
