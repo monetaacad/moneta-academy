@@ -529,7 +529,7 @@ function open(dir) {
     mkTrades: db.prepare(`SELECT id, kind, name, slot, rarity, ilvl, qty, price, done_at FROM market WHERE status = 'sold' ORDER BY done_at DESC, id DESC LIMIT ?`),
     mkHistory: db.prepare(`SELECT id, kind, name, slot, data, rarity, ilvl, qty, price, done_at, seller, buyer, COALESCE((SELECT name FROM players WHERE id = market.seller), seller_name) AS seller_name FROM market WHERE status = 'sold' AND (seller = ? OR buyer = ?) AND done_at > ? ORDER BY done_at DESC, id DESC LIMIT 100`),
     mkSetStatus: db.prepare(`UPDATE market SET status = ?, buyer = ?, done_at = ? WHERE id = ? AND status = 'open'`),
-    mkMine: db.prepare(`SELECT id, kind, data, name, slot, rarity, ilvl, qty, price, created, expires, status, done_at, auc, start_price, bid, bids, buyer FROM market WHERE seller = ? AND (status = 'open' OR done_at > ?) ORDER BY id DESC LIMIT 40`),
+    mkMine: db.prepare(`SELECT id, kind, data, name, slot, rarity, ilvl, qty, price, created, expires, status, done_at, auc, start_price, bid, bids, buyer FROM market WHERE seller = ? AND (status = 'open' OR done_at > ?) ORDER BY (status = 'open') DESC, id DESC LIMIT 60`),   // 판매 중인 물건은 판매 기록이 많아도 항상 들어가게 (예전에는 최근 40줄만이라 판매 중 개수가 덜 세졌다)
     mkMineOpen: db.prepare(`SELECT COUNT(*) AS n FROM market WHERE seller = ? AND status = 'open'`),
     mkExpired: db.prepare(`SELECT * FROM market WHERE status = 'open' AND expires < ? LIMIT 200`),
     mkPurge: db.prepare(`DELETE FROM market WHERE status != 'open' AND done_at < ?`),
