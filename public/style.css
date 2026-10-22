@@ -1946,3 +1946,12 @@ table.sjtop .sjmeta { white-space: nowrap; }
 .lgstage { padding: 6px 10px; border-radius: 8px; border: 1px dashed var(--line, rgba(255,255,255,.14)); }
 .lgstage.done { border-style: solid; background: rgba(120, 200, 150, .06); }
 .stamp-pv { display: inline-block; min-width: 1.2em; text-align: center; }
+
+/* 마이룸 */
+.roomcard { border-width: 2px; }
+.rgrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 10px; }
+.rslot { display: flex; flex-direction: column; gap: 2px; padding: 8px; border-radius: 10px; border: 1px solid var(--line); min-height: 54px; }
+.rslot b { font-weight: 500; font-size: 13px; }
+.rdesc { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: rgba(0,0,0,.04); font-style: italic; line-height: 1.7; }
+.gbrow { padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line2); }
+@media (max-width: 560px) { .rgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

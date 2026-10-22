@@ -69,4 +69,15 @@ function student(t) { const P = R.newPlayer('p' + t, '시험', 'lanterna', t, 7)
   ok(/이미/.test(errOf(() => R.loungeGive(P, W, t, 'gold'))), '하루 한 번');
   R.loungeGive(P, W, t + 86400, 'gold'); ok(P.lounge.pts === 40, '다음 날 다시');
 }
+// 5) 마이룸: 가진 것만 · 자리에 맞는 것만
+{
+  const t = Date.parse('2026-10-24T12:00:00+09:00') / 1000, P = student(t); W.now = t;
+  if (R.ACTIONS.roomBuy) {
+    R.act(P, W, t, 'roomBuy', { id: 'candle' }); ok(P.room.on.desk === 'candle', '빈 자리에 바로 놓기');
+    ok(/놓을 수 없는/.test(errOf(() => R.act(P, W, t, 'roomSet', { slot: 'bed', id: 'candle' }))), '자리에 맞지 않는 가구');
+    ok(/놓을 수 없는/.test(errOf(() => R.act(P, W, t, 'roomSet', { slot: 'shelf1', id: 'sv_cider' }))), '없는 기념품');
+    P.trip = { souv: { sv_cider: 1 }, seen: {} }; R.act(P, W, t, 'roomSet', { slot: 'shelf2', id: 'sv_cider' }); ok(R.roomView(P).on.shelf2 === 'sv_cider', '기념품 선반');
+    ok(R.roomText(R.roomView(P), W, t).length >= 3, '방 설명');
+  }
+}
 console.log('통과 ' + n + '개');

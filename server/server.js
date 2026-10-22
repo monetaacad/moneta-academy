@@ -14,6 +14,7 @@ const World = require('./world.js');
 const Chat = require('./chat.js');
 const Fest = require('./fest.js');
 const Lounge = require('./lounge.js');
+const Room = require('./room.js');
 
 /* ───────── 설정 ───────── */
 const ROOT = path.join(__dirname, '..');
@@ -1604,6 +1605,40 @@ routes['POST /api/admin/fest'] = async (req, res) => {
 setInterval(() => { try { const t = nowSec(); fest.tick(t); lounge.tick(t); } catch (e) { log('축제 · 휴게실 갱신 실패', e); } }, 20000).unref();
 setTimeout(() => { try { const t = nowSec(); fest.tick(t); lounge.tick(t); } catch (e) { log('축제 · 휴게실 갱신 실패', e); } }, 3000).unref();
 
+/* ───────── 마이룸: 방 구경 · 방명록 (server/room.js) ───────── */
+const room = Room.create({ dbx, sec });
+routes['GET /api/room'] = (req, res) => {
+  const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
+  if (limited('rm:' + me, 1, 8)) return fail(req, res, 429, '요청이 너무 잦습니다');
+  const id = String(new URL(req.url, 'http://x').searchParams.get('pid') || me).slice(0, 64), now = nowSec();
+  const meta = dbx.q.playerMeta.get(id); if (!meta || meta.deleted) return fail(req, res, 404, '없는 학생입니다');
+  const Q = id === me ? loadPlayer(me, now) : store.get(id); if (!Q || Q.needCreate) return fail(req, res, 404, '아직 입학하지 않은 학생입니다');
+  const v = R.roomView(Q), mine = id === me, mm = dbx.q.playerMeta.get(me);
+  send(req, res, 200, { room: v, owner: { id, name: Q.name, house: Q.house }, mine, gb: v.gbOff && !mine ? [] : room.list(id), canWrite: !mine && !v.gbOff && !(mm && mm.muted_until > Date.now() / 1000) && !room.wroteToday(me, id, now), op: isChatOp(me) });
+};
+routes['POST /api/room'] = async (req, res) => {
+  const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
+  if (store.isBanned(me)) return fail(req, res, 403, '이용이 정지된 계정입니다');
+  if (limited('rmp:' + me, 0.2, 5)) return fail(req, res, 429, '잠시 후 다시 시도');
+  const b = await readJson(req, 4096), op = String(b.op || ''), now = nowSec();
+  try {
+    if (op === 'gb') {
+      const to = String(b.to || '').slice(0, 64); if (!to || to === me) return fail(req, res, 400, '다른 학생의 방에만 방명록을 남길 수 있습니다');
+      const Q = store.get(to); if (!Q || Q.needCreate) return fail(req, res, 404, '없는 학생입니다');
+      if (Q.room && Q.room.gbOff) return fail(req, res, 400, '이 방은 방명록을 받지 않습니다');
+      const mm = dbx.q.playerMeta.get(me); if (mm && mm.muted_until > Date.now() / 1000) return fail(req, res, 403, '채팅이 금지된 상태라 방명록을 남길 수 없습니다');
+      room.write(me, to, b.text, now);
+      addNote(to, 'room', pname(me) + ' 학생이 내 방 방명록에 글을 남겼습니다', { view: 'room' });
+      return send(req, res, 200, { ok: true, gb: room.list(to) });
+    }
+    if (op === 'gbdel') { const r = room.remove(b.id, me, isChatOp(me)); if (r.owner !== me && r.pid !== me) oplog(me, pname(me), 'roomgb', '방명록 삭제 #' + r.id); return send(req, res, 200, { ok: true, gb: room.list(r.owner) }); }
+    if (op === 'gbrep') { const r = room.report(b.id); log('방명록 신고 #' + r.id + ' (신고한 학생 ' + me + ')'); return send(req, res, 200, { ok: true }); }
+  } catch (e) { return fail(req, res, 400, e.message); }
+  fail(req, res, 400, '알 수 없는 요청입니다');
+};
+routes['GET /api/admin/roomgb'] = (req, res) => { if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다'); send(req, res, 200, { list: room.reported() }); };
+routes['POST /api/admin/roomgb/delete'] = async (req, res) => { if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다'); const b = await readJson(req, 256); room.adminDelete(b.id); oplog('admin', '관리자', 'roomgb', '방명록 삭제 #' + Number(b.id)); send(req, res, 200, { ok: true }); };
+
 /* ───────── 떠돌이 상인 경매 ─────────
    하루 세 번(12시 · 18시 · 22시, 1시간) 구간(신입생 · 중급 · 상급)마다 귀한 장비 세 점씩 경매에 붙인다. 부른 값은 바로 맡겨 두고, 더 높은 값이 나오면 돌려준다.
    끝나기 2분 안에 부르면 2분 늘어난다 (몇 번이든, 정해진 2시간이 지나도). 낙찰품은 우편으로. 값은 학생만 부른다(NPC는 부르지 않는다). */
@@ -2634,7 +2669,7 @@ routes['POST /api/admin/mute'] = async (req, res) => {
   if (!row || !dbx.q.playerMeta.get(row.id)) return fail(req, res, 404, '없는 학생입니다');
   const minutes = Math.max(0, Math.min(525600, Number(b.minutes) || 0));
   dbx.q.setMute.run(minutes ? Math.floor(Date.now() / 1000) + minutes * 60 : 0, row.id);
-  if (b.purge) { chat.removeBy(row.id); board.deleteBy(row.id); exprooms.forget(row.id); dbx.q.noteDelBy.run(row.id); }
+  if (b.purge) { chat.removeBy(row.id); board.deleteBy(row.id); room.deleteBy(row.id); exprooms.forget(row.id); dbx.q.noteDelBy.run(row.id); }
   const why = String(b.reason || '').trim().slice(0, 80), what = (minutes ? '채팅 금지 ' + (minutes >= 1440 ? Math.round(minutes / 1440 * 10) / 10 + '일' : minutes + '분') : '채팅 금지 해제') + (b.purge ? ' · 작성 글 삭제' : '') + (why ? ' · ' + why : '');
   oplog('admin', '관리자', 'mute', ((dbx.q.playerMeta.get(row.id) || {}).name || '') + ' ' + what); pevent(row.id, 'op', what);
   send(req, res, 200, { ok: true });

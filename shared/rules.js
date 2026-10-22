@@ -2776,6 +2776,47 @@
   };
   R.LOUNGE_KIND = idx(D.LOUNGE_KINDS);
 
+  /* ── 마이룸: 자리마다 물건 하나 (가구 · 기념품 · 장난감). 능력치 효과 없음 ── */
+  var FURNI = R.FURNI = idx(D.FURNI), RSLOT = R.RSLOT = idx(D.ROOM_SLOTS);
+  function roomOf(P) { if (!P.room) P.room = { on: { wall: 'hflag' }, own: { hflag: 1 } }; return P.room; }
+  // 이 자리에 놓을 수 있는 물건인가 (가진 것만)
+  R.roomCan = function (P, slot, id) {
+    var sl = RSLOT[slot]; if (!sl || !id) return false; var f = FURNI[id];
+    if (f) return (f.slot === slot || (f.slot === 'shelf' && sl.souv)) && !!(f.price === 0 || roomOf(P).own[id]);
+    if (SOUV[id]) return !!sl.souv && !!(P.trip && P.trip.souv[id]);
+    if (TOY[id]) return !!sl.toy && !!(P.fam.toys || {})[id];
+    return false;
+  };
+  R.roomThing = function (id) { return FURNI[id] || SOUV[id] || TOY[id] || null; };
+  A.roomBuy = function (P, W, now, a) {
+    var id = str(a.id, 20), f = FURNI[id]; if (!f || !f.price) err('판매하지 않는 가구입니다'); var r = roomOf(P); if (r.own[id]) err('이미 가지고 있는 가구입니다');
+    if (P.res.gold < f.price) err(CUR + '가 부족합니다'); P.res.gold -= f.price; r.own[id] = 1;
+    var slot = f.slot === 'shelf' ? ['shelf1', 'shelf2', 'shelf3'].filter(function (s) { return !r.on[s]; })[0] : f.slot; if (slot && !r.on[slot]) r.on[slot] = id;   // 빈 자리면 바로 놓는다
+    return { id: id, price: f.price, slot: slot && r.on[slot] === id ? slot : '' };
+  };
+  A.roomSet = function (P, W, now, a) {
+    var slot = str(a.slot, 20), id = typeof a.id === 'string' ? a.id.slice(0, 20) : '', r = roomOf(P); if (!RSLOT[slot]) err('없는 자리입니다');
+    if (id) { if (!R.roomCan(P, slot, id)) err('이 자리에 놓을 수 없는 물건입니다'); Object.keys(r.on).forEach(function (k) { if (r.on[k] === id) delete r.on[k]; }); r.on[slot] = id; } else delete r.on[slot];
+    return { ok: true };
+  };
+  A.roomGbOpt = function (P) { var r = roomOf(P); r.gbOff = !r.gbOff; return { gbOff: !!r.gbOff }; };
+  // 다른 학생에게 보여 줄 방 (놓인 물건 · 동행 사역마만)
+  R.roomView = function (P) {
+    var r = P.room || { on: { wall: 'hflag' } }, on = {}; Object.keys(r.on || {}).forEach(function (k) { if (R.roomCan(P, k, r.on[k])) on[k] = r.on[k]; });
+    var a = P.fam && P.fam.act, o = a && P.fam.own[a];
+    return { house: P.house, on: on, pet: o && !P.fam.disp[a] ? { id: a, name: R.famLabel(P, a), stage: R.bondStage(o.bond), acc: o.acc || '' } : null, gbOff: !!r.gbOff };
+  };
+  // 방 설명: 창밖(하늘 이벤트 · 시간 · 달 · 거울관 풍경) + 놓인 물건의 문장 + 사역마
+  R.roomText = function (v, W, t) {
+    var out = [], sky = R.skyAt(t), h = ((t + K.TZ) % 86400) / 3600, cal = W && W.epoch != null ? R.calendar(W, t) : null;
+    if (v.house === 'speculum') out.push('창밖 풍경이 오늘은 ' + D.ROOM_MIRROR_VIEW[hash32(R.dayKST(t) * 17 + 5) % D.ROOM_MIRROR_VIEW.length] + '입니다.');
+    else if (sky) out.push('창밖으로 ' + R.josa(sky.name, '이', '가') + ' 보입니다.');
+    else out.push('창밖으로 ' + (cal ? cal.month + '의 ' : '') + (h >= 19 || h < 5 ? '밤하늘' : h < 7 ? '새벽하늘' : h < 17 ? '맑은 하늘' : '저녁노을') + '이 보입니다.');
+    D.ROOM_SLOTS.forEach(function (s) { var x = v.on[s.id], f = x && FURNI[x]; if (f && f.line) out.push(f.line); else if (x && SOUV[x]) out.push('선반에 ' + SOUV[x].name + ' 하나가 놓여 있습니다.'); else if (x && TOY[x]) out.push((s.id === 'bed' ? '침대 위에 ' : '바닥에 ') + R.josa(TOY[x].name, '이', '가') + ' 놓여 있습니다.'); });
+    if (v.pet) out.push(R.fillLine(['{n이} 방 구석에서 낯선 듯 두리번거립니다.', '{n이} 책상 다리 옆에 웅크리고 있습니다.', '{n이} 침대 끝에서 졸고 있습니다.', '{n이} 창틀에 앉아 바깥을 내다봅니다.', '{n이} 베개를 차지하고 곤히 잠들어 있습니다.'][v.pet.stage] || '', v.pet.name));
+    return out;
+  };
+
   A.skyLook = function (P, W, now) {
     var ev = R.skyAt(now); if (!ev) err('지금은 하늘이 조용합니다');
     if (P.skyLook === ev.key) err('이번 ' + R.josa(ev.name, '은', '는') + ' 이미 올려다봤습니다');

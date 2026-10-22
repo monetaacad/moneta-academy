@@ -68,6 +68,8 @@ var Net = (function () {
   ServerApi.prototype.tower = function (have) { return this.req('GET', '/api/tower' + (have ? '?have=' + encodeURIComponent(have) : '')); };
   ServerApi.prototype.towerOp = function (o) { return this.req('POST', '/api/tower', o || {}); };
   ServerApi.prototype.ritual = function () { return this.req('POST', '/api/ritual', {}); };
+  ServerApi.prototype.room = function (pid) { return this.req('GET', '/api/room' + (pid ? '?pid=' + encodeURIComponent(pid) : '')); };
+  ServerApi.prototype.roomPost = function (b) { return this.req('POST', '/api/room', b); };
   ServerApi.prototype.lounge = function () { return this.req('GET', '/api/lounge'); };
   ServerApi.prototype.loungeGive = function (kind) { return this.req('POST', '/api/lounge', { kind: kind }); };
   ServerApi.prototype.auction = function () { return this.req('GET', '/api/auction'); };

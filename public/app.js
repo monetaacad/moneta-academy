@@ -83,14 +83,14 @@
   function clsDot(id, size) { var c = R.CLS[id]; return dotImg(id, size, c ? c.name : '', 'cdot'); }
   function icon(k) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IC[k] + '</svg>'; }
   var VIEWS = [
-    { id: 'home', name: '아카데미 광장' }, { id: 'trip', name: '하늘섬 나들이' }, { id: 'fest', name: '축제' }, { id: 'lecture', name: '강의실' }, { id: 'explore', name: '원정' }, { id: 'tower', name: '별의 탑' }, { id: 'ctower', name: '무한의 탑' }, { id: 'exam', name: '시험·결투' },
+    { id: 'home', name: '아카데미 광장' }, { id: 'room', name: '내 방' }, { id: 'trip', name: '하늘섬 나들이' }, { id: 'fest', name: '축제' }, { id: 'lecture', name: '강의실' }, { id: 'explore', name: '원정' }, { id: 'tower', name: '별의 탑' }, { id: 'ctower', name: '무한의 탑' }, { id: 'exam', name: '시험·결투' },
     { id: 'world', name: '월드 보스' }, { id: 'party', name: '파티' }, { id: 'guild', name: '동아리' }, { id: 'friends', name: '친구' }, { id: 'board', name: '게시판' }, { id: 'idea', name: '건의함' }, { id: 'auction', name: '떠돌이 상인' }, { id: 'market', name: '거래소' }, { id: 'gear', name: '장비·능력' }, { id: 'alch', name: '연금 공방', alch: true }, { id: 'fam', name: '환수 사역장', fam: true }, { id: 'famshop', name: '환수 용품점', fam: true }, { id: 'lib', name: '연구' },
     { id: 'shop', name: '매점' }, { id: 'lore', name: '세계관' }, { id: 'rec', name: '기록실' }, { id: 'rank', name: '랭킹' }, { id: 'hcup', name: '기숙사' }, { id: 'lounge', name: '휴게실' }
   ];
   function viewOpen(v) { return v.fam ? R.famOpen(S.P) : v.alch ? R.alchOpen(S.P) : !v.grade || S.P.grade >= v.grade; }   // 환수 사역장은 사역마가 열리면(레벨), 연금 공방은 연금화학 R.ALCH_OPEN레벨부터
   // 안내도: 비슷한 곳끼리 묶고, 안에서 탭으로 옮겨 다닌다. short = 모바일 하단 바 이름 (모바일은 광장이 가운데: style.css의 order)
   var GROUPS = [
-    { id: 'home', name: '아카데미 광장', short: '광장', icon: 'home', tabs: ['home', 'trip', 'fest'] },
+    { id: 'home', name: '아카데미 광장', short: '광장', icon: 'home', tabs: ['home', 'room', 'trip', 'fest'] },
     { id: 'study', name: '수업·연구', short: '수업', icon: 'lecture', tabs: ['lecture', 'lib', 'exam'] },
     { id: 'adv', name: '원정·전투', short: '원정', icon: 'explore', tabs: ['explore', 'tower', 'ctower', 'world'] },
     { id: 'craft', name: '장비·공방', short: '장비', icon: 'gear', tabs: ['gear', 'alch', 'fam', 'famshop'] },
@@ -98,7 +98,7 @@
     { id: 'store', name: '상점', short: '상점', icon: 'shop', tabs: ['market', 'auction', 'shop'] },
     { id: 'book', name: '기록·랭킹', short: '기록', icon: 'lore', tabs: ['lore', 'rec', 'rank', 'hcup', 'lounge'] }
   ];
-  var TAB_NAMES = { auction: '떠돌이 상인', home: '광장', trip: '하늘섬', fest: '축제', lounge: '휴게실', lecture: '강의실', lib: '연구', explore: '원정', tower: '별의 탑', ctower: '무한의 탑', exam: '시험 · 결투제', world: '월드 보스', rank: '랭킹', hcup: '기숙사', gear: '장비 · 능력치', alch: '연금 공방', fam: '환수 사역장', famshop: '환수 용품점', party: '파티', guild: '동아리', friends: '친구', board: '게시판', market: '거래소', shop: '매점', lore: '세계관', rec: '업적 · 도감' };
+  var TAB_NAMES = { auction: '떠돌이 상인', home: '광장', room: '내 방', trip: '하늘섬', fest: '축제', lounge: '휴게실', lecture: '강의실', lib: '연구', explore: '원정', tower: '별의 탑', ctower: '무한의 탑', exam: '시험 · 결투제', world: '월드 보스', rank: '랭킹', hcup: '기숙사', gear: '장비 · 능력치', alch: '연금 공방', fam: '환수 사역장', famshop: '환수 용품점', party: '파티', guild: '동아리', friends: '친구', board: '게시판', market: '거래소', shop: '매점', lore: '세계관', rec: '업적 · 도감' };
   S.gtab = {};
   var IDEA_GROUP = { id: 'idea', name: '건의함', tabs: ['idea'] };   // 건의함: 안내도 밖(상단 아이콘)에서 연다
   function groupOf(v) { return GROUPS.find(function (g) { return g.tabs.indexOf(v) >= 0; }) || (v === 'idea' ? IDEA_GROUP : GROUPS[0]); }
@@ -806,7 +806,7 @@
   }
   function loadMe() { if (!API.profile) return Promise.resolve(); return API.profile().then(function (p) { if (p && !p.error) { S.me = p; updateMeBadge(); var el = $('#mecard-av'); if (el && S.view === 'home') render(); } }); }
   // 알림 기록: 게시판 댓글·답글, 거래소 판매, 파티·동아리·함께 원정 초대, 친구 신청 (우편과 따로, 기록용)
-  var NOTE_ICON = { quest: '달성', grade: '진급', board: '게시판', market: '거래소', party: '파티', friend: '친구', exp: '함께 원정', guild: '동아리' };
+  var NOTE_ICON = { room: '마이룸', quest: '달성', grade: '진급', board: '게시판', market: '거래소', party: '파티', friend: '친구', exp: '함께 원정', guild: '동아리' };
   function updateNoteBadge() { var b = $('#notebadge'); if (!b) return; var n = S.noteN || 0; b.hidden = !n; b.textContent = n > 9 ? '9+' : n; }
   ACT.notes = function () {
     S.notesOpen = true;
@@ -965,6 +965,7 @@
       else if (p.friend === 'in') h += '<button class="btn sm primary" data-act="fop" data-a="accept" data-b="' + pid + '">친구 신청 수락</button><button class="btn sm ghost" data-act="fop" data-a="decline" data-b="' + pid + '">거절</button>';
       else if (p.allowFriend !== false) h += '<button class="btn sm primary" data-act="fop" data-a="add" data-b="' + pid + '">친구 추가</button>';
       else h += '<button class="btn sm" disabled title="친구 신청을 받지 않는 학생입니다">친구 추가</button>';
+      if (API.room) h += '<button class="btn sm" data-act="roomvisit" data-a="' + pid + '">방 구경</button>';
       // 1:1 (친구끼리)
       h += p.friend === 'ok' ? '<button class="btn sm" data-act="dmopen" data-a="' + pid + '" data-b="' + esc(p.name) + '">1:1 대화</button>' : '<button class="btn sm" disabled title="1:1 대화는 친구끼리 할 수 있습니다">1:1 대화</button>';
       // 파티
@@ -1935,6 +1936,68 @@
     else if (tl) out.push('<button class="festband" data-act="nav" data-a="trip"><span class="em">🎫</span><span>오늘 외출증 <b>' + tl + '</b>장 · 하늘섬 나들이를 떠날 수 있습니다</span></button>');
     return out.length ? '<div class="festbands">' + out.join('') + '</div>' : '';
   }
+  /* ── 마이룸: 내 방 꾸미기 · 방 구경 · 방명록 ── */
+  function roomCard(v, owner) {
+    var hh = R.HOUSE[v.house] || R.HOUSE.lanterna, lines = R.roomText(v, wctx(), now());
+    var cells = D.ROOM_SLOTS.map(function (sl) { var x = v.on[sl.id], th = x && R.roomThing(x); return '<div class="rslot"><span class="tiny faint">' + sl.em + ' ' + sl.name + '</span><b>' + (th ? th.em + ' ' + esc(th.name) : '<span class="faint">—</span>') + (sl.id === 'bed' && v.pet ? ' <span title="' + esc(v.pet.name) + '">🐾</span>' : '') + '</b></div>'; }).join('');
+    return '<div class="card roomcard" style="border-color:' + hh.color + '55"><div class="row between"><h3>' + houseDot(v.house, 18) + ' ' + esc(owner) + '의 방</h3><span class="tiny faint">' + hh.name + ' 기숙사</span></div><div class="rgrid">' + cells + '</div><div class="rdesc">' + lines.map(function (l) { return '<p class="small">' + esc(l) + '</p>'; }).join('') + '</div></div>';
+  }
+  function gbHtml(list, owner, mine, op) {
+    if (!list.length) return '<p class="small muted" style="margin-top:6px">아직 방명록이 없습니다.</p>';
+    return '<div class="stack" style="gap:8px;margin-top:8px">' + list.map(function (g) {
+      var can = mine || g.pid === S.P.id || op;
+      return '<div class="gbrow"><div class="row tiny"><button class="cn" data-act="prof" data-a="' + esc(g.pid) + '">' + esc(g.name) + '</button><span class="faint">' + new Date(g.t * 1000).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + '</span><span class="spacer"></span>' + (can ? '<button class="btn sm ghost" data-act="gbdel" data-a="' + g.id + '" data-b="' + esc(owner) + '">삭제</button>' : '') + (g.pid !== S.P.id ? '<button class="btn sm ghost" data-act="gbrep" data-a="' + g.id + '">신고</button>' : '') + '</div><p class="small" style="margin-top:2px;white-space:pre-wrap;word-break:break-word">' + esc(g.text) + '</p></div>';
+    }).join('') + '</div>';
+  }
+  function roomLoad(pid, force) { if (!API.room) return; var k = pid || S.P.id; if (!force && S.roomD && S.roomD.k === k && Date.now() - S.roomD.at < 30000) return; API.room(pid).then(function (j) { if (j && j.room) { S.roomD = { k: k, at: Date.now(), j: j }; if (S.view === 'room' && !pid) render(); } }); }
+  V.room = function () {
+    var P = S.P, v = R.roomView(P), r = P.room || { on: {}, own: {} }, own = r.own || {}, toys = P.fam.toys || {}, sv = (P.trip && P.trip.souv) || {};
+    var h = pageHead(R.HOUSE[P.house].name + ' 기숙사', '내 방', '보유 ' + MONEY(P.res.gold));
+    h += roomCard(v, P.name);
+    h += '<div class="grid g2" style="margin-top:12px"><div class="card"><h3>방 꾸미기</h3><p class="tiny faint" style="margin:2px 0 8px">자리마다 물건 하나를 놓을 수 있습니다. 선반에는 하늘섬 · 축제 기념품을, 침대와 바닥에는 사역마 장난감도 놓을 수 있습니다. 동행 사역마는 방에 함께 있습니다.</p><div class="stack" style="gap:6px">' + D.ROOM_SLOTS.map(function (sl) {
+      var opts = D.FURNI.filter(function (f) { return (f.slot === sl.id || (f.slot === 'shelf' && sl.souv)) && (f.price === 0 || own[f.id]); }).map(function (f) { return f.id; })
+        .concat(sl.souv ? D.SOUVENIRS.filter(function (x) { return sv[x.id]; }).map(function (x) { return x.id; }) : [])
+        .concat(sl.toy ? D.FAM_TOYS.filter(function (x) { return toys[x.id]; }).map(function (x) { return x.id; }) : []);
+      var cur = r.on && r.on[sl.id] || '';
+      return '<div class="row small" style="gap:8px"><span style="width:70px">' + sl.em + ' ' + sl.name + '</span><select data-act="roomslot" data-a="' + sl.id + '" style="flex:1;min-width:0"><option value="">비워 두기</option>' + opts.map(function (id) { var th = R.roomThing(id); return '<option value="' + id + '"' + (cur === id ? ' selected' : '') + '>' + th.em + ' ' + esc(th.name) + '</option>'; }).join('') + '</select></div>';
+    }).join('') + '</div></div>';
+    h += '<div class="card"><h3>가구점</h3><p class="tiny faint" style="margin:2px 0 8px">구매한 가구는 빈 자리에 바로 놓입니다. 능력치 효과는 없습니다.</p><div class="stack" style="gap:6px">' + D.FURNI.filter(function (f) { return f.price; }).map(function (f) {
+      var sl = f.slot === 'shelf' ? '선반' : R.RSLOT[f.slot].name;
+      return '<div class="row small" style="gap:6px"><span>' + f.em + ' ' + esc(f.name) + ' <span class="tiny faint">' + sl + '</span></span><span class="spacer"></span>' + (own[f.id] ? '<span class="tag ok">보유 중</span>' : '<button class="btn sm primary" data-act="roombuy" data-a="' + f.id + '"' + (P.res.gold >= f.price ? '' : ' disabled') + '>구매 <span class="cost">' + fmt(f.price) + ' ' + CUR + '</span></button>') + '</div>';
+    }).join('') + '</div></div></div>';
+    if (API.room) {
+      roomLoad(); var j = S.roomD && S.roomD.k === P.id ? S.roomD.j : null;
+      h += '<div class="card" style="margin-top:12px"><div class="row between"><h3>방명록</h3><label class="tog small"><input type="checkbox" data-act="roomgbopt"' + (r.gbOff ? '' : ' checked') + '> 방명록 받기</label></div><p class="tiny faint">다른 학생은 정보 카드의 「방 구경」에서 방을 둘러보고 방명록을 남길 수 있습니다(하루 한 번, ' + D.ROOM_GB.max + '자까지). 방명록은 방 주인 · 작성한 학생이 지울 수 있습니다.</p>' + (j ? gbHtml(j.gb, P.id, true, j.op) : '<div class="empty">불러오는 중입니다.</div>') + '</div>';
+    }
+    return h;
+  };
+  ACT.roombuy = function (id) { act('roomBuy', { id: id }).then(function (r) { if (!r) return; Snd.play('ach'); var f = R.FURNI[id]; toast('구매가 완료되었습니다', f.em + ' ' + f.name + (r.slot ? ' · ' + (R.RSLOT[r.slot] ? R.RSLOT[r.slot].name : '') + '에 놓았습니다' : '') + ' · ' + MONEY(r.price, '−'), 2400); render(); }); };
+  ACT.roomgbopt = function () { act('roomGbOpt', {}).then(function (r) { if (r) { toast('방명록', r.gbOff ? '방명록을 받지 않습니다' : '방명록을 받습니다', 1800); render(); } }); };
+  // 다른 학생의 방 구경 (정보 카드에서)
+  function roomVisitHtml(j) {
+    var h = mhead('방 구경', esc(j.owner.name) + ' 학생의 방') + roomCard(j.room, j.owner.name);
+    h += '<div class="section-t" style="margin-top:12px">방명록</div>';
+    if (j.room.gbOff) h += '<p class="small muted">이 방은 방명록을 받지 않습니다.</p>';
+    else {
+      h += j.canWrite ? '<div class="stack" style="gap:6px;margin-top:6px"><textarea id="gb-text" rows="2" maxlength="' + D.ROOM_GB.max + '" placeholder="' + D.ROOM_GB.max + '자까지 작성할 수 있습니다"></textarea><div class="row" style="justify-content:flex-end"><button class="btn sm primary" data-act="gbwrite" data-a="' + esc(j.owner.id) + '">방명록 남기기</button></div></div>' : '<p class="tiny faint">' + (j.mine ? '' : '이 방에는 오늘 이미 방명록을 남겼습니다. 한국 시간 0시에 다시 남길 수 있습니다.') + '</p>';
+      h += gbHtml(j.gb, j.owner.id, j.mine, j.op);
+    }
+    return h + '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn primary" data-act="modal-close">닫기</button></div>';
+  }
+  ACT.roomvisit = function (pid) { API.room(pid).then(function (j) { if (j.error) { toast('방 구경', j.error); return; } S.roomVisit = j; modal(roomVisitHtml(j), true); }); };
+  ACT.gbwrite = function (to) {
+    var el = $('#gb-text'), text = el ? el.value : ''; if (!text.trim()) { toast('방명록', '내용 입력 필요'); return; }
+    API.roomPost({ op: 'gb', to: to, text: text }).then(function (j) { if (j.error) { toast('방명록', j.error); return; } toast('방명록', '방명록을 남겼습니다', 1800); ACT.roomvisit(to); });
+  };
+  ACT.gbdel = function (id, owner) {
+    var k = 'gbd' + id; if (!(S.confirm[k] > Date.now())) { S.confirm[k] = Date.now() + 4000; toast('방명록', '한 번 더 누르면 삭제합니다', 2000); return; } S.confirm[k] = 0;
+    API.roomPost({ op: 'gbdel', id: +id }).then(function (j) { if (j.error) { toast('방명록', j.error); return; } toast('방명록', '삭제했습니다', 1600); if (S.modal && S.roomVisit && S.roomVisit.owner.id === owner) ACT.roomvisit(owner); else { roomLoad(null, true); } });
+  };
+  ACT.gbrep = function (id) {
+    var k = 'gbr' + id; if (!(S.confirm[k] > Date.now())) { S.confirm[k] = Date.now() + 4000; toast('방명록 신고', '한 번 더 누르면 운영진에게 신고합니다', 2200); return; } S.confirm[k] = 0;
+    API.roomPost({ op: 'gbrep', id: +id }).then(function (j) { toast('방명록 신고', j.error || '신고가 접수되었습니다', 2000); });
+  };
+
   /* ── 하늘섬 나들이 (주말 외출) ── */
   function rwText(rw) { return rw && rw.text ? '<span class="tag ok">' + esc(rw.text) + '</span>' : ''; }
   function nextWeekend(t) { var d = R.dayKST(t), wd = R.weekday(t), add = wd === 6 || wd === 0 ? 0 : 6 - wd; return (d + add) * 86400 - R.K.TZ; }
@@ -5727,7 +5790,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102290;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102291;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
@@ -5870,6 +5933,7 @@
     else if (el.dataset.act === 'erpo') { S.erPO = el.checked; PREF.erPO = el.checked; savePref(); }   // 「파티원만」: 다시 그려도 · 다음 접속에도 유지
     else if (el.dataset.act === 'exampick') act('examPick', { s: el.value }).then(function (r) { if (r) { toast('선택 과목', el.value ? R.SUBJ[el.value].name + ' 과목으로 응시합니다' : '가장 레벨이 높은 과목이 자동으로 반영됩니다'); render(); } });
     else if (el.dataset.act === 'tfpick') ACT.tfpick(el.dataset.a, null, el);
+    else if (el.dataset.act === 'roomslot') act('roomSet', { slot: el.dataset.a, id: el.value }).then(function (r) { if (r) render(); });
     else if (el.dataset.act === 'famzone') act('famZone', { id: el.dataset.a, z: el.value }).then(function (r) { if (r) { toast('파견 지역', (el.value ? R.dispZoneOf(S.P, el.dataset.a, el.value).name : '갈 수 있는 가장 높은 지역') + '으로 정했습니다. 다음 파견부터 적용됩니다'); render(); } });
     else if (el.dataset.act === 'autosell') ACT.autosell();
     else if (el.dataset.act === 'automode') ACT.automode();
