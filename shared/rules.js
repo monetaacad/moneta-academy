@@ -86,9 +86,9 @@
   R.nextMidnight = function (t) { return (R.dayKST(t) + 1) * 86400 - K.TZ; };
   R.calendar = function (W, t) {
     var dn = Math.max(0, R.dayKST(t) - R.dayKST(W.epoch));
-    var NM = D.WORLD.calendarMonths.length, mo = Math.floor(dn / 28) % NM;
+    var NM = D.WORLD.calendarMonths.length, MD = D.WORLD.monthDays || 28, mo = Math.floor(dn / MD) % NM;
     var secOfDay = (t + K.TZ) % 86400;
-    return { day: dn, year: D.WORLD.baseYear + Math.floor(dn / (28 * NM)), mi: mo, month: D.WORLD.calendarMonths[mo], d: dn % 28 + 1,
+    return { day: dn, year: D.WORLD.baseYear + Math.floor(dn / (MD * NM)), mi: mo, month: D.WORLD.calendarMonths[mo], d: dn % MD + 1, md: MD,
       period: clamp(Math.floor((secOfDay - 9 * 3600) / 3600) + 1, 0, 9), weekend: R.isWeekend(t), bonus: D.MONTH_BONUS[mo] };
   };
   function weekendFrac(t0, t1) {
@@ -313,7 +313,9 @@
   R.clsStart = function (P, id) { if (!R.CLS[id]) return; P.cls = id; allocReset(P, id); var st = { knight: 'shieldbash', mage: 'arcane' }[id], n = R.spellSlots(P);
     for (var i = 0; i < n; i++) if (!P.spells[i]) { P.spells[i] = st; return; } };
   R.CLS_EXAM_CD = 86400;
-  R.clsExamFee = function (P) { return 800 * Math.max(1, P.grade); };
+  // 전과 패널티(2차 베타): 응시료는 전과에 성공한 횟수만큼 2배씩(최대 8배), 합격하면 R.CLS_REDO 동안 다시 전과할 수 없다
+  R.CLS_REDO = 7 * 86400;
+  R.clsExamFee = function (P) { return 800 * Math.max(1, P.grade) * Math.pow(2, Math.min(3, P.clsN || 0)); };
   // 시험관: 지금 원정을 다니는 단계(추천 단계)의 몬스터를 크게 키운 것. 옮길 학과의 몸으로 싸운다
   R.clsExamStage = function (P, W) { return Math.max(3, R.bestStage(P, W) + 2); };
   // 미리 보기: 그 학과의 몸으로 싸우면 이길 수 있는지
@@ -321,6 +323,10 @@
   R.clsExamFoe = function (P, W) { return R.duelEnemy(R.clsExamStage(P, W), 4, 1.3); };
   // 학과가 바뀌면 그 학과로 못 쓰는 전용 주문은 슬롯에서 뺀다
   // 학과별 주문 구성은 P.spellsBy에 기억해 두었다가, 그 학과로 돌아오면 되살린다 (돌아와도 빠진 전용 주문이 그대로 비어 있던 문제)
+  // 학과 성향: 학과마다 둘 중 하나 (기본은 첫 번째). 하루(KST) 한 번 바꿀 수 있고, 전과하면 새 학과의 기본 성향으로
+  R.stances = function (P) { return D.STANCES[(P && P.cls) || 'mage'] || []; };
+  R.stanceOf = function (P) { var L = R.stances(P); return L.filter(function (x) { return P && x.id === P.stance; })[0] || L[0] || {}; };
+  R.stanceFree = function (P, now) { return P.stanceDay !== R.dayKST(now); };
   function clsSet(P, id, now, how) {
     var by = P.spellsBy || (P.spellsBy = {}); if (P.cls) by[P.cls] = P.spells.slice();
     R.subjPairSync(P);   // 전공 레벨을 새 학과의 짝 과목으로 이어 간다
@@ -413,6 +419,7 @@
     var cn = R.codexTiers(P); if (cn) { b.atkPct = cn * R.CODEX_EACH; b.goldPct = cn * R.CODEX_EACH; } mark('도감');
     var h = HOUSE[P.house]; if (h) addEff(b, h.bonus, R.housePct(W, P.house)); mark('기숙사');
     var cl = R.CLS[P.cls || 'mage']; if (cl) addEff(b, cl.bonus); mark('학과');   // 학과
+    var stn = R.stanceOf(P); if (stn && stn.bonus) addEff(b, stn.bonus); mark('성향');   // 학과 성향
     if (P.guildLv > 0) { var gb = R.guildBonus(P.guildLv); b.goldPct = (b.goldPct || 0) + gb; b.xpPct = (b.xpPct || 0) + gb; } mark('동아리');   // 동아리 레벨 보너스
     if (P.partyN > 1) { var pn = Math.min(P.partyN, 4) - 1; b.goldPct = (b.goldPct || 0) + R.PARTY_GOLD * pn; b.xpPct = (b.xpPct || 0) + R.PARTY_XP * pn; } mark('파티');   // 파티 보너스 (솔로와 성장 격차를 줄이려 경험치는 작게)
     for (var id in P.rs) if (RES[id]) addEff(b, RES[id].eff, P.rs[id]); mark('연구');
@@ -542,17 +549,25 @@
     return it;
   }
   R.makeItem = makeItem;
+  /* 장비 레벨 성장(무기 공격력 · 로브 생명력 · 로브 방어력 · 마도서 공격력): 예전에는 레벨마다 ×1.12 복리(10레벨 ×3.1)였다.
+     GEAR_BAND 레벨(2학년)씩 묶어, 묶음 안에서는 단리로 천천히(묶음 끝이 시작의 GEAR_IN배), 다음 묶음으로 넘어갈 때 한 번에 오른다.
+     묶음 전체(20레벨)의 성장 폭과 묶음 안 평균(기하 평균)은 예전 곡선과 같게 맞춘다 */
+  R.ENH_MAIN = 0.1;   // 강화 1단계마다 주 능력치 +10%
+  R.GEAR_G = 1.12; R.GEAR_BAND = 20; R.GEAR_OFF = 10;   // 묶음: 10~29 · 30~49 · 50~69 · 70~89 … (1~9는 앞 묶음의 끝)
+  R.GEAR_IN = 2;
+  var GEAR_C = (function () { var B = R.GEAR_BAND, a = 0, b = 0; for (var p = 0; p < B; p++) { a += p * Math.log(R.GEAR_G); b += Math.log(1 + (R.GEAR_IN - 1) * p / (B - 1)); } return Math.exp((a - b) / B); })();
+  R.gearGrow = function (ilvl) { var B = R.GEAR_BAND, v = Math.max(1, ilvl), st = R.GEAR_OFF + Math.floor((v - R.GEAR_OFF) / B) * B, p = v - st; return Math.pow(R.GEAR_G, st - 1) * GEAR_C * (1 + (R.GEAR_IN - 1) * p / (B - 1)); };
   function mainVal(it) {
     var S = R.slotDef(it), rm = D.RARITY[it.r].mult;
-    if (S.main === 'spellPct' || S.main === 'skillPct') return S.base * (1 + it.ilvl * 0.025) * rm * it.q * (1 + it.enh * 0.08);
+    if (S.main === 'spellPct' || S.main === 'skillPct') return S.base * (1 + it.ilvl * 0.025) * Math.sqrt(rm) * it.q * (1 + it.enh * 0.05);   // 주문 · 기술 위력은 다른 공격 능력치와 곱해지므로 등급 · 강화 효과를 줄인다
     if (S.main === 'int' || S.main === 'luk' || S.main === 'vit') return S.base * (1 + it.ilvl * 0.09) * rm * it.q * (1 + it.enh * 0.08);
-    return S.base * Math.pow(1.12, it.ilvl - 1) * rm * it.q * (1 + it.enh * 0.1);
+    return S.base * R.gearGrow(it.ilvl) * rm * it.q * (1 + it.enh * R.ENH_MAIN);
   }
   function subVal(it) {
     var S = SLOT[it.slot]; if (!S.sub) return 0;
     var rm = D.RARITY[it.r].mult;
     if (S.sub === 'critC' || S.sub === 'lectureSpd') return S.subBase * rm * (1 + it.enh * 0.05);
-    return S.subBase * Math.pow(1.12, it.ilvl - 1) * rm * it.q * (1 + it.enh * 0.1);
+    return S.subBase * R.gearGrow(it.ilvl) * rm * it.q * (1 + it.enh * R.ENH_MAIN);
   }
   function itemStats(it) {
     var o = {}, S = R.slotDef(it);
@@ -625,10 +640,13 @@
     }
     c.famDps = P.fam.act && P.fam.own[P.fam.act] ? c.atk * famAtkMult(P) / 1.5 : 0;
     c.totalDps = c.dps + c.spellDps + c.famDps;
-    c.power = Math.floor(c.totalDps * 3 + c.hp * 0.6 + c.def * 4);
+    c.power = R.powerOf(c.totalDps * 3 + c.hp * 0.6 + c.def * 4);
     return c;
   }
   R.calc = calc;
+  // 전투력 숫자: 전투 수치(피해 · 생명력 · 방어력)의 0.8제곱. 순서는 그대로이고, 장비 구간이 오를 때 숫자가 한꺼번에 뛰는 폭을 줄인다
+  R.POWER_EXP = 0.8; R.POWER_V = 2;   // POWER_V: 전투력 식이 바뀌면 올린다 (서버가 켜질 때 저장된 전투력을 다시 계산)
+  R.powerOf = function (raw) { return raw > 0 ? Math.floor(Math.pow(raw, R.POWER_EXP)) : 0; };
   function spellLvMult(P, sp) { return 1 + (sp.req ? P.subj[sp.req[0]].lv * 0.03 : P.lvl * 0.01); }
   function famAtkMult(P) { var f = FAM[P.fam.act], o = P.fam.own[P.fam.act]; return 0.25 * (1 + f.r * 0.25) * (1 + 0.08 * (o.lv - 1)); }
   R.spellUnlocked = function (P, id) { var sp = SPELL[id]; if (!sp) return false; if (sp.cls && sp.cls.indexOf(P.cls || 'mage') < 0) return false; return !sp.req || (P.subj[sp.req[0]].lv >= sp.req[1] && R.subjVisible(P, SUBJ[sp.req[0]])); };
@@ -785,9 +803,9 @@
     for (var i = 0; i < ns; i++) { var sp = SPELL[P.spells[i]]; if (!sp || !R.spellUnlocked(P, sp.id)) continue; if (sp.type === 'dmg' || sp.type === 'stun') has.dmg = true; if (sp.type === 'shield' || sp.type === 'heal') has.care = true; }
     return Object.keys(R.EXP_POS).filter(function (k) { var x = R.EXP_POS[k]; return !x.need || has[x.need]; });
   };
-  // 선봉이 몬스터를 끄는 정도 (기사 +5%p, 수호 결계 장착 +5%p)
+  // 선봉이 몬스터를 끄는 정도 (기사 수호 성향 +12%, 수호 결계 · 수호의 함성 장착 각 +5%, 최대 95%)
   R.expAggro = function (P) {
-    var a = R.EXP_AGGRO; if (P && P.cls === 'knight') a += 0.05;
+    var a = R.EXP_AGGRO; if (P && P.cls === 'knight') a += R.stanceOf(P).aggro || 0;   // 기사 수호 성향 +12%
     if (P && P.spells && P.spells.slice(0, R.spellSlots(P)).indexOf('ward') >= 0 && R.spellUnlocked(P, 'ward')) a += 0.05;
     if (P && P.spells && P.spells.slice(0, R.spellSlots(P)).indexOf('warcry') >= 0 && R.spellUnlocked(P, 'warcry')) a += 0.05;
     return Math.min(0.95, a);
@@ -1188,6 +1206,7 @@
     if (now <= P.at) return P;
     if (W) R.festSync(P, W, P.at);   // 축제: 지난 축제의 남은 표식 정리 · 새 축제 기록 시작
     R.gwqSync(P, P.at);   // 주간 동아리 과제: 지난 주 기록을 기준으로 남겨 두고, 주가 바뀌면 새로 센다
+    R.mwqSync(P, P.at);   // 마스터 주간 과제 (마스터 과정만)
     var t0 = P.at;
     // 끝나는 일을 시간순으로 모은다
     var ev = [];
@@ -1489,7 +1508,7 @@
   R.twUse = function (P, now) { P.tw2d = R.dayKST(now); };
   R.twRecord = function (P, now, cleared) { var w = R.weekId(now); if (!P.tw2 || P.tw2.week !== w) P.tw2 = { week: w, best: 0 }; var old = P.tw2.best; if (cleared > old) P.tw2.best = cleared; return old; };
   R.twStart = function (bests) { return (bests.length ? Math.min.apply(null, bests) : 0) + 1; };
-  R.twPos = function (P) { var ok = R.expPositions(P), p = P.opt && P.opt.twPos; return ok.indexOf(p) >= 0 ? p : P.cls === 'knight' || ok.length < 2 ? 'van' : ok.indexOf('rear') >= 0 ? 'rear' : ok[0]; };
+  R.twPos = function (P) { var ok = R.expPositions(P), p = P.opt && P.opt.twPos; return ok.indexOf(p) >= 0 ? p : (P.cls === 'knight' && R.stanceOf(P).aggro) || ok.length < 2 ? 'van' : ok.indexOf('rear') >= 0 ? 'rear' : ok[0]; };
   // 파티원 한 명의 전투 정보 (전투에 필요한 값만 미리 계산)
   R.twMember = function (P, W, now, pos) {
     var c = calc(P, W, now), sp = [], ns = R.spellSlots(P);
@@ -1719,6 +1738,16 @@
   R.gwqNeed = function (q) { return Math.max(1, Math.ceil(q.goal / 5)); };
   R.gwqReward = function (P) { return { shard: 4 + Math.min(P.grade, 8), gxp: 30 }; };
   R.gwqSync = function (P, now) { var w = R.weekId(now); if (!P.gwq || P.gwq.wk !== w) { var b = {}; R.GWQ.forEach(function (q) { b[q.st] = P.st[q.st] || 0; }); P.gwq = { wk: w, b: b, got: {} }; return true; } return false; };
+  /* 마스터 주간 과제: 마스터 과정(8학년) 연구생 혼자 하는 과제. 후보 8개 중 매주 3개가 돌아가며 나온다 (주가 바뀔 때의 기록 P.mwq.b 기준).
+     과제마다 별조각, 세 개를 모두 받으면 추가 별조각 + 완수한 주(P.st.mwqWeeks). 4주를 채우면 정보 카드 배경 「종탑의 새벽」(R.MWQ_DECO) */
+  R.MWQ = [{ id: 'exp', st: 'expJobs', name: '원정 마치기', unit: '번', goal: 30, go: 'explore' }, { id: 'wb', st: 'wbAttacks', name: '월드 보스 도전하기', unit: '번', goal: 12, go: 'world' },
+    { id: 'res', st: 'researchDone', name: '연구 마치기', unit: '번', goal: 4, go: 'lib' }, { id: 'lec', st: 'lecJobs', name: '수업 마치기', unit: '교시', goal: 30, go: 'lecture' },
+    { id: 'brew', st: 'brews', name: '물약 만들기', unit: '병', goal: 20, go: 'work' }, { id: 'spirit', st: 'spirits', name: '반딧불 정령 풀어 주기', unit: '마리', goal: 100, go: 'home' },
+    { id: 'dream', st: 'dreams', name: '꿈길 다녀오기', unit: '번', goal: 5, go: 'home' }, { id: 'boss', st: 'bosses', name: '보스 처치하기 (월드 보스 · 결투 포함)', unit: '번', goal: 15, go: 'explore' }];
+  R.MWQ_RW = 15; R.MWQ_ALL = 20; R.MWQ_DECO = 'b_bell'; R.MWQ_DECO_WEEKS = 4;
+  R.mwqList = function (w) { var n = R.MWQ.length, s0 = (w * 3) % n; return [0, 1, 2].map(function (k) { return R.MWQ[(s0 + k) % n]; }); };
+  R.mwqSync = function (P, now) { if (P.grade < 8) return false; var w = R.weekId(now); if (!P.mwq || P.mwq.wk !== w) { var b = {}; R.MWQ.forEach(function (q) { b[q.st] = P.st[q.st] || 0; }); P.mwq = { wk: w, b: b, got: {} }; return true; } return false; };
+  R.mwqProg = function (P, q) { return P.mwq ? Math.max(0, (P.st[q.st] || 0) - (P.mwq.b[q.st] || 0)) : 0; };
   R.gwqMine = function (P, q, w) { return P && P.gwq && P.gwq.wk === w ? Math.max(0, (P.st[q.st] || 0) - (P.gwq.b[q.st] || 0)) : 0; };
   R.guildDefRanks = function () { return { owner: '회장', officer: '부회장', base: { name: '부원', perms: {} }, list: [] }; };   // owner · officer: 회장 · 부회장 역할 이름 (회장이 바꿀 수 있다)
   R.guildCleanRanks = function (o, max) {
@@ -1996,6 +2025,14 @@
     var m = P.examPick || (P.examPick = {}); if (k) m[ex.grade] = k; else delete m[ex.grade];
     return { ok: true, s: R.examOpt(P, ex) };
   };
+  A.setStance = function (P, W, now, a) {
+    var id = str(a.id), x = R.stances(P).filter(function (s) { return s.id === id; })[0]; if (!x) err('없는 성향입니다');
+    if (R.stanceOf(P).id === id) err('지금 성향과 같습니다');
+    if (!R.stanceFree(P, now)) err('성향은 하루에 한 번 바꿀 수 있습니다 (한국 시간 0시 초기화)');
+    P.stance = id; P.stanceDay = R.dayKST(now);
+    log(P, now, R.clsOf(P).name + ' 성향을 「' + x.name + '」으로 바꿨습니다', 'news');
+    return { ok: true, stance: id };
+  };
   A.clsExam = function (P, W, now, a) {
     var id = str(a.cls); if (!R.CLS[id]) err('학과 선택 필요');
     if ((P.cls || 'mage') === id) err('지금 학과와 같습니다');
@@ -2004,7 +2041,7 @@
     var fee = R.clsExamFee(P); if (P.res.gold < fee) err('응시료가 모자랍니다 (' + fee + ' ' + R.CUR + ')');
     P.res.gold -= fee;
     var old = P.cls; P.cls = id; var c = calc(P, W, now), e = R.clsExamFoe(P, W), f = fight(P, c, e, 40, true); P.cls = old;
-    var cs = null; if (f.win) cs = clsSet(P, id, now, '전과시험 합격'); else { P.clsCd = now + R.CLS_EXAM_CD; log(P, now, R.CLS[id].name + ' 전과시험 불합격', 'bad'); }
+    var cs = null; if (f.win) { cs = clsSet(P, id, now, '전과시험 합격'); P.clsN = (P.clsN || 0) + 1; P.clsCd = now + R.CLS_REDO; delete P.stance; } else { P.clsCd = now + R.CLS_EXAM_CD; log(P, now, R.CLS[id].name + ' 전과시험 불합격', 'bad'); }
     return { win: !!f.win, cc: !!f.cc, ev: f.ev, maxHp: e.hp, mHp: f.mHp, cls: id, fee: fee, off: cs ? cs.off : [], restored: cs ? cs.restored : false, pts: cs ? cs.pts : 0 };
   };
   A.expStart = function (P, W, now, a) {
@@ -2039,7 +2076,7 @@
   /* ───────── 무한의 탑 (개인): 기사의 탑 · 마법사의 탑 ─────────
      혼자 오르는 끝없는 탑. 학과마다 따로 층을 쌓으며 줄어들지 않는다(주간 초기화 없음). 도전 횟수 제한 없이 한 번에 한 층 — 전투력이 되는 만큼 오른다.
      난이도: 적의 공격이 아주 세고(보스 공격 ×3) 체력은 낮으며(×0.6) 60초 안에 쓰러뜨려야 한다 → 화력만으로 밀기 어렵고 생명력 · 회복도 필요.
-     층 곡선: 전투력 약 4천은 15층, 약 1.6만은 40층 언저리에서 막힌다. 시련의 층(50층마다)은 갑자기 어려운 벽(체력 ×1.8 · 공격 ×1.4),
+     층 곡선: 전투력 약 760은 15층, 약 2300은 40층 언저리에서 막힌다. 시련의 층(50층마다)은 갑자기 어려운 벽(체력 ×1.8 · 공격 ×1.4),
      넘고 나면 3~4층은 쉬워졌다가 금세 다시 따라잡힌다. */
   R.CT_TRIES = 3; R.CT_MILE = 50; R.CT_TIME = 60;
   R.CT_NAME = { knight: '기사의 탑', mage: '마법사의 탑' };
@@ -2434,6 +2471,7 @@
     var id = str(a.id), x = DECO[id]; if (!x) err('없는 꾸미기입니다'); var d = decoOf(P); if (d.own[id]) err('이미 가지고 있습니다');
     if (x.house && x.house !== P.house) err(HOUSE[x.house].name + ' 학생만 살 수 있습니다');   // 기숙사 문장 테두리
     if (x.fest) err('축제 교환소에서만 얻을 수 있습니다');
+    if (x.mw) err('마스터 주간 과제를 ' + x.mw + '주 모두 완수하면 받는 꾸미기입니다');
     if (P.res.gold < x.price) err(CUR + '가 부족합니다');
     P.res.gold -= x.price; d.own[id] = 1; d.on[x.slot] = id; log(P, now, R.josa('꾸미기 「' + x.name + '」', '을', '를') + ' 샀습니다 (' + R.fmt(x.price) + ' ' + CUR + ')', 'news');
     return { ok: true, id: id };
@@ -2666,7 +2704,9 @@
     return out;
   };
   A.inboxAck = function (P, W, now, a) { var upto = Number(a.upto); if (!isFinite(upto)) upto = Infinity; P.inbox = P.inbox.filter(function (o) { return o.t > upto; }); return { ok: true }; };
-  A.storySeen = function (P, W, now, a) { P.story = Math.max(P.story, int(a.n, 0, 8)); return { ok: true }; };
+  // 읽을 수 있는 세계관 이야기 수: 학년마다 한 장(8장까지), 9장은 학기 이야기 9장(종지기의 해)을 시작하면
+  R.storyAvail = function (P) { return Math.min(P.grade, 8) + (P.grade >= 8 && P.mq && P.mq.g >= 9 ? 1 : 0); };
+  A.storySeen = function (P, W, now, a) { P.story = Math.max(P.story, Math.min(int(a.n, 0, D.STORY.length), R.storyAvail(P))); return { ok: true }; };
 
   A.dailyReroll = function (P, W, now, a) {
     var i = int(a.i, 0, 2), q = P.daily.q[i]; if (!q || q.done) err('바꿀 수 없는 의뢰입니다');
@@ -2685,16 +2725,16 @@
     if (!W || W.epoch == null) return null;
     var ff = W.festF; if (ff && FEST[ff.id] && t >= ff.start && t < ff.end) return { id: ff.id, f: FEST[ff.id], start: ff.start, end: ff.end, k: ff.id + ':t' + ff.start };
     if (t < W.epoch) return null;
-    var cal = R.calendar(W, t), f = D.FESTIVALS.filter(function (x) { return x.mi === cal.mi && cal.d >= x.from && cal.d <= x.to; })[0]; if (!f) return null;
-    var d0 = R.dayKST(t) - (cal.d - f.from), start = d0 * 86400 - K.TZ;
-    return { id: f.id, f: f, start: start, end: start + (f.to - f.from + 1) * 86400, k: f.id + ':' + cal.year };
+    var cal = R.calendar(W, t), f = D.FESTIVALS.filter(function (x) { return x.mi === cal.mi; })[0]; if (!f) return null;   // 축제 달에는 그 달 내내
+    var d0 = R.dayKST(t) - (cal.d - 1), start = d0 * 86400 - K.TZ;
+    return { id: f.id, f: f, start: start, end: start + cal.md * 86400, k: f.id + ':' + cal.year };
   };
-  // 다음 축제 (화면 안내용): 오늘부터 한 해(252일) 안에서 처음 열리는 축제
-  R.festNext = function (W, t) { if (!W || W.epoch == null) return null; var NM = D.WORLD.calendarMonths.length; for (var k = 1; k <= 28 * NM; k++) { var x = R.festAt(W, R.dayKST(t) * 86400 - K.TZ + k * 86400 + 3600); if (x) return x; } return null; };
+  // 다음 축제 (화면 안내용): 오늘부터 한 해 안에서 처음 열리는 축제
+  R.festNext = function (W, t) { if (!W || W.epoch == null) return null; var NM = D.WORLD.calendarMonths.length, MD = D.WORLD.monthDays || 28; for (var k = 1; k <= MD * NM; k++) { var x = R.festAt(W, R.dayKST(t) * 86400 - K.TZ + k * 86400 + 3600); if (x) return x; } return null; };
   R.festSync = function (P, W, now) {
     var cur = R.festAt(W, now), f = P.fest;
     if (f && f.k && !f.closed && (!cur || cur.k !== f.k)) {   // 끝난 축제: 남은 표식을 아르크로
-      var g = Math.floor((f.tok || 0) * R.dailyReward(P).gold * FT.leftover); f.closed = 1;
+      var g = (f.tok || 0) * R.festGold(P); f.closed = 1;
       if (f.tok > 0) { addGold(P, g); log(P, Math.min(now, f.end || now), (FEST[f.id] ? '「' + FEST[f.id].name + '」' : '축제') + '가 끝나 남은 축제 표식 ' + f.tok + '개를 ' + R.fmt(g) + ' ' + CUR + '로 바꾸었습니다.', 'news'); }
       f.left = f.tok; f.tok = 0;
     }
@@ -2709,6 +2749,7 @@
     n = Math.min(n, FT.dayCap - f.dg); if (n <= 0) { f.fr = 0; return; }
     f.tok += n; f.got += n; f.dg += n;
   }
+  R.festGold = function (P) { return Math.max(1, Math.floor(R.dailyReward(P).gold * FT.leftover)); };   // 표식 1개 = 아르크 (교환소 · 축제가 끝날 때 같은 값)
   R.festItems = function (fid) { var f = FEST[fid]; return (f ? f.shop : []).concat(D.FEST_SHOP); };
   R.festItem = function (fid, id) { return R.festItems(fid).filter(function (x) { return x.id === id; })[0] || null; };
   R.festItemName = function (x) { if (!x) return ''; if (x.name) return x.name; var o = x.k === 'title' ? D.TITLES.filter(function (t) { return t.id === x.id; })[0] : x.k === 'toy' ? R.TOY[x.id] : x.k === 'deco' ? DECO[x.id] : x.k === 'souv' ? SOUV[x.id] : null; return o ? (x.k === 'title' ? '칭호 「' + o.name + '」' : x.k === 'deco' ? '정보 카드 인장 「' + o.name + '」' : x.k === 'toy' ? '장난감 「' + o.name + '」' : '기념품 「' + o.name + '」') : x.id; };
@@ -2717,10 +2758,10 @@
   A.festBuy = function (P, W, now, a) {
     var cur = R.festSync(P, W, now); if (!cur || !P.fest || P.fest.k !== cur.k) err('지금은 열린 축제가 없습니다');
     var x = R.festItem(cur.id, str(a.id, 30)); if (!x) err('교환할 수 없는 품목입니다');
-    var f = P.fest, nb = f.buy[x.id] || 0, max = x.max || 1;
-    if (R.festOwned(P, x)) err('이미 가지고 있습니다'); if (nb >= max) err('이번 축제에서는 더 바꿀 수 없습니다');
-    if (f.tok < x.price) err('축제 표식이 부족합니다 (' + x.price + '개 필요)');
-    f.tok -= x.price; f.buy[x.id] = nb + 1; var out = { id: x.id, k: x.k, name: R.festItemName(x) };
+    var f = P.fest, nb = f.buy[x.id] || 0, max = x.max == null ? 1 : x.max, cnt = max === 0 ? (a.n == null ? 1 : int(a.n, 1, 100000)) : 1, cost = x.price * cnt;   // max 0 = 제한 없이 여러 개
+    if (R.festOwned(P, x)) err('이미 가지고 있습니다'); if (max && nb >= max) err('이번 축제에서는 더 바꿀 수 없습니다');
+    if (f.tok < cost) err('축제 표식이 부족합니다 (' + cost + '개 필요)');
+    f.tok -= cost; f.buy[x.id] = nb + cnt; var out = { id: x.id, k: x.k, name: R.festItemName(x), cnt: cnt, price: cost };
     if (x.k === 'title') (P.festT || (P.festT = [])).push(x.id);
     else if (x.k === 'toy') (P.fam.toys || (P.fam.toys = {}))[x.id] = 1;
     else if (x.k === 'deco') decoOf(P).own[x.id] = 1;
@@ -2728,7 +2769,9 @@
     else if (x.k === 'snack') { var sn = P.fam.snacks || (P.fam.snacks = {}); out.got = []; for (var i = 0; i < x.n; i++) { var s = pick(P, D.FAM_SNACKS); sn[s.id] = (sn[s.id] || 0) + 1; out.got.push(s.name); } }
     else if (x.k === 'shard') P.res.shard += x.n;
     else if (x.k === 'stone') P.res.stone += x.n;
-    log(P, now, '축제 교환소: ' + R.josa(out.name, '을', '를') + ' 받았습니다 (축제 표식 ' + x.price + '개)', 'news');
+    else if (x.k === 'dust') { out.dust = x.n * cnt; P.res.dust = (P.res.dust || 0) + out.dust; out.name = '마석가루 ' + R.fmt(out.dust) + '개'; }
+    else if (x.k === 'gold') { out.gold = R.festGold(P) * cnt; addGold(P, out.gold); out.name = R.fmt(out.gold) + ' ' + CUR; }
+    log(P, now, '축제 교환소: ' + R.josa(out.name, '을', '를') + ' 받았습니다 (축제 표식 ' + cost + '개)', 'news');
     return out;
   };
 
@@ -2786,8 +2829,8 @@
   /* ── 기숙사 휴게실 복원: 납부는 서버가 기숙사 진행도와 함께 처리한다 (POST /api/lounge). 여기서는 값 · 검사 · 학생 쪽 차감만 ── */
   var LG = D.LOUNGE;
   R.loungeMonth = function (W, t) {
-    if (!W || W.epoch == null) return null; var cal = R.calendar(W, t), mk = Math.floor(cal.day / 28), d0 = R.dayKST(W.epoch) + mk * 28;
-    return { mk: mk, p: D.LOUNGE_PROJECTS[mk % D.LOUNGE_PROJECTS.length], start: d0 * 86400 - K.TZ, end: (d0 + 28) * 86400 - K.TZ, month: cal.month };
+    if (!W || W.epoch == null) return null; var cal = R.calendar(W, t), mk = Math.floor(cal.day / cal.md), d0 = R.dayKST(W.epoch) + mk * cal.md;
+    return { mk: mk, p: D.LOUNGE_PROJECTS[mk % D.LOUNGE_PROJECTS.length], start: d0 * 86400 - K.TZ, end: (d0 + cal.md) * 86400 - K.TZ, month: cal.month };
   };
   R.loungeCost = function (P, W, now) { var z = R.zoneOf(Math.min(P.maxStage, R.stageCap(P))); return { gold: Math.max(100, Math.floor(R.dailyReward(P).gold * LG.goldX)), mana: R.ritualCost(P, W, now), mat: z.mat, matN: LG.matN }; };
   function loungeOf(P, W, now) { var m = R.loungeMonth(W, now), l = P.lounge; if (!l || l.mk !== m.mk) l = P.lounge = { mk: m.mk, day: -1, k: {}, pts: 0 }; var d = R.dayKST(now); if (l.day !== d) { l.day = d; l.k = {}; } return l; }
@@ -2874,7 +2917,7 @@
     if (P.mq) { var ch = D.MQ[P.mq.g - 1]; if (ch && P.mq.i >= ch.steps.length) { P.mq.i = ch.steps.length - 1; mqBase(P); } return; }   // 장의 단계 수가 줄었을 때: 그 장 마지막 단계로
     P.mq = { g: Math.max(1, Math.min(8, P.grade || 1)), i: 0, b: {} }; mqBase(P);
   };
-  var MQ_ST = { lecJobs: ['수업', '교시 마치기'], expJobs: ['원정', '번 마치기'], researchDone: ['연구', '번 마치기'], brews: ['물약', '병 만들기'], dispatches: ['사역마 파견', '번 다녀오기'], tasksDone: ['교수님 과제', '개 제출하기'] };
+  var MQ_ST = { lecJobs: ['수업', '교시 마치기'], expJobs: ['원정', '번 마치기'], researchDone: ['연구', '번 마치기'], brews: ['물약', '병 만들기'], dispatches: ['사역마 파견', '번 다녀오기'], tasksDone: ['교수님 과제', '개 제출하기'], wbAttacks: ['월드 보스', '번 도전하기'], duelWins: ['결투제 상대', '명 이기기'] };
   // 목표 하나: { text, cur, need, ok }
   R.mqGoal = function (P, q, g) {
     var b = (P.mq && P.mq.b) || {}, st = P.st || {}, run = function (arr) { return (arr || []).some(Boolean); };
@@ -2896,6 +2939,19 @@
   };
   R.mqGoals = function (P) { var s = R.mqStep(P); return s ? s.st.g.map(function (q) { return R.mqGoal(P, q, s.g); }) : []; };
   R.mqReady = function (P) { var a = R.mqGoals(P); return a.length > 0 && a.every(function (x) { return x.ok; }); };
+  A.mwqClaim = function (P, W, now, a) {
+    if (P.grade < 8) err('마스터 과정 연구생만 받을 수 있습니다');
+    R.mwqSync(P, now); var list = R.mwqList(P.mwq.wk), id = str(a.id, 10), q = list.find(function (x) { return x.id === id; });
+    if (!q) err('이번 주 과제가 아닙니다'); if (P.mwq.got[id]) err('이미 보상을 받았습니다'); if (R.mwqProg(P, q) < q.goal) err('아직 목표를 달성하지 않았습니다');
+    P.mwq.got[id] = 1; var shard = R.MWQ_RW, all = list.every(function (x) { return P.mwq.got[x.id]; }), deco = '';
+    if (all) {
+      shard += R.MWQ_ALL; P.st.mwqWeeks = (P.st.mwqWeeks || 0) + 1;
+      var d = decoOf(P); if (P.st.mwqWeeks >= R.MWQ_DECO_WEEKS && !d.own[R.MWQ_DECO]) { d.own[R.MWQ_DECO] = 1; deco = DECO[R.MWQ_DECO].name; }
+    }
+    P.res.shard += shard;
+    log(P, now, '마스터 주간 과제 「' + q.name + '」 완료 · 별조각 +' + shard + (all ? ' · 이번 주 과제 모두 완수 (' + P.st.mwqWeeks + '주째)' : '') + (deco ? ' · 정보 카드 배경 「' + deco + '」' : ''), all ? 'legend' : 'good');
+    return { name: q.name, shard: shard, all: all, weeks: P.st.mwqWeeks || 0, deco: deco };
+  };
   A.mqClaim = function (P, W, now) {
     R.mqInit(P); var s = R.mqStep(P); if (!s) err('모든 이야기를 읽었습니다');
     if (!R.mqReady(P)) err('아직 목표를 달성하지 않았습니다');
