@@ -808,7 +808,7 @@
   R.EXP_PARTY_MAX = 4; R.EXP_PARTY_BONUS = 0.05; R.EXP_AGGRO = 0.8;
   R.expPositions = function (P) {
     var has = { dmg: false, care: false }, ns = R.spellSlots(P);
-    for (var i = 0; i < ns; i++) { var sp = SPELL[P.spells[i]]; if (!sp || !R.spellUnlocked(P, sp.id)) continue; if (sp.type === 'dmg' || sp.type === 'stun') has.dmg = true; if (sp.type === 'shield' || sp.type === 'heal') has.care = true; }
+    for (var i = 0; i < ns; i++) { var sp = SPELL[P.spells[i]]; if (!sp || !R.spellUnlocked(P, sp.id)) continue; if (sp.type === 'dmg' || sp.type === 'stun') has.dmg = true; if (sp.type === 'shield' || sp.type === 'pshield' || sp.type === 'heal') has.care = true; }
     return Object.keys(R.EXP_POS).filter(function (k) { var x = R.EXP_POS[k]; return !x.need || has[x.need]; });
   };
   // 선봉이 몬스터를 끄는 정도 (기사 수호 성향 +12%, 수호 결계 · 수호의 함성 장착 각 +5%, 최대 95%)
@@ -1436,12 +1436,12 @@
         var sid = P.spells[i], sp = SPELL[sid]; if (!sp || !R.spellUnlocked(P, sid)) continue;
         cd[sid] = (cd[sid] || 0) - dt; if (cd[sid] > 0) continue;
         if (sp.type === 'heal' && ph > c.hp * 0.6) continue;
-        if (sp.type === 'shield' && sh > c.hp * 0.1) continue;
+        if ((sp.type === 'shield' || sp.type === 'pshield') && sh > c.hp * 0.1) continue;   // pshield(광역 보호막)는 혼자 싸울 때 자신에게
         cd[sid] = sp.cd * (1 - c.cdr);
         var lm = spellLvMult(P, sp);
         var se = evs.length < 400 ? [Math.round(t * 10) / 10, 's', sid] : null; if (se) evs.push(se);
-        if (sp.type === 'dmg' || sp.type === 'stun') { var cr2 = rnd(P) < c.critC; if (sp.type === 'stun' || (sp.stunP && rnd(P) < sp.stunP)) stun = sp.stun; hit(R.spellHit(c, sp) * sp.mult * lm * (cr2 ? c.critD : 1), 'p', cr2); }
-        else if (sp.type === 'shield') { sh = c.hp * sp.mult * Math.min(2, lm) * (c.care || 1); if (se) se[3] = Math.round(sh); }
+        if (sp.type === 'dmg' || sp.type === 'stun') { var cr2 = rnd(P) < c.critC; if (sp.type === 'stun' || (sp.stunP && rnd(P) < sp.stunP)) stun = sp.stun; hit(R.spellHit(c, sp) * sp.mult * lm * (cr2 ? c.critD : 1), 'p', cr2); if (sp.selfShield) sh = Math.max(sh, c.hp * sp.selfShield * (c.care || 1)); }
+        else if (sp.type === 'shield' || sp.type === 'pshield') { sh = c.hp * sp.mult * Math.min(2, lm) * (c.care || 1); if (se) se[3] = Math.round(sh); }
         else if (sp.type === 'heal') { var hv = Math.min(c.hp - ph, c.hp * sp.mult * Math.min(2, lm) * (c.care || 1)); ph += hv; if (se) se[3] = Math.round(hv); }
         else if (sp.type === 'haste') haste = sp.dur;
         else if (sp.type === 'amp') { amp = sp.dur; stun = sp.dur; }
@@ -1523,7 +1523,7 @@
     for (var i = 0; i < ns; i++) {
       var s = SPELL[P.spells[i]]; if (!s || !R.spellUnlocked(P, s.id)) continue;
       var lm = spellLvMult(P, s);
-      sp.push({ id: s.id, name: s.name, type: s.type, cd: s.cd * (1 - c.cdr), hit: s.type === 'dmg' || s.type === 'stun' ? R.spellHit(c, s) * s.mult * lm : 0, mult: s.mult * Math.min(2, lm) * c.care, stun: s.stun || 0, stunP: s.stunP || 0, dur: s.dur || 0 });
+      sp.push({ id: s.id, name: s.name, type: s.type, cd: s.cd * (1 - c.cdr), hit: s.type === 'dmg' || s.type === 'stun' ? R.spellHit(c, s) * s.mult * lm : 0, mult: s.mult * Math.min(2, lm) * c.care, stun: s.stun || 0, stunP: s.stunP || 0, dur: s.dur || 0 , selfShield: s.selfShield || 0 });
     }
     return { id: P.id, name: P.name, house: P.house, cls: P.cls, pos: pos || R.twPos(P), aggro: R.expAggro(P), hp: c.hp, def: c.def, regen: c.regen, atk: c.atk, aps: c.aps, critC: c.critC, critD: c.critD,
       bossDmg: c.bossDmg, leech: c.leech || 0, supRed: c.supRed || 0, supAtk: c.supAtk || 0, fam: P.fam.act && P.fam.own[P.fam.act] ? c.atk * famAtkMult(P) : 0, sp: sp, power: c.totalDps };
@@ -1582,7 +1582,7 @@
     // 치유 · 보호막 주문 하나를 거는 일 (sp: 주문, i: 거는 사람, tg: 받는 사람)
     function care(i2, k2, tg, urgent) {
       var m = ms[i2], sp = m.sp[k2]; cd[i2][sp.id] = sp.cd * (n > 1 && m.pos === 'sup' ? R.TW.CARE_CD : 1);   // 재사용 대기 단축은 파티의 지원만
-      if (sp.type === 'shield') { var sv = mx[tg] * sp.mult; sh[tg] = Math.max(sh[tg], sv); ev(4, i2, sv, tg, k2); if (!urgent && t - healAt[i2] > 6) { healAt[i2] = t; line(m.name + '의 「' + sp.name + '」 — ' + (tg === i2 ? '' : ms[tg].name + '에게 ') + '보호막 ' + R.fmt(sv), 'p'); } }
+      if (sp.type === 'shield' || sp.type === 'pshield') { var sv = mx[tg] * sp.mult; if (sp.type === 'pshield') { for (var q2 = 0; q2 < n; q2++) if (hp[q2] > 0 && q2 !== tg) { sh[q2] = Math.max(sh[q2], mx[q2] * sp.mult); ev(4, i2, mx[q2] * sp.mult, q2, k2); } } sh[tg] = Math.max(sh[tg], sv); ev(4, i2, sv, tg, k2); if (!urgent && t - healAt[i2] > 6) { healAt[i2] = t; line(m.name + '의 「' + sp.name + '」 — ' + (tg === i2 ? '' : ms[tg].name + '에게 ') + '보호막 ' + R.fmt(sv), 'p'); } }
       else { var hv = Math.min(mx[tg] - hp[tg], mx[tg] * sp.mult); hp[tg] += hv; ev(3, i2, hv, tg, k2); if (!urgent && t - healAt[i2] > 6) { healAt[i2] = t; line(m.name + '의 「' + sp.name + '」 — ' + (tg === i2 ? '' : ms[tg].name + ' ') + '생명력 +' + R.fmt(hv), 'p'); } }
     }
     // 쓰러질 한 대 직전: 지원(또는 맞는 사람 자신)의 준비된 보호막 · 치유가 먼저 끼어든다
@@ -1590,7 +1590,7 @@
       for (var pass = 0; pass < 2; pass++) for (var i2 = 0; i2 < n; i2++) {
         if (hp[i2] <= 0 || !(i2 === j2 || (ms[i2].pos === 'sup' && n > 1))) continue;
         for (var k2 = 0; k2 < ms[i2].sp.length; k2++) {
-          var sp = ms[i2].sp[k2]; if ((pass === 0 ? sp.type !== 'shield' : sp.type !== 'heal') || (cd[i2][sp.id] || 0) > 0) continue;
+          var sp = ms[i2].sp[k2]; if ((pass === 0 ? sp.type !== 'shield' && sp.type !== 'pshield' : sp.type !== 'heal') || (cd[i2][sp.id] || 0) > 0) continue;
           care(i2, k2, j2, true); saves++;
           line('✦ ' + jo(ms[j2].name, '이', '가') + ' 쓰러지기 직전, ' + ms[i2].name + '의 「' + sp.name + '」' + (pass === 0 ? '가 막아선다!' : '가 일으켜 세운다!'), 'm');
           if (d < hp[j2] + sh[j2]) return true;
@@ -1631,10 +1631,12 @@
           // 평소에는 아껴 둔다 (치유는 체력 R.TW.HEAL_AT 아래, 보호막은 R.TW.SHIELD_AT 아래) → 쓰러질 한 대가 올 때 끼어들 여유가 남는다
           if (sp.type === 'heal') { tg = sup ? lowest(false) : i; if (tg >= 0 && hp[tg] <= mx[tg] * R.TW.HEAL_AT) care(i, k, tg); continue; }
           if (sp.type === 'shield') { tg = sup ? lowest(true) : i; if (tg >= 0 && sh[tg] <= mx[tg] * 0.1 && hp[tg] <= mx[tg] * R.TW.SHIELD_AT) care(i, k, tg); continue; }
+          if (sp.type === 'pshield') { tg = lowest(false); if (tg >= 0 && sh[tg] <= mx[tg] * 0.1 && hp[tg] <= mx[tg] * R.TW.SHIELD_AT) care(i, k, tg); continue; }   // 광역 보호막: 가장 위태로운 동료가 기준, 살아 있는 모두에게
           cd[i][sp.id] = sp.cd;
           if (sp.type === 'dmg' || sp.type === 'stun') {
             var cr2 = rnd2() < m.critC; if (sp.type === 'stun' || (sp.stunP && rnd2() < sp.stunP)) stun = sp.stun;
             hit(i, sp.hit * (cr2 ? m.critD : 1), cr2, 2, k);
+            if (sp.selfShield && hp[i] > 0 && mx[i] * sp.selfShield > sh[i]) { sh[i] = mx[i] * sp.selfShield; ev(4, i, sh[i], i, k); }   // 적중할 때 자신에게 보호막 (강철 일격)
             if (!told['s' + i + sp.id]) { told['s' + i + sp.id] = 1; line(m.name + '의 「' + sp.name + '」!', 'p'); }
           } else if (sp.type === 'haste') { haste[i] = sp.dur; ev(5, i, 0, k); }
           else if (sp.type === 'amp') { amp[i] = sp.dur; stun = sp.dur; ev(5, i, 0, k); }
@@ -1818,7 +1820,7 @@
   R.duelPreview = function (P, W, stage, hpM, atkM, t, mode) {
     var c = calc(P, W, t || P.at), e = R.duelEnemy(stage, hpM, atkM);
     var pd = c.totalDps, ed = Math.max(0.001, dmgTaken(e.atk, c.def) - c.hp * c.regen), shield = 0;
-    P.spells.forEach(function (sid) { var sp = SPELL[sid]; if (sp && R.spellUnlocked(P, sid) && (sp.type === 'shield' || sp.type === 'heal')) shield += c.hp * sp.mult * (c.care || 1) * (sp.type === 'shield' ? 3 : 2); });
+    P.spells.forEach(function (sid) { var sp = SPELL[sid]; if (sp && R.spellUnlocked(P, sid) && (sp.type === 'shield' || sp.type === 'pshield' || sp.type === 'heal')) shield += c.hp * sp.mult * (c.care || 1) * (sp.type !== 'heal' ? 3 : 2); });
     var ttk = e.hp / pd, ttd = (c.hp + shield) / ed, T = R.DUEL_T, win = mode === 'hold' ? ttd >= T || ttk <= T : ttk <= Math.min(T, ttd);
     return { win: win, frac: win && mode !== 'hold' ? 1 : clamp(Math.min(T, ttd) * pd / e.hp, 0, 1), surv: clamp(ttd / T, 0, 1), ttk: ttk, ttd: ttd, mode: mode || 'kill' };
   };
