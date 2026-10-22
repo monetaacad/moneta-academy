@@ -31,6 +31,41 @@
         esc(Object.keys(e.stats).map(function (k) { return k + ' ' + fx(e.stats[k]); }).join(' · ') + (e.eng ? ' · 각인 ' + e.eng.id + ' ' + fx(e.eng.v) : '')) + '</td></tr>'; }).join('') + '</tbody></table></div>';
     return h;
   }
+  // 계정 기록: 계정 상태 · 자원 · 접속 · 같은 접속지 학생 · 거래 상대 · 판매 · 신고 · 운영 조치 · 성장 추이
+  var OPN = { slow: '슬로우 모드', role: '운영자 지정', maint: '점검', build: '새 버전', ban: '이용 정지', unban: '정지 해제', mute: '채팅 금지', grant: '별조각 지급', reclaim: '자원 회수', reset: '캐릭터 초기화', resetpw: '임시 비밀번호', setlogin: '아이디 변경', lookup: '아이디 확인', staffdm: '운영진 1:1', bkcompare: '백업 비교' };
+  var RESN = { gold: '아르크', shard: '별조각', stone: '마석', dust: '마석가루', mana: '마나', know: '지식' };
+  function acctHtml(a) {
+    if (!a) return '';
+    var row = function (k, v) { return '<tr><th style="text-align:left;white-space:nowrap">' + k + '</th><td>' + v + '</td></tr>'; }, c = a.cnt || {}, cn = function (k) { return c[k] ? c[k].n : 0; };
+    var tbl = function (head, rows, empty, mh) { return '<div class="scroll" style="margin-top:6px;max-height:' + (mh || 260) + 'px"><table><thead><tr>' + head.map(function (x) { return '<th>' + x + '</th>'; }).join('') + '</tr></thead><tbody>' + (rows.join('') || '<tr><td colspan="' + head.length + '" class="faint">' + empty + '</td></tr>') + '</tbody></table></div>'; };
+    var warn = function (t) { return '<b style="color:#e07c72">' + t + '</b>'; };
+    var st = [a.banned ? warn('이용 정지') : '', a.muted ? warn('채팅 금지 (' + whenS(a.muted) + '까지)') : '', a.pwTemp ? '임시 비밀번호 사용 중' : '', a.guest ? '게스트' : ''].filter(Boolean).join(' · ') || '정상';
+    var h = '<div class="row between" style="margin-top:10px"><b>계정 기록</b><span class="tiny faint">접속지는 IP 주소가 아니라 비교용 부호(앞 6자)입니다 · 계정 기록은 180일 보관</span></div>';
+    h += '<div class="scroll" style="margin-top:6px"><table><tbody>' +
+      row('상태', st + (a.online ? ' · <span class="good">접속 중</span>' : '')) +
+      row('가입 · 마지막 접속', whenS(a.created) + ' · ' + (a.seen ? whenS(a.seen) : '—')) +
+      row('소속', esc([a.role, a.guild ? '동아리 ' + a.guild : '', a.invite ? '초대코드 ' + a.invite : ''].filter(Boolean).join(' · ') || '—')) +
+      row('로그인', '성공 ' + cn('login') + '회 · 실패 ' + (cn('loginfail') ? warn(cn('loginfail') + '회') + (c.loginfail.last ? ' (최근 ' + whenS(c.loginfail.last) + ')' : '') : '0회') + ' · 비밀번호 변경 ' + cn('pw') + '회 · 이름 변경 ' + cn('rename') + '회' + (a.nameAt ? ' (최근 ' + whenS(a.nameAt) + ')' : '')) +
+      row('접속지 · 기기', '접속지 ' + a.ipN + '곳 · ' + (esc(Object.keys(a.devs || {}).map(function (k) { return k + ' ' + a.devs[k]; }).join(' / ')) || '—')) +
+      row('보유 자원', esc(Object.keys(a.res || {}).map(function (k) { return (RESN[k] || k) + ' ' + Number(a.res[k]).toLocaleString(); }).join(' · ')) + ' · 재료 ' + Number(a.mats || 0).toLocaleString() + '개 · 가방 장비 ' + a.inv + '개') +
+      row('신고', '받은 신고 ' + (a.reports.nAgainst ? warn(a.reports.nAgainst + '건') : '0건') + ' · 한 신고 ' + a.reports.nBy + '건') +
+      '</tbody></table></div>';
+    h += '<p class="small" style="margin-top:10px"><b>같은 접속지에서 접속한 학생</b> <span class="tiny faint">(최근 30일 · 공용 와이파이 · 가족일 수 있으므로 거래 기록과 함께 판단)</span></p>' +
+      tbl(['학생', '겹친 접속지', '마지막', '상태'], (a.same || []).map(function (x) { return '<tr><td>' + pl(x.name) + '</td><td class="num">' + x.ips + '</td><td>' + whenS(x.last) + '</td><td class="small">' + (x.deleted ? '초기화로 남은 캐릭터' : x.banned ? warn('정지') : '') + '</td></tr>'; }), '없음', 200);
+    h += '<p class="small" style="margin-top:10px"><b>거래소 거래 상대</b> <span class="tiny faint">(최근 500건 · 금액 합 순)</span></p>' +
+      tbl(['상대', '산 횟수 · 낸 아르크', '판 횟수 · 받은 아르크', '마지막'], (a.partners || []).map(function (x) { return '<tr><td>' + pl(x.name) + (x.same ? ' ' + warn('같은 접속지') : '') + '</td><td class="num">' + x.buy + ' · ' + Number(x.paid).toLocaleString() + '</td><td class="num">' + x.sell + ' · ' + Number(x.got).toLocaleString() + '</td><td>' + when(x.last) + '</td></tr>'; }), '거래 기록 없음', 220);
+    h += '<p class="small" style="margin-top:10px"><b>거래소에서 판 것</b> <span class="tiny faint">(최근 40건)</span></p>' +
+      tbl(['때', '물품', '가격', '산 학생'], (a.sold || []).map(function (x) { return '<tr><td>' + when(x.t) + '</td><td>' + esc(x.name) + (x.kind === 'mat' && x.qty > 1 ? ' ×' + x.qty : '') + '</td><td class="num">' + Number(x.price).toLocaleString() + '</td><td>' + pl(x.to) + '</td></tr>'; }), '없음', 220);
+    h += '<p class="small" style="margin-top:10px"><b>계정 기록</b> <span class="tiny faint">(가입 · 로그인 · 접속 · 비밀번호 · 이름 변경 · 우편 수령 · 운영 조치, 최근 120건 · 접속은 하루 한 번과 접속지 · 기기가 바뀔 때 남습니다)</span></p>' +
+      tbl(['때', '종류', '내용', '접속지', '기기'], (a.events || []).map(function (e) { return '<tr><td style="white-space:nowrap">' + whenS(e.t) + '</td><td>' + (e.kind === 'loginfail' || e.kind === 'op' ? warn(esc(e.k)) : esc(e.k)) + '</td><td class="small">' + esc(e.detail) + '</td><td class="tiny num">' + esc(e.ip) + '</td><td class="tiny">' + esc(e.dev) + '</td></tr>'; }), '기록 없음 (이 기능을 넣은 뒤부터 기록됩니다)', 320);
+    if (a.reports.against.length) h += '<p class="small" style="margin-top:10px"><b>받은 신고</b> <span class="tiny faint">(최근 10건)</span></p>' +
+      tbl(['때', '신고한 학생', '사유', '메시지', '처리'], a.reports.against.map(function (r) { return '<tr><td>' + when(r.t) + '</td><td>' + pl(r.by) + '</td><td class="small">' + esc(r.reason) + '</td><td class="small">' + esc(r.text) + '</td><td class="small">' + (r.resolved ? '처리됨' : warn('대기')) + '</td></tr>'; }), '', 220);
+    h += '<p class="small" style="margin-top:10px"><b>운영 조치 이력</b> <span class="tiny faint">(운영 로그 중 이 학생 · 예전 이름에 대한 것, 카드 · 기록 열람 제외)</span></p>' +
+      tbl(['때', '무엇', '내용'], (a.ops || []).map(function (o) { return '<tr><td>' + when(o.t) + '</td><td>' + esc(OPN[o.action] || o.action) + '</td><td class="small">' + esc(o.detail) + '</td></tr>'; }), '없음', 200);
+    h += '<p class="small" style="margin-top:10px"><b>성장 추이</b> <span class="tiny faint">(12시간 기록 · 최근 14일 · 갑자기 크게 늘어난 구간 확인용)</span></p>' +
+      tbl(['기록 시각', 'Lv', '학년', '전투력', '최고 단계', '누적 아르크', '처치', '원정', '영웅 · 전설', '최고 강화', '장비 Lv'], (a.trend || []).map(function (g) { return '<tr><td style="white-space:nowrap">' + esc(g.slot) + '</td><td class="num">' + (g.lvl || 0) + '</td><td class="num">' + (g.grade || 0) + '</td><td class="num">' + Number(g.power || 0).toLocaleString() + '</td><td class="num">' + (g.stage || 0) + '</td><td class="num">' + Number(g.gold || 0).toLocaleString() + '</td><td class="num">' + Number(g.kills || 0).toLocaleString() + '</td><td class="num">' + (g.exp || 0) + '</td><td class="num">' + (g.epic || 0) + ' · ' + (g.legend || 0) + '</td><td class="num">' + (g.enh || 0) + '</td><td class="num">' + (g.gearLv || 0) + '</td></tr>'; }), '기록 없음', 260);
+    return h;
+  }
   function when(t) { if (!t) return '—'; var d = new Date(t * 1000); return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
   function api(method, path, body) {
     return fetch(path, { method: method, headers: { 'Content-Type': 'application/json', 'X-Admin-Token': tok }, body: body ? JSON.stringify(body) : undefined }).then(function (r) { return r.json().then(function (j) { j._s = r.status; return j; }); });
@@ -182,7 +217,7 @@
     if (e.target.name === 'mto') { var names = e.target.value === 'names'; $('#mnamesw').hidden = !names; $('#mnewl').hidden = names; }
     if (e.target.id === 'mexp') $('#mdatew').hidden = e.target.value !== 'date';
   });
-  function oplog() { api('GET', '/api/admin/oplog').then(function (j) { $('#oplog').innerHTML = (j.log || []).map(function (l) { return '<tr><td>' + when(l.t) + '</td><td>' + esc(l.name || l.actor) + '</td><td>' + esc({ slow: '슬로우 모드', role: '운영자 지정', maint: '점검', build: '새 버전' }[l.action] || l.action) + '</td><td>' + esc(l.detail) + '</td></tr>'; }).join('') || '<tr><td colspan="4" class="faint">기록이 없습니다</td></tr>'; }); }
+  function oplog() { api('GET', '/api/admin/oplog').then(function (j) { $('#oplog').innerHTML = (j.log || []).map(function (l) { return '<tr><td>' + when(l.t) + '</td><td>' + esc(l.name || l.actor) + '</td><td>' + esc(OPN[l.action] || l.action) + '</td><td>' + esc(l.detail) + '</td></tr>'; }).join('') || '<tr><td colspan="4" class="faint">기록이 없습니다</td></tr>'; }); }
   function kst(t) { return t ? new Date(t * 1000).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) : ''; }
   function showPin(l) { l = (Array.isArray(l) ? l : l ? [l] : []).filter(function (p) { return p && p.text; }); $('#pinnow').innerHTML = l.length ? l.map(function (p) { return '<span style="display:block">고정 중: ' + esc(p.text.slice(0, 60)) + (p.text.length > 60 ? '…' : '') + ' <button class="btn sm ghost" data-a="unpin" data-id="' + esc(String(p.id)) + '">해제</button></span>'; }).join('') : '고정 공지 없음'; }
   function sys() { api('GET', '/api/admin/sys').then(function (j) { if (j.error) return; showPin(j.pins || j.pin); var m = j.maint || {}, b = j.build || {}; $('#sysnow').textContent = '지금: ' + (m.on ? '점검 중' + (m.until ? ' (' + kst(m.until) + ' 종료 예정)' : '') : m.start ? '점검 예고 ' + kst(m.start) : '점검 없음') + ' · 화면 빌드 ' + (b.build || 0) + (b.minBuild ? ' · 최소 ' + b.minBuild : ''); if (j.epoch) { var e = new Date((j.epoch + 9 * 3600) * 1000).toISOString().slice(0, 10); $('#epnow').textContent = '지금 개교일: ' + e + (j.cal ? ' · 오늘은 ' + j.cal.year + '년 ' + j.cal.month + ' ' + j.cal.d + '일' : '') + (j.epoch > Date.now() / 1000 ? ' (개교일이 미래라 달력이 1일에 멈춰 있습니다)' : ''); if (!$('#epdate').value) $('#epdate').value = e; } }); }
@@ -293,7 +328,7 @@
       var n = $('#un').value.trim(); if (!n) { $('#umsg').textContent = '학생 이름 입력 필요'; return; }
       api('POST', '/api/admin/plog', { name: n }).then(function (j) {
         if (j.error) { $('#umsg').textContent = j.error; $('#plog').innerHTML = ''; return; }
-        window.__plogJson = JSON.stringify({ name: j.name, card: j.card, high: j.high, st: j.st, auto: j.auto, dlog: j.dlog, log: j.log });
+        window.__plogJson = JSON.stringify({ name: j.name, acct: j.acct, card: j.card, high: j.high, st: j.st, auto: j.auto, dlog: j.dlog, log: j.log });
         $('#umsg').textContent = '「' + j.name + '」 활동 기록 · 원정 완료 ' + j.st.expJobs + '회 · 지금까지 얻은 영웅 ' + j.st.epicFound + '개 · 전설 ' + j.st.legendFound + '개';
         var RN = ['일반', '고급', '희귀', '영웅', '전설'];
         var dl = '<div class="row between" style="margin-top:10px"><b>장비 처분 기록</b><span class="small faint">분류 마법 자동 처분: ' + (j.auto ? esc(j.auto.on ? j.auto.upto + ' · ' + j.auto.mode : '꺼짐') : '연구 전') + '</span></div>' +
@@ -302,7 +337,7 @@
         BKNAME = j.name; $('#rebox').innerHTML = '';
         dl += '<p class="small" style="margin-top:10px"><b>거래소 · 떠돌이 상인에서 산 장비</b> <span class="tiny faint">(최근 40건 · 옵션 그대로 남아 있어 재지급할 수 있습니다)</span></p><div class="scroll" style="margin-top:6px;max-height:300px"><table><thead><tr><th>때</th><th>장비</th><th>가격</th><th>산 곳</th><th>지금</th><th></th></tr></thead><tbody>' +
           ((j.bought || []).map(function (x) { return '<tr><td>' + when(x.t) + '</td><td>' + itemCell(x) + '</td><td class="num">' + Number(x.price).toLocaleString() + '</td><td class="small">' + esc(x.from) + '</td><td class="small">' + (x.have == null ? '—' : x.have ? '보유 중' : '<b style="color:#e07c72">없음</b>') + '</td><td>' + reBtn(x) + '</td></tr>'; }).join('') || '<tr><td colspan="6" class="faint">기록 없음</td></tr>') + '</tbody></table></div>';
-        $('#plog').innerHTML = cardHtml(j.card, RN) + dl + '<p class="small" style="margin-top:8px"><b>보유 영웅 · 전설</b> ' + (j.high.length ? j.high.map(function (x) { return esc(RN[x.r] + ' · ' + x.name + ' (Lv ' + x.ilvl + ', ' + x.at + ')'); }).join(' / ') : '없음') + '</p>' +
+        $('#plog').innerHTML = acctHtml(j.acct) + cardHtml(j.card, RN) + dl + '<p class="small" style="margin-top:8px"><b>보유 영웅 · 전설</b> ' + (j.high.length ? j.high.map(function (x) { return esc(RN[x.r] + ' · ' + x.name + ' (Lv ' + x.ilvl + ', ' + x.at + ')'); }).join(' / ') : '없음') + '</p>' +
           '<div class="scroll" style="margin-top:8px;max-height:320px"><table><thead><tr><th>때</th><th>기록</th></tr></thead><tbody>' + j.log.map(function (l) { return '<tr><td>' + when(l.t) + '</td><td>' + esc(l.m) + (l.n > 1 ? ' <b>×' + l.n + '</b>' : '') + '</td></tr>'; }).join('') + '</tbody></table></div>' +
           '<p class="tiny faint" style="margin-top:4px">같은 기록이 이어지면 한 줄로 묶고 횟수(×)를 표시합니다. 시각은 마지막으로 일어난 때입니다.</p>';
       });
@@ -352,7 +387,7 @@
     disable: function (el) { api('POST', '/api/admin/invites/disable', { code: el.dataset.c }).then(invites); },
     enable: function (el) { api('POST', '/api/admin/invites/disable', { code: el.dataset.c, enable: true }).then(invites); },
     del: function (el) { api('POST', '/api/admin/chat/delete', { id: +el.dataset.c }).then(function () { return api('POST', '/api/admin/reports/resolve', { id: +el.dataset.r }); }).then(function () { toast('메시지를 삭제했습니다'); reports(); }); },
-    rmute: function (el) { api('POST', '/api/admin/mute', { pid: el.dataset.p, minutes: +el.dataset.m }).then(function () { return api('POST', '/api/admin/reports/resolve', { id: +el.dataset.r }); }).then(function () { toast('하루 동안 채팅 금지'); reports(); }); },
+    rmute: function (el) { api('POST', '/api/admin/mute', { pid: el.dataset.p, minutes: +el.dataset.m, reason: '신고 처리' }).then(function () { return api('POST', '/api/admin/reports/resolve', { id: +el.dataset.r }); }).then(function () { toast('하루 동안 채팅 금지'); reports(); }); },
     bdload: function () { bdload(); },
     imore: function () { ISHOW += 20; invites(); },
     iless: function () { ISHOW = 10; invites(); },
@@ -407,7 +442,7 @@
       var t = $('#nt').value.trim(); if (!t) return;
       api('POST', '/api/admin/notice', { text: t, pin: $('#ntpin').checked }).then(function (j) { if (j && j.pins !== undefined) showPin(j.pins); $('#ntpin').checked = false; return $('#ntchat').checked ? api('POST', '/api/admin/chat/system', { ch: 'world', text: '[공지] ' + t }) : null; }).then(function () { $('#nt').value = ''; toast('공지를 올렸습니다'); });
     },
-    mute: function () { api('POST', '/api/admin/mute', { name: $('#un').value.trim(), minutes: +$('#um').value }).then(function (j) { $('#umsg').textContent = j.error || '적용했습니다'; }); },
+    mute: function () { var why = +$('#um').value ? prompt('채팅 금지 사유 (선택 · 운영 로그 · 학생 계정 기록에 남습니다)', '') : ''; if (why == null) return; api('POST', '/api/admin/mute', { name: $('#un').value.trim(), minutes: +$('#um').value, reason: why }).then(function (j) { $('#umsg').textContent = j.error || '적용했습니다'; }); },
     grant: function () { api('POST', '/api/admin/grant', { name: $('#un').value.trim(), shard: +$('#ug').value, reason: $('#ur').value }).then(function (j) { $('#umsg').textContent = j.error || '지급했습니다 (보유 ' + j.shard + ')'; }); },
     // 비밀번호를 잃어버린 학생: 임시 비밀번호 발급 (모든 기기에서 로그아웃 · 로그인하면 바꾸라고 안내)
     resetpw: function () {
@@ -428,7 +463,7 @@
       if (prompt('확인을 위해 학생 이름을 한 번 더 입력하세요') !== n) { $('#umsg').textContent = '이름이 맞지 않아 취소했습니다'; return; }
       api('POST', '/api/admin/reset', { name: n, login: lg }).then(function (j) { $('#umsg').textContent = j.error || '「' + n + '」 캐릭터를 초기화했습니다. 다음 로그인 때 새 학생을 만듭니다.'; });
     },
-    ban: function () { api('POST', '/api/admin/ban', { name: $('#un').value.trim() }).then(function (j) { $('#umsg').textContent = j.error || '정지했습니다'; }); },
+    ban: function () { var n = $('#un').value.trim(); if (!n) return; var why = prompt(n + ' 님의 이용을 정지합니다. 사유를 입력하십시오 (운영 로그 · 학생 계정 기록에 남습니다)', ''); if (why == null) return; api('POST', '/api/admin/ban', { name: n, reason: why }).then(function (j) { $('#umsg').textContent = j.error || '정지했습니다'; }); },
     unban: function () { api('POST', '/api/admin/ban', { name: $('#un').value.trim(), ban: false }).then(function (j) { $('#umsg').textContent = j.error || '해제했습니다'; }); },
     backup: function () { api('POST', '/api/admin/backup', {}).then(function (j) { $('#umsg').textContent = j.error || '백업했습니다: ' + j.file; }); }
   };
