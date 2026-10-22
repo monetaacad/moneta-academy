@@ -201,6 +201,19 @@
     if (j.noteN !== undefined) { S.noteN = j.noteN; setTimeout(updateNoteBadge, 0); }
     if (j.guild !== undefined && j.guild !== S.guild) { S.guild = j.guild; S.gdAt = 0; if ($('#chatdock')) renderDock(); }
   }
+  // 허수아비(딜 측정): 장비 · 주문을 바꾼 뒤 바로 실제 피해를 확인한다 (보상 · 대기 없음)
+  ACT.dummy = function (boss) {
+    act('dummy', { boss: boss === '1' }).then(function (r) {
+      if (!r) return; var tot = r.dealt || 1, pc = function (v) { return Math.round((v || 0) / tot * 100) + '%'; };
+      var cs = Object.keys(r.casts).map(function (id) { var sp = R.SPELL[id]; return (sp ? sp.name : id) + ' ' + r.casts[id] + '회'; }).join(' · ');
+      modal(mhead('허수아비', r.t + '초 동안 반격하지 않는 허수아비와 싸운 결과입니다' + (r.boss ? ' (보스 피해 적용)' : '')) +
+        '<dl class="kv"><dt>초당 피해</dt><dd><b class="num gold">' + fmt(r.dps) + '</b> <span class="tiny faint">· 계산상 ' + fmt(r.est) + '</span></dd><dt>' + r.t + '초 총 피해</dt><dd class="num">' + fmt(r.dealt) + '</dd>' +
+        '<dt>피해 비중</dt><dd>평타 ' + pc(r.part.a) + ' · 주문 ' + pc(r.part.p) + (r.part.f ? ' · 사역마 ' + pc(r.part.f) : '') + '</dd>' +
+        '<dt>치명타</dt><dd>' + r.crits + ' / ' + r.hits + '회</dd>' + (cs ? '<dt>사용한 주문</dt><dd class="small">' + esc(cs) + '</dd>' : '') + '</dl>' +
+        '<p class="tiny faint" style="margin-top:8px">치명타 운은 매번 같게 맞추므로, 장비 · 주문 · 능력치를 바꾼 뒤 다시 재면 바뀐 만큼만 차이가 납니다. 보상과 대기 시간은 없으며 기록에도 남지 않습니다.</p>' +
+        '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:12px"><button class="btn ghost" data-act="dummy" data-a="' + (r.boss ? '' : '1') + '">' + (r.boss ? '일반 상대로 다시' : '보스 상대로') + '</button><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>');
+    });
+  };
   function act(type, a) {
     if (S.busy && type !== 'inboxAck') return Promise.resolve(null);
     S.busy = true;
@@ -1966,7 +1979,7 @@
     h += '<div class="grid g2" style="margin-top:16px"><div class="card"><h3>지역</h3><div class="zonelist" style="margin-top:8px">' + D.ZONES.map(function (zz, zi) {
       var to = zz.abyss ? '∞' : D.ZONES[zi + 1].from - 1, un = P.maxStage >= zz.from;
       return '<div class="zone' + (un ? '' : ' lockz') + '"><div style="min-width:0"><div class="small">' + zz.name + '</div><div class="tiny faint">재료: ' + D.MATS[zz.mat].name + '</div></div><span class="zr">' + zz.from + '–' + to + '</span></div>';
-    }).join('') + '</div></div><div class="card"><div class="row between"><h3>전투 능력</h3><button class="btn sm ghost" data-act="fullstat">전체 능력치</button></div><dl class="kv" style="margin-top:6px"><dt>초당 피해</dt><dd>' + fmt(c.totalDps) + '</dd><dt>' + statTerm('물리 공격력') + '</dt><dd>' + fmt(c.patk) + (S.P.cls === 'knight' ? ' <span class="tiny faint">평타</span>' : '') + '</dd><dt' + (c.skill === 1 ? ' class="kvz"' : '') + '>' + statTerm('기술 위력') + '</dt><dd' + (c.skill === 1 ? ' class="kvz"' : '') + '>×' + c.skill.toFixed(2) + '</dd><dt>' + statTerm('주문 공격력') + '</dt><dd>' + fmt(c.matk) + (S.P.cls !== 'knight' ? ' <span class="tiny faint">평타</span>' : '') + '</dd><dt' + (c.spell === 1 ? ' class="kvz"' : '') + '>' + statTerm('주문 위력') + '</dt><dd' + (c.spell === 1 ? ' class="kvz"' : '') + '>×' + c.spell.toFixed(2) + '</dd><dt>' + statTerm('공격 속도') + '</dt><dd>' + c.aps.toFixed(2) + '/초</dd><dt>치명타</dt><dd>' + pct(c.critC) + ' · ×' + c.critD.toFixed(2) + '</dd><dt>생명력 · 방어력</dt><dd>' + fmt(c.hp) + ' · ' + fmt(c.def) + '</dd><dt>사역마</dt><dd>' + (P.fam.act ? R.FAM[P.fam.act].name : '없음') + '</dd></dl><p class="tiny faint" style="margin-top:8px">원정은 출정 시점의 능력치로 결과가 정해집니다. 장비를 바꾸면 다음 원정부터 반영됩니다.</p></div></div>';
+    }).join('') + '</div></div><div class="card"><div class="row between"><h3>전투 능력</h3><span class="row" style="gap:6px"><button class="btn sm ghost" data-act="dummy" title="반격하지 않는 허수아비와 싸워 실제 피해를 잽니다 (보상 · 대기 없음)">허수아비</button><button class="btn sm ghost" data-act="fullstat">전체 능력치</button></span></div><dl class="kv" style="margin-top:6px"><dt>초당 피해</dt><dd>' + fmt(c.totalDps) + '</dd><dt>' + statTerm('물리 공격력') + '</dt><dd>' + fmt(c.patk) + (S.P.cls === 'knight' ? ' <span class="tiny faint">평타</span>' : '') + '</dd><dt' + (c.skill === 1 ? ' class="kvz"' : '') + '>' + statTerm('기술 위력') + '</dt><dd' + (c.skill === 1 ? ' class="kvz"' : '') + '>×' + c.skill.toFixed(2) + '</dd><dt>' + statTerm('주문 공격력') + '</dt><dd>' + fmt(c.matk) + (S.P.cls !== 'knight' ? ' <span class="tiny faint">평타</span>' : '') + '</dd><dt' + (c.spell === 1 ? ' class="kvz"' : '') + '>' + statTerm('주문 위력') + '</dt><dd' + (c.spell === 1 ? ' class="kvz"' : '') + '>×' + c.spell.toFixed(2) + '</dd><dt>' + statTerm('공격 속도') + '</dt><dd>' + c.aps.toFixed(2) + '/초</dd><dt>치명타</dt><dd>' + pct(c.critC) + ' · ×' + c.critD.toFixed(2) + '</dd><dt>생명력 · 방어력</dt><dd>' + fmt(c.hp) + ' · ' + fmt(c.def) + '</dd><dt>사역마</dt><dd>' + (P.fam.act ? R.FAM[P.fam.act].name : '없음') + '</dd></dl><p class="tiny faint" style="margin-top:8px">원정은 출정 시점의 능력치로 결과가 정해집니다. 장비를 바꾸면 다음 원정부터 반영됩니다.</p></div></div>';
     return h;
   };
 
@@ -4184,7 +4197,7 @@
       while (k < ev.length && ev[k][0] <= end) {
         var e = ev[k++];
         if (e[1] === 'h') { dealt += e[2]; if (e[3] === 'p') d.p += e[2]; else if (e[3] === 'f') d.f += e[2]; else d.n += e[2]; if (e[4] && e[2] > d.crit) d.crit = e[2]; }
-        else if (e[1] === 's') { var sp = R.SPELL[e[2]]; if (sp && d.sp.indexOf(sp.name) < 0) d.sp.push(sp.name); if (sp && sp.type === 'heal') { d.r += e[3] || 0; php = Math.min(1, php + (e[3] || 0) / pHpMax); } else if (sp && sp.type === 'shield') d.g += e[3] || 0; }
+        else if (e[1] === 's') { var sp = R.SPELL[e[2]]; if (sp && d.sp.indexOf(sp.name) < 0) d.sp.push(sp.name); if (sp && sp.type === 'heal') { d.r += e[3] || 0; php = Math.min(1, php + (e[3] || 0) / pHpMax); } else if (sp && (sp.type === 'shield' || sp.type === 'pshield')) d.g += e[3] || 0; }
         else if (e[1] === 'x') { d.x += e[2]; php = Math.max(0, php - e[2] / pHpMax); }
       }
       var t = Math.min(total, end), txt = '', kind = '';
@@ -5317,11 +5330,19 @@
     var vf = peVis(src, 'visFull'); if (vf === 'none') { delete me.full; hid.push('전체 능력치'); } else if (vf === 'friend') fo.push('전체 능력치');
     return '<p class="tiny faint" style="margin-bottom:10px">다른 학생이 채팅이나 친구 목록에서 내 이름을 누르면 이렇게 보입니다.' + (hid.length ? ' ' + hid.join(' · ') + '은(는) 숨겨 두었습니다.' : '') + (fo.length ? ' ' + fo.join(' · ') + '은(는) 친구에게만 보입니다.' : '') + (S.peDraft || S.peAv !== undefined ? ' <span class="gold">편집 탭에 저장하지 않은 변경이 있습니다.</span>' : '') + '</p>' + profileCard(me, null);
   }
+  // 접속 중인 친구가 지금 하는 일 (원정 중이면 파티 초대 전에 확인)
+  function frAct(f) {
+    var x = f.act; if (!x) return '';
+    if (x.k === 'exp') return ' <span class="tag br" title="원정에서 돌아오면 함께 원정에 참여할 수 있습니다">' + (x.pt ? '함께 원정 중' : '원정 중') + ' · ' + x.s + '단계 · <span data-l="left:' + x.end + '"></span></span>';
+    if (x.k === 'room') return ' <span class="tag br">함께 원정 방 대기 중</span>';
+    if (x.k === 'dream') return ' <span class="tag">꿈길 중</span>';
+    return ' <span class="tag ok">출정 가능</span>';
+  }
   function loadFriends() {
     API.friends().then(function (j) {
       var box = $('#flist'); if (!box) return;
       if (j.error) { box.innerHTML = '<p class="small bad">' + esc(j.error) + '</p>'; return; }
-      function row(f, btns) { return '<div class="frow"><button class="avbtn" data-act="prof" data-a="' + esc(f.id) + '">' + avatarHtml(f, 36) + '</button><div style="flex:1;min-width:0"><button class="cn" style="color:' + (R.HOUSE[f.house] ? R.HOUSE[f.house].color : 'inherit') + '" data-act="prof" data-a="' + esc(f.id) + '">' + esc(f.name) + '</button>' + (f.online ? ' <span class="odot" title="접속 중"></span>' : '') + ' <span class="tiny faint">' + (f.grade >= 8 ? '마스터' : f.grade + '학년') + ' · Lv ' + f.lvl + '</span>' + (f.status ? '<div class="tiny muted ell">' + esc(f.status) + '</div>' : f.seen && !f.online ? '<div class="tiny faint">마지막 접속 ' + clock(f.seen) + '</div>' : '') + (f.memo != null && !j.demo ? '<div class="fmemo" id="fm-' + esc(f.id) + '">' + fmemoView(f) + '</div>' : '') + '</div>' + btns + '</div>'; }
+      function row(f, btns) { return '<div class="frow"><button class="avbtn" data-act="prof" data-a="' + esc(f.id) + '">' + avatarHtml(f, 36) + '</button><div style="flex:1;min-width:0"><button class="cn" style="color:' + (R.HOUSE[f.house] ? R.HOUSE[f.house].color : 'inherit') + '" data-act="prof" data-a="' + esc(f.id) + '">' + esc(f.name) + '</button>' + (f.online ? ' <span class="odot" title="접속 중"></span>' : '') + ' <span class="tiny faint">' + (f.grade >= 8 ? '마스터' : f.grade + '학년') + ' · Lv ' + f.lvl + '</span>' + frAct(f) + (f.status ? '<div class="tiny muted ell">' + esc(f.status) + '</div>' : f.seen && !f.online ? '<div class="tiny faint">마지막 접속 ' + clock(f.seen) + '</div>' : '') + (f.memo != null && !j.demo ? '<div class="fmemo" id="fm-' + esc(f.id) + '">' + fmemoView(f) + '</div>' : '') + '</div>' + btns + '</div>'; }
       S.frMemo = {}; j.friends.concat(j.out).forEach(function (f) { S.frMemo[f.id] = f.memo || ''; });
       var h = '';
       if (j.demo) h += '<p class="small muted">데모에서는 친구를 맺을 수 없습니다. 서버를 열면 검색하거나 채팅에서 이름을 눌러 친구 신청을 할 수 있습니다.</p>';
