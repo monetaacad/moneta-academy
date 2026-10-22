@@ -1392,7 +1392,7 @@
      전투는 파티원마다 따로 계산한다:
      - 적은 선봉 한 명(몬스터를 가장 잘 끄는 선봉)을 집중해서 노리고, 공격을 여러 번(R.TW.HITS)으로 나눠 친다 → 치유 · 보호막이 끼어들 틈이 있다. 8초마다 광역 공격(선봉이 살아 있으면 다른 파티원은 R.TW.GUARD × 선봉 어그로만큼 덜 맞는다).
      - 받는 피해 = 공격² ÷ (공격 + 방어 × R.TW.DEFX): 탑에서는 방어 효과가 크다. 선봉은 생명력 +30% · 받는 피해 −20%(탑 전용 선봉 보정).
-     - 지원은 치유 · 보호막을 가장 위태로운 동료(체력 비율이 가장 낮은 동료)에게, 다른 포지션은 자신에게 건다. 보호막량은 받는 사람이 아니라 시전자의 공격력(주문 · 물리 중 높은 쪽) × R.TW.SHIELD_ATK × 주문 배율. 파티(2명 이상)의 지원이 거는 치유 · 보호막은 재사용 대기가 짧고(×R.TW.CARE_CD),
+     - 지원은 치유 · 보호막을 가장 위태로운 동료(체력 비율이 가장 낮은 동료)에게, 다른 포지션은 자신에게 건다. 보호막량은 받는 사람이 아니라 시전자 기준: max(시전자 공격력(주문 · 물리 중 높은 쪽) × R.TW.SHIELD_ATK, 시전자 최대 생명력) × 주문 배율. 파티(2명 이상)의 지원이 거는 치유 · 보호막은 재사용 대기가 짧고(×R.TW.CARE_CD),
        평소에는 아껴 두다가 쓰러질 한 대를 맞기 직전에 준비돼 있으면 바로 끼어든다.
      - 주문 재사용 대기는 층을 넘어 이어진다. 층 사이에 최대 체력의 30% 회복(쓰러진 동료도 일어남), 5층마다 휴식층. 30층마다 시련의 층(특수 기믹).
      - 전투 시간 제한은 없다(오래 버티며 조금씩 깎는 전략도 인정). 계산이 끝나지 않는 일이 없도록 전투 시간 R.TW.TIME초가 지나면 물러난다.
@@ -1498,10 +1498,10 @@
       if (!others.length || n < 2 || rnd2() < ms[tank].aggro) return tank;
       return others[Math.floor(rnd2() * others.length)];
     }
-    // 치유 · 보호막 주문 하나를 거는 일 (sp: 주문, i: 거는 사람, tg: 받는 사람). 보호막량은 시전자의 공격력에 비례
+    // 치유 · 보호막 주문 하나를 거는 일 (sp: 주문, i: 거는 사람, tg: 받는 사람). 보호막량은 시전자의 공격력 × 2와 최대 생명력 중 큰 쪽에 비례
     function care(i2, k2, tg, urgent) {
       var m = ms[i2], sp = m.sp[k2]; cd[i2][sp.id] = sp.cd * (n > 1 && m.pos === 'sup' ? R.TW.CARE_CD : 1);   // 재사용 대기 단축은 파티의 지원만
-      if (sp.type === 'shield') { var sv = (ms[i2].spAtk || ms[i2].atk) * R.TW.SHIELD_ATK * sp.mult; sh[tg] = Math.max(sh[tg], sv); ev(4, i2, sv, tg, k2); if (!urgent && t - healAt[i2] > 6) { healAt[i2] = t; line(m.name + '의 「' + sp.name + '」 — ' + (tg === i2 ? '' : ms[tg].name + '에게 ') + '보호막 ' + R.fmt(sv), 'p'); } }
+      if (sp.type === 'shield') { var sv = Math.max((ms[i2].spAtk || ms[i2].atk) * R.TW.SHIELD_ATK, mx[i2]) * sp.mult; sh[tg] = Math.max(sh[tg], sv); ev(4, i2, sv, tg, k2); if (!urgent && t - healAt[i2] > 6) { healAt[i2] = t; line(m.name + '의 「' + sp.name + '」 — ' + (tg === i2 ? '' : ms[tg].name + '에게 ') + '보호막 ' + R.fmt(sv), 'p'); } }
       else { var hv = Math.min(mx[tg] - hp[tg], mx[tg] * sp.mult); hp[tg] += hv; ev(3, i2, hv, tg, k2); if (!urgent && t - healAt[i2] > 6) { healAt[i2] = t; line(m.name + '의 「' + sp.name + '」 — ' + (tg === i2 ? '' : ms[tg].name + ' ') + '생명력 +' + R.fmt(hv), 'p'); } }
     }
     // 쓰러질 한 대 직전: 지원(또는 맞는 사람 자신)의 준비된 보호막 · 치유가 먼저 끼어든다
