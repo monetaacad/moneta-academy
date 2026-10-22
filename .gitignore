@@ -11,6 +11,8 @@ backup/
 node_modules/
 dist/demo-test.html
 tools/shots/
+__pycache__/
+*.pyc
 mask/
 scratch_t.js
 .DS_Store

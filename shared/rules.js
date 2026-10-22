@@ -840,7 +840,7 @@
     // 장비: 떠날 때 정해 둔 전리품(j.loot)이 있으면 그것을 (취소하면 그때까지 주운 것의 일부만)
     if (j.loot) {
       var got = j.loot.filter(function (x) { return !canceled || x.at <= t; }); if (canceled) got = got.slice(0, Math.floor(got.length * keep));
-      got.forEach(function (x) { var res2 = gainItem(P, x.it, t); out.items.push({ name: x.it.name, r: x.it.r, res: res2 }); });
+      got.forEach(function (x) { var res2 = gainItem(P, x.it, t, '원정 ' + j.s + '단계', j.rarity); out.items.push({ name: x.it.name, r: x.it.r, res: res2 }); });
       var rest = Math.max(0, (j.nItems || 0) - j.loot.length); if (canceled) rest = Math.floor(rest * frac * keep);
       if (rest) { var ex2 = rest * R.sellPrice({ ilvl: j.s, r: 0, enh: 0 }); addGold(P, ex2); out.gold += Math.floor(ex2); out.sold = rest; }
       if (!canceled) { P.st.expJobs++; nightJob(P, t); }
@@ -851,7 +851,7 @@
     var made = Math.min(n, 12);
     for (var i = 0; i < made; i++) {
       var it = makeItem(P, pick(P, D.SLOTS).id, j.s, rollRarity(P, j.rarity));
-      var res = gainItem(P, it, t); out.items.push({ name: it.name, r: it.r, res: res });
+      var res = gainItem(P, it, t, '원정 ' + j.s + '단계', j.rarity); out.items.push({ name: it.name, r: it.r, res: res });
     }
     if (n > made) { var extra = (n - made) * R.sellPrice({ ilvl: j.s, r: 0, enh: 0 }); addGold(P, extra); out.gold += Math.floor(extra); out.sold = n - made; }
     if (!canceled) { P.st.expJobs++; nightJob(P, t); }
@@ -952,7 +952,9 @@
   }
 
   /* ───────── 장비 획득 · 관리 ───────── */
-  function gainItem(P, it, t) {
+  // src: 얻은 곳 (운영실 영웅 · 전설 획득 기록용), b: 그때 적용된 등급 상승
+  function gainItem(P, it, t, src, b) {
+    if (it.r >= 3) { var G = P.glog || (P.glog = []); G.unshift({ t: t, n: it.name, r: it.r, lv: it.ilvl, src: src || '', b: b == null ? null : Math.round(b * 1000) / 1000 }); if (G.length > 100) G.length = 100; }
     if (it.r === 3) P.st.epicFound++;
     if (it.r === 4) { P.st.legendFound++; log(P, t, '전설 장비 획득: ' + it.name + '!', 'legend'); }
     else if (it.r === 3) log(P, t, '영웅 장비 획득: ' + it.name, 'epic');
@@ -1292,8 +1294,8 @@
     if (rw.shard) P.res.shard += rw.shard; if (rw.gold) addGold(P, rw.gold); if (rw.stone) P.res.stone += rw.stone;
     if (rw.mana) addMana(P, rw.mana); if (rw.know) P.res.know += rw.know; if (rw.egg) P.fam.eggs += rw.egg; if (rw.ticket) P.wb.extra = (P.wb.extra || 0) + rw.ticket;
     if (rw.rsDone || rw.gradeUp || rw.respec) { var tk = P.tok || (P.tok = {}); if (rw.rsDone) tk.rsDone = (tk.rsDone || 0) + rw.rsDone; if (rw.gradeUp) tk.gradeUp = (tk.gradeUp || 0) + rw.gradeUp; if (rw.respec) tk.respec = (tk.respec || 0) + rw.respec; }
-    for (var i = 0; i < (rw.gear || 0); i++) { var it = makeItem(P, pick(P, D.SLOTS).id, R.rewardIlvl(P), Math.max(2, rollRarity(P, 0.6)), 2); out.items.push({ name: it.name, r: it.r, res: gainItem(P, it, now) }); }
-    (rw.items || []).forEach(function (it0) { var it = JSON.parse(JSON.stringify(it0)); it.u = uid(P); it.lock = false; out.items.push({ name: it.name, r: it.r, res: gainItem(P, it, now) }); });
+    for (var i = 0; i < (rw.gear || 0); i++) { var it = makeItem(P, pick(P, D.SLOTS).id, R.rewardIlvl(P), Math.max(2, rollRarity(P, 0.6)), 2); out.items.push({ name: it.name, r: it.r, res: gainItem(P, it, now, '우편 (무작위 장비)', 0.6) }); }
+    (rw.items || []).forEach(function (it0) { var it = JSON.parse(JSON.stringify(it0)); it.u = uid(P); it.lock = false; out.items.push({ name: it.name, r: it.r, res: gainItem(P, it, now, '우편 (지정 장비)') }); });
     R.noMailQ = false;
     out.text = R.rewardText(rw); return out;
   };
@@ -2032,7 +2034,7 @@
       P.codex[def.id] = (P.codex[def.id] || 0) + 1;
       var sh = 5 + Math.floor(b / 10) * 2; P.res.shard += sh; out.shard = sh;
       var st = ri(P, 3, 6) + Math.floor(b / 10); P.res.stone += st; out.stone = st;
-      var it = makeItem(P, pick(P, D.SLOTS).id, b + 2, rollRarity(P, c.rarity + 0.8), 2); out.item = { name: it.name, r: it.r, res: gainItem(P, it, now) };
+      var it = makeItem(P, pick(P, D.SLOTS).id, b + 2, rollRarity(P, c.rarity + 0.8), 2); out.item = { name: it.name, r: it.r, res: gainItem(P, it, now, '보스', c.rarity + 0.8) };
       if (R.famOpen(P) && rnd(P) < 0.35) { P.fam.eggs++; out.egg = 1; }
       if (rnd(P) < 0.06) { var bd = makeBadge(P); if (gainBadge(P, bd, now, def.name + '의 전리품') === 'got') out.badge = bd.name; }
       cupAdd(P, 50, 'boss');
@@ -2117,7 +2119,8 @@
   R.GEARSET_N = 3;
   A.gearSet = function (P, W, now, a) {
     var i = int(a.i, 0, R.GEARSET_N - 1), op = str(a.op), sets = P.gearSets || (P.gearSets = []);
-    if (op === 'save') { var eq = {}; for (var s in P.eq) if (P.eq[s]) eq[s] = P.eq[s].u; var bw = R.badgeWorn(P); if (!Object.keys(eq).length && !bw) err('장착한 장비가 없습니다'); sets[i] = { eq: eq, badge: bw ? bw.u : '', at: now }; return { saved: i }; }   // 달고 있는 휘장도 함께
+    // 저장(덮어쓰기)해도 프리셋 이름은 그대로 둔다 (비우기를 해야 이름도 지워진다)
+    if (op === 'save') { var old = sets[i], eq = {}; for (var s in P.eq) if (P.eq[s]) eq[s] = P.eq[s].u; var bw = R.badgeWorn(P); if (!Object.keys(eq).length && !bw) err('장착한 장비가 없습니다'); sets[i] = { eq: eq, badge: bw ? bw.u : '', at: now }; if (old && old.name) sets[i].name = old.name; return { saved: i }; }   // 달고 있는 휘장도 함께
     if (op === 'clear') { sets[i] = null; return { cleared: i }; }
     if (op === 'name') { if (!sets[i]) err('저장된 프리셋이 없습니다'); var nm = R.cleanName(a.name).slice(0, 10); if (nm) sets[i].name = nm; else delete sets[i].name; return { named: i, name: nm }; }   // 프리셋 이름 (최대 10자, 비우면 번호만)
     if (op !== 'load') err('잘못된 요청');
@@ -2370,7 +2373,7 @@
       if (L === 'S') rr = rndL(P) < R.EXAM_S_LEGEND ? 4 : Math.min(rr, 3);
       var it = makeItem(P, pick(P, D.SLOTS).id, ilv, rr, minR);
       if (rw.egg) P.fam.eggs += rw.egg;
-      res.reward = { shard: shard, gold: gold, egg: rw.egg, item: { name: it.name, r: it.r, res: gainItem(P, it, now) } };
+      res.reward = { shard: shard, gold: gold, egg: rw.egg, item: { name: it.name, r: it.r, res: gainItem(P, it, now, '시험 ' + L) } };
       P.grade = run.grade + 1; if (P.grade > P.st.maxGrade) P.st.maxGrade = P.grade;
       cupAdd(P, 300, 'exam');
       log(P, now, ex.title + ' 합격! ' + L + ' (' + total + '점)', 'story');
@@ -2400,7 +2403,7 @@
     if (R.taskProg(P, sid, o.t) < o.t.n) err('아직 과제를 마치지 못했습니다');
     P.tasks[sid] = o.i + 1; var shard = R.taskShard(o.i); P.res.shard += shard; P.st.tasksDone++; cupAdd(P, 15, 'task');
     var out = { shard: shard, prof: SUBJ[sid].prof };
-    if (o.t.item) { var it = makeItem(P, o.t.item, Math.max(R.rewardIlvl(P), 10), 3, 3); it.name = SUBJ[sid].prof.split(' ')[0] + '의 ' + R.baseName(it); out.item = { name: it.name, r: it.r, res: gainItem(P, it, now) }; }
+    if (o.t.item) { var it = makeItem(P, o.t.item, Math.max(R.rewardIlvl(P), 10), 3, 3); it.name = SUBJ[sid].prof.split(' ')[0] + '의 ' + R.baseName(it); out.item = { name: it.name, r: it.r, res: gainItem(P, it, now, '과목 보상') }; }
     log(P, now, SUBJ[sid].prof + '의 과제 완료', 'good'); return out;
   };
   A.buy = function (P, W, now, a) {
@@ -2414,7 +2417,7 @@
     P.res[cur] -= price; var out = { id: id, n: n };
     if (id === 'stone10') P.res.stone += 10;
     else if (id === 'dust10') { var dg = s.give.dust * n; P.res.dust = (P.res.dust || 0) + dg; out.dust = dg; }
-    else if (id === 'gearbox') { var it = makeItem(P, pick(P, D.SLOTS).id, R.rewardIlvl(P), Math.max(1, rollRarity(P, calc(P, W, now).rarity + 0.4)), 1); out.item = { name: it.name, r: it.r, res: gainItem(P, it, now) }; }
+    else if (id === 'gearbox') { var gb = calc(P, W, now).rarity + 0.4, it = makeItem(P, pick(P, D.SLOTS).id, R.rewardIlvl(P), Math.max(1, rollRarity(P, gb)), 1); out.item = { name: it.name, r: it.r, res: gainItem(P, it, now, '장비 상자', gb) }; }
     else if (id === 'egg') P.fam.eggs++;
     else if (id === 'shardbag') { P.sbDay = R.dayKST(now); P.res.shard += s.give.shard; out.shard = s.give.shard; }   // 하루 1번
     else if (id === 'badgebox') { var nb = makeBadge(P); gainBadge(P, nb, now, '매점 휘장 원석'); out.badge = { name: nb.name, gem: nb.gem }; }
@@ -2483,7 +2486,7 @@
       var top = r.mvps && r.mvps[pv.house] === P.id;   // 기숙사 안 개인 1위
       var gr = place !== 1 ? (r.v2 && top ? 3 : 0) : !r.v2 ? 3 : r.mvp && r.mvp === P.id ? 4 : ((R.CUP_GEAR.filter(function (x) { return pv.cup >= x[0]; })[0] || [0, 0])[1]);
       if (top && r.v2) out.mvp = true;
-      if (gr) { var it = makeItem(P, pick(P, D.SLOTS).id, R.rewardIlvl(P), gr, gr); out.items.push({ name: it.name, r: it.r, res: gainItem(P, it, now) }); }
+      if (gr) { var it = makeItem(P, pick(P, D.SLOTS).id, R.rewardIlvl(P), gr, gr); out.items.push({ name: it.name, r: it.r, res: gainItem(P, it, now, '주간 대항전 보상') }); }
       if (r.v2) { var ct = R.CUP_TIERS.filter(function (x) { return pv.cup >= x[0]; })[0]; if (ct) { out.shard += ct[1]; out.cupTier = ct[0]; out.cupTierShard = ct[1]; } }   // 개인 점수 구간 보상
     }
     if (pv.att > 0) {
@@ -2491,7 +2494,7 @@
       if (r.killed) { var kn = Math.max(1, r.kills || 1), un = Math.max(0, kn - (r.paidKills || 0)); P.st.wbKills += kn; out.kills = kn; if (un) { out.shard += R.WB_KILL_RW.shard * un; P.fam.eggs += R.WB_KILL_RW.egg * un; out.egg = un; } }   // 토벌 보상은 잡은 순간 우편으로(paidKills). 그때 못 낸 것만 여기서
       var t = r.tiers || [], tier = pv.dmg >= (t[0] || Infinity) ? 1 : pv.dmg >= (t[1] || Infinity) ? 2 : pv.dmg >= (t[2] || Infinity) ? 3 : 4;
       out.tier = tier; out.shard += [0, 40, 20, 8, 0][tier];
-      if (tier <= 2) { var it2 = makeItem(P, pick(P, D.SLOTS).id, R.rewardIlvl(P, 3), tier === 1 && rnd(P) < 0.25 ? 4 : 3, 3); out.items.push({ name: it2.name, r: it2.r, res: gainItem(P, it2, now) }); }
+      if (tier <= 2) { var it2 = makeItem(P, pick(P, D.SLOTS).id, R.rewardIlvl(P, 3), tier === 1 && rnd(P) < 0.25 ? 4 : 3, 3); out.items.push({ name: it2.name, r: it2.r, res: gainItem(P, it2, now, '월드보스 ' + tier + '구간 보상') }); }
     }
     P.res.shard += out.shard;
     return out;
@@ -2610,7 +2613,7 @@
 
   /* ───────── 클라이언트로 보낼 때 숨길 값 ───────── */
   R.publicState = function (P) {
-    var o = {}; for (var k in P) if (k !== 'rng' && k !== 'lrng' && k !== 'pq' && k !== 'px' && k !== 'qRecent' && k !== 'quizCd' && k !== 'dlog') o[k] = P[k];   // dlog: 장비 처분 기록 (운영실 전용)
+    var o = {}; for (var k in P) if (k !== 'rng' && k !== 'lrng' && k !== 'pq' && k !== 'px' && k !== 'qRecent' && k !== 'quizCd' && k !== 'dlog' && k !== 'glog') o[k] = P[k];   // dlog: 장비 처분 기록 (운영실 전용)
     // 원정 전리품은 출정할 때 정해 두지만, 아직 줍지 않은 것은 시각만 보낸다 (미리 보고 귀환 · 재출정으로 고르지 못하게)
     if (P.exp) o.exp = P.exp.map(function (j) { return j && j.loot ? Object.assign({}, j, { loot: j.loot.map(function (x) { return x.at <= P.at ? x : { at: x.at }; }) }) : j; });
     o.examPending = !!P.px;
