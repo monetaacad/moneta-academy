@@ -1367,9 +1367,9 @@
       var h = mhead('「' + esc(r.t) + '」 완료', r.chEnd ? mqChLabel(g0) + ' ' + esc(r.chTitle) + ' · 장 끝' : '') + (r.end ? '<p class="mqtext">' + esc(r.end) + '</p>' : '') + (r.reward ? '<p class="small gold" style="margin-top:8px">보상 · ' + esc(r.reward) + '</p>' : '');
       if (s) h += '<hr class="sep"><div class="eyebrow tiny gold">다음 · ' + mqChLabel(s.g) + ' ' + esc(s.ch.title) + '</div><h3 style="margin:2px 0 6px">' + esc(s.st.t) + '</h3>' + mqSceneHtml(s.st) + mqGoalsHtml(R.mqGoals(S.P));
       else h += '<hr class="sep"><p class="small muted">지금까지의 이야기를 모두 읽었습니다. 새 장이 열리면 이곳에 이어집니다.</p>';
-      var tour = !PREF.tutDone && g0 === 1 && i0 === 2;   // 연구까지 직접 해 본 뒤: 화면 둘러보기로
+      var tour = !PREF.tutDone && g0 === 1 && i0 >= 1;   // 첫 원정 안내를 건너뛰었을 때: 원정 단계 보상을 받은 뒤 나머지 안내 · 화면 둘러보기로
       h += '<div class="row" style="justify-content:flex-end;margin-top:14px;gap:6px">' + (tour ? '<button class="btn primary" data-act="modal-close" autofocus>화면 둘러보기</button>' : '<button class="btn ghost" data-act="modal-close">' + (s && s.st.go ? '나중에' : '확인') + '</button>' + (s && s.st.go ? '<button class="btn primary" data-act="mqgo" autofocus>하러 가기</button>' : '')) + '</div>';
-      modal(h); if (tour) S.afterClose = function () { tutStart(); };
+      modal(h); if (tour) S.afterClose = function () { if (PREF.onbRest) onbRest(); else tutStart(); };
       render();
     });
   };
@@ -4623,19 +4623,24 @@
     return '<div class="hroom" style="--hc:' + h.color + '"><div class="row" style="gap:6px;align-items:baseline"><b>' + esc(L.room) + '</b><span class="tiny faint">' + esc(h.name) + ' 휴게실</span><span class="spacer"></span><button class="btn sm ghost" data-act="houseinfo" data-a="' + id + '">기숙사 정보</button></div>' +
       '<p class="small hrsc">' + esc(L.scenes[R.dayKST(now()) % L.scenes.length]) + '</p><p class="tiny faint">인사 「' + esc(L.greet) + '」 · 소품 ' + L.props.map(esc).join(' · ') + '</p></div>';
   }
-  /* ── 처음 온 학생: 이야기 → 「처음」 안내 몇 장 → 화면 둘러보기(튜토리얼) ── */
+  /* ── 처음 온 학생: 「처음」 안내 몇 장(ONB_FIRST) → 이야기 → 첫 교시 · 첫 원정을 직접 → 수업이 진행되는 동안 나머지 안내 → 화면 둘러보기 ── */
+  var ONB_FIRST = [0, 1, 4];   // 「처음」 중 가입 직후에 보여 줄 장: 게임 방법 · 첫날 할 일 · 학기 이야기
+  function onbList() { var all = D.GUIDE.filter(function (g) { return g.c === '처음'; }); return !S.onbSet ? all : all.filter(function (g, k) { return (ONB_FIRST.indexOf(k) >= 0) === (S.onbSet === 'first'); }); }
   function onbGuide(i, thenTour) {
-    var list = D.GUIDE.filter(function (g) { return g.c === '처음'; }), n = list.length; i = Math.max(0, Math.min(n - 1, +i || 0)); var g = list[i];
-    S.onbTour = !!thenTour; S.afterClose = thenTour ? tutStart : null;   // 닫기(X·Esc)를 눌러도 둘러보기로 이어진다
-    modal(mhead('처음 오셨나요?', '플레이 가이드 「처음」 · ' + (i + 1) + ' / ' + n) +
+    var list = onbList(), n = list.length; i = Math.max(0, Math.min(n - 1, +i || 0)); var g = list[i];
+    S.onbTour = !!thenTour; S.afterClose = !thenTour ? null : S.onbSet === 'first' ? onbFirstDone : tutStart;   // 닫기(X·Esc)를 눌러도 다음 안내로 이어진다
+    modal(mhead(S.onbSet === 'rest' ? '수업이 진행되는 동안' : '처음 오셨나요?', '플레이 가이드 「처음」 · ' + (i + 1) + ' / ' + n) +
       '<div class="onbpage"><h3>' + esc(g.t) + '</h3><p style="white-space:pre-line">' + esc(g.b) + '</p></div>' +
       '<div class="onbdots" aria-hidden="true">' + list.map(function (x, k) { return '<i class="' + (k === i ? 'on' : '') + '"></i>'; }).join('') + '</div>' +
       '<p class="tiny faint" style="margin-top:14px">가이드 › 처음에서 언제든 다시 볼 수 있습니다</p><div class="row" style="margin-top:8px;justify-content:flex-end;flex-wrap:nowrap">' +
       (i > 0 ? '<button class="btn ghost" data-act="onb-g" data-a="' + (i - 1) + '">이전</button>' : '') +
-      (i < n - 1 ? '<button class="btn primary" data-act="onb-g" data-a="' + (i + 1) + '" autofocus>다음</button>' : '<button class="btn primary" data-act="modal-close" autofocus>' + (thenTour ? '화면 둘러보기' : '닫기') + '</button>') + '</div>');
+      (i < n - 1 ? '<button class="btn primary" data-act="onb-g" data-a="' + (i + 1) + '" autofocus>다음</button>' : '<button class="btn primary" data-act="modal-close" autofocus>' + (!thenTour ? '닫기' : S.onbSet === 'first' ? '시작하기' : '화면 둘러보기') + '</button>') + '</div>');
   }
+  // 가입 직후 몇 장을 본 뒤: 이야기 1장 → 학기 이야기 첫 단계. 나머지 안내와 화면 둘러보기는 첫 원정을 보낸 뒤로 미룬다 (PREF.onbRest)
+  function onbFirstDone() { S.onbSet = null; PREF.onbRest = 1; savePref(); S.afterClose = function () { if (S.view !== 'home') ACT.nav('home'); ACT.mqscene('intro'); }; ACT.story(0); }
+  function onbRest() { if (!PREF.onbRest || PREF.tutDone || S.modal || S.tut) return; delete PREF.onbRest; savePref(); S.onbSet = 'rest'; onbGuide(0, true); }
   ACT['onb-g'] = function (i) { onbGuide(i, S.onbTour); };
-  ACT['onb-again'] = function () { onbGuide(0, false); };
+  ACT['onb-again'] = function () { S.onbSet = null; onbGuide(0, false); };
   ACT['tut-again'] = function () { S.afterClose = function () { tutStart(); }; closeModal(); };
   ACT['tutv-reset'] = function () { PREF.tutV = {}; savePref(); closeModal(); toast('화면별 둘러보기', '각 화면에 처음 들어갈 때 다시 안내합니다'); viewTut(S.view); };
   // 둘러보기: 알려 주는 곳만 밝게 두고 나머지는 어둡게. 보이지 않는 곳(휴대폰에서 숨는 칸 등)은 건너뛴다.
@@ -4783,7 +4788,7 @@
     var t = S.tut; if (t && t.timer) { clearInterval(t.timer); removeEventListener('resize', tutPlace); removeEventListener('scroll', tutPlace, true); }
     var key = t && t.key; S.tut = null; var b = $('#tut'); if (b) b.remove();
     if (t && t.dockFold) { S.chat.open = true; renderDock(); document.body.classList.toggle('dock-open', true); } if (!key || key === 'main') PREF.tutDone = 1; else { PREF.tutV = PREF.tutV || {}; PREF.tutV[key] = 1; } savePref();
-    if ((!key || key === 'main') && S.onbChain) { S.onbChain = false; setTimeout(function () { S.afterClose = function () { if (S.view !== 'home') ACT.nav('home'); ACT.mqscene('intro'); }; ACT.story(0); }, 200); }
+    if (key === 'mqexp' && PREF.onbRest) setTimeout(onbRest, 300);   // 첫 원정을 보냈다: 수업 · 원정이 진행되는 동안 나머지 안내 → 화면 둘러보기
   }
   ACT['tut-next'] = function () { tutGo(1); };
   ACT['tut-prev'] = function () { tutGo(-1); };
@@ -5680,7 +5685,7 @@
   ACT['auth-go'] = function (tab) {
     var name = $('#a-name') ? $('#a-name').value.trim() : '', id = $('#a-id') ? $('#a-id').value.trim() : '', pw = $('#a-pw') ? $('#a-pw').value : '', msg = $('#a-msg');
     if ($('#a-name')) S.authName = name; if ($('#a-id')) S.authId = id;
-    function done(j) { if (j.error) { msg.textContent = j.error; return; } absorb(j); if (S.P && S.P.needCreate) { S.authName = ''; authScreen(); return; } start(); if (tab === 'login') { afterSync(); if (j.pwTemp) setTimeout(function () { ACT.settings(); setTimeout(function () { var o = $('#pw-old'); if (o) { o.scrollIntoView({ block: 'center' }); o.focus({ preventScroll: true }); } var m = $('#pw-msg'); if (m) m.textContent = '임시 비밀번호로 로그인했습니다. 새 비밀번호로 바꿔 주세요'; }, 300); }, 400); } else houseReveal(function () { if (!PREF.tutDone) { S.onbChain = true; onbGuide(0, true); } else { S.afterClose = function () { if (S.view !== 'home') ACT.nav('home'); ACT.mqscene('intro'); }; ACT.story(0); } }); }
+    function done(j) { if (j.error) { msg.textContent = j.error; return; } absorb(j); if (S.P && S.P.needCreate) { S.authName = ''; authScreen(); return; } start(); if (tab === 'login') { afterSync(); if (j.pwTemp) setTimeout(function () { ACT.settings(); setTimeout(function () { var o = $('#pw-old'); if (o) { o.scrollIntoView({ block: 'center' }); o.focus({ preventScroll: true }); } var m = $('#pw-msg'); if (m) m.textContent = '임시 비밀번호로 로그인했습니다. 새 비밀번호로 바꿔 주세요'; }, 300); }, 400); } else houseReveal(function () { if (!PREF.tutDone) { S.onbSet = 'first'; onbGuide(0, true); } else { S.afterClose = function () { if (S.view !== 'home') ACT.nav('home'); ACT.mqscene('intro'); }; ACT.story(0); } }); }
     if (tab === 'login') { if (!id) { msg.textContent = '아이디 입력 필요'; return; } msg.textContent = '확인 중…'; return API.login(id, pw).then(done); }
     if (tab === 'findid') {
       var nid = $('#a-nid') ? $('#a-nid').value.trim() : '';
@@ -5787,7 +5792,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102296;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102297;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
