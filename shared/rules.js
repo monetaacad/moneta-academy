@@ -1319,6 +1319,7 @@
     if (t.grade) return P.grade >= t.grade || (P.st.maxGrade || 1) >= t.grade;
     if (t.stat) return (P.st[t.stat] || 0) >= t.n;
     if (t.legacy) return (P.legacy || []).indexOf(t.legacy) >= 0;
+    if (t.bondFam) { var bo = P.fam && P.fam.own && P.fam.own[t.bondFam]; return !!bo && (bo.bond || 0) >= D.BOND.max; }   // 사역마별 단짝 칭호
     if (t.festT) return (P.festT || []).indexOf(t.id) >= 0;   // 축제 교환소 칭호   // 시즌 기념 칭호 (예: 1기 학생)
     return true;
   };

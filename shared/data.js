@@ -515,7 +515,13 @@ var DATA = (function () {
     { id: 'clockcat', name: '태엽 고양이', r: 2, bonus: 'critC', base: 0.025, desc: '정확히 세 시 십 분마다 하품한다. 사냥은 그보다 정확하다.', c1: '#d0b070' },
     { id: 'shadowcrow', name: '그림자까마귀', r: 3, bonus: 'critD', base: 0.18, desc: '주인의 그림자 속에 사는 까마귀. 적의 약점을 속삭인다.', c1: '#3a3450' },
     { id: 'starwhale', name: '새끼 별고래', r: 3, bonus: 'manaPct', base: 0.15, desc: '구름바다를 헤엄치는 별고래의 새끼. 숨을 쉴 때마다 마나가 흩날린다.', c1: '#6a8aff' },
-    { id: 'starwyrm', name: '작은 성룡', r: 3, bonus: 'atkPct', base: 0.12, desc: '별샘에서 태어난다는 용의 새끼. 아직은 손바닥만 하다.', c1: '#ff9a6a' }
+    { id: 'starwyrm', name: '작은 성룡', r: 3, bonus: 'atkPct', base: 0.12, desc: '별샘에서 태어난다는 용의 새끼. 아직은 손바닥만 하다.', c1: '#ff9a6a' },
+    { id: 'pebblemouse', name: '조약돌쥐', r: 0, bonus: 'defPct', base: 0.04, desc: '볼주머니에 반들반들한 조약돌을 모으는 생쥐. 위험하면 조약돌을 쌓아 숨는다.', c1: '#a89a8a' },
+    { id: 'dewfrog', name: '이슬개구리', r: 0, bonus: 'manaPct', base: 0.06, desc: '아침 이슬만 마시고 사는 작은 개구리. 울음소리에 마나가 맺힌다.', c1: '#7ac8a8' },
+    { id: 'snowpup', name: '눈송이 강아지', r: 1, bonus: 'dispPct', base: 0.06, desc: '갓 내린 눈처럼 온몸이 새하얀 강아지. 주인의 발소리를 누구보다 먼저 알아채고 꼬리를 흔든다.', c1: '#f4f2ec' },
+    { id: 'herbhog', name: '약초고슴도치', r: 2, bonus: 'brewSpd', base: 0.08, desc: '가시마다 말린 약초를 꽂고 다니는 고슴도치. 솥 냄새만 맡아도 무엇이 빠졌는지 안다.', c1: '#8aa860' },
+    { id: 'mistdeer', name: '안개사슴', r: 2, bonus: 'bossDmg', base: 0.06, desc: '뿔 끝에서 옅은 안개가 피어오르는 어린 사슴. 큰 적 앞에서도 물러서지 않는다.', c1: '#b8c4d8' },
+    { id: 'dawnphoenix', name: '새벽불사조', r: 3, bonus: 'hpPct', base: 0.12, desc: '해가 뜨는 순간에만 깃털이 타오르는 불사조의 새끼. 다친 주인 곁을 떠나지 않는다.', c1: '#ffb36a' }
   ];
   D.FAM_RARITY = [
     { name: '평범', color: '#b9bccb', w: 60 },
@@ -916,7 +922,8 @@ var DATA = (function () {
     { id: 'firefly10', name: '정령의 목소리', stat: 'spirits', n: 1000, how: '정령 1,000마리 풀어 주기' },
     { id: 'firefly30', name: '반딧불 숲의 주인', stat: 'spirits', n: 3000, how: '정령 3,000마리 풀어 주기' },
     { id: 'fam5', name: '환수 사육사', stat: 'famKinds', n: 5, how: '사역마 다섯 종 보유' },
-    { id: 'fam12', name: '모든 환수의 벗', stat: 'famKinds', n: 12, how: '사역마 열두 종 모두 보유' },
+    { id: 'fam12', name: '환수 도감 편찬자', stat: 'famKinds', n: 12, how: '사역마 열두 종 보유' },
+    { id: 'fam18', name: '모든 환수의 벗', stat: 'famKinds', n: 18, how: '사역마 열여덟 종 모두 보유' },
     { id: 'disp1k', name: '먼 길의 동반자', stat: 'dispatches', n: 1000, how: '사역마 파견 1,000번' },
     { id: 'res200', name: '서고의 주인', stat: 'researchDone', n: 200, how: '연구 200단계 완료' },
     { id: 'dream100', name: '꿈길의 여행자', stat: 'dreams', n: 100, how: '꿈길 100번' },
@@ -1125,7 +1132,7 @@ var DATA = (function () {
     { c: '계정·서버', t: '새 버전과 점검', b: '새 버전이 나오면 화면 상단에 안내 띠가 표시됩니다. 새로고침하면 적용되며, 새로고침하지 않아도 현재 화면으로 계속 플레이할 수 있습니다. 꼭 필요한 업데이트일 때만 10초 뒤 자동으로 새로고침합니다(작성 중인 채팅 글은 유지). 점검이 예정되면 미리 안내 띠로 알려 드리며, 점검 중에는 안내 화면이 표시되다가 끝나면 자동으로 다시 접속합니다. 진행 중인 작업은 시간 기준으로 계산되어 점검 뒤에도 그대로 반영됩니다.' },
     { c: '계정·서버', t: '마스터 과정', b: '졸업 시험을 통과해도 학적은 초기화되지 않습니다. 마스터 과정 연구생이 되어 끝없는 심연 · 월드 보스 · 랭킹에 도전합니다.' },
     { c: '계정·서버', t: '숫자 읽는 법', b: '큰 수는 만(10⁴) · 억(10⁸) · 조(10¹²) · 경(10¹⁶) 단위로 표기합니다.' },
-    { c: '아카데미 생활', t: '환수 교감 (유대)', b: '「장비·공방 → 환수 사역장」의 사역마 카드에서 「교감하기」를 누르면 사역마와 교감할 수 있습니다. 쓰다듬기(하루 3번), 간식 주기(하루 2번), 놀아 주기(하루 1번)로 유대가 오르며, 사역마 한 마리가 하루에 얻는 유대는 10까지입니다. 파견에서 무사히 돌아와도 유대가 1 오릅니다. 유대는 낯섦 · 익숙함 · 친근함 · 신뢰 · 단짝 다섯 단계이며, 능력치에는 영향을 주지 않습니다. 단계가 오를수록 지문이 바뀌고, 「친근함」부터는 광장에 동행 사역마의 지문이 표시됩니다. 사역마마다 좋아하는 간식과 장난감이 있으며, 좋아하는 것을 주면 유대가 더 오릅니다. 「단짝」 단계에서 칭호를 받습니다.' },
+    { c: '아카데미 생활', t: '환수 교감 (유대)', b: '「장비·공방 → 환수 사역장」의 사역마 카드에서 「교감하기」를 누르면 사역마와 교감할 수 있습니다. 쓰다듬기(하루 3번), 간식 주기(하루 2번), 놀아 주기(하루 1번)로 유대가 오르며, 사역마 한 마리가 하루에 얻는 유대는 10까지입니다. 파견에서 무사히 돌아와도 유대가 1 오릅니다. 유대는 낯섦 · 익숙함 · 친근함 · 신뢰 · 단짝 다섯 단계이며, 능력치에는 영향을 주지 않습니다. 단계가 오를수록 지문이 바뀌고, 「친근함」부터는 광장에 동행 사역마의 지문이 표시됩니다. 사역마마다 좋아하는 간식과 장난감이 있으며, 좋아하는 것을 주면 유대가 더 오릅니다. 「단짝」 단계가 되면 사역마마다 다른 칭호를 받으며(예: 눈송이 강아지 「눈송이가 기다리는 사람」), 단짝이 된 사역마 수가 1 · 5 · 10 · 18마리가 되면 칭호를 추가로 받습니다.' },
     { c: '아카데미 생활', t: '칸토 섬 환수 용품점', b: '「장비·공방 → 환수 용품점」에서 아르크로 간식 · 장난감 · 꾸밈을 구매할 수 있습니다. 간식은 사용하면 사라지는 소모품이며, 장난감은 한 번 구매하면 모든 사역마와 계속 사용할 수 있습니다. 꾸밈은 사역마 카드에만 보이는 장식입니다. 날마다 한 품목이 「오늘의 추천」으로 10% 할인됩니다. 사역마의 레벨을 올리는 영양 먹이는 환수 사역장의 사역마 카드에서 줄 수 있습니다.' },
     { c: '아카데미 생활', t: '하늘섬 나들이', b: '「아카데미 광장 → 하늘섬」에서 외출증을 사용해 하늘섬으로 외출합니다. 외출증은 주말(토 · 일, 한국 시간)에 하루 2장, 축제 기간에는 평일에도 하루 1장 발급되며 KST 0시에 초기화됩니다. 섬을 선택하면 이야기 카드 3장이 나오고, 카드마다 선택지를 하나 선택하면 아르크 · 재료 · 별조각 · 마나 · 사역마 간식 가운데 하나를 받습니다. 나들이를 마치면 일정 확률로 그 섬의 기념품을 받습니다. 포르타 마을 · 칸토 섬은 1학년, 테아트론 섬은 2학년, 우라니아 섬은 3학년(밤에만), 클리오 섬은 4학년부터 방문할 수 있고, 테르프시코레 섬은 축제 기간에만 열립니다. 모은 이야기와 기념품은 「여행 수첩」에 기록됩니다.' },
     { c: '아카데미 생활', t: '시즈널 축제', b: '아카데미력 피리달 · 가면달 · 별무리달 · 침묵달의 마지막 주(22~28일)에 축제가 열립니다(종탑 음악제 · 가면 무도회 · 별샘 축제 · 침묵의 등불제). 축제 기간에는 수업 · 원정 · 연구 등 평소 활동으로 축제 표식이 모이며(하루 50개까지), 「아카데미 광장 → 축제」의 축제 교환소에서 칭호 · 정보 카드 인장 · 장난감 · 기념품 · 소모품과 교환할 수 있습니다. 모든 학생이 모은 표식이 공동 목표에 닿을 때마다 표식을 모은 모든 학생에게 보상이 우편으로 전달됩니다. 축제가 끝나면 남은 표식은 자동으로 아르크로 환산됩니다.' },
@@ -1188,8 +1195,9 @@ var DATA = (function () {
     { id: 'brew200', name: '연금술사', desc: '물약 200개 양조', stat: 'brews', n: 200, r: 25 },
     { id: 'brew300', name: '마도학자', desc: '물약 300개 양조', stat: 'brews', n: 300, r: 35 },
     { id: 'fam3', name: '작은 동물원', desc: '사역마 3종 보유', stat: 'famKinds', n: 3, r: 8 },
-    { id: 'fam8', name: '환수 사육사', desc: '사역마 8종 보유', stat: 'famKinds', n: 8, r: 25 },
-    { id: 'fam12', name: '모든 생명의 친구', desc: '사역마 12종 모두 보유', stat: 'famKinds', n: 12, r: 60 },
+    { id: 'fam8', name: '환수 애호가', desc: '사역마 8종 보유', stat: 'famKinds', n: 8, r: 25 },
+    { id: 'fam12', name: '환수 수집가', desc: '사역마 12종 보유', stat: 'famKinds', n: 12, r: 40 },
+    { id: 'fam18', name: '모든 생명의 친구', desc: '사역마 18종 모두 보유', stat: 'famKinds', n: 18, r: 80 },
     { id: 'disp20', name: '심부름의 달인', desc: '사역마 파견 20번', stat: 'dispatches', n: 20, r: 10 },
     { id: 'spirit20', name: '정령 채집가', desc: '반딧불 정령 20마리 풀어 주기', stat: 'spirits', n: 20, r: 8 },
     { id: 'spirit200', name: '빛을 쫓는 자', desc: '반딧불 정령 200마리 풀어 주기', stat: 'spirits', n: 200, r: 30 },
@@ -1716,7 +1724,8 @@ var DATA = (function () {
   D.FAM_LIKES = {
     inkbat: ['fish', 'bell'], candlelizard: ['apple', 'feather'], mossturtle: ['seed', 'bubble'], moonrabbit: ['jelly', 'music'],
     crysowl: ['biscuit', 'mirror'], zapweasel: ['candy', 'yarn'], ashfox: ['fish', 'kite'], dreammoth: ['candy', 'music'],
-    clockcat: ['fish', 'yarn'], shadowcrow: ['biscuit', 'mirror'], starwhale: ['candy', 'bubble'], starwyrm: ['apple', 'kite']
+    clockcat: ['fish', 'yarn'], shadowcrow: ['biscuit', 'mirror'], starwhale: ['candy', 'bubble'], starwyrm: ['apple', 'kite'],
+    pebblemouse: ['seed', 'bell'], dewfrog: ['jelly', 'bubble'], snowpup: ['biscuit', 'yarn'], herbhog: ['apple', 'music'], mistdeer: ['seed', 'kite'], dawnphoenix: ['candy', 'feather']
   };
   // 유대 단계별 지문 (사역마 카드 · 광장 동행 사역마)
   D.BOND_LINES = [
@@ -1735,8 +1744,19 @@ var DATA = (function () {
   };
   D.TITLES.push(
     { id: 'bond1', name: '환수의 단짝', stat: 'bondFull', n: 1, how: '사역마 한 마리와 유대 「단짝」 달성' },
-    { id: 'bond5', name: '환수 사육 명인', stat: 'bondFull', n: 5, how: '사역마 다섯 마리와 유대 「단짝」 달성' }
+    { id: 'bond5', name: '환수 사육 명인', stat: 'bondFull', n: 5, how: '사역마 다섯 마리와 유대 「단짝」 달성' },
+    { id: 'bond10', name: '환수의 마음을 읽는 자', stat: 'bondFull', n: 10, how: '사역마 열 마리와 유대 「단짝」 달성' },
+    { id: 'bond18', name: '모든 환수의 단짝', stat: 'bondFull', n: 18, how: '사역마 열여덟 종 모두와 유대 「단짝」 달성' }
   );
+  // 사역마마다 유대 「단짝」(100)이 되면 받는 칭호 (bondFam: 사역마 id)
+  D.FAM_BOND_TITLES = {
+    inkbat: '잉크병 속의 단짝', candlelizard: '꺼지지 않는 촛불지기', mossturtle: '백 년 정원의 정원사', moonrabbit: '보름달 필기 동무',
+    crysowl: '수정 눈의 벗', zapweasel: '정전기에 익숙한 손', ashfox: '황야 여우의 길동무', dreammoth: '꿈길을 함께 걷는 자',
+    clockcat: '세 시 십 분의 약속', shadowcrow: '그림자의 속삭임을 듣는 자', starwhale: '구름바다의 항해사', starwyrm: '성룡을 품은 손',
+    pebblemouse: '조약돌 주머니의 주인', dewfrog: '이슬 합창단장', snowpup: '눈송이가 기다리는 사람', herbhog: '가시 속 약초꾼',
+    mistdeer: '안개 숲의 길잡이', dawnphoenix: '새벽을 맞이하는 자'
+  };
+  D.FAMILIARS.forEach(function (f) { var nm = D.FAM_BOND_TITLES[f.id]; if (nm) D.TITLES.push({ id: 'bf_' + f.id, name: nm, bondFam: f.id, how: f.name + (((f.name.charCodeAt(f.name.length - 1) - 0xAC00) % 28) ? '과' : '와') + ' 유대 「단짝」 달성' }); });
 
   /* ───────── 하늘섬 나들이 (주말 외출) ─────────
      주말(토 · 일, KST)에는 외출증이 하루 2장, 축제 기간에는 평일에도 1장. 섬을 고르면 이야기 카드 3장이 나오고, 카드마다 선택지를 하나씩 고른다.
