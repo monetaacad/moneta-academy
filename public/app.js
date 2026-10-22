@@ -3417,7 +3417,7 @@
       act += '<button class="btn sm primary' + (armed ? ' armed' : '') + '" data-act="mkbuyout" data-a="' + x.id + '"' + (canBuy ? '' : why(low ? '학년이 낮아 살 수 없습니다' : CUR + '가 부족합니다')) + '>' + (armed ? '한 번 더 누르면 구매' : '즉시 구매') + '</button>';
     }
     return '<div class="mkrow mkauc' + (open ? ' open' : '') + '"><div class="mki' + (tap ? ' tap" data-act="mkopen" data-a="' + x.id + '" role="button" tabindex="0" aria-expanded="' + !!open + '"' : '"') + '>' + info +
-      '<div class="tiny faint mksub">' + sub + (ended ? '' : ' · ' + (left > 0 ? R.fmtTime(left) + ' 남음' : '마감 처리 중')) + (x.seller ? ' · ' + esc(x.seller) : '') + '</div>'   // 판매자 이름이 길어도 남은 시간이 먼저 보이게 · 줄바꿈 허용 + (open && x.item ? '<div class="mkst">' + statLines(x.item) + '</div>' + cmpBlock(x.item) : '') + '</div>' +
+      '<div class="tiny faint mksub">' + sub + (ended ? '' : ' · ' + (left > 0 ? R.fmtTime(left) + ' 남음' : '마감 처리 중')) + (x.seller ? ' · ' + esc(x.seller) : '') + '</div>' + (open && x.item ? '<div class="mkst">' + statLines(x.item) + '</div>' + cmpBlock(x.item) : '') + '</div>' +
       '<div class="mkap"><div class="tiny faint">' + (x.bids ? '현재가 · 입찰 ' + x.bids + '건' : '시작가 · 입찰 없음') + '</div><b class="num gold">' + fmt(x.bids ? x.bid : x.start) + '</b><div class="tiny faint">즉시 구매가 <b class="num">' + fmt(x.price) + '</b></div></div>' +
       '<div class="mkab">' + st + act + '</div></div>';
   }
