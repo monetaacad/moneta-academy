@@ -277,8 +277,11 @@
     // 물리/주문 공격력 분리 (BUILD 17): 기사는 공격 능력치가 지력 → 체력으로 바뀌어 포인트를 한 번 돌려준다
     // 슬롯 늘리기 연구 폐지 (BUILD 30): 이미 쌓은 단계의 마나 · 지식을 돌려준다
     if (!P.slotV && P.rs && P.res) { P.slotV = 1; var back = { mana: 0, know: 0 }; D.RESEARCH.forEach(function (r) { if (!r.gone) return; var L = P.rs[r.id] || 0; for (var lv = 0; lv < L; lv++) { var c0 = R.resCost(P, r.id, lv); back.mana += c0.mana; back.know += c0.know; } if (L) delete P.rs[r.id]; }); if (back.mana || back.know) { P.res.mana += back.mana; P.res.know += back.know; if (P.log) log(P, P.at || 0, '수업 · 원정 · 연구가 한 자리씩으로 바뀌어, 슬롯을 늘리던 연구의 마나 ' + R.fmt(back.mana) + ' · 지식 ' + R.josa(R.fmt(back.know), '을', '를') + ' 돌려드렸습니다.', 'news'); } }
+    // 보스 처치(P.st.bosses)에 월드 보스 공격 · 결투제 승리 · 개인 탑 문지기층을 함께 센다 (2026-10-22): 지금까지의 기록을 한 번 더해 준다
+    if (!P.bossV && P.st) { P.bossV = 1; P.st.bosses = (P.st.bosses || 0) + (P.st.wbAttacks || 0) + (P.st.duelWins || 0) + Math.floor((P.st.twK || 0) / R.CT_MILE) + Math.floor((P.st.twM || 0) / R.CT_MILE); }
     if (!P.physV) { P.physV = 1; if (P.cls === 'knight' && P.alloc && P.log && (P.alloc.int || 0) > 0 && allocReset(P, 'knight')) log(P, P.at || 0, '기사의 공격력이 지력 대신 체력을 따르게 바뀌어 능력치 포인트를 모두 돌려드렸습니다.', 'news'); }
     D.SUBJECTS.forEach(function (s) { if (!P.subj[s.id]) P.subj[s.id] = { lv: 0, xp: 0 }; });
+    if (P.fam && P.st && (P.st.hatches || 0) < (P.fam.hatched || 0)) P.st.hatches = P.fam.hatched;   // 누적 부화 수 (예전 학생)
     delete P.quizCd; delete P.pq; delete P.qRecent; if (P.st) delete P.st.quizCorrect;
     // 수업 예약 · 시간표 · 분해 (2026-10-19)
     if (!P.lecQ) P.lecQ = [null, null, null]; if (!P.lecEnd) P.lecEnd = [0, 0, 0]; if (!P.tt) P.tt = [];
@@ -326,7 +329,8 @@
     } else P.spells = P.spells.map(function (s) { return ok(s) ? s : null; });
     if (!P.spells.some(Boolean)) P.spells[0] = 'bolt';
     var off = before.filter(function (s) { return P.spells.indexOf(s) < 0; }).map(function (s) { return SPELL[s] ? SPELL[s].name : s; });
-    var pts = allocReset(P, id); if (pts) log(P, now, '학과를 옮겨 능력치 포인트를 모두 돌려받았습니다. 새 학과에 맞게 다시 분배할 수 있습니다.', 'news');
+    var wasAuto = !!P.opt.autoAlloc; P.opt.autoAlloc = false;   // 전과하면 자동 분배를 끈다 (켜 둔 채면 돌려받자마자 예전 비율로 다시 나뉘어 직접 나눌 수 없었다)
+    var pts = allocReset(P, id); if (pts) log(P, now, '학과를 옮겨 능력치 포인트를 모두 돌려받았습니다. 새 학과에 맞게 다시 분배할 수 있습니다.' + (wasAuto ? ' 자동 분배는 꺼 두었습니다.' : ''), 'news');
     log(P, now, R.CLS[id].name + ' 학과로 옮겼습니다' + (how ? ' (' + how + ')' : '') + '.', 'story');
     if (restored) log(P, now, '이전에 ' + R.CLS[id].name + ' 학과에서 사용하던 주문 구성을 다시 장착했습니다.', 'news');
     if (off.length) log(P, now, '주문 칸에서 해제된 주문: ' + off.join(', ') + '. 장착 주문을 확인하십시오.', 'news');
@@ -334,7 +338,7 @@
   }
   R.newPlayer = function (id, name, house, now, seed) {
     var P = {
-      v: R.VERSION, id: id, name: name, house: HOUSE[house] ? house : 'lanterna', created: now, at: now, econC: 2, physV: 1, slotV: 1,
+      v: R.VERSION, id: id, name: name, house: HOUSE[house] ? house : 'lanterna', created: now, at: now, econC: 2, physV: 1, slotV: 1, bossV: 1,
       rng: (seed | 0) || (Math.floor(Math.random() * 2147483647) | 1),
       res: { mana: 300, gold: 0, know: 0, shard: 0, stone: 0 }, mats: {},
       lvl: 1, xp: 0, pts: 0, alloc: { int: 0, wil: 0, agi: 0, vit: 0, luk: 0 },
@@ -348,7 +352,7 @@
       duel: { rank: 0, cd: 0 }, tasks: {}, ach: {}, codex: {},
       st: { lecJobs: 0, lecHours: 0, expJobs: 0, nightJobs: 0, kills: 0, bosses: 0, bossTries: 0, maxStageAll: 9, maxGrade: 1, sGrades: 0,
         aGrades: 0, epicFound: 0, legendFound: 0, maxEnh: 0, enh: 0, brews: 0, spirits: 0, maxLevel: 1, manaTotal: 0, goldTotal: 0,
-        streak: 0, famKinds: 0, dispatches: 0, researchDone: 0, wbAttacks: 0, wbKills: 0, cupWins: 0, duelWins: 0, duelBest: 0, tasksDone: 0 },
+        streak: 0, famKinds: 0, hatches: 0, dispatches: 0, researchDone: 0, wbAttacks: 0, wbKills: 0, cupWins: 0, duelWins: 0, duelBest: 0, tasksDone: 0 },
       daily: { day: -1, q: [], streak: 0, login: false },
       wk: { id: 0, cup: 0, dmg: 0, att: 0 }, wkPrev: null, wb: { tickets: K.WB_TICKET_MAX, at: now, extra: 0, bought: 0, buyWk: -1, exUsed: 0, exWk: -1 },
       spirit: { n: 1, at: now },
@@ -603,7 +607,8 @@
     var critMul = 1 + c.critC * (c.critD - 1);
     c.dps = c.atk * c.aps * critMul;
     c.spellDps = 0;
-    var ns = R.spellSlots(P);
+    var ns = R.spellSlots(P), baseDps = c.dps;
+    // 전투력에는 주문을 넣지 않는다 (장착 · 배운 주문 모두). 주문은 초당 피해(totalDps)에만 반영
     for (var i = 0; i < ns; i++) {
       var sp = SPELL[P.spells[i]]; if (!sp || !R.spellUnlocked(P, sp.id)) continue;
       if (sp.type === 'dmg' || sp.type === 'stun') c.spellDps += R.spellHit(c, sp) * sp.mult * spellLvMult(P, sp) * critMul / (sp.cd * (1 - c.cdr));
@@ -611,7 +616,7 @@
     }
     c.famDps = P.fam.act && P.fam.own[P.fam.act] ? c.atk * famAtkMult(P) / 1.5 : 0;
     c.totalDps = c.dps + c.spellDps + c.famDps;
-    c.power = Math.floor(c.totalDps * 3 + c.hp * 0.6 + c.def * 4);
+    c.power = Math.floor((baseDps + c.famDps) * 3 + c.hp * 0.6 + c.def * 4);   // 주문 제외 (평타 · 사역마 · 생명력 · 방어력). 초당 피해(totalDps)는 장착 주문까지
     return c;
   }
   R.calc = calc;
@@ -919,7 +924,7 @@
   R.eggCost = function (P) { return Math.floor(5000 * Math.pow(1.2, Math.min(P.fam.hatched, 30))); };   // 깨운 수마다 1.2배 (예전 1.45배)
   R.feedCost = function (P, id) { var f = FAM[id], o = P.fam.own[id]; return Math.floor(2000 * Math.pow(1.45, o.lv) * (f.r + 1)); };
   function hatch(P, t) {
-    P.fam.egg = null; P.fam.hatched++;
+    P.fam.egg = null; P.fam.hatched++; P.st.hatches = P.fam.hatched;   // 칭호 · 업적용 누적 부화 수
     var luck = 0;
     var ws = D.FAM_RARITY.map(function (r, i) { return r.w * (i >= 1 ? 1 + luck : 1); });
     var tot = ws.reduce(function (a, b) { return a + b; }, 0), x = rnd(P) * tot, r = 0;
@@ -946,6 +951,8 @@
     var gold = Math.floor(h * 40 * K.KILL_GOLD * Math.pow(K.G_GOLD, z.from - 1) * mult * K.DISP_GOLD); addGold(P, gold); out.gold = gold;
     if (rnd(P) < h * 0.008 * mult) { P.fam.eggs++; out.egg = 1; }
     if (rnd(P) < h * 0.04) { var sh = ri(P, 1, 3); P.res.shard += sh; out.shard = sh; }
+    // 사역장 「파견 기록」: 최근 40건 (같은 때 돌아온 사역마는 화면에서 한 줄로 묶는다)
+    var L = P.fam.dlog || (P.fam.dlog = []); L.unshift({ t: Math.round(t), f: fid, h: Math.round(h * 10) / 10, mat: z.mat, mats: mats, stones: stones, gold: gold, egg: out.egg || 0, shard: out.shard || 0, early: early ? 1 : 0 }); if (L.length > 40) L.length = 40;
     if (early) { out.early = 1; return out; }
     P.st.dispatches++; cupAdd(P, 20, 'disp');
     nightJob(P, t);
@@ -1738,6 +1745,18 @@
     return { th: R.examTheory(P, ex), pr: R.examPractical(P, ex), duel: duel, duelWin: du.win, bonus: bonus, total: total, letter: R.letter(total), toS: need(95), toA: need(85) };
   };
 
+  // 등급별로 더 필요한 것 (운영 건의: 「무엇이 더 필요한지」): 필기 · 실기는 시험 과목 평균 레벨만 보므로, 등급마다 필요한 레벨 합계를 구한다
+  // lack: 기준 레벨에 못 미친 과목, sum: 지금 레벨 합계, need: { S, A, B } 필요한 레벨 합계 (-1이면 레벨만으로는 불가 → 대련 승리 필요)
+  R.examPlan = function (P, W, t) {
+    var ex = R.examFor(P); if (!ex || P.grade >= 8) return null;
+    var pv = R.examPredict(P, W, t), xs = R.examSubjs(P, ex), n = xs.length, req = ex.req, extra = pv.duel + pv.bonus;
+    var lack = xs.filter(function (k) { return sjLv(P, k) < req; }).map(function (k) { return { sid: k, lv: sjLv(P, k) }; });
+    var sum = xs.reduce(function (a, k) { return a + sjLv(P, k); }, 0), base = xs.reduce(function (a, k) { return a + Math.max(sjLv(P, k), req); }, 0);
+    function score(tot) { var d = tot / n - req; return Math.round(clamp(21 + d * 3, 0, 30) + 25 + 15 * clamp(d / 4, 0, 1) + extra); }
+    function need(min) { for (var x = base; x <= (req + 4) * n; x++) if (score(x) >= min) return x; return -1; }
+    return { req: req, n: n, subj: xs, lack: lack, sum: sum, base: base, full: (req + 4) * n, need: { S: need(95), A: need(85), B: need(75) }, duelWin: pv.duelWin };
+  };
+
   /* ───────── 결투제 ───────── */
   R.rival = function (P) { return D.RIVALS[P.duel.rank] || null; };
   R.rivalPreview = function (P, W) { var r = R.rival(P); return r ? R.duelPreview(P, W, r.stage, 4, 1.3) : null; };
@@ -1976,6 +1995,7 @@
      난이도: 적의 공격이 아주 세고(보스 공격 ×3) 체력은 낮으며(×0.6) 60초 안에 쓰러뜨려야 한다 → 화력만으로 밀기 어렵고 생명력 · 회복도 필요.
      층 곡선: 전투력 약 4천은 15층, 약 1.6만은 40층 언저리에서 막힌다. 시련의 층(50층마다)은 갑자기 어려운 벽(체력 ×1.8 · 공격 ×1.4),
      넘고 나면 3~4층은 쉬워졌다가 금세 다시 따라잡힌다. */
+  R.BOSS_COUNT_TEXT = '원정 관문 보스 · 월드 보스 공격 · 결투제 승리 · 마법사(기사)의 탑 문지기층 · 별의 탑 실전 시련의 층';
   R.CT_TRIES = 3; R.CT_MILE = 50; R.CT_TIME = 60;
   R.CT_NAME = { knight: '기사의 탑', mage: '마법사의 탑' };
   R.CT_FOES = {
@@ -2012,7 +2032,7 @@
     var out = { cls: cls, f: f, foe: foe, win: !!r.win, cc: !!r.cc, ev: r.ev, t: r.t, dead: !!r.dead, pct: Math.round((1 - r.mHp) * 100), rw: {}, titles: [] };
     if (!r.win) return out;   // 휘장 별빛은 이겼을 때만 (도전 횟수 제한이 없어 지기만 반복해 휘장을 키울 수 있었다)
     badgeGain(P, R.BADGE_XP.fight, now);
-    P.st[key] = f; var g = R.ctReward(f), rw = out.rw;
+    P.st[key] = f; if (foe.wall) P.st.bosses++; var g = R.ctReward(f), rw = out.rw;
     if (g.gold) { addGold(P, g.gold); rw.gold = g.gold; } if (g.stone) { P.res.stone += g.stone; rw.stone = g.stone; } if (g.shard) { P.res.shard += g.shard; rw.shard = g.shard; }
     if (g.gear || g.egg) { var gm = R.grantMail(P, W, now, { gear: g.gear, egg: g.egg }); if (g.egg) rw.egg = g.egg; out.items = gm.items; }
     if (f % R.CT_MILE === 0) { var tt = R.ctTitle(cls, f); if (tt) { out.titles.push(tt.name); log(P, now, R.CT_NAME[cls] + ' ' + f + '층 돌파! 칭호 「' + tt.name + '」를 얻었습니다', 'legend'); } }
@@ -2398,7 +2418,7 @@
     var res = { win: f.win, cc: !!f.cc, k: k, rival: r.name, hello: r.hello, lose: r.lose, ev: f.ev, mHp: f.mHp, maxHp: R.duelEnemy(r.stage, 4, 1.3).hp };
     badgeGain(P, R.BADGE_XP.fight * (f.win ? 2 : 1), now);
     if (f.win) {
-      P.duel.rank++; P.st.duelWins++; var first = P.duel.rank > P.st.duelBest; if (first) P.st.duelBest = P.duel.rank;
+      P.duel.rank++; P.st.duelWins++; P.st.bosses++; var first = P.duel.rank > P.st.duelBest; if (first) P.st.duelBest = P.duel.rank;
       var shard = 3 + k + (first ? k : 0), gold = Math.floor(80 * K.KILL_GOLD * Math.pow(K.G_GOLD, r.stage - 1) * c.gold);
       P.res.shard += shard; addGold(P, gold); res.reward = { shard: shard, gold: gold, first: first };
       P.duel.cd = now + K.DUEL_CD; cupAdd(P, 40, 'duel');
@@ -2479,7 +2499,7 @@
     else if (P.wb.extra > 0) { if (R.wbExtraLeft(P, now) <= 0) err('추가 도전권은 이번 주에 ' + K.WB_EXTRA_USE + '번 모두 썼습니다 (월요일 KST 0시 초기화)'); P.wb.extra--; P.wb.exUsed++; }
     else err('도전권이 없습니다');
     var c = calc(P, W, now), f = fight(P, c, R.wbEnemy(P), 30, false), dmg = Math.floor(f.dealt);
-    P.wk.dmg += dmg; P.wk.att++; P.st.wbAttacks++; cupAdd(P, 30, 'wb');
+    P.wk.dmg += dmg; P.wk.att++; P.st.wbAttacks++; P.st.bosses++; cupAdd(P, 30, 'wb');
     badgeGain(P, R.BADGE_XP.fight, now);
     return { dmg: dmg, ev: f.ev, dead: !!f.dead, t: f.t };
   };

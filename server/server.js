@@ -1415,6 +1415,7 @@ setInterval(twRankSettle, 60000).unref(); setTimeout(twRankSettle, 1000).unref()
 // 별의 탑 실전 보상 맡겨 두기: P.twPend = { id, end(실제 시각), from, to, pname }. 끝난 뒤 「보상 받기」로 우편 발송
 function twPendMail(Q) {
   const p = Q.twPend; if (!p) return; delete Q.twPend;
+  for (let f = p.from; f <= p.to; f++) if (R.twTrial(f)) Q.st.bosses = (Q.st.bosses || 0) + 1;   // 시련의 층(보스층)은 보스 처치로 센다
   sendMail(Q.id, '별의 탑', '별의 탑 ' + p.to + '층 기록', '파티 「' + p.pname + '」의 실전에서 별의 탑 ' + p.to + '층까지 올랐습니다.\n이번 주에 처음 넘은 ' + p.from + '~' + p.to + '층의 보상입니다.', R.twRewardSum(p.from, p.to), Math.floor(Date.now() / 1000) + 7 * 86400, true);
   store.markDirty(Q.id);
 }
@@ -1773,7 +1774,7 @@ routes['POST /api/board'] = async (req, res) => {
   if (store.isBanned(me)) return fail(req, res, 403, '이용이 정지된 계정입니다');
   const b = await readJson(req, 16384), op = String(b.op || ''), now = Math.floor(Date.now() / 1000), meta = dbx.q.playerMeta.get(me);
   if (!meta || meta.banned) return fail(req, res, 403, '사용할 수 없습니다');
-  if ((op === 'write' || op === 'edit' || op === 'comment') && meta.muted_until && meta.muted_until > now) return fail(req, res, 403, '채팅·글쓰기가 금지된 상태입니다 (' + Math.ceil((meta.muted_until - now) / 60) + '분 남음)');
+  if ((op === 'write' || op === 'edit' || op === 'comment' || op === 'cedit') && meta.muted_until && meta.muted_until > now) return fail(req, res, 403, '채팅·글쓰기가 금지된 상태입니다 (' + Math.ceil((meta.muted_until - now) / 60) + '분 남음)');
   if (op === 'write' && limited('bdw:' + me, 1 / 30, 1)) return fail(req, res, 429, '글은 30초에 하나씩 작성할 수 있습니다');
   if (op === 'comment' && limited('bdc:' + me, 1 / 4, 3)) return fail(req, res, 429, '댓글을 너무 빨리 달고 있습니다');
   if (limited('bdp:' + me, 1, 10)) return fail(req, res, 429, '잠시 후 다시 시도');
@@ -1783,6 +1784,7 @@ routes['POST /api/board'] = async (req, res) => {
     else if (op === 'edit') id = board.edit(me, b, now);
     else if (op === 'del') board.del(me, b.id);
     else if (op === 'comment') id = board.comment(me, b.id, b.text, now, b.parent);
+    else if (op === 'cedit') { if (limited('bdc:' + me, 1 / 4, 3)) return fail(req, res, 429, '잠시 후 다시 시도'); id = board.cedit(me, b.cid, b.text, now); }
     else if (op === 'cdel') { board.cdel(me, b.cid); id = Number(b.id) | 0; }
     else if (op === 'status') id = board.setStatus(me, b.id, b.st);
     else if (op === 'mute') id = board.mute(me, b.id, !!b.on);
@@ -2312,8 +2314,10 @@ routes['GET /api/admin/growth'] = (req, res) => {
   if (u.searchParams.get('now') === '1') growthSnap(true);
   const from = kstDay(Math.floor(Date.now() / 1000) - (days - 1) * 86400) * 100, rows = dbx.q.growthFrom.all(from);
   const cols = ['d', 'h', 'house', 'cls', 'lvl', 'power', 'grade', 'stage', 'ctM', 'ctK', 'cup', 'act'].concat(GROWTH_ST, GROWTH_GEAR), anon = (id) => crypto.createHash('sha256').update('growth:' + id).digest('hex').slice(0, 10);
+  const parsed = rows.map((r) => { let o = {}; try { o = JSON.parse(r.data); } catch (e) { } return o; });
+  parsed.forEach((o) => { for (const k in o) if (cols.indexOf(k) < 0) cols.push(k); });   // 새로 늘어난 항목(c_ · st_ · res_ 등)도 열로
   const lines = [['date', 'student'].concat(cols).join(',')];
-  rows.forEach((r) => { let o = {}; try { o = JSON.parse(r.data); } catch (e) { } lines.push([growthSlotText(r.day), anon(r.pid)].concat(cols.map((k) => o[k] == null ? '' : String(o[k]).replace(/[,\n]/g, ' '))).join(',')); });
+  rows.forEach((r, i) => { const o = parsed[i]; lines.push([growthSlotText(r.day), anon(r.pid)].concat(cols.map((k) => o[k] == null ? '' : String(o[k]).replace(/[,\n]/g, ' '))).join(',')); });
   send(req, res, 200, { csv: lines.join('\n'), rows: rows.length, days: dbx.q.growthDays.all().slice(0, days * 2) });
 };
 routes['GET /api/admin/oplog'] = (req, res) => {
@@ -2701,17 +2705,19 @@ routes['GET /api/admin/dist'] = (req, res) => {
         for (const k in cat) { const v = cat[k]; h.sum[k] = Math.round((h.sum[k] || 0) + v); if (sp && sp.cats.indexOf(k) >= 0) h.specExtra = Math.round(h.specExtra + v * (1 - 1 / R.CUP_SPEC_MULT)); }
       }
       detail.push({ cls: P.cls === 'knight' ? 'knight' : 'mage', grade: P.grade, house: r.house, dps: c.totalDps, basic: c.dps, spell: c.spellDps, fam: c.famDps, spellShare: c.totalDps > 0 ? c.spellDps / c.totalDps : 0,
-        patk: c.patk, matk: c.matk, hp: c.hp, def: c.def, critC: c.critC, aps: c.aps, power: c.power, lvl: P.lvl, twK: st.twK || 0, twM: st.twM || 0, tw: R.twBest(P, nowSec()) });
+        patk: c.patk, matk: c.matk, hp: c.hp, def: c.def, critC: c.critC, aps: c.aps, power: c.power, lvl: P.lvl, twK: st.twK || 0, twM: st.twM || 0, tw: R.twBest(P, nowSec()),
+        critD: c.critD, drop: c.drop, rarity: c.rarity, spellMul: c.spell, skillMul: c.skill, lecSpd: c.lecSpd, goldMul: c.gold, xpMul: c.xp, knowMul: c.know, manaH: c.mana * 3600,
+        legend: st.legendFound || 0, epic: st.epicFound || 0, maxEnh: st.maxEnh || 0, kills: st.kills || 0, expJobs: st.expJobs || 0 });
     } catch (e) { }
   });
-  const KEYS = ['dps', 'basic', 'spell', 'fam', 'spellShare', 'patk', 'matk', 'hp', 'def', 'critC', 'aps', 'power', 'lvl'];
+  const KEYS = ['dps', 'basic', 'spell', 'fam', 'spellShare', 'patk', 'matk', 'hp', 'def', 'critC', 'critD', 'aps', 'power', 'lvl', 'drop', 'rarity', 'spellMul', 'skillMul', 'lecSpd', 'goldMul', 'xpMul', 'knowMul', 'manaH', 'legend', 'epic', 'maxEnh', 'kills', 'expJobs'];
   const group = (key) => { const g = {}; detail.forEach((d) => { (g[d[key]] = g[d[key]] || []).push(d); }); const o = {}; for (const k in g) { o[k] = { n: g[k].length }; KEYS.forEach((f) => { o[k][f] = pct(g[k].map((d) => d[f])); }); } return o; };
   const all = { n: detail.length }; KEYS.forEach((f) => { all[f] = pct(detail.map((d) => d[f])); });
-  const clsGrade = {}; detail.forEach((d) => { const k = d.cls + ':' + d.grade; (clsGrade[k] = clsGrade[k] || []).push(d); }); const cg = {}; for (const k in clsGrade) cg[k] = { n: clsGrade[k].length, dps: pct(clsGrade[k].map((d) => d.dps)), hp: pct(clsGrade[k].map((d) => d.hp)), power: pct(clsGrade[k].map((d) => d.power)) };
+  const clsGrade = {}; detail.forEach((d) => { const k = d.cls + ':' + d.grade; (clsGrade[k] = clsGrade[k] || []).push(d); }); const cg = {}; for (const k in clsGrade) { cg[k] = { n: clsGrade[k].length }; ['dps', 'hp', 'power', 'drop', 'rarity', 'legend', 'epic'].forEach((f) => { cg[k][f] = pct(clsGrade[k].map((d) => d[f])); }); }
   const towers = { infKnight: pct(detail.filter((d) => d.twK > 0).map((d) => d.twK)), infMage: pct(detail.filter((d) => d.twM > 0).map((d) => d.twM)), starTowerWeek: pct(detail.filter((d) => d.tw > 0).map((d) => d.tw)) };   // 별의 탑 이번 주 개인 기록
   oplog('admin', '관리자', 'dist', '분포 통계 복사');
   send(req, res, 200, { at: now, week: wk, students: { all: players.length, active7d: act.length, gradeActive7d: grades }, fightActive7d: fight(act), fightAll: fight(players), weekly: cup, cupSource: { note: '이번 주 점수 출처(특기 1.3배 포함 합계). before=나눠 적기 전(배포 전)에 쌓인 몫, kill=원정 처치, exam=진급 시험, etc=그 밖', byHouse: cupCat },
-    detailActive7d: { note: 'dps=초당 피해 합계(basic 평타 + spell 주문 + fam 사역마), spellShare=주문 비중, patk/matk=물리/주문 공격력, critC=치명타 확률, aps=초당 공격 횟수', all, byCls: group('cls'), byGrade: group('grade'), byClsGrade: cg }, towers });
+    detailActive7d: { note: 'dps=초당 피해 합계(basic 평타 + spell 주문 + fam 사역마), spellShare=주문 비중, patk/matk=물리/주문 공격력, critC/critD=치명타 확률/피해, aps=초당 공격 횟수, drop=전리품 배율(1=기본), rarity=장비 등급 상승, spellMul/skillMul=주문/기술 위력 배율, lecSpd=수업 효율, goldMul/xpMul/knowMul=아르크/경험치/지식 배율, manaH=시간당 마나, legend/epic=누적 전설/영웅 획득, maxEnh=최고 강화, kills=누적 처치, expJobs=원정 횟수', all, byCls: group('cls'), byGrade: group('grade'), byClsGrade: cg }, towers });
 };
 routes['GET /api/admin/ideas'] = (req, res) => { if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다'); send(req, res, 200, { text: board.exportIdeas() }); };
 routes['GET /api/admin/sys'] = (req, res) => { if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다'); send(req, res, 200, { build: BUILD, maint: MAINT, pin: pinList()[0] || null, pins: pinList(), epoch: world.W.epoch, cal: R.calendar(world.W, nowSec()) }); };
@@ -2828,6 +2834,8 @@ const kstDay = (t) => { const d = new Date(t * 1000 + 9 * 3600000); return d.get
 // 성장 기록 · 장비: 칸마다 장비 레벨 · 등급 · 강화, 휘장, 전투력 구성(장비 몫), 과목 레벨 합, 능력치 분배 (2026-10-21부터 쌓인다)
 const GROWTH_SLOTS = ['staff', 'robe', 'hat', 'charm', 'tome'];
 const GROWTH_GEAR = [].concat(...GROWTH_SLOTS.map((s) => [s + 'Lv', s + 'R', s + 'Enh'])).concat(['gearLv', 'powNow', 'powNoGear', 'gearPct', 'bdgGem', 'bdgLv', 'bdgQ', 'subjSum']).concat(R.STATS.map((k) => 'al_' + k));
+const GROWTH_CALC = ['drop', 'rarity', 'critC', 'critD', 'aps', 'spell', 'skill', 'lecSpd', 'gold', 'xp', 'know', 'manaH', 'manaCapH', 'brewSpd', 'hatchSpd', 'bossDmg', 'cdr', 'killMana', 'leech', 'examBonus', 'dps', 'spellDps', 'famDps', 'hp', 'def', 'patk', 'matk'];
+const GROWTH_RES = ['gold', 'mana', 'know', 'shard', 'stone', 'dust'];
 function growthGear(P, now) {
   const o = {}, eq = P.eq || {}; let sum = 0, n = 0;
   GROWTH_SLOTS.forEach((s) => { const it = eq[s]; if (it) { o[s + 'Lv'] = it.ilvl; o[s + 'R'] = it.r; o[s + 'Enh'] = it.enh || 0; sum += it.ilvl; n++; } });
@@ -2835,6 +2843,8 @@ function growthGear(P, now) {
   try {   // 장비 몫: 장비를 모두 뺀 전투력과 비교 (P를 건드리지 않게 얕은 복사)
     const W = world.ctx(now), t = Math.min(now, P.at || now), full = R.calc(P, W, t).power, bare = R.calc(Object.assign({}, P, { eq: {} }), W, t).power;
     o.powNow = Math.round(full); o.powNoGear = Math.round(bare); o.gearPct = full > 0 ? Math.round((1 - bare / full) * 1000) / 10 : 0;
+    const c = R.calc(P, W, t), r4 = (v) => Math.round((v || 0) * 10000) / 10000;   // 전리품 · 등급 상승 · 각종 배율 (물약 · 날씨 포함 그 순간 값)
+    GROWTH_CALC.forEach((k) => { o['c_' + k] = k === 'manaH' ? Math.round(c.mana * 3600) : k === 'manaCapH' ? Math.round(c.manaCap / Math.max(1e-9, c.mana) / 360) / 10 : r4(c[k]); });
   } catch (e) { }
   const bw = R.badgeWorn(P); if (bw) { o.bdgGem = bw.gem; o.bdgLv = bw.lv; o.bdgQ = Math.round((bw.q || 1) * 1000) / 1000; }
   o.subjSum = Object.keys(P.subj || {}).reduce((a, k) => a + ((P.subj[k] || {}).lv || 0), 0);
@@ -2856,6 +2866,9 @@ function growthSnap(force) {
       const st = P.st || {}, o = { d: Math.floor((real - r.created) / 86400), h: Math.floor((real - r.created) / 3600), house: r.house, cls: P.cls || '', lvl: P.lvl || r.lvl, power: Math.round(r.power), grade: P.grade || r.grade, stage: st.maxStageAll || 0,
         ctM: st.twM || 0, ctK: st.twK || 0, cup: Math.round((P.wk && P.wk.cup) || 0), act: real - r.last_seen < 86400 ? 1 : 0 };
       GROWTH_ST.forEach((k) => { o[k] = Math.round(st[k] || 0); });
+      for (const k in st) if (typeof st[k] === 'number' && !(k in o)) o['st_' + k] = Math.round(st[k]);   // 그 밖의 누적 기록 전부
+      const rs0 = P.res || {}; GROWTH_RES.forEach((k) => { o['res_' + k] = Math.floor(rs0[k] || 0); });
+      o.rsSum = Object.values(P.rs || {}).reduce((a, v) => a + (+v || 0), 0); o.hatched = (P.fam && P.fam.hatched) || 0; o.famN = Object.keys((P.fam && P.fam.own) || {}).length;
       Object.assign(o, growthGear(P, nowSec()));
       dbx.q.growthPut.run(day, r.id, JSON.stringify(o)); n++;
     });
