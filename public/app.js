@@ -2401,7 +2401,7 @@
     knight: { balance: '물리 공격력과 생존을 함께 올리는 체력을 중심으로, 민첩 · 의지를 보탭니다.', attack: '체력 · 민첩 · 행운으로 평타 화력과 치명타를 끌어올립니다.', guard: '체력과 의지를 높여 선봉에서 오래 버팁니다. 함께 원정의 선봉에 적합합니다.', scholar: '의지로 마나 재생을, 지력으로 수업 효율을 올려 성장 속도에 집중합니다.' }
   };
   // 능력치 효과: 지금 수치(나눠 보는 중이면 그만큼 더해서)로 얻는 합계
-  function sdesc(k, v) { return (R.STAT_FX[k] || []).map(function (x) { return x[0] + ' +' + R.fmtPct(typeof x[1] === 'function' ? x[1](v) : x[1] * v, 1); }).join(', '); }
+  function sdesc(k, v) { return (R.STAT_FX[k] || []).map(function (x) { return x[0] + ' +' + R.fmtPct(R.statFx(x[1], v), 1); }).join(', '); }
   // 능력치 출처: 기본(시작 5 + 레벨) · 분배(직접 찍은 포인트) · 과목 · 장비
   function statSplit(c, k) {
     var al = S.P.alloc[k] || 0, sj = (c.statSubj && c.statSubj[k]) || 0, gr = c.statGear[k] || 0, pl = function (v) { return v ? '<span class="good">+' + fmt(v) + '</span>' : '+0'; };
@@ -5792,7 +5792,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102303;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102304;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

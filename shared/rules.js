@@ -465,36 +465,36 @@
     return [
       { g: '전투', rows: [
         row('초당 피해', R.fmt(Math.round(c.totalDps))),
-        row('물리 공격력', R.fmt(Math.round(c.patk)), add(add(from('atkPct').concat(from('physPct')), sn.vit + ' ' + Math.round(st.vit), st.vit * 0.01), '', 0)),
+        row('물리 공격력', R.fmt(Math.round(c.patk)), add(add(from('atkPct').concat(from('physPct')), sn.vit + ' ' + Math.round(st.vit), R.statFx(0.01, st.vit)), '', 0)),
         row('기술 위력', '×' + c.skill.toFixed(2), from('skillPct'), c.skill === 1),
-        row('주문 공격력', R.fmt(Math.round(c.matk)), add(from('atkPct').concat(from('matkPct')), sn.int + ' ' + Math.round(st.int), st.int * 0.01)),
+        row('주문 공격력', R.fmt(Math.round(c.matk)), add(from('atkPct').concat(from('matkPct')), sn.int + ' ' + Math.round(st.int), R.statFx(0.01, st.int))),
         row('주문 위력', '×' + c.spell.toFixed(2), from('spellPct'), c.spell === 1),
-        row('공격 속도', c.aps.toFixed(2) + '/초', add(from('aps'), sn.agi + ' ' + Math.round(st.agi), st.agi * 0.01)),
-        row('치명타 확률', R.fmtPct(c.critC, 1), add([['기본', '5%', 0]].concat(from('critC')), sn.agi + ' ' + Math.round(st.agi), st.agi * 0.0015)),
-        row('치명타 피해', '×' + c.critD.toFixed(2), add([['기본', '×1.5', 0]].concat(from('critD')), sn.luk + ' ' + Math.round(st.luk), st.luk * 0.006)),
-        row('생명력', R.fmt(Math.round(c.hp)), add(add(from('hpPct'), sn.vit + ' ' + Math.round(st.vit), st.vit * 0.008), sn.wil + ' ' + Math.round(st.wil), st.wil * 0.004)),
-        row('방어력', R.fmt(Math.round(c.def)), add(from('defPct'), sn.vit + ' ' + Math.round(st.vit), st.vit * 0.006)),
+        row('공격 속도', c.aps.toFixed(2) + '/초', add(from('aps'), sn.agi + ' ' + Math.round(st.agi), R.statFx(0.005, st.agi))),
+        row('치명타 확률', R.fmtPct(c.critC, 1), add([['기본', '5%', 0]].concat(from('critC')), sn.agi + ' ' + Math.round(st.agi), R.statFx(0.0008, st.agi))),
+        row('치명타 피해', '×' + c.critD.toFixed(2), add([['기본', '×1.5', 0]].concat(from('critD')), sn.luk + ' ' + Math.round(st.luk), R.statFx(0.008, st.luk))),
+        row('생명력', R.fmt(Math.round(c.hp)), add(add(from('hpPct'), sn.vit + ' ' + Math.round(st.vit), R.statFx(0.008, st.vit)), sn.wil + ' ' + Math.round(st.wil), R.statFx(0.004, st.wil))),
+        row('방어력', R.fmt(Math.round(c.def)), add(from('defPct'), sn.vit + ' ' + Math.round(st.vit), R.statFx(0.006, st.vit))),
         row('생명력 흡수', R.fmtPct(c.leech, 1) + (c.leech >= 0.1 ? ' (최대)' : ''), from('leech'), !c.leech),
         row('보스 피해', '×' + c.bossDmg.toFixed(2), from('bossDmg'), c.bossDmg === 1),
-        row('재사용 대기 감소', R.fmtPct(c.cdr, 1) + (c.cdr >= R.CDR_MAX ? ' (최대)' : ''), add(from('cdr'), sn.agi + ' ' + Math.round(st.agi), R.agiCdr(st.agi)), !c.cdr),
-        row('치유 · 보호막 위력', '×' + c.care.toFixed(2), add(from('carePct'), sn.wil + ' ' + Math.round(st.wil), st.wil * 0.005), c.care === 1),
+        row('재사용 대기 감소', R.fmtPct(c.cdr, 1) + (c.cdr >= R.CDR_MAX ? ' (최대)' : ''), add(from('cdr'), sn.agi + ' ' + Math.round(st.agi), R.statFx(0.0005, st.agi)), !c.cdr),
+        row('치유 · 보호막 위력', '×' + c.care.toFixed(2), add(from('carePct'), sn.wil + ' ' + Math.round(st.wil), R.statFx(0.005, st.wil)), c.care === 1),
         row('지원 시 파티 피해 감소', '−' + R.fmtPct(R.EXP_POS.sup.red + c.supRed, 1), [['지원 포지션', '−' + R.fmtPct(R.EXP_POS.sup.red, 1), 0]].concat(from('supRed').map(function (x) { return [x[0], '−' + x[1].replace(/^[+−]/, ''), x[2]]; })))
       ] },
       { g: '성장', rows: [
         row('경험치', pc(c.xp - 1), from('xpPct'), c.xp === 1),
         row('지식', pc(c.know - 1), from('knowPct'), c.know === 1),
         row(R.CUR + ' 획득', pc(c.gold - 1), from('goldPct'), c.gold === 1),
-        row('수업 효율', '×' + c.lecSpd.toFixed(2), add(add(from('lectureSpd'), sn.int + ' ' + Math.round(st.int) + ' (지력 수업)', st.int * 0.0008), sn.vit + ' ' + Math.round(st.vit) + ' (체력 수업)', st.vit * 0.0008)),
+        row('수업 효율', '×' + c.lecSpd.toFixed(2), add(add(from('lectureSpd'), sn.int + ' ' + Math.round(st.int) + ' (지력 수업)', R.statFx(0.0008, st.int)), sn.vit + ' ' + Math.round(st.vit) + ' (체력 수업)', R.statFx(0.0008, st.vit))),
         row('꿈길 보상', pc(src.offlineEff ? (src.offlineEff.reduce(function (a, x) { return a + x[1]; }, 0)) : 0), from('offlineEff'), !src.offlineEff),
         row('시험 가산점', '+' + (c.examBonus || 0) + '점', (src.examBonus || []).map(function (x) { return [x[0], '+' + Math.round(x[1] * 10) / 10 + '점', x[2]]; }), !c.examBonus)
       ] },
       { g: '전리품', rows: [
-        row('전리품 확률', pc(c.drop - 1), add(from('dropPct'), sn.luk + ' ' + Math.round(st.luk), st.luk * 0.001), c.drop === 1),
-        row('장비 등급 상승', pc(c.rarity), add(from('rarity'), sn.luk + ' ' + Math.round(st.luk), st.luk * 0.0008), !c.rarity),
+        row('전리품 확률', pc(c.drop - 1), add(from('dropPct'), sn.luk + ' ' + Math.round(st.luk), R.statFx(0.001, st.luk)), c.drop === 1),
+        row('장비 등급 상승', pc(c.rarity), add(from('rarity'), sn.luk + ' ' + Math.round(st.luk), R.statFx(0.0008, st.luk)), !c.rarity),
         row('처치 시 마나', c.killMana ? '+' + Math.round(c.killMana * 10) / 10 + '초분' : '없음', (src.killMana || []).map(function (x) { return [x[0], '+' + Math.round(x[1] * 10) / 10 + '초분', x[2]]; }), !c.killMana)
       ] },
       { g: '생활', rows: [
-        row('마나 재생', R.fmt(Math.round(c.mana * 3600)) + '/시간', add(from('manaPct'), sn.wil + ' ' + Math.round(st.wil), st.wil * 0.04)),
+        row('마나 재생', R.fmt(Math.round(c.mana * 3600)) + '/시간', add(from('manaPct'), sn.wil + ' ' + Math.round(st.wil), R.statFx(0.04, st.wil))),
         row('마나 저장 한도', Math.round(c.manaCap / c.mana / 360) / 10 + '시간분', [['기본', K.MANA_CAP_H + '시간분', 0]].concat((src.manaCap || []).map(function (x) { return [x[0], '+' + Math.round(x[1] / 360) / 10 + '시간분', x[2]]; }))),
         row('양조 효율', '×' + c.brewSpd.toFixed(2), add(from('brewSpd'), SUBJ.alch.name + ' Lv ' + sj('alch'), sj('alch') * 0.01), c.brewSpd === 1),
         row('부화 효율', '×' + c.hatchSpd.toFixed(2), add(from('hatchSpd'), SUBJ.beast.name + ' Lv ' + sj('beast'), sj('beast') * 0.01), c.hatchSpd === 1),
@@ -586,12 +586,14 @@
 
   /* ───────── 능력치 ───────── */
   // 능력치 1점당 효과 (calc의 식과 같은 값. 능력치 화면에 합계로 보여 준다)
-  // 민첩의 재사용 대기 감소: 찍을수록 덜 오른다 (AGI_CDR_MAX × 민첩 ÷ (민첩 + AGI_CDR_K)). 장비 각인과 합쳐 CDR_MAX까지
-  R.AGI_CDR_MAX = 0.25; R.AGI_CDR_K = 150; R.CDR_MAX = 0.6;
-  R.agiCdr = function (a) { a = Math.max(0, a || 0); return R.AGI_CDR_MAX * a / (a + R.AGI_CDR_K); };
-  // 값이 함수면 능력치 합계를 넣어 효과를 얻는다 (비례하지 않는 효과)
-  R.STAT_FX = { int: [['주문 공격력', 0.01], ['수업 효율(지력 수업)', 0.0008]], wil: [['마나 재생', 0.04], ['치유 · 보호막 위력', 0.005], ['생명력', 0.004]], agi: [['공격 속도', 0.01], ['치명타 확률', 0.0015], ['재사용 대기 감소', R.agiCdr]],
-    vit: [['물리 공격력', 0.01], ['생명력', 0.008], ['방어력', 0.006], ['수업 효율(체력 수업)', 0.0008]], luk: [['치명타 피해', 0.006], ['전리품 확률', 0.001], ['장비 등급 상승', 0.0008]] };
+  /* 능력치 효과는 모두 같은 소프트캡: 효과 = 1점당 값 × (K + AT) × 점수 ÷ (점수 + K).
+     점수 AT(200)에서 「1점당 값 × 점수」와 같고, 그보다 낮으면 조금 크고 높으면 찍을수록 덜 오른다 (최대 = 1점당 값 × (K + AT)) */
+  R.SOFT_K = 800; R.SOFT_AT = 200;
+  R.statFx = function (p, v) { v = Math.max(0, v || 0); return p * (R.SOFT_K + R.SOFT_AT) * v / (v + R.SOFT_K); };
+  R.statFxMax = function (p) { return p * (R.SOFT_K + R.SOFT_AT); };
+  R.CDR_MAX = 0.6;   // 재사용 대기 감소 최대 (민첩 + 장비 각인)
+  R.STAT_FX = { int: [['주문 공격력', 0.01], ['수업 효율(지력 수업)', 0.0008]], wil: [['마나 재생', 0.04], ['치유 · 보호막 위력', 0.005], ['생명력', 0.004]], agi: [['공격 속도', 0.005], ['치명타 확률', 0.0008], ['재사용 대기 감소', 0.0005]],
+    vit: [['물리 공격력', 0.01], ['생명력', 0.008], ['방어력', 0.006], ['수업 효율(체력 수업)', 0.0008]], luk: [['치명타 피해', 0.008], ['전리품 확률', 0.001], ['장비 등급 상승', 0.0008]] };
   function calc(P, W, t0, t1) {
     if (t0 == null) t0 = P.at; if (t1 == null) t1 = t0;
     var b = bonuses(P, W, t0, t1), st = {};
@@ -606,34 +608,34 @@
     var c = { stat: st, statGear: gst, statSubj: sst, b: b };
     // 물리 공격력은 체력, 주문 공격력은 지력을 따른다. 평타는 기사는 물리(검), 마법사는 주문(마력 화살)
     var atk0 = (5 + gear.atk) * (1 + (b.atkPct || 0));
-    c.patk = atk0 * (1 + st.vit * 0.01) * (1 + (b.physPct || 0)); c.matk = atk0 * (1 + st.int * 0.01) * (1 + (b.matkPct || 0));
+    c.patk = atk0 * (1 + R.statFx(0.01, st.vit)) * (1 + (b.physPct || 0)); c.matk = atk0 * (1 + R.statFx(0.01, st.int)) * (1 + (b.matkPct || 0));
     c.atk = P.cls === 'knight' ? c.patk : c.matk;
-    c.hp = (60 + gear.hp) * (1 + st.vit * 0.008 + st.wil * 0.004) * (1 + (b.hpPct || 0));
-    c.def = (2 + gear.def) * (1 + st.vit * 0.006) * (1 + (b.defPct || 0));
-    c.aps = Math.min(5, 0.8 * (1 + st.agi * 0.01) * (1 + (b.aps || 0)));
-    c.critC = Math.min(0.8, 0.05 + st.agi * 0.0015 + (b.critC || 0));
-    c.critD = 1.5 + (b.critD || 0) + st.luk * 0.006;
+    c.hp = (60 + gear.hp) * (1 + R.statFx(0.008, st.vit) + R.statFx(0.004, st.wil)) * (1 + (b.hpPct || 0));
+    c.def = (2 + gear.def) * (1 + R.statFx(0.006, st.vit)) * (1 + (b.defPct || 0));
+    c.aps = Math.min(5, 0.8 * (1 + R.statFx(0.005, st.agi)) * (1 + (b.aps || 0)));
+    c.critC = Math.min(0.8, 0.05 + R.statFx(0.0008, st.agi) + (b.critC || 0));
+    c.critD = 1.5 + (b.critD || 0) + R.statFx(0.008, st.luk);
     c.spell = 1 + (b.spellPct || 0);   // 주문 위력 (주문구문학 레벨 효과는 bonuses에서)
     c.skill = 1 + (b.skillPct || 0);   // 기술 위력: 물리 주문(기사 주문)에만 곱한다 (전술학 레벨 효과는 bonuses에서)
     c.mainMul = P.cls === 'knight' ? c.skill : c.spell;   // 공용 주문(main): 기사는 기술 위력, 마법사는 주문 위력
-    c.care = 1 + (b.carePct || 0) + st.wil * 0.005; c.supRed = b.supRed || 0; c.supAtk = b.supAtk || 0;   // 치유 · 보호막 위력, 지원 포지션일 때 파티가 받는 피해 감소
-    c.mana = K.MANA_BASE * (1 + st.wil * 0.04) * (1 + (b.manaPct || 0));
+    c.care = 1 + (b.carePct || 0) + R.statFx(0.005, st.wil); c.supRed = b.supRed || 0; c.supAtk = b.supAtk || 0;   // 치유 · 보호막 위력, 지원 포지션일 때 파티가 받는 피해 감소
+    c.mana = K.MANA_BASE * (1 + R.statFx(0.04, st.wil)) * (1 + (b.manaPct || 0));
     c.manaCap = c.mana * (K.MANA_CAP_H * 3600 + (b.manaCap || 0));
     c.lecSpd0 = 1 + (b.lectureSpd || 0);   // 수업 효율: 과목마다 지력 또는 체력이 더해진다 (R.lecSpdOf)
-    c.lecSpd = c.lecSpd0 + (P.cls === 'knight' ? st.vit : st.int) * 0.0008;   // 화면에 보이는 값 = 그 학과 전공 수업의 효율
+    c.lecSpd = c.lecSpd0 + R.statFx(0.0008, P.cls === 'knight' ? st.vit : st.int);   // 화면에 보이는 값 = 그 학과 전공 수업의 효율
     c.know = 1 + (b.knowPct || 0);
     c.gold = 1 + (b.goldPct || 0);
     c.xp = 1 + (b.xpPct || 0);
-    c.drop = 1 + (b.dropPct || 0) + st.luk * 0.001;
-    c.rarity = (b.rarity || 0) + st.luk * 0.0008;
+    c.drop = 1 + (b.dropPct || 0) + R.statFx(0.001, st.luk);
+    c.rarity = (b.rarity || 0) + R.statFx(0.0008, st.luk);
     c.leech = Math.min(0.1, b.leech || 0);
     c.bag = K.BAG_BASE + (b.bag || 0) + P.bagExtra;
     // 몸은 하나: 수업 · 원정 · 연구는 각각 한 자리만 (예전의 슬롯 늘리기 연구는 없어졌다)
     c.lecSlots = 1; c.expSlots = 1; c.resSlots = 1;
     c.brewSpd = 1 + (b.brewSpd || 0) + P.subj.alch.lv * 0.01;
     c.hatchSpd = 1 + (b.hatchSpd || 0) + P.subj.beast.lv * 0.01;
-    c.regen = 0.008 + st.vit * 0.00005;
-    c.bossDmg = 1 + (b.bossDmg || 0); c.cdr = Math.min(R.CDR_MAX, (b.cdr || 0) + R.agiCdr(st.agi)); c.killMana = b.killMana || 0;
+    c.regen = 0.008 + R.statFx(0.00005, st.vit);
+    c.bossDmg = 1 + (b.bossDmg || 0); c.cdr = Math.min(R.CDR_MAX, (b.cdr || 0) + R.statFx(0.0005, st.agi)); c.killMana = b.killMana || 0;
     c.examBonus = b.examBonus || 0;
     var critMul = 1 + c.critC * (c.critD - 1);
     c.dps = c.atk * c.aps * critMul;
@@ -927,7 +929,7 @@
   };
   // 과목마다 수업 효율: 학과 공통(물약 · 날씨 등) + 그 과목이 따르는 능력치(지력 · 체력 · 주 능력치) × 0.0008
   R.lecStat = function (P, sid) { var k = (SUBJ[sid] || {}).lst || 'int'; return k === 'main' ? (P && P.cls === 'knight' ? 'vit' : 'int') : k; };
-  R.lecSpdOf = function (P, c, sid) { return (c.lecSpd0 || 1) + (c.stat[R.lecStat(P, sid)] || 0) * 0.0008; };
+  R.lecSpdOf = function (P, c, sid) { return (c.lecSpd0 || 1) + R.statFx(0.0008, c.stat[R.lecStat(P, sid)]); };
   // 학년별 수업 경험치 배율 (1학년부터 · 8 = 마스터 과정). 1~3학년은 느리게, 6학년 이후는 빠르게 (2차 베타)
   R.LEC_GRADE = [0.6, 0.65, 0.8, 1.3, 1.7, 2.4, 2.8, 2.8];
   R.lecGradeMul = function (g) { return R.LEC_GRADE[clamp(g | 0, 1, R.LEC_GRADE.length) - 1]; };
