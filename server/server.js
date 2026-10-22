@@ -1888,7 +1888,7 @@ function gView(me, id, full) {
   const mine = inG ? members.find((m) => m.id === me) : null, day = R.dayKST(nowSec());
   const o = { id, name: g.name, intro: sec.dec(g.intro), notice: sec.dec(g.notice), color: g.color, icon: g.icon || '', mode: g.mode, created: g.created, n: members.length, max: R.guildCap(lv), myRole: role,
     lv, xp: g.xp || 0, need: R.guildXpNeed(lv), maxLv: R.GUILD_MAX_LV, bonus: R.guildBonus(lv), ranks };
-  if (full || role) o.members = members.map((m) => ({ id: m.id, role: m.role, rank: m.rank || '', rankName: R.guildRankName(ranks, m.role, m.rank), contrib: m.contrib || 0, name: m.name, house: m.house, grade: m.grade, lvl: m.lvl, av: m.avatar_v, title: m.title, online: m.id === me || isOnline(m.id), seen: m.last_seen }));
+  if (full || role) o.members = members.map((m) => ({ id: m.id, role: m.role, rank: m.rank || '', rankName: R.guildRankName(ranks, m.role, m.rank), contrib: m.contrib || 0, name: m.name, house: m.house, grade: m.grade, lvl: m.lvl, power: Math.floor(m.power || 0), joined: m.joined || 0, av: m.avatar_v, title: m.title, online: m.id === me || isOnline(m.id), seen: m.last_seen }));
   if (mine) {
     const P = store.get(me);
     o.myRank = mine.rank || ''; o.myRankName = R.guildRankName(ranks, role, mine.rank);

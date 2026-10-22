@@ -550,7 +550,7 @@ function open(dir) {
     gOwner: db.prepare(`UPDATE guilds SET owner = ? WHERE id = ?`),
     gDelete: db.prepare(`DELETE FROM guilds WHERE id = ?`),
     gList: db.prepare(`SELECT g.id, g.name, g.intro, g.color, g.icon, g.mode, g.created, g.lv, (SELECT COUNT(*) FROM guild_members m WHERE m.guild = g.id) AS n, p.name AS owner_name FROM guilds g LEFT JOIN players p ON p.id = g.owner ORDER BY n DESC, g.created ASC LIMIT 100`),
-    gMembers: db.prepare(`SELECT m.pid AS id, m.role, m.rank, m.contrib, m.cday, m.dday, m.dpts, m.joined, p.name, p.house, p.grade, p.lvl, p.avatar_v, p.last_seen, p.title FROM guild_members m JOIN players p ON p.id = m.pid WHERE m.guild = ? ORDER BY CASE m.role WHEN 'owner' THEN 0 WHEN 'officer' THEN 1 ELSE 2 END, m.joined`),
+    gMembers: db.prepare(`SELECT m.pid AS id, m.role, m.rank, m.contrib, m.cday, m.dday, m.dpts, m.joined, p.name, p.house, p.grade, p.lvl, p.power, p.avatar_v, p.last_seen, p.title FROM guild_members m JOIN players p ON p.id = m.pid WHERE m.guild = ? ORDER BY CASE m.role WHEN 'owner' THEN 0 WHEN 'officer' THEN 1 ELSE 2 END, m.joined`),
     gRank: db.prepare(`SELECT g.id, g.name, g.intro, g.created, g.color, g.icon, g.mode, g.lv, g.xp, COUNT(m.pid) AS n, COALESCE(SUM(p.power), 0) AS pw, o.name AS owner_name FROM guilds g LEFT JOIN guild_members m ON m.guild = g.id LEFT JOIN players p ON p.id = m.pid LEFT JOIN players o ON o.id = g.owner GROUP BY g.id`),
     gAllMembers: db.prepare(`SELECT m.pid, m.guild, m.role, g.lv FROM guild_members m JOIN guilds g ON g.id = m.guild`),
     gMember: db.prepare(`SELECT * FROM guild_members WHERE pid = ?`),
