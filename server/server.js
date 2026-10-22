@@ -65,6 +65,14 @@ const store = Store.create(dbx, log);
 const world = World.create({ kvGet: dbx.kvGet, kvSet: dbx.kvSet, q: dbx.q, flushAll: () => store.flushAll() }, cfg, log);
 store.setWorld(world);
 world.tick(nowSec());
+// 전투력 식이 바뀌면(R.POWER_V) 저장된 전투력 · 월드 보스 피해 어림값을 한 번 다시 계산한다 (접속하지 않은 학생도 순위가 같은 기준이 되도록)
+if (dbx.kvGet('power_v', 1) !== R.POWER_V) {
+  try {
+    let n = 0; const up = dbx.db.prepare('UPDATE players SET power = ?, wb_dps = ? WHERE id = ?');
+    dbx.tx(() => { dbx.db.prepare('SELECT id, state FROM players').all().forEach((r) => { try { const P = JSON.parse(r.state); R.fixState(P); const s = R.summary(P, world.W, P.at); up.run(s.power, s.wbDps, r.id); n++; } catch (e) { } }); });
+    dbx.kvSet('power_v', R.POWER_V); log('전투력을 새 기준으로 다시 계산했습니다: ' + n + '명');
+  } catch (e) { log('전투력 재계산 실패', e); }
+}
 const partyOf = new Map();   // 학생 → 파티 id
 const guildOf = new Map();   // 학생 → 동아리 id
 // 운영자: players.role = 'admin' (DB에서 직접 바꾸거나 /api/admin/ops) 또는 환경 변수 ADMIN_NAMES=이름1,이름2
