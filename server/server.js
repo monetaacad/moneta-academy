@@ -1179,7 +1179,7 @@ routes['GET /api/market'] = (req, res) => {
   if (g('wear') === '1') { const P = store.get(me); f.wear = Math.max(1, (P && P.lvl) || 1); }   // 레벨은 서버가 아는 값으로
   if (f.sort === 'pow') { if (limited('mkpow:' + me, 0.5, 4)) return fail(req, res, 429, '잠시 후 다시 시도'); f.powP = loadPlayer(me, nowSec()); }   // 전투력 상승순은 계산이 많아 조금 더 아껴 쓴다
   send(req, res, 200, { list: mkSearch(f, now).map((r) => mkOut(r, me)), mine: dbx.q.mkMine.all(me, Math.floor(now) - 3 * 86400).map((r) => mkOut(Object.assign({ seller_name: '' }, r, { seller: me }), me)), myBids: dbx.q.mkMyBids.all(me).map((r) => mkOut(r, me)),
-    fee: MK.FEE, days: MK.DAYS, maxOpen: MK.MAX_OPEN, grade: MK.GRADE, auc: { max: MK_AUC.MAX, hours: MK_AUC.HOURS, up: MK_AUC.MIN_UP, buyoutX: MK_AUC.BUYOUT_X } });
+    openN: Number(dbx.q.mkMineOpen.get(me).n), fee: MK.FEE, days: MK.DAYS, maxOpen: MK.MAX_OPEN, grade: MK.GRADE, auc: { max: MK_AUC.MAX, hours: MK_AUC.HOURS, up: MK_AUC.MIN_UP, buyoutX: MK_AUC.BUYOUT_X } });
 };
 // 시세: 최근 30일 팔린 기록의 평균과 최근 5건. 장비는 같은 부위·등급·레벨 ±5, 재료는 개당 가격.
 const mkPriceCache = new Map();
@@ -1232,7 +1232,7 @@ routes['POST /api/market'] = async (req, res) => {
   const no = mkAllowed(P, meta, op === 'list' || op === 'bid'); if (no) return fail(req, res, 403, no);
   const real = Date.now() / 1000;
   if (op === 'list') {
-    if (Number(dbx.q.mkMineOpen.get(me).n) >= MK.MAX_OPEN) return fail(req, res, 400, '한 번에 ' + MK.MAX_OPEN + '개까지 올릴 수 있습니다');
+    { const on = Number(dbx.q.mkMineOpen.get(me).n); if (on >= MK.MAX_OPEN) return fail(req, res, 400, '한 번에 ' + MK.MAX_OPEN + '개까지 올릴 수 있습니다 (지금 판매 · 경매 중 ' + on + '개)'); }
     const price = Math.floor(Number(b.price)); if (!isFinite(price) || price < 1 || price > MK.MAX_PRICE) return fail(req, res, 400, '가격 확인 필요');
     // 경매: 장비 · 휘장만. price = 즉시 구매가, start = 시작가(상점 판매가 이상), 즉시 구매가는 시작가의 1.2배 이상
     const auc = !!b.auc, start = Math.floor(Number(b.start)), hours = Number(b.hours);
