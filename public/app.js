@@ -18,6 +18,7 @@
   function now() { return S.base == null ? Date.now() / 1000 : S.base + (Date.now() / 1000 - S.ref) * (S.scale || 1); }
   function setClock(t, scale) { if (scale) S.scale = scale; S.base = t; S.ref = Date.now() / 1000; }
   function wctx() { return { epoch: S.W ? S.W.epoch : now(), hpts: S.W && S.W.hpts, hfull: S.W && S.W.hfull }; }   // 기숙사 성장도 서버와 같게 계산
+  function dwc() { return { wbAlive: !(S.W && S.W.boss && S.W.boss.killedAt) }; }   // 일일 목표가 지금 할 수 있는지 (월드 보스 토벌 여부)
   function C(t0, t1) { return R.calc(S.P, wctx(), t0 || now(), t1); }
   function rcol(r) { return D.RARITY[r].color; }
   function pct(v) { return R.fmtPct(v, v < 0.1 ? 1 : 0); }
@@ -1532,8 +1533,9 @@
     var dq = (P.daily.login ? '<div class="row dlogin" style="margin-bottom:10px"><span class="small">오늘의 출석 도장을 받을 수 있습니다. <span class="rwd">별조각 ' + lrw.shard + ' · 마석 ' + lrw.stone + '</span></span><span class="spacer"></span><button class="btn primary sm" data-act="do" data-a="login">출석 보상 받기</button></div>' : '') +
       '<div class="stack hgroup" style="gap:10px">' + P.daily.q.map(function (q, i) {
         var p = R.dailyProg(P, q);
-        return '<div class="quest"><div><div class="small">' + q.name + ' <span class="num muted">' + Math.max(0, p) + ' / ' + q.goal + '</span>' + (q.done ? '' : ' ' + rwTag) + '</div><div class="bar brass" style="margin-top:4px"><b style="width:' + Math.max(0, p / q.goal * 100) + '%"></b></div></div>' +
-          (q.done ? '<span class="tag ok">완료</span>' : p >= q.goal ? '<button class="btn sm primary" data-act="do" data-a="daily" data-b="' + i + '">보상</button>' : '<span class="row" style="gap:4px;flex-wrap:nowrap">' + goBtn(q.type) + '<button class="btn sm ghost" data-act="reroll" data-a="' + i + '" title="다른 목표로 바꾸기">바꾸기' + (R.rerollCost(P) ? ' <span class="cost">✦' + R.rerollCost(P) + '</span>' : '') + '</button></span>') + '</div>';
+        var blk = !q.done && p < q.goal && R.dailyBlocked(P, dwc(), q.type), rc = R.rerollCostOf(P, dwc(), q);
+        return '<div class="quest"><div><div class="small">' + q.name + ' <span class="num muted">' + Math.max(0, p) + ' / ' + q.goal + '</span>' + (q.done ? '' : ' ' + rwTag) + '</div>' + (blk ? '<div class="tiny gold">' + (q.type === 'wbAttacks' ? '이번 주 월드 보스가 토벌되어' : '도전할 보스와 결투 상대가 없어') + ' 지금은 할 수 없습니다 · 별조각 없이 바꿀 수 있습니다</div>' : '') + '<div class="bar brass" style="margin-top:4px"><b style="width:' + Math.max(0, p / q.goal * 100) + '%"></b></div></div>' +
+          (q.done ? '<span class="tag ok">완료</span>' : p >= q.goal ? '<button class="btn sm primary" data-act="do" data-a="daily" data-b="' + i + '">보상</button>' : '<span class="row" style="gap:4px;flex-wrap:nowrap">' + goBtn(q.type) + '<button class="btn sm ghost" data-act="reroll" data-a="' + i + '" title="다른 목표로 바꾸기">바꾸기' + (rc ? ' <span class="cost">✦' + rc + '</span>' : '') + '</button></span>') + '</div>';
       }).join('') + '</div><p class="tiny faint" style="margin-top:10px">출석 · 일일 목표는 매일 한국 시간(KST) 자정에 바뀝니다. 목표 바꾸기는 하루 1번 무료, 그다음부터 별조각 ' + (R.rerollCost(P) || 5) + '개' + (R.rerollCost(P) ? '' : '부터') + '.</p>';
     var qDone = P.daily.q.filter(function (q) { return q.done; }).length;
     var dailyH = fold('daily', '일일 목표', dq, true, '<span class="tag br daily-st">출석 ' + P.daily.streak + '일째</span>' + (P.daily.login || claim ? '<span class="tag ok">받을 보상</span>' : ''), '', '<b class="num">' + qDone + '/' + P.daily.q.length + '</b>' + (qDone >= P.daily.q.length ? ' 완료' : ''), 'daily');
@@ -4376,9 +4378,9 @@
       '<p class="tiny faint" style="margin-top:10px">수업·원정의 축복은 시작할 때 겹친 시간만큼 반영됩니다. 예를 들어 금요일 밤에 3시간 원정에 출정하면 토요일에 걸친 부분만 유성우 효과를 받습니다.</p>');
   };
   ACT.reroll = function (i) {
-    var cost = R.rerollCost(S.P), key = 'rr' + i;
+    var cost = R.rerollCostOf(S.P, dwc(), S.P.daily.q[+i]), key = 'rr' + i;
     if (cost && !(S.confirm[key] > Date.now())) { S.confirm[key] = Date.now() + 4000; toast('별조각 ' + cost + '개로 바꿉니다', '한 번 더 누르면 바뀝니다', 2500); return; }
-    S.confirm[key] = 0; act('dailyReroll', { i: +i }).then(function (r) { if (r) toast('일일 목표를 바꿨습니다', r.name + (r.cost ? ' · 별조각 -' + r.cost : ' · 오늘의 무료 교체'), 2200); render(); });
+    S.confirm[key] = 0; act('dailyReroll', { i: +i }).then(function (r) { if (r) toast('일일 목표를 바꿨습니다', r.name + (r.cost ? ' · 별조각 -' + r.cost : r.blocked ? ' · 할 수 없는 목표라 별조각 없이 교체' : ' · 오늘의 무료 교체'), 2200); render(); });
   };
   ACT.dailyall = function () { var P = S.P, list = P.daily.q.map(function (q, i) { return !q.done && R.dailyProg(P, q) >= q.goal ? i : -1; }).filter(function (i) { return i >= 0; }); (function next() { var i = list.shift(); if (i == null) return render(); act('daily', { i: i }).then(next); })(); };
   ACT.enh = function (u, until) { act('enhance', { u: u, until: until === 'until' }).then(function (r) { if (!r) return; Snd.play(r.success ? 'enh' : 'fail'); toast(r.success ? '강화 성공! +' + r.enh : '강화 실패', r.tries + '회 시도 · ' + MONEY(r.gold), 1800); render(); }); };
@@ -5943,7 +5945,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102323;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102324;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
