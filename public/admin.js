@@ -16,6 +16,7 @@
   function itemCell(x) { return '<span style="color:' + RC5[x.r] + '">' + esc(x.name) + '</span> <span class="tiny faint">' + esc(x.rn + ' ' + x.slot + ' Lv ' + x.ilvl) + '</span><div class="tiny faint">' + esc(x.opt || '') + '</div>'; }
   function cardHtml(c, RN) {
     if (!c) return '<p class="small" style="margin-top:8px">장비 · 능력치를 불러오지 못했습니다.</p>';
+    var NM = c.nm || {}, kn = function (k) { return NM[k] || k; };   // 효과 키 → 이름 (서버가 보낸 표)
     var f = c.fight, row = function (k, v) { return '<tr><th style="text-align:left;white-space:nowrap">' + k + '</th><td>' + v + '</td></tr>'; };
     var h = '<div class="row between" style="margin-top:10px"><b>장비 · 능력치</b><button class="btn sm ghost" data-a="plogcopy">분석용 복사</button></div>';
     h += '<p class="small">' + esc((c.cls === 'knight' ? '기사' : '마법사') + ' · Lv ' + c.lvl + ' · ' + c.grade + '학년 · 최고 ' + c.maxStage + '단계 · 전투력 ' + fx(c.power)) + '</p>';
@@ -24,11 +25,11 @@
       row('공격 속도 · 치명타', fx(f.aps) + ' · ' + Math.round(f.critC * 1000) / 10 + '% × ' + fx(f.critD)) + row('주문 위력 · 기술 위력', fx(f.spell) + ' · ' + fx(f.skill)) +
       row('초당 피해', fx(f.totalDps) + ' (평타 ' + fx(f.dps) + ' · 주문 ' + fx(f.spellDps) + ' · 사역마 ' + fx(f.famDps) + ')') +
       row('능력치', Object.keys(STN).map(function (k) { return STN[k] + ' ' + fx(c.st[k]) + (c.sg[k] ? ' (장비 ' + fx(c.sg[k]) + ')' : ''); }).join(' · ')) +
-      row('보너스', esc(Object.keys(c.bon).map(function (k) { return k + ' ' + fx(c.bon[k]); }).join(' · ') || '없음')) +
+      row('보너스', esc(Object.keys(c.bon).map(function (k) { return kn(k) + ' ' + fx(c.bon[k]); }).join(' · ') || '없음')) +
       row('과목', esc(c.subj)) + row('연구', esc(c.rs || '없음')) + row('주문', esc(c.spells || '없음')) + row('사역마', esc(c.fam || '없음')) + '</tbody></table></div>';
     h += '<div class="scroll" style="margin-top:6px"><table><thead><tr><th>칸</th><th>장비</th><th>등급</th><th>Lv</th><th>강화</th><th>품질</th><th>옵션 · 수치</th></tr></thead><tbody>' + c.eq.map(function (e) {
       return '<tr><td>' + esc(SLOTN[e.slot] || e.slot) + '</td><td>' + esc(e.name) + '</td><td>' + esc(RN[e.r] || e.r) + '</td><td>' + e.ilvl + '</td><td>+' + e.enh + '</td><td>' + fx(e.q) + '</td><td>' +
-        esc(Object.keys(e.stats).map(function (k) { return k + ' ' + fx(e.stats[k]); }).join(' · ') + (e.eng ? ' · 각인 ' + e.eng.id + ' ' + fx(e.eng.v) : '')) + '</td></tr>'; }).join('') + '</tbody></table></div>';
+        esc(Object.keys(e.stats).map(function (k) { return kn(k) + ' ' + fx(e.stats[k]); }).join(' · ') + (e.eng ? ' · 각인 ' + (NM['eng:' + e.eng.id] || e.eng.id) + ' ' + fx(e.eng.v) : '')) + '</td></tr>'; }).join('') + '</tbody></table></div>';
     return h;
   }
   // 계정 기록: 계정 상태 · 자원 · 접속 · 같은 접속지 학생 · 거래 상대 · 판매 · 신고 · 운영 조치 · 성장 추이
@@ -328,7 +329,7 @@
       var n = $('#un').value.trim(); if (!n) { $('#umsg').textContent = '학생 이름 입력 필요'; return; }
       api('POST', '/api/admin/plog', { name: n }).then(function (j) {
         if (j.error) { $('#umsg').textContent = j.error; $('#plog').innerHTML = ''; return; }
-        window.__plogJson = JSON.stringify({ name: j.name, acct: j.acct, card: j.card, high: j.high, st: j.st, auto: j.auto, dlog: j.dlog, glog: j.glog, log: j.log });
+        window.__plogJson = JSON.stringify({ name: j.name, acct: j.acct, card: j.card && Object.assign({}, j.card, { nm: undefined }), high: j.high, st: j.st, auto: j.auto, dlog: j.dlog, glog: j.glog, log: j.log });
         $('#umsg').textContent = '「' + j.name + '」 활동 기록 · 원정 완료 ' + j.st.expJobs + '회 · 지금까지 얻은 영웅 ' + j.st.epicFound + '개 · 전설 ' + j.st.legendFound + '개';
         var RN = ['일반', '고급', '희귀', '영웅', '전설'];
         var dl = '<div class="row between" style="margin-top:10px"><b>장비 처분 기록</b><span class="small faint">분류 마법 자동 처분: ' + (j.auto ? esc(j.auto.on ? j.auto.upto + ' · ' + j.auto.mode : '꺼짐') : '연구 전') + '</span></div>' +

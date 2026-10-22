@@ -492,7 +492,8 @@ var DATA = (function () {
   D.BONUS_NAMES = {
     goldPct: CUR + ' 획득', atkPct: '공격력', physPct: '물리 공격력', matkPct: '주문 공격력', hpPct: '생명력', lectureSpd: '수업 효율', knowPct: '지식 획득',
     aps: '공격 속도', dropPct: '전리품 확률', critC: '치명타 확률', critD: '치명타 피해',
-    manaPct: '마나 재생', xpPct: '경험치', offlineEff: '꿈길 보상', defPct: '방어력', spellPct: '주문 위력', skillPct: '기술 위력', leech: '생명력 흡수', rarity: '등급 상승', brewSpd: '양조 효율', manaCap: '마나 저장 한도', examBonus: '시험 가산점', bossDmg: '보스 피해', cdr: '재사용 대기 감소', killMana: '처치 시 마나(초)', hatchSpd: '부화 효율', enhBonus: '강화 성공률', dispPct: '파견 보상'
+    manaPct: '마나 재생', xpPct: '경험치', offlineEff: '꿈길 보상', defPct: '방어력', spellPct: '주문 위력', skillPct: '기술 위력', leech: '생명력 흡수', rarity: '등급 상승', brewSpd: '양조 효율', manaCap: '마나 저장 한도', examBonus: '시험 가산점', bossDmg: '보스 피해', cdr: '재사용 대기 감소', killMana: '처치 시 마나(초)', hatchSpd: '부화 효율', enhBonus: '강화 성공률', dispPct: '파견 보상',
+    bag: '가방 칸', jarCap: '반딧불 정령 병 칸', autosell: '자동 판매', lectureSlot: '수업 슬롯', researchSlot: '연구 슬롯', expSlot: '원정 슬롯'   // 연구 효과 (운영실 학생 카드의 보너스 합계에 보인다)
   };
 
   /* ───────── 서고 연구 ───────── */
