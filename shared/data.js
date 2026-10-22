@@ -107,7 +107,7 @@ var DATA = (function () {
     { id: 'i_aurora', slot: 'ink', name: '오로라', price: 12000, c: ['#7cf0c0', '#9fb8ff', '#c79bff'] },
     { id: 'i_gold', slot: 'ink', name: '금박', price: 15000, c: ['#f6dc9c', '#b98c3e', '#fff0b8'] },
     { id: 'i_star', slot: 'ink', name: '기대주의 별빛 잉크', price: 0, need: { stat: 'sGrades', n: 3 }, needText: '기말시험 S 세 번', c: ['#fff4c8', '#f0cf8a', '#ffffff', '#f0cf8a'], anim: true },   // 기말 S 세 번 전용 (예전 상점 「별빛」: 이미 산 학생은 그대로 가진다). 흐르는 잉크는 전용 잉크만
-    { id: 'i_spring', slot: 'ink', name: '일곱 별샘', price: 50000, c: ['#ff7a5a', '#f2c84b', '#8ad08a', '#7fc8ff', '#b8a8e8', '#c084fc', '#ff7a5a'] }
+    { id: 'i_spring', slot: 'ink', name: '일곱 별샘', price: 20000, c: ['#ff7a5a', '#f2c84b', '#8ad08a', '#7fc8ff', '#b8a8e8', '#c084fc', '#ff7a5a'] }
   ];
 
   // 잠자는 동안: 꿈길 (1학년부터, 한 번에 하나, 6시간 이상)
