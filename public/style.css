@@ -232,6 +232,9 @@ main { min-width: 0; container-type: inline-size; container-name: page; }
 .slotcard { display: flex; flex-direction: column; gap: 8px; }
 .subj { display: flex; flex-direction: column; gap: 8px; }
 .subj .hd { display: flex; align-items: baseline; gap: 8px; }
+.subj .hd .favbtn { margin-left: auto; order: 8; flex: none; align-self: center; width: 26px; height: 26px; min-height: 0; padding: 0; border-radius: 50%; line-height: 1; color: var(--muted); }
+.subj .hd .favbtn.on { color: var(--brass2); }
+.subj .hd .favbtn + .sylbtn { margin-left: 0; }
 .subj .hd .sylbtn { margin-left: auto; order: 9; flex: none; align-self: center; width: 26px; height: 26px; min-height: 0; padding: 0; border-radius: 50%; font-weight: 700; line-height: 1; }
 .subj .lv { font-family: var(--f-num); color: var(--brass2); font-size: 18px; }
 .subj .prof { font-size: 12.5px; color: var(--muted); }

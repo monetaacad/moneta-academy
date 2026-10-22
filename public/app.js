@@ -1570,11 +1570,16 @@
     }
     h += '</div>';
     var lecFull = true; for (var li = 0; li < c.lecSlots; li++) if (!P.lec[li]) lecFull = false;   // 빈 수업 슬롯이 없으면 과목 카드의 「수업 듣기」는 흐리게
-    h += '<div class="grid gauto">' + D.SUBJECTS.filter(function (x) { return R.subjVisible(P, x); }).map(function (S2) {
+    // 과목 목록: 기본 순서 · 수강 가능 순 · 즐겨찾기 먼저 (이 기기에 기억). 즐겨찾기는 카드의 ☆로
+    var fav = PREF.lecFav || {}, so = PREF.lecSort || 'base', subsAll = D.SUBJECTS.filter(function (x) { return R.subjVisible(P, x); });
+    var canOf = function (x) { return x.unlock <= Math.min(P.grade, 7) ? 0 : 1; }, idx = function (x) { return subsAll.indexOf(x); };
+    var subsShown = so === 'base' ? subsAll : subsAll.slice().sort(function (a, b) { return (so === 'fav' ? (fav[b.id] ? 1 : 0) - (fav[a.id] ? 1 : 0) || canOf(a) - canOf(b) : canOf(a) - canOf(b) || (fav[b.id] ? 1 : 0) - (fav[a.id] ? 1 : 0)) || idx(a) - idx(b); });
+    h += '<div class="row" style="gap:6px;margin:4px 0 8px;flex-wrap:wrap"><span class="small muted">과목 정렬</span>' + [['base', '기본 순서'], ['open', '수강 가능 순'], ['fav', '즐겨찾기 먼저']].map(function (x) { return '<button class="btn sm ghost' + (so === x[0] ? ' on' : '') + '" data-act="lecsort" data-a="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div>';
+    h += '<div class="grid gauto">' + subsShown.map(function (S2) {
       var sj = P.subj[S2.id], open = S2.unlock <= Math.min(P.grade, 7);
       var on = P.lec.some(function (x) { return x && x.s === S2.id; }), inEx = ex && P.grade < 8 && (ex.subj.indexOf(S2.id) >= 0 || (ex.opt || []).indexOf(S2.id) >= 0);
       var nextSp = D.SPELLS.filter(function (sp) { return sp.req && sp.req[0] === S2.id && sj.lv < sp.req[1]; })[0];
-      var h2 = '<div class="card subj' + (on ? ' active' : '') + (open ? '' : ' lockd') + '" data-anchor="subj-' + S2.id + '"><div class="hd"><h3>' + S2.name + '</h3><button class="btn sm ghost sylbtn" data-act="syllabus" data-a="' + S2.id + '" title="강의계획서: 레벨별 보상 · 교수 과제 · 기말시험을 미리 봅니다" aria-label="' + S2.name + ' 강의계획서">?</button>' + '<span class="lv">' + sj.lv + '</span>' + (inEx ? '<span class="tag ' + (sj.lv >= ex.req ? 'ok' : 'br') + '">시험 ' + ex.req + '</span>' : '') + '</div><div class="prof">' + S2.prof + (open && clsN(S2.id, true) ? ' · <span class="classmates">지금 ' + clsN(S2.id, true) + '명 수강 중</span>' : '') + '</div>' + (R.reviewOn(P, S2.id, now()) ? '<div class="revline"><span class="tag ok" title="복습하는 꿈에서 깬 뒤 3시간 안에 이 과목 수업을 시작하면 경험치 +' + Math.round(R.REVIEW_BONUS * 100) + '%">복습 효과 ~' + clock(P.review.until) + '</span></div>' : '');   // 복습 효과는 과목 이름 아래 줄 (제목 줄에 두면 이름이 세로로 줄었다)
+      var h2 = '<div class="card subj' + (on ? ' active' : '') + (open ? '' : ' lockd') + '" data-anchor="subj-' + S2.id + '"><div class="hd"><h3>' + S2.name + '</h3><button class="btn sm ghost favbtn' + (fav[S2.id] ? ' on' : '') + '" data-act="lecfav" data-a="' + S2.id + '" aria-pressed="' + !!fav[S2.id] + '" title="' + (fav[S2.id] ? '즐겨찾기 해제' : '즐겨찾기') + '" aria-label="' + S2.name + ' 즐겨찾기">' + (fav[S2.id] ? '★' : '☆') + '</button><button class="btn sm ghost sylbtn" data-act="syllabus" data-a="' + S2.id + '" title="강의계획서: 레벨별 보상 · 교수 과제 · 기말시험을 미리 봅니다" aria-label="' + S2.name + ' 강의계획서">?</button>' + '<span class="lv">' + sj.lv + '</span>' + (inEx ? '<span class="tag ' + (sj.lv >= ex.req ? 'ok' : 'br') + '">시험 ' + ex.req + '</span>' : '') + '</div><div class="prof">' + S2.prof + (open && clsN(S2.id, true) ? ' · <span class="classmates">지금 ' + clsN(S2.id, true) + '명 수강 중</span>' : '') + '</div>' + (R.reviewOn(P, S2.id, now()) ? '<div class="revline"><span class="tag ok" title="복습하는 꿈에서 깬 뒤 3시간 안에 이 과목 수업을 시작하면 경험치 +' + Math.round(R.REVIEW_BONUS * 100) + '%">복습 효과 ~' + clock(P.review.until) + '</span></div>' : '');   // 복습 효과는 과목 이름 아래 줄 (제목 줄에 두면 이름이 세로로 줄었다)
       if (!open) return h2 + '<p class="small muted">' + S2.unlock + '학년부터 수강할 수 있습니다.</p></div>';
       return h2 + '<div class="bar"><b style="width:' + (sj.xp / R.subjXpNeed(sj.lv) * 100).toFixed(1) + '%"></b></div><div class="row tiny faint"><span>과목 경험치 ' + fmt(sj.xp) + ' / ' + fmt(R.subjXpNeed(sj.lv)) + '</span><span class="spacer"></span><span>레벨당 ' + D.STAT_NAMES[R.subjStats(P, S2)[0]] + ' +1.2, ' + D.STAT_NAMES[R.subjStats(P, S2)[1]] + ' +0.6</span></div>' +
         '<p class="small muted">' + S2.desc + '</p><blockquote>' + S2.line + '</blockquote>' + subjMiles(S2.id) + taskBox(S2.id) +
@@ -1582,6 +1587,8 @@
     }).join('') + '</div>';
     return h;
   };
+  ACT.lecsort = function (k) { PREF.lecSort = k; savePref(); render(); };
+  ACT.lecfav = function (id) { var f = PREF.lecFav = PREF.lecFav || {}; if (f[id]) delete f[id]; else f[id] = 1; savePref(); render(); };
   // 다음 교시 예약 칸 (수업 중인 슬롯 아래)
   // 꿈길 중이면: 예약 교시 · 시간표 다음 교시는 깨어난 뒤 이어진다
   function dreamWake() { var d = S.P.dream; return d && d.end > now() ? d.end : 0; }
@@ -5787,7 +5794,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102296;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102297;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
