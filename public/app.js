@@ -286,7 +286,7 @@
   // 모바일: 하단 안내도의 실제 높이를 재서 채팅창 · 토스트 · 본문 여백이 그 위에 오게 한다 (--navh)
   function syncNavH() {
     var n = $('#nav'), tb = $('.top-row .topbtns'), root = document.documentElement;
-    if (!n || innerWidth > 900) { root.style.removeProperty('--navh'); root.style.removeProperty('--tbw'); return; }
+    if (!n || !mobNav()) { root.style.removeProperty('--navh'); root.style.removeProperty('--tbw'); return; }
     root.style.setProperty('--navh', n.offsetHeight + 'px'); if (tb) root.style.setProperty('--tbw', (tb.offsetWidth + 8) + 'px');   // 우측 상단 버튼 폭만큼 이름 칸을 비운다
   }
   var navRO = null;
@@ -499,6 +499,8 @@
     saveRead(); S.chat.unread[ch] = countUnread(ch);
   }
   function wide() { return window.innerWidth >= 1280; }
+  // 모바일 배치(하단 안내도): 좁은 화면, 또는 터치 화면이 1000px 이하일 때 (가로로 돌린 모바일 · 모바일 브라우저의 데스크톱 모드). style.css의 미디어 쿼리와 같은 조건
+  function mobNav() { return window.matchMedia ? matchMedia('(max-width: 900px), (pointer: coarse) and (max-width: 1000px)').matches : window.innerWidth <= 900; }
   // 채팅창 크기: 가장자리를 끌어서 조절, 브라우저에 기억 (넓은 화면 = 폭, 중간 화면 = 폭·높이, 휴대폰 = 높이)
   var DSZ = { w: 340, fw: 380, fh: 560, mh: 0 };
   try { var dz = JSON.parse(localStorage.getItem('arc_dock_size') || 'null'); if (dz) for (var dk2 in DSZ) if (typeof dz[dk2] === 'number') DSZ[dk2] = dz[dk2]; } catch (e) { }
@@ -514,7 +516,7 @@
     var drag = null;
     document.addEventListener('pointerdown', function (e) {
       var g = e.target.closest && e.target.closest('[data-grip]'); if (!g) return;
-      var d = $('#chatdock'), r = d.getBoundingClientRect(), mode = window.innerWidth <= 900 ? 'm' : (wide() && document.body.classList.contains('dock-open')) ? 'w' : 'f';
+      var d = $('#chatdock'), r = d.getBoundingClientRect(), mode = mobNav() ? 'm' : (wide() && document.body.classList.contains('dock-open')) ? 'w' : 'f';
       drag = { g: g.dataset.grip, mode: mode, x: e.clientX, y: e.clientY, w: r.width, h: r.height, id: e.pointerId };
       try { g.setPointerCapture(e.pointerId); } catch (er) { } document.body.classList.add('dock-resizing'); e.preventDefault();
     });
@@ -1087,7 +1089,7 @@
   // ▲ ▼: 같은 열 안에서 자리를 바꾸고, 열 끝에서는 다른 열로 넘어간다 (모바일은 한 줄이라 그냥 앞뒤)
   ACT.hbmove = function (id, d) {
     var ho = homeOrder(), i = ho.o.indexOf(id); d = +d; if (i < 0) return;
-    if (innerWidth > 900 && d > 0 && i === ho.s - 1) ho.s--; else if (innerWidth > 900 && d < 0 && i === ho.s) ho.s++;
+    if (!mobNav() && d > 0 && i === ho.s - 1) ho.s--; else if (!mobNav() && d < 0 && i === ho.s) ho.s++;
     else { var j = i + d; if (j < 0 || j >= ho.o.length) return; ho.o[i] = ho.o[j]; ho.o[j] = id; }
     PREF.homeOrder = ho; savePref(); render();
   };
@@ -4278,7 +4280,7 @@
     S.divider[k] = null; S.chat.below = 0;
     S.chat.ch = k; S.chat.stick = true; try { localStorage.setItem('arc_dockch', k); } catch (e) { }
     if (!dockOpen()) { S.chat.open = true; try { localStorage.setItem('arc_dock', '1'); } catch (e) { } document.body.classList.add('dock-open'); }
-    renderDock(); var i = $('#chatinput'); if (i && window.innerWidth > 900) i.focus();
+    renderDock(); var i = $('#chatinput'); if (i && !mobNav()) i.focus();
   };
   ACT['dock-toggle'] = function () { S.chat.open = !dockOpen(); if (S.P && API.act && S.P.opt && !!S.P.opt.dockClosed === S.chat.open) { S.P.opt.dockClosed = !S.chat.open; API.act('opt', { k: 'dockClosed', v: !S.chat.open }); } S.chat.stick = true; S.divider[S.chat.ch] = null; try { localStorage.setItem('arc_dock', S.chat.open ? '1' : '0'); } catch (e) { } renderDock(); document.body.classList.toggle('dock-open', S.chat.open); };
   // 고른 글자를 *행동*으로 감싸거나, 커서 자리에 ** 를 넣는다
