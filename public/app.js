@@ -1900,7 +1900,7 @@
       '<p class="small" style="margin-top:4px">' + (can ? (bpv.win && bpv.ttk < R.K.BOSS_TIME ? '<span class="good">승산 있음</span> — 약 ' + bpv.ttk.toFixed(1) + '초' : '<span class="bad">아직 버겁습니다</span> — 30초 안에 체력의 약 ' + Math.round(Math.min(1, R.K.BOSS_TIME / bpv.ttk) * 100) + '%') + ' · 이기면 ' + (b + 1) + '~' + (b + 9) + '단계가 열립니다' : '<span class="gold">' + R.bossLockText(P) + '</span>') + '</p></div>' +
       '<button class="btn primary" data-act="boss" data-can="boss"' + (can ? '' : ' data-why="' + esc(R.bossLockText(P)) + '"') + '><span data-l="bossbtn"></span></button></div></div>';
     // 주문
-    h += '<div class="section-t" style="margin-top:16px">장착 주문 <span class="small faint">(보스·결투·월드 보스·무한의 탑 전투에서 자동 시전)</span></div>' + spellBar(P);
+    h += '<div class="section-t" style="margin-top:16px">장착 주문 <span class="small faint">(보스·결투·월드 보스·무한의 탑 전투에서 자동 시전)</span></div>' + spellBar(P) + spellSetBar(P);
     h += '<div class="grid g2" style="margin-top:16px"><div class="card"><h3>지역</h3><div class="zonelist" style="margin-top:8px">' + D.ZONES.map(function (zz, zi) {
       var to = zz.abyss ? '∞' : D.ZONES[zi + 1].from - 1, un = P.maxStage >= zz.from;
       return '<div class="zone' + (un ? '' : ' lockz') + '"><div style="min-width:0"><div class="small">' + zz.name + '</div><div class="tiny faint">재료: ' + D.MATS[zz.mat].name + '</div></div><span class="zr">' + zz.from + '–' + to + '</span></div>';
@@ -4456,16 +4456,17 @@
   function spNames(sp) { return (sp || []).filter(Boolean).map(function (id) { return R.SPELL[id] ? R.SPELL[id].name : id; }).join(' · '); }
   function spellSetBar(P) {
     var sets = P.spellSets || [], cur = JSON.stringify(P.spells), b = '<div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap"><span class="tiny faint">주문 프리셋</span>';
-    for (var i = 0; i < R.SPSET_N; i++) { var st = sets[i], on = st && JSON.stringify(st.sp) === cur; b += '<button class="btn sm' + (on ? ' primary' : '') + '" data-act="spload" data-a="' + i + '"' + (st ? ' title="' + esc(spNames(st.sp)) + '"' : ' disabled title="비어 있음"') + '>' + (i + 1) + '</button>'; }
+    for (var i = 0; i < R.SPSET_N; i++) { var st = sets[i], on = st && JSON.stringify(st.sp) === cur; b += '<button class="btn sm' + (on ? ' primary' : '') + '" data-act="spload" data-a="' + i + '"' + (st ? ' title="' + esc(spNames(st.sp)) + '"' : ' disabled title="비어 있음"') + '>' + (st && st.name ? esc(st.name) : (i + 1)) + '</button>'; }
     return b + '<button class="btn sm ghost" data-act="spedit">편집</button></div>';
   }
   ACT.spload = function (i) { act('spellSet', { i: +i, op: 'load' }).then(function (r) { if (!r) return; toast('주문 프리셋 ' + (+i + 1), r.miss ? '배우지 못했거나 잠긴 칸의 주문 ' + r.miss + '개는 빈칸으로 두었습니다' : '불러왔습니다', 1800); render(); }); };
   ACT.spedit = function () {
     var sets = S.P.spellSets || [], h = '<p class="small muted">지금 장착한 주문 구성을 칸에 저장해 두면 번호를 눌러 한 번에 바꿔 장착합니다.</p><div class="stack" style="gap:6px;margin-top:10px">';
-    for (var i = 0; i < R.SPSET_N; i++) { var st = sets[i]; h += '<div class="row" style="gap:6px"><b class="num" style="width:1.5em">' + (i + 1) + '</b><span class="small ell" style="flex:1;min-width:0">' + (st ? esc(spNames(st.sp)) : '<span class="faint">비어 있음</span>') + '</span><button class="btn sm" data-act="spsave" data-a="' + i + '">지금 주문 저장</button>' + (st ? '<button class="btn sm ghost" data-act="spclear" data-a="' + i + '">비우기</button>' : '') + '</div>'; }
+    for (var i = 0; i < R.SPSET_N; i++) { var st = sets[i]; h += '<div class="card inset" style="padding:8px 10px"><div class="row" style="gap:6px;flex-wrap:wrap"><b class="num" style="width:1.5em">' + (i + 1) + '</b>' + (st ? '<input id="spnm' + i + '" maxlength="10" placeholder="이름 (예: 탑용)" value="' + esc(st.name || '') + '" style="width:9em"><button class="btn sm ghost" data-act="spname" data-a="' + i + '">이름 저장</button>' : '') + '<span class="spacer"></span><button class="btn sm" data-act="spsave" data-a="' + i + '">지금 주문 저장</button>' + (st ? '<button class="btn sm ghost" data-act="spclear" data-a="' + i + '">비우기</button>' : '') + '</div><div class="small ell" style="margin-top:4px">' + (st ? esc(spNames(st.sp)) : '<span class="faint">비어 있음</span>') + '</div></div>'; }
     modal(mhead('주문 프리셋', '최대 ' + R.SPSET_N + '칸') + h + '</div>');
   };
   ACT.spsave = function (i) { act('spellSet', { i: +i, op: 'save' }).then(function (r) { if (r) { toast('주문 프리셋 ' + (+i + 1), '지금 주문을 저장했습니다', 1600); ACT.spedit(); } }); };
+  ACT.spname = function (i) { var x = $('#spnm' + i); act('spellSet', { i: +i, op: 'name', name: x ? x.value : '' }).then(function (r) { if (r) { toast('주문 프리셋 ' + (+i + 1), '이름을 저장했습니다', 1400); ACT.spedit(); } }); };
   ACT.spclear = function (i) { act('spellSet', { i: +i, op: 'clear' }).then(function (r) { if (r) ACT.spedit(); }); };
   function spellBar(P) {
     var ns = R.spellSlots(P), h = '<div class="spellbar">';
@@ -5857,7 +5858,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102311;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102312;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
