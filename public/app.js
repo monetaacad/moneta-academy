@@ -5922,7 +5922,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102318;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102319;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
@@ -5937,7 +5937,7 @@
     else if (SB.force) rows.push(['warn', '<span><b>꼭 필요한 업데이트</b>가 있어 <b class="num" data-sys="force">' + Math.max(0, Math.ceil((SB.force - Date.now()) / 1000)) + '</b>초 뒤 새로고침합니다 · 쓰던 채팅 글은 그대로 남습니다</span><button class="btn sm" data-act="sys-reload">지금 새로고침</button>']);
     if (n) {
       if (n.on) rows.push(['notice', '<span><b>점검 중</b> · 운영자 계정이라 들어와 있습니다' + (n.until ? ' · ' + clock(n.until) + ' 종료 예정' : '') + '</span>']);
-      else rows.push(['notice', '<span><b>점검 안내</b> · ' + clock(n.start) + '부터' + (n.until ? ' ' + clock(n.until) + '까지' : '') + ' (<span data-sys="nleft">' + (n.start > t ? R.fmtTime(n.start - t) + ' 뒤' : '곧 시작') + '</span>)' + (n.msg ? ' · ' + esc(n.msg) : '') + '</span>']);
+      else rows.push(['notice', '<span><b>점검 안내</b> · ' + clock(n.start) + '부터' + (n.until ? ' ' + clock(n.until) + '까지' : '') + ' (<span data-sys="nleft">' + (n.start > t ? R.fmtTime(n.start - t) + ' 뒤' : '곧 시작') + '</span>)' + (n.msg ? ' · ' + linkMsg(n.msg) : '') + '</span>']);
     }
     if (SB.ver && !SB.force && !SB.stuck) rows.push(['', '<span><b>새 버전이 있습니다</b> · 새로고침하면 적용됩니다. 현재 화면으로 계속 플레이할 수 있습니다.</span><button class="btn sm" data-act="sys-reload">새로고침</button><button class="btn sm ghost" data-act="sys-later">나중에</button>']);
     var b = $('#sysbar');
@@ -5966,10 +5966,12 @@
   }
   // 연결이 끊겼는데 예고된 점검 시각이면 서버가 내려간 것으로 보고 점검 화면을 띄운다
   function downHint() { var n = SB.notice; if (n && !n.on && realNow() >= n.start - 30) enterMaint(Object.assign({}, n, { on: true })); }
+  // 점검 안내 글: http(s) 주소는 누를 수 있는 링크로 (나머지는 그대로 이스케이프)
+  function linkMsg(s) { return esc(s).replace(/https?:\/\/(?:(?!&quot;|&#39;|&lt;|&gt;)\S)+/g, function (u) { var t = u.match(/[.,)!?]+$/), tail = t ? t[0] : ''; u = u.slice(0, u.length - tail.length); return '<a href="' + u + '" target="_blank" rel="noopener noreferrer">' + u + '</a>' + tail; }); }
   function maintHtml(m) {
     var t = realNow(), until = m.until && m.until > t;
     return '<div class="mcard"><img src="' + LOGO_URL + '" width="72" height="72" alt=""><h1>아카데미 점검 중</h1>' +
-      '<p class="mmsg">' + esc(m.msg || '더 나은 아카데미를 위해 잠시 문을 닫았습니다.') + '</p>' +
+      '<p class="mmsg">' + (m.msg ? linkMsg(m.msg) : '더 나은 아카데미를 위해 잠시 문을 닫았습니다.') + '</p>' +
       '<p class="small">' + (until ? '예상 종료 <b class="gold">' + clock(m.until) + '</b> · <span data-sys="mleft">' + R.fmtTime(m.until - t) + '</span> 남음' : m.until ? '예정보다 조금 늦어지고 있습니다. 곧 끝납니다.' : '끝나는 대로 문을 열겠습니다.') + '</p>' +
       '<p class="tiny faint">점검이 끝나면 이 화면이 자동으로 새로고침됩니다. 진행 중인 수업·원정·연구는 시간 기준으로 계산되어, 다시 들어오면 그대로 반영됩니다.</p>' +
       '<p class="tiny faint" id="mpoll">' + (S.maintWait ? '서버가 다시 켜지기를 기다리는 중…' : '') + '</p><button class="btn sm ghost" data-act="maint-check">지금 확인</button></div>';
