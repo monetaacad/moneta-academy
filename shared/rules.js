@@ -1141,6 +1141,7 @@
   R.advance = function (P, W, now) {
     if (now <= P.at) return P;
     R.gwqSync(P, P.at);   // 주간 동아리 과제: 지난 주 기록을 기준으로 남겨 두고, 주가 바뀌면 새로 센다
+    R.mwqSync(P, P.at);   // 마스터 주간 과제 (마스터 과정만)
     var t0 = P.at;
     // 끝나는 일을 시간순으로 모은다
     var ev = [];
@@ -1669,6 +1670,16 @@
   R.gwqNeed = function (q) { return Math.max(1, Math.ceil(q.goal / 5)); };
   R.gwqReward = function (P) { return { shard: 4 + Math.min(P.grade, 8), gxp: 30 }; };
   R.gwqSync = function (P, now) { var w = R.weekId(now); if (!P.gwq || P.gwq.wk !== w) { var b = {}; R.GWQ.forEach(function (q) { b[q.st] = P.st[q.st] || 0; }); P.gwq = { wk: w, b: b, got: {} }; return true; } return false; };
+  /* 마스터 주간 과제: 마스터 과정(8학년) 연구생 혼자 하는 과제. 후보 8개 중 매주 3개가 돌아가며 나온다 (주가 바뀔 때의 기록 P.mwq.b 기준).
+     과제마다 별조각, 세 개를 모두 받으면 추가 별조각 + 완수한 주(P.st.mwqWeeks). 4주를 채우면 정보 카드 배경 「종탑의 새벽」(R.MWQ_DECO) */
+  R.MWQ = [{ id: 'exp', st: 'expJobs', name: '원정 마치기', unit: '번', goal: 30, go: 'explore' }, { id: 'wb', st: 'wbAttacks', name: '월드 보스 도전하기', unit: '번', goal: 12, go: 'world' },
+    { id: 'res', st: 'researchDone', name: '연구 마치기', unit: '번', goal: 4, go: 'lib' }, { id: 'lec', st: 'lecJobs', name: '수업 마치기', unit: '교시', goal: 30, go: 'lecture' },
+    { id: 'brew', st: 'brews', name: '물약 만들기', unit: '병', goal: 20, go: 'work' }, { id: 'spirit', st: 'spirits', name: '반딧불 정령 풀어 주기', unit: '마리', goal: 100, go: 'home' },
+    { id: 'dream', st: 'dreams', name: '꿈길 다녀오기', unit: '번', goal: 5, go: 'home' }, { id: 'boss', st: 'bosses', name: '보스 처치하기 (월드 보스 · 결투 포함)', unit: '번', goal: 15, go: 'explore' }];
+  R.MWQ_RW = 15; R.MWQ_ALL = 20; R.MWQ_DECO = 'b_bell'; R.MWQ_DECO_WEEKS = 4;
+  R.mwqList = function (w) { var n = R.MWQ.length, s0 = (w * 3) % n; return [0, 1, 2].map(function (k) { return R.MWQ[(s0 + k) % n]; }); };
+  R.mwqSync = function (P, now) { if (P.grade < 8) return false; var w = R.weekId(now); if (!P.mwq || P.mwq.wk !== w) { var b = {}; R.MWQ.forEach(function (q) { b[q.st] = P.st[q.st] || 0; }); P.mwq = { wk: w, b: b, got: {} }; return true; } return false; };
+  R.mwqProg = function (P, q) { return P.mwq ? Math.max(0, (P.st[q.st] || 0) - (P.mwq.b[q.st] || 0)) : 0; };
   R.gwqMine = function (P, q, w) { return P && P.gwq && P.gwq.wk === w ? Math.max(0, (P.st[q.st] || 0) - (P.gwq.b[q.st] || 0)) : 0; };
   R.guildDefRanks = function () { return { owner: '회장', officer: '부회장', base: { name: '부원', perms: {} }, list: [] }; };   // owner · officer: 회장 · 부회장 역할 이름 (회장이 바꿀 수 있다)
   R.guildCleanRanks = function (o, max) {
@@ -2302,6 +2313,7 @@
   A.decoBuy = function (P, W, now, a) {
     var id = str(a.id), x = DECO[id]; if (!x) err('없는 꾸미기입니다'); var d = decoOf(P); if (d.own[id]) err('이미 가지고 있습니다');
     if (x.house && x.house !== P.house) err(HOUSE[x.house].name + ' 학생만 살 수 있습니다');   // 기숙사 문장 테두리
+    if (x.mw) err('마스터 주간 과제를 ' + x.mw + '주 모두 완수하면 받는 꾸미기입니다');
     if (P.res.gold < x.price) err(CUR + '가 부족합니다');
     P.res.gold -= x.price; d.own[id] = 1; d.on[x.slot] = id; log(P, now, R.josa('꾸미기 「' + x.name + '」', '을', '를') + ' 샀습니다 (' + R.fmt(x.price) + ' ' + CUR + ')', 'news');
     return { ok: true, id: id };
@@ -2533,7 +2545,9 @@
     return out;
   };
   A.inboxAck = function (P, W, now, a) { var upto = Number(a.upto); if (!isFinite(upto)) upto = Infinity; P.inbox = P.inbox.filter(function (o) { return o.t > upto; }); return { ok: true }; };
-  A.storySeen = function (P, W, now, a) { P.story = Math.max(P.story, int(a.n, 0, 8)); return { ok: true }; };
+  // 읽을 수 있는 세계관 이야기 수: 학년마다 한 장(8장까지), 9장은 학기 이야기 9장(종지기의 해)을 시작하면
+  R.storyAvail = function (P) { return Math.min(P.grade, 8) + (P.grade >= 8 && P.mq && P.mq.g >= 9 ? 1 : 0); };
+  A.storySeen = function (P, W, now, a) { P.story = Math.max(P.story, Math.min(int(a.n, 0, D.STORY.length), R.storyAvail(P))); return { ok: true }; };
 
   A.dailyReroll = function (P, W, now, a) {
     var i = int(a.i, 0, 2), q = P.daily.q[i]; if (!q || q.done) err('바꿀 수 없는 의뢰입니다');
@@ -2604,7 +2618,7 @@
     if (P.mq) { var ch = D.MQ[P.mq.g - 1]; if (ch && P.mq.i >= ch.steps.length) { P.mq.i = ch.steps.length - 1; mqBase(P); } return; }   // 장의 단계 수가 줄었을 때: 그 장 마지막 단계로
     P.mq = { g: Math.max(1, Math.min(8, P.grade || 1)), i: 0, b: {} }; mqBase(P);
   };
-  var MQ_ST = { lecJobs: ['수업', '교시 마치기'], expJobs: ['원정', '번 마치기'], researchDone: ['연구', '번 마치기'], brews: ['물약', '병 만들기'], dispatches: ['사역마 파견', '번 다녀오기'], tasksDone: ['교수님 과제', '개 제출하기'] };
+  var MQ_ST = { lecJobs: ['수업', '교시 마치기'], expJobs: ['원정', '번 마치기'], researchDone: ['연구', '번 마치기'], brews: ['물약', '병 만들기'], dispatches: ['사역마 파견', '번 다녀오기'], tasksDone: ['교수님 과제', '개 제출하기'], wbAttacks: ['월드 보스', '번 도전하기'], duelWins: ['결투제 상대', '명 이기기'] };
   // 목표 하나: { text, cur, need, ok }
   R.mqGoal = function (P, q, g) {
     var b = (P.mq && P.mq.b) || {}, st = P.st || {}, run = function (arr) { return (arr || []).some(Boolean); };
@@ -2626,6 +2640,19 @@
   };
   R.mqGoals = function (P) { var s = R.mqStep(P); return s ? s.st.g.map(function (q) { return R.mqGoal(P, q, s.g); }) : []; };
   R.mqReady = function (P) { var a = R.mqGoals(P); return a.length > 0 && a.every(function (x) { return x.ok; }); };
+  A.mwqClaim = function (P, W, now, a) {
+    if (P.grade < 8) err('마스터 과정 연구생만 받을 수 있습니다');
+    R.mwqSync(P, now); var list = R.mwqList(P.mwq.wk), id = str(a.id, 10), q = list.find(function (x) { return x.id === id; });
+    if (!q) err('이번 주 과제가 아닙니다'); if (P.mwq.got[id]) err('이미 보상을 받았습니다'); if (R.mwqProg(P, q) < q.goal) err('아직 목표를 달성하지 않았습니다');
+    P.mwq.got[id] = 1; var shard = R.MWQ_RW, all = list.every(function (x) { return P.mwq.got[x.id]; }), deco = '';
+    if (all) {
+      shard += R.MWQ_ALL; P.st.mwqWeeks = (P.st.mwqWeeks || 0) + 1;
+      var d = decoOf(P); if (P.st.mwqWeeks >= R.MWQ_DECO_WEEKS && !d.own[R.MWQ_DECO]) { d.own[R.MWQ_DECO] = 1; deco = DECO[R.MWQ_DECO].name; }
+    }
+    P.res.shard += shard;
+    log(P, now, '마스터 주간 과제 「' + q.name + '」 완료 · 별조각 +' + shard + (all ? ' · 이번 주 과제 모두 완수 (' + P.st.mwqWeeks + '주째)' : '') + (deco ? ' · 정보 카드 배경 「' + deco + '」' : ''), all ? 'legend' : 'good');
+    return { name: q.name, shard: shard, all: all, weeks: P.st.mwqWeeks || 0, deco: deco };
+  };
   A.mqClaim = function (P, W, now) {
     R.mqInit(P); var s = R.mqStep(P); if (!s) err('모든 이야기를 읽었습니다');
     if (!R.mqReady(P)) err('아직 목표를 달성하지 않았습니다');
