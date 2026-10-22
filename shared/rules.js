@@ -586,7 +586,8 @@
     c.critC = Math.min(0.8, 0.05 + st.luk * 0.0015 + (b.critC || 0));
     c.critD = 1.5 + (b.critD || 0);
     c.spell = 1 + (b.spellPct || 0) + P.subj.syntax.lv * 0.02;
-    c.skill = 1 + (b.skillPct || 0);   // 기술 위력: 물리 주문(기사 주문 · 전투체술학)에만 곱한다
+    c.skill = 1 + (b.skillPct || 0);   // 기술 위력: 물리 주문(기사 주문)과 기사가 쓰는 공용 주문에 곱한다
+    c.mainMul = P.cls === 'knight' ? c.skill : c.spell;   // 공용 주문(main): 기사는 기술 위력, 마법사는 주문 위력
     c.mana = K.MANA_BASE * (1 + st.wil * 0.04) * (1 + (b.manaPct || 0));
     c.manaCap = c.mana * (K.MANA_CAP_H * 3600 + (b.manaCap || 0));
     c.lecSpd = 1 + (b.lectureSpd || 0) + st.int * 0.0008;
@@ -675,7 +676,8 @@
     for (var i = 0; i < R.spellSlots(P); i++) { var x = SPELL[P.spells[i]]; if (x && R.spellUnlocked(P, x.id) && (x.type === 'dmg' || x.type === 'stun')) sp.push([x.id, Math.round(R.spellHit(c, x) * x.mult * spellLvMult(P, x))]); }
     return { a: Math.round(c.atk), cc: Math.round(c.critC * 1000) / 1000, cd: Math.round(c.critD * 100) / 100, df: Math.round(c.def), sp: sp };
   };
-  R.spellHit = function (c, sp) { return sp.phys ? (c.patk || c.atk) * (c.skill || 1) : (c.matk || c.atk) * c.spell; };
+  // main: 주 공격력(마법사 주문 공격력 · 주문 위력, 기사 물리 공격력 · 기술 위력)으로 치는 공용 주문 (2차 베타에서 먼저 옮겨 옴)
+  R.spellHit = function (c, sp) { return sp.main ? c.atk * (c.mainMul || 1) : sp.phys ? (c.patk || c.atk) * (c.skill || 1) : (c.matk || c.atk) * c.spell; };
   // 자동 분배 프리셋 (학과마다 공격 능력치가 다르다)
   R.ALLOC_PRESETS = {
     mage: { balance: { int: 3, wil: 1.5, agi: 1, vit: 1.5, luk: 1 }, attack: { int: 4, wil: 0.5, agi: 2, vit: 1, luk: 1.5 }, guard: { int: 2, wil: 1.5, agi: 0.5, vit: 3, luk: 0.5 }, scholar: { int: 2, wil: 3, agi: 0.5, vit: 1, luk: 1 } },
