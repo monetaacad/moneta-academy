@@ -869,7 +869,7 @@
   }
   function loadMe() { if (!API.profile) return Promise.resolve(); return API.profile().then(function (p) { if (p && !p.error) { S.me = p; updateMeBadge(); var el = $('#mecard-av'); if (el && S.view === 'home') render(); } }); }
   // 알림 기록: 게시판 댓글·답글, 거래소 판매, 파티·동아리·함께 원정 초대, 친구 신청 (우편과 따로, 기록용)
-  var NOTE_ICON = { quest: '달성', grade: '진급', board: '게시판', market: '거래소', party: '파티', friend: '친구', exp: '함께 원정', guild: '동아리' };
+  var NOTE_ICON = { quest: '달성', grade: '진급', board: '게시판', market: '거래소', party: '파티', friend: '친구', rel: '관계', exp: '함께 원정', guild: '동아리' };
   function updateNoteBadge() { var b = $('#notebadge'); if (!b) return; var n = S.noteN || 0; b.hidden = !n; b.textContent = n > 9 ? '9+' : n; }
   ACT.notes = function () {
     S.notesOpen = true;
@@ -1004,6 +1004,54 @@
     var mm = d.querySelector('.peqmine'), cm = d.querySelector('.peqcmp'), show = mm.hidden;
     mm.hidden = !show; if (cm) cm.hidden = !show; d.classList.toggle('cmp', show); el.textContent = show ? '비교 닫기' : '내 장비와 비교';
   };
+  // 학생 카드 「관계」: 맺은 관계만 (모두에게 공개). 「(카드 주인)의 ○○」로 읽는다
+  function pcRels(p) {
+    if (!p.rels.length) return '<p class="small faint" style="margin-top:10px">맺은 관계가 없습니다.</p>';
+    return '<div class="stack" style="gap:6px;margin-top:10px">' + p.rels.map(function (r) {
+      return '<div class="frow"><button class="avbtn" data-act="prof" data-a="' + esc(r.id) + '">' + avatarHtml(r, 32) + '</button><div style="flex:1;min-width:0"><button class="cn" style="color:' + (R.HOUSE[r.house] ? R.HOUSE[r.house].color : 'inherit') + '" data-act="prof" data-a="' + esc(r.id) + '">' + esc(r.name) + '</button><div class="tiny faint">' + esc(p.name) + '의 ' + esc(r.theirs) + '</div></div><span class="tag br">' + esc(r.theirs) + '</span></div>';
+    }).join('') + '</div>';
+  }
+  // 관계 신청: 예시를 고르거나 직접 입력 (나 · 상대 이름표)
+  ACT.relform = function (id, name) {
+    S.relTo = { id: id, name: name };
+    modal(mhead('관계 신청', esc(name)) + '<p class="small muted">상대가 수락하면 두 학생의 정보창 「관계」 탭에 표시됩니다.</p>' +
+      '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:10px">' + D.REL_PRESETS.map(function (x, i) { return '<button class="btn sm ghost" data-act="relpre" data-a="' + i + '">' + (x[0] === x[1] ? x[0] : x[0] + ' · ' + x[1]) + '</button>'; }).join('') + '</div>' +
+      '<div class="field" style="margin-top:12px"><label for="rel-mine">나는 ' + esc(name) + ' 님의</label><input id="rel-mine" maxlength="8" placeholder="예: 선배"></div>' +
+      '<div class="field"><label for="rel-theirs">' + esc(name) + ' 님은 나의</label><input id="rel-theirs" maxlength="8" placeholder="예: 후배"></div>' +
+      '<p class="tiny faint">관계 이름은 8자까지 가능합니다. 한 학생과는 하나의 관계만 맺을 수 있습니다.</p>' +
+      '<div class="row" style="justify-content:flex-end;margin-top:12px;gap:6px"><button class="btn" data-act="prof" data-a="' + esc(id) + '">취소</button><button class="btn primary" data-act="relsend">신청 보내기</button></div><p class="small" id="rel-msg" style="color:var(--rose);min-height:1.2em"></p>');
+  };
+  ACT.relpre = function (i) { var x = D.REL_PRESETS[+i]; if (!x) return; $('#rel-mine').value = x[0]; $('#rel-theirs').value = x[1]; };
+  ACT.relsend = function () {
+    var t = S.relTo; if (!t) return; var mine = $('#rel-mine').value.trim(), theirs = $('#rel-theirs').value.trim(), msg = $('#rel-msg');
+    if (!mine || !theirs) { msg.textContent = '관계 이름 입력 필요'; return; }
+    API.relOp({ op: 'req', id: t.id, mine: mine, theirs: theirs }).then(function (j) { if (j.error) { msg.textContent = j.error; return; } toast('관계 신청을 보냈습니다', t.name + ' 님이 수락하면 표시됩니다', 2200); openProfile(t.id); });
+  };
+  var REL_DONE = { accept: '관계를 맺었습니다', decline: '관계 신청을 거절했습니다', cancel: '관계 신청을 취소했습니다', remove: '관계를 끊었습니다' };
+  ACT.relop = function (op, rid) {
+    if (op === 'remove' && !S.relSure) { S.relSure = rid; toast('한 번 더 누르면 관계를 끊습니다', '', 2000); setTimeout(function () { S.relSure = null; }, 3000); return; }
+    S.relSure = null;
+    API.relOp({ op: op, rid: +rid }).then(function (j) {
+      if (j.error) { toast('관계', j.error); return; }
+      toast(REL_DONE[op] || '처리했습니다', '', 1600);
+      if (S.meModal && S.meTab === 'rels') loadRels(); else if (S.profId && $('#pbox')) openProfile(S.profId);
+    });
+  };
+  // 내 정보 › 관계: 받은 신청 · 맺은 관계 · 보낸 신청
+  function loadRels() {
+    API.rels().then(function (j) {
+      var box = $('#rlist'); if (!box) return;
+      if (j.error) { box.innerHTML = '<p class="small bad">' + esc(j.error) + '</p>'; return; }
+      function row(r, sub, btns) { return '<div class="frow"><button class="avbtn" data-act="prof" data-a="' + esc(r.id) + '">' + avatarHtml(r, 36) + '</button><div style="flex:1;min-width:0"><button class="cn" style="color:' + (R.HOUSE[r.house] ? R.HOUSE[r.house].color : 'inherit') + '" data-act="prof" data-a="' + esc(r.id) + '">' + esc(r.name) + '</button><div class="tiny faint">' + sub + '</div></div>' + btns + '</div>'; }
+      var lab = function (r) { return '나는 ' + esc(r.mine) + ' · ' + esc(r.name) + ' 님은 ' + esc(r.theirs); };
+      var h = j.demo ? '<p class="small muted">데모에서는 관계를 맺을 수 없습니다. 서버를 열면 학생 정보창에서 신청할 수 있습니다.</p>' : '<p class="small muted">학생 정보창의 「관계 신청」으로 신청하고, 상대가 수락하면 두 학생의 정보창 「관계」 탭에 표시됩니다.</p>';
+      if (j.inc.length) h += '<div class="section-t">받은 신청 ' + j.inc.length + '</div>' + j.inc.map(function (r) { return row(r, lab(r), '<button class="btn sm primary" data-act="relop" data-a="accept" data-b="' + r.rid + '">수락</button><button class="btn sm ghost" data-act="relop" data-a="decline" data-b="' + r.rid + '">거절</button>'); }).join('');
+      h += '<div class="section-t">맺은 관계 ' + j.rels.length + ' / ' + (j.max || 30) + '</div>';
+      h += j.rels.length ? j.rels.map(function (r) { return row(r, lab(r), '<span class="tag br">' + esc(r.theirs) + '</span><button class="btn sm ghost" data-act="relop" data-a="remove" data-b="' + r.rid + '">끊기</button>'); }).join('') : '<p class="small faint">아직 맺은 관계가 없습니다.</p>';
+      if (j.out.length) h += '<div class="section-t" style="margin-top:12px">보낸 신청</div>' + j.out.map(function (r) { return row(r, lab(r) + ' · 수락 대기', '<button class="btn sm ghost" data-act="relop" data-a="cancel" data-b="' + r.rid + '">취소</button>'); }).join('');
+      box.innerHTML = h;
+    });
+  }
   function profileCard(p, m) {
     if (p.deleted) return '<div class="pcard"><p class="small muted" style="padding:18px 4px;text-align:center">삭제된 사용자입니다.</p></div>';
     var hh = R.HOUSE[p.house], dc = p.deco || {}, fr = decoFrame(dc.frame), bgs = decoBg(dc.bg), dk = dc.frame || dc.bg;
@@ -1020,8 +1068,8 @@
     if (p.fav && R.SUBJ[p.fav]) rows.push(['좋아하는 과목', R.SUBJ[p.fav].name]);
     if (p.created) rows.push(['입학', new Date(p.created * 1000).toLocaleDateString('ko-KR')]);
     if (rows.length) ih += '<dl class="kv" style="margin-top:12px">' + rows.map(function (r) { return '<dt>' + r[0] + '</dt><dd>' + r[1] + '</dd>'; }).join('') + '</dl>';
-    var gh = pcGear(p);   // 공개한 능력치 · 장비 (없으면 탭 없이 소개만)
-    h += gh ? '<div class="pctabs" role="tablist"><button class="on" data-act="pctab" data-a="intro" role="tab">소개</button><button data-act="pctab" data-a="gear" role="tab">능력치 · 장비</button></div><div class="pcpane" data-pane="intro">' + (ih || '<p class="small faint" style="margin-top:10px">소개가 없습니다.</p>') + '</div><div class="pcpane" data-pane="gear" hidden>' + gh + '</div>' : ih;
+    var gh = pcGear(p), rh = p.rels && !p.preview ? pcRels(p) : '';   // 공개한 능력치 · 장비, 맺은 관계 (둘 다 없으면 탭 없이 소개만)
+    h += gh || rh ? '<div class="pctabs" role="tablist"><button class="on" data-act="pctab" data-a="intro" role="tab">소개</button>' + (gh ? '<button data-act="pctab" data-a="gear" role="tab">능력치 · 장비</button>' : '') + (rh ? '<button data-act="pctab" data-a="rels" role="tab">관계' + (p.rels.length ? ' <span class="num faint">' + p.rels.length + '</span>' : '') + '</button>' : '') + '</div><div class="pcpane" data-pane="intro">' + (ih || '<p class="small faint" style="margin-top:10px">소개가 없습니다.</p>') + '</div>' + (gh ? '<div class="pcpane" data-pane="gear" hidden>' + gh + '</div>' : '') + (rh ? '<div class="pcpane" data-pane="rels" hidden>' + rh + '</div>' : '') : ih;
     if (p.demoPeer) h += '<p class="tiny faint" style="margin-top:10px">데모에서는 채팅에 실린 정보만 보입니다.</p>';
     h += '<div class="row" style="margin-top:14px">';
     if (p.preview) h += '<button class="btn primary" data-act="me" data-a="profile">편집으로 돌아가기</button><button class="btn" data-act="pe-save-preview">이대로 저장</button>';
@@ -1035,6 +1083,11 @@
       else if (p.friend === 'in') h += '<button class="btn sm primary" data-act="fop" data-a="accept" data-b="' + pid + '">친구 신청 수락</button><button class="btn sm ghost" data-act="fop" data-a="decline" data-b="' + pid + '">거절</button>';
       else if (p.allowFriend !== false) h += '<button class="btn sm primary" data-act="fop" data-a="add" data-b="' + pid + '">친구 추가</button>';
       else h += '<button class="btn sm" disabled title="친구 신청을 받지 않는 학생입니다">친구 추가</button>';
+      // 관계
+      var rl = p.rel;
+      if (rl && rl.state === 'out') h += '<button class="btn sm ghost" data-act="relop" data-a="cancel" data-b="' + rl.rid + '" title="보낸 관계 신청 취소">관계 신청 보냄 · 취소</button>';
+      else if (rl && rl.state === 'in') h += '<button class="btn sm primary" data-act="relop" data-a="accept" data-b="' + rl.rid + '" title="' + esc(p.name) + ' ' + esc(rl.theirs) + ' · 나 ' + esc(rl.mine) + '">관계 수락 (' + esc(rl.theirs) + ' · ' + esc(rl.mine) + ')</button><button class="btn sm ghost" data-act="relop" data-a="decline" data-b="' + rl.rid + '">거절</button>';
+      else if (!rl && p.allowFriend !== false) h += '<button class="btn sm" data-act="relform" data-a="' + pid + '" data-b="' + esc(p.name) + '">관계 신청</button>';
       // 1:1 (친구끼리)
       h += p.friend === 'ok' ? '<button class="btn sm" data-act="dmopen" data-a="' + pid + '" data-b="' + esc(p.name) + '">1:1 대화</button>' : '<button class="btn sm" disabled title="1:1 대화는 친구끼리 할 수 있습니다">1:1 대화</button>';
       // 파티
@@ -5142,13 +5195,14 @@
     S.meTab = tab || 'view'; if (S.meTab !== 'deco') S.decoTry = null;
     if (tab === 'settings') return ACT.settings();
     S.meModal = true;
-    var tabs = [['view', '보이는 모습'], ['profile', '편집'], ['deco', '꾸미기'], ['friends', '친구' + (S.fr ? ' ' + S.fr : '')]];
+    var tabs = [['view', '보이는 모습'], ['profile', '편집'], ['deco', '꾸미기'], ['friends', '친구' + (S.fr ? ' ' + S.fr : '')], ['rels', '관계']];
     var h = mhead('내 정보', esc(S.P.name) + ' · ' + house().name) + '<div class="tabs" role="tablist">' + tabs.map(function (t) { return '<button role="tab" class="' + (S.meTab === t[0] ? 'on' : '') + '" data-act="me" data-a="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
-    if (S.meTab !== 'friends' && S.meTab !== 'view' && S.meTab !== 'deco') S.meTab = 'profile';
-    h += S.meTab === 'view' ? '<div id="pbox">' + myCard() + '</div>' : S.meTab === 'deco' ? decoBody() : S.meTab === 'profile' ? profileBody() : '<div class="fsearchtop" style="margin-bottom:12px">' + fSearchBox() + '</div><div id="flist"><p class="small muted">불러오는 중…</p></div>';
+    if (S.meTab !== 'friends' && S.meTab !== 'view' && S.meTab !== 'deco' && S.meTab !== 'rels') S.meTab = 'profile';
+    h += S.meTab === 'view' ? '<div id="pbox">' + myCard() + '</div>' : S.meTab === 'deco' ? decoBody() : S.meTab === 'profile' ? profileBody() : S.meTab === 'rels' ? '<div id="rlist"><p class="small muted">불러오는 중…</p></div>' : '<div class="fsearchtop" style="margin-bottom:12px">' + fSearchBox() + '</div><div id="flist"><p class="small muted">불러오는 중…</p></div>';
     modal(h);
     if (S.meTab === 'view' && !S.me) loadMe().then(function () { if (S.modal && S.meTab === 'view' && $('#pbox')) $('#pbox').innerHTML = myCard(); });
     if (S.meTab === 'friends') { loadFriends(); fSearchKeys(); }
+    if (S.meTab === 'rels') loadRels();
     if (S.meTab === 'profile') { var bio = $('#pe-bio'), lab = bio && bio.parentNode.querySelector('label'); if (lab) lab.insertAdjacentHTML('beforeend', ' <button class="btn sm ghost" data-act="pewide" style="padding:1px 8px;margin-left:4px">' + (S.peWide ? '좁게' : '더보기') + '</button>'); if (S.peDraft) { var mm = $('#pe-msg'); if (mm) mm.textContent = '저장하지 않은 변경이 있습니다'; } }
     if (S.meTab === 'profile' && !S.me) loadMe().then(function () { if (S.modal && S.meTab === 'profile' && $('#pe-status')) ACT.me('profile'); });
   };
@@ -5868,7 +5922,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102317;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102318;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

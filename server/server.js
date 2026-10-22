@@ -752,9 +752,11 @@ routes['GET /api/profile'] = (req, res) => {
     out.canGuildInvite = !!(mgr && !tg && R.guildCan(gRanksOf(mgr), guildRole.get(me), (dbx.q.gMember.get(me) || {}).rank, 'invite'));
     out.sameParty = !!(partyOf.get(me) && partyOf.get(me) === partyOf.get(id));
   }
+  out.rels = dbx.q.relList.all(id).filter((r) => r.state === 'ok').map((r) => ({ id: r.id, name: r.name, house: r.house, av: r.avatar_v, mine: r.mine, theirs: r.theirs }));   // 관계 탭 (맺은 것만, 모두에게 공개)
   if (self) Object.assign(out, { showStats: pr.showStats, visLv: pr.visLv, visStat: pr.visStat, visEq: pr.visEq, visFull: pr.visFull, visBadge: pr.visBadge, allowFriend: pr.allowFriend, bioFriends: pr.bioFriends });
   else {
     out.friend = fs; out.allowFriend = pr.allowFriend;
+    { const rp = dbx.q.relPair.get(me, id, id, me); if (rp) out.rel = { rid: rp.id, state: rp.state === 'ok' ? 'ok' : rp.a === me ? 'out' : 'in', mine: rp.a === me ? rp.la : rp.lb, theirs: rp.a === me ? rp.lb : rp.la }; }   // 나와 이 학생 사이
     if (pr.bioFriends && out.friend !== 'ok') { out.bio = ''; out.bioHidden = true; }   // 자기소개는 친구에게만
     delete out.created;
   }
@@ -898,6 +900,55 @@ routes['POST /api/friends'] = async (req, res) => {
   fail(req, res, 400, '알 수 없는 요청입니다');
 };
 
+/* ───────── 관계 ─────────
+   한 학생이 상대와 자기의 이름표(예: 선배 / 후배)를 정해 신청하고, 상대가 수락하면 두 학생의 정보창 「관계」 탭에 보인다. 한 쌍에 하나 */
+const REL_MAX = 30, REL_OUT_MAX = 10, REL_LABEL_MAX = 8;
+const relView = (r) => ({ rid: r.rid, id: r.id, name: r.name, house: r.house, grade: r.grade, av: r.avatar_v, mine: r.mine, theirs: r.theirs, t: r.t });
+function relLabel(v) { const s = cleanText(v, 40).replace(/\s+/g, ' '); if (!s) return { err: '관계 이름 입력 필요' }; if (s.length > REL_LABEL_MAX) return { err: '관계 이름은 ' + REL_LABEL_MAX + '자까지 가능' }; if (R.badName(s)) return { err: '사용할 수 없는 말이 들어 있습니다' }; return { s }; }
+routes['GET /api/rels'] = (req, res) => {
+  const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
+  if (limited('rl:' + me, 1, 10)) return fail(req, res, 429, '요청이 너무 잦습니다');
+  const all = dbx.q.relList.all(me);
+  send(req, res, 200, { rels: all.filter((r) => r.state === 'ok').map(relView), inc: all.filter((r) => r.state === 'req' && !r.sent).map(relView), out: all.filter((r) => r.state === 'req' && r.sent).map(relView), max: REL_MAX });
+};
+routes['POST /api/rels'] = async (req, res) => {
+  const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
+  if (limited('rel:' + me, 0.5, 10)) return fail(req, res, 429, '잠시 후 다시 시도');
+  const b = await readJson(req, 1024), op = String(b.op || ''), t = Math.floor(Date.now() / 1000);
+  if (op === 'req') {
+    const id = String(b.id || ''), other = /^[A-Za-z0-9_-]{4,40}$/.test(id) && dbx.q.getProfile.get(id);
+    if (!other || other.banned || other.deleted) return fail(req, res, 404, '학생을 찾을 수 없습니다');
+    if (id === me) return fail(req, res, 400, '자기 자신과는 관계를 맺을 수 없습니다');
+    const m = relLabel(b.mine), o = relLabel(b.theirs); if (m.err || o.err) return fail(req, res, 400, m.err || o.err);
+    const ex = dbx.q.relPair.get(me, id, id, me);
+    if (ex) return fail(req, res, 400, ex.state === 'ok' ? '이미 관계를 맺은 학생입니다 (내 정보 › 관계에서 끊은 뒤 다시 신청 가능)' : ex.a === me ? '이미 신청을 보냈습니다' : '이 학생이 보낸 신청이 있습니다 (내 정보 › 관계에서 수락 가능)');
+    if (!profileOf(other.profile).allowFriend) return fail(req, res, 400, '이 학생은 신청을 받지 않습니다');
+    if (Number(dbx.q.relCount.get(me, me).n) >= REL_MAX) return fail(req, res, 400, '관계는 ' + REL_MAX + '명까지입니다');
+    if (Number(dbx.q.relOutCount.get(me).n) >= REL_OUT_MAX) return fail(req, res, 400, '수락을 기다리는 신청이 너무 많습니다');
+    dbx.q.relInsert.run(me, id, m.s, o.s, t);
+    addNote(id, 'rel', pname(me) + ' 님이 관계를 신청했습니다: ' + pname(me) + ' ' + m.s + ' · 나 ' + o.s, { me: 'rels' });
+    return send(req, res, 200, { ok: true });
+  }
+  const r = dbx.q.relGet.get(Number(b.rid) || 0);
+  if (!r || (r.a !== me && r.b !== me)) return fail(req, res, 404, '없는 관계입니다');
+  const other = r.a === me ? r.b : r.a;
+  if (op === 'accept') {
+    if (r.state !== 'req' || r.b !== me) return fail(req, res, 400, '받은 신청이 없습니다');
+    if (Number(dbx.q.relCount.get(me, me).n) >= REL_MAX) return fail(req, res, 400, '관계는 ' + REL_MAX + '명까지입니다');
+    if (Number(dbx.q.relCount.get(other, other).n) >= REL_MAX) return fail(req, res, 400, '상대 학생의 관계가 가득 찼습니다');
+    dbx.q.relAccept.run(t, r.id);
+    addNote(other, 'rel', pname(me) + ' 님이 관계 신청을 수락했습니다: ' + r.la + ' · ' + r.lb, { me: 'rels' });
+    return send(req, res, 200, { ok: true });
+  }
+  if (op === 'decline' || op === 'cancel' || op === 'remove') {
+    if (op === 'decline' && (r.state !== 'req' || r.b !== me)) return fail(req, res, 400, '받은 신청이 없습니다');
+    if (op === 'cancel' && (r.state !== 'req' || r.a !== me)) return fail(req, res, 400, '보낸 신청이 없습니다');
+    if (op === 'remove' && r.state !== 'ok') return fail(req, res, 400, '맺은 관계가 아닙니다');
+    dbx.q.relDel.run(r.id);
+    return send(req, res, 200, { ok: true });
+  }
+  fail(req, res, 400, '알 수 없는 요청입니다');
+};
 
 /* ───────── 파티 (최대 4명) ─────────
    파티원 한 명당 원정 아르크 +3% (최대 +9%) · 경험치 +1% (최대 +3%). 파티 전용 채팅 채널. */
@@ -2389,6 +2440,7 @@ function resetCharacter(oldId) {
   dbx.tx(() => {
     const D = (sql, ...a) => dbx.db.prepare(sql).run(...a);
     D('DELETE FROM friends WHERE pid = ? OR fid = ?', oldId, oldId);
+    D('DELETE FROM relations WHERE a = ? OR b = ?', oldId, oldId);
     D('DELETE FROM party_invites WHERE pid = ?', oldId);
     D('DELETE FROM guild_apps WHERE pid = ?', oldId);
     D('DELETE FROM guild_invites WHERE pid = ?', oldId);
