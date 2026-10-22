@@ -12,6 +12,8 @@ const DB = require('./db.js');
 const Store = require('./store.js');
 const World = require('./world.js');
 const Chat = require('./chat.js');
+const Fest = require('./fest.js');
+const Lounge = require('./lounge.js');
 
 /* ───────── 설정 ───────── */
 const ROOT = path.join(__dirname, '..');
@@ -381,7 +383,7 @@ store.beforeWrite = drainMailQ;
 function statePayload(P, now) {
   drainMailQ(P);
   let mrow;
-  return { now, scale: cfg.timeScale, P: R.publicState(P), W: world.publicView(now, store.online(120000)), rank: world.rankOf(R.summary(P, world.W, now).power), fr: Number(dbx.q.friendIncomingCount.get(P.id).n), pinv: Number(dbx.q.partyInviteCount.get(P.id).n), party: partyOf.get(P.id) || null, guild: guildOf.get(P.id) || null, mailN: (mrow = mailNewRow(P.id), Number(mrow.n)), mailTop: Number(mrow.top), cls: classView(now), rit: ritView(P, now), auc: aucBrief(now), erInv: exprooms.invN(P.id), noteN: Number(dbx.q.noteUnread.get(P.id).n) };
+  return { now, scale: cfg.timeScale, P: R.publicState(P), W: world.publicView(now, store.online(120000)), rank: world.rankOf(R.summary(P, world.W, now).power), fr: Number(dbx.q.friendIncomingCount.get(P.id).n), pinv: Number(dbx.q.partyInviteCount.get(P.id).n), party: partyOf.get(P.id) || null, guild: guildOf.get(P.id) || null, mailN: (mrow = mailNewRow(P.id), Number(mrow.n)), mailTop: Number(mrow.top), cls: classView(now), rit: ritView(P, now), fest: fest.view(), auc: aucBrief(now), erInv: exprooms.invN(P.id), noteN: Number(dbx.q.noteUnread.get(P.id).n) };
 }
 
 /* ───────── API ───────── */
@@ -1572,6 +1574,36 @@ routes['POST /api/ritual'] = async (req, res) => {
   send(req, res, 200, Object.assign(statePayload(P, now), { ok: true }));
 };
 
+/* ───────── 시즈널 축제 · 기숙사 휴게실 복원 (server/fest.js · server/lounge.js) ───────── */
+const fest = Fest.create({ dbx, store, world, sendMail: (...a) => sendMail(...a), chat, log });
+const lounge = Lounge.create({ dbx, store, world, sendMail: (...a) => sendMail(...a), headSay: (...a) => headSay(...a), log });
+routes['GET /api/lounge'] = (req, res) => {
+  const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
+  if (limited('lg:' + me, 1, 5)) return fail(req, res, 429, '요청이 너무 잦습니다');
+  const now = nowSec(), P = loadPlayer(me, now); if (!P) return fail(req, res, 401, '학생 정보를 찾을 수 없습니다');
+  send(req, res, 200, { lounge: lounge.view(P, now) });
+};
+routes['POST /api/lounge'] = async (req, res) => {
+  const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
+  if (store.isBanned(me)) return fail(req, res, 403, '이용이 정지된 계정입니다');
+  if (limited('lgp:' + me, 0.5, 4)) return fail(req, res, 429, '잠시 후 다시 시도');
+  const b = await readJson(req, 256), now = nowSec(), P = loadPlayer(me, now); if (!P) return fail(req, res, 401, '학생 정보를 찾을 수 없습니다');
+  let r;
+  try { r = lounge.give(P, now, String(b.kind || '')); } catch (e) { if (e.game) return fail(req, res, 400, e.message); throw e; }
+  R.log(P, now, '기숙사 휴게실 복원에 ' + R.josa(R.LOUNGE_KIND[b.kind].name, '을', '를') + ' 마쳤습니다 (+' + r.pts + '점)', 'news');
+  store.markDirty(me);
+  send(req, res, 200, Object.assign(statePayload(P, now), { ok: true, r, lounge: lounge.view(P, now) }));
+};
+// 시험 서버 전용: 축제를 지금 연다 · 닫는다 (운영 서버의 축제는 아카데미 달력으로만 열린다)
+routes['POST /api/admin/fest'] = async (req, res) => {
+  if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
+  if (!cfg.testMode) return fail(req, res, 403, '시험 서버(TEST_MODE=1)에서만 사용할 수 있습니다');
+  const b = await readJson(req, 256);
+  try { send(req, res, 200, { ok: true, festF: fest.force(b.id ? String(b.id) : '', b.hours, nowSec()), fest: fest.view() }); } catch (e) { fail(req, res, 400, e.message); }
+};
+setInterval(() => { try { const t = nowSec(); fest.tick(t); lounge.tick(t); } catch (e) { log('축제 · 휴게실 갱신 실패', e); } }, 20000).unref();
+setTimeout(() => { try { const t = nowSec(); fest.tick(t); lounge.tick(t); } catch (e) { log('축제 · 휴게실 갱신 실패', e); } }, 3000).unref();
+
 /* ───────── 떠돌이 상인 경매 ─────────
    하루 세 번(12시 · 18시 · 22시, 1시간) 구간(신입생 · 중급 · 상급)마다 귀한 장비 세 점씩 경매에 붙인다. 부른 값은 바로 맡겨 두고, 더 높은 값이 나오면 돌려준다.
    끝나기 2분 안에 부르면 2분 늘어난다 (몇 번이든, 정해진 2시간이 지나도). 낙찰품은 우편으로. 값은 학생만 부른다(NPC는 부르지 않는다). */
@@ -2506,7 +2538,7 @@ routes['POST /api/admin/reset'] = async (req, res) => {
    지우는 것: 친구 · 동아리 · 파티 · 게시판 · 1:1 대화 · 거래소 · 경매 · 우편 · 탑 · 주간 기록 · 성장 기록 · 월드 보스 · 소식.
    끝나면 서버를 내려 systemd가 다시 켠다(메모리의 동아리 · 파티 · 채팅 캐시를 비우기 위해). */
 const SEASON_WIPE = ['auction', 'board_comments', 'board_posts', 'friends', 'growth', 'guild_apps', 'guild_invites', 'guild_items', 'guild_log', 'guild_members', 'guild_stock', 'guilds', 'mail', 'mail_state', 'market', 'market_bids', 'notes', 'parties', 'party_members', 'party_invites', 'tower', 'tower_rank', 'weekly'];
-const SEASON_KV = ['boss', 'results', 'news', 'hbase', 'exprooms', 'growthSlot', 'ritual', 'profline'];
+const SEASON_KV = ['boss', 'results', 'news', 'hbase', 'exprooms', 'growthSlot', 'ritual', 'profline', 'fest', 'lounge'];
 let SEASON_RESETTING = false;
 routes['POST /api/admin/season-reset'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');

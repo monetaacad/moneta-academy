@@ -994,6 +994,7 @@
     if (rnd(P) < h * 0.04) { var sh = ri(P, 1, 3); P.res.shard += sh; out.shard = sh; }
     if (early) { out.early = 1; return out; }
     P.st.dispatches++; cupAdd(P, 20, 'disp');
+    var bg = bondGain(P, fid, D.BOND.disp, t); if (bg.gain) out.bond = bg.gain;   // 무사히 돌아오면 유대 +1
     nightJob(P, t);
     return out;
   }
@@ -1154,7 +1155,7 @@
   R.CUP_AUC = 50;          // 떠돌이 상인 경매 낙찰 1회 (학생끼리 거래인 거래소에는 점수가 없다) · 구간 3개 · 9점이 되며 100 → 50 (방문당 총점 300 → 450)
   // 이번 주 점수는 활동별로도 나눠 둔다 (P.wk.cat: 운영실 분포 통계에서 기숙사별 점수 출처를 보려고)
   function cupAdd(P, v, cat) {
-    if (cat !== 'shop' && cat !== 'auc') famActivity(P, v); if (!P.wk) return;
+    if (cat !== 'shop' && cat !== 'auc') { famActivity(P, v); festGain(P, v); } if (!P.wk) return;
     var sp = R.CUP_SPEC[P.house], add = cat && sp && sp.cats.indexOf(cat) >= 0 ? v * R.CUP_SPEC_MULT : v, c = P.wk.cat || (P.wk.cat = {}), k = cat || 'etc';
     P.wk.cup += add; c[k] = Math.round(((c[k] || 0) + add) * 100) / 100;
   }
@@ -1176,6 +1177,7 @@
      P.at부터 now까지 시간을 흘려보낸다. 끝난 작업은 보상을 적용하고 inbox에 보고한다. */
   R.advance = function (P, W, now) {
     if (now <= P.at) return P;
+    if (W) R.festSync(P, W, P.at);   // 축제: 지난 축제의 남은 표식 정리 · 새 축제 기록 시작
     R.gwqSync(P, P.at);   // 주간 동아리 과제: 지난 주 기록을 기준으로 남겨 두고, 주가 바뀌면 새로 센다
     var t0 = P.at;
     // 끝나는 일을 시간순으로 모은다
@@ -1232,7 +1234,7 @@
     // 반딧불 정령 병: 40분마다 한 마리씩 모인다 (예전 방식 상태는 바꿔 준다)
     R.spiritJar(P, now);
     P.at = now;
-    if (W) { R.ensureWeek(P, W, now); R.ensureDaily(P, now); }
+    if (W) { R.ensureWeek(P, W, now); R.ensureDaily(P, now); R.festSync(P, W, now); }
     R.famGift(P, now);   // 이미 레벨이 닿은 학생도 다음 접속 때 첫 알
     checkAch(P, now);
     return P;
@@ -1316,7 +1318,8 @@
     if (t.op) return opLv(P) >= t.op;
     if (t.grade) return P.grade >= t.grade || (P.st.maxGrade || 1) >= t.grade;
     if (t.stat) return (P.st[t.stat] || 0) >= t.n;
-    if (t.legacy) return (P.legacy || []).indexOf(t.legacy) >= 0;   // 시즌 기념 칭호 (예: 1기 학생)
+    if (t.legacy) return (P.legacy || []).indexOf(t.legacy) >= 0;
+    if (t.festT) return (P.festT || []).indexOf(t.id) >= 0;   // 축제 교환소 칭호   // 시즌 기념 칭호 (예: 1기 학생)
     return true;
   };
   // 보상 미리보기 (화면에 보여 주는 값과 실제 지급이 같은 식)
@@ -2333,6 +2336,77 @@
     return { ok: true, nm: o.nm || '' };
   };
   A.famAct = function (P, W, now, a) { var id = str(a.id); if (!P.fam.own[id]) err('없는 사역마입니다'); if (P.fam.disp[id]) err('파견 중입니다'); P.fam.act = id; return { ok: true }; };
+
+  /* ── 환수 교감: 유대 (0~100, 능력치 효과 없음) · 칸토 섬 환수 용품점 ──
+     쓰다듬기(하루 3번) · 간식(하루 2번) · 놀아 주기(하루 1번) · 파견 귀환. 한 마리가 하루에 얻는 유대는 D.BOND.dayCap까지 */
+  var BOND = D.BOND, SNACK = R.SNACK = idx(D.FAM_SNACKS), TOY = R.TOY = idx(D.FAM_TOYS), FACC = R.FACC = idx(D.FAM_ACC);
+  R.bondStage = function (v) { var s = 0; for (var i = 0; i < D.BOND_STAGES.length; i++) if ((v || 0) >= D.BOND_STAGES[i].min) s = i; return s; };
+  R.bondOf = function (P, id) { var o = P.fam && P.fam.own[id]; return o ? o.bond || 0 : 0; };
+  // 문장 채우기: {n} = 사역마 이름, {s} = 물건 이름. 바로 뒤의 조사(이 · 은 · 을 · 과)는 받침에 맞춘다
+  var JOSA2 = { '이': ['이', '가'], '은': ['은', '는'], '을': ['을', '를'], '과': ['과', '와'] };
+  R.fillLine = function (t, n, s) { return String(t).replace(/\{([ns])(이|은|을|과)?\}/g, function (m, k, j) { var w = k === 'n' ? n : s; return j ? R.josa(w, JOSA2[j][0], JOSA2[j][1]) : w; }); };
+  // 오늘 이 사역마와 한 교감 (날이 바뀌면 새로)
+  function bondDay(P, now) { var d = R.dayKST(now), b = P.fam.bd; if (!b || b.day !== d) b = P.fam.bd = { day: d, m: {} }; return b; }
+  R.bondToday = function (P, id, now) { var b = P.fam.bd, d = R.dayKST(now); var m = b && b.day === d && b.m[id]; return { pet: (m && m.p) || 0, snack: (m && m.s) || 0, play: (m && m.y) || 0, got: (m && m.g) || 0 }; };
+  function bondGain(P, id, v, now) {
+    var o = P.fam.own[id]; if (!o) return { gain: 0 };
+    var b = bondDay(P, now), m = b.m[id] || (b.m[id] = {}), room = Math.max(0, Math.min(BOND.dayCap - (m.g || 0), BOND.max - (o.bond || 0))), g = Math.min(v, room);
+    var s0 = R.bondStage(o.bond); o.bond = (o.bond || 0) + g; m.g = (m.g || 0) + g;
+    var s1 = R.bondStage(o.bond);
+    if (s1 > s0) { log(P, now, R.josa(R.famLabel(P, id), '과', '와') + '의 유대가 「' + D.BOND_STAGES[s1].name + '」 단계가 되었습니다.', 'good'); if (s1 >= 3) { o.lk = { s: 1, t: 1 }; } }
+    P.st.bondFull = Object.keys(P.fam.own).filter(function (k) { return (P.fam.own[k].bond || 0) >= BOND.max; }).length;
+    return { gain: g, bond: o.bond, stage: s1, up: s1 > s0 ? s1 : 0 };
+  }
+  R.bondGain = bondGain;
+  function bondReady(P, id) { var o = P.fam.own[id]; if (!o) err('없는 사역마입니다'); if (P.fam.disp[id]) err('파견 중인 사역마와는 교감할 수 없습니다. 돌아온 뒤에 다시 시도하십시오'); return o; }
+  function bondCapCheck(P, id, now) { var t = R.bondToday(P, id, now), o = P.fam.own[id]; if ((o.bond || 0) >= BOND.max) return; if (t.got >= BOND.dayCap) err('오늘은 ' + R.josa(R.famLabel(P, id), '과', '와') + ' 충분히 교감했습니다. 내일 다시 교감할 수 있습니다'); }
+  function bondLine(P, pool, id, s) { return R.fillLine(pick(P, pool), R.famLabel(P, id), s || ''); }
+  A.famPet = function (P, W, now, a) {
+    var id = str(a.id); bondReady(P, id); var t = R.bondToday(P, id, now);
+    if (t.pet >= BOND.petN) err('오늘은 이미 ' + BOND.petN + '번 쓰다듬었습니다'); bondCapCheck(P, id, now);
+    var r = bondGain(P, id, BOND.petV, now); bondDay(P, now).m[id].p = t.pet + 1;
+    r.line = bondLine(P, D.BOND_REACT.pet, id); return r;
+  };
+  A.famSnack = function (P, W, now, a) {
+    var id = str(a.id), s = str(a.s, 20), o = bondReady(P, id), x = SNACK[s]; if (!x) err('없는 간식입니다');
+    var sn = P.fam.snacks || (P.fam.snacks = {}); if (!(sn[s] > 0)) err('가지고 있는 ' + R.josa(x.name, '이', '가') + ' 없습니다');
+    var t = R.bondToday(P, id, now); if (t.snack >= BOND.snackN) err('오늘은 이미 간식을 ' + BOND.snackN + '번 주었습니다'); bondCapCheck(P, id, now);
+    var like = (D.FAM_LIKES[id] || [])[0] === s; sn[s]--; if (!sn[s]) delete sn[s];
+    var r = bondGain(P, id, x.v + (like ? BOND.snackLike : 0), now); bondDay(P, now).m[id].s = t.snack + 1;
+    if (like) { o.lk = o.lk || {}; o.lk.s = 1; }
+    r.like = like; r.line = bondLine(P, like ? D.BOND_REACT.snackLike : D.BOND_REACT.snack, id, x.name); return r;
+  };
+  A.famPlay = function (P, W, now, a) {
+    var id = str(a.id), ty = str(a.t, 20), o = bondReady(P, id), x = TOY[ty]; if (!x) err('없는 장난감입니다');
+    if (!(P.fam.toys || {})[ty]) err('가지고 있지 않은 장난감입니다');
+    var t = R.bondToday(P, id, now); if (t.play >= BOND.playN) err('오늘은 이미 함께 놀았습니다'); bondCapCheck(P, id, now);
+    var like = (D.FAM_LIKES[id] || [])[1] === ty;
+    var r = bondGain(P, id, like ? BOND.playLike : BOND.playV, now); bondDay(P, now).m[id].y = t.play + 1;
+    if (like) { o.lk = o.lk || {}; o.lk.t = 1; }
+    r.like = like; r.line = bondLine(P, like ? D.BOND_REACT.playLike : D.BOND_REACT.play, id, x.name); return r;
+  };
+  // 오늘의 추천: 날짜로 정해지는 한 품목 (D.BOND.deal만큼 할인). 서버와 화면이 같은 품목을 본다
+  R.famDeal = function (t) { var all = D.FAM_SNACKS.concat(D.FAM_TOYS.filter(function (x) { return !x.fest; }), D.FAM_ACC); return all[hash32(R.dayKST(t) * 31 + 7) % all.length].id; };
+  R.famShopPrice = function (id, t) { var x = SNACK[id] || TOY[id] || FACC[id]; if (!x || !x.price) return 0; return R.famDeal(t) === id ? Math.floor(x.price * (1 - BOND.deal)) : x.price; };
+  A.famShop = function (P, W, now, a) {
+    if (!R.famOpen(P)) err(R.FAM_OPEN_TEXT + '부터 이용할 수 있습니다');
+    var id = str(a.id, 20), x = SNACK[id] || TOY[id] || FACC[id]; if (!x || !x.price) err('판매하지 않는 물건입니다');
+    var n = SNACK[id] ? (a.n == null ? 1 : int(a.n, 1, 10)) : 1;
+    if (TOY[id] && (P.fam.toys || {})[id]) err('이미 가지고 있는 장난감입니다');
+    if (FACC[id] && (P.fam.accs || {})[id]) err('이미 가지고 있는 꾸밈입니다');
+    var price = R.famShopPrice(id, now) * n; if (P.res.gold < price) err(CUR + '가 부족합니다');
+    P.res.gold -= price;
+    if (SNACK[id]) { var sn = P.fam.snacks || (P.fam.snacks = {}); sn[id] = (sn[id] || 0) + n; }
+    else if (TOY[id]) (P.fam.toys || (P.fam.toys = {}))[id] = 1;
+    else (P.fam.accs || (P.fam.accs = {}))[id] = 1;
+    return { id: id, n: n, price: price };
+  };
+  A.famAcc = function (P, W, now, a) {
+    var id = str(a.id), o = P.fam.own[id]; if (!o) err('없는 사역마입니다');
+    var acc = typeof a.acc === 'string' ? a.acc.slice(0, 20) : '';
+    if (acc) { if (!FACC[acc] || !(P.fam.accs || {})[acc]) err('가지고 있지 않은 꾸밈입니다'); o.acc = acc; } else delete o.acc;
+    return { ok: true };
+  };
   /* ── 정보 카드 꾸미기 (아르크로 산다) ── */
   var DECO = R.DECO = idx(D.DECO);
   function decoOf(P) { if (!P.deco) P.deco = { own: {}, on: {} }; return P.deco; }
@@ -2340,6 +2414,7 @@
   A.decoBuy = function (P, W, now, a) {
     var id = str(a.id), x = DECO[id]; if (!x) err('없는 꾸미기입니다'); var d = decoOf(P); if (d.own[id]) err('이미 가지고 있습니다');
     if (x.house && x.house !== P.house) err(HOUSE[x.house].name + ' 학생만 살 수 있습니다');   // 기숙사 문장 테두리
+    if (x.fest) err('축제 교환소에서만 얻을 수 있습니다');
     if (P.res.gold < x.price) err(CUR + '가 부족합니다');
     P.res.gold -= x.price; d.own[id] = 1; d.on[x.slot] = id; log(P, now, R.josa('꾸미기 「' + x.name + '」', '을', '를') + ' 샀습니다 (' + R.fmt(x.price) + ' ' + CUR + ')', 'news');
     return { ok: true, id: id };
@@ -2584,6 +2659,131 @@
     return { cost: cost, name: d.name };
   };
   A.title = function (P, W, now, a) { var id = a.id ? str(a.id, 20) : ''; if (id && !R.titleOk(P, id)) err('아직 얻지 못한 칭호입니다'); P.title = id; return { title: R.titleName(P, id) }; };
+  /* ── 시즈널 축제 (아카데미 달력으로 자동) ──
+     R.festAt(W, t) → 지금 열린 축제 { id, f, start, end, k } (k = 축제 id + 아카데미력 연도: 같은 축제라도 해마다 따로 센다). 운영실 시험용 W.festF가 있으면 그것을 따른다 */
+  var FEST = R.FEST = idx(D.FESTIVALS), FT = D.FEST_TOK;
+  R.festAt = function (W, t) {
+    if (!W || W.epoch == null) return null;
+    var ff = W.festF; if (ff && FEST[ff.id] && t >= ff.start && t < ff.end) return { id: ff.id, f: FEST[ff.id], start: ff.start, end: ff.end, k: ff.id + ':t' + ff.start };
+    if (t < W.epoch) return null;
+    var cal = R.calendar(W, t), f = D.FESTIVALS.filter(function (x) { return x.mi === cal.mi && cal.d >= x.from && cal.d <= x.to; })[0]; if (!f) return null;
+    var d0 = R.dayKST(t) - (cal.d - f.from), start = d0 * 86400 - K.TZ;
+    return { id: f.id, f: f, start: start, end: start + (f.to - f.from + 1) * 86400, k: f.id + ':' + cal.year };
+  };
+  // 다음 축제 (화면 안내용): 오늘부터 한 해(252일) 안에서 처음 열리는 축제
+  R.festNext = function (W, t) { if (!W || W.epoch == null) return null; var NM = D.WORLD.calendarMonths.length; for (var k = 1; k <= 28 * NM; k++) { var x = R.festAt(W, R.dayKST(t) * 86400 - K.TZ + k * 86400 + 3600); if (x) return x; } return null; };
+  R.festSync = function (P, W, now) {
+    var cur = R.festAt(W, now), f = P.fest;
+    if (f && f.k && !f.closed && (!cur || cur.k !== f.k)) {   // 끝난 축제: 남은 표식을 아르크로
+      var g = Math.floor((f.tok || 0) * R.dailyReward(P).gold * FT.leftover); f.closed = 1;
+      if (f.tok > 0) { addGold(P, g); log(P, Math.min(now, f.end || now), (FEST[f.id] ? '「' + FEST[f.id].name + '」' : '축제') + '가 끝나 남은 축제 표식 ' + f.tok + '개를 ' + R.fmt(g) + ' ' + CUR + '로 바꾸었습니다.', 'news'); }
+      f.left = f.tok; f.tok = 0;
+    }
+    if (cur && (!P.fest || P.fest.k !== cur.k)) P.fest = { k: cur.k, id: cur.id, end: cur.end, tok: 0, got: 0, day: -1, dg: 0, fr: 0, buy: {} };
+    return cur;
+  };
+  // 활동 점수 → 축제 표식 (FT.per점마다 1개, 하루 FT.dayCap개까지)
+  function festGain(P, v) {
+    var f = P.fest; if (!f || f.closed || !(v > 0) || !(f.end > P.at)) return;
+    var day = R.dayKST(P.at); if (f.day !== day) { f.day = day; f.dg = 0; }
+    f.fr = (f.fr || 0) + v / FT.per; var n = Math.floor(f.fr); if (n <= 0) return; f.fr -= n;
+    n = Math.min(n, FT.dayCap - f.dg); if (n <= 0) { f.fr = 0; return; }
+    f.tok += n; f.got += n; f.dg += n;
+  }
+  R.festItems = function (fid) { var f = FEST[fid]; return (f ? f.shop : []).concat(D.FEST_SHOP); };
+  R.festItem = function (fid, id) { return R.festItems(fid).filter(function (x) { return x.id === id; })[0] || null; };
+  R.festItemName = function (x) { if (!x) return ''; if (x.name) return x.name; var o = x.k === 'title' ? D.TITLES.filter(function (t) { return t.id === x.id; })[0] : x.k === 'toy' ? R.TOY[x.id] : x.k === 'deco' ? DECO[x.id] : x.k === 'souv' ? SOUV[x.id] : null; return o ? (x.k === 'title' ? '칭호 「' + o.name + '」' : x.k === 'deco' ? '정보 카드 인장 「' + o.name + '」' : x.k === 'toy' ? '장난감 「' + o.name + '」' : '기념품 「' + o.name + '」') : x.id; };
+  // 이미 가진 것 (한 번만 받는 품목)
+  R.festOwned = function (P, x) { if (x.k === 'title') return (P.festT || []).indexOf(x.id) >= 0; if (x.k === 'toy') return !!(P.fam.toys || {})[x.id]; if (x.k === 'deco') return !!(P.deco && P.deco.own[x.id]); if (x.k === 'souv') return !!(P.trip && P.trip.souv[x.id]); return false; };
+  A.festBuy = function (P, W, now, a) {
+    var cur = R.festSync(P, W, now); if (!cur || !P.fest || P.fest.k !== cur.k) err('지금은 열린 축제가 없습니다');
+    var x = R.festItem(cur.id, str(a.id, 30)); if (!x) err('교환할 수 없는 품목입니다');
+    var f = P.fest, nb = f.buy[x.id] || 0, max = x.max || 1;
+    if (R.festOwned(P, x)) err('이미 가지고 있습니다'); if (nb >= max) err('이번 축제에서는 더 바꿀 수 없습니다');
+    if (f.tok < x.price) err('축제 표식이 부족합니다 (' + x.price + '개 필요)');
+    f.tok -= x.price; f.buy[x.id] = nb + 1; var out = { id: x.id, k: x.k, name: R.festItemName(x) };
+    if (x.k === 'title') (P.festT || (P.festT = [])).push(x.id);
+    else if (x.k === 'toy') (P.fam.toys || (P.fam.toys = {}))[x.id] = 1;
+    else if (x.k === 'deco') decoOf(P).own[x.id] = 1;
+    else if (x.k === 'souv') tripOf(P).souv[x.id] = 1;
+    else if (x.k === 'snack') { var sn = P.fam.snacks || (P.fam.snacks = {}); out.got = []; for (var i = 0; i < x.n; i++) { var s = pick(P, D.FAM_SNACKS); sn[s.id] = (sn[s.id] || 0) + 1; out.got.push(s.name); } }
+    else if (x.k === 'shard') P.res.shard += x.n;
+    else if (x.k === 'stone') P.res.stone += x.n;
+    log(P, now, '축제 교환소: ' + R.josa(out.name, '을', '를') + ' 받았습니다 (축제 표식 ' + x.price + '개)', 'news');
+    return out;
+  };
+
+  /* ── 하늘섬 나들이: 외출증 (주말 하루 D.TRIP.weekend장, 축제 기간 평일 D.TRIP.festDay장) ── */
+  var ISLE = R.ISLE = idx(D.ISLES), TEV = R.TEV = idx(D.TRIP_EVENTS), SOUV = R.SOUV = idx(D.SOUVENIRS), TR = D.TRIP;
+  function tripOf(P) { if (!P.trip) P.trip = { day: -1, used: 0, seen: {}, souv: {}, visits: 0, cur: null }; return P.trip; }
+  R.tripMax = function (W, t) { return R.isWeekend(t) ? TR.weekend : R.festAt(W, t) ? TR.festDay : 0; };
+  R.tripLeft = function (P, W, t) { var tr = P.trip, used = tr && tr.day === R.dayKST(t) ? tr.used : 0; return Math.max(0, R.tripMax(W, t) - used); };
+  R.isNight = function (t) { var h = ((t + K.TZ) % 86400) / 3600; return h >= 18 || h < 5; };
+  // 이 섬에 갈 수 없는 까닭 (갈 수 있으면 '')
+  R.isleWhy = function (P, W, t, id) {
+    var x = ISLE[id]; if (!x) return '없는 섬입니다';
+    if (x.fest && !R.festAt(W, t)) return '축제 기간에만 열차가 섭니다';
+    if (P.grade < x.grade) return x.grade + '학년부터 방문할 수 있습니다';
+    if (x.night && !R.isNight(t)) return '밤(한국 시간 18시~다음 날 5시)에만 열차가 섭니다';
+    return '';
+  };
+  R.isleEvents = function (id) { return D.TRIP_EVENTS.filter(function (e) { return e.isle === id; }); };
+  A.tripGo = function (P, W, now, a) {
+    var id = str(a.id, 20), tr = tripOf(P); if (tr.cur) err('이미 나들이 중입니다. 지금 나들이를 먼저 마치십시오');
+    var why = R.isleWhy(P, W, now, id); if (why) err(why);
+    if (R.tripLeft(P, W, now) <= 0) err(R.tripMax(W, now) ? '오늘 외출증을 모두 사용했습니다 (KST 0시 초기화)' : '외출증은 주말(토 · 일)과 축제 기간에만 발급됩니다');
+    var d = R.dayKST(now); if (tr.day !== d) { tr.day = d; tr.used = 0; } tr.used++;
+    var pool = R.isleEvents(id).slice(), fresh = pool.filter(function (e) { return !tr.seen[e.id]; }), old = pool.filter(function (e) { return tr.seen[e.id]; }), ev = [];
+    while (ev.length < TR.cards && (fresh.length || old.length)) { var from = fresh.length ? fresh : old; ev.push(from.splice(Math.floor(rnd(P) * from.length), 1)[0].id); }
+    tr.cur = { isle: id, ev: ev, i: 0, at: now, log: [] };
+    return { isle: id, ev: ev };
+  };
+  function tripReward(P, W, now, ch) {
+    var r = { k: ch.r };
+    if (ch.r === 'gold') { r.n = Math.max(50, Math.floor(R.dailyReward(P).gold * TR.goldX)); addGold(P, r.n); r.text = R.fmt(r.n) + ' ' + CUR; }
+    else if (ch.r === 'mats') { var z = R.zoneOf(Math.min(P.maxStage, R.stageCap(P))); r.n = TR.mats; r.mat = z.mat; P.mats[z.mat] = (P.mats[z.mat] || 0) + r.n; r.text = D.MATS[z.mat].name + ' ' + r.n + '개'; }
+    else if (ch.r === 'shard') { r.n = 1; P.res.shard += 1; r.text = '별조각 1개'; }
+    else if (ch.r === 'mana') { r.n = Math.floor(calc(P, W, now).mana * TR.manaSec); addMana(P, r.n); r.text = '마나 ' + R.fmt(r.n); }
+    else if (ch.r === 'snack') { var s = SNACK[ch.s] || D.FAM_SNACKS[0], sn = P.fam.snacks || (P.fam.snacks = {}); sn[s.id] = (sn[s.id] || 0) + 1; r.n = 1; r.s = s.id; r.text = '사역마 간식 「' + s.name + '」 1개'; }
+    return r;
+  }
+  A.tripPick = function (P, W, now, a) {
+    var tr = tripOf(P), cur = tr.cur; if (!cur) err('나들이 중이 아닙니다');
+    var ev = TEV[cur.ev[cur.i]]; if (!ev) { tr.cur = null; err('이야기를 찾을 수 없습니다'); }
+    var c = int(a.c, 0, ev.ch.length - 1), ch = ev.ch[c], rw = tripReward(P, W, now, ch);
+    tr.seen[ev.id] = 1; P.st.tripStamps = Object.keys(tr.seen).filter(function (k) { return TEV[k]; }).length;
+    cur.log.push({ e: ev.id, c: c, rw: rw }); cur.i++;
+    var out = { e: ev.id, c: c, text: ch.x, rw: rw };
+    if (cur.i >= cur.ev.length) {   // 마지막 카드: 기념품 (아직 없는 것만)
+      tr.visits++; P.st.tripVisits = tr.visits;
+      if (rnd(P) < TR.souvChance) { var fs = D.SOUVENIRS.filter(function (x) { return x.isle === cur.isle && !tr.souv[x.id]; }); if (fs.length) { var sv = pick(P, fs); tr.souv[sv.id] = 1; out.souv = sv.id; } }
+      tr.last = { isle: cur.isle, log: cur.log, souv: out.souv || null, at: now }; tr.cur = null; out.done = 1;
+      log(P, now, ISLE[cur.isle].name + ' 나들이를 마쳤습니다' + (out.souv ? ' · 기념품 「' + SOUV[out.souv].name + '」' : ''), 'news');
+    }
+    return out;
+  };
+  A.tripLeave = function (P, W, now) { var tr = tripOf(P); if (!tr.cur) err('나들이 중이 아닙니다'); tr.cur = null; return { ok: true }; };
+
+  /* ── 기숙사 휴게실 복원: 납부는 서버가 기숙사 진행도와 함께 처리한다 (POST /api/lounge). 여기서는 값 · 검사 · 학생 쪽 차감만 ── */
+  var LG = D.LOUNGE;
+  R.loungeMonth = function (W, t) {
+    if (!W || W.epoch == null) return null; var cal = R.calendar(W, t), mk = Math.floor(cal.day / 28), d0 = R.dayKST(W.epoch) + mk * 28;
+    return { mk: mk, p: D.LOUNGE_PROJECTS[mk % D.LOUNGE_PROJECTS.length], start: d0 * 86400 - K.TZ, end: (d0 + 28) * 86400 - K.TZ, month: cal.month };
+  };
+  R.loungeCost = function (P, W, now) { var z = R.zoneOf(Math.min(P.maxStage, R.stageCap(P))); return { gold: Math.max(100, Math.floor(R.dailyReward(P).gold * LG.goldX)), mana: R.ritualCost(P, W, now), mat: z.mat, matN: LG.matN }; };
+  function loungeOf(P, W, now) { var m = R.loungeMonth(W, now), l = P.lounge; if (!l || l.mk !== m.mk) l = P.lounge = { mk: m.mk, day: -1, k: {}, pts: 0 }; var d = R.dayKST(now); if (l.day !== d) { l.day = d; l.k = {}; } return l; }
+  R.loungeToday = function (P, W, now) { var m = R.loungeMonth(W, now), l = P.lounge, d = R.dayKST(now); return { pts: l && m && l.mk === m.mk ? l.pts : 0, k: l && m && l.mk === m.mk && l.day === d ? l.k : {} }; };
+  R.loungeGive = function (P, W, now, kind) {
+    if (!R.LOUNGE_KIND[kind]) err('잘못된 납부입니다'); var l = loungeOf(P, W, now); if (l.k[kind]) err('오늘은 이미 ' + R.josa(R.LOUNGE_KIND[kind].name, '을', '를') + ' 마쳤습니다 (KST 0시 초기화)');
+    var c = R.loungeCost(P, W, now);
+    if (kind === 'gold') { if (P.res.gold < c.gold) err(CUR + '가 부족합니다 (' + R.fmt(c.gold) + ' 필요)'); P.res.gold -= c.gold; }
+    else if (kind === 'mana') { if (P.res.mana < c.mana) err('마나가 부족합니다 (' + R.fmt(c.mana) + ' 필요)'); P.res.mana -= c.mana; }
+    else { if ((P.mats[c.mat] || 0) < c.matN) err(R.josa(D.MATS[c.mat].name, '이', '가') + ' 부족합니다 (' + c.matN + '개 필요)'); P.mats[c.mat] -= c.matN; }
+    l.k[kind] = 1; l.pts += LG.per; P.st.loungePts = (P.st.loungePts || 0) + LG.per;
+    return LG.per;
+  };
+  R.LOUNGE_KIND = idx(D.LOUNGE_KINDS);
+
   A.skyLook = function (P, W, now) {
     var ev = R.skyAt(now); if (!ev) err('지금은 하늘이 조용합니다');
     if (P.skyLook === ev.key) err('이번 ' + R.josa(ev.name, '은', '는') + ' 이미 올려다봤습니다');

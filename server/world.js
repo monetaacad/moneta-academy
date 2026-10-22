@@ -18,7 +18,8 @@ function create(store, cfg, log) {
     now: Date.now() / 1000,
     wbAlive: true,
     hbase: kvGet('hbase', {}),          // 기숙사 성장: 끝난 주의 대항전 점수 누적
-    hpts: {}, hfull: cfg.houseFull || R.HOUSE_FULL, hAt: 0   // hpts = hbase + 이번 주 점수 (R.housePct)
+    hpts: {}, hfull: cfg.houseFull || R.HOUSE_FULL, hAt: 0,   // hpts = hbase + 이번 주 점수 (R.housePct)
+    festF: kvGet('festF', null)   // 시험 서버에서 연 축제 (운영 서버는 늘 null: 축제는 아카데미 달력으로만)
   };
   if (!W.epoch) {
     W.epoch = cfg.epoch || Math.floor(Date.now() / 1000);
@@ -187,7 +188,7 @@ function create(store, cfg, log) {
       boss: b ? { id: b.id, name: b.name, maxHp: b.maxHp, hp: b.hp, killedAt: b.killedAt, round: b.round || 1, kills: (b.kills || 0) + (b.killedAt ? 1 : 0), participants: Number(cache.wbStats.n) || 0 } : null,
       cup: cache.cup, hpts: W.hpts, hfull: W.hfull, topPower: cache.topPower, topStage: cache.topStage, topLvl: cache.topLvl, topTwK: cache.topTwK, topTwM: cache.topTwM, topTwP: cache.topTwP, topDmg: cache.topDmg,
       notices: W.notices.slice(0, 8), news: W.news.slice(0, 20), players: cache.players, online: online || 0,
-      lastWeek: W.results[R.weekId(now) - 1] || null
+      lastWeek: W.results[R.weekId(now) - 1] || null, festF: W.festF || undefined
     };
   }
   function pub(r) { return { id: r.id, name: r.name, house: r.house, power: Math.floor(r.power), lvl: r.lvl, grade: r.grade, stage: r.max_stage }; }
