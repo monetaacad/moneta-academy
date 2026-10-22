@@ -1239,8 +1239,8 @@
   }
 
   /* ── 아카데미 광장 ── */
-  var ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
-  function storyUnread() { var P = S.P; return P.story < Math.min(P.grade, 8); }
+  var ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX'];
+  function storyUnread() { var P = S.P; return P.story < R.storyAvail(P); }
   // 경험치 바 + 그 아래 현재 / 다음 레벨까지 필요한 경험치
   function xpBar(P, mt) {
     var need = R.xpNeed(P.lvl), pct = Math.min(100, P.xp / need * 100);
@@ -1279,7 +1279,7 @@
     res: [['[data-a="resStart"][data-b="manaspring"]', '첫 연구', '「마나 샘 개척」의 「연구」를 누르세요. 연구에는 마나와 지식이 필요하며, 끝나면 효과가 영구히 남습니다. 첫 단계는 5분이면 끝납니다.', { wait: function () { return S.P.rsq.some(Boolean); } }], MQ_BACK]
   };
   function mqTut(kind) { if (!MQ_TUT[kind]) return; if (S.tut) tutEnd(); S.tut = { i: -1, steps: MQ_TUT[kind], key: 'mq' + kind }; tutGo(1); }
-  function mqChLabel(g) { return g >= 8 ? '마지막 장' : g + '장'; }
+  function mqChLabel(g) { return g >= D.MQ.length ? '마지막 장' : g + '장'; }
   function mqGoalsHtml(gl) {
     return '<div class="mqgoals">' + gl.map(function (x) { return '<div class="mqg' + (x.ok ? ' ok' : '') + '"><span class="mqck" aria-hidden="true">' + (x.ok ? '✓' : '') + '</span><span class="small">' + esc(x.text) + '</span>' + (x.need > 1 ? '<span class="num tiny faint">' + x.cur + ' / ' + x.need + '</span>' : '') + '</div>'; }).join('') + '</div>';
   }
@@ -1312,9 +1312,9 @@
       var h = mhead('「' + esc(r.t) + '」 완료', r.chEnd ? mqChLabel(g0) + ' ' + esc(r.chTitle) + ' · 장 끝' : '') + (r.end ? '<p class="mqtext">' + esc(r.end) + '</p>' : '') + (r.reward ? '<p class="small gold" style="margin-top:8px">보상 · ' + esc(r.reward) + '</p>' : '');
       if (s) h += '<hr class="sep"><div class="eyebrow tiny gold">다음 · ' + mqChLabel(s.g) + ' ' + esc(s.ch.title) + '</div><h3 style="margin:2px 0 6px">' + esc(s.st.t) + '</h3>' + mqSceneHtml(s.st) + mqGoalsHtml(R.mqGoals(S.P));
       else h += '<hr class="sep"><p class="small muted">지금까지의 이야기를 모두 읽었습니다. 새 장이 열리면 이곳에 이어집니다.</p>';
-      var tour = !PREF.tutDone && g0 === 1 && i0 === 2;   // 연구까지 직접 해 본 뒤: 화면 둘러보기로
+      var tour = !PREF.tutDone && g0 === 1 && i0 >= 1;   // 첫 원정 안내를 건너뛰었을 때: 원정 단계 보상을 받은 뒤 나머지 안내 · 화면 둘러보기로
       h += '<div class="row" style="justify-content:flex-end;margin-top:14px;gap:6px">' + (tour ? '<button class="btn primary" data-act="modal-close" autofocus>화면 둘러보기</button>' : '<button class="btn ghost" data-act="modal-close">' + (s && s.st.go ? '나중에' : '확인') + '</button>' + (s && s.st.go ? '<button class="btn primary" data-act="mqgo" autofocus>하러 가기</button>' : '')) + '</div>';
-      modal(h); if (tour) S.afterClose = function () { tutStart(); };
+      modal(h); if (tour) S.afterClose = function () { if (PREF.onbRest) onbRest(); else tutStart(); };
       render();
     });
   };
@@ -1406,8 +1406,18 @@
         return '<div class="quest"><div><div class="small">' + q.name + ' <span class="num muted">' + Math.max(0, p) + ' / ' + q.goal + '</span>' + (q.done ? '' : ' ' + rwTag) + '</div><div class="bar brass" style="margin-top:4px"><b style="width:' + Math.max(0, p / q.goal * 100) + '%"></b></div></div>' +
           (q.done ? '<span class="tag ok">완료</span>' : p >= q.goal ? '<button class="btn sm primary" data-act="do" data-a="daily" data-b="' + i + '">보상</button>' : '<span class="row" style="gap:4px;flex-wrap:nowrap">' + goBtn(q.type) + '<button class="btn sm ghost" data-act="reroll" data-a="' + i + '" title="다른 목표로 바꾸기">바꾸기' + (R.rerollCost(P) ? ' <span class="cost">✦' + R.rerollCost(P) + '</span>' : '') + '</button></span>') + '</div>';
       }).join('') + '</div><p class="tiny faint" style="margin-top:10px">출석 · 일일 목표는 매일 한국 시간(KST) 자정에 바뀝니다. 목표 바꾸기는 하루 1번 무료, 그다음부터 별조각 ' + (R.rerollCost(P) || 5) + '개' + (R.rerollCost(P) ? '' : '부터') + '.</p>';
+    // 마스터 과정: 일일 목표 아래에 마스터 주간 과제
+    var mwClaim = 0;
+    if (P.grade >= 8 && P.mwq) {
+      var mwl = R.mwqList(P.mwq.wk);
+      dq += '<hr class="sep"><div class="row small" style="margin-bottom:8px"><b>마스터 주간 과제</b><span class="spacer"></span><span class="tiny faint">완수 ' + (P.st.mwqWeeks || 0) + '주 · 매주 월요일 KST 0시에 바뀝니다</span></div><div class="stack" style="gap:10px">' + mwl.map(function (q) {
+        var p = R.mwqProg(P, q), got = P.mwq.got[q.id]; if (!got && p >= q.goal) mwClaim++;
+        return '<div class="quest"><div><div class="small">' + q.name + ' <span class="num muted">' + Math.min(p, q.goal) + ' / ' + q.goal + q.unit + '</span>' + (got ? '' : ' <span class="rwd">별조각 ' + R.MWQ_RW + '</span>') + '</div><div class="bar brass" style="margin-top:4px"><b style="width:' + Math.min(100, p / q.goal * 100) + '%"></b></div></div>' +
+          (got ? '<span class="tag ok">완료</span>' : p >= q.goal ? '<button class="btn sm primary" data-act="do" data-a="mwqClaim" data-b="' + q.id + '">보상</button>' : '<button class="btn sm" data-act="nav" data-a="' + q.go + '">이동</button>') + '</div>';
+      }).join('') + '</div><p class="tiny faint" style="margin-top:10px">세 과제를 모두 완수하면 별조각 ' + R.MWQ_ALL + '개를 추가로 받습니다. ' + R.MWQ_DECO_WEEKS + '주를 완수하면 정보 카드 배경 「' + R.DECO[R.MWQ_DECO].name + '」, 4 · 12 · 30주를 완수하면 칭호를 받습니다.</p>';
+    }
     var qDone = P.daily.q.filter(function (q) { return q.done; }).length;
-    var dailyH = fold('daily', '일일 목표', dq, true, '<span class="tag br daily-st">출석 ' + P.daily.streak + '일째</span>' + (P.daily.login || claim ? '<span class="tag ok">받을 보상</span>' : ''), '', '<b class="num">' + qDone + '/' + P.daily.q.length + '</b>' + (qDone >= P.daily.q.length ? ' 완료' : ''), 'daily');
+    var dailyH = fold('daily', '일일 목표', dq, true, '<span class="tag br daily-st">출석 ' + P.daily.streak + '일째</span>' + (P.daily.login || claim || mwClaim ? '<span class="tag ok">받을 보상</span>' : ''), '', '<b class="num">' + qDone + '/' + P.daily.q.length + '</b>' + (qDone >= P.daily.q.length ? ' 완료' : ''), 'daily');
     // 내 정보 · 능력치 · 기숙사는 왼쪽 「내 정보」에, 하늘 · 오늘의 축복은 풍경 위에. 잠자리 · 꿈길은 평소엔 볼 일이 없어 맨 아래
     // 광장 카드 배치: 학생이 순서를 바꿀 수 있다 (PREF.homeOrder = { o: 순서, s: 좌측 열 개수 · 모바일은 순서대로 한 줄)
     var blk = { tt: ttH, fam: famCard(), goals: goalsH, events: eventsCard(), daily: dailyH, log: logH }, ho = homeOrder(), ed = S.homeEdit;
@@ -3880,7 +3890,7 @@
     h += '<div class="tabs" role="tablist">' + tabs.map(function (t) { return '<button role="tab" class="' + (S.loreTab === t[0] ? 'on' : '') + '" data-act="loretab" data-a="' + t[0] + '">' + t[1] + (t[0] === 'story' && storyUnread() ? ' <span class="tag br">새 글</span>' : '') + '</button>'; }).join('') + '</div>';
     if (S.loreTab === 'story') {
       h += '<div class="stack">' + D.STORY.map(function (s2, i) {
-        if (i + 1 > Math.min(P.grade, 8)) return '<div class="card inset"><h4 class="faint">' + s2.title + '</h4><p class="small faint">' + (i + 1 === 8 ? '졸업 시험을 통과하면 열립니다.' : (i + 1) + '학년이 되면 열립니다.') + '</p></div>';
+        if (i + 1 > R.storyAvail(P)) return '<div class="card inset"><h4 class="faint">' + s2.title + '</h4><p class="small faint">' + (i + 1 === 9 ? '학기 이야기 8장을 마치면 열립니다.' : i + 1 === 8 ? '졸업 시험을 통과하면 열립니다.' : (i + 1) + '학년이 되면 열립니다.') + '</p></div>';
         var unread = i >= P.story;
         return '<div class="card chapter' + (unread ? ' hl' : '') + '"><div class="roman">' + ROMAN[i + 1] + '</div><h3>' + s2.title + (unread ? ' <span class="tag br">새 글</span>' : '') + '</h3>' + (unread ? '<div class="row" style="margin-top:8px"><button class="btn sm primary" data-act="story" data-a="' + i + '">읽기</button></div>' : '<p class="small" style="margin-top:6px">' + esc(s2.text) + '</p>') + '</div>';
       }).join('') + '</div>';
@@ -4279,9 +4289,10 @@
     login: function () { return {}; }, daily: function (b) { return { i: +b }; }, task: function (b) { return { s: b }; }, sellBelow: function (b) { return { r: +b }; },
     unequip: function (b) { return { slot: b }; }, equip: function (b) { return { u: b }; }, lock: function (b) { return { u: b }; }, sell: function (b) { return { u: b }; }, dismantle: function (b) { return { u: b }; }, dismantleBelow: function (b) { return { r: +b }; },
     drink: function (b) { return { id: b }; }, egg: function () { return {}; }, eggInc: function () { return {}; }, eggHatch: function () { return {}; }, eggCancel: function () { return {}; }, feed: function (b) { var p = String(b).split(':'); return p[1] ? { id: p[0], by: p[1] } : { id: b }; },
-    famAct: function (b) { return { id: b }; }, resStart: function (b) { return { id: b }; }, buy: function (b) { var p = String(b).split(':'); return p[1] ? { id: p[0], n: +p[1] } : { id: b }; }
+    famAct: function (b) { return { id: b }; }, resStart: function (b) { return { id: b }; }, mwqClaim: function (b) { return { id: b }; }, buy: function (b) { var p = String(b).split(':'); return p[1] ? { id: p[0], n: +p[1] } : { id: b }; }
   };
   var MSG = { login: function (r) { return ['출석 ' + r.streak + '일째', '별조각 +' + r.shard + ', 마석 +' + r.stone]; }, daily: function (r) { return ['일일 목표 완료', '별조각 +' + r.shard + ', ' + MONEY(r.gold, '+')]; },
+    mwqClaim: function (r) { return [r.all ? '이번 주 마스터 과제를 모두 완수했습니다' : '마스터 주간 과제 완료', '별조각 +' + r.shard + (r.all ? ' · ' + r.weeks + '주째' : '') + (r.deco ? ' · 정보 카드 배경 「' + r.deco + '」' : '')]; },
     task: function (r) { return [r.prof + '의 과제 완료', '별조각 +' + r.shard + (r.item ? ' · ' + r.item.name : '')]; }, sellBelow: function (r) { return ['일괄 판매', r.n + '개 · +' + fmt(r.gold) + ' ' + CUR]; },
     sell: function (r) { return ['판매가 완료되었습니다', '+' + fmt(r.gold) + ' ' + CUR]; }, dismantle: function (r) { return ['분해했습니다', '마석 +' + r.stone + ' · 마석가루 +' + r.dust]; }, dismantleBelow: function (r) { return ['일괄 분해', r.n + '개 · 마석 +' + r.stone + ' · 마석가루 +' + r.dust]; }, buy: function (r) { return r.dust ? ['교환이 완료되었습니다', '마석 −' + fmt(r.n * 10) + ' · 마석가루 +' + fmt(r.dust)] : ['구매가 완료되었습니다', r.badge ? r.badge.name : r.item ? r.item.name : r.shard ? '별조각 +' + r.shard : r.mana ? '마나 +' + fmt(r.mana) : '']; },
     drink: function (r) { var p = R.POT[r.id]; return p ? [R.josa('「' + p.name + '」', '을', '를') + ' 마셨습니다', '효과 ' + R.fmtTime(p.dur) + (r.end && r.end - now() > p.dur + 1 ? ' · 남은 효과 ' + left(r.end) : '') + ' · 남은 수량 ' + fmt(r.n || 0) + '병'] : ['물약을 마셨습니다', '']; },
@@ -4680,19 +4691,24 @@
     return '<div class="hroom" style="--hc:' + h.color + '"><div class="row" style="gap:6px;align-items:baseline"><b>' + esc(L.room) + '</b><span class="tiny faint">' + esc(h.name) + ' 휴게실</span><span class="spacer"></span><button class="btn sm ghost" data-act="houseinfo" data-a="' + id + '">기숙사 정보</button></div>' +
       '<p class="small hrsc">' + esc(L.scenes[R.dayKST(now()) % L.scenes.length]) + '</p><p class="tiny faint">인사 「' + esc(L.greet) + '」 · 소품 ' + L.props.map(esc).join(' · ') + '</p></div>';
   }
-  /* ── 처음 온 학생: 이야기 → 「처음」 안내 몇 장 → 화면 둘러보기(튜토리얼) ── */
+  /* ── 처음 온 학생: 「처음」 안내 몇 장(ONB_FIRST) → 이야기 → 첫 교시 · 첫 원정을 직접 → 수업이 진행되는 동안 나머지 안내 → 화면 둘러보기 ── */
+  var ONB_FIRST = [0, 1, 4];   // 「처음」 중 가입 직후에 보여 줄 장: 게임 방법 · 첫날 할 일 · 학기 이야기
+  function onbList() { var all = D.GUIDE.filter(function (g) { return g.c === '처음'; }); return !S.onbSet ? all : all.filter(function (g, k) { return (ONB_FIRST.indexOf(k) >= 0) === (S.onbSet === 'first'); }); }
   function onbGuide(i, thenTour) {
-    var list = D.GUIDE.filter(function (g) { return g.c === '처음'; }), n = list.length; i = Math.max(0, Math.min(n - 1, +i || 0)); var g = list[i];
-    S.onbTour = !!thenTour; S.afterClose = thenTour ? tutStart : null;   // 닫기(X·Esc)를 눌러도 둘러보기로 이어진다
-    modal(mhead('처음 오셨나요?', '플레이 가이드 「처음」 · ' + (i + 1) + ' / ' + n) +
+    var list = onbList(), n = list.length; i = Math.max(0, Math.min(n - 1, +i || 0)); var g = list[i];
+    S.onbTour = !!thenTour; S.afterClose = !thenTour ? null : S.onbSet === 'first' ? onbFirstDone : tutStart;   // 닫기(X·Esc)를 눌러도 다음 안내로 이어진다
+    modal(mhead(S.onbSet === 'rest' ? '수업이 진행되는 동안' : '처음 오셨나요?', '플레이 가이드 「처음」 · ' + (i + 1) + ' / ' + n) +
       '<div class="onbpage"><h3>' + esc(g.t) + '</h3><p style="white-space:pre-line">' + esc(g.b) + '</p></div>' +
       '<div class="onbdots" aria-hidden="true">' + list.map(function (x, k) { return '<i class="' + (k === i ? 'on' : '') + '"></i>'; }).join('') + '</div>' +
       '<p class="tiny faint" style="margin-top:14px">가이드 › 처음에서 언제든 다시 볼 수 있습니다</p><div class="row" style="margin-top:8px;justify-content:flex-end;flex-wrap:nowrap">' +
       (i > 0 ? '<button class="btn ghost" data-act="onb-g" data-a="' + (i - 1) + '">이전</button>' : '') +
-      (i < n - 1 ? '<button class="btn primary" data-act="onb-g" data-a="' + (i + 1) + '" autofocus>다음</button>' : '<button class="btn primary" data-act="modal-close" autofocus>' + (thenTour ? '화면 둘러보기' : '닫기') + '</button>') + '</div>');
+      (i < n - 1 ? '<button class="btn primary" data-act="onb-g" data-a="' + (i + 1) + '" autofocus>다음</button>' : '<button class="btn primary" data-act="modal-close" autofocus>' + (!thenTour ? '닫기' : S.onbSet === 'first' ? '시작하기' : '화면 둘러보기') + '</button>') + '</div>');
   }
+  // 가입 직후 몇 장을 본 뒤: 이야기 1장 → 학기 이야기 첫 단계. 나머지 안내와 화면 둘러보기는 첫 원정을 보낸 뒤로 미룬다 (PREF.onbRest)
+  function onbFirstDone() { S.onbSet = null; PREF.onbRest = 1; savePref(); S.afterClose = function () { if (S.view !== 'home') ACT.nav('home'); ACT.mqscene('intro'); }; ACT.story(0); }
+  function onbRest() { if (!PREF.onbRest || PREF.tutDone || S.modal || S.tut) return; delete PREF.onbRest; savePref(); S.onbSet = 'rest'; onbGuide(0, true); }
   ACT['onb-g'] = function (i) { onbGuide(i, S.onbTour); };
-  ACT['onb-again'] = function () { onbGuide(0, false); };
+  ACT['onb-again'] = function () { S.onbSet = null; onbGuide(0, false); };
   ACT['tut-again'] = function () { S.afterClose = function () { tutStart(); }; closeModal(); };
   ACT['tutv-reset'] = function () { PREF.tutV = {}; savePref(); closeModal(); toast('화면별 둘러보기', '각 화면에 처음 들어갈 때 다시 안내합니다'); viewTut(S.view); };
   // 둘러보기: 알려 주는 곳만 밝게 두고 나머지는 어둡게. 보이지 않는 곳(휴대폰에서 숨는 칸 등)은 건너뛴다.
@@ -4840,7 +4856,7 @@
     var t = S.tut; if (t && t.timer) { clearInterval(t.timer); removeEventListener('resize', tutPlace); removeEventListener('scroll', tutPlace, true); }
     var key = t && t.key; S.tut = null; var b = $('#tut'); if (b) b.remove();
     if (t && t.dockFold) { S.chat.open = true; renderDock(); document.body.classList.toggle('dock-open', true); } if (!key || key === 'main') PREF.tutDone = 1; else { PREF.tutV = PREF.tutV || {}; PREF.tutV[key] = 1; } savePref();
-    if ((!key || key === 'main') && S.onbChain) { S.onbChain = false; setTimeout(function () { S.afterClose = function () { if (S.view !== 'home') ACT.nav('home'); ACT.mqscene('intro'); }; ACT.story(0); }, 200); }
+    if (key === 'mqexp' && PREF.onbRest) setTimeout(onbRest, 300);   // 첫 원정을 보냈다: 수업 · 원정이 진행되는 동안 나머지 안내 → 화면 둘러보기
   }
   ACT['tut-next'] = function () { tutGo(1); };
   ACT['tut-prev'] = function () { tutGo(-1); };
@@ -5200,9 +5216,9 @@
     }
     h += acts.length ? acts.join('') + '<button class="btn sm ghost" data-act="decotry" data-a="" data-b="reset">원래대로</button>' : '<span class="tiny faint">칩을 누르면 입어 봅니다. 산 것만 실제로 붙고, 한 번 사면 언제든 바꿔 달 수 있습니다.</span>';
     h += '<span class="spacer"></span><span class="tiny muted">가진 ' + CUR + ' <b class="num gold">' + fmt(P.res.gold) + '</b></span></div></div>';
-    h += '<div class="decotabs filters">' + D.DECO_SLOTS.map(function (sl) { var all = D.DECO.filter(function (x) { return x.slot === sl.id && (!x.fest || d.own[x.id]); }), own = all.filter(function (x) { return d.own[x.id]; }).length; return '<button class="btn sm ghost' + (slot === sl.id ? ' on' : '') + '" data-act="decoslot" data-a="' + sl.id + '">' + sl.name + ' <span class="tiny faint num">' + own + '/' + all.length + '</span></button>'; }).join('') + '</div>';
+    h += '<div class="decotabs filters">' + D.DECO_SLOTS.map(function (sl) { var all = D.DECO.filter(function (x) { return x.slot === sl.id && (!(x.fest || x.mw) || d.own[x.id]); }), own = all.filter(function (x) { return d.own[x.id]; }).length; return '<button class="btn sm ghost' + (slot === sl.id ? ' on' : '') + '" data-act="decoslot" data-a="' + sl.id + '">' + sl.name + ' <span class="tiny faint num">' + own + '/' + all.length + '</span></button>'; }).join('') + '</div>';
     h += '<div class="dchips"><button class="dchip' + (!tr[slot] ? ' on' : '') + '" data-act="decotry" data-a="' + slot + '" data-b=""><span class="dsw none">없음</span><span class="dn">없음</span><span class="dp">&nbsp;</span></button>' +
-      D.DECO.filter(function (x) { return x.slot === slot && (!x.house || x.house === P.house || d.own[x.id]) && (!x.fest || d.own[x.id]); }).map(function (x) {   // 기숙사 문장은 자기 기숙사 것만 · 축제 인장은 교환소에서 받은 것만
+      D.DECO.filter(function (x) { return x.slot === slot && (!x.house || x.house === P.house || d.own[x.id]) && (!(x.fest || x.mw) || d.own[x.id]); }).map(function (x) {   // 기숙사 문장은 자기 기숙사 것만 · 마스터 주간 과제 보상은 받은 뒤에만 · 축제 인장은 교환소에서 받은 것만
         var own = !!d.own[x.id], on = worn[slot] === x.id;
         return '<button class="dchip' + (tr[slot] === x.id ? ' on' : '') + '" data-act="decotry" data-a="' + slot + '" data-b="' + x.id + '" title="' + esc(x.name) + (own ? '' : ' · ' + MONEY(x.price)) + '">' + decoSwatch(x) + '<span class="dn">' + esc(x.name) + '</span><span class="dp' + (on ? ' worn' : own ? ' own' : '') + '">' + (on ? '다는 중' : own ? '가짐' : fmt(x.price)) + '</span></button>';
       }).join('') + '</div>';
@@ -5632,7 +5648,7 @@
   ACT['auth-go'] = function (tab) {
     var name = $('#a-name') ? $('#a-name').value.trim() : '', id = $('#a-id') ? $('#a-id').value.trim() : '', pw = $('#a-pw') ? $('#a-pw').value : '', msg = $('#a-msg');
     if ($('#a-name')) S.authName = name; if ($('#a-id')) S.authId = id;
-    function done(j) { if (j.error) { msg.textContent = j.error; return; } absorb(j); if (S.P && S.P.needCreate) { S.authName = ''; authScreen(); return; } start(); if (tab === 'login') { afterSync(); if (j.pwTemp) setTimeout(function () { ACT.settings(); setTimeout(function () { var o = $('#pw-old'); if (o) { o.scrollIntoView({ block: 'center' }); o.focus({ preventScroll: true }); } var m = $('#pw-msg'); if (m) m.textContent = '임시 비밀번호로 로그인했습니다. 새 비밀번호로 바꿔 주세요'; }, 300); }, 400); } else houseReveal(function () { if (!PREF.tutDone) { S.onbChain = true; onbGuide(0, true); } else { S.afterClose = function () { if (S.view !== 'home') ACT.nav('home'); ACT.mqscene('intro'); }; ACT.story(0); } }); }
+    function done(j) { if (j.error) { msg.textContent = j.error; return; } absorb(j); if (S.P && S.P.needCreate) { S.authName = ''; authScreen(); return; } start(); if (tab === 'login') { afterSync(); if (j.pwTemp) setTimeout(function () { ACT.settings(); setTimeout(function () { var o = $('#pw-old'); if (o) { o.scrollIntoView({ block: 'center' }); o.focus({ preventScroll: true }); } var m = $('#pw-msg'); if (m) m.textContent = '임시 비밀번호로 로그인했습니다. 새 비밀번호로 바꿔 주세요'; }, 300); }, 400); } else houseReveal(function () { if (!PREF.tutDone) { S.onbSet = 'first'; onbGuide(0, true); } else { S.afterClose = function () { if (S.view !== 'home') ACT.nav('home'); ACT.mqscene('intro'); }; ACT.story(0); } }); }
     if (tab === 'login') { if (!id) { msg.textContent = '아이디 입력 필요'; return; } msg.textContent = '확인 중…'; return API.login(id, pw).then(done); }
     if (tab === 'findid') {
       var nid = $('#a-nid') ? $('#a-nid').value.trim() : '';
@@ -5753,7 +5769,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102296;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102298;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
