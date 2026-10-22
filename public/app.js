@@ -5186,7 +5186,7 @@
   // bg: 이름이 놓인 학생 카드의 배경 꾸미기 (없으면 화면 테마를 따른다)
   function inkAttr(id, bg) {
     var x = id && R.DECO[id]; if (!x || x.slot !== 'ink') return null; var c = bg ? x.c.slice() : x.c.map(forTone), ol = bg ? inkOutline(c, bg) : '';   // 배경 꾸미기가 있으면 바탕이 고정이라 테마와 상관없이 원래 잉크 색
-    return c.length === 1 ? { cls: '', style: 'color:' + c[0] + ';' + ol } : { cls: 'ink' + (x.anim ? ' anim' : '') + (x.shine ? ' shine' : ''), style: 'color:' + c[0] + ';background-image:linear-gradient(90deg,' + c.join(',') + ');' + ol };
+    return c.length === 1 ? { cls: '', style: 'color:' + c[0] + ';' + ol } : { cls: 'ink' + (x.anim ? ' anim' : ''), style: 'color:' + c[0] + ';background-image:linear-gradient(90deg,' + c.join(',') + ');' + ol };
   }
   function inkName(name, id, bg) { var k = inkAttr(id, bg); return k ? '<span class="' + k.cls + '" style="' + k.style + '">' + esc(name) + '</span>' : esc(name); }
   // 인장 그림: svg가 있으면 그림으로 (글자 기호보다 또렷하게), 없으면 글자 기호
@@ -5812,7 +5812,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102304;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102305;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

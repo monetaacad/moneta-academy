@@ -1081,9 +1081,6 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 .dsw.fr-seven::after { display: none; }
 @keyframes decoSeven { to { --fa: 360deg; } }
 @keyframes decoTwinkle { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
-/* 기대주의 금청 잉크 (기말 S 세 번): 금빛 글자에 별샘 푸른빛이 훑고 지나가며 은은하게 빛난다 */
-.ink.shine { background-size: 260% 100%; animation: inkShine 4.2s ease-in-out infinite; filter: drop-shadow(0 0 3px rgba(242, 200, 75, .55)); }
-@keyframes inkShine { 0%, 15% { background-position: 100% 50%; } 60%, 100% { background-position: 0% 50%; } }
 .stsvg { width: 1.4em; height: 1.4em; display: block; }
 .dsw .stsvg { width: 20px; height: 20px; }
 @keyframes decoAur { 0%, 100% { box-shadow: 0 0 0 2px #7cf0c0, 0 0 16px rgba(124, 240, 192, .4); } 50% { box-shadow: 0 0 0 2px #9fb8ff, 0 0 16px rgba(159, 184, 255, .45); } }
@@ -1101,7 +1098,7 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 .fr-gild { border-radius: 16px; }
 .fr-neon { box-shadow: 0 0 6px var(--fc), 0 0 18px var(--fc2), inset 0 0 6px var(--fc2); animation: decoNeon 5s ease-in-out infinite; }   /* 꽃잎 등롱: 은은하게 숨 쉬듯 */
 @keyframes decoNeon { 0%, 100% { box-shadow: 0 0 6px var(--fc), 0 0 18px var(--fc2), inset 0 0 6px var(--fc2); } 50% { box-shadow: 0 0 4px var(--fc), 0 0 11px var(--fc2), inset 0 0 3px var(--fc2); } }
-@media (prefers-reduced-motion: reduce) { .fr-aurora, .fr-spring, .fr-pulse, .fr-neon, .ink.anim, .ink.shine, .fr-seven::before, .fr-seven::after { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .fr-aurora, .fr-spring, .fr-pulse, .fr-neon, .ink.anim, .fr-seven::before, .fr-seven::after { animation: none; } }
 /* 꾸미기 탭: 위에 미리보기와 할 일, 아래에 칸마다 작은 칩 */
 .decoprev { position: sticky; top: -18px; z-index: 2; background: var(--panel); padding: 6px 0 8px; }
 @media (max-width: 700px) { .decoprev { position: static; } }   /* 모바일: 미리보기가 화면 대부분을 덮고 있어 위쪽을 밀어도 아래 목록만 움직이던 문제 → 함께 스크롤 */
