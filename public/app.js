@@ -1454,8 +1454,18 @@
         return '<div class="quest"><div><div class="small">' + q.name + ' <span class="num muted">' + Math.max(0, p) + ' / ' + q.goal + '</span>' + (q.done ? '' : ' ' + rwTag) + '</div><div class="bar brass" style="margin-top:4px"><b style="width:' + Math.max(0, p / q.goal * 100) + '%"></b></div></div>' +
           (q.done ? '<span class="tag ok">완료</span>' : p >= q.goal ? '<button class="btn sm primary" data-act="do" data-a="daily" data-b="' + i + '">보상</button>' : '<span class="row" style="gap:4px;flex-wrap:nowrap">' + goBtn(q.type) + '<button class="btn sm ghost" data-act="reroll" data-a="' + i + '" title="다른 목표로 바꾸기">바꾸기' + (R.rerollCost(P) ? ' <span class="cost">✦' + R.rerollCost(P) + '</span>' : '') + '</button></span>') + '</div>';
       }).join('') + '</div><p class="tiny faint" style="margin-top:10px">출석 · 일일 목표는 매일 한국 시간(KST) 자정에 바뀝니다. 목표 바꾸기는 하루 1번 무료, 그다음부터 별조각 ' + (R.rerollCost(P) || 5) + '개' + (R.rerollCost(P) ? '' : '부터') + '.</p>';
+    // 마스터 과정: 일일 목표 아래에 마스터 주간 과제
+    var mwClaim = 0;
+    if (P.grade >= 8 && P.mwq) {
+      var mwl = R.mwqList(P.mwq.wk);
+      dq += '<hr class="sep"><div class="row small" style="margin-bottom:8px"><b>마스터 주간 과제</b><span class="spacer"></span><span class="tiny faint">완수 ' + (P.st.mwqWeeks || 0) + '주 · 매주 월요일 KST 0시에 바뀝니다</span></div><div class="stack" style="gap:10px">' + mwl.map(function (q) {
+        var p = R.mwqProg(P, q), got = P.mwq.got[q.id]; if (!got && p >= q.goal) mwClaim++;
+        return '<div class="quest"><div><div class="small">' + q.name + ' <span class="num muted">' + Math.min(p, q.goal) + ' / ' + q.goal + q.unit + '</span>' + (got ? '' : ' <span class="rwd">별조각 ' + R.MWQ_RW + '</span>') + '</div><div class="bar brass" style="margin-top:4px"><b style="width:' + Math.min(100, p / q.goal * 100) + '%"></b></div></div>' +
+          (got ? '<span class="tag ok">완료</span>' : p >= q.goal ? '<button class="btn sm primary" data-act="do" data-a="mwqClaim" data-b="' + q.id + '">보상</button>' : '<button class="btn sm" data-act="nav" data-a="' + q.go + '">이동</button>') + '</div>';
+      }).join('') + '</div><p class="tiny faint" style="margin-top:10px">세 과제를 모두 완수하면 별조각 ' + R.MWQ_ALL + '개를 추가로 받습니다. ' + R.MWQ_DECO_WEEKS + '주를 완수하면 정보 카드 배경 「' + R.DECO[R.MWQ_DECO].name + '」, 4 · 12 · 30주를 완수하면 칭호를 받습니다.</p>';
+    }
     var qDone = P.daily.q.filter(function (q) { return q.done; }).length;
-    var dailyH = fold('daily', '일일 목표', dq, true, '<span class="tag br daily-st">출석 ' + P.daily.streak + '일째</span>' + (P.daily.login || claim ? '<span class="tag ok">받을 보상</span>' : ''), '', '<b class="num">' + qDone + '/' + P.daily.q.length + '</b>' + (qDone >= P.daily.q.length ? ' 완료' : ''), 'daily');
+    var dailyH = fold('daily', '일일 목표', dq, true, '<span class="tag br daily-st">출석 ' + P.daily.streak + '일째</span>' + (P.daily.login || claim || mwClaim ? '<span class="tag ok">받을 보상</span>' : ''), '', '<b class="num">' + qDone + '/' + P.daily.q.length + '</b>' + (qDone >= P.daily.q.length ? ' 완료' : ''), 'daily');
     // 내 정보 · 능력치 · 기숙사는 왼쪽 「내 정보」에, 하늘 · 오늘의 축복은 풍경 위에. 잠자리 · 꿈길은 평소엔 볼 일이 없어 맨 아래
     // 광장 카드 배치: 학생이 순서를 바꿀 수 있다 (PREF.homeOrder = { o: 순서, s: 좌측 열 개수 · 모바일은 순서대로 한 줄)
     var blk = { tt: ttH, fam: famCard(), goals: goalsH, events: eventsCard(), daily: dailyH, log: logH }, ho = homeOrder(), ed = S.homeEdit;
@@ -4225,9 +4235,10 @@
     login: function () { return {}; }, daily: function (b) { return { i: +b }; }, task: function (b) { return { s: b }; }, sellBelow: function (b) { return { r: +b }; },
     unequip: function (b) { return { slot: b }; }, equip: function (b) { return { u: b }; }, lock: function (b) { return { u: b }; }, sell: function (b) { return { u: b }; }, dismantle: function (b) { return { u: b }; }, dismantleBelow: function (b) { return { r: +b }; },
     drink: function (b) { return { id: b }; }, egg: function () { return {}; }, eggInc: function () { return {}; }, eggHatch: function () { return {}; }, eggCancel: function () { return {}; }, feed: function (b) { var p = String(b).split(':'); return p[1] ? { id: p[0], by: p[1] } : { id: b }; },
-    famAct: function (b) { return { id: b }; }, resStart: function (b) { return { id: b }; }, buy: function (b) { var p = String(b).split(':'); return p[1] ? { id: p[0], n: +p[1] } : { id: b }; }
+    famAct: function (b) { return { id: b }; }, resStart: function (b) { return { id: b }; }, mwqClaim: function (b) { return { id: b }; }, buy: function (b) { var p = String(b).split(':'); return p[1] ? { id: p[0], n: +p[1] } : { id: b }; }
   };
   var MSG = { login: function (r) { return ['출석 ' + r.streak + '일째', '별조각 +' + r.shard + ', 마석 +' + r.stone]; }, daily: function (r) { return ['일일 목표 완료', '별조각 +' + r.shard + ', ' + MONEY(r.gold, '+')]; },
+    mwqClaim: function (r) { return [r.all ? '이번 주 마스터 과제를 모두 완수했습니다' : '마스터 주간 과제 완료', '별조각 +' + r.shard + (r.all ? ' · ' + r.weeks + '주째' : '') + (r.deco ? ' · 정보 카드 배경 「' + r.deco + '」' : '')]; },
     task: function (r) { return [r.prof + '의 과제 완료', '별조각 +' + r.shard + (r.item ? ' · ' + r.item.name : '')]; }, sellBelow: function (r) { return ['일괄 판매', r.n + '개 · +' + fmt(r.gold) + ' ' + CUR]; },
     sell: function (r) { return ['판매가 완료되었습니다', '+' + fmt(r.gold) + ' ' + CUR]; }, dismantle: function (r) { return ['분해했습니다', '마석 +' + r.stone + ' · 마석가루 +' + r.dust]; }, dismantleBelow: function (r) { return ['일괄 분해', r.n + '개 · 마석 +' + r.stone + ' · 마석가루 +' + r.dust]; }, buy: function (r) { return r.dust ? ['교환이 완료되었습니다', '마석 −' + fmt(r.n * 10) + ' · 마석가루 +' + fmt(r.dust)] : ['구매가 완료되었습니다', r.badge ? r.badge.name : r.item ? r.item.name : r.shard ? '별조각 +' + r.shard : r.mana ? '마나 +' + fmt(r.mana) : '']; },
     drink: function (r) { var p = R.POT[r.id]; return p ? [R.josa('「' + p.name + '」', '을', '를') + ' 마셨습니다', '효과 ' + R.fmtTime(p.dur) + (r.end && r.end - now() > p.dur + 1 ? ' · 남은 효과 ' + left(r.end) : '') + ' · 남은 수량 ' + fmt(r.n || 0) + '병'] : ['물약을 마셨습니다', '']; },
@@ -5143,9 +5154,9 @@
     }
     h += acts.length ? acts.join('') + '<button class="btn sm ghost" data-act="decotry" data-a="" data-b="reset">원래대로</button>' : '<span class="tiny faint">칩을 누르면 입어 봅니다. 산 것만 실제로 붙고, 한 번 사면 언제든 바꿔 달 수 있습니다.</span>';
     h += '<span class="spacer"></span><span class="tiny muted">가진 ' + CUR + ' <b class="num gold">' + fmt(P.res.gold) + '</b></span></div></div>';
-    h += '<div class="decotabs filters">' + D.DECO_SLOTS.map(function (sl) { var all = D.DECO.filter(function (x) { return x.slot === sl.id; }), own = all.filter(function (x) { return d.own[x.id]; }).length; return '<button class="btn sm ghost' + (slot === sl.id ? ' on' : '') + '" data-act="decoslot" data-a="' + sl.id + '">' + sl.name + ' <span class="tiny faint num">' + own + '/' + all.length + '</span></button>'; }).join('') + '</div>';
+    h += '<div class="decotabs filters">' + D.DECO_SLOTS.map(function (sl) { var all = D.DECO.filter(function (x) { return x.slot === sl.id && (!x.mw || d.own[x.id]); }), own = all.filter(function (x) { return d.own[x.id]; }).length; return '<button class="btn sm ghost' + (slot === sl.id ? ' on' : '') + '" data-act="decoslot" data-a="' + sl.id + '">' + sl.name + ' <span class="tiny faint num">' + own + '/' + all.length + '</span></button>'; }).join('') + '</div>';
     h += '<div class="dchips"><button class="dchip' + (!tr[slot] ? ' on' : '') + '" data-act="decotry" data-a="' + slot + '" data-b=""><span class="dsw none">없음</span><span class="dn">없음</span><span class="dp">&nbsp;</span></button>' +
-      D.DECO.filter(function (x) { return x.slot === slot && (!x.house || x.house === P.house || d.own[x.id]); }).map(function (x) {   // 기숙사 문장은 자기 기숙사 것만
+      D.DECO.filter(function (x) { return x.slot === slot && (!x.house || x.house === P.house || d.own[x.id]) && (!x.mw || d.own[x.id]); }).map(function (x) {   // 기숙사 문장은 자기 기숙사 것만 · 마스터 주간 과제 보상은 받은 뒤에만
         var own = !!d.own[x.id], on = worn[slot] === x.id;
         return '<button class="dchip' + (tr[slot] === x.id ? ' on' : '') + '" data-act="decotry" data-a="' + slot + '" data-b="' + x.id + '" title="' + esc(x.name) + (own ? '' : ' · ' + MONEY(x.price)) + '">' + decoSwatch(x) + '<span class="dn">' + esc(x.name) + '</span><span class="dp' + (on ? ' worn' : own ? ' own' : '') + '">' + (on ? '다는 중' : own ? '가짐' : fmt(x.price)) + '</span></button>';
       }).join('') + '</div>';
