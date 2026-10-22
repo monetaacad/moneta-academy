@@ -4665,7 +4665,7 @@
   function relLum(hex) { var c = parseInt(hex.slice(1), 16); return [16, 8, 0].reduce(function (a, sh, i) { var v = ((c >> sh) & 255) / 255; v = v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); return a + v * [0.2126, 0.7152, 0.0722][i]; }, 0); }
   function contrast(a, b) { var x = relLum(a), y = relLum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
   function applyTheme() {
-    var t = curTheme(), de = document.documentElement; de.classList.toggle('nav-homeleft', !!PREF.homeLeft); de.dataset.paper = PREF.paper === false ? 'off' : 'on'; de.dataset.skin = t.id; de.dataset.skintone = t.dark ? 'dark' : 'light'; de.style.colorScheme = t.dark ? 'dark' : 'light';
+    var t = curTheme(), de = document.documentElement; de.classList.toggle('nav-homeleft', !!PREF.homeLeft); de.dataset.paper = PREF.paper === false ? 'off' : 'on'; de.dataset.skin = t.id; de.dataset.skintone = t.dark ? 'dark' : 'light'; de.style.colorScheme = t.dark ? 'dark' : 'only light'; var mc = document.querySelector('meta[name=color-scheme]'); if (mc) mc.content = t.dark ? 'dark' : 'only light';   // 휴대폰 강제 다크 모드 방지 (theme.js와 같은 규칙)
     var mt = document.querySelector('meta[name="theme-color"]'); if (!mt) { mt = document.createElement('meta'); mt.name = 'theme-color'; document.head.appendChild(mt); } mt.content = getComputedStyle(de).getPropertyValue('--night').trim() || (t.dark ? '#11152a' : '#f3ede1');
     // 밝은 바탕에서는 기숙사·등급 글자색을 조금 진하게 (그림에 쓰는 색도 같이)
     [D.HOUSES, D.RARITY, D.FAM_RARITY].forEach(function (arr) { arr.forEach(function (x) { if (!x._c0) x._c0 = x.color; x.color = t.dark ? x._c0 : mixDark(x._c0, 0.38); }); });
@@ -5521,7 +5521,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102280;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102281;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

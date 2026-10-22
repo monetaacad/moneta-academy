@@ -39,7 +39,7 @@
   --toastbg: rgba(255, 252, 245, .98); --tipbg: #fffdf7; --navbg: rgba(250, 245, 234, .97);
   --ink2: #3e372c; --act: #3f6466; --goodt: #1f6b57; --badt: #a33a30; --news: #3b56a8;
   --shadow: rgba(90, 70, 30, .18);
-  color-scheme: light;
+  color-scheme: only light;
 }
 /* 노을 천문대: 붉은 보랏빛 밤 (어두운 화면) */
 :root[data-skin="dusk"] {
@@ -68,7 +68,7 @@
   --toastbg: rgba(250, 252, 254, .98); --tipbg: #fbfcfe; --navbg: rgba(238, 242, 247, .97);
   --ink2: #253042; --act: #6b5137; --goodt: #17604f; --badt: #9c2f2f; --news: #2e4f9e;
   --shadow: rgba(30, 50, 90, .18);
-  color-scheme: light;
+  color-scheme: only light;
 }
 /* 글씨 다듬기: 어두운 화면은 회색조 안티앨리어싱, 밝은 화면은 굵기가 실제로 있는 글꼴로
    (본문 글꼴 고운돋움은 굵기가 하나뿐이라, 굵은 글씨를 브라우저가 흉내 내면 밝은 바탕에서 번져 보인다) */
