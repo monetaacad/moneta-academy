@@ -201,19 +201,6 @@
     if (j.noteN !== undefined) { S.noteN = j.noteN; setTimeout(updateNoteBadge, 0); }
     if (j.guild !== undefined && j.guild !== S.guild) { S.guild = j.guild; S.gdAt = 0; if ($('#chatdock')) renderDock(); }
   }
-  // 허수아비(딜 측정): 장비 · 주문을 바꾼 뒤 바로 실제 피해를 확인한다 (보상 · 대기 없음)
-  ACT.dummy = function (boss) {
-    act('dummy', { boss: boss === '1' }).then(function (r) {
-      if (!r) return; var tot = r.dealt || 1, pc = function (v) { return Math.round((v || 0) / tot * 100) + '%'; };
-      var cs = Object.keys(r.casts).map(function (id) { var sp = R.SPELL[id]; return (sp ? sp.name : id) + ' ' + r.casts[id] + '회'; }).join(' · ');
-      modal(mhead('허수아비', r.t + '초 동안 반격하지 않는 허수아비와 싸운 결과입니다' + (r.boss ? ' (보스 피해 적용)' : '')) +
-        '<dl class="kv"><dt>초당 피해</dt><dd><b class="num gold">' + fmt(r.dps) + '</b> <span class="tiny faint">· 계산상 ' + fmt(r.est) + '</span></dd><dt>' + r.t + '초 총 피해</dt><dd class="num">' + fmt(r.dealt) + '</dd>' +
-        '<dt>피해 비중</dt><dd>평타 ' + pc(r.part.a) + ' · 주문 ' + pc(r.part.p) + (r.part.f ? ' · 사역마 ' + pc(r.part.f) : '') + '</dd>' +
-        '<dt>치명타</dt><dd>' + r.crits + ' / ' + r.hits + '회</dd>' + (cs ? '<dt>사용한 주문</dt><dd class="small">' + esc(cs) + '</dd>' : '') + '</dl>' +
-        '<p class="tiny faint" style="margin-top:8px">치명타 운은 매번 같게 맞추므로, 장비 · 주문 · 능력치를 바꾼 뒤 다시 재면 바뀐 만큼만 차이가 납니다. 보상과 대기 시간은 없으며 기록에도 남지 않습니다.</p>' +
-        '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:12px"><button class="btn ghost" data-act="dummy" data-a="' + (r.boss ? '' : '1') + '">' + (r.boss ? '일반 상대로 다시' : '보스 상대로') + '</button><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>');
-    });
-  };
   function act(type, a) {
     if (S.busy && type !== 'inboxAck') return Promise.resolve(null);
     S.busy = true;
@@ -376,6 +363,19 @@
 
   /* ───────── 렌더 ───────── */
   var V = {}, ACT = {}; window.__ACT = ACT;
+  // 허수아비(딜 측정): 장비 · 주문을 바꾼 뒤 바로 실제 피해를 확인한다 (보상 · 대기 없음)
+  ACT.dummy = function (boss) {
+    act('dummy', { boss: boss === '1' }).then(function (r) {
+      if (!r) return; var tot = r.dealt || 1, pc = function (v) { return Math.round((v || 0) / tot * 100) + '%'; };
+      var cs = Object.keys(r.casts).map(function (id) { var sp = R.SPELL[id]; return (sp ? sp.name : id) + ' ' + r.casts[id] + '회'; }).join(' · ');
+      modal(mhead('허수아비', r.t + '초 동안 반격하지 않는 허수아비와 싸운 결과입니다' + (r.boss ? ' (보스 피해 적용)' : '')) +
+        '<dl class="kv"><dt>초당 피해</dt><dd><b class="num gold">' + fmt(r.dps) + '</b> <span class="tiny faint">· 계산상 ' + fmt(r.est) + '</span></dd><dt>' + r.t + '초 총 피해</dt><dd class="num">' + fmt(r.dealt) + '</dd>' +
+        '<dt>피해 비중</dt><dd>평타 ' + pc(r.part.a) + ' · 주문 ' + pc(r.part.p) + (r.part.f ? ' · 사역마 ' + pc(r.part.f) : '') + '</dd>' +
+        '<dt>치명타</dt><dd>' + r.crits + ' / ' + r.hits + '회</dd>' + (cs ? '<dt>사용한 주문</dt><dd class="small">' + esc(cs) + '</dd>' : '') + '</dl>' +
+        '<p class="tiny faint" style="margin-top:8px">치명타 운은 매번 같게 맞추므로, 장비 · 주문 · 능력치를 바꾼 뒤 다시 재면 바뀐 만큼만 차이가 납니다. 보상과 대기 시간은 없으며 기록에도 남지 않습니다.</p>' +
+        '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:12px"><button class="btn ghost" data-act="dummy" data-a="' + (r.boss ? '' : '1') + '">' + (r.boss ? '일반 상대로 다시' : '보스 상대로') + '</button><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>');
+    });
+  };
   ACT.sidetog = function () { SIDE_OPEN = !SIDE_OPEN; try { localStorage.setItem('arc_side', SIDE_OPEN ? '1' : '0'); } catch (e) { } updateSide(); };
   // 실시간 거래 목록: 내려 둔 상태면 보고 있던 줄(data-id)을 기억했다가 다시 그린 뒤 같은 자리에 둔다. 맨 위를 보고 있으면 새 거래가 바로 보이게 둔다
   function trAnchor() {
@@ -5943,7 +5943,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102320;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102321;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
