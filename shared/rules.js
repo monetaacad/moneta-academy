@@ -86,9 +86,9 @@
   R.nextMidnight = function (t) { return (R.dayKST(t) + 1) * 86400 - K.TZ; };
   R.calendar = function (W, t) {
     var dn = Math.max(0, R.dayKST(t) - R.dayKST(W.epoch));
-    var NM = D.WORLD.calendarMonths.length, mo = Math.floor(dn / 28) % NM;
+    var NM = D.WORLD.calendarMonths.length, MD = D.WORLD.monthDays || 28, mo = Math.floor(dn / MD) % NM;
     var secOfDay = (t + K.TZ) % 86400;
-    return { day: dn, year: D.WORLD.baseYear + Math.floor(dn / (28 * NM)), mi: mo, month: D.WORLD.calendarMonths[mo], d: dn % 28 + 1,
+    return { day: dn, year: D.WORLD.baseYear + Math.floor(dn / (MD * NM)), mi: mo, month: D.WORLD.calendarMonths[mo], d: dn % MD + 1, md: MD,
       period: clamp(Math.floor((secOfDay - 9 * 3600) / 3600) + 1, 0, 9), weekend: R.isWeekend(t), bonus: D.MONTH_BONUS[mo] };
   };
   function weekendFrac(t0, t1) {
