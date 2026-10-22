@@ -175,7 +175,7 @@ function create(store, cfg, log) {
         topStage: q.topStage.all(50).map(pub), topLvl: q.topLvl.all(50).map(pub),
         topTwK: q.topCt.all('$.st.twK', '$.st.twK', 50).map((r) => ({ id: r.id, name: r.name, house: r.house, f: r.f })),
         topTwM: q.topCt.all('$.st.twM', '$.st.twM', 50).map((r) => ({ id: r.id, name: r.name, house: r.house, f: r.f })),
-        topTwP: q.twRankTop.all(week, 50).map((r) => { let ms = []; try { ms = JSON.parse(r.members); } catch (e) { } return { party: r.party, name: r.name, members: ms, f: r.floor }; }),
+        topTwP: twRanked(week).slice(0, 50).map((r) => ({ party: r.party, name: r.name, members: r.members, f: r.f })),
         topDmg: q.topDmg.all(week, 50).map((r) => ({ id: r.pid, name: r.name, house: r.house, dmg: Math.floor(r.dmg) })),
         wbStats: q.sumDmg.get(week),
         players: Number(q.countPlayers.get().n)
@@ -189,6 +189,18 @@ function create(store, cfg, log) {
       notices: W.notices.slice(0, 8), news: W.news.slice(0, 20), players: cache.players, online: online || 0,
       lastWeek: W.results[R.weekId(now) - 1] || null
     };
+  }
+  // 별의 탑 파티 순위: 파티원 구성이 같은 기록은 한 줄로(가장 높은 것), 파티 이름은 지금 이름으로. parties: 합쳐진 파티 id들
+  function twRanked(week) {
+    const out = [], byKey = new Map();
+    q.twRankTop.all(week, 500).forEach((r) => {   // 층 높은 순 · 먼저 오른 순
+      let ms = []; try { ms = JSON.parse(r.members); } catch (e) { }
+      const key = ms.map((m) => m.name).sort().join('|') || r.party, had = byKey.get(key);
+      if (had) { had.parties.push(r.party); return; }
+      const cur = q.partyGet.get(r.party), o = { party: r.party, parties: [r.party], name: cur ? cur.name : r.name, members: ms, f: r.floor, t: r.t };
+      byKey.set(key, o); out.push(o);
+    });
+    return out;
   }
   function pub(r) { return { id: r.id, name: r.name, house: r.house, power: Math.floor(r.power), lvl: r.lvl, grade: r.grade, stage: r.max_stage }; }
   function rankOf(power) { return Number(q.rankPower.get(power).r); }
@@ -204,7 +216,7 @@ function create(store, cfg, log) {
 
   // 종료 직전: 미뤄 둔 저장까지 모두 (월드 보스 체력 · 소식 · 공지 · 결과)
   function saveAll() { if (newsT) { clearTimeout(newsT); newsT = null; } kvSet('boss', W.boss); kvSet('news', W.news); kvSet('notices', W.notices); kvSet('results', W.results); bossDirty = false; }
-  const api = { W, houseView, tick, summonBoss, wbForecast, WB_SUMMON_FILL, saveAll, applyDamage, addNotice, addNews, publicView, ctx, rankOf, myRanks, finalizeWeek, cupStandings, invalidate() { cache.at = 0; } };
+  const api = { W, twRanked, houseView, tick, summonBoss, wbForecast, WB_SUMMON_FILL, saveAll, applyDamage, addNotice, addNews, publicView, ctx, rankOf, myRanks, finalizeWeek, cupStandings, invalidate() { cache.at = 0; } };
   return api;
 }
 module.exports = { create };
