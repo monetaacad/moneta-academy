@@ -312,7 +312,9 @@
   R.clsStart = function (P, id) { if (!R.CLS[id]) return; P.cls = id; allocReset(P, id); var st = { knight: 'shieldbash', mage: 'arcane' }[id], n = R.spellSlots(P);
     for (var i = 0; i < n; i++) if (!P.spells[i]) { P.spells[i] = st; return; } };
   R.CLS_EXAM_CD = 86400;
-  R.clsExamFee = function (P) { return 800 * Math.max(1, P.grade); };
+  // 전과 패널티(2차 베타): 응시료는 전과에 성공한 횟수만큼 2배씩(최대 8배), 합격하면 R.CLS_REDO 동안 다시 전과할 수 없다
+  R.CLS_REDO = 7 * 86400;
+  R.clsExamFee = function (P) { return 800 * Math.max(1, P.grade) * Math.pow(2, Math.min(3, P.clsN || 0)); };
   // 시험관: 지금 원정을 다니는 단계(추천 단계)의 몬스터를 크게 키운 것. 옮길 학과의 몸으로 싸운다
   R.clsExamStage = function (P, W) { return Math.max(3, R.bestStage(P, W) + 2); };
   // 미리 보기: 그 학과의 몸으로 싸우면 이길 수 있는지
@@ -320,6 +322,10 @@
   R.clsExamFoe = function (P, W) { return R.duelEnemy(R.clsExamStage(P, W), 4, 1.3); };
   // 학과가 바뀌면 그 학과로 못 쓰는 전용 주문은 슬롯에서 뺀다
   // 학과별 주문 구성은 P.spellsBy에 기억해 두었다가, 그 학과로 돌아오면 되살린다 (돌아와도 빠진 전용 주문이 그대로 비어 있던 문제)
+  // 학과 성향: 학과마다 둘 중 하나 (기본은 첫 번째). 하루(KST) 한 번 바꿀 수 있고, 전과하면 새 학과의 기본 성향으로
+  R.stances = function (P) { return D.STANCES[(P && P.cls) || 'mage'] || []; };
+  R.stanceOf = function (P) { var L = R.stances(P); return L.filter(function (x) { return P && x.id === P.stance; })[0] || L[0] || {}; };
+  R.stanceFree = function (P, now) { return P.stanceDay !== R.dayKST(now); };
   function clsSet(P, id, now, how) {
     var by = P.spellsBy || (P.spellsBy = {}); if (P.cls) by[P.cls] = P.spells.slice();
     R.subjPairSync(P);   // 전공 레벨을 새 학과의 짝 과목으로 이어 간다
@@ -412,6 +418,7 @@
     var cn = R.codexTiers(P); if (cn) { b.atkPct = cn * R.CODEX_EACH; b.goldPct = cn * R.CODEX_EACH; } mark('도감');
     var h = HOUSE[P.house]; if (h) addEff(b, h.bonus, R.housePct(W, P.house)); mark('기숙사');
     var cl = R.CLS[P.cls || 'mage']; if (cl) addEff(b, cl.bonus); mark('학과');   // 학과
+    var stn = R.stanceOf(P); if (stn && stn.bonus) addEff(b, stn.bonus); mark('성향');   // 학과 성향
     if (P.guildLv > 0) { var gb = R.guildBonus(P.guildLv); b.goldPct = (b.goldPct || 0) + gb; b.xpPct = (b.xpPct || 0) + gb; } mark('동아리');   // 동아리 레벨 보너스
     if (P.partyN > 1) { var pn = Math.min(P.partyN, 4) - 1; b.goldPct = (b.goldPct || 0) + R.PARTY_GOLD * pn; b.xpPct = (b.xpPct || 0) + R.PARTY_XP * pn; } mark('파티');   // 파티 보너스 (솔로와 성장 격차를 줄이려 경험치는 작게)
     for (var id in P.rs) if (RES[id]) addEff(b, RES[id].eff, P.rs[id]); mark('연구');
@@ -784,9 +791,9 @@
     for (var i = 0; i < ns; i++) { var sp = SPELL[P.spells[i]]; if (!sp || !R.spellUnlocked(P, sp.id)) continue; if (sp.type === 'dmg' || sp.type === 'stun') has.dmg = true; if (sp.type === 'shield' || sp.type === 'heal') has.care = true; }
     return Object.keys(R.EXP_POS).filter(function (k) { var x = R.EXP_POS[k]; return !x.need || has[x.need]; });
   };
-  // 선봉이 몬스터를 끄는 정도 (기사 +5%p, 수호 결계 장착 +5%p)
+  // 선봉이 몬스터를 끄는 정도 (기사 수호 성향 +12%, 수호 결계 · 수호의 함성 장착 각 +5%, 최대 95%)
   R.expAggro = function (P) {
-    var a = R.EXP_AGGRO; if (P && P.cls === 'knight') a += 0.05;
+    var a = R.EXP_AGGRO; if (P && P.cls === 'knight') a += R.stanceOf(P).aggro || 0;   // 기사 수호 성향 +12%
     if (P && P.spells && P.spells.slice(0, R.spellSlots(P)).indexOf('ward') >= 0 && R.spellUnlocked(P, 'ward')) a += 0.05;
     if (P && P.spells && P.spells.slice(0, R.spellSlots(P)).indexOf('warcry') >= 0 && R.spellUnlocked(P, 'warcry')) a += 0.05;
     return Math.min(0.95, a);
@@ -1479,7 +1486,7 @@
   R.twUse = function (P, now) { P.tw2d = R.dayKST(now); };
   R.twRecord = function (P, now, cleared) { var w = R.weekId(now); if (!P.tw2 || P.tw2.week !== w) P.tw2 = { week: w, best: 0 }; var old = P.tw2.best; if (cleared > old) P.tw2.best = cleared; return old; };
   R.twStart = function (bests) { return (bests.length ? Math.min.apply(null, bests) : 0) + 1; };
-  R.twPos = function (P) { var ok = R.expPositions(P), p = P.opt && P.opt.twPos; return ok.indexOf(p) >= 0 ? p : P.cls === 'knight' || ok.length < 2 ? 'van' : ok.indexOf('rear') >= 0 ? 'rear' : ok[0]; };
+  R.twPos = function (P) { var ok = R.expPositions(P), p = P.opt && P.opt.twPos; return ok.indexOf(p) >= 0 ? p : (P.cls === 'knight' && R.stanceOf(P).aggro) || ok.length < 2 ? 'van' : ok.indexOf('rear') >= 0 ? 'rear' : ok[0]; };
   // 파티원 한 명의 전투 정보 (전투에 필요한 값만 미리 계산)
   R.twMember = function (P, W, now, pos) {
     var c = calc(P, W, now), sp = [], ns = R.spellSlots(P);
@@ -1986,6 +1993,14 @@
     var m = P.examPick || (P.examPick = {}); if (k) m[ex.grade] = k; else delete m[ex.grade];
     return { ok: true, s: R.examOpt(P, ex) };
   };
+  A.setStance = function (P, W, now, a) {
+    var id = str(a.id), x = R.stances(P).filter(function (s) { return s.id === id; })[0]; if (!x) err('없는 성향입니다');
+    if (R.stanceOf(P).id === id) err('지금 성향과 같습니다');
+    if (!R.stanceFree(P, now)) err('성향은 하루에 한 번 바꿀 수 있습니다 (한국 시간 0시 초기화)');
+    P.stance = id; P.stanceDay = R.dayKST(now);
+    log(P, now, R.clsOf(P).name + ' 성향을 「' + x.name + '」으로 바꿨습니다', 'news');
+    return { ok: true, stance: id };
+  };
   A.clsExam = function (P, W, now, a) {
     var id = str(a.cls); if (!R.CLS[id]) err('학과 선택 필요');
     if ((P.cls || 'mage') === id) err('지금 학과와 같습니다');
@@ -1994,7 +2009,7 @@
     var fee = R.clsExamFee(P); if (P.res.gold < fee) err('응시료가 모자랍니다 (' + fee + ' ' + R.CUR + ')');
     P.res.gold -= fee;
     var old = P.cls; P.cls = id; var c = calc(P, W, now), e = R.clsExamFoe(P, W), f = fight(P, c, e, 40, true); P.cls = old;
-    var cs = null; if (f.win) cs = clsSet(P, id, now, '전과시험 합격'); else { P.clsCd = now + R.CLS_EXAM_CD; log(P, now, R.CLS[id].name + ' 전과시험 불합격', 'bad'); }
+    var cs = null; if (f.win) { cs = clsSet(P, id, now, '전과시험 합격'); P.clsN = (P.clsN || 0) + 1; P.clsCd = now + R.CLS_REDO; delete P.stance; } else { P.clsCd = now + R.CLS_EXAM_CD; log(P, now, R.CLS[id].name + ' 전과시험 불합격', 'bad'); }
     return { win: !!f.win, cc: !!f.cc, ev: f.ev, maxHp: e.hp, mHp: f.mHp, cls: id, fee: fee, off: cs ? cs.off : [], restored: cs ? cs.restored : false, pts: cs ? cs.pts : 0 };
   };
   A.expStart = function (P, W, now, a) {
