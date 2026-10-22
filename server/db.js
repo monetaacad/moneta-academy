@@ -181,6 +181,8 @@ function open(dir) {
   if (pcols.indexOf('npcs') < 0) db.exec(`ALTER TABLE parties ADD COLUMN npcs TEXT NOT NULL DEFAULT '[]'`);
   if (pcols.indexOf('allgo') < 0) db.exec(`ALTER TABLE parties ADD COLUMN allgo INTEGER NOT NULL DEFAULT 0`);   // 파티원도 원정에 파티를 데려갈 수 있음
   // 별의 탑 순위 대기 기록: 실전이 끝나는 시각(pt)이 지나야 정식 기록(floor · name · members · t)으로 옮긴다 (진행 중에 순위가 먼저 바뀌지 않게)
+  const rlcols = db.prepare(`PRAGMA table_info(relations)`).all().map((c) => c.name);   // 관계 수정 제안: 제안한 학생 · 새 이름표 (a 쪽 · b 쪽)
+  if (rlcols.length && rlcols.indexOf('pby') < 0) db.exec(`ALTER TABLE relations ADD COLUMN pby TEXT NOT NULL DEFAULT ''; ALTER TABLE relations ADD COLUMN pla TEXT NOT NULL DEFAULT ''; ALTER TABLE relations ADD COLUMN plb TEXT NOT NULL DEFAULT ''`);
   const trcols = db.prepare(`PRAGMA table_info(tower_rank)`).all().map((c) => c.name);
   if (trcols.length && trcols.indexOf('pfloor') < 0) db.exec(`ALTER TABLE tower_rank ADD COLUMN pfloor INTEGER NOT NULL DEFAULT 0; ALTER TABLE tower_rank ADD COLUMN pt INTEGER NOT NULL DEFAULT 0; ALTER TABLE tower_rank ADD COLUMN pname TEXT NOT NULL DEFAULT ''; ALTER TABLE tower_rank ADD COLUMN pmembers TEXT NOT NULL DEFAULT '[]'`);
   const mcols = db.prepare(`PRAGMA table_info(market)`).all().map((c) => c.name);
@@ -514,10 +516,14 @@ function open(dir) {
     relInsert: db.prepare(`INSERT INTO relations (a, b, la, lb, state, t) VALUES (?, ?, ?, ?, 'req', ?)`),
     relAccept: db.prepare(`UPDATE relations SET state = 'ok', t = ? WHERE id = ?`),
     relDel: db.prepare(`DELETE FROM relations WHERE id = ?`),
+    relPropose: db.prepare(`UPDATE relations SET pby = ?, pla = ?, plb = ? WHERE id = ?`),
+    relPApply: db.prepare(`UPDATE relations SET la = pla, lb = plb, pby = '', pla = '', plb = '' WHERE id = ?`),
+    relPClear: db.prepare(`UPDATE relations SET pby = '', pla = '', plb = '' WHERE id = ?`),
     relCount: db.prepare(`SELECT COUNT(*) AS n FROM relations WHERE (a = ? OR b = ?) AND state = 'ok'`),
     relOutCount: db.prepare(`SELECT COUNT(*) AS n FROM relations WHERE a = ? AND state = 'req'`),
     // pid 기준으로 상대 · 내 몫 이름표 · 상대 몫 이름표를 돌려준다 (정지 · 초기화된 상대는 빼고)
     relList: db.prepare(`SELECT r.id AS rid, r.state, r.t, CASE WHEN r.a = ?1 THEN 1 ELSE 0 END AS sent, CASE WHEN r.a = ?1 THEN r.la ELSE r.lb END AS mine, CASE WHEN r.a = ?1 THEN r.lb ELSE r.la END AS theirs,
+      CASE WHEN r.pby = '' THEN '' WHEN r.pby = ?1 THEN 'out' ELSE 'in' END AS pdir, CASE WHEN r.a = ?1 THEN r.pla ELSE r.plb END AS pmine, CASE WHEN r.a = ?1 THEN r.plb ELSE r.pla END AS ptheirs,
       p.id, p.name, p.house, p.grade, p.avatar_v FROM relations r JOIN players p ON p.id = CASE WHEN r.a = ?1 THEN r.b ELSE r.a END
       WHERE (r.a = ?1 OR r.b = ?1) AND p.banned = 0 AND p.deleted = 0 ORDER BY r.t`),
     friendIncomingCount: db.prepare(`SELECT COUNT(*) AS n FROM friends WHERE fid = ? AND state = 'req'`),
