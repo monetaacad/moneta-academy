@@ -1120,7 +1120,7 @@ function mkAucSettle(r, now) {
   try { push.direct(r.bidder, 'mkwon', '거래소 경매', R.josa(r.name, '을', '를') + ' ' + R.fmt(r.bid) + ' ' + CUR + '에 낙찰받았습니다.', 'mkwon-' + r.id); } catch (e) { }
   mkPaySeller(r, r.bid, W.name, now, '경매로 팔렸습니다');
   log(`경매 낙찰: #${r.id} ${r.name} ${r.bid}G`);
-  chat.pingAll('trade', mkTradeOut(Object.assign({}, r, { price: r.bid, done_at: real })));
+  chat.pingAll('trade', mkTradeOut(Object.assign({}, r, { price: r.bid, done_at: real }))); mkChanged();
 }
 function mkAucSweep() { const now = nowSec(); dbx.q.mkAucEnded.all(Math.floor(Date.now() / 1000)).forEach((r) => mkAucSettle(r, now)); }
 const mkQueries = new Map();
@@ -1220,6 +1220,9 @@ routes['GET /api/market/trades'] = (req, res) => {
   if (limited('mktr:' + me, 1, 6)) return fail(req, res, 429, '요청이 너무 잦습니다');
   send(req, res, 200, { trades: dbx.q.mkTrades.all(50).map(mkTradeOut) });
 };
+// 거래소 목록이 바뀌면(올리기 · 사기 · 내리기 · 값 바꾸기 · 입찰) 보고 있는 학생 화면에 알린다 (1.5초 안의 변화는 한 번으로 묶음)
+let mkPingT = null;
+function mkChanged() { if (mkPingT) return; mkPingT = setTimeout(() => { mkPingT = null; chat.pingAll('mk', {}); }, 1500); mkPingT.unref(); }
 routes['POST /api/market'] = async (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
   if (store.isBanned(me)) return fail(req, res, 403, '이용이 정지된 계정입니다');
@@ -1275,7 +1278,7 @@ routes['POST /api/market'] = async (req, res) => {
     if (auc) R.log(P, now, '거래소 경매에 ' + R.josa(row[2], '을', '를') + ' 올렸습니다 (시작가 ' + R.fmt(start) + ' · 즉시 구매가 ' + R.fmt(price) + ' ' + CUR + ' · ' + hours + '시간)', 'news');
     else R.log(P, now, '거래소에 ' + R.josa(row[2] + (row[0] !== 'item' ? ' ' + row[6] + '개' : ''), '을', '를') + ' ' + R.fmt(price) + ' ' + CUR + '에 올렸습니다', 'news');
     store.markDirty(me);
-    return send(req, res, 200, { ok: true, P: R.publicState(P), now });
+    mkChanged(); return send(req, res, 200, { ok: true, P: R.publicState(P), now });
   }
   const id = Number(b.id) | 0, r = id && dbx.q.mkGet.get(id);
   if (!r || r.status !== 'open') return fail(req, res, 404, '이미 팔렸거나 내려간 물건입니다');
@@ -1285,7 +1288,7 @@ routes['POST /api/market'] = async (req, res) => {
     if (r.kind === 'item' && P.inv.length >= R.calc(P, world.ctx(now), now).bag) return fail(req, res, 400, '가방이 가득 찼습니다');
     if (!dbx.q.mkSetStatus.run('canceled', '', Math.floor(real), id).changes) return fail(req, res, 409, '이미 처리된 물건입니다');
     mkReturn(r, '판매를 취소해 돌려받았습니다', now);
-    return send(req, res, 200, { ok: true, P: R.publicState(P), now });
+    mkChanged(); return send(req, res, 200, { ok: true, P: R.publicState(P), now });
   }
   if (op === 'buy') {
     if (r.seller === me) return fail(req, res, 400, '내가 올린 물건입니다');
@@ -1304,7 +1307,7 @@ routes['POST /api/market'] = async (req, res) => {
     mkPaySeller(r, r.price, P.name, now, r.auc ? '즉시 구매로 팔렸습니다' : '팔렸습니다');
     log(`거래: #${id} ${r.name} ${r.price}G`);
     chat.pingAll('trade', mkTradeOut(Object.assign({}, r, { done_at: Math.floor(real) })));
-    return send(req, res, 200, { ok: true, P: R.publicState(P), now });
+    mkChanged(); return send(req, res, 200, { ok: true, P: R.publicState(P), now });
   }
   // 가격 수정: 판매 중인 고정가 물건만 (경매는 시작가 · 즉시 구매가를 바꿀 수 없다). 기한은 그대로
   if (op === 'reprice') {
@@ -1314,7 +1317,7 @@ routes['POST /api/market'] = async (req, res) => {
     if (price === r.price) return fail(req, res, 400, '지금과 같은 가격입니다');
     if (!dbx.q.mkReprice.run(price, id, me).changes) return fail(req, res, 409, '이미 팔렸거나 내려간 물건입니다');
     R.log(P, now, '거래소: ' + r.name + (r.kind !== 'item' && r.kind !== 'badge' ? ' ' + r.qty + '개' : '') + ' 가격을 ' + R.fmt(r.price) + ' → ' + R.fmt(price) + ' ' + CUR + '로 수정했습니다', 'news'); store.markDirty(me);
-    return send(req, res, 200, { ok: true, P: R.publicState(P), now });
+    mkChanged(); return send(req, res, 200, { ok: true, P: R.publicState(P), now });
   }
   if (op === 'bid') {
     if (!r.auc) return fail(req, res, 400, '경매 물건이 아닙니다');
@@ -1330,7 +1333,7 @@ routes['POST /api/market'] = async (req, res) => {
     P.res.gold -= amount; dbx.q.mkBidLog.run(id, me, amount, Math.floor(real));
     R.log(P, now, '거래소 경매: ' + R.josa(r.name, '에', '에') + ' ' + R.fmt(amount) + ' ' + CUR + '를 입찰했습니다 (맡겨 둠)', 'news'); store.markDirty(me);
     if (r.bidder) mkRefund(r.bidder, r.bid, r.name, '더 높은 입찰이 들어와');
-    return send(req, res, 200, { ok: true, P: R.publicState(P), now, ends });
+    mkChanged(); return send(req, res, 200, { ok: true, P: R.publicState(P), now, ends });
   }
   fail(req, res, 400, '알 수 없는 요청입니다');
 };
