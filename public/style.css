@@ -1983,3 +1983,6 @@ table.sjtop .sjmeta { white-space: nowrap; }
 /* 일괄 판매 · 분해 버튼 줄 */
 .bulkbtns { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 4px; }
 .bulkbtns .btn { width: 100%; justify-content: center; white-space: nowrap; padding-left: 4px; padding-right: 4px; }
+
+/* 학생 카드: 학과 이름(「마법사」)이 줄 끝에서 둘로 잘리지 않게 */
+.pcls { white-space: nowrap; }
