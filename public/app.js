@@ -243,7 +243,7 @@
       if (o.k === 'lec') { var pl = S.cls && S.cls.prof && S.cls.prof[o.s]; lines.push('<li><b>' + R.SUBJ[o.s].name + '</b> 수업 끝 — 과목 경험치 +' + fmt(o.xp) + ', 지식 +' + fmt(o.know) + (o.to > o.from ? ' <span class="gold">(Lv ' + o.from + '→' + o.to + ')</span>' : '') + (o.peers ? '<div class="tiny muted">함께 들은 학생 ' + o.peers + '명 · 경험치 +' + Math.round(o.pb * 100) + '%</div>' : '') + (o.ontime ? '<div class="tiny good">제때 입실 · 경험치 +' + Math.round(R.ONTIME_BONUS * 100) + '%</div>' : o.auto ? '<div class="tiny faint">예약해 둔 교시</div>' : '') + (pl ? '<div class="tiny profline">' + esc(R.SUBJ[o.s].prof) + ': “' + esc(pl) + '”</div>' : '') + '</li>'); }
       else if (o.k === 'exp') { sumExp.kills += o.kills; sumExp.gold += o.gold; sumExp.xp += o.xp; sumExp.items += o.items.length; lines.push(expReportLine(o)); }
       else if (o.k === 'res') lines.push('<li><b>연구 완료</b> — ' + R.RES[o.id].name + ' ' + o.lv + '단계</li>');
-      else if (o.k === 'hatch') lines.push('<li><b>부화</b> — ' + R.FAM[o.f].name + (o.isNew ? ' <span class="gold">(새 사역마)</span>' : '') + '</li>');
+      else if (o.k === 'hatch') lines.push('<li><b>부화</b> — ' + R.FAM[o.f].name + (o.isNew ? ' <span class="gold">(새 사역마)</span>' : '') + (o.tix ? ' <span class="gold">· ' + D.FAM_RARITY[o.tix].name + ' 선택권 획득</span>' : '') + '</li>');
       else if (o.k === 'disp') lines.push('<li><b>' + R.FAM[o.f].name + '</b> 귀환 — ' + D.MATS[o.mat].name + ' ' + o.mats + ', 마석 ' + o.stones + ', ' + MONEY(o.gold, '+') + (o.egg ? ', <span class="gold">환수의 알</span>' : '') + (o.shard ? ', 별조각 +' + o.shard : '') + (o.xp ? ', 경험치 +' + o.xp : '') + '</li>');
       else if (o.k === 'dream') { var dn = R.DREAM[o.kind]; lines.push('<li><b>' + (dn ? dn.name : '꿈') + '</b>에서 깼습니다' + (o.lucid ? ' <span class="gold">(자각몽 · 1.5배)</span>' : '') + (o.review && R.SUBJ[o.s] ? ' <span class="gold">· 복습 효과: ' + clock(o.review) + '까지 ' + R.SUBJ[o.s].name + ' 수업 경험치 +' + Math.round(R.REVIEW_BONUS * 100) + '%</span>' : '') + ' — ' + [o.xp ? R.SUBJ[o.s].name + ' 경험치 +' + fmt(o.xp) + (o.to > o.from ? ' <span class="gold">(Lv ' + o.from + '→' + o.to + ')</span>' : '') : '', o.know ? '지식 +' + fmt(o.know) : '', o.shard ? '별조각 +' + o.shard : '', o.gold ? MONEY(o.gold, '+') : '', o.mats ? D.MATS[o.mat].name + ' ' + o.mats : '', o.stones ? '마석 ' + o.stones : '', o.egg ? '<span class="gold">환수의 알</span>' : ''].filter(Boolean).join(', ') + (o.line != null && D.DREAM_LINES[o.line] ? '<div class="tiny muted">꿈 일기: “' + D.DREAM_LINES[o.line] + '”</div>' : '') + '</li>'); }
       else if (o.k === 'ach') { var a = D.ACH.find(function (x) { return x.id === o.id; }); if (a) lines.push('<li><b>업적</b> — ' + a.name + ' (별조각 +' + a.r + ')</li>'); }
@@ -2460,6 +2460,7 @@
     if (inc) { var ip = Math.min(1, inc.prog / inc.need); h += '<div class="incbox"><div class="row small"><b>품고 있는 알</b><span class="spacer"></span><span class="num">필요 기여도 ' + fmt(Math.floor(inc.prog)) + ' / ' + fmt(inc.need) + ' (' + Math.floor(ip * 100) + '%)</span></div><div class="bar brass" style="height:8px;margin-top:4px"><b style="width:' + (ip * 100).toFixed(1) + '%"></b></div><div class="tiny faint" style="margin-top:2px">부화 효율 ×' + C().hatchSpd.toFixed(2) + ' · 활동으로 얻는 기여도 × 부화 효율만큼 오릅니다</div></div>'; }
     h += '<div class="row" style="margin-top:10px;gap:6px">' + (inc ? (inc.prog >= inc.need ? '<button class="btn primary" data-act="do" data-a="eggHatch">부화시키기</button>' : '<button class="btn" data-act="do" data-a="egg" data-can="eggmana"' + (predMana() >= price ? '' : ' disabled') + '>마나로 바로 깨우기 <span class="cost">' + fmt(price) + ' 마나</span></button>') + (function () { var arm = S.confirm.iaeggCancel > Date.now(); return '<button class="btn' + (arm ? ' danger' : ' ghost') + '" style="white-space:normal;max-width:100%" data-act="itemarm" data-a="eggCancel" data-b="">' + (arm ? '한 번 더 누르면 품기를 취소합니다 · 진행도는 사라집니다' : '품기 취소') + '</button>'; })() :
       '<button class="btn primary" data-act="do" data-a="eggInc"' + (P.fam.eggs > 0 ? '' : ' disabled') + '>알 품기</button><button class="btn" data-act="do" data-a="egg" data-can="eggmana"' + (P.fam.eggs > 0 && predMana() >= price ? '' : ' disabled') + '>마나로 바로 깨우기 <span class="cost">' + fmt(price) + ' 마나</span></button>') + '</div>';
+    h += famTixBox();
     h += '</div><div class="card inset"><h4>파견</h4><p class="small muted" style="margin-top:4px">동행하지 않는 사역마를 정해진 시간 동안 내보내면 재료, 마석, ' + CUR + ', 가끔 알과 별조각을 물어 옵니다.</p>' + durPicker('dd', D.DISPATCH_DUR, '8h') + (function () { var idle = R.famIdle(P).length; return idle ? '<div class="row" style="margin-top:8px"><button class="btn sm primary" data-act="dispall">쉬고 있는 사역마 모두 파견 <span class="cost">' + idle + '마리 · ' + R.DDUR[S.pick.dd || '8h'].label + '</span></button></div>' : ''; })() + '<p class="tiny faint" style="margin-top:6px">파견에서 돌아온 사역마는 따로 받지 않아도 됩니다. 돌아오면 저절로 받아지고, 「끝난 작업 보고」에 한꺼번에 표시됩니다.</p></div></div>' +
       // 사역마 효과 안내: 보유 효과(모두 · 항상)와 동행 효과(한 마리)
       '<div class="card inset" style="margin-bottom:12px"><h4>사역마 효과</h4><ul class="small" style="margin:6px 0 0 18px;line-height:1.7">' +
@@ -2482,6 +2483,30 @@
     });
     return h + '</div>';
   }
+  /* 천장 · 선택권: 알을 깨운 횟수 20 · 40 · 80회에 희귀 · 영웅 · 전설 선택권 (그 뒤로 80회마다 전설) */
+  function famTixBox() {
+    var P = S.P, x = P.fam.tix || {}, nx = R.famTixNext(P), have = [1, 2, 3].filter(function (r) { return x[r] > 0; });
+    return '<div class="famtix"><div class="tiny faint">알을 깨운 횟수 <b class="num">' + (P.fam.hatched || 0) + '</b>회 · <b class="num">' + nx.n + '</b>회째에 <span style="color:' + D.FAM_RARITY[nx.r].color + '">' + D.FAM_RARITY[nx.r].name + '</span> 선택권</div>' +
+      (have.length ? '<div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap">' + have.map(function (r) { return '<button class="btn sm primary" data-act="famtix" data-a="' + r + '">' + D.FAM_RARITY[r].name + ' 선택권 사용 <span class="cost">' + x[r] + '장</span></button>'; }).join('') + '</div>' : '') + '</div>';
+  }
+  function famTixBody(r) {
+    var P = S.P, n = (P.fam.tix || {})[r] || 0;
+    return '<p class="small">' + D.FAM_RARITY[r].name + ' 등급 사역마 하나를 골라 얻습니다. 이미 가지고 있는 사역마를 고르면 레벨이 1 오르며, 최고 레벨인 사역마는 고를 수 없습니다. 남은 선택권 <b class="num">' + n + '</b>장</p><div class="stack" style="gap:6px;margin-top:10px">' +
+      D.FAMILIARS.filter(function (f) { return f.r === r; }).map(function (f) {
+        var o = P.fam.own[f.id], max = o && o.lv >= 20;
+        return '<div class="row famtixrow" style="gap:8px"><div style="flex:1;min-width:0"><b>' + f.name + '</b> <span class="tiny faint">' + (o ? 'Lv ' + o.lv : '새 사역마') + '</span><div class="tiny muted">' + D.BONUS_NAMES[f.bonus] + ' · ' + f.desc + '</div></div>' +
+          '<button class="btn sm' + (o ? '' : ' primary') + '" data-act="famtixgo" data-a="' + r + '" data-b="' + f.id + '"' + (max || n <= 0 ? ' disabled' : '') + '>' + (max ? '최고 레벨' : o ? '레벨 +1' : '얻기') + '</button></div>';
+      }).join('') + '</div>';
+  }
+  ACT.famtix = function (r) { r = +r; modal(mhead(D.FAM_RARITY[r].name + ' 사역마 선택권', '원하는 사역마를 고릅니다') + '<div id="famtixb">' + famTixBody(r) + '</div>'); };
+  ACT.famtixgo = function (r, id) {
+    act('famPick', { r: +r, id: id }).then(function (res) {
+      if (!res) return; Snd.play('level'); var f = R.FAM[id];
+      toast(R.josa(f.name, '을', '를') + ' 골랐습니다', res.isNew ? '새 사역마가 되었습니다' : '레벨 ' + res.lv + '이 되었습니다', 2000);
+      if (res.left > 0) { var b = $('#famtixb'); if (b) b.innerHTML = famTixBody(+r); } else closeModal();
+      render();
+    });
+  };
   /* ── 환수 교감: 유대 (능력치 효과 없음) ── */
   function bondStageName(v) { return D.BOND_STAGES[R.bondStage(v)].name; }
   // 오늘의 지문: 날짜 · 사역마마다 하나 (유대 단계에 맞춰)
@@ -2636,7 +2661,7 @@
       h += recF('ttlF', [['', '전체 ' + tl.length], ['have', '보유 ' + got], ['need', '미획득 ' + (tl.length - got)]], tf);
       h += '<div class="grid gauto" style="margin-top:8px">' + tl.filter(function (t) { return !tf || (tf === 'have') === !!R.titleOk(P, t.id); }).map(function (t) {
         var ok = R.titleOk(P, t.id), on = P.title === t.id, nm = R.titleName(P, t.id) || '?';
-        var prog = t.stat ? Math.min(P.st[t.stat] || 0, t.n) : t.grade ? Math.min(P.grade, t.grade) : 1, goal = t.stat ? t.n : t.grade || 1;
+        var bfo = t.bondFam && P.fam.own[t.bondFam], prog = t.stat ? Math.min(P.st[t.stat] || 0, t.n) : t.grade ? Math.min(P.grade, t.grade) : t.bondFam ? Math.min(bfo ? bfo.bond || 0 : 0, D.BOND.max) : 1, goal = t.stat ? t.n : t.grade || (t.bondFam ? D.BOND.max : 1);   // 사역마별 단짝 칭호: 그 사역마의 유대
         return '<div class="card ttlcard' + (ok ? '' : ' locked') + (on ? ' on' : '') + '"><div class="row between"><span class="ttl' + (ok ? '' : ' off') + '">' + esc(ok ? nm : '???') + '</span>' + (on ? '<span class="tag ok">다는 중</span>' : '') + '</div>' +
           '<p class="small muted" style="margin-top:6px">' + esc(t.how) + '</p>' +
           (ok ? '<div class="row" style="margin-top:8px">' + (on ? '<button class="btn sm ghost" data-act="titleset" data-a="">해제</button>' : '<button class="btn sm primary" data-act="titleset" data-a="' + t.id + '">장착</button>') + '</div>'
@@ -4296,7 +4321,7 @@
     task: function (r) { return [r.prof + '의 과제 완료', '별조각 +' + r.shard + (r.item ? ' · ' + r.item.name : '')]; }, sellBelow: function (r) { return ['일괄 판매', r.n + '개 · +' + fmt(r.gold) + ' ' + CUR]; },
     sell: function (r) { return ['판매가 완료되었습니다', '+' + fmt(r.gold) + ' ' + CUR]; }, dismantle: function (r) { return ['분해했습니다', '마석 +' + r.stone + ' · 마석가루 +' + r.dust]; }, dismantleBelow: function (r) { return ['일괄 분해', r.n + '개 · 마석 +' + r.stone + ' · 마석가루 +' + r.dust]; }, buy: function (r) { return r.dust ? ['교환이 완료되었습니다', '마석 −' + fmt(r.n * 10) + ' · 마석가루 +' + fmt(r.dust)] : ['구매가 완료되었습니다', r.badge ? r.badge.name : r.item ? r.item.name : r.shard ? '별조각 +' + r.shard : r.mana ? '마나 +' + fmt(r.mana) : '']; },
     drink: function (r) { var p = R.POT[r.id]; return p ? [R.josa('「' + p.name + '」', '을', '를') + ' 마셨습니다', '효과 ' + R.fmtTime(p.dur) + (r.end && r.end - now() > p.dur + 1 ? ' · 남은 효과 ' + left(r.end) : '') + ' · 남은 수량 ' + fmt(r.n || 0) + '병'] : ['물약을 마셨습니다', '']; },
-    resStart: function () { return ['연구 시작', '']; }, eggCancel: function () { return ['품기를 취소했습니다', '알을 보관함으로 되돌렸습니다']; }, eggInc: function (r) { return ['알을 품었습니다', '활동할수록 진행도가 오릅니다 · 필요 기여도 ' + fmt(r.need)]; }, eggHatch: function (r) { return ['알이 깨어났습니다', R.FAM[r.f].name + (r.isNew ? ' (새 사역마!)' : r.max ? ' (최대 레벨 · 별조각 +10)' : ' Lv ' + r.lv)]; }, egg: function (r) { return ['알이 깨어났습니다', R.FAM[r.f].name + (r.isNew ? ' (새 사역마!)' : r.max ? ' (최대 레벨 · 별조각 +10)' : ' Lv ' + r.lv)]; } };
+    resStart: function () { return ['연구 시작', '']; }, eggCancel: function () { return ['품기를 취소했습니다', '알을 보관함으로 되돌렸습니다']; }, eggInc: function (r) { return ['알을 품었습니다', '활동할수록 진행도가 오릅니다 · 필요 기여도 ' + fmt(r.need)]; }, eggHatch: function (r) { return ['알이 깨어났습니다', R.FAM[r.f].name + (r.isNew ? ' (새 사역마!)' : r.max ? ' (최대 레벨 · 별조각 +10)' : ' Lv ' + r.lv) + (r.tix ? ' · ' + D.FAM_RARITY[r.tix].name + ' 선택권 획득' : '')]; }, egg: function (r) { return ['알이 깨어났습니다', R.FAM[r.f].name + (r.isNew ? ' (새 사역마!)' : r.max ? ' (최대 레벨 · 별조각 +10)' : ' Lv ' + r.lv) + (r.tix ? ' · ' + D.FAM_RARITY[r.tix].name + ' 선택권 획득' : '')]; } };
   ACT['do'] = function (type, b) {
     var argf = SIMPLE[type]; if (!argf) return;
     if (type === 'sell' || type === 'equip') S.sel = type === 'sell' ? null : S.sel;
@@ -5769,7 +5794,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102298;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102299;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
