@@ -209,11 +209,11 @@ function nextActive(now) {
   const ends = [].concat(P.lec.map(j => j && j.end), P.exp.map(j => j && R.expEnd(j)), P.rsq.map(q => q && q.end)).filter(e => e > now);
   return Math.max(now + 60, backAt(ends.length ? Math.min(...ends) : now + 1800));
 }
-for (let i = 0, t = ACTIVE ? EPOCH + WAKE : checkins[0]; t != null && t < T_END; i++) {
+for (let i = 0, t = ACTIVE ? EPOCH + WAKE : checkins[0]; t != null && (!ACTIVE || t < T_END); i++) {
   if (ACTIVE) checkins[i] = t;
   bot(t, i);
   const nt = ACTIVE ? nextActive(t) : checkins[i + 1];
-  if (nt == null || nt >= T_END || dayOf(nt) !== dayOf(t)) { const r = snapshot(t); r.day = dayOf(t); rows.push(r); }   // 그날 마지막 접속 뒤 상태
+  if (nt == null || (ACTIVE && nt >= T_END) || dayOf(nt) !== dayOf(t)) { const r = snapshot(t); r.day = dayOf(t); rows.push(r); }   // 그날 마지막 접속 뒤 상태
   t = nt;
 }
 const MILES = [1, 3, 7, 14, 21, 30, 45, 60, 75, 90, 105, 120, 150, 180, 240, 365].filter(d => d <= DAYS);
