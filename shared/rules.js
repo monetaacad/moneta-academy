@@ -294,6 +294,7 @@
     if (P.tfV == null && P.subj) { P.tfV = 1; if (P.created && P.created < R.EXAM_OPT_AT) { var tkf = P.tok || (P.tok = {}); tkf.transfer = (tkf.transfer || 0) + R.TRANSFER_GIVE; if (P.log) log(P, P.at || P.created, '선택 과목 도입 전에 입학한 학생에게 학점 이전 증서 ' + R.TRANSFER_GIVE + '장이 지급되었습니다. 소지품에서 사용할 수 있습니다', 'story'); } }
     if (!P.badges) P.badges = [];
     if (P.grade >= 3 && !P.badgeGot && P.res && P.log) { P.badgeGot = 1; gainBadge(P, makeBadge(P), P.at || 0, '아카데미 휘장 수여'); }
+    if (P.st && P.st.exam100 == null) P.st.exam100 = Object.keys(P.scores || {}).filter(function (g) { return (P.scores[g].total || 0) >= 100; }).length;   // 이미 100점을 받은 학생도 칭호를 받는다
     if (P.st && P.st.aGrades == null) P.st.aGrades = Object.keys(P.scores || {}).filter(function (g) { var l = P.scores[g].letter; return l === 'S' || l === 'A'; }).length;
     if (P.spells && P.cls) P.spells = P.spells.map(function (sid) { return sid && R.spellUnlocked(P, sid) ? sid : null; });
     return P;
@@ -2371,7 +2372,7 @@
       pass: total >= 60, ev: f.ev, maxHp: e.hp, examiner: ex.examiner };
     P.px = null;
     if (res.pass) {
-      P.scores[run.grade] = { total: total, letter: L }; if (L === 'S') P.st.sGrades++;
+      P.scores[run.grade] = { total: total, letter: L }; if (L === 'S') P.st.sGrades++; if (total >= 100) P.st.exam100 = (P.st.exam100 || 0) + 1;   // 100점 (칭호 「수석 중의 수석」)
       P.st.aGrades = Object.keys(P.scores).filter(function (g) { var l = P.scores[g].letter; return l === 'S' || l === 'A'; }).length;
       var rw = R.EXAM_REWARD[L] || R.EXAM_REWARD.C, mult = rw.mult, shard = Math.round((8 + run.grade * 4) * mult);
       var gold = Math.floor(400 * K.KILL_GOLD * Math.pow(K.G_GOLD, ex.duel) * mult); P.res.shard += shard; addGold(P, gold);
