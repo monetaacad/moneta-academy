@@ -290,6 +290,7 @@ var DATA = (function () {
     { id: 'bolt', name: '마력 화살', req: null, cd: 4, mult: 2.0, type: 'dmg', desc: '주문 공격력의 200% 피해' },
     { id: 'fireball', name: '화염구', req: ['elem', 5], cd: 8, mult: 4.5, type: 'dmg', desc: '주문 공격력의 450% 피해' },
     { id: 'ward', name: '수호 결계', req: ['ward', 5], cd: 15, mult: 0.3, type: 'shield', desc: '최대 생명력 30%의 보호막 (별의 탑에서는 시전자 공격력의 60%와 시전자 최대 생명력의 30% 중 큰 값)' },
+    { id: 'wardfield', name: '결계진', req: ['ward', 8], cd: 25, mult: 0.2, type: 'pshield', desc: '파티원 모두에게 최대 생명력 20%의 보호막 (혼자일 때는 자신에게 · 별의 탑에서는 시전자 공격력의 40%와 시전자 최대 생명력의 20% 중 큰 값)' },
     { id: 'chain', name: '연쇄 번개', req: ['syntax', 10], cd: 12, mult: 7, type: 'dmg', desc: '주문 공격력의 700% 피해' },
     { id: 'heal', name: '재생의 노래', req: ['alch', 8], cd: 18, mult: 0.35, type: 'heal', desc: '생명력이 60% 미만일 때 35% 회복' },
     { id: 'frost', name: '얼음 감옥', req: ['elem', 15], cd: 14, mult: 3.5, type: 'stun', stun: 2.5, desc: '주문 공격력의 350% 피해, 2.5초 빙결' },
@@ -303,7 +304,8 @@ var DATA = (function () {
     { id: 'jab', name: '정권 지르기', req: ['martial', 3], cd: 5, mult: 2.2, type: 'dmg', phys: true, stunP: 0.2, stun: 1, desc: '물리 공격력의 220% 피해 · 20% 확률로 1초 기절 (주문 위력과 무관)' },
     { id: 'mendlight', name: '치유의 빛', req: ['mend', 6], cd: 16, mult: 0.3, type: 'heal', desc: '생명력이 60% 미만일 때 30% 회복' },
     { id: 'prayer', name: '수호의 기도', req: ['mend', 12], cd: 20, mult: 0.35, type: 'shield', desc: '최대 생명력 35%의 보호막 (별의 탑에서는 시전자 공격력의 70%와 시전자 최대 생명력의 35% 중 큰 값)' },
-    { id: 'ironstrike', name: '강철 일격', req: ['martial', 5], cd: 8, mult: 3.5, type: 'dmg', phys: true, stunP: 0.35, stun: 1.5, desc: '물리 공격력의 350% 피해 · 35% 확률로 1.5초 기절 (주문 위력과 무관)' },
+    { id: 'ironstrike', name: '강철 일격', req: ['martial', 5], cd: 8, mult: 3.5, type: 'dmg', phys: true, stunP: 0.35, stun: 1.5, selfShield: 0.1, desc: '물리 공격력의 350% 피해 · 35% 확률로 1.5초 기절 · 적중할 때 자신에게 최대 생명력 10%의 보호막 (주문 위력과 무관)' },
+    { id: 'ironwall', name: '철벽 자세', req: ['martial', 8], cd: 16, mult: 0.35, type: 'shield', desc: '최대 생명력 35%의 보호막 (별의 탑에서는 시전자 공격력의 70%와 시전자 최대 생명력의 35% 중 큰 값)' },
     { id: 'earthsplit', name: '대지 가르기', req: ['martial', 12], cd: 18, mult: 8, type: 'stun', stun: 2, phys: true, desc: '물리 공격력의 800% 피해 · 2초 기절 (주문 위력과 무관)' },
     // 학과 전용 주문 (cls: 배울 수 있는 학과). 기사도 수업으로 배운 일반 주문은 낄 수 있다 (= 마검사)
     { id: 'shieldbash', name: '방패 강타', req: null, cls: ['knight'], cd: 9, mult: 3, type: 'stun', stun: 1.5, phys: true, desc: '기사 전용 · 물리 공격력의 300% 피해, 1.5초 기절 (주문 위력과 무관)' },
