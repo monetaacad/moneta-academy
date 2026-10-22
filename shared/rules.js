@@ -748,6 +748,11 @@
   R.expAtkMul = function (s) { return 1 + Math.min(1.2, Math.max(0, s - 30) * 0.08); };
   // 갈 수 있는 단계: 학년 상한(학년×10+9), 레벨이 높으면 레벨만큼 (학년 상한 +10까지)
   R.STAGE_OVER = 10;
+  /* 레벨 차이 경험치 감소: 레벨이 지금 갈 수 있는 최고 단계(R.stageCap)보다 XP_GAP_FREE 넘게 높으면,
+     XP_GAP_HALF 레벨마다 원정 경험치가 절반. 상한에 막혀 같은 단계를 오래 돌 때 레벨만 계속 오르는 것을 막는다 (아르크 · 장비는 그대로) */
+  R.XP_GAP_FREE = 5; R.XP_GAP_HALF = 3;
+  R.xpGapOver = function (P) { return Math.max(0, (P.lvl || 1) - (R.stageCap(P) + R.XP_GAP_FREE)); };
+  R.xpGapMul = function (P) { return Math.pow(0.5, R.xpGapOver(P) / R.XP_GAP_HALF); };
   R.gradeCap = function (P) { return P.grade >= 8 ? 1e9 : P.grade * 10 + 9; };
   R.stageLvReq = function (s) { return s; };
   R.stageCap = function (P) { var g = R.gradeCap(P); return P.grade >= 8 ? g : Math.max(g, Math.min(g + R.STAGE_OVER, P.lvl)); };
@@ -881,7 +886,7 @@
     var z = R.zoneOf(j.s), out = { k: 'exp', s: j.s, ck: j.pt && j.pt.ck || undefined, kills: kills, gold: 0, xp: 0, mats: 0, stones: 0, items: [], sold: 0, t: t, canceled: mode === true, recall: mode === 'recall' || mode === 'leave', leave: mode === 'leave' || undefined, fell: mode === 'fall' };
     if (kills <= 0) return out;
     badgeGain(P, j.dur / 3600 * frac * keep * R.BADGE_XP.expH, t);
-    var g = kills * j.gEach, x = kills * j.xEach;
+    var g = kills * j.gEach, x = kills * j.xEach * R.xpGapMul(P);
     addGold(P, g); out.gold = Math.floor(g); out.xp = x; out.levels = addXp(P, x, t);
     if (j.killMana) addMana(P, kills * j.killMana);
     P.st.kills += kills; cupAdd(P, kills * K.KILL_PACK / 40, 'kill');
@@ -2572,7 +2577,7 @@
       P.scores[run.grade] = { total: total, letter: L }; if (L === 'S') P.st.sGrades++;
       P.st.aGrades = Object.keys(P.scores).filter(function (g) { var l = P.scores[g].letter; return l === 'S' || l === 'A'; }).length;
       var rw = R.EXAM_REWARD[L] || R.EXAM_REWARD.C, mult = rw.mult, shard = Math.round((8 + run.grade * 4) * mult);
-      var gold = Math.floor(400 * K.KILL_GOLD * goldPow(ex.duel) * mult); P.res.shard += shard; addGold(P, gold);
+      var gold = Math.floor(400 * K.KILL_GOLD * goldPow(ex.gold || ex.duel) * mult);   // ex.gold: 대련 단계를 올리기 전 기준 (보상은 그대로) P.res.shard += shard; addGold(P, gold);
       var minR = rw.minR;
       // 장비 레벨: 지금 연 원정 단계 ±3 (학년 상한을 넘어도 됨). S는 전설 확률 3%
       var ilv = Math.max(1, Math.min(P.maxStage, R.stageCap(P)) + Math.floor(rnd(P) * 7) - 3), rr = Math.max(minR, rollRarity(P, 0.5));
