@@ -258,6 +258,8 @@
   function R2(P) { return Rules.gradeLabel(P); }
   // 데모 학생 검색: 아카데미 친구(NPC) 이름에서 찾는다
   LocalApi.prototype.playerSearch = function (q) { q = String(q || '').replace(/\s+/g, '').toLowerCase(); var N = npcs(); return Promise.resolve({ demo: true, list: q ? N.map(function (n, k) { return { id: 'npc:' + k, name: n.name, house: n.house, npc: true, online: true }; }).filter(function (x) { return x.name.replace(/\s+/g, '').toLowerCase().indexOf(q) >= 0; }).slice(0, 20) : [] }); };
+  LocalApi.prototype.rels = function () { return Promise.resolve({ rels: [], inc: [], out: [], max: 30, demo: true }); };
+  LocalApi.prototype.relOp = function () { return Promise.resolve({ error: '데모에서는 관계를 맺을 수 없습니다. 서버를 열면 사용할 수 있습니다' }); };
   LocalApi.prototype.friends = function () { return Promise.resolve({ friends: [], out: [], inc: [], demo: true }); };
   LocalApi.prototype.friendOp = function () { return Promise.resolve({ error: '데모에서는 친구를 맺을 수 없습니다. 서버를 열면 사용할 수 있습니다' }); };
   LocalApi.prototype._announce = function () { };

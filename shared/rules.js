@@ -2045,6 +2045,15 @@
     else log(P, now, R.CT_NAME[cls] + ' ' + f + '층 돌파', 'good');
     return out;
   };
+  /* 허수아비(딜 측정): 반격하지 않고 쓰러지지 않는 상대와 DUMMY_T초 싸워 실제 피해를 잰다. 대기 · 보상 · 기록 없음 (전투 난수도 되돌린다) */
+  R.DUMMY_T = 30;
+  A.dummy = function (P, W, now, a) {
+    var c = calc(P, W, now), boss = !!a.boss, rs = P.rng, f;
+    try { f = fight(P, c, { hp: 1e300, atk: 0, boss: boss }, R.DUMMY_T, false); } finally { P.rng = rs; }
+    var part = { a: 0, p: 0, f: 0 }, n = 0, cr = 0, casts = {};
+    f.ev.forEach(function (e) { if (e[1] === 'h') { part[e[3]] = (part[e[3]] || 0) + e[2]; n++; if (e[4]) cr++; } else if (e[1] === 's') casts[e[2]] = (casts[e[2]] || 0) + 1; });
+    return { boss: boss, t: R.DUMMY_T, dealt: Math.round(f.dealt), dps: Math.round(f.dealt / R.DUMMY_T), est: Math.round(c.totalDps * (boss ? c.bossDmg : 1)), part: part, hits: n, crits: cr, casts: casts };
+  };
   A.boss = function (P, W, now) {
     if (P.bossCd > now) err('아직 재도전할 수 없습니다');
     if (!R.canChallenge(P)) err(R.bossLockText(P));

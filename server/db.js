@@ -96,6 +96,19 @@ function open(dir) {
       PRIMARY KEY (pid, fid)
     );
     CREATE INDEX IF NOT EXISTS friends_fid ON friends(fid, state);
+    -- 관계: a가 신청, b가 수락하면 state 'ok'. la = a가 b에게 어떤 사이인지, lb = b가 a에게 (예: 선배 / 후배). 한 쌍에 하나
+    CREATE TABLE IF NOT EXISTS relations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      a TEXT NOT NULL,
+      b TEXT NOT NULL,
+      la TEXT NOT NULL,
+      lb TEXT NOT NULL,
+      state TEXT NOT NULL,          -- 'req' 수락 대기, 'ok' 맺음
+      t INTEGER NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS relations_pair ON relations(min(a, b), max(a, b));
+    CREATE INDEX IF NOT EXISTS relations_a ON relations(a, state);
+    CREATE INDEX IF NOT EXISTS relations_b ON relations(b, state);
     CREATE TABLE IF NOT EXISTS parties (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -496,6 +509,17 @@ function open(dir) {
     friendMemo: db.prepare(`UPDATE friends SET memo = ? WHERE pid = ? AND fid = ?`),
     friendList: db.prepare(`SELECT f.fid AS id, f.state, f.t, f.memo, p.name, p.house, p.grade, p.lvl, p.last_seen, p.avatar_v, p.profile, p.title FROM friends f JOIN players p ON p.id = f.fid WHERE f.pid = ? AND p.banned = 0 ORDER BY p.last_seen DESC LIMIT 300`),
     friendIncoming: db.prepare(`SELECT f.pid AS id, f.t, p.name, p.house, p.grade, p.lvl, p.avatar_v FROM friends f JOIN players p ON p.id = f.pid WHERE f.fid = ? AND f.state = 'req' AND p.banned = 0 ORDER BY f.t DESC LIMIT 100`),
+    relGet: db.prepare(`SELECT * FROM relations WHERE id = ?`),
+    relPair: db.prepare(`SELECT * FROM relations WHERE (a = ? AND b = ?) OR (a = ? AND b = ?)`),
+    relInsert: db.prepare(`INSERT INTO relations (a, b, la, lb, state, t) VALUES (?, ?, ?, ?, 'req', ?)`),
+    relAccept: db.prepare(`UPDATE relations SET state = 'ok', t = ? WHERE id = ?`),
+    relDel: db.prepare(`DELETE FROM relations WHERE id = ?`),
+    relCount: db.prepare(`SELECT COUNT(*) AS n FROM relations WHERE (a = ? OR b = ?) AND state = 'ok'`),
+    relOutCount: db.prepare(`SELECT COUNT(*) AS n FROM relations WHERE a = ? AND state = 'req'`),
+    // pid 기준으로 상대 · 내 몫 이름표 · 상대 몫 이름표를 돌려준다 (정지 · 초기화된 상대는 빼고)
+    relList: db.prepare(`SELECT r.id AS rid, r.state, r.t, CASE WHEN r.a = ?1 THEN 1 ELSE 0 END AS sent, CASE WHEN r.a = ?1 THEN r.la ELSE r.lb END AS mine, CASE WHEN r.a = ?1 THEN r.lb ELSE r.la END AS theirs,
+      p.id, p.name, p.house, p.grade, p.avatar_v FROM relations r JOIN players p ON p.id = CASE WHEN r.a = ?1 THEN r.b ELSE r.a END
+      WHERE (r.a = ?1 OR r.b = ?1) AND p.banned = 0 AND p.deleted = 0 ORDER BY r.t`),
     friendIncomingCount: db.prepare(`SELECT COUNT(*) AS n FROM friends WHERE fid = ? AND state = 'req'`),
     // 파티
     partyGet: db.prepare(`SELECT id, name, leader, created, npcs, allgo FROM parties WHERE id = ?`),
