@@ -1792,8 +1792,8 @@
   /* 수업 예약 · 제때 입실 · 시간표 프리셋
      예약: 수업 중인 슬롯마다 다음 교시 하나. 종이 울리면 저절로 시작한다(꿈길 중이면 깨어난 뒤에).
      제때 입실: 수업이 끝나고 15분 안에 바로 들으면 과목 경험치 +10% (저절로 시작한 예약 교시는 없음). */
-  R.ONTIME_WIN = 900; R.ONTIME_BONUS = 0.1; R.TT_MAX = 3;
-  /* 시간표(프리셋 3개): 교시 목록 [{s, d}], 모두 합쳐 최대 4시간. 「시간표 듣기」를 누르면 1교시부터 차례로 이어서 듣는다.
+  R.ONTIME_WIN = 900; R.ONTIME_BONUS = 0.1; R.TT_MAX = 5;
+  /* 시간표(프리셋 5개): 교시 목록 [{s, d}], 모두 합쳐 최대 4시간. 「시간표 듣기」를 누르면 1교시부터 차례로 이어서 듣는다.
      교시가 바뀔 때 종이 울리고 다음 교시가 저절로 시작되며, 시작하고 15분 안에 「제때 입실」을 누르면 그 교시 과목 경험치 +10%.
      시간표 수업 중에는 다음 교시 예약을 걸 수 없고, 이미 수업을 듣고 있으면 시간표를 시작할 수 없다. */
   R.TT_MAX_S = 4 * 3600; R.TT_MAX_N = 8;
@@ -2136,8 +2136,20 @@
     if (!R.canWear(P, P.inv[i])) err('레벨 ' + P.inv[i].ilvl + '부터 장착할 수 있습니다');
     var it = P.inv.splice(i, 1)[0], cur = P.eq[it.slot]; P.eq[it.slot] = it; if (cur) P.inv.push(cur); return { ok: true };
   };
-  // 장비 프리셋 3칸: 지금 장착한 장비를 저장해 두었다가 한 번에 바꿔 낀다 (가방에 없으면 그 칸은 그대로)
-  R.GEARSET_N = 3;
+  // 장비 프리셋 5칸: 지금 장착한 장비를 저장해 두었다가 한 번에 바꿔 낀다 (가방에 없으면 그 칸은 그대로)
+  R.GEARSET_N = 5;
+  // 주문 프리셋 5칸: 지금 장착한 주문 구성을 저장 · 불러오기 (배우지 못했거나 잠긴 칸의 주문은 빈칸)
+  R.SPSET_N = 5;
+  A.spellSet = function (P, W, now, a) {
+    var i = int(a.i, 0, R.SPSET_N - 1), op = str(a.op), sets = P.spellSets || (P.spellSets = []);
+    if (op === 'save') { if (!P.spells.some(Boolean)) err('장착한 주문이 없습니다'); sets[i] = { sp: P.spells.slice(), cls: P.cls || 'mage', at: now }; return { saved: i }; }
+    if (op === 'clear') { sets[i] = null; return { cleared: i }; }
+    var st = sets[i]; if (!st) err('저장된 프리셋이 없습니다');
+    var ns = R.spellSlots(P), miss = 0, out = [null, null, null, null], used = {};
+    st.sp.forEach(function (id, k) { if (!id) return; if (k < ns && R.spellUnlocked(P, id) && !used[id]) { out[k] = id; used[id] = 1; } else miss++; });
+    if (!out.some(Boolean)) err('지금 사용할 수 있는 주문이 없습니다');
+    P.spells = out; return { loaded: i, miss: miss };
+  };
   A.gearSet = function (P, W, now, a) {
     var i = int(a.i, 0, R.GEARSET_N - 1), op = str(a.op), sets = P.gearSets || (P.gearSets = []);
     // 저장(덮어쓰기)해도 프리셋 이름은 그대로 둔다 (비우기를 해야 이름도 지워진다)
