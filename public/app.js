@@ -363,13 +363,25 @@
   /* ───────── 렌더 ───────── */
   var V = {}, ACT = {}; window.__ACT = ACT;
   ACT.sidetog = function () { SIDE_OPEN = !SIDE_OPEN; try { localStorage.setItem('arc_side', SIDE_OPEN ? '1' : '0'); } catch (e) { } updateSide(); };
+  // 실시간 거래 목록: 내려 둔 상태면 보고 있던 줄(data-id)을 기억했다가 다시 그린 뒤 같은 자리에 둔다. 맨 위를 보고 있으면 새 거래가 바로 보이게 둔다
+  function trAnchor() {
+    var l = $('.trlist'); if (!l || l.scrollTop <= 2) return null;
+    var lt = l.getBoundingClientRect().top, a = [].find.call(l.querySelectorAll('.trrow[data-id]'), function (e) { return e.getBoundingClientRect().bottom > lt + 1; });
+    return { top: l.scrollTop, id: a ? a.dataset.id : null, off: a ? a.getBoundingClientRect().top - lt : 0 };
+  }
+  function trRestore(k) {
+    var l = $('.trlist'); if (!l) return;
+    var a = k.id != null && l.querySelector('.trrow[data-id="' + k.id + '"]');
+    l.scrollTop = a ? l.scrollTop + (a.getBoundingClientRect().top - l.getBoundingClientRect().top) - k.off : k.top;
+  }
   function render() {
     if (!S.P || !$('#view')) return;
     S.rPend = 0;   // 미뤄 둔 softRender가 있었다면 이걸로 끝
     var v = VIEWS.find(function (x) { return x.id === S.view; }) || VIEWS[0];
-    var sy = window.scrollY;
+    var sy = window.scrollY, tra = trAnchor();   // 실시간 거래 목록: 내려 둔 위치 유지
     $('#view').innerHTML = groupTabs() + (viewOpen(v) ? V[v.id]() : pageHead('잠긴 구역', v.name, '') + '<div class="card"><p>' + R.josa(v.name, '은', '는') + ' ' + (v.fam ? R.FAM_OPEN_TEXT : v.grade + '학년') + '부터 출입할 수 있습니다.</p></div>');
     if (Math.abs(window.scrollY - sy) > 2) window.scrollTo(0, sy);
+    if (tra) trRestore(tra);
     afterRender(); updateLive(); updateBadges(); updateSide();
   }
   function pageHead(eyebrow, title, aside) { return '<div class="page-head"><div><div class="eyebrow">' + eyebrow + '</div><h2>' + title + '</h2></div>' + (aside ? '<div class="aside">' + aside + '</div>' : '') + '</div>'; }
@@ -1929,13 +1941,33 @@
     else if (pv.toS < 0) a.push('<span class="gold">' + (pv.toA < 0 && pv.letter !== 'A' ? 'A·S' : 'S') + '는 대련에서 이겨야 받을 수 있습니다</span> (장비·능력치·주문)');
     return a.join(' · ');
   }
+  // 등급별로 더 필요한 것: 부족한 과목과, 등급마다 시험 과목 레벨 합계가 얼마나 더 필요한지
+  function examPlanHtml(P) {
+    var pl = R.examPlan(P, wctx(), now()); if (!pl) return '';
+    var nm = function (k) { return R.SUBJ[k].name; }, low = pl.subj.slice().sort(function (a, b) { return Math.max(P.subj[a].lv, pl.req) - Math.max(P.subj[b].lv, pl.req); })[0];
+    var h = '<hr class="sep"><div class="section-t">더 필요한 것 <span class="tiny faint">필기 · 실기는 시험 과목 평균 레벨로만 채점합니다</span></div><div class="stack" style="gap:6px">';
+    h += '<div class="small"><b>응시 자격</b> ' + (pl.lack.length ? pl.lack.map(function (x) { return '<span class="tag br">' + nm(x.sid) + ' Lv ' + x.lv + ' → ' + pl.req + ' (+' + (pl.req - x.lv) + ')</span>'; }).join(' ') : '<span class="good">충족</span> <span class="tiny faint">(모든 시험 과목 Lv ' + pl.req + ' 이상)</span>') + '</div>';
+    ['S', 'A', 'B'].forEach(function (k) {
+      var nd = pl.need[k], body;
+      if (nd < 0) body = '<span class="gold">시험 과목 레벨만으로는 받을 수 없습니다.</span> 대련에서 승리해야 합니다 (장비 · 능력치 · 주문).';
+      else if (nd <= pl.sum && !pl.lack.length) body = '<span class="good">달성</span>';
+      else {
+        var d = nd - pl.sum, ex2 = Math.max(P.subj[low].lv, pl.req) + (nd - pl.base);
+        body = '시험 과목 레벨 합계 <b class="num">' + pl.sum + ' → ' + nd + '</b> (+' + d + ' · 평균 Lv ' + (nd / pl.n).toFixed(1) + ')' +
+          '<div class="tiny faint">' + (pl.lack.length ? '부족한 과목을 Lv ' + pl.req + '까지 올린 뒤, ' : '') + '어느 과목을 올려도 같습니다. 예: ' + nm(low) + ' Lv ' + ex2 + (pl.lack.length ? '' : ' (지금 ' + P.subj[low].lv + ')') + '</div>';
+      }
+      h += '<div class="row small" style="flex-wrap:nowrap;align-items:flex-start;gap:8px"><b style="width:16px;flex:none">' + k + '</b><div style="flex:1;min-width:0">' + body + '</div></div>';
+    });
+    h += '<p class="tiny faint">필기는 평균이 기준 +3, 실기는 기준 +4일 때 만점입니다 (기준 Lv ' + pl.req + '). 그보다 높은 레벨은 점수에 더해지지 않습니다.' + (pl.duelWin ? '' : ' 대련에서 지면 대련 점수가 크게 줄어 필요한 레벨이 늘어납니다.') + '</p></div>';
+    return h;
+  }
   function examCast(P, elig) {
     var pv = R.examPredict(P, wctx(), now()); if (!pv) return '';
     var lc = pv.letter === 'F' ? 'bad' : pv.letter === 'S' || pv.letter === 'A' ? 'gold' : '';
     return '<hr class="sep"><div class="section-t">예상 성적 <span class="tiny faint">' + (elig ? '지금 응시하면' : '응시 자격을 채웠을 때 어림') + '</span></div>' +
       '<div class="row" style="gap:14px;align-items:center;flex-wrap:nowrap"><div class="letter ' + lc + '" style="font-size:44px">' + pv.letter + '</div><div style="flex:1;min-width:0"><div class="small">총점 약 <b class="num">' + pv.total + '</b>점 <span class="tiny faint">· 대련 ' + (pv.duelWin ? '승리 예상' : '패배 위험') + (pv.bonus ? ' · 침묵달 +' + pv.bonus : '') + '</span></div><div class="small" style="margin-top:2px">' + examHint(pv) + '</div></div></div>' +
       '<div class="stack" style="gap:2px;margin-top:8px">' + ['S', 'A', 'B', 'C'].map(function (k) { return '<div class="row tiny' + (k === pv.letter ? ' gold' : ' faint') + '" style="flex-wrap:nowrap"><b style="width:16px">' + k + '</b><span style="width:52px">' + { S: '95점~', A: '85점~', B: '75점~', C: '60점~' }[k] + '</span><span style="flex:1;min-width:0">' + R.EXAM_REWARD[k].text + '</span></div>'; }).join('') + '</div>' +
-      '<p class="tiny faint" style="margin-top:6px">합격하면 바로 다음 학년이 되어 이 시험은 다시 볼 수 없습니다. 지금 볼지, 레벨을 더 올려 S를 노릴지 정할 수 있습니다.</p>';
+      '<p class="tiny faint" style="margin-top:6px">합격하면 바로 다음 학년이 되어 이 시험은 다시 볼 수 없습니다. 지금 볼지, 레벨을 더 올려 S를 노릴지 정할 수 있습니다.</p>' + examPlanHtml(P);
   }
 
   /* ── 월드 ── */
@@ -2366,7 +2398,7 @@
     return '<div class="famxp"><div class="row tiny"><span class="faint">경험치' + (act2 ? ' · 동행 중 활동할 때마다' : disp ? ' · 귀환 시 파견 1시간당 +' + R.FAM_DISP_XP + ' 지급' : '') + '</span><span class="spacer"></span><span class="num">' + fmt(xp) + ' / ' + fmt(need) + '</span></div><div class="bar" style="height:5px;margin-top:2px"><b style="width:' + Math.min(100, xp / need * 100).toFixed(1) + '%"></b></div></div>';
   }
   function famView() {
-    var P = S.P, eh = R.eggHold(P), hold = '<p class="small" style="margin-top:8px">알 품기: 지니고 있는 알 <b class="num">' + P.fam.eggs + '</b>개' + (eh ? ' · <span class="good">경험치 +' + Math.round(eh * R.EGG_HOLD_EACH * 100) + '%</span>' : '') + ' <span class="tiny faint">(부화시키지 않은 알 하나마다 경험치 +' + Math.round(R.EGG_HOLD_EACH * 100) + '%, ' + R.EGG_HOLD_MAX + '개까지)</span></p>' + (P.subj.beast.lv ? '<p class="small" style="margin-top:4px">환수생태학 ' + P.subj.beast.lv + '레벨: 사역마 능력 보너스 +' + Math.round(P.subj.beast.lv * R.BEAST_FAM * 100) + '% · 파견 보상 +' + Math.round(P.subj.beast.lv * R.BEAST_DISP * 100) + '% · 부화 속도 +' + P.subj.beast.lv + '%</p>' : '<p class="tiny faint" style="margin-top:4px">환수생태학을 들으면 레벨마다 사역마 능력 보너스 +' + Math.round(R.BEAST_FAM * 100) + '%, 파견 보상 +' + Math.round(R.BEAST_DISP * 100) + '%, 부화 속도 +1%</p>');
+    var P = S.P, eh = R.eggHold(P), hold = '<p class="small" style="margin-top:8px">알 품기: 지니고 있는 알 <b class="num">' + P.fam.eggs + '</b>개' + (eh ? ' · <span class="good">경험치 +' + Math.round(eh * R.EGG_HOLD_EACH * 100) + '%</span>' : '') + ' <span class="tiny faint">(부화시키지 않은 알 하나마다 경험치 +' + Math.round(R.EGG_HOLD_EACH * 100) + '%, 경험치 보너스는 ' + R.EGG_HOLD_MAX + '개까지)</span></p>' + (P.subj.beast.lv ? '<p class="small" style="margin-top:4px">환수생태학 ' + P.subj.beast.lv + '레벨: 사역마 능력 보너스 +' + Math.round(P.subj.beast.lv * R.BEAST_FAM * 100) + '% · 파견 보상 +' + Math.round(P.subj.beast.lv * R.BEAST_DISP * 100) + '% · 부화 속도 +' + P.subj.beast.lv + '%</p>' : '<p class="tiny faint" style="margin-top:4px">환수생태학을 들으면 레벨마다 사역마 능력 보너스 +' + Math.round(R.BEAST_FAM * 100) + '%, 파견 보상 +' + Math.round(R.BEAST_DISP * 100) + '%, 부화 속도 +1%</p>');
     if (!R.famOpen(P)) return '<div class="card"><h3>사역마는 ' + R.FAM_OPEN_TEXT + '부터</h3><p class="small muted" style="margin-top:4px">환수생태학 수업을 들어 ' + R.FAM_SUBJ + '레벨이 되거나 레벨 ' + R.FAM_LV + '이 되면 고드릭 펜 교수가 첫 환수의 알을 주고, 알을 부화시켜 동행하거나 파견할 수 있습니다. 지금 환수생태학 ' + P.subj.beast.lv + '레벨 · 레벨 ' + P.lvl + '.</p><div class="row" style="margin-top:8px"><button class="btn sm primary" data-act="nav" data-a="lecture">수업 듣기</button></div>' + hold + '</div>';
     var price = R.eggManaCost(P, wctx(), now()), inc = P.fam.inc;
     var h = '<div class="grid g2" style="margin-bottom:14px"><div class="card hl"><h3>부화기</h3><p class="small muted">보관 중인 알 <b class="num gold">' + P.fam.eggs + '</b>개. 보스 첫 처치, 월드 보스 토벌, 12시간 파견, 매점에서 얻습니다. 알을 품으면 활동할수록(수업 · 원정 · 연구 · 파견 · 조제 등) 진행도가 오르고, 다 차면 마나 없이 깨어납니다. 마나를 불어넣으면 남은 진행도만큼의 마나로 바로 깨어납니다.</p>' + hold;
@@ -3471,7 +3503,7 @@
       var tr = m.trades;
       h += '<div class="card"><div class="row between"><h3>실시간 거래</h3><span class="tiny faint"><span class="odot"></span> 팔리는 대로 올라옵니다 · 산 사람은 보이지 않습니다</span></div>';
       h += !tr ? '<div class="empty">불러오는 중…</div>' : !tr.length ? '<div class="empty">아직 거래가 없습니다.</div>' : '<div class="trlist">' + tr.map(function (x) {
-        return '<div class="trrow' + (x.fresh && Date.now() - x.fresh < 4000 ? ' fresh' : '') + '"><span class="tiny faint num trt">' + ago(x.t) + '</span><span class="ell trn"' + (x.kind === 'item' ? ' style="color:' + rcol(x.r) + '"' : '') + '>' + esc(x.name) + (x.kind !== 'item' ? ' <span class="num faint">×' + fmt(x.qty) + '</span>' : ' <span class="tiny faint">' + R.slotName(x.item || x) + ' Lv ' + x.ilvl + '</span>') + '</span><b class="num gold">' + fmt(x.price) + '</b></div>';
+        return '<div class="trrow' + (x.fresh && Date.now() - x.fresh < 4000 ? ' fresh' : '') + '" data-id="' + esc(String(x.id)) + '"><span class="tiny faint num trt">' + ago(x.t) + '</span><span class="ell trn"' + (x.kind === 'item' ? ' style="color:' + rcol(x.r) + '"' : '') + '>' + esc(x.name) + (x.kind !== 'item' ? ' <span class="num faint">×' + fmt(x.qty) + '</span>' : ' <span class="tiny faint">' + R.slotName(x.item || x) + ' Lv ' + x.ilvl + '</span>') + '</span><b class="num gold">' + fmt(x.price) + '</b></div>';
       }).join('') + '</div>';
       h += '</div>';
     } else {
@@ -4245,7 +4277,7 @@
   function invItems() {
     var P = S.P, tk = P.tok || {}, out = [], g3 = R.famOpen(P);
     function B(act, a, b, label, primary) { return '<button class="btn sm' + (primary ? ' primary' : ' ghost') + '" data-act="' + act + '"' + (a != null ? ' data-a="' + a + '"' : '') + (b != null ? ' data-b="' + b + '"' : '') + '>' + label + '</button>'; }
-    if (P.fam.eggs > 0) out.push({ k: 'egg', name: '환수의 알', n: P.fam.eggs, desc: (g3 ? '환수 사역장의 부화기에서 마나로 부화시켜 사역마로 키웁니다.' : R.FAM_OPEN_TEXT + '부터 환수 사역장에서 부화할 수 있습니다. 그때까지 여기에 보관됩니다.') + ' 지니고 있는 동안 알 품기로 경험치 +' + Math.round(R.EGG_HOLD_EACH * 100) + '%(' + R.EGG_HOLD_MAX + '개까지).', acts: (g3 && !P.fam.egg ? invEggBtn(P) : '') + B('goto', 'work', 'fam', '부화기로') });
+    if (P.fam.eggs > 0) out.push({ k: 'egg', name: '환수의 알', n: P.fam.eggs, desc: (g3 ? '환수 사역장의 부화기에서 마나로 부화시켜 사역마로 키웁니다.' : R.FAM_OPEN_TEXT + '부터 환수 사역장에서 부화할 수 있습니다. 그때까지 여기에 보관됩니다.') + ' 지니고 있는 동안 알 품기로 경험치 +' + Math.round(R.EGG_HOLD_EACH * 100) + '%(경험치 보너스는 ' + R.EGG_HOLD_MAX + '개까지).', acts: (g3 && !P.fam.egg ? invEggBtn(P) : '') + B('goto', 'work', 'fam', '부화기로') });
     if (P.wb.tickets + (P.wb.extra || 0) > 0) out.push({ k: 'ticket', name: '토벌 도전권', n: P.wb.tickets + (P.wb.extra || 0), desc: '충전 도전권 ' + P.wb.tickets + ' / ' + R.K.WB_TICKET_MAX + (P.wb.extra > 0 ? ' · 추가 도전권 ' + P.wb.extra + '장 (이번 주 ' + R.wbExtraLeft(P, now()) + '번 더 사용 가능)' : '') + '. 월드 보스에 한 번 도전할 때 1장씩 사용합니다. 충전 도전권은 8시간마다 3장까지 차고, 매점 · 우편으로 받은 추가 도전권은 충전 도전권을 다 사용한 뒤 한 주에 ' + R.K.WB_EXTRA_USE + '번까지 사용할 수 있으며 남은 것은 다음 주로 넘어갑니다.', acts: B('goto', 'world', null, '월드 보스로', true) });
     if (tk.respec > 0) out.push({ k: 'respec', name: '망각의 차', n: tk.respec, desc: '마시면 분배한 능력치 포인트를 모두 돌려받고 자동 분배가 꺼집니다.', acts: B('respecuse', null, null, S.confirm.rsp > Date.now() ? '한 번 더 누르면 마십니다' : '바로 마시기', true) + B('goto', 'gear', 'alloc', '능력치 칸으로') });
     D.POTIONS.forEach(function (p) { if (P.shelf[p.id] > 0) out.push({ k: 'pot:' + p.id, name: p.name, n: P.shelf[p.id], desc: p.desc, dot: p.color, acts: B('do', 'drink', p.id, '바로 마시기', true) + B('goto', 'alch', '', '연금 공방으로') }); });
@@ -5753,7 +5785,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102291;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102295;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

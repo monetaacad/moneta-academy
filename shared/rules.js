@@ -1741,6 +1741,18 @@
     return { th: R.examTheory(P, ex), pr: R.examPractical(P, ex), duel: duel, duelWin: du.win, bonus: bonus, total: total, letter: R.letter(total), toS: need(95), toA: need(85) };
   };
 
+  // 등급별로 더 필요한 것 (운영 건의: 「무엇이 더 필요한지」): 필기 · 실기는 시험 과목 평균 레벨만 보므로, 등급마다 필요한 레벨 합계를 구한다
+  // lack: 기준 레벨에 못 미친 과목, sum: 지금 레벨 합계, need: { S, A, B } 필요한 레벨 합계 (-1이면 레벨만으로는 불가 → 대련 승리 필요)
+  R.examPlan = function (P, W, t) {
+    var ex = R.examFor(P); if (!ex || P.grade >= 8) return null;
+    var pv = R.examPredict(P, W, t), xs = R.examSubjs(P, ex), n = xs.length, req = ex.req, extra = pv.duel + pv.bonus;
+    var lack = xs.filter(function (k) { return sjLv(P, k) < req; }).map(function (k) { return { sid: k, lv: sjLv(P, k) }; });
+    var sum = xs.reduce(function (a, k) { return a + sjLv(P, k); }, 0), base = xs.reduce(function (a, k) { return a + Math.max(sjLv(P, k), req); }, 0);
+    function score(tot) { var d = tot / n - req; return Math.round(clamp(21 + d * 3, 0, 30) + 25 + 15 * clamp(d / 4, 0, 1) + extra); }
+    function need(min) { for (var x = base; x <= (req + 4) * n; x++) if (score(x) >= min) return x; return -1; }
+    return { req: req, n: n, subj: xs, lack: lack, sum: sum, base: base, full: (req + 4) * n, need: { S: need(95), A: need(85), B: need(75) }, duelWin: pv.duelWin };
+  };
+
   /* ───────── 결투제 ───────── */
   R.rival = function (P) { return D.RIVALS[P.duel.rank] || null; };
   R.rivalPreview = function (P, W) { var r = R.rival(P); return r ? R.duelPreview(P, W, r.stage, 4, 1.3) : null; };
