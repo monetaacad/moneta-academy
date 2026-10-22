@@ -180,7 +180,7 @@
     if (st.v && st.v !== S.view) { S.popNav = true; ACT.nav(st.v); S.popNav = false; }
     else if (wasDup && !st.m) history.back();   // 버튼으로 닫은 창의 빈 칸에서 나온 경우: 한 번 더 뒤로
   });
-  function closeModal() { if (S.modalHist) { S.modalHist = false; hist('replaceState', { v: S.view, dup: 1 }); S.curDup = true; } var m = $('#modal'); m.hidden = true; m.innerHTML = ''; S.modal = false; S.modalLocked = false; S.replay = null; S.rpKeep = false; S.mbox = null; S.meModal = false; S.notesOpen = false; render(); var f = S.afterClose; S.afterClose = null; if (f) setTimeout(f, 60); }
+  function closeModal() { if (S.reportAck != null) { var ra = S.reportAck; S.reportAck = null; inboxAcked(ra); act('inboxAck', { upto: ra }); } if (S.modalHist) { S.modalHist = false; hist('replaceState', { v: S.view, dup: 1 }); S.curDup = true; } var m = $('#modal'); m.hidden = true; m.innerHTML = ''; S.modal = false; S.modalLocked = false; S.replay = null; S.rpKeep = false; S.mbox = null; S.meModal = false; S.notesOpen = false; render(); var f = S.afterClose; S.afterClose = null; if (f) setTimeout(f, 60); }
   function mhead(title, sub, noClose) { return '<div class="mhead"><div><h2>' + title + '</h2>' + (sub ? '<p class="muted small">' + sub + '</p>' : '') + '</div>' + (noClose ? '' : '<button class="btn ghost sm x" data-act="modal-close" aria-label="닫기">닫기</button>') + '</div>'; }
 
   /* ───────── 서버와 주고받기 ───────── */
@@ -294,6 +294,7 @@
     // 끝난 작업마다 바로가기: 확인하고 그 화면으로 가서 다음 연구 · 수업 · 원정을 바로 시작한다
     var GO = [['res', 'lib', '연구로'], ['lec', 'lecture', '강의실로'], ['exp', 'explore', '원정으로'], ['disp', 'fam', '사역장으로'], ['hatch', 'fam', '사역장으로']], seen = {};
     var gos = GO.filter(function (g) { if (seen[g[1]] || !items.some(function (o) { return o.k === g[0]; })) return false; seen[g[1]] = 1; return true; });
+    S.reportAck = S.inboxUpto;   // 위쪽 「닫기」 · 뒤로 가기로 닫아도 확인한 것으로 (안 그러면 다음 상태 받기 때 같은 보고가 한 번 더 떴다)
     modal(mhead('끝난 작업 보고', items.length + '건') + '<ul class="report">' + lines.join('') + '</ul>' +
       (onTimeBtn(0) ? '<div class="row ontrow" style="margin-top:12px;gap:8px;align-items:center"><span class="small gold">시간표 다음 교시 ' + R.SUBJ[S.P.lec[0].s].name + ' 시작</span>' + onTimeBtn(0) + '</div>' : '') +
       '<div class="row" style="justify-content:flex-end;margin-top:14px;gap:8px"><button class="btn ghost" data-act="inbox-ok"' + (gos.length ? '' : ' autofocus') + '>확인</button>' +
@@ -4149,8 +4150,8 @@
   ACT['mc-no'] = function () { var c = $('#mconfirm'); if (c) c.remove(); };
   ACT['mc-yes'] = function () { S.peDraft = null; S.peAv = undefined; closeModal(); };
   ACT.pick = function (k, v) { S.pick[k] = v; render(); };
-  ACT['inbox-ok'] = function () { var upto = S.inboxUpto; inboxAcked(upto); closeModal(); act('inboxAck', { upto: upto }).then(function () { render(); if (inboxPend().length && !S.modal) inboxReport(); }); };
-  ACT['inbox-go'] = function (view) { var upto = S.inboxUpto; inboxAcked(upto); closeModal(); ACT.nav(view); act('inboxAck', { upto: upto }).then(function () { render(); }); };
+  ACT['inbox-ok'] = function () { var upto = S.inboxUpto; S.reportAck = null; inboxAcked(upto); closeModal(); act('inboxAck', { upto: upto }).then(function () { render(); if (inboxPend().length && !S.modal) inboxReport(); }); };
+  ACT['inbox-go'] = function (view) { var upto = S.inboxUpto; S.reportAck = null; inboxAcked(upto); closeModal(); ACT.nav(view); act('inboxAck', { upto: upto }).then(function () { render(); }); };
   ACT.cancel = function (key, type, el) {
     if (S.confirm[key] && S.confirm[key] > Date.now()) { S.confirm[key] = 0; act(type, JSON.parse(el.dataset.c)).then(function (r) { if (r) { if (type === 'expCancel' && !r.recall) toast(r.fell ? '원정에서 이미 쓰러져 돌아왔습니다' : '원정이 이미 끝나 완료로 처리했습니다', fmt(r.kills || 0) + '마리 · ' + MONEY(r.gold || 0, '+') + (r.fell ? ' — 모은 것의 ' + Math.round(R.K.FALL_KEEP * 100) + '%를 받았습니다' : ' — 원정 완료 횟수에 포함됩니다'), 3200); else if (type === 'expCancel') toast(r.leave ? '혼자 먼저 귀환했습니다 (모은 것의 ' + Math.round(R.EXP_LEAVE_KEEP * 100) + '%)' : '원정에서 귀환했습니다', fmt(r.kills || 0) + '마리 · ' + MONEY(r.gold || 0, '+') + (r.items && r.items.length ? ' · 장비 ' + r.items.length + '개' : '') + ' — 모은 것을 모두 받았습니다 (귀환은 원정 완료 횟수에 포함되지 않습니다)', 3200); else toast('작업을 취소했습니다', '지난 시간의 절반만큼 받았습니다'); } render(); }); }
     else { S.confirm[key] = Date.now() + 4000; render(); setTimeout(render, 4100); }
