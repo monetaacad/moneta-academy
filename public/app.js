@@ -899,15 +899,15 @@
   function mailLeft(t) { var d = (t - Date.now() / 1000) / 86400; return d > 36500 ? '기한 없음' : d < 1 ? Math.max(1, Math.round(d * 24)) + '시간 남음' : Math.floor(d) + '일 남음'; }
   function loadMailbox() { return API.mail().then(function (j) { if (j.error) { toast('우편함', j.error); return; } S.mbox = S.mbox || {}; S.mbox.list = j.mails || []; S.mailN = j.n || 0; updateMailBadge(); renderMailbox(); }); }
   function renderMailbox() {
-    var mb = S.mbox; if (!mb) return; var list = mb.list || [], todo = list.filter(function (m) { return !m.claimed && R.rewardText(m.rewards); }).length;
+    var mb = S.mbox; if (!mb) return; var list = mb.list || [], todo = list.filter(function (m) { return !m.claimed && R.rewardText(m.rewards); }).length, doneN = list.filter(mailDone).length, armD = S.mdelArm > Date.now();
     var h = mhead('우편함', '운영진과 아카데미가 보낸 선물 · 열어 봐도 보상은 기한 안에 언제든 받을 수 있습니다') +
-      '<div class="row" style="margin-bottom:10px"><span class="small muted">우편 ' + list.length + '통' + (todo ? ' · 받을 보상 <b class="gold">' + todo + '</b>' : '') + '</span><span class="spacer"></span>' + (todo ? '<button class="btn sm primary" data-act="mailall">모두 받기</button>' : '') + '</div>';
+      '<div class="row" style="margin-bottom:10px"><span class="small muted">우편 ' + list.length + '통' + (todo ? ' · 받을 보상 <b class="gold">' + todo + '</b>' : '') + '</span><span class="spacer"></span>' + (doneN ? '<button class="btn sm' + (armD ? ' primary' : ' ghost') + '" data-act="maildelread" title="읽었고 받을 보상이 없는 우편을 내 우편함에서 지웁니다">' + (armD ? '한 번 더 누르면 ' + doneN + '통을 삭제합니다' : '읽은 우편 삭제 (' + doneN + ')') + '</button>' : '') + (todo ? '<button class="btn sm primary" data-act="mailall">모두 받기</button>' : '') + '</div>';
     if (!list.length) h += '<div class="empty">받은 우편이 없습니다.</div>';
     h += '<div class="mlist">' + list.map(function (m) {
       var open = mb.open === m.id, rt = R.rewardText(m.rewards);
       return '<div class="mrow2' + (m.read ? '' : ' new') + (open ? ' open' : '') + (m.claimed || !rt ? ' done' : '') + '"><button class="mhd" data-act="mailopen" data-a="' + m.id + '" aria-expanded="' + open + '">' + (m.read ? '' : '<span class="mdot" aria-label="새 우편"></span>') + '<span class="mt"><b>' + esc(m.title) + '</b><span class="tiny faint">' + esc(m.sender) + ' · ' + clock(m.created) + ' · ' + mailLeft(m.expires) + '</span></span>' +
         (rt ? (m.claimed ? '<span class="tag">받음</span>' : '<span class="tag br">보상</span>') : '') + '</button>' +
-        (open ? '<div class="mbody">' + (m.body ? '<p class="small" style="white-space:pre-wrap">' + esc(m.body) + '</p>' : '') + (rt ? '<div class="mrw"><span class="tiny faint">보상</span> <b class="small">' + esc(rt) + '</b>' + (m.claimed ? '<span class="tag ok">받았습니다</span>' : '<button class="btn sm primary" data-act="mailclaim" data-a="' + m.id + '">받기</button>') + '</div>' : '') + '</div>' : '') + '</div>';
+        (open ? '<div class="mbody">' + (m.body ? '<p class="small" style="white-space:pre-wrap">' + esc(m.body) + '</p>' : '') + (rt ? '<div class="mrw"><span class="tiny faint">보상</span> <b class="small">' + esc(rt) + '</b>' + (m.claimed ? '<span class="tag ok">받았습니다</span>' : '<button class="btn sm primary" data-act="mailclaim" data-a="' + m.id + '">받기</button>') + '</div>' : '') + (mailDone(m) ? '<div class="row" style="justify-content:flex-end;margin-top:6px"><button class="btn sm ghost" data-act="maildel" data-a="' + m.id + '">이 우편 삭제</button></div>' : '') + '</div>' : '') + '</div>';
     }).join('') + '</div>';
     modal(h, true); S.mbox = mb;
   }
@@ -933,6 +933,13 @@
     }
     loadMailbox(); render();
   }
+  // 읽은 우편 삭제: 읽었고 보상이 없거나 이미 받은 우편만 (내 우편함에서만 사라진다)
+  function mailDone(m) { return m.read && (m.claimed || !R.rewardText(m.rewards)); }
+  ACT.maildelread = function () {
+    if (!(S.mdelArm > Date.now())) { S.mdelArm = Date.now() + 4000; renderMailbox(); return; }
+    S.mdelArm = 0; API.mailOp({ op: 'delRead' }).then(function (j) { if (j.error) { toast('우편함', j.error); return; } toast('우편함', '읽은 우편 ' + (j.n || 0) + '통을 삭제했습니다'); S.mbox.open = null; loadMailbox(); });
+  };
+  ACT.maildel = function (id) { API.mailOp({ op: 'del', id: +id }).then(function (j) { if (j.error) { toast('우편함', j.error); return; } S.mbox.open = null; loadMailbox(); }); };
   ACT.mailclaim = function (id) { API.mailOp({ op: 'claim', id: +id }).then(mailGot); };
   ACT.mailall = function () { API.mailOp({ op: 'claimAll' }).then(mailGot); };
   function updateMeBadge() {
@@ -1680,13 +1687,13 @@
   function expVoting(j) { return !!(j && j.pt && j.pt.ck && (j.pt.with || []).some(function (w) { return w && w.id && !w.npc; }) && !(S.expSolo && S.expSolo[j.pt.ck])); }
   function expVoteBtn(i, j) {
     var v = j.pt.vote, mine = !!(v && v.yes && v.yes.indexOf(S.P.id) >= 0);
-    return '<button class="btn sm ' + (mine ? 'primary' : 'ghost') + '" data-act="expvote" data-a="' + i + '" data-b="' + (mine ? 0 : 1) + '" title="아직 원정 중인 학생의 과반이 찬성하면 모두 함께 귀환합니다">' + (mine ? '귀환 찬성 취소' : '귀환 투표') + (v ? ' <span class="cost">' + v.yes.length + '/' + v.need + '</span>' : '') + '</button>';
+    return '<button class="btn sm ' + (mine ? 'primary' : 'ghost') + '" data-act="expvote" data-a="' + i + '" data-b="' + (mine ? 0 : 1) + '" title="아직 원정 중인 학생(동행 친구 제외)의 과반이 찬성하면 모두 함께 귀환합니다">' + (mine ? '귀환 찬성 취소' : '귀환 투표') + (v ? ' <span class="cost">' + v.yes.length + '/' + v.need + '</span>' : '') + '</button>';
   }
   ACT.expvote = function (i, on) {
     var j = S.P.exp[+i]; if (!j || !j.pt) return;
     API.expVote({ slot: +i, on: on === '1' }).then(function (r) {
       if (r.error) { if (/다른 학생이 없습니다/.test(r.error)) { (S.expSolo = S.expSolo || {})[j.pt.ck] = 1; toast('함께 원정', '다른 학생이 모두 돌아와 혼자 귀환할 수 있습니다', 2400); render(); return; } toast('귀환 투표', r.error, 2400); return; }
-      absorb(r); toast(r.done ? '원정에서 귀환했습니다' : '귀환 투표', r.done ? '과반이 찬성해 모두 함께 귀환했습니다' : (on === '1' ? '귀환에 찬성했습니다' : '찬성을 취소했습니다') + ' · ' + r.yes + '/' + r.need + '명 (과반이 찬성하면 모두 귀환)', 2600); render();
+      absorb(r); toast(r.done ? '원정에서 귀환했습니다' : '귀환 투표', r.done ? '과반이 찬성해 모두 함께 귀환했습니다' : (on === '1' ? '귀환에 찬성했습니다' : '찬성을 취소했습니다') + ' · 찬성 ' + r.yes + '명 / 필요 ' + r.need + '명 (학생 ' + r.n + '명 중 과반 · 동행 친구 제외)', 2600); render();
     });
   };
   function cancelBtn(key, type, a, leave) {   // leave: 함께 원정에서 혼자 먼저 귀환 (모은 것의 50%)
@@ -3474,7 +3481,7 @@
     else if (!d || Date.now() - m.at > 30000) { if (Date.now() - m.at > 1500) loadMarket(); }
     var h = pageHead('부엉이 상단', '거래소', '수수료 5% · 3일 보관 · 한 번에 10개');
     // 올린 물건 수 (판매 중 / 한 번에 올릴 수 있는 수): 내 물건 탭 이름과 팔기 화면 위에
-    var openN = d && d.mine ? d.mine.filter(function (x) { return x.status === 'open'; }).length : null, openMax = (d && d.maxOpen) || 10, openTxt = openN == null ? '' : ' <span class="num tiny' + (openN >= openMax ? ' bad' : ' faint') + '">' + openN + ' / ' + openMax + '</span>';
+    var openN = d && d.openN != null ? d.openN : d && d.mine ? d.mine.filter(function (x) { return x.status === 'open'; }).length : null, openMax = (d && d.maxOpen) || 10, openTxt = openN == null ? '' : ' <span class="num tiny' + (openN >= openMax ? ' bad' : ' faint') + '">' + openN + ' / ' + openMax + '</span>';
     h += '<div class="tabs" role="tablist">' + [['buy', '사기']].concat(API.mode === 'server' ? [['auc', '경매']] : [], [['sell', '팔기'], ['live', '실시간 거래'], ['mine', '내 물건' + openTxt], ['hist', '거래 내역']]).map(function (t) { return '<button role="tab" class="' + (m.tab === t[0] ? 'on' : '') + '" data-act="mktab" data-a="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
     if (m.tab === 'sell' && openN != null) h += '<div class="row small" style="justify-content:flex-end;margin:-8px 0 8px"><span class="muted">올린 물건 <b class="num' + (openN >= openMax ? ' bad' : ' gold') + '">' + openN + ' / ' + openMax + '</b></span></div>';
     var low = d && d.grade && P.grade < d.grade;   // 학년이 모자라면 구경만

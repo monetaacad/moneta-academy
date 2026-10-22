@@ -328,6 +328,7 @@ function loadPlayer(pid, now) {
   const fp = R.fingerprint(P);
   const pc = setPartyN(P) | setGuildLv(P);
   R.advance(P, world.ctx(now), now); R.questCheck(P, now); questNotes(P);
+  expRecallLeft(P, now);   // 귀환 투표가 통과했는데 남아 있던 함께 원정
   if (pc) store.markDirty(pid);
   if (R.fingerprint(P) !== fp) store.markDirty(pid); else store.touch(pid);
   return P;
@@ -1179,7 +1180,7 @@ routes['GET /api/market'] = (req, res) => {
   if (g('wear') === '1') { const P = store.get(me); f.wear = Math.max(1, (P && P.lvl) || 1); }   // 레벨은 서버가 아는 값으로
   if (f.sort === 'pow') { if (limited('mkpow:' + me, 0.5, 4)) return fail(req, res, 429, '잠시 후 다시 시도'); f.powP = loadPlayer(me, nowSec()); }   // 전투력 상승순은 계산이 많아 조금 더 아껴 쓴다
   send(req, res, 200, { list: mkSearch(f, now).map((r) => mkOut(r, me)), mine: dbx.q.mkMine.all(me, Math.floor(now) - 3 * 86400).map((r) => mkOut(Object.assign({ seller_name: '' }, r, { seller: me }), me)), myBids: dbx.q.mkMyBids.all(me).map((r) => mkOut(r, me)),
-    fee: MK.FEE, days: MK.DAYS, maxOpen: MK.MAX_OPEN, grade: MK.GRADE, auc: { max: MK_AUC.MAX, hours: MK_AUC.HOURS, up: MK_AUC.MIN_UP, buyoutX: MK_AUC.BUYOUT_X } });
+    openN: Number(dbx.q.mkMineOpen.get(me).n), fee: MK.FEE, days: MK.DAYS, maxOpen: MK.MAX_OPEN, grade: MK.GRADE, auc: { max: MK_AUC.MAX, hours: MK_AUC.HOURS, up: MK_AUC.MIN_UP, buyoutX: MK_AUC.BUYOUT_X } });
 };
 // 시세: 최근 30일 팔린 기록의 평균과 최근 5건. 장비는 같은 부위·등급·레벨 ±5, 재료는 개당 가격.
 const mkPriceCache = new Map();
@@ -1232,7 +1233,7 @@ routes['POST /api/market'] = async (req, res) => {
   const no = mkAllowed(P, meta, op === 'list' || op === 'bid'); if (no) return fail(req, res, 403, no);
   const real = Date.now() / 1000;
   if (op === 'list') {
-    if (Number(dbx.q.mkMineOpen.get(me).n) >= MK.MAX_OPEN) return fail(req, res, 400, '한 번에 ' + MK.MAX_OPEN + '개까지 올릴 수 있습니다');
+    { const on = Number(dbx.q.mkMineOpen.get(me).n); if (on >= MK.MAX_OPEN) return fail(req, res, 400, '한 번에 ' + MK.MAX_OPEN + '개까지 올릴 수 있습니다 (지금 판매 · 경매 중 ' + on + '개)'); }
     const price = Math.floor(Number(b.price)); if (!isFinite(price) || price < 1 || price > MK.MAX_PRICE) return fail(req, res, 400, '가격 확인 필요');
     // 경매: 장비 · 휘장만. price = 즉시 구매가, start = 시작가(상점 판매가 이상), 즉시 구매가는 시작가의 1.2배 이상
     const auc = !!b.auc, start = Math.floor(Number(b.start)), hours = Number(b.hours);
@@ -1702,6 +1703,19 @@ routes['GET /api/exprooms'] = (req, res) => {
 // 함께 원정 귀환 투표: 다른 학생과 함께 떠난 원정은 혼자 귀환하지 않고, 아직 원정 중인 학생의 과반이 찬성하면 모두 함께 귀환한다
 // (투표는 메모리에만 · 서버를 다시 켜면 처음부터. 원정 일정의 pt.vote에 찬성한 학생 id를 적어 화면에 보여 준다)
 const expVotes = new Map();   // pt.ck → Set(pid)
+// 귀환 투표가 통과한 함께 원정(pt.ck → {t, yes, n}). 그때 함께 처리되지 못한 일행(처리 오류 · 목록 누락)은 다음 요청 때 loadPlayer에서 마저 귀환시킨다
+const expRecalled = new Map();
+function expRecallLeft(P, now) {
+  if (!expRecalled.size || !P || !P.exp) return;
+  P.exp.forEach((j, k) => {
+    const v = j && j.pt && j.pt.ck && expRecalled.get(j.pt.ck); if (!v || R.expEnd(j) <= now) return;
+    try {
+      const o = R.act(P, world.ctx(now), now, 'expCancel', { slot: k }); o.vote = 1; R.inbox(P, o);
+      addNote(P.id, 'exp', '함께 원정 귀환 투표에서 과반이 찬성해 모두 귀환했습니다 (' + v.yes + '/' + v.n + '명 찬성)', { view: 'explore' });
+      store.markDirty(P.id); log('함께 원정 귀환 투표: 남아 있던 일행 귀환', P.id, j.pt.ck);
+    } catch (e) { log('귀환 투표 뒤 남은 일행 처리 실패', P.id, e.message); }
+  });
+}
 function expPartyActive(ck, ids, now) {   // 같은 원정(ck)에 아직 나가 있는 학생들: [{id, P, slot}]
   const out = [];
   ids.forEach((id) => { const Q = loadPlayer(id, now); if (!Q) return; const k = Q.exp.findIndex((j) => j && j.pt && j.pt.ck === ck && R.expEnd(j) > now); if (k >= 0) out.push({ id, P: Q, slot: k }); });
@@ -1709,8 +1723,11 @@ function expPartyActive(ck, ids, now) {   // 같은 원정(ck)에 아직 나가 
 }
 function expPartyOf(P, slot, now) {
   const j = P.exp[slot]; if (!j || !j.pt || !j.pt.ck || R.expEnd(j) <= now) return null;
-  const ids = [P.id].concat((j.pt.with || []).filter((w) => w && w.id && !w.npc).map((w) => w.id));
-  return { j, ck: j.pt.ck, act: expPartyActive(j.pt.ck, [...new Set(ids)], now) };
+  const ids = new Set([P.id].concat((j.pt.with || []).filter((w) => w && w.id && !w.npc).map((w) => w.id)));
+  const act = expPartyActive(j.pt.ck, [...ids], now);
+  // 다른 일행의 동행 목록도 합친다 (한 사람의 목록에 빠진 일행이 있어도 함께 처리되도록)
+  const more = []; act.forEach((x) => { const xj = x.P.exp[x.slot]; ((xj.pt && xj.pt.with) || []).forEach((w) => { if (w && w.id && !w.npc && !ids.has(w.id)) { ids.add(w.id); more.push(w.id); } }); });
+  return { j, ck: j.pt.ck, act: more.length ? act.concat(expPartyActive(j.pt.ck, more, now)) : act };
 }
 // 혼자 먼저 귀환한 뒤: 남은 일행 화면에 「귀환」 표시 · 알림, 내 찬성표 지우기, 30분 안에 3번이면 3시간 함께 원정 제한
 function expLeft(P, pa, now) {
@@ -1740,6 +1757,7 @@ routes['POST /api/exp/vote'] = async (req, res) => {
   const need = Math.floor(ids.length / 2) + 1;
   if (V.size >= need) {   // 과반 찬성: 모두 귀환
     expVotes.delete(pa.ck); let mine = null;
+    expRecalled.set(pa.ck, { t: now, yes: V.size, n: ids.length }); for (const [k, v] of expRecalled) if (now - v.t > 86400) expRecalled.delete(k);
     pa.act.forEach((x) => {
       try {
         const o = R.act(x.P, world.ctx(now), now, 'expCancel', { slot: x.slot }); o.vote = 1;
@@ -1752,7 +1770,7 @@ routes['POST /api/exp/vote'] = async (req, res) => {
   }
   pa.act.forEach((x) => {   // 찬성 현황을 모두의 원정 일정에 적는다
     const j = x.P.exp[x.slot]; j.pt.vote = { yes: [...V], need, n: ids.length }; store.markDirty(x.id);
-    if (x.id !== me && b.on !== false) addNote(x.id, 'exp', P.name + ' 님이 함께 원정 귀환에 찬성했습니다 (' + V.size + '/' + need + '명). 과반이 찬성하면 모두 함께 귀환합니다', { view: 'explore' });
+    if (x.id !== me && b.on !== false) addNote(x.id, 'exp', P.name + ' 님이 함께 원정 귀환에 찬성했습니다 (찬성 ' + V.size + '명 · 귀환에 필요한 찬성 ' + need + '명 · 학생 ' + ids.length + '명, 동행 친구 제외). 과반이 찬성하면 모두 함께 귀환합니다', { view: 'explore' });
   });
   send(req, res, 200, { ok: true, done: false, yes: V.size, need, n: ids.length, P: R.publicState(P) });
 };
@@ -1820,7 +1838,11 @@ routes['POST /api/mail'] = async (req, res) => {
   if (limited('mailp:' + me, 2, 10)) return fail(req, res, 429, '잠시 후 다시 시도');
   const b = await readJson(req, 1024), op = String(b.op || ''), now = nowSec(), real = Math.floor(Date.now() / 1000);
   const mine = dbx.q.mailFor.all(me, me, createdOf(me), real);
+  // 읽은 우편 지우기: 읽었고 보상이 없거나 이미 받은 우편만 (내 우편함에서만 사라진다)
+  const done = (r) => { let rw = {}; try { rw = JSON.parse(r.rewards); } catch (e) { } return !!r.rd && (!!r.cl || !R.rewardText(rw)); };
+  if (op === 'delRead') { const ds = mine.filter(done); ds.forEach((r) => dbx.q.mailGone.run(r.id, me)); return send(req, res, 200, { ok: true, n: ds.length }); }
   const pick = op === 'claimAll' ? mine.filter((r) => !r.cl) : mine.filter((r) => r.id === Number(b.id));
+  if (op === 'del') { if (!pick.length) return fail(req, res, 404, '없는 우편이거나 기한이 지났습니다'); if (!done(pick[0])) return fail(req, res, 400, '받지 않은 보상이 있는 우편은 삭제할 수 없습니다'); dbx.q.mailGone.run(pick[0].id, me); return send(req, res, 200, { ok: true, n: 1 }); }
   if (!pick.length) return op === 'claimAll' ? send(req, res, 200, { ok: true, got: [], n: 0 }) : fail(req, res, 404, '없는 우편이거나 기한이 지났습니다');
   if (op === 'read') { pick.forEach((r) => dbx.q.mailRead.run(r.id, me)); return send(req, res, 200, { ok: true }); }
   if (op !== 'claim' && op !== 'claimAll') return fail(req, res, 400, '알 수 없는 요청입니다');

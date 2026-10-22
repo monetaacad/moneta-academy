@@ -140,6 +140,7 @@ function open(dir) {
   `);
   // 이전 버전 DB에 새 열 추가
   { const bc = db.prepare(`PRAGMA table_info(board_comments)`).all().map((c) => c.name); if (bc.length && bc.indexOf('parent') < 0) db.exec(`ALTER TABLE board_comments ADD COLUMN parent INTEGER NOT NULL DEFAULT 0`); if (bc.length && bc.indexOf('edited') < 0) db.exec(`ALTER TABLE board_comments ADD COLUMN edited INTEGER NOT NULL DEFAULT 0`); }
+  { const ms = db.prepare(`PRAGMA table_info(mail_state)`).all().map((c) => c.name); if (ms.length && ms.indexOf('gone') < 0) db.exec(`ALTER TABLE mail_state ADD COLUMN gone INTEGER NOT NULL DEFAULT 0`); }   // 학생이 지운 우편 (읽은 우편 삭제)
   const cols = db.prepare(`PRAGMA table_info(players)`).all().map((c) => c.name);
   if (cols.indexOf('guest') < 0) db.exec(`ALTER TABLE players ADD COLUMN guest INTEGER NOT NULL DEFAULT 0`);
   if (cols.indexOf('invite') < 0) db.exec(`ALTER TABLE players ADD COLUMN invite TEXT NOT NULL DEFAULT ''`);
@@ -316,6 +317,7 @@ function open(dir) {
       pid TEXT NOT NULL,
       read INTEGER NOT NULL DEFAULT 0,
       claimed INTEGER NOT NULL DEFAULT 0,
+      gone INTEGER NOT NULL DEFAULT 0,
       PRIMARY KEY (mail, pid)
     );
     CREATE TABLE IF NOT EXISTS auction (
@@ -529,7 +531,7 @@ function open(dir) {
     mkTrades: db.prepare(`SELECT id, kind, name, slot, rarity, ilvl, qty, price, done_at FROM market WHERE status = 'sold' ORDER BY done_at DESC, id DESC LIMIT ?`),
     mkHistory: db.prepare(`SELECT id, kind, name, slot, data, rarity, ilvl, qty, price, done_at, seller, buyer, COALESCE((SELECT name FROM players WHERE id = market.seller), seller_name) AS seller_name FROM market WHERE status = 'sold' AND (seller = ? OR buyer = ?) AND done_at > ? ORDER BY done_at DESC, id DESC LIMIT 100`),
     mkSetStatus: db.prepare(`UPDATE market SET status = ?, buyer = ?, done_at = ? WHERE id = ? AND status = 'open'`),
-    mkMine: db.prepare(`SELECT id, kind, data, name, slot, rarity, ilvl, qty, price, created, expires, status, done_at, auc, start_price, bid, bids, buyer FROM market WHERE seller = ? AND (status = 'open' OR done_at > ?) ORDER BY id DESC LIMIT 40`),
+    mkMine: db.prepare(`SELECT id, kind, data, name, slot, rarity, ilvl, qty, price, created, expires, status, done_at, auc, start_price, bid, bids, buyer FROM market WHERE seller = ? AND (status = 'open' OR done_at > ?) ORDER BY (status = 'open') DESC, id DESC LIMIT 60`),   // 판매 중인 물건은 판매 기록이 많아도 항상 들어가게 (예전에는 최근 40줄만이라 판매 중 개수가 덜 세졌다)
     mkMineOpen: db.prepare(`SELECT COUNT(*) AS n FROM market WHERE seller = ? AND status = 'open'`),
     mkExpired: db.prepare(`SELECT * FROM market WHERE status = 'open' AND expires < ? LIMIT 200`),
     mkPurge: db.prepare(`DELETE FROM market WHERE status != 'open' AND done_at < ?`),
@@ -598,14 +600,15 @@ function open(dir) {
     gMyApps: db.prepare(`SELECT guild FROM guild_apps WHERE pid = ?`),
     // 우편: 받는 사람에게 보이는 것 = 나에게 온 것 + 모두에게 (가입 전에 보낸 것은 newcomers일 때만), 기한 안
     mailFor: db.prepare(`SELECT m.*, IFNULL(s.read, 0) AS rd, IFNULL(s.claimed, 0) AS cl FROM mail m LEFT JOIN mail_state s ON s.mail = m.id AND s.pid = ?
-      WHERE (m.target = ? OR (m.target = '*' AND (m.newcomers = 1 OR m.created_g >= ?))) AND m.deleted = 0 AND m.expires > ? ORDER BY m.id DESC LIMIT 100`),
+      WHERE (m.target = ? OR (m.target = '*' AND (m.newcomers = 1 OR m.created_g >= ?))) AND m.deleted = 0 AND m.expires > ? AND IFNULL(s.gone, 0) = 0 ORDER BY m.id DESC LIMIT 100`),
     mailNew: db.prepare(`SELECT COUNT(*) AS n, IFNULL(MAX(m.id), 0) AS top FROM mail m LEFT JOIN mail_state s ON s.mail = m.id AND s.pid = ?
-      WHERE (m.target = ? OR (m.target = '*' AND (m.newcomers = 1 OR m.created_g >= ?))) AND m.deleted = 0 AND m.expires > ? AND IFNULL(s.read, 0) = 0`),
+      WHERE (m.target = ? OR (m.target = '*' AND (m.newcomers = 1 OR m.created_g >= ?))) AND m.deleted = 0 AND m.expires > ? AND IFNULL(s.read, 0) = 0 AND IFNULL(s.gone, 0) = 0`),
     mailGet: db.prepare(`SELECT * FROM mail WHERE id = ?`),
     mailInsert: db.prepare(`INSERT INTO mail (target, sender, title, body, rewards, created, created_g, expires, newcomers) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`),
     mailRead: db.prepare(`INSERT INTO mail_state (mail, pid, read) VALUES (?, ?, 1) ON CONFLICT(mail, pid) DO UPDATE SET read = 1`),
     mailClaim: db.prepare(`INSERT INTO mail_state (mail, pid, read, claimed) VALUES (?, ?, 1, 1) ON CONFLICT(mail, pid) DO UPDATE SET read = 1, claimed = 1 WHERE claimed = 0`),
     mailAdminList: db.prepare(`SELECT m.*, (SELECT COUNT(*) FROM mail_state s WHERE s.mail = m.id AND s.claimed = 1) AS claims FROM mail m WHERE m.target = '*' OR m.sender = '운영진' ORDER BY m.id DESC LIMIT 100`),
+    mailGone: db.prepare(`INSERT INTO mail_state (mail, pid, read, gone) VALUES (?, ?, 1, 1) ON CONFLICT(mail, pid) DO UPDATE SET read = 1, gone = 1`),
     mailDelete: db.prepare(`UPDATE mail SET deleted = 1 WHERE id = ?`),
     mailPurge: db.prepare(`DELETE FROM mail WHERE expires < ?`),
     mailStatePurge: db.prepare(`DELETE FROM mail_state WHERE mail NOT IN (SELECT id FROM mail)`),
