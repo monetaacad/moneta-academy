@@ -1108,7 +1108,7 @@
   var GO = {
     lecJobs: ['lecture'], lecHours: ['lecture'], tasksDone: ['lecture'], int: ['gear'], wil: ['gear'], agi: ['gear'], vit: ['gear'], luk: ['gear'],
     expJobs: ['explore'], kills: ['explore'], maxStageAll: ['explore'], maxLevel: ['explore'], bosses: ['explore', 'boss'], bossTries: ['explore', 'boss'], legendFound: ['explore'], epicFound: ['explore'],
-    brews: ['work', 'alch'], dispatches: ['work', 'fam'], famKinds: ['work', 'fam'], spirits: ['home', 'care'], streak: ['home'],
+    brews: ['work', 'alch'], dispatches: ['work', 'fam'], famKinds: ['work', 'fam'], hatches: ['work', 'fam'], spirits: ['home', 'care'], streak: ['home'],
     enh: ['gear'], maxEnh: ['gear'], wbAttacks: ['world', 'wb'], wbKills: ['world', 'wb'], cupWins: ['hcup'], duelBest: ['exam'], maxGrade: ['exam'], sGrades: ['exam'], aGrades: ['exam'],
     researchDone: ['lib'], nightJobs: ['lib']
   };
