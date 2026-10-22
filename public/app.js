@@ -4408,7 +4408,7 @@
   ACT.automode = function () { act('autoMode', { dis: $('#automode').value === 'dis' }).then(render); };
   // 재련: 먼저 지금 옵션이 사라진다는 확인 창 → 재련하면 이전 · 새 옵션을 나란히 보여 준다
   function affList(it) { return (it.aff || []).map(function (a) { var nm = D.BONUS_NAMES[a.id] || D.STAT_NAMES[a.id] || a.id, val = (a.id === 'atk' || a.id === 'hp' || a.id === 'def' || D.STAT_NAMES[a.id]) ? '+' + fmt(a.v) : '+' + pct(a.v); return '<div class="statline"><span>' + nm + '</span><span class="d">' + val + '</span></div>'; }).join('') || '<p class="tiny faint">옵션 없음</p>'; }
-  // 재련: 옵션 줄마다 「잠금」을 걸면 그 줄은 그대로 두고 나머지만 새로 굴린다 (잠근 줄 하나마다 비용 ×3, 모든 줄을 잠글 수는 없다)
+  // 재련: 옵션 줄마다 「잠금」을 걸면 그 줄은 그대로 두고 나머지만 새로 굴린다 (잠근 줄 하나마다 비용 ×R.REFORGE_KEEP_MULT, 모든 줄을 잠글 수는 없다)
   function affVal(a) { return (a.id === 'atk' || a.id === 'hp' || a.id === 'def' || D.STAT_NAMES[a.id]) ? '+' + fmt(a.v) : '+' + pct(a.v); }
   function rfKeep(u) { if (!S.rfKeep || S.rfKeep.u !== u) S.rfKeep = { u: u, k: {} }; return S.rfKeep.k; }
   function rfBody(u) {
@@ -5841,7 +5841,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102308;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102309;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
