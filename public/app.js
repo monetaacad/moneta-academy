@@ -326,7 +326,7 @@
     S.rPend = 0;   // 미뤄 둔 softRender가 있었다면 이걸로 끝
     var v = VIEWS.find(function (x) { return x.id === S.view; }) || VIEWS[0];
     var sy = window.scrollY;
-    $('#view').innerHTML = groupTabs() + (viewOpen(v) ? V[v.id]() : pageHead('잠긴 구역', v.name, '') + '<div class="card"><p>' + R.josa(v.name, '은', '는') + ' ' + v.grade + '학년부터 출입할 수 있습니다.</p></div>');
+    $('#view').innerHTML = groupTabs() + (viewOpen(v) ? V[v.id]() : pageHead('잠긴 구역', v.name, '') + '<div class="card"><p>' + R.josa(v.name, '은', '는') + ' ' + (v.fam ? R.FAM_OPEN_TEXT : v.grade + '학년') + '부터 출입할 수 있습니다.</p></div>');
     if (Math.abs(window.scrollY - sy) > 2) window.scrollTo(0, sy);
     afterRender(); updateLive(); updateBadges(); updateSide();
   }
@@ -1325,7 +1325,7 @@
   // 과목 카드: 다음에 열리는 것 (주문 · 물약 · 시험 기준 · 학기 이야기 목표)
   // 강의계획서: 잠긴 과목도 미리 본다 (능력치 · 레벨당 효과 · 레벨별 보상 · 교수 과제 · 기말시험)
   // 레벨당 효과는 rules.js 계산식과 같은 값을 적어 둔 것 (syntax · alch · beast · rune)
-  var SUBJ_PASSIVE = { syntax: '주문 위력 +2%', alch: '물약 조제 속도 +1%', beast: '사역마 효과 +3% · 파견 보상 +2% · 부화 속도 +1%', rune: '장비 강화 성공 확률 +0.4%p' };
+  var SUBJ_PASSIVE = { syntax: '주문 위력 +2%', alch: '물약 조제 속도 +1%', beast: '사역마 효과 +3% · 파견 보상 +2% · 부화 속도 +1%', rune: '장비 강화 성공 확률 +0.4%' };
   function syllabusBody(sid) {
     var P = S.P, S2 = R.SUBJ[sid], sj = P.subj[sid] || { lv: 0 }, lv = sj.lv, cls = P.cls || 'mage', open = S2.unlock <= Math.min(P.grade, 7);
     var st = function (c) { var x = R.subjStats({ cls: c }, S2); return D.STAT_NAMES[x[0]] + ' +1.2 · ' + D.STAT_NAMES[x[1]] + ' +0.6'; };
@@ -4355,7 +4355,13 @@
     });
   };
   function saveBlocked() { try { localStorage.setItem('arc_blocked', JSON.stringify(S.chat.blocked)); localStorage.setItem('arc_blockedN', JSON.stringify(S.chat.blockedN || {})); } catch (e) { } }
-  ACT.cblock = function (pid, name) { if (S.chat.blocked.indexOf(pid) < 0) S.chat.blocked.push(pid); S.chat.blockedN = S.chat.blockedN || {}; if (name) S.chat.blockedN[pid] = name; saveBlocked(); closeModal(); renderDock(); toast('이 학생을 가렸습니다', '이 학생의 메시지가 보이지 않습니다. 설정 → 채팅에서 다시 보이게 할 수 있습니다', 2400); };
+  // 학생 가리기: 확인 팝업을 먼저 띄운다
+  ACT.cblock = function (pid, name) {
+    var nm = name || '이 학생';
+    modal(mhead('학생 가리기', esc(nm)) + '<p class="small"><b>' + esc(nm) + '</b> 님을 가립니다. 이 학생의 채팅 메시지가 더 이상 보이지 않습니다. 설정 → 채팅에서 다시 보이게 할 수 있습니다.</p>' +
+      '<div class="row" style="justify-content:flex-end;margin-top:14px;gap:6px"><button class="btn" data-act="modal-close" autofocus>취소</button><button class="btn danger" data-act="cblockgo" data-a="' + esc(pid) + '" data-b="' + esc(name || '') + '">가리기</button></div>');
+  };
+  ACT.cblockgo = function (pid, name) { if (S.chat.blocked.indexOf(pid) < 0) S.chat.blocked.push(pid); S.chat.blockedN = S.chat.blockedN || {}; if (name) S.chat.blockedN[pid] = name; saveBlocked(); closeModal(); renderDock(); toast('이 학생을 가렸습니다', '이 학생의 메시지가 보이지 않습니다. 설정 → 채팅에서 다시 보이게 할 수 있습니다', 2400); };
   ACT.unblock = function (pid) { S.chat.blocked = S.chat.blocked.filter(function (x) { return x !== pid; }); if (S.chat.blockedN) delete S.chat.blockedN[pid]; saveBlocked(); renderDock(); var el = $('[data-blk="' + pid + '"]'); if (el) el.remove(); var n = $('#blk-n'); if (n) n.textContent = S.chat.blocked.length; toast('가리기 해제', '이 학생의 메시지가 다시 보입니다', 1600); };
   ACT.unblockall = function () { S.chat.blocked = []; S.chat.blockedN = {}; saveBlocked(); renderDock(); var b = $('#blk-box'); if (b) b.innerHTML = '<p class="tiny faint">가린 학생이 없습니다.</p>'; var n = $('#blk-n'); if (n) n.textContent = 0; };
   // 설정 → 채팅: 가린 학생 목록 (이름을 모르는 예전 기록은 불러와서 채운다)
@@ -4665,7 +4671,7 @@
   function relLum(hex) { var c = parseInt(hex.slice(1), 16); return [16, 8, 0].reduce(function (a, sh, i) { var v = ((c >> sh) & 255) / 255; v = v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); return a + v * [0.2126, 0.7152, 0.0722][i]; }, 0); }
   function contrast(a, b) { var x = relLum(a), y = relLum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
   function applyTheme() {
-    var t = curTheme(), de = document.documentElement; de.classList.toggle('nav-homeleft', !!PREF.homeLeft); de.dataset.paper = PREF.paper === false ? 'off' : 'on'; de.dataset.skin = t.id; de.dataset.skintone = t.dark ? 'dark' : 'light'; de.style.colorScheme = t.dark ? 'dark' : 'light';
+    var t = curTheme(), de = document.documentElement; de.classList.toggle('nav-homeleft', !!PREF.homeLeft); de.dataset.paper = PREF.paper === false ? 'off' : 'on'; de.dataset.skin = t.id; de.dataset.skintone = t.dark ? 'dark' : 'light'; de.style.colorScheme = t.dark ? 'dark' : 'only light'; var mc = document.querySelector('meta[name=color-scheme]'); if (mc) mc.content = t.dark ? 'dark' : 'only light';   // 휴대폰 강제 다크 모드 방지 (theme.js와 같은 규칙)
     var mt = document.querySelector('meta[name="theme-color"]'); if (!mt) { mt = document.createElement('meta'); mt.name = 'theme-color'; document.head.appendChild(mt); } mt.content = getComputedStyle(de).getPropertyValue('--night').trim() || (t.dark ? '#11152a' : '#f3ede1');
     // 밝은 바탕에서는 기숙사·등급 글자색을 조금 진하게 (그림에 쓰는 색도 같이)
     [D.HOUSES, D.RARITY, D.FAM_RARITY].forEach(function (arr) { arr.forEach(function (x) { if (!x._c0) x._c0 = x.color; x.color = t.dark ? x._c0 : mixDark(x._c0, 0.38); }); });
@@ -5248,7 +5254,7 @@
       else if (k === 'jarCap') out.push('반딧불 정령 병 +' + v + '칸');
       else if (k === 'autosell') out.push('자동 판매 해금');
       else if (k === 'manaCap') out.push('마나 저장 한도 +' + Math.round(v / 360) / 10 + '시간분');
-      else if (k === 'enhBonus') out.push('강화 성공률 +' + Math.round(v * 1000) / 10 + '%p');
+      else if (k === 'enhBonus') out.push('강화 성공률 +' + Math.round(v * 1000) / 10 + '%');
       else if (k === 'rarity') out.push('등급 상승 +' + p1(v));
       else if (k === 'hpPct') out.push('생명력 +' + p1(v));
       else { var t = R.effText(o1(k, v)); if (t) out.push(t); }
@@ -5521,7 +5527,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102278;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102282;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

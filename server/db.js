@@ -364,6 +364,19 @@ function open(dir) {
       data TEXT NOT NULL,
       PRIMARY KEY (day, pid)
     );
+    -- 학생 계정 기록 (운영실 확인용): 가입 · 로그인 · 로그인 실패 · 접속(하루 한 번 · 접속지가 바뀔 때) · 비밀번호 · 이름 변경 · 우편 수령 · 운영 조치.
+    -- ip는 IP 주소가 아니라 HMAC 값(같은 접속지인지만 비교할 수 있고 주소로 되돌릴 수 없다). dev는 기기 종류(모바일/PC · 브라우저). 180일 보관
+    CREATE TABLE IF NOT EXISTS pevent (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      t INTEGER NOT NULL,
+      pid TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      detail TEXT NOT NULL DEFAULT '',
+      ip TEXT NOT NULL DEFAULT '',
+      dev TEXT NOT NULL DEFAULT ''
+    );
+    CREATE INDEX IF NOT EXISTS pevent_pid ON pevent(pid, id DESC);
+    CREATE INDEX IF NOT EXISTS pevent_ip ON pevent(ip, t);
   `);
   const gcols = db.prepare(`PRAGMA table_info(guilds)`).all().map((c) => c.name);
   [['lv', 'INTEGER NOT NULL DEFAULT 1'], ['xp', 'INTEGER NOT NULL DEFAULT 0'], ['gold', 'REAL NOT NULL DEFAULT 0'], ['ranks', "TEXT NOT NULL DEFAULT '{}'"]].forEach((c) => { if (gcols.indexOf(c[0]) < 0) db.exec(`ALTER TABLE guilds ADD COLUMN ${c[0]} ${c[1]}`); });
@@ -440,6 +453,12 @@ function open(dir) {
     setRole: db.prepare(`UPDATE players SET role = ? WHERE id = ?`),
     oplogAdd: db.prepare(`INSERT INTO oplog (t, actor, name, action, detail) VALUES (?, ?, ?, ?, ?)`),
     oplogList: db.prepare(`SELECT * FROM oplog ORDER BY id DESC LIMIT ?`),
+    peAdd: db.prepare(`INSERT INTO pevent (t, pid, kind, detail, ip, dev) VALUES (?, ?, ?, ?, ?, ?)`),
+    peList: db.prepare(`SELECT t, kind, detail, ip, dev FROM pevent WHERE pid = ? ORDER BY id DESC LIMIT ?`),
+    peCount: db.prepare(`SELECT kind, COUNT(*) AS n, MAX(t) AS last FROM pevent WHERE pid = ? GROUP BY kind`),
+    peSameIp: db.prepare(`SELECT e.pid, p.name, p.banned, p.deleted, COUNT(DISTINCT e.ip) AS ips, MAX(e.t) AS last FROM pevent e JOIN players p ON p.id = e.pid WHERE e.ip != '' AND e.t >= ? AND e.pid != ? AND e.ip IN (SELECT DISTINCT ip FROM pevent WHERE pid = ? AND ip != '' AND t >= ?) GROUP BY e.pid ORDER BY ips DESC, last DESC LIMIT 30`),
+    peMove: db.prepare(`UPDATE pevent SET pid = ? WHERE pid = ?`),
+    pePrune: db.prepare(`DELETE FROM pevent WHERE t < ?`),
     upgradeGuest: db.prepare(`UPDATE players SET name = ?, name_key = ?, pass = ?, guest = 0, invite = ? WHERE id = ? AND guest = 1`),
     renamePlayer: db.prepare(`UPDATE players SET name = ?, name_key = ? WHERE id = ?`),
     setMute: db.prepare(`UPDATE players SET muted_until = ? WHERE id = ?`),
