@@ -548,17 +548,25 @@
     return it;
   }
   R.makeItem = makeItem;
+  /* 장비 레벨 성장(무기 공격력 · 로브 생명력 · 로브 방어력 · 마도서 공격력): 예전에는 레벨마다 ×1.12 복리(10레벨 ×3.1)였다.
+     GEAR_BAND 레벨(2학년)씩 묶어, 묶음 안에서는 단리로 천천히(묶음 끝이 시작의 GEAR_IN배), 다음 묶음으로 넘어갈 때 한 번에 오른다.
+     묶음 전체(20레벨)의 성장 폭과 묶음 안 평균(기하 평균)은 예전 곡선과 같게 맞춘다 */
+  R.ENH_MAIN = 0.1;   // 강화 1단계마다 주 능력치 +10%
+  R.GEAR_G = 1.12; R.GEAR_BAND = 20; R.GEAR_OFF = 10;   // 묶음: 10~29 · 30~49 · 50~69 · 70~89 … (1~9는 앞 묶음의 끝)
+  R.GEAR_IN = 2;
+  var GEAR_C = (function () { var B = R.GEAR_BAND, a = 0, b = 0; for (var p = 0; p < B; p++) { a += p * Math.log(R.GEAR_G); b += Math.log(1 + (R.GEAR_IN - 1) * p / (B - 1)); } return Math.exp((a - b) / B); })();
+  R.gearGrow = function (ilvl) { var B = R.GEAR_BAND, v = Math.max(1, ilvl), st = R.GEAR_OFF + Math.floor((v - R.GEAR_OFF) / B) * B, p = v - st; return Math.pow(R.GEAR_G, st - 1) * GEAR_C * (1 + (R.GEAR_IN - 1) * p / (B - 1)); };
   function mainVal(it) {
     var S = R.slotDef(it), rm = D.RARITY[it.r].mult;
-    if (S.main === 'spellPct' || S.main === 'skillPct') return S.base * (1 + it.ilvl * 0.025) * rm * it.q * (1 + it.enh * 0.08);
+    if (S.main === 'spellPct' || S.main === 'skillPct') return S.base * (1 + it.ilvl * 0.025) * Math.sqrt(rm) * it.q * (1 + it.enh * 0.05);   // 주문 · 기술 위력은 다른 공격 능력치와 곱해지므로 등급 · 강화 효과를 줄인다
     if (S.main === 'int' || S.main === 'luk' || S.main === 'vit') return S.base * (1 + it.ilvl * 0.09) * rm * it.q * (1 + it.enh * 0.08);
-    return S.base * Math.pow(1.12, it.ilvl - 1) * rm * it.q * (1 + it.enh * 0.1);
+    return S.base * R.gearGrow(it.ilvl) * rm * it.q * (1 + it.enh * R.ENH_MAIN);
   }
   function subVal(it) {
     var S = SLOT[it.slot]; if (!S.sub) return 0;
     var rm = D.RARITY[it.r].mult;
     if (S.sub === 'critC' || S.sub === 'lectureSpd') return S.subBase * rm * (1 + it.enh * 0.05);
-    return S.subBase * Math.pow(1.12, it.ilvl - 1) * rm * it.q * (1 + it.enh * 0.1);
+    return S.subBase * R.gearGrow(it.ilvl) * rm * it.q * (1 + it.enh * R.ENH_MAIN);
   }
   function itemStats(it) {
     var o = {}, S = R.slotDef(it);
@@ -631,10 +639,13 @@
     }
     c.famDps = P.fam.act && P.fam.own[P.fam.act] ? c.atk * famAtkMult(P) / 1.5 : 0;
     c.totalDps = c.dps + c.spellDps + c.famDps;
-    c.power = Math.floor(c.totalDps * 3 + c.hp * 0.6 + c.def * 4);
+    c.power = R.powerOf(c.totalDps * 3 + c.hp * 0.6 + c.def * 4);
     return c;
   }
   R.calc = calc;
+  // 전투력 숫자: 전투 수치(피해 · 생명력 · 방어력)의 0.8제곱. 순서는 그대로이고, 장비 구간이 오를 때 숫자가 한꺼번에 뛰는 폭을 줄인다
+  R.POWER_EXP = 0.8; R.POWER_V = 2;   // POWER_V: 전투력 식이 바뀌면 올린다 (서버가 켜질 때 저장된 전투력을 다시 계산)
+  R.powerOf = function (raw) { return raw > 0 ? Math.floor(Math.pow(raw, R.POWER_EXP)) : 0; };
   function spellLvMult(P, sp) { return 1 + (sp.req ? P.subj[sp.req[0]].lv * 0.03 : P.lvl * 0.01); }
   function famAtkMult(P) { var f = FAM[P.fam.act], o = P.fam.own[P.fam.act]; return 0.25 * (1 + f.r * 0.25) * (1 + 0.08 * (o.lv - 1)); }
   R.spellUnlocked = function (P, id) { var sp = SPELL[id]; if (!sp) return false; if (sp.cls && sp.cls.indexOf(P.cls || 'mage') < 0) return false; return !sp.req || (P.subj[sp.req[0]].lv >= sp.req[1] && R.subjVisible(P, SUBJ[sp.req[0]])); };
@@ -2044,7 +2055,7 @@
   /* ───────── 무한의 탑 (개인): 기사의 탑 · 마법사의 탑 ─────────
      혼자 오르는 끝없는 탑. 학과마다 따로 층을 쌓으며 줄어들지 않는다(주간 초기화 없음). 도전 횟수 제한 없이 한 번에 한 층 — 전투력이 되는 만큼 오른다.
      난이도: 적의 공격이 아주 세고(보스 공격 ×3) 체력은 낮으며(×0.6) 60초 안에 쓰러뜨려야 한다 → 화력만으로 밀기 어렵고 생명력 · 회복도 필요.
-     층 곡선: 전투력 약 4천은 15층, 약 1.6만은 40층 언저리에서 막힌다. 시련의 층(50층마다)은 갑자기 어려운 벽(체력 ×1.8 · 공격 ×1.4),
+     층 곡선: 전투력 약 760은 15층, 약 2300은 40층 언저리에서 막힌다. 시련의 층(50층마다)은 갑자기 어려운 벽(체력 ×1.8 · 공격 ×1.4),
      넘고 나면 3~4층은 쉬워졌다가 금세 다시 따라잡힌다. */
   R.CT_TRIES = 3; R.CT_MILE = 50; R.CT_TIME = 60;
   R.CT_NAME = { knight: '기사의 탑', mage: '마법사의 탑' };
