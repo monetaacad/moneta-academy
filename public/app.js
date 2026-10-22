@@ -5813,7 +5813,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102301;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102302;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
@@ -5939,6 +5939,8 @@
     if (S.auc && now() >= (S.auc.active ? S.auc.end : S.auc.start) + 1 && n - S.lastSync > 5000) sync(true);
     if (n - S.lastSync > 120000) sync();
     if (S.view === 'world' && n - S.lastWorld > 60000) refreshWorld();
+    // 거래소: 보고 있는 동안 15초마다 목록을 다시 받는다 (입력 중이거나 창이 떠 있으면 건너뜀)
+    if (S.view === 'market' && S.mk && !S.modal && n - (S.mk.at || 0) > 15000) { var ae = document.activeElement; if (!(ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName))) loadMarket(); }
     if (n - liveT > 1000) { liveT = n; updateBadges(); updateExpLogs(); erTick(); }
     if (S.twMine || S.twSolo || S.view === 'tower') twTick();
   }
