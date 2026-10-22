@@ -277,6 +277,8 @@
     // 물리/주문 공격력 분리 (BUILD 17): 기사는 공격 능력치가 지력 → 체력으로 바뀌어 포인트를 한 번 돌려준다
     // 슬롯 늘리기 연구 폐지 (BUILD 30): 이미 쌓은 단계의 마나 · 지식을 돌려준다
     if (!P.slotV && P.rs && P.res) { P.slotV = 1; var back = { mana: 0, know: 0 }; D.RESEARCH.forEach(function (r) { if (!r.gone) return; var L = P.rs[r.id] || 0; for (var lv = 0; lv < L; lv++) { var c0 = R.resCost(P, r.id, lv); back.mana += c0.mana; back.know += c0.know; } if (L) delete P.rs[r.id]; }); if (back.mana || back.know) { P.res.mana += back.mana; P.res.know += back.know; if (P.log) log(P, P.at || 0, '수업 · 원정 · 연구가 한 자리씩으로 바뀌어, 슬롯을 늘리던 연구의 마나 ' + R.fmt(back.mana) + ' · 지식 ' + R.josa(R.fmt(back.know), '을', '를') + ' 돌려드렸습니다.', 'news'); } }
+    // 보스 처치(P.st.bosses)에 월드 보스 공격 · 결투제 승리 · 개인 탑 문지기층을 함께 센다 (2026-10-22): 지금까지의 기록을 한 번 더해 준다
+    if (!P.bossV && P.st) { P.bossV = 1; P.st.bosses = (P.st.bosses || 0) + (P.st.wbAttacks || 0) + (P.st.duelWins || 0) + Math.floor((P.st.twK || 0) / R.CT_MILE) + Math.floor((P.st.twM || 0) / R.CT_MILE); }
     if (!P.physV) { P.physV = 1; if (P.cls === 'knight' && P.alloc && P.log && (P.alloc.int || 0) > 0 && allocReset(P, 'knight')) log(P, P.at || 0, '기사의 공격력이 지력 대신 체력을 따르게 바뀌어 능력치 포인트를 모두 돌려드렸습니다.', 'news'); }
     D.SUBJECTS.forEach(function (s) { if (!P.subj[s.id]) P.subj[s.id] = { lv: 0, xp: 0 }; });
     delete P.quizCd; delete P.pq; delete P.qRecent; if (P.st) delete P.st.quizCorrect;
@@ -334,7 +336,7 @@
   }
   R.newPlayer = function (id, name, house, now, seed) {
     var P = {
-      v: R.VERSION, id: id, name: name, house: HOUSE[house] ? house : 'lanterna', created: now, at: now, econC: 2, physV: 1, slotV: 1,
+      v: R.VERSION, id: id, name: name, house: HOUSE[house] ? house : 'lanterna', created: now, at: now, econC: 2, physV: 1, slotV: 1, bossV: 1,
       rng: (seed | 0) || (Math.floor(Math.random() * 2147483647) | 1),
       res: { mana: 300, gold: 0, know: 0, shard: 0, stone: 0 }, mats: {},
       lvl: 1, xp: 0, pts: 0, alloc: { int: 0, wil: 0, agi: 0, vit: 0, luk: 0 },
@@ -1977,6 +1979,7 @@
      난이도: 적의 공격이 아주 세고(보스 공격 ×3) 체력은 낮으며(×0.6) 60초 안에 쓰러뜨려야 한다 → 화력만으로 밀기 어렵고 생명력 · 회복도 필요.
      층 곡선: 전투력 약 4천은 15층, 약 1.6만은 40층 언저리에서 막힌다. 시련의 층(50층마다)은 갑자기 어려운 벽(체력 ×1.8 · 공격 ×1.4),
      넘고 나면 3~4층은 쉬워졌다가 금세 다시 따라잡힌다. */
+  R.BOSS_COUNT_TEXT = '원정 관문 보스 · 월드 보스 공격 · 결투제 승리 · 마법사(기사)의 탑 문지기층 · 별의 탑 실전 시련의 층';
   R.CT_TRIES = 3; R.CT_MILE = 50; R.CT_TIME = 60;
   R.CT_NAME = { knight: '기사의 탑', mage: '마법사의 탑' };
   R.CT_FOES = {
@@ -2013,7 +2016,7 @@
     var out = { cls: cls, f: f, foe: foe, win: !!r.win, cc: !!r.cc, ev: r.ev, t: r.t, dead: !!r.dead, pct: Math.round((1 - r.mHp) * 100), rw: {}, titles: [] };
     if (!r.win) return out;   // 휘장 별빛은 이겼을 때만 (도전 횟수 제한이 없어 지기만 반복해 휘장을 키울 수 있었다)
     badgeGain(P, R.BADGE_XP.fight, now);
-    P.st[key] = f; var g = R.ctReward(f), rw = out.rw;
+    P.st[key] = f; if (foe.wall) P.st.bosses++; var g = R.ctReward(f), rw = out.rw;
     if (g.gold) { addGold(P, g.gold); rw.gold = g.gold; } if (g.stone) { P.res.stone += g.stone; rw.stone = g.stone; } if (g.shard) { P.res.shard += g.shard; rw.shard = g.shard; }
     if (g.gear || g.egg) { var gm = R.grantMail(P, W, now, { gear: g.gear, egg: g.egg }); if (g.egg) rw.egg = g.egg; out.items = gm.items; }
     if (f % R.CT_MILE === 0) { var tt = R.ctTitle(cls, f); if (tt) { out.titles.push(tt.name); log(P, now, R.CT_NAME[cls] + ' ' + f + '층 돌파! 칭호 「' + tt.name + '」를 얻었습니다', 'legend'); } }
@@ -2399,7 +2402,7 @@
     var res = { win: f.win, cc: !!f.cc, k: k, rival: r.name, hello: r.hello, lose: r.lose, ev: f.ev, mHp: f.mHp, maxHp: R.duelEnemy(r.stage, 4, 1.3).hp };
     badgeGain(P, R.BADGE_XP.fight * (f.win ? 2 : 1), now);
     if (f.win) {
-      P.duel.rank++; P.st.duelWins++; var first = P.duel.rank > P.st.duelBest; if (first) P.st.duelBest = P.duel.rank;
+      P.duel.rank++; P.st.duelWins++; P.st.bosses++; var first = P.duel.rank > P.st.duelBest; if (first) P.st.duelBest = P.duel.rank;
       var shard = 3 + k + (first ? k : 0), gold = Math.floor(80 * K.KILL_GOLD * Math.pow(K.G_GOLD, r.stage - 1) * c.gold);
       P.res.shard += shard; addGold(P, gold); res.reward = { shard: shard, gold: gold, first: first };
       P.duel.cd = now + K.DUEL_CD; cupAdd(P, 40, 'duel');
@@ -2480,7 +2483,7 @@
     else if (P.wb.extra > 0) { if (R.wbExtraLeft(P, now) <= 0) err('추가 도전권은 이번 주에 ' + K.WB_EXTRA_USE + '번 모두 썼습니다 (월요일 KST 0시 초기화)'); P.wb.extra--; P.wb.exUsed++; }
     else err('도전권이 없습니다');
     var c = calc(P, W, now), f = fight(P, c, R.wbEnemy(P), 30, false), dmg = Math.floor(f.dealt);
-    P.wk.dmg += dmg; P.wk.att++; P.st.wbAttacks++; cupAdd(P, 30, 'wb');
+    P.wk.dmg += dmg; P.wk.att++; P.st.wbAttacks++; P.st.bosses++; cupAdd(P, 30, 'wb');
     badgeGain(P, R.BADGE_XP.fight, now);
     return { dmg: dmg, ev: f.ev, dead: !!f.dead, t: f.t };
   };
