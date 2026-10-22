@@ -209,7 +209,7 @@
       if (j._status === 401) { toast('다시 로그인이 필요합니다', ''); authScreen(); return null; }
       absorb(j);
       if (j.error) { toast('할 수 없습니다', j.error); render(); return null; }
-      if (S.view === 'tower' && /^(spell|gearSet|drink|equip|unequip|badgeWear)$/.test(type)) S.towerAt = 0;   // 별의 탑: 바뀐 장비 · 주문 · 물약으로 파티원 전투력을 다시 불러온다
+      if (S.view === 'tower' && /^(spell|spellSet|gearSet|drink|equip|unequip|badgeWear)$/.test(type)) S.towerAt = 0;   // 별의 탑: 바뀐 장비 · 주문 · 물약으로 파티원 전투력을 다시 불러온다
       return j.r || {};
     }, function () { S.busy = false; toast('연결 오류', '잠시 후 다시 시도'); return null; });
   }
@@ -1900,7 +1900,7 @@
       '<p class="small" style="margin-top:4px">' + (can ? (bpv.win && bpv.ttk < R.K.BOSS_TIME ? '<span class="good">승산 있음</span> — 약 ' + bpv.ttk.toFixed(1) + '초' : '<span class="bad">아직 버겁습니다</span> — 30초 안에 체력의 약 ' + Math.round(Math.min(1, R.K.BOSS_TIME / bpv.ttk) * 100) + '%') + ' · 이기면 ' + (b + 1) + '~' + (b + 9) + '단계가 열립니다' : '<span class="gold">' + R.bossLockText(P) + '</span>') + '</p></div>' +
       '<button class="btn primary" data-act="boss" data-can="boss"' + (can ? '' : ' data-why="' + esc(R.bossLockText(P)) + '"') + '><span data-l="bossbtn"></span></button></div></div>';
     // 주문
-    h += '<div class="section-t" style="margin-top:16px">장착 주문 <span class="small faint">(보스·결투·월드 보스·무한의 탑 전투에서 자동 시전)</span></div>' + spellBar(P) + spellSetBar(P);
+    h += '<div class="section-t" style="margin-top:16px">장착 주문 <span class="small faint">(보스·결투·월드 보스·무한의 탑 전투에서 자동 시전)</span></div>' + spellBar(P);
     h += '<div class="grid g2" style="margin-top:16px"><div class="card"><h3>지역</h3><div class="zonelist" style="margin-top:8px">' + D.ZONES.map(function (zz, zi) {
       var to = zz.abyss ? '∞' : D.ZONES[zi + 1].from - 1, un = P.maxStage >= zz.from;
       return '<div class="zone' + (un ? '' : ' lockz') + '"><div style="min-width:0"><div class="small">' + zz.name + '</div><div class="tiny faint">재료: ' + D.MATS[zz.mat].name + '</div></div><span class="zr">' + zz.from + '–' + to + '</span></div>';
@@ -2885,7 +2885,7 @@
       '<div class="small" style="margin-top:4px">' + (pv.win && pv.ttk < R.CT_TIME ? '<span class="good">승산 있음</span> — 약 ' + pv.ttk.toFixed(1) + '초' : '<span class="bad">아직 버겁습니다</span>') + '</div>' +
       '<div class="tiny" style="margin-top:4px">이 층 보상 <span class="rwd">' + esc(R.rewardText(rw)) + '</span></div></div></div>' +
       '<div class="row" style="margin-top:12px"><span class="tiny faint">' + (mt ? nextMile + '층 돌파 시 칭호 「' + esc(mt.name) + '」 · 별조각 30 · 희귀 장비 상자 · 환수의 알' : nextMile + '층 돌파 시 별조각 30 · 희귀 장비 상자 · 환수의 알') + '</span><span class="spacer"></span><button class="btn ghost" data-act="ctauto" title="패배하거나 중지할 때까지 다음 층에 계속 도전합니다">패배할 때까지 연속 도전</button><button class="btn primary" data-act="ctower"' + '' + '>' + f + '층 도전</button></div></div>';
-    h += '<div class="card" style="margin-top:14px"><div class="row between"><h3>장착 주문</h3><span class="tiny faint">칸을 누르면 주문을 바꿉니다 · 바꾼 뒤 위의 승산이 다시 계산됩니다</span></div>' + spellBar(P) + '</div>';   // 탑에서도 바로 주문을 바꾼다
+    h += '<div class="card" style="margin-top:14px"><div class="row between"><h3>장착 주문</h3><span class="tiny faint">칸을 누르면 주문을 바꿉니다 · 바꾼 뒤 위의 승산이 다시 계산됩니다</span></div>' + spellBar(P) + spellSetBar(P) + '</div>';   // 탑에서도 바로 주문을 바꾼다
     var got = D.TITLES.filter(function (t) { return t.stat === R.ctKey(cl); });
     // 탑 칭호는 칭호 도감에 모두 있으므로 여기서는 한 줄 (획득 수 · 다음 칭호)
     var gotN = got.filter(function (t) { return best >= t.n; }).length, nextT = got.filter(function (t) { return best < t.n; }).sort(function (x, y) { return x.n - y.n; })[0];
@@ -2986,7 +2986,7 @@
       '<div style="margin-top:10px"><div class="small">내 포지션</div><div class="filters" style="margin-top:4px">' + ['van', 'rear', 'sup'].map(function (k) {
         var x = R.EXP_POS[k], ok = t.posOk.indexOf(k) >= 0;
         return '<button class="btn sm ghost' + (t.myPos === k ? ' on' : '') + '" data-act="twpos" data-a="' + k + '"' + (ok ? '' : why(x.name + ' 포지션은 ' + x.desc.split(' · ')[0])) + '>' + x.name + '</button>';
-      }).join('') + '</div><p class="tiny faint" style="margin-top:4px">' + esc(R.EXP_POS[t.myPos].desc) + ' · 장착 주문은 「원정·전투 → 원정」에서 바꿀 수 있습니다.</p></div>' +
+      }).join('') + '</div><p class="tiny faint" style="margin-top:4px">' + esc(R.EXP_POS[t.myPos].desc) + ' · 장착 주문은 「원정·전투 → 원정」에서 바꾸거나, 아래 주문 프리셋으로 한 번에 바꿀 수 있습니다.</p>' + spellSetBar(S.P) + '</div>' +
       (lob && lob.mode ? '<div class="twlobby" style="margin-top:12px"><div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><b>출발 대기 · ' + (lob.mode === 'real' ? '실전 ' + t.start + '층부터' : '파티 연습') + '</b><span class="tiny faint">' + esc(lob.by) + ' 님이 준비</span><span class="spacer"></span><span class="small" id="twcount">' + twCountText(lob) + '</span></div>' +
         '<div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap;align-items:center"><button class="btn ' + (meReady ? 'ghost' : 'primary') + '" data-act="twready" data-a="' + (meReady ? '0' : '1') + '">' + (meReady ? '준비 취소' : '준비 완료') + '</button>' +
         '<button class="btn sm ghost" data-act="twgo" data-a="' + (lob.mode === 'real' ? 'party' : 'real') + '"' + (lob.mode === 'real' ? (liveWhy ? why(liveWhy) : '') : (realWhy ? why(realWhy) : '')) + '>' + (lob.mode === 'real' ? '파티 연습으로 바꾸기' : '실전으로 바꾸기') + '</button></div></div>' : '') +
@@ -5857,7 +5857,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102310;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102311;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
