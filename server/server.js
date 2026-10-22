@@ -590,7 +590,7 @@ routes['POST /api/act'] = async (req, res) => {
         const sn = P.st.sGrades || 0, tt = R.D.TITLES.find((t) => t.stat === 'sGrades' && t.n === sn), grad = P.grade >= 8;
         const tag = sn >= 7 ? '[전 학년 수석]' : grad ? '[수석 졸업]' : '[수석 진급]', head = r.grade + '학년 기말시험을 S등급(' + r.total + '점)으로 통과하고 ' + (grad ? '마스터 과정이 되었습니다' : P.grade + '학년으로 진급했습니다');
         world.addNews(tag + ' ' + P.name + ' 학생이 ' + head + '.' + (tt ? ' 칭호 ' + R.josa('「' + tt.name + '」', '을', '를') + ' 받았습니다.' : ''), now);
-        chat.system('notice', '아카데미 알림: ' + P.name + ' 학생이 ' + r.grade + '학년 기말시험에서 S등급을 받아 ' + (sn >= 7 ? '일곱 기말시험을 모두 S등급으로 마쳤습니다' : grad ? '수석으로 졸업 시험을 통과했습니다' : '수석으로 진급했습니다') + '. 축하합니다.', Date.now() / 1000);
+        chat.system('notice', tag + ' ' + P.name + ' · ' + (sn >= 7 ? '일곱 기말시험 모두 S등급' : grad ? '졸업 시험 S등급' : r.grade + '학년 S등급'), Date.now() / 1000);
       } else world.addNews(P.name + ' 학생이 ' + (P.grade >= 8 ? '졸업 시험을 통과해 마스터 과정이 되었습니다' : P.grade + '학년으로 진급했습니다'), now);
     }
     if ((type === 'clsExam' || type === 'setCls') && r) setImmediate(() => { try { chat.clsChanged(pid); } catch (e) { } });
@@ -1614,7 +1614,7 @@ function aucTick(now) {
         dbx.q.aucInsert.run(v.id, JSON.stringify(it), it.name, it.r, it.ilvl, it.slot, Math.floor(v.end), min, 0, tier);
       });
     });
-    chat.system('notice', '떠돌이 상인이 아카데미 광장에 짐을 풀었습니다. 신입생 · 중급 · 상급 구간마다 귀한 장비 세 점씩 경매에 올라왔습니다 (1시간).', Date.now() / 1000);
+    chat.system('notice', '떠돌이 상인 경매가 시작되었습니다 (1시간).', Date.now() / 1000);
     chat.pingAll('auction', { visit: v.id });
   }
   // 마감 5분 전: 값을 불렀던 학생들에게 알림 (1위는 「지키는 중」, 밀린 학생은 「다시 부를 수 있음」)
@@ -1624,15 +1624,21 @@ function aucTick(now) {
     who.forEach((pid) => { if (String(pid).startsWith('npc:')) return; const top = pid === r.bidder, msg = r.name + (top ? ' 경매가 곧 끝납니다 · 지금 가장 높은 값(' + R.fmt(r.price) + ')을 부른 상태입니다' : ' 경매가 곧 끝납니다 · 지금 가장 높은 값은 ' + R.fmt(r.price) + ' ' + CUR + '입니다');
       chat.ping(pid, 'aucsoon', { name: r.name, top, price: r.price, ends: r.ends }); try { push.direct(pid, 'aucbid', '떠돌이 상인 · 마감 5분 전', msg, 'aucsoon-' + r.id); } catch (e) { } });
   });
+  const endedVisits = new Set();
   dbx.q.aucOpenEnded.all(Math.floor(now)).forEach((r) => {
     if (!dbx.q.aucDone.run(r.id).changes) return;
+    endedVisits.add(r.visit);
     if (r.bidder && !String(r.bidder).startsWith('npc:')) {
       let it = null; try { it = JSON.parse(r.item); } catch (e) { }
       try { const Q = loadPlayer(r.bidder, nowSec()); if (Q) { R.cupAdd(Q, R.CUP_AUC, 'auc'); Q.st.wandWon = (Q.st.wandWon || 0) + 1; store.markDirty(r.bidder); } } catch (e) { log('낙찰 대항전 점수 실패', e); }   // 대항전 점수 (거울관 특기)
       if (it) sendMail(r.bidder, '떠돌이 상인', '낙찰: ' + r.name, r.bidder_name + ' 님, ' + R.fmt(r.price) + ' ' + CUR + '에 낙찰되었습니다. 좋은 주인을 만나 다행이군요.\n— 떠돌이 상인', { items: [it] }, Math.floor(Date.now() / 1000) + 14 * 86400, true);
-      chat.system('notice', '떠돌이 상인: ' + r.bidder_name + ' 님이 ' + R.josa('「' + r.name + '」', '을', '를') + ' ' + R.fmt(r.price) + ' ' + CUR + '에 낙찰받았습니다.', Date.now() / 1000);
     }
     chat.pingAll('auction', { done: r.id });
+  });
+  // 한 방문의 물건이 모두 마감되면 공지에 한 줄만 (낙찰마다 올리지 않는다 · 누가 샀는지는 경매 화면 기록)
+  endedVisits.forEach((vid) => {
+    const all = dbx.q.aucByVisit.all(vid); if (!all.length || all.some((x) => !x.done)) return;
+    chat.system('notice', '떠돌이 상인 경매가 종료되었습니다. ' + all.length + '점 중 ' + all.filter((x) => x.bidder && !String(x.bidder).startsWith('npc:')).length + '점이 낙찰되었습니다.', Date.now() / 1000);
   });
 }
 routes['GET /api/auction'] = (req, res) => {
