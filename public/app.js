@@ -2435,7 +2435,25 @@
         (act2 ? '<span class="tag ok">동행 중</span>' : disp ? famRecallBtn(f.id) : '<button class="btn sm primary" data-act="do" data-a="famAct" data-b="' + f.id + '">동행</button>' + (o.lock ? '<span class="tag br" title="「모두 파견」에서 빠지며 따로 보낼 수도 없습니다">파견 잠금</span>' : '<button class="btn sm primary" data-act="dispatch" data-a="' + f.id + '">' + R.DDUR[dk].label + ' 파견</button>')) +
         (act2 || disp ? '' : '<button class="btn sm ghost" data-act="famlock" data-a="' + f.id + '" title="잠그면 「모두 파견」에서 빠지고 따로 보낼 수도 없습니다">' + (o.lock ? '잠금 해제' : '파견 잠금') + '</button>') + '</div></div></div>';
     });
-    return h + '</div>';
+    return h + '</div>' + famSummary();
+  }
+  // 사역장 아래: 보유 효과 합계 · 파견 기록 (같은 때 돌아온 사역마는 「잉크박쥐 외 2마리」로 묶고 가져온 것은 합계)
+  function famSummary() {
+    var P = S.P, sum = {}, own = Object.keys(P.fam.own).filter(function (id) { return R.FAM[id]; });
+    own.forEach(function (id) { var f = R.FAM[id]; sum[f.bonus] = (sum[f.bonus] || 0) + R.famBonus(f, P.fam.own[id].lv, P); });
+    var h = '<div class="grid g2" style="margin-top:14px"><div class="card"><h3>보유 효과 합계</h3><p class="tiny faint" style="margin:2px 0 6px">가진 사역마 ' + own.length + '종이 동행 · 파견과 관계없이 늘 주는 효과입니다.</p>' +
+      (own.length ? '<dl class="kv">' + Object.keys(sum).map(function (k) { return '<dt>' + (D.BONUS_NAMES[k] || k) + '</dt><dd class="good">+' + pct(sum[k]) + '</dd>'; }).join('') + '</dl>' : '<div class="empty">아직 사역마가 없습니다.</div>') + '</div>';
+    var L = P.fam.dlog || [], groups = [];
+    L.forEach(function (e) { var g = groups[groups.length - 1]; if (g && Math.abs(g.t - e.t) < 60 && g.early === e.early) g.list.push(e); else groups.push({ t: e.t, early: e.early, list: [e] }); });
+    h += '<div class="card"><h3>파견 기록</h3><p class="tiny faint" style="margin:2px 0 6px">최근에 돌아온 파견입니다. 같은 때 돌아온 사역마는 한 줄로 묶어 가져온 것을 합쳐 보여 줍니다.</p>' +
+      (groups.length ? '<div class="logbox" style="max-height:320px">' + groups.slice(0, 15).map(function (g) {
+        var tot = { mats: {}, stones: 0, gold: 0, egg: 0, shard: 0 }, hrs = {};
+        g.list.forEach(function (e) { tot.mats[e.mat] = (tot.mats[e.mat] || 0) + e.mats; tot.stones += e.stones; tot.gold += e.gold; tot.egg += e.egg; tot.shard += e.shard; hrs[e.h] = 1; });
+        var first = R.famLabel(P, g.list[0].f) || g.list[0].f, who = esc(first) + (g.list.length > 1 ? ' 외 ' + (g.list.length - 1) + '마리' : '');
+        var got = Object.keys(tot.mats).map(function (m) { return (D.MATS[m] ? D.MATS[m].name : m) + ' ' + fmt(tot.mats[m]); }).concat(['마석 ' + fmt(tot.stones), MONEY(tot.gold, '+')]).concat(tot.egg ? ['<span class="gold">환수의 알 ' + tot.egg + '</span>'] : []).concat(tot.shard ? ['별조각 ' + tot.shard] : []);
+        return '<div class="ln"><span class="lt">' + logClock(g.t) + '</span><span><b>' + who + '</b> · ' + Object.keys(hrs).join(' · ') + '시간' + (g.early ? ' (도중 귀환)' : '') + '<br><span class="small">' + got.join(', ') + '</span></span></div>';
+      }).join('') + '</div>' : '<div class="empty">아직 파견 기록이 없습니다. 이번 업데이트 뒤에 돌아온 파견부터 기록됩니다.</div>') + '</div></div>';
+    return h;
   }
 
   /* ── 서고 ── */

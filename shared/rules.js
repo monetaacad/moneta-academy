@@ -950,6 +950,8 @@
     var gold = Math.floor(h * 40 * K.KILL_GOLD * Math.pow(K.G_GOLD, z.from - 1) * mult * K.DISP_GOLD); addGold(P, gold); out.gold = gold;
     if (rnd(P) < h * 0.008 * mult) { P.fam.eggs++; out.egg = 1; }
     if (rnd(P) < h * 0.04) { var sh = ri(P, 1, 3); P.res.shard += sh; out.shard = sh; }
+    // 사역장 「파견 기록」: 최근 40건 (같은 때 돌아온 사역마는 화면에서 한 줄로 묶는다)
+    var L = P.fam.dlog || (P.fam.dlog = []); L.unshift({ t: Math.round(t), f: fid, h: Math.round(h * 10) / 10, mat: z.mat, mats: mats, stones: stones, gold: gold, egg: out.egg || 0, shard: out.shard || 0, early: early ? 1 : 0 }); if (L.length > 40) L.length = 40;
     if (early) { out.early = 1; return out; }
     P.st.dispatches++; cupAdd(P, 20, 'disp');
     nightJob(P, t);
