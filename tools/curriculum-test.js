@@ -33,4 +33,5 @@ t('학기 이야기 목표의 전공 과목은 학과 짝으로', () => { const 
 t('시험 공통 과목은 지력 1 · 체력 1', () => { D.EXAMS.forEach(e => { const l = e.subj.map(s => R.SUBJ[s].lst).sort().join(); assert.strictEqual(l, 'int,vit', e.title); }); });
 t('전체 능력치 화면', () => { const P = mk('knight'); P.subj.guard.lv = 12; const fs = R.fullStats(P, W, now0); assert.ok(JSON.stringify(fs).indexOf('수호기사학 Lv 12') >= 0); });
 t('연금 공방은 연금화학 1레벨부터 (학년 무관)', () => { const P = mk('mage'); assert.strictEqual(P.grade, 1); assert.strictEqual(R.alchOpen(P), false); assert.strictEqual(R.potionUnlocked(P, 'focus'), false); P.subj.alch.lv = 1; assert.strictEqual(R.alchOpen(P), true); assert.strictEqual(R.potionUnlocked(P, 'focus'), true); assert.strictEqual(R.potionUnlocked(P, 'guard'), false); });
+t('넘친 장비: 아르크 / 마석가루 선택 (원정 상한 20)', () => { const P = mk('mage'); assert.strictEqual(R.K.ITEM_CAP, 20); R.act(P, W, now0, 'ovfMode', { dust: true }); assert.strictEqual(P.ovfDust, true); assert.ok(R.overflowEach(40, true) >= 1); R.act(P, W, now0, 'ovfMode', { dust: false }); assert.strictEqual(P.ovfDust, false); assert.ok(R.overflowEach(40, false) > 0); });
 console.log(ok + '개 통과');
