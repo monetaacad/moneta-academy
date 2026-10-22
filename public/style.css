@@ -1974,3 +1974,7 @@ table.sjtop .sjmeta { white-space: nowrap; }
 .rpcform.reply { margin-left: 18px; width: calc(100% - 18px); }
 .rpto { flex: none; }
 .rpcom .cedform { flex: 1 1 100%; }
+
+/* 일괄 판매 · 분해 버튼 줄 */
+.bulkbtns { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 4px; }
+.bulkbtns .btn { width: 100%; justify-content: center; white-space: nowrap; padding-left: 4px; padding-right: 4px; }
