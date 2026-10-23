@@ -2315,7 +2315,7 @@
     var allOpen = !!PREF.bdgAll, opn = S.bdgOpen || (S.bdgOpen = {});   // 보관 중인 휘장 옵션(대표 · 세공) 펼치기: 한 개씩 또는 모두 (모두는 이 기기에 기억)
     if (rest.length) h += '<div class="row between" style="margin-top:12px"><div class="section-t" style="font-size:13px">보관 중인 휘장</div><button class="btn sm ghost" data-act="bdgall">' + (allOpen ? '옵션 모두 접기' : '옵션 모두 보기') + '</button></div><div class="bdglist">' + rest.map(function (x) {
       var g2 = R.GEM[x.gem], armed = S.confirm['bb' + x.u] > Date.now();
-      return '<div class="bdgrow"><div style="flex:1;min-width:0"><div class="row" style="gap:6px;align-items:center"><div class="small ell" style="flex:1;min-width:0">' + esc(x.name) + ' ' + badgeSvg(x) + ' <span class="num faint">Lv ' + x.lv + '</span></div>' + lockBtn(x) + '</div><div class="tiny faint ell">' + badgeBrief(x) + '</div>' + (allOpen || opn[x.u] ? '<div class="bdgopt" style="margin-top:4px">' + badgeLines(x) + '</div>' : '') + '</div>' +
+      return '<div class="bdgrow"><div style="flex:1;min-width:0"><div class="row" style="gap:6px;align-items:center;flex-wrap:nowrap"><div class="small ell" style="min-width:0">' + esc(x.name) + ' ' + badgeSvg(x) + ' <span class="num faint">Lv ' + x.lv + '</span></div>' + lockBtn(x) + '</div><div class="tiny faint ell">' + badgeBrief(x) + '</div>' + (allOpen || opn[x.u] ? '<div class="bdgopt" style="margin-top:4px">' + badgeLines(x) + '</div>' : '') + '</div>' +
         '<span class="frbtns">' + (allOpen ? '' : '<button class="btn sm ghost" data-act="bdgopt" data-a="' + x.u + '" aria-expanded="' + !!opn[x.u] + '">' + (opn[x.u] ? '옵션 숨기기' : '옵션 보기') + '</button>') + '<button class="btn sm" data-act="bwear" data-a="' + x.u + '">장착</button>' + (x.lock ? '' : '<button class="btn sm ghost" data-act="mksellbadge" data-a="' + x.u + '">거래소</button>' + (list.some(function (y) { return y !== x && y.lv < x.lv; }) ? '<button class="btn sm ghost" data-act="binherit" data-a="' + x.u + '" title="이 휘장을 재료로 별빛 ' + Math.round(R.BADGE_INHERIT * 100) + '%를 레벨이 더 낮은 휘장에 옮깁니다">계승</button>' : '') + '<button class="btn sm ' + (armed ? 'danger' : 'ghost') + '" data-act="bbreak" data-a="' + x.u + '">' + (armed ? '한 번 더 누르면 깨뜨립니다' : '깨뜨리기') + ' <span class="cost">+' + R.badgeBreakDust(x) + ' 마석가루</span></button>') + '</span></div>';
     }).join('') + '</div>';
     return wrap(h + '<p class="tiny faint" style="margin-top:10px">달고 있는 휘장 하나만 효과가 있고 별빛을 모읍니다 · 원정 1시간 +' + R.BADGE_XP.expH + ', 수업 1시간 +' + R.BADGE_XP.lecH + ', 보스 · 결투 · 월드 보스 한 번 +' + R.BADGE_XP.fight + '(이기면 두 배) · ' + D.BADGE_FACET_LV.join(' · ') + '레벨에 세공이 한 줄씩 늘어납니다 · 거래소에서 사고팔 수 있습니다</p>');
@@ -6030,7 +6030,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102353;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102354;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
