@@ -2615,8 +2615,10 @@ routes['POST /api/admin/plog'] = async (req, res) => {
 // 운영실: 비밀번호를 잃어버린 학생에게 임시 비밀번호를 발급한다. 모든 기기에서 로그아웃되고, 로그인하면 비밀번호를 바꾸라고 안내한다
 routes['POST /api/admin/resetpw'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
-  const b = await readJson(req, 1024), row = dbx.q.playerByKey.get(nameKey(String(b.name || '')));
-  if (!row) return fail(req, res, 404, '없는 학생입니다');
+  // 학생 이름 또는 아이디로 찾는다 (이름이 비어 있으면 아이디)
+  const b = await readJson(req, 1024), nm = String(b.name || '').trim(), lg = String(b.login || '').trim();
+  const lr = !nm && lg ? dbx.q.playerByLogin.get(loginKey(lg)) : null, row = nm ? dbx.q.playerByKey.get(nameKey(nm)) : lr ? dbx.q.getProfile.get(lr.id) : null;
+  if (!row) return fail(req, res, 404, nm ? '없는 학생입니다' : lg ? '없는 아이디입니다' : '학생 이름 또는 아이디 입력 필요');
   const abc = 'abcdefghjkmnpqrstuvwxyz', num = '23456789', pick = (s) => s[crypto.randomInt(s.length)];
   let temp = ''; for (let i = 0; i < 6; i++) temp += pick(abc); for (let i = 0; i < 4; i++) temp += pick(num);   // 글자 6 + 숫자 4 (헷갈리는 l · o · 0 · 1 제외)
   dbx.q.setPass.run(await hashPass(temp), row.id);
