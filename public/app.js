@@ -923,7 +923,10 @@
         (rt ? (m.claimed ? '<span class="tag">받음</span>' : '<span class="tag br">보상</span>') : '') + '</button>' +
         (open ? '<div class="mbody">' + (m.body ? '<p class="small" style="white-space:pre-wrap">' + esc(m.body) + '</p>' : '') + (rt ? '<div class="mrw"><span class="tiny faint">보상</span> <b class="small">' + esc(rt) + '</b>' + (m.claimed ? '<span class="tag ok">받았습니다</span>' : '<button class="btn sm primary" data-act="mailclaim" data-a="' + m.id + '">받기</button>') + '</div>' : '') + (mailDone(m) ? '<div class="row" style="justify-content:flex-end;margin-top:6px"><button class="btn sm ghost" data-act="maildel" data-a="' + m.id + '">이 우편 삭제</button></div>' : '') + '</div>' : '') + '</div>';
     }).join('') + '</div>';
+    var m0 = $('#modal'), b0 = m0 && m0.querySelector('.mbox'), st = [m0 ? m0.scrollTop : 0, b0 ? b0.scrollTop : 0];   // 다시 그려도 보던 자리 유지
     modal(h, true); S.mbox = mb;
+    var b1 = m0 && m0.querySelector('.mbox'); if (m0) m0.scrollTop = st[0]; if (b1) b1.scrollTop = st[1];
+    var op = b1 && b1.querySelector('.mrow2.open'); if (op && op.scrollIntoView) op.scrollIntoView({ block: 'nearest' });   // 연 우편이 보이게
   }
   ACT.mailbox = function () { S.mbox = { list: null, open: null }; modal(mhead('우편함', '') + '<p class="small muted">불러오는 중…</p>', true); S.mbox = { list: null, open: null }; loadMailbox(); };
   ACT.mailopen = function (id) {
@@ -5966,7 +5969,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102337;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102338;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
