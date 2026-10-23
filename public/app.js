@@ -1062,7 +1062,7 @@
   ACT.relsend = function () {
     var t = S.relTo; if (!t) return; var mine = $('#rel-mine').value.trim(), theirs = $('#rel-theirs').value.trim(), mynick = $('#rel-mynick').value.trim(), thnick = $('#rel-thnick').value.trim(), msg = $('#rel-msg');
     if (!mine || !theirs) { msg.textContent = '관계 이름 입력 필요'; return; }
-    if (t.ed) { API.relOp({ op: 'propose', rid: t.ed.rid, mine: mine, theirs: theirs, mynick: mynick, thnick: thnick }).then(function (j) { if (j.error) { msg.textContent = j.error; return; } toast('관계 수정을 제안했습니다', t.name + ' 님이 수락하면 바뀝니다', 2200); closeModal(); ACT.me('rels'); }); return; }
+    if (t.ed) { API.relOp({ op: 'propose', rid: t.ed.rid, mine: mine, theirs: theirs, mynick: mynick, thnick: thnick }).then(function (j) { if (j.error) { msg.textContent = j.error; return; } toast('관계 수정을 제안했습니다', t.name + ' 님이 수락하면 바뀝니다', 2200); closeModal(); if (S.view === 'friends' && S.frTab === 'rel') loadRels(); else ACT.me('rels'); }); return; }
     API.relOp({ op: 'req', id: t.id, mine: mine, theirs: theirs, mynick: mynick, thnick: thnick }).then(function (j) { if (j.error) { msg.textContent = j.error; return; } toast('관계 신청을 보냈습니다', t.name + ' 님이 수락하면 표시됩니다', 2200); openProfile(t.id); });
   };
   var REL_DONE = { accept: '관계를 맺었습니다', decline: '관계 신청을 거절했습니다', cancel: '관계 신청을 취소했습니다', remove: '관계를 끊었습니다', paccept: '관계 이름이 바뀌었습니다', pdecline: '수정 제안을 거절했습니다', pcancel: '수정 제안을 취소했습니다' };
@@ -1073,7 +1073,7 @@
     API.relOp({ op: op, rid: +rid }).then(function (j) {
       if (j.error) { toast('관계', j.error); return; }
       toast(REL_DONE[op] || '처리했습니다', '', 1600);
-      if (S.meModal && S.meTab === 'rels') loadRels(); else if (S.profId && $('#pbox')) openProfile(S.profId);
+      if (S.meModal && S.meTab === 'rels') loadRels(); else if (S.profId && $('#pbox')) openProfile(S.profId); else if ($('#rlist')) loadRels();
     });
   };
   // 「나는 (애칭 또는 이름)의 선배 · ○○ 님은 (내 애칭 또는 나)의 후배」
@@ -1096,7 +1096,7 @@
         return row(r, sub, btns + '<button class="btn sm ghost" data-act="relop" data-a="remove" data-b="' + r.rid + '">끊기</button>');
       }).join('') : '<p class="small faint">아직 맺은 관계가 없습니다.</p>';
       if (j.out.length) h += '<div class="section-t" style="margin-top:12px">보낸 신청</div>' + j.out.map(function (r) { return row(r, lab(r) + ' · 수락 대기', '<button class="btn sm ghost" data-act="relop" data-a="cancel" data-b="' + r.rid + '">취소</button>'); }).join('');
-      box.innerHTML = h;
+      box.innerHTML = h; S.relHtml = h; S.relAt = Date.now();
     });
   }
   function profileCard(p, m) {
@@ -2265,13 +2265,14 @@
     h += '<div class="grid g2 gearcols" style="margin-top:14px"><div class="stack">' + detailCard() + allocCard() + '</div>';
     if (S.bagTab === 'inv') return h + '<div class="card" data-anchor="bag">' + bagTabs(c) + invBody() + '</div></div>';   // 소지품 (장비 아닌 것)
     if (S.bagTab === 'bb') return h + '<div class="card" data-anchor="bag">' + bagTabs(c) + bbBody(c) + '</div></div>';   // 되사기 (판매 · 분해한 장비)
-    var list = P.inv.filter(function (it) { return S.invF === 'all' || it.slot === S.invF; }).sort(function (a, b) { return b.r - a.r || b.ilvl - a.ilvl; });
+    var fa = PREF.invAff && R.AFF[PREF.invAff] ? PREF.invAff : '';   // 부옵션 필터: 그 옵션이 있는 장비만, 값이 높은 순
+    var list = P.inv.filter(function (it) { return (S.invF === 'all' || it.slot === S.invF) && (!fa || affOf(it, fa) > 0); }).sort(function (a, b) { return fa ? affOf(b, fa) - affOf(a, fa) : b.r - a.r || b.ilvl - a.ilvl; });
     h += '<div class="card" data-anchor="bag">' + bagTabs(c) +
-      '<div class="filters" style="margin:8px 0">' + [['all', '전체']].concat(D.SLOTS.map(function (s) { return [s.id, s.name]; })).map(function (f) { return '<button class="btn sm ghost' + (S.invF === f[0] ? ' on' : '') + '" data-act="invf" data-a="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '</div>';
-    if (!list.length) h += '<div class="empty">가방이 비어 있습니다. 원정에서 장비를 가져옵니다.</div>';
+      '<div class="filters" style="margin:8px 0">' + [['all', '전체']].concat(D.SLOTS.map(function (s) { return [s.id, s.name]; })).map(function (f) { return '<button class="btn sm ghost' + (S.invF === f[0] ? ' on' : '') + '" data-act="invf" data-a="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '</div>' + invAffRow(P, fa);
+    if (!list.length) h += '<div class="empty">' + (fa ? '이 부옵션이 있는 장비가 없습니다.' : '가방이 비어 있습니다. 원정에서 장비를 가져옵니다.') + '</div>';
     else h += '<div class="inv">' + list.map(function (it) {
       var wr = R.canWear(P, it), up = wr ? R.powerWith(P, it, wctx(), now()) - c.power : 0;
-      return '<button class="itm rb' + it.r + (wr ? '' : ' nowear') + (S.sel === it.u ? ' sel' : '') + '" data-act="sel" data-a="' + it.u + '"><span class="in" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</span><span class="il">' + R.slotName(it) + ' · Lv ' + it.ilvl + presetTag(it.u) + '</span>' + (up > 0 ? '<span class="up">▲</span>' : '') + (wr ? '' : '<span class="nw" title="레벨 ' + it.ilvl + '부터 장착할 수 있습니다">Lv ' + it.ilvl + ' 필요</span>') + (it.lock ? '<span class="lk">잠금</span>' : '') + '</button>' + (S.sel === it.u ? '<div class="invdetail">' + detailCard() + '</div>' : '');
+      return '<button class="itm rb' + it.r + (wr ? '' : ' nowear') + (S.sel === it.u ? ' sel' : '') + '" data-act="sel" data-a="' + it.u + '"><span class="in" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</span><span class="il">' + R.slotName(it) + ' · Lv ' + it.ilvl + presetTag(it.u) + '</span>' + (fa ? '<span class="iaf num">' + R.AFF[fa].name + ' ' + affFmt(fa, affOf(it, fa)) + '</span>' : '') + (up > 0 ? '<span class="up">▲</span>' : '') + (wr ? '' : '<span class="nw" title="레벨 ' + it.ilvl + '부터 장착할 수 있습니다">Lv ' + it.ilvl + ' 필요</span>') + (it.lock ? '<span class="lk">잠금</span>' : '') + '</button>' + (S.sel === it.u ? '<div class="invdetail">' + detailCard() + '</div>' : '');
     }).join('') + '</div>';
     // 일괄 판매 · 분해: 제목은 한 줄, 버튼 네 개는 아래 줄에 같은 너비로 (두 줄이 세로로 맞게)
     var bulkRow = function (title, a2, top) { return '<div class="bulkrow"' + (top ? ' style="margin-top:8px"' : '') + '><div class="small muted">' + title + '</div><div class="bulkbtns">' + D.RARITY.slice(0, 4).map(function (r) { return '<button class="btn sm ghost rk rk' + r.id + '" data-act="bulkask" data-a="' + a2 + '" data-b="' + r.id + '">' + r.name + ' 이하</button>'; }).join('') + '</div></div>'; };
@@ -4484,6 +4485,17 @@
   ACT.sel = function (u) { S.sel = u && u !== S.sel ? u : null; render();   // 펼친 장비를 다시 누르면 살펴보기를 닫는다
     var d = $('.invdetail') || $('.eqdetail'); if (d && d.offsetParent) d.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); };   // 한 칸일 때 가방 안에 펼친 살펴보기가 보이게
   ACT.invf = function (f) { S.invF = f; render(); };
+  // 가방 부옵션 필터: 가방에 있는 부옵션만 고를 수 있고, 장착 중인 장비의 같은 옵션 값도 함께 보여 비교한다 (선택은 이 기기에 기억)
+  function affOf(it, id) { var v = 0; (it.aff || []).forEach(function (a) { if (a.id === id) v += a.v; }); return v; }
+  function affFmt(id, v) { return '+' + (R.AFF[id] && R.AFF[id].flat ? fmt(Math.round(v * 10) / 10) : R.fmtPct(v, 1)); }
+  function invAffRow(P, fa) {
+    var cnt = {}; P.inv.forEach(function (it) { (it.aff || []).forEach(function (a) { cnt[a.id] = (cnt[a.id] || 0) + 1; }); });
+    var opts = D.AFFIXES.filter(function (a) { return cnt[a.id] || a.id === fa; });
+    var eq = fa ? D.SLOTS.map(function (sl) { var it = P.eq[sl.id], v = it ? affOf(it, fa) : 0; return v > 0 ? sl.name + ' ' + affFmt(fa, v) : ''; }).filter(Boolean) : [];
+    return '<div class="row" style="gap:6px;flex-wrap:wrap;align-items:center;margin:-2px 0 8px"><select data-act="invaff" style="width:auto"><option value="">부옵션으로 찾기</option>' + opts.map(function (a) { return '<option value="' + a.id + '"' + (a.id === fa ? ' selected' : '') + '>' + a.name + ' (' + (cnt[a.id] || 0) + ')</option>'; }).join('') + '</select>' +
+      (fa ? '<button class="btn sm ghost" data-act="invaffx">필터 해제</button><span class="tiny faint">' + (eq.length ? '장착 중: ' + eq.join(' · ') : '장착 중인 장비에는 이 옵션이 없습니다') + '</span>' : '') + '</div>';
+  }
+  ACT.invaffx = function () { PREF.invAff = ''; savePref(); render(); };
   /* ── 소지품: 장비가 아닌 것(알 · 도전권 · 물약 · 망각의 차 등)을 한곳에. 칸 제한 없음, 바로 쓰기 · 바로가기 ── */
   function bagTabs(c) { var nn = invNew().length, nb = R.bbList(S.P, now()).length; return '<div class="tabs bagtabs" role="tablist" style="margin-bottom:8px"><button role="tab" class="' + (S.bagTab !== 'inv' && S.bagTab !== 'bb' ? 'on' : '') + '" data-act="bagtab" data-a="eq">장비 가방 <span class="num tiny">' + S.P.inv.length + ' / ' + c.bag + '</span></button><button role="tab" class="' + (S.bagTab === 'inv' ? 'on' : '') + '" data-act="bagtab" data-a="inv">소지품' + (nn ? ' <span class="tag br">NEW ' + nn + '</span>' : '') + '</button><button role="tab" class="' + (S.bagTab === 'bb' ? 'on' : '') + '" data-act="bagtab" data-a="bb">되사기' + (nb ? ' <span class="num tiny">' + nb + '</span>' : '') + '</button></div>'; }
   // 되사기: 최근 24시간 안에 직접 판매 · 분해한 장비 (최대 R.BB_MAX개). 받은 아르크 · 마석 · 마석가루를 그대로 내면 되찾는다
@@ -5723,12 +5735,17 @@
   };
   // 교류 › 친구 탭
   V.friends = function () {
-    if (Date.now() - (S.frAt || 0) > 15000 && Date.now() - (S.frReq || 0) > 3000) { S.frReq = Date.now(); setTimeout(loadFriends, 0); }
+    if (S.frTab === 'rel') { if (Date.now() - (S.relAt || 0) > 15000 && Date.now() - (S.relReq || 0) > 3000) { S.relReq = Date.now(); setTimeout(loadRels, 0); } }
+    else if (Date.now() - (S.frAt || 0) > 15000 && Date.now() - (S.frReq || 0) > 3000) { S.frReq = Date.now(); setTimeout(loadFriends, 0); }
     setTimeout(fSearchKeys, 0);
     return pageHead('함께 다니는 학생들', '친구', '접속한 친구가 위에 · 1:1 대화와 파티 초대') +
       '<div class="card" style="margin-bottom:12px">' + fSearchBox() + '</div>' +
-      '<div class="card" id="flist">' + (S.frHtml || '<p class="small muted">불러오는 중…</p>') + '</div>';
+      '<div class="tabs" role="tablist" style="margin-bottom:10px"><button role="tab" class="' + (S.frTab !== 'rel' ? 'on' : '') + '" data-act="frtab" data-a="fr">친구</button><button role="tab" class="' + (S.frTab === 'rel' ? 'on' : '') + '" data-act="frtab" data-a="rel">관계</button></div>' +
+      (S.frTab === 'rel' ? '<div class="card" id="rlist">' + (S.relHtml || '<p class="small muted">불러오는 중…</p>') + '</div>'
+        : '<div class="card" id="flist">' + (S.frHtml || '<p class="small muted">불러오는 중…</p>') + '</div>');
   };
+  // 교류 › 친구: 친구 | 관계 탭 (관계는 내 정보 › 관계와 같은 목록 · 수락 · 수정 제안 · 끊기)
+  ACT.frtab = function (t) { S.frTab = t === 'rel' ? 'rel' : 'fr'; render(); if (S.frTab === 'rel') loadRels(); };
   // 학생 검색: 이름 일부로 찾고, 누르면 정보창이 열려 그곳에서 친구 신청한다
   // 학생 이름 검색 칸 (친구 화면 · 내 정보 › 친구 탭 맨 위)
   function fSearchBox() { return '<div class="row"><input id="f-q" maxlength="12" placeholder="학생 이름 검색" value="' + esc((S.frs && S.frs.q) || '') + '" style="flex:1;min-width:0"><button class="btn sm primary" data-act="fsearch">검색</button></div><div id="fsres">' + fSearchHtml() + '</div>'; }
@@ -6072,7 +6089,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102361;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102362;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
@@ -6232,6 +6249,7 @@
     else if (el.id === 'pe-file' && el.files && el.files[0]) onAvatarFile(el.files[0]);
     else if (el.dataset.act === 'grank') { API.guildOp({ op: 'setrank', pid: el.dataset.a, rank: el.value }).then(function (j) { gDone(j, '역할이 변경되었습니다'); }); }
     else if (el.dataset.act === 'mkaff') { if (el.value) { var la = (S.mk.aff || '').split(',').filter(Boolean); if (la.indexOf(el.value) < 0 && la.length < 3) la.push(el.value); S.mk.aff = la.join(','); S.mk.data = null; render(); loadMarket(); } }
+    else if (el.dataset.act === 'invaff') { PREF.invAff = el.value; savePref(); render(); }
     else if (el.dataset.act === 'mksel') { S.mk[el.dataset.a] = el.value; S.mk.data = null; render(); loadMarket(); }
   });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && S.tut) { ACT['tut-skip'](); return; } if (e.key === 'Escape' && S.modal && !S.modalLocked) { if ($('#mconfirm')) ACT['mc-no'](); else tryClose(); } if (e.key === 'Enter' && e.target.id === 'mk-q') ACT.mkq(); if ((e.key === 'Enter' || e.key === ' ') && e.target.getAttribute && e.target.getAttribute('role') === 'button' && e.target.dataset.act && e.target.tagName !== 'BUTTON') { e.preventDefault(); e.target.click(); } });
