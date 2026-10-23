@@ -4640,13 +4640,26 @@
     }
     return h + '</div>';
   }
+  // 주문 고르기: 종류 필터(전체 · 공격 · 지원 · 강화) · 습득한 것만 보기 (이 기기에 기억), 다른 슬롯에 장착 중인 주문 표시
+  var SP_KIND = { atk: ['dmg', 'stun'], sup: ['heal', 'shield', 'pshield'], buf: ['haste', 'amp'] }, SP_KIND_NM = [['all', '전체'], ['atk', '공격'], ['sup', '지원'], ['buf', '강화']];
+  function spPickBody(i) {
+    var P = S.P, f = SP_KIND[PREF.spFilt] ? PREF.spFilt : 'all', learned = !!PREF.spLearned, cls = P.cls || 'mage';
+    var list = D.SPELLS.filter(function (sp) { return (!sp.cls || sp.cls.indexOf(cls) >= 0) && (f === 'all' || SP_KIND[f].indexOf(sp.type) >= 0) && (!learned || R.spellUnlocked(P, sp.id)); });
+    var h = '<div class="row" style="gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><div class="filters">' + SP_KIND_NM.map(function (x) { return '<button class="btn sm' + (x[0] === f ? ' on' : ' ghost') + '" data-act="spfilt" data-a="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div>' +
+      '<label class="small row" style="gap:4px;margin-left:auto"><input type="checkbox" data-act="splearn"' + (learned ? ' checked' : '') + '>습득한 것만 보기</label></div><div class="stack" style="gap:8px">';
+    h += list.length ? list.map(function (sp) {
+      var un = R.spellUnlocked(P, sp.id), on = P.spells[i] === sp.id, j = P.spells.indexOf(sp.id), other = j >= 0 && j !== i && j < R.spellSlots(P);
+      return '<button class="qopt' + (on ? ' ok' : '') + '" data-act="spell-set" data-a="' + sp.id + '"' + (un ? '' : ' disabled style="opacity:.45"') + '><b>' + sp.name + '</b>' + (on ? ' <span class="tag ok">이 슬롯에 장착 중</span>' : other ? ' <span class="tag br" title="선택하면 두 슬롯의 주문을 서로 바꿉니다">슬롯 ' + (j + 1) + '에 장착 중</span>' : '') + ' <span class="small muted">' + sp.desc + ' · ' + sp.cd + '초</span>' + '<br><span class="tiny ' + (un ? 'good' : 'faint') + '">' + (sp.cls && sp.cls.indexOf(cls) < 0 ? sp.cls.map(function (k) { return R.CLS[k].name; }).join(' · ') + ' 학과만' : sp.req ? '습득 조건: ' + R.SUBJ[sp.req[0]].name + ' Lv ' + sp.req[1] + (un ? ' · 습득함' : '') : '기본 주문') + (other ? ' · 선택하면 슬롯 ' + (j + 1) + '과 서로 바꿉니다' : '') + '</span>' + '</button>';
+    }).join('') : '<p class="small muted">조건에 맞는 주문이 없습니다.</p>';
+    return h + '<button class="btn ghost" data-act="spell-set" data-a="">비우기</button></div>';
+  }
   ACT['spell-pick'] = function (i) {
     i = +i; S.spellSlot = i;
-    modal(mhead('주문 슬롯 ' + (i + 1), '전투 중 재사용 대기시간이 끝나면 자동으로 시전합니다.') + '<div class="stack" style="gap:8px">' + D.SPELLS.filter(function (sp) { return !sp.cls || sp.cls.indexOf(S.P.cls || 'mage') >= 0; }).map(function (sp) {
-      var un = R.spellUnlocked(S.P, sp.id), on = S.P.spells[i] === sp.id;
-      return '<button class="qopt' + (on ? ' ok' : '') + '" data-act="spell-set" data-a="' + sp.id + '"' + (un ? '' : ' disabled style="opacity:.45"') + '><b>' + sp.name + '</b> <span class="small muted">' + sp.desc + ' · ' + sp.cd + '초</span>' + '<br><span class="tiny ' + (un ? 'good' : 'faint') + '">' + (sp.cls && sp.cls.indexOf(S.P.cls || 'mage') < 0 ? sp.cls.map(function (k) { return R.CLS[k].name; }).join(' · ') + ' 학과만' : sp.req ? '습득 조건: ' + R.SUBJ[sp.req[0]].name + ' Lv ' + sp.req[1] + (un ? ' · 습득함' : '') : '기본 주문') + '</span>' + '</button>';
-    }).join('') + '<button class="btn ghost" data-act="spell-set" data-a="">비우기</button></div>');
+    modal(mhead('주문 슬롯 ' + (i + 1), '전투 중 재사용 대기시간이 끝나면 자동으로 시전합니다.') + '<div id="sppick">' + spPickBody(i) + '</div>');
   };
+  function spPickRedraw() { var b = $('#sppick'); if (b) b.innerHTML = spPickBody(S.spellSlot); }
+  ACT.spfilt = function (f) { PREF.spFilt = f; savePref(); spPickRedraw(); };
+  ACT.splearn = function (a, b, el) { PREF.spLearned = !!(el && el.checked); savePref(); spPickRedraw(); };
   ACT['spell-set'] = function (id) { act('spell', { i: S.spellSlot, id: id || null }).then(function () { closeModal(); }); };
   ACT.chattab = function (k) {
     if (GTAB[k]) k = S.chat.gsub[k] || GTAB[k][0];
@@ -6030,7 +6043,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102355;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102356;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
