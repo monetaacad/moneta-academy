@@ -393,11 +393,27 @@
     if (!S.P || !$('#view')) return;
     S.rPend = 0;   // 미뤄 둔 softRender가 있었다면 이걸로 끝
     var v = VIEWS.find(function (x) { return x.id === S.view; }) || VIEWS[0];
-    var sy = window.scrollY, tra = trAnchor();   // 실시간 거래 목록: 내려 둔 위치 유지
+    var sy = window.scrollY, tra = trAnchor(), kept = keepInputs();   // 실시간 거래 목록: 내려 둔 위치 유지 · 입력하던 값 유지
     $('#view').innerHTML = groupTabs() + (viewOpen(v) ? V[v.id]() : pageHead('잠긴 구역', v.name, '') + '<div class="card"><p>' + R.josa(v.name, '은', '는') + ' ' + (v.fam ? R.FAM_OPEN_TEXT : v.grade + '학년') + '부터 출입할 수 있습니다.</p></div>');
     if (Math.abs(window.scrollY - sy) > 2) window.scrollTo(0, sy);
     if (tra) trRestore(tra);
+    restoreInputs(kept);
     afterRender(); updateLive(); updateBadges(); updateSide();
+  }
+  // 다시 그리기(거래소 자동 갱신 · 상태 받기 등) 전에 사용자가 고쳐 둔 입력칸 값을 기억했다가 같은 칸에 되돌린다
+  function inputKey(el) { return el.id ? '#' + el.id : el.dataset && el.dataset.key ? el.className + '|' + el.dataset.key : ''; }
+  function keepInputs() {
+    var v = $('#view'), out = []; if (!v) return out;
+    v.querySelectorAll('input, textarea').forEach(function (el) {
+      if (/^(checkbox|radio|button|file|submit)$/.test(el.type)) return;
+      var k = inputKey(el); if (k && !el.__nokeep && el.value !== el.defaultValue) out.push([k, el.value]);
+    });
+    return out;
+  }
+  function restoreInputs(kept) {
+    var v = $('#view'); if (!v || !kept.length) return;
+    var map = {}; kept.forEach(function (x) { map[x[0]] = x[1]; });
+    v.querySelectorAll('input, textarea').forEach(function (el) { var k = inputKey(el); if (k && map.hasOwnProperty(k)) { el.value = map[k]; if (el.dataset.fmt || (el.closest && el.closest('.mksell'))) try { el.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { } } });   // 거래소 칸: 금액 표기(mkfmt) · 합계 같은 보조 표시도 다시 맞춘다
   }
   function pageHead(eyebrow, title, aside) { return '<div class="page-head"><div><div class="eyebrow">' + eyebrow + '</div><h2>' + title + '</h2></div>' + (aside ? '<div class="aside">' + aside + '</div>' : '') + '</div>'; }
   // 가로로 넘치는 탭 줄: 잘린 쪽에 ‹ › 버튼을 띄워 더 있다는 것을 알린다 (누르면 그쪽으로 넘긴다)
@@ -6014,7 +6030,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102351;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102352;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
@@ -6159,6 +6175,7 @@
     var el = e.target.closest('[data-act]'); if (!el || el.tagName === 'SELECT') return;
     var f = ACT[el.dataset.act]; if (!f || el.disabled) return;
     if (el.type !== 'checkbox') e.preventDefault();
+    if (el.parentNode && el.parentNode.querySelectorAll) el.parentNode.querySelectorAll('input, textarea').forEach(function (x) { x.__nokeep = 1; });   // 같은 줄의 입력칸은 이 단추로 보낸 값이라 다시 그릴 때 되살리지 않는다
     f(el.dataset.a, el.dataset.b, el);
   });
   document.addEventListener('change', function (e) {
