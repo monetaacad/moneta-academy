@@ -1372,7 +1372,7 @@
         cd[sid] = sp.cd * (1 - c.cdr);
         var lm = spellLvMult(P, sp);
         var se = evs.length < 400 ? [Math.round(t * 10) / 10, 's', sid] : null; if (se) evs.push(se);
-        if (sp.type === 'dmg' || sp.type === 'stun') { var cr2 = rnd(P) < c.critC; if (sp.type === 'stun' || (sp.stunP && rnd(P) < sp.stunP)) stun = sp.stun; hit(R.spellHit(c, sp) * sp.mult * lm * (cr2 ? c.critD : 1), 'p', cr2); if (sp.selfShield) sh = Math.max(sh, c.hp * sp.selfShield); }
+        if (sp.type === 'dmg' || sp.type === 'stun') { var cr2 = rnd(P) < c.critC; if (sp.type === 'stun' || (sp.stunP && rnd(P) < sp.stunP)) stun = sp.stun; hit(R.spellHit(c, sp) * sp.mult * lm * (cr2 ? c.critD : 1), 'p', cr2); if (sp.selfShield) { sh = Math.max(sh, c.hp * sp.selfShield); if (se) se[4] = Math.round(sh); } }   // se[4]: 주문에 딸린 보호막 (전투 일지 체력 바)
         else if (sp.type === 'shield' || sp.type === 'pshield') { sh = c.hp * sp.mult * Math.min(2, lm); if (se) se[3] = Math.round(sh); }
         else if (sp.type === 'heal') { var hv = Math.min(c.hp - ph, c.hp * sp.mult * Math.min(2, lm)); ph += hv; if (se) se[3] = Math.round(hv); }
         else if (sp.type === 'haste') haste = sp.dur;
@@ -1498,7 +1498,7 @@
     function line(text, kind) { L.push([Math.round(t * 10) / 10, text, kind]); }
     // c는 값이 있을 때만 붙인다 (0도 주문 번호라 남긴다 · 치명타 · 막은 양은 없으면 null)
     function ev(k, a, v, b, c) { if (E.length < R.TW_EV_MAX) { var e = [Math.round(t * 10) / 10, k, a, Math.round(v)]; if (b != null || c != null) e.push(b == null ? -1 : b); if (c != null) e.push(Math.round(c)); E.push(e); } }
-    function snap() { var row = [Math.round(t), Math.max(0, Math.round(mh / foe.hp * 1000) / 10)]; for (var j = 0; j < n; j++) row.push(Math.max(0, Math.round(hp[j] / mx[j] * 100))); S.push(row); }
+    function snap() { var row = [Math.round(t), Math.max(0, Math.round(mh / foe.hp * 1000) / 10)]; for (var j = 0; j < n; j++) row.push(Math.max(0, Math.round(hp[j] / mx[j] * 100))); if (sh.some(function (v) { return v >= 1; })) for (var j2 = 0; j2 < n; j2++) row.push(Math.round(sh[j2] / mx[j2] * 100)); S.push(row); }   // 보호막이 있으면 뒤에 파티원 보호막 %
     function lowest() {   // 가장 위태로운 동료 (체력 비율이 가장 낮은 사람)
       var b = -1, j;
       for (j = 0; j < n; j++) if (hp[j] > 0 && (b < 0 || hp[j] / mx[j] < hp[b] / mx[b])) b = j;

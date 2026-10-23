@@ -2857,7 +2857,9 @@
     return { fl: fl, rel: rel, sn: sn, gap: rel > fl.d, done: el >= r.d - 2 };
   }
   var TW_KIND = { real: '실전', party: '파티 연습', solo: '혼자 연습' };
-  function twBar(p, cls) { return '<div class="bar ' + (cls || '') + '" style="height:7px"><b style="width:' + Math.max(0, Math.min(100, p)).toFixed(1) + '%"></b></div>'; }
+  // 보호막: 체력 바 위에 하늘색 칸 (체력 끝에 이어 붙이고, 넘치면 오른쪽 끝에 맞춘다). hp · sh는 최대 생명력 대비 %
+  function shSeg(hp, sh, id) { sh = Math.max(0, Math.min(100, sh || 0)); return '<i class="shl"' + (id ? ' id="' + id + '"' : '') + ' style="left:' + Math.max(0, Math.min(hp, 100 - sh)).toFixed(1) + '%;width:' + sh.toFixed(1) + '%"></i>'; }
+  function twBar(p, cls, sh) { return '<div class="bar ' + (cls || '') + '" style="height:7px"><b style="width:' + Math.max(0, Math.min(100, p)).toFixed(1) + '%"></b>' + (sh >= 1 ? shSeg(Math.max(0, Math.min(100, p)), sh) : '') + '</div>'; }
   // 위쪽(적 · 파티원 체력): 0.25초마다 통째로 다시 그린다
   function twStageTop(r) {
     var el = twEl(r), a = twAt(r, el); if (!a) return '';
@@ -2868,7 +2870,7 @@
     if (!fl.rest) h += '<div style="margin-top:8px">' + twBar(sn[1], 'violet thick') + '<div class="tiny faint num" style="text-align:right">' + (Math.round(sn[1] * 10) / 10) + '%</div></div>' + (trl ? '<p class="tiny" style="margin-top:2px"><span class="bad">시련의 층 「' + trl.name + '」</span> <span class="faint">' + esc(trl.desc) + '</span></p>' : '');
     h += '<div class="twms">' + r.ms.map(function (m, i) {
       var p = Math.round(sn[2 + i]), pos = R.EXP_POS[m.pos];
-      return '<div class="twm2' + (p <= 0 ? ' down' : '') + '"><div class="row small" style="gap:6px"><span class="tag' + (m.pos === 'van' ? ' br' : m.pos === 'sup' ? ' ok' : '') + '">' + (pos ? pos.name : '') + '</span><span class="ell" style="flex:1;min-width:0;color:' + (R.HOUSE[m.house] ? R.HOUSE[m.house].color : 'inherit') + '">' + esc(m.name) + (m.npc ? ' <span class="tag npc">NPC</span>' : '') + '</span><span class="tiny num ' + (p <= 0 ? 'bad' : 'faint') + '">' + (p <= 0 ? '쓰러짐' : p + '%') + '</span></div>' + twBar(p, p > 50 ? '' : p > 25 ? 'brass' : 'rose') + '</div>';
+      return '<div class="twm2' + (p <= 0 ? ' down' : '') + '"><div class="row small" style="gap:6px"><span class="tag' + (m.pos === 'van' ? ' br' : m.pos === 'sup' ? ' ok' : '') + '">' + (pos ? pos.name : '') + '</span><span class="ell" style="flex:1;min-width:0;color:' + (R.HOUSE[m.house] ? R.HOUSE[m.house].color : 'inherit') + '">' + esc(m.name) + (m.npc ? ' <span class="tag npc">NPC</span>' : '') + '</span><span class="tiny num ' + (p <= 0 ? 'bad' : 'faint') + '">' + (p <= 0 ? '쓰러짐' : p + '%') + '</span></div>' + twBar(p, p > 50 ? '' : p > 25 ? 'brass' : 'rose', p > 0 ? sn[2 + r.ms.length + i] || 0 : 0) + '</div>';
     }).join('') + '</div>';
     return h;
   }
@@ -4253,11 +4255,12 @@
   function replay(opts, done) {
     var sc = battleScript(opts), L = sc.lines, total = sc.total, speed = Math.max(1, total / 7), t0 = performance.now(), shown = 0, fin = false;
     modal(mhead(opts.title, opts.sub || '', true) + '<div class="card twjournal live btjournal" style="margin-top:4px"><div class="row between"><h4 class="gold"><span class="livedot"></span> 전투 일지</h4><span class="tiny faint num" id="rp-t">0.0초</span></div>' +
-      '<div class="bthud"><div><span class="tiny">' + esc(S.P.name) + '</span><div class="bar rose"><b id="rp-p" style="width:100%"></b></div></div><div><span class="tiny">' + esc(opts.enemy.name) + '</span>' + (opts.infinite ? '<b class="num gold" id="rp-d">0</b>' : '<div class="bar rose"><b id="rp-m" style="width:100%"></b></div>') + '</div></div>' +
+      '<div class="bthud"><div><span class="tiny">' + esc(S.P.name) + '</span><div class="bar rose"><b id="rp-p" style="width:100%"></b>' + shSeg(100, 0, 'rp-s') + '</div></div><div><span class="tiny">' + esc(opts.enemy.name) + '</span>' + (opts.infinite ? '<b class="num gold" id="rp-d">0</b>' : '<div class="bar rose"><b id="rp-m" style="width:100%"></b></div>') + '</div></div>' +
       '<div class="explog twlines" id="btlines" aria-live="polite"></div></div>' +
       '<div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn ghost" data-act="rp-skip" id="rp-skip">건너뛰기</button></div>', true, true);
     var ev = opts.ev || [], pHpMax = C().hp, mhp = opts.maxHp || 1;
-    function hpAt(gt) { var dl = 0, ph = 1; for (var i = 0; i < ev.length && ev[i][0] <= gt; i++) { if (ev[i][1] === 'h') dl += ev[i][2]; else if (ev[i][1] === 'x') ph = Math.max(0, ph - ev[i][2] / pHpMax); else if (ev[i][1] === 's' && ev[i][3] && R.SPELL[ev[i][2]] && R.SPELL[ev[i][2]].type === 'heal') ph = Math.min(1, ph + ev[i][3] / pHpMax); else if (ev[i][1] === 'l') ph = Math.min(1, ph + ((ev[i][2] || 0) + (ev[i][3] || 0)) / pHpMax); } return [dl, ph]; }
+    function hpAt(gt) { var dl = 0, ph = 1, sh = 0; for (var i = 0; i < ev.length && ev[i][0] <= gt; i++) { var sx = ev[i][1] === 's' && R.SPELL[ev[i][2]]; if (sx && (sx.type === 'shield' || sx.type === 'pshield') && ev[i][3]) sh = ev[i][3] / pHpMax; else if (sx && ev[i][4]) sh = Math.max(sh, ev[i][4] / pHpMax); if (ev[i][1] === 'x' && ev[i][3]) sh = Math.max(0, sh - ev[i][3] / pHpMax);   // 보호막 남은 양
+      if (ev[i][1] === 'h') dl += ev[i][2]; else if (ev[i][1] === 'x') ph = Math.max(0, ph - ev[i][2] / pHpMax); else if (ev[i][1] === 's' && ev[i][3] && R.SPELL[ev[i][2]] && R.SPELL[ev[i][2]].type === 'heal') ph = Math.min(1, ph + ev[i][3] / pHpMax); else if (ev[i][1] === 'l') ph = Math.min(1, ph + ((ev[i][2] || 0) + (ev[i][3] || 0)) / pHpMax); } return [dl, ph, ph > 0 ? sh : 0]; }
     S.replay = { skip: function () { t0 = -1e9; } };
     function frame(ts) {
       if (!S.replay) return;
@@ -4267,6 +4270,7 @@
         if (box) { box.innerHTML = L.slice(0, n).map(function (x) { return '<div class="el k' + x[2] + '"><span class="et num">' + x[0].toFixed(1) + '초</span><span>' + esc(x[1]) + '</span></div>'; }).join('') + (n < L.length ? '<div class="el faint twdots"><span class="et"></span><span>…</span></div>' : ''); box.scrollTop = box.scrollHeight; }
         var hp = hpAt(gt), pb = $('#rp-p'), mb = $('#rp-m'), dd = $('#rp-d');
         if (pb) pb.style.width = (hp[1] * 100).toFixed(1) + '%';
+        var sb = $('#rp-s'); if (sb) { var sp2 = Math.min(100, hp[2] * 100); sb.style.width = sp2.toFixed(1) + '%'; sb.style.left = Math.max(0, Math.min(hp[1] * 100, 100 - sp2)).toFixed(1) + '%'; }
         if (mb) mb.style.width = (opts.cc && gt >= total ? 0 : Math.max(0, 1 - hp[0] / mhp) * 100).toFixed(1) + '%';
         if (dd) dd.textContent = '피해 ' + fmt(hp[0]);
       }
@@ -5977,7 +5981,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102341;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102342;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

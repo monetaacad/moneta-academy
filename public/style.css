@@ -200,7 +200,8 @@ main { min-width: 0; container-type: inline-size; container-name: page; }
 .tog { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; color: var(--muted); user-select: none; }
 .tog input { accent-color: var(--brass); width: 16px; height: 16px; }
 
-.bar { height: 8px; border-radius: 4px; background: var(--sunk); overflow: hidden; border: 1px solid var(--line2); }
+.bar { position: relative; height: 8px; border-radius: 4px; background: var(--sunk); overflow: hidden; border: 1px solid var(--line2); }
+.bar > i.shl { position: absolute; top: 0; bottom: 0; background: linear-gradient(90deg, #7cc4f0, #d4eeff); opacity: .9; box-shadow: inset 0 0 0 1px rgba(255,255,255,.35); transition: width .2s linear, left .2s linear; }   /* 보호막 */
 .bar > b { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--verd), #a6e3cf); transition: width .2s linear; }
 .bar.brass > b { background: linear-gradient(90deg, #b98c3e, var(--brass2)); }
 .bar.rose > b { background: linear-gradient(90deg, #b14f47, var(--rose)); }
