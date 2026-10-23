@@ -2612,7 +2612,7 @@ routes['POST /api/admin/plog'] = async (req, res) => {
   let acct = null; try { acct = acctRecord(row.id, P); } catch (e) { log('운영실 계정 기록 실패', e); }
   send(req, res, 200, { name: row.name, acct, card, dlog, auto, bought, log: (P.log || []).slice(0, 50).map((l) => ({ t: l.t, m: l.m, k: l.k, n: l.n || 1 })), glog: (P.glog || []).slice(0, 100), high, st: { expJobs: P.st.expJobs || 0, epicFound: P.st.epicFound || 0, legendFound: P.st.legendFound || 0 } });
 };
-// 운영실: 비밀번호를 잃어버린 학생에게 임시 비밀번호를 발급한다. 모든 기기에서 로그아웃되고, 로그인하면 비밀번호를 바꾸라고 안내한다
+// 운영실: 비밀번호를 잃어버린 학생에게 임시 비밀번호를 발급한다. 이미 접속해 있는 기기는 로그아웃시키지 않고(게임 중단 없음), 새로 로그인하면 비밀번호를 바꾸라고 안내한다
 routes['POST /api/admin/resetpw'] = async (req, res) => {
   if (!admin(req)) return fail(req, res, 403, '관리자 토큰이 필요합니다');
   // 학생 이름 또는 아이디로 찾는다 (이름이 비어 있으면 아이디)
@@ -2623,9 +2623,6 @@ routes['POST /api/admin/resetpw'] = async (req, res) => {
   let temp = ''; for (let i = 0; i < 6; i++) temp += pick(abc); for (let i = 0; i < 4; i++) temp += pick(num);   // 글자 6 + 숫자 4 (헷갈리는 l · o · 0 · 1 제외)
   dbx.q.setPass.run(await hashPass(temp), row.id);
   dbx.db.prepare('UPDATE players SET pw_temp = 1 WHERE id = ?').run(row.id);
-  dbx.q.delSessionsFor.run(row.id);
-  for (const [k, v] of sessionCache) if (v.pid === row.id) sessionCache.delete(k);
-  chat.kick(row.id);
   let login = ''; try { const r = dbx.db.prepare('SELECT login_enc FROM players WHERE id = ?').get(row.id); login = r && r.login_enc ? sec.dec(r.login_enc) : ''; } catch (e) { }
   oplog('admin', '관리자', 'resetpw', row.name + ' 임시 비밀번호 발급'); pevent(row.id, 'op', '임시 비밀번호 발급');
   send(req, res, 200, { name: row.name, login: login || null, temp });

@@ -448,10 +448,10 @@
     },
     mute: function () { var why = +$('#um').value ? prompt('채팅 금지 사유 (선택 · 운영 로그 · 학생 계정 기록에 남습니다)', '') : ''; if (why == null) return; api('POST', '/api/admin/mute', { name: $('#un').value.trim(), minutes: +$('#um').value, reason: why }).then(function (j) { $('#umsg').textContent = j.error || '적용했습니다'; }); },
     grant: function () { api('POST', '/api/admin/grant', { name: $('#un').value.trim(), shard: +$('#ug').value, reason: $('#ur').value }).then(function (j) { $('#umsg').textContent = j.error || '지급했습니다 (보유 ' + j.shard + ')'; }); },
-    // 비밀번호를 잃어버린 학생: 임시 비밀번호 발급 (모든 기기에서 로그아웃 · 로그인하면 바꾸라고 안내)
+    // 비밀번호를 잃어버린 학생: 임시 비밀번호 발급 (접속 중인 기기는 그대로 · 새로 로그인하면 바꾸라고 안내)
     resetpw: function () {
       var n = $('#un').value.trim(), lg = $('#ulogin').value.trim(); if (!n && !lg) { $('#umsg').textContent = '학생 이름 또는 아이디 입력 필요'; return; }   // 이름이 비어 있으면 아이디로 찾는다
-      if (!confirm((n ? '「' + n + '」' : '아이디 「' + lg + '」 학생') + '에게 임시 비밀번호를 발급합니다.\n지금 비밀번호로는 더 이상 로그인할 수 없고, 모든 기기에서 로그아웃됩니다.\n본인이 맞는지 먼저 확인하세요.')) return;
+      if (!confirm((n ? '「' + n + '」' : '아이디 「' + lg + '」 학생') + '에게 임시 비밀번호를 발급합니다.\n지금 비밀번호로는 더 이상 로그인할 수 없습니다. 이미 접속해 있는 기기는 로그아웃되지 않습니다.\n본인이 맞는지 먼저 확인하세요.')) return;
       api('POST', '/api/admin/resetpw', n ? { name: n } : { login: lg }).then(function (j) { $('#umsg').textContent = j.error || '「' + j.name + '」 임시 비밀번호: ' + j.temp + (j.login ? ' · 아이디 「' + j.login + '」' : ' · 아이디 기록 없음 (로그인 화면 「아이디 찾기」에서 이름 + 임시 비밀번호로 새 아이디를 정할 수 있습니다)') + ' · 학생에게만 따로 전해 주세요'; oplog(); });
     },
     // 아이디를 잃어버린 학생: 아이디 칸에 넣은 값으로 새로 정한다 (비밀번호는 그대로)
