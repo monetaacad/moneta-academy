@@ -397,7 +397,7 @@
     $('#view').innerHTML = groupTabs() + (viewOpen(v) ? V[v.id]() : pageHead('잠긴 구역', v.name, '') + '<div class="card"><p>' + R.josa(v.name, '은', '는') + ' ' + (v.fam ? R.FAM_OPEN_TEXT : v.grade + '학년') + '부터 출입할 수 있습니다.</p></div>');
     if (Math.abs(window.scrollY - sy) > 2) window.scrollTo(0, sy);
     if (tra) trRestore(tra);
-    restoreInputs(kept);
+    restoreInputs(kept); if (S.mkArm) mkArmApply();
     afterRender(); updateLive(); updateBadges(); updateSide();
   }
   // 다시 그리기(거래소 자동 갱신 · 상태 받기 등) 전에 사용자가 고쳐 둔 입력칸 값을 기억했다가 같은 칸에 되돌린다
@@ -406,7 +406,7 @@
     var v = $('#view'), out = []; if (!v) return out;
     v.querySelectorAll('input, textarea').forEach(function (el) {
       if (/^(checkbox|radio|button|file|submit)$/.test(el.type)) return;
-      var k = inputKey(el); if (k && !el.__nokeep && el.value !== el.defaultValue) out.push([k, el.value]);
+      var k = inputKey(el); if (k && el.value !== el.defaultValue) out.push([k, el.value]);
     });
     return out;
   }
@@ -3593,7 +3593,7 @@
     if (tot) tot.textContent = un && qty && unit ? fmt(qty * unit) : '-';
     var w = mkWarn(inp.dataset.key, unit), box = row.querySelector('.mkwarn'); if (!box) return;
     box.innerHTML = w ? '<span class="bad">' + (un ? '개당 ' : '') + '시세(' + fmt(w.avg) + ')의 ' + w.txt + '입니다 · ' + (w.low ? '너무 싸게 올리는 것은 아닌지 확인' : '시세보다 많이 비쌉니다') + '</span>' : '';
-    var btn = row.querySelector('[data-act="mklist"]'); if (btn && btn.dataset.armed && !w) { delete btn.dataset.armed; btn.textContent = '올리기'; btn.classList.remove('armed'); }
+    var btn = row.querySelector('[data-act="mklist"]'); if (btn && btn.dataset.armed && !w) { delete btn.dataset.armed; btn.textContent = '올리기'; btn.classList.remove('armed'); if (S.mkArm) delete S.mkArm[btn.dataset.a + ':' + btn.dataset.b]; }
   }
   function priceLine(key, unitMat) {
     var p = S.mk.prices[key]; if (!p) return '<div class="tiny faint mkpl">시세 불러오는 중…</div>';
@@ -3856,11 +3856,21 @@
     var unit = Math.floor(+((un || pr) || {}).value || 0); if (!(unit >= 1)) { toast('거래소', (un ? '개당 ' : '') + '가격 입력 필요'); return; }
     var price = un ? unit * qty : unit, w = mkWarn(((un || pr) || {}).dataset.key, unit);
     // 시세와 많이 다르면 한 번 더 눌러야 올린다
-    if (w && el && !el.dataset.armed) { el.dataset.armed = '1'; el.classList.add('armed'); el.textContent = '한 번 더 누르면 올립니다'; setTimeout(function () { if (el.dataset.armed) { delete el.dataset.armed; el.classList.remove('armed'); el.textContent = '올리기'; } }, 4000); return; }
+    // 확인 상태는 S.mkArm에 두어 화면을 다시 그려도(거래소 자동 갱신 등) 10초 동안 유지한다
+    var ak = kind + ':' + k, am = S.mkArm || (S.mkArm = {});
+    if (w && el && !(am[ak] > Date.now())) { am[ak] = Date.now() + 10000; mkArmApply(); setTimeout(function () { if (am[ak] && am[ak] <= Date.now()) { delete am[ak]; mkArmApply(); } }, 10100); return; }
+    delete am[ak];
     var o = { op: 'list', price: price };
     if (kind === 'pot') { o.pot = k; o.qty = qty; } else if (kind === 'badge') o.badge = k; else if (kind === 'tok') { o.tok = k; o.qty = qty; } else if (kind === 'item') o.u = k; else { o.mat = k; o.qty = qty; }
     API.marketOp(o).then(function (j) { mkDone(j, '판매 등록이 완료되었습니다'); });
   };
+  function mkArmApply() {
+    var am = S.mkArm || {}; document.querySelectorAll('[data-act="mklist"]').forEach(function (b) {
+      var on = am[b.dataset.a + ':' + b.dataset.b] > Date.now();
+      if (on && !b.dataset.armed) { b.dataset.armed = '1'; b.classList.add('armed'); b.textContent = '한 번 더 누르면 올립니다'; }
+      else if (!on && b.dataset.armed) { delete b.dataset.armed; b.classList.remove('armed'); b.textContent = '올리기'; }
+    });
+  }
   ACT.mksk = function (k) { S.mk.sk = k; S.mk.focus = null; render(); };
   ACT.mksopen = function (u) { var m = S.mk; m.sopen = m.sopen || {}; m.sopen[u] = !m.sopen[u]; render(); };
   ACT.mkhf = function (f) { S.mk.hf = f || ''; render(); };
@@ -6059,7 +6069,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102358;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102359;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
@@ -6204,7 +6214,6 @@
     var el = e.target.closest('[data-act]'); if (!el || el.tagName === 'SELECT') return;
     var f = ACT[el.dataset.act]; if (!f || el.disabled) return;
     if (el.type !== 'checkbox') e.preventDefault();
-    if (el.parentNode && el.parentNode.querySelectorAll) el.parentNode.querySelectorAll('input, textarea').forEach(function (x) { x.__nokeep = 1; });   // 같은 줄의 입력칸은 이 단추로 보낸 값이라 다시 그릴 때 되살리지 않는다
     f(el.dataset.a, el.dataset.b, el);
   });
   document.addEventListener('change', function (e) {
