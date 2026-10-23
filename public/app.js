@@ -2677,8 +2677,8 @@
         var ok = R.titleOk(P, t.id), on = P.title === t.id, nm = R.titleName(P, t.id) || '?';
         var prog = t.stat ? Math.min(P.st[t.stat] || 0, t.n) : t.grade ? Math.min(P.grade, t.grade) : 1, goal = t.stat ? t.n : t.grade || 1;
         return '<div class="card ttlcard' + (ok ? '' : ' locked') + (on ? ' on' : '') + '"><div class="row between"><span class="ttl' + (ok ? '' : ' off') + '">' + esc(ok ? nm : '???') + '</span>' + (on ? '<span class="tag ok">다는 중</span>' : '') + '</div>' +
-          '<p class="small muted" style="margin-top:6px">' + esc(t.how) + '</p>' +
-          (ok ? '<div class="row" style="margin-top:8px">' + (on ? '<button class="btn sm ghost" data-act="titleset" data-a="">해제</button>' : '<button class="btn sm primary" data-act="titleset" data-a="' + t.id + '">장착</button>') + '</div>'
+          '<p class="small muted" style="margin-top:6px">' + esc(t.how) + '</p>' + liveSubjPick(P, t, ok) +
+          (ok ? '<div class="row" style="margin-top:8px">' + (on ? '<button class="btn sm ghost" data-act="titleset" data-a="">해제</button>' : '<button class="btn sm primary" data-act="titleset" data-a="' + t.id + '">장착</button>') + '</div>' : t.live ? '<p class="tiny faint" style="margin-top:8px">순위를 유지하는 동안에만 장착할 수 있습니다.</p>'
             : '<div class="bar brass" style="margin-top:8px;height:5px"><b style="width:' + (prog / goal * 100).toFixed(1) + '%"></b></div><div class="tiny faint num" style="margin-top:2px">' + fmt(prog) + ' / ' + fmt(goal) + (t.grade ? '학년' : '') + '</div>') + '</div>';
       }).join('') + '</div>';
     }
@@ -4580,6 +4580,13 @@
   };
   ACT.rectab = function (t) { S.recTab = t; render(); };
   ACT.cttitles = function () { S.recTab = 'titles'; ACT.nav('rec'); };
+  // 과목 수석 · 차석 칭호: 여러 과목에서 1위(2위)이면 칭호에 보일 과목을 고른다
+  function liveSubjPick(P, t, ok) {
+    if (!ok || (t.live !== 'h' && t.live !== 's')) return ''; var L = P.live && P.live[t.live] || []; if (L.length < 2) return '';
+    var cur = R.liveSubj(P, t.live);
+    return '<div class="filters" style="margin-top:6px">' + L.filter(function (k) { return R.SUBJ[k]; }).map(function (k) { return '<button class="btn sm' + (k === cur ? ' on' : ' ghost') + '" data-act="livesel" data-a="' + t.live + '" data-b="' + k + '">' + esc(R.SUBJ[k].name) + '</button>'; }).join('') + '</div>';
+  }
+  ACT.livesel = function (k, sj) { act('liveSel', { k: k, s: sj }).then(function (r) { if (!r) return; toast('칭호 과목', R.josa('「' + r.name + '」', '으로', '로') + ' 표시합니다', 1600); render(); }); };
   ACT.titleset = function (id) { act('title', { id: id || '' }).then(function (r) { if (!r) return; toast(id ? '칭호를 적용했습니다' : '칭호를 해제했습니다', r.title || '', 1800); loadMe(); render(); }); };
   ACT.brew = function (id) { act('brew', { id: id, n: +(S.pick.bn || 1) }).then(function (r) { if (r) { Snd.play('enh'); toast('물약이 완성되었습니다', R.POT[id].name + ' ' + r.n + '병 · 선반에 올렸습니다', 1800); } render(); }); };
   // 파견 중인 사역마 하나 불러들이기 (한 번 더 눌러야) · 파견 잠금
@@ -6007,7 +6014,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102348;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102349;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

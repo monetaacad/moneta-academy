@@ -1282,8 +1282,7 @@
   // 실시간 칭호 이름: 지금 1위(2위)인 과목 · 내 기숙사 (P.live = 서버가 정한 { h: [과목], s: [과목], c: 1 })
   function liveName(P, t) {
     var L = P && P.live || {};
-    if (t.live === 'h' && L.h && L.h.length && SUBJ[L.h[0]]) return SUBJ[L.h[0]].name + ' 수석';
-    if (t.live === 's' && L.s && L.s.length && SUBJ[L.s[0]]) return SUBJ[L.s[0]].name + ' 차석';
+    if ((t.live === 'h' || t.live === 's') && L[t.live] && L[t.live].length) { var sj = R.liveSubj(P, t.live); if (SUBJ[sj]) return SUBJ[sj].name + (t.live === 'h' ? ' 수석' : ' 차석'); }
     if (t.live === 'c' && L.c && R.HOUSE[P.house]) return R.HOUSE[P.house].name + ' 공헌 1위';
     return '';
   }
@@ -2620,6 +2619,13 @@
     var d = pick(P, pool); P.res.shard -= cost; if (!blocked) P.daily.rr = (P.daily.rr || 0) + 1;
     P.daily.q[i] = { type: d.type, name: d.name, goal: d.base, base: P.st[d.type] || 0, done: false };
     return { cost: cost, name: d.name, blocked: blocked };
+  };
+  // 과목 수석 · 차석 칭호에 보일 과목: 고른 과목(P.liveSel)이 아직 1위(2위)면 그 과목, 아니면 첫 과목
+  R.liveSubj = function (P, k) { var L = P && P.live && P.live[k] || [], sel = P && P.liveSel && P.liveSel[k]; return L.indexOf(sel) >= 0 ? sel : L[0]; };
+  A.liveSel = function (P, W, now, a) {
+    var k = a.k === 's' ? 's' : 'h', sj = str(a.s, 20), L = P.live && P.live[k] || [];
+    if (L.indexOf(sj) < 0) err(k === 'h' ? '지금 수석인 과목이 아닙니다' : '지금 차석인 과목이 아닙니다');
+    P.liveSel = P.liveSel || {}; P.liveSel[k] = sj; return { name: SUBJ[sj].name + (k === 'h' ? ' 수석' : ' 차석') };
   };
   A.title = function (P, W, now, a) { var id = a.id ? str(a.id, 20) : ''; if (id && !R.titleOk(P, id)) err('아직 얻지 못한 칭호입니다'); P.title = id; return { title: R.titleName(P, id) }; };
   A.skyLook = function (P, W, now) {
