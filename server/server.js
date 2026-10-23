@@ -752,7 +752,7 @@ routes['GET /api/profile'] = (req, res) => {
     out.canGuildInvite = !!(mgr && !tg && R.guildCan(gRanksOf(mgr), guildRole.get(me), (dbx.q.gMember.get(me) || {}).rank, 'invite'));
     out.sameParty = !!(partyOf.get(me) && partyOf.get(me) === partyOf.get(id));
   }
-  out.rels = dbx.q.relList.all(id).filter((r) => r.state === 'ok').map((r) => ({ id: r.id, name: r.name, house: r.house, av: r.avatar_v, mine: r.mine, theirs: r.theirs }));   // 관계 탭 (맺은 것만, 모두에게 공개)
+  out.rels = dbx.q.relList.all(id).filter((r) => r.state === 'ok').map((r) => ({ id: r.id, name: r.name, house: r.house, av: r.avatar_v, mine: r.mine, theirs: r.theirs, nick: r.mynick || '' }));   // 관계 탭 (nick: 카드 주인의 애칭 → 「nick의 theirs」) (맺은 것만, 모두에게 공개)
   if (self) Object.assign(out, { showStats: pr.showStats, visLv: pr.visLv, visStat: pr.visStat, visEq: pr.visEq, visFull: pr.visFull, visBadge: pr.visBadge, allowFriend: pr.allowFriend, bioFriends: pr.bioFriends });
   else {
     out.friend = fs; out.allowFriend = pr.allowFriend;
@@ -912,7 +912,8 @@ routes['POST /api/friends'] = async (req, res) => {
 /* ───────── 관계 ─────────
    한 학생이 상대와 자기의 이름표(예: 선배 / 후배)를 정해 신청하고, 상대가 수락하면 두 학생의 정보창 「관계」 탭에 보인다. 한 쌍에 하나 */
 const REL_MAX = 30, REL_OUT_MAX = 10, REL_LABEL_MAX = 8;
-const relView = (r) => ({ rid: r.rid, id: r.id, name: r.name, house: r.house, grade: r.grade, av: r.avatar_v, mine: r.mine, theirs: r.theirs, t: r.t, prop: r.pdir ? { dir: r.pdir, mine: r.pmine, theirs: r.ptheirs } : null });
+const relView = (r) => ({ rid: r.rid, id: r.id, name: r.name, house: r.house, grade: r.grade, av: r.avatar_v, mine: r.mine, theirs: r.theirs, mynick: r.mynick || '', thnick: r.thnick || '', t: r.t, prop: r.pdir ? { dir: r.pdir, mine: r.pmine, theirs: r.ptheirs, mynick: r.pmynick || '', thnick: r.pthnick || '' } : null });
+function relNick(v) { const s = cleanText(v, 40).replace(/\s+/g, ' '); if (!s) return { s: '' }; if (s.length > REL_LABEL_MAX) return { err: '애칭은 ' + REL_LABEL_MAX + '자까지 가능' }; if (R.badName(s)) return { err: '사용할 수 없는 말이 들어 있습니다' }; return { s }; }   // 애칭(선택): 비우면 이름으로 표시
 function relLabel(v) { const s = cleanText(v, 40).replace(/\s+/g, ' '); if (!s) return { err: '관계 이름 입력 필요' }; if (s.length > REL_LABEL_MAX) return { err: '관계 이름은 ' + REL_LABEL_MAX + '자까지 가능' }; if (R.badName(s)) return { err: '사용할 수 없는 말이 들어 있습니다' }; return { s }; }
 routes['GET /api/rels'] = (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
@@ -929,12 +930,13 @@ routes['POST /api/rels'] = async (req, res) => {
     if (!other || other.banned || other.deleted) return fail(req, res, 404, '학생을 찾을 수 없습니다');
     if (id === me) return fail(req, res, 400, '자기 자신과는 관계를 맺을 수 없습니다');
     const m = relLabel(b.mine), o = relLabel(b.theirs); if (m.err || o.err) return fail(req, res, 400, m.err || o.err);
+    const mn = relNick(b.mynick), tn = relNick(b.thnick); if (mn.err || tn.err) return fail(req, res, 400, mn.err || tn.err);
     const ex = dbx.q.relPair.get(me, id, id, me);
     if (ex) return fail(req, res, 400, ex.state === 'ok' ? '이미 관계를 맺은 학생입니다 (내 정보 › 관계에서 끊은 뒤 다시 신청 가능)' : ex.a === me ? '이미 신청을 보냈습니다' : '이 학생이 보낸 신청이 있습니다 (내 정보 › 관계에서 수락 가능)');
     if (!profileOf(other.profile).allowFriend) return fail(req, res, 400, '이 학생은 신청을 받지 않습니다');
     if (Number(dbx.q.relCount.get(me, me).n) >= REL_MAX) return fail(req, res, 400, '관계는 ' + REL_MAX + '명까지입니다');
     if (Number(dbx.q.relOutCount.get(me).n) >= REL_OUT_MAX) return fail(req, res, 400, '수락을 기다리는 신청이 너무 많습니다');
-    dbx.q.relInsert.run(me, id, m.s, o.s, t);
+    dbx.q.relInsert.run(me, id, m.s, o.s, mn.s, tn.s, t);
     addNote(id, 'rel', pname(me) + ' 님이 관계를 신청했습니다: ' + pname(me) + ' ' + m.s + ' · 나 ' + o.s, { me: 'rels' });
     return send(req, res, 200, { ok: true });
   }
@@ -954,8 +956,10 @@ routes['POST /api/rels'] = async (req, res) => {
     if (r.state !== 'ok') return fail(req, res, 400, '맺은 관계만 수정할 수 있습니다');
     if (r.pby && r.pby !== me) return fail(req, res, 400, '상대가 보낸 수정 제안이 있습니다. 먼저 수락하거나 거절해야 합니다');
     const m = relLabel(b.mine), o = relLabel(b.theirs); if (m.err || o.err) return fail(req, res, 400, m.err || o.err);
-    const la = r.a === me ? m.s : o.s, lb = r.a === me ? o.s : m.s; if (la === r.la && lb === r.lb) return fail(req, res, 400, '지금과 같은 이름입니다');
-    dbx.q.relPropose.run(me, la, lb, r.id);
+    const mn = relNick(b.mynick), tn = relNick(b.thnick); if (mn.err || tn.err) return fail(req, res, 400, mn.err || tn.err);
+    const la = r.a === me ? m.s : o.s, lb = r.a === me ? o.s : m.s, na = r.a === me ? mn.s : tn.s, nb = r.a === me ? tn.s : mn.s;
+    if (la === r.la && lb === r.lb && na === (r.na || '') && nb === (r.nb || '')) return fail(req, res, 400, '지금과 같은 내용입니다');
+    dbx.q.relPropose.run(me, la, lb, na, nb, r.id);
     addNote(other, 'rel', pname(me) + ' 님이 관계 수정을 제안했습니다: ' + pname(me) + ' ' + m.s + ' · 나 ' + o.s, { me: 'rels' });
     return send(req, res, 200, { ok: true });
   }
