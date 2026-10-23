@@ -74,6 +74,7 @@
     var now = this._now(); if (!this.d || !this.d.P) return Promise.resolve({ error: '로그인이 필요합니다', _status: 401 });
     var W = this._world(now); Rules.advance(this.d.P, W, now); return this._ok(now);
   };
+  LocalApi.prototype.houseRank = function (h) { return Promise.resolve({ house: h, top: [], me: null, demo: true }); };
   LocalApi.prototype.myRanks = function () { var P = this.d && this.d.P; if (!P) return Promise.resolve({ error: '로그인이 필요합니다' }); return Promise.resolve({ ranks: { power: 1, stage: 1, lvl: 1, dmg: P.wk.dmg > 0 ? 1 : null, twK: P.st.twK > 0 ? 1 : null, twM: P.st.twM > 0 ? 1 : null } }); };
   LocalApi.prototype.world = function () { var now = this._now(); this._world(now); return Promise.resolve(this._view(now)); };
   LocalApi.prototype.register = function (name, pw, house, code, cls) {

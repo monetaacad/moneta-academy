@@ -67,10 +67,10 @@
   function rname(r) { return '<b style="color:' + rcol(r) + '">' + D.RARITY[r].name + '</b>'; }   // 장비 등급 이름을 등급 색으로
   function cupRuleBox(P) {
     var sp = R.CUP_SPEC[P.house], tier = R.CUP_TIERS.filter(function (x) { return P.wk.cup >= x[0]; })[0];
-    return '<div class="gnotice" style="margin-top:10px"><b class="tiny gold">대항전 규칙이 바뀌었습니다</b><ul class="tiny" style="margin:4px 0 0 16px;line-height:1.7">' +
+    return '<div class="gnotice" style="margin-top:10px"><b class="tiny gold">대항전 규칙이 바뀌었습니다</b><ul class="tiny" style="margin:4px 0 0;padding-left:16px;line-height:1.7">' +
       '<li><b>인원 보정</b> · 기숙사 점수는 이번 주 ' + R.CUP_ACTIVE + '점 이상 활동한 학생의 <b>평균</b>입니다. 인원이 많은 기숙사가 유리하지 않습니다. (한 학생의 점수는 활동 학생 중간 점수의 ' + R.CUP_CAP_X + '배까지만 반영, 활동 학생이 ' + R.CUP_MIN_DIV + '명보다 적으면 ' + R.CUP_MIN_DIV + '명으로 나눕니다)</li>' +
-      '<li><b>기숙사 특기</b> · 자기 기숙사 특기 활동은 점수 ×' + R.CUP_SPEC_MULT + '.<ul style="margin:2px 0 0 14px">' + D.HOUSES.map(function (h) { return '<li><span style="color:' + h.color + '">' + h.name + '</span> · ' + R.CUP_SPEC[h.id].text + '</li>'; }).join('') + '</ul></li>' +
-      '<li><b>보상</b><ul style="margin:2px 0 0 14px">' +
+      '<li><b>기숙사 특기</b> · 자기 기숙사 특기 활동은 점수 ×' + R.CUP_SPEC_MULT + '.<ul style="margin:2px 0 0;padding-left:14px">' + D.HOUSES.map(function (h) { return '<li><span style="color:' + h.color + '">' + h.name + '</span> · ' + R.CUP_SPEC[h.id].text + '</li>'; }).join('') + '</ul></li>' +
+      '<li><b>보상</b><ul style="margin:2px 0 0;padding-left:14px">' +
         '<li>기숙사 순위 보상 (별조각, 그 기숙사 학생 모두) · ' + R.CUP_PLACE_SHARD.slice(1).map(function (v, i) { return (i + 1) + '위 ' + v; }).join(' · ') + '</li>' +
         '<li>1위 기숙사 장비 · 내 점수 ' + fmt(R.CUP_GEAR[1][0]) + '점 이상 ' + rname(R.CUP_GEAR[1][1]) + ' · ' + fmt(R.CUP_GEAR[0][0]) + '점 이상 ' + rname(R.CUP_GEAR[0][1]) + ' · 기숙사 안 개인 1위 ' + rname(4) + '</li>' +
         '<li>2~4위 기숙사 장비 · 기숙사 안 개인 1위 ' + rname(3) + '</li>' +
@@ -1089,7 +1089,7 @@
     var h = (p.preview ? '<p class="tiny gold" style="margin-bottom:10px">미리보기 · 저장하지 않은 내용이 들어 있습니다</p>' : '') + '<div class="pcard' + (dk ? ' deco ' + fr.cls : '') + (dc.bg ? (decoDark(dc.bg) ? ' bgdark' : ' bglight') : '') + '"' + (dk ? ' style="' + fr.style + bgs + '"' : '') + '>' + (dc.stamp && R.DECO[dc.stamp] ? '<span class="pstamp" title="' + R.DECO[dc.stamp].name + '" aria-hidden="true">' + R.DECO[dc.stamp].glyph + '</span>' : '') + '<div class="pav">' + avatarHtml(p, 100) + (p.avcredit && (p.av || p.avData) ? '<span class="avcredit" title="두상 출처">' + esc(p.avcredit) + '</span>' : '') + '</div>' + '<div style="min-width:0">' + (p.title ? '<div class="pttl">' + (R.OP_TITLES[p.title] ? '<span class="ttl' + R.opTitleCls(p.title) + '">' + esc(p.title) + '</span>' : esc(p.title)) + '</div>' : '') + '<h2 class="pname"><span class="pnm">' + inkName(p.name, dc.ink, decoBgRef(dc.bg)) + '</span>' + (p.badge && R.GEM[p.badge.gem] ? ' <span class="pbdg" title="' + esc((p.badge.name || '') + ' · Lv ' + p.badge.lv) + '">' + badgeSvg(p.badge, 26) + '</span>' : '') + (p.online ? ' <span class="odot" title="접속 중"></span>' : '') + '</h2>' +
       '<div class="small">' + (hh ? houseDot(p.house, 16) + ' ' : '') + '<span style="color:' + (hh ? hh.color : 'inherit') + '">' + (hh ? hh.name : '') + '</span> · ' + (p.grade >= 8 ? '마스터 과정' : p.grade + '학년') + (p.lvl ? ' · Lv ' + p.lvl : '') + (R.CLS[p.cls] ? ' · <span class="pcls">' + clsDot(p.cls, 14) + ' ' + R.CLS[p.cls].name + '</span>' : '') + '</div>' +
       (p.guild ? '<div class="pguild">' + gEmblem(p.guild.color, p.guild.name, 20, p.guild.icon) + '<span class="pgt"><b class="pgn">' + esc(p.guild.name) + '</b><span class="pgm"><span class="tiny faint">Lv ' + (p.guild.lv || 1) + '</span>' + (p.guild.rank ? '<span class="tag' + (p.guild.role === 'owner' ? ' br' : p.guild.role === 'officer' ? ' ok' : '') + '">' + esc(p.guild.rank) + '</span>' : '') + '</span></span></div>' : '') +
-      ((p.heads && p.heads.length) || (p.seconds && p.seconds.length) ? '<div class="pheads">' + (p.heads || []).filter(function (k) { return R.SUBJ[k]; }).map(function (k) { return '<span class="phead" title="' + R.SUBJ[k].name + ' 과목 순위 1위">★ ' + R.SUBJ[k].name + ' 수석</span>'; }).join('') + (p.seconds || []).filter(function (k) { return R.SUBJ[k]; }).map(function (k) { return '<span class="phead two" title="' + R.SUBJ[k].name + ' 과목 순위 2위">☆ ' + R.SUBJ[k].name + ' 차석</span>'; }).join('') + '</div>' : '') +
+      ((p.heads && p.heads.length) || (p.seconds && p.seconds.length) || p.htop ? '<div class="pheads">' + (p.htop && R.HOUSE[p.htop] ? '<span class="phead" title="이번 주 기숙사 대항전 개인 점수 1위">★ ' + R.HOUSE[p.htop].name + ' 공헌 1위</span>' : '') + (p.heads || []).filter(function (k) { return R.SUBJ[k]; }).map(function (k) { return '<span class="phead" title="' + R.SUBJ[k].name + ' 과목 순위 1위">★ ' + R.SUBJ[k].name + ' 수석</span>'; }).join('') + (p.seconds || []).filter(function (k) { return R.SUBJ[k]; }).map(function (k) { return '<span class="phead two" title="' + R.SUBJ[k].name + ' 과목 순위 2위">☆ ' + R.SUBJ[k].name + ' 차석</span>'; }).join('') + '</div>' : '') +
       (p.fam && R.FAM[p.fam.id] ? '<div class="tiny pfam">동행 사역마 <b>' + esc(p.fam.nm || R.FAM[p.fam.id].name) + '</b>' + (p.fam.nm ? ' <span class="faint">' + R.FAM[p.fam.id].name + '</span>' : '') + ' <span class="num gold">Lv ' + p.fam.lv + '</span></div>' : '') +
       (p.status ? '<div class="pstatus">' + esc(p.status) + '</div>' : '') + '</div></div>';
     var ih = '';
@@ -2127,9 +2127,33 @@
     h += '<div class="card"><h3>기숙사 성장</h3><p class="tiny faint" style="margin:2px 0 8px">대항전 점수가 쌓일수록 기숙사 혜택이 1/10에서 최대 값까지 커집니다. 혜택은 현재 / 최대.</p><div class="stack" style="gap:10px">' + D.HOUSES.map(function (hh) {
       return '<div><div class="row small">' + houseDot(hh.id, 18) + '<span style="color:' + hh.color + '">' + hh.name + '</span>' + (hh.id === P.house ? '<span class="tag br">내 기숙사</span>' : '') + '</div><div class="hgrowrow">' + houseGrow(hh.id, W) + '</div></div>';
     }).join('') + '</div></div>';
+    h += hrankCard(P);
     h += '</div>';
     return h;
   };
+  // 기숙사 공헌도 순위: 이번 주 대항전 개인 점수 상위 10명 + 내 순위. 기숙사마다 1위는 실시간 칭호 「○○관 공헌 1위」
+  function hrankCard(P) {
+    var hs = S.hrankH || P.house, d = (S.hrank || {})[hs];
+    if (!d || Date.now() - d.at > 30000) loadHrank(hs);
+    var h = '<div class="card" data-anchor="hrank"><div class="row between" style="flex-wrap:wrap;gap:6px"><h3>기숙사 공헌도 순위</h3><span class="tiny faint">이번 주 대항전 개인 점수</span></div><div class="filters" style="margin-top:8px">' +
+      D.HOUSES.map(function (hh) { return '<button class="btn sm' + (hh.id === hs ? ' on' : ' ghost') + '" data-act="hrankh" data-a="' + hh.id + '"><span style="color:' + hh.color + '">' + hh.name + '</span></button>'; }).join('') + '</div><div id="hrank" style="margin-top:8px">';
+    if (!d) h += '<p class="small muted">불러오는 중…</p>';
+    else if (d.error) h += '<p class="small bad">' + esc(d.error) + '</p>';
+    else if (d.demo) h += '<p class="small muted">데모에서는 순위를 볼 수 없습니다.</p>';
+    else {
+      h += d.top.length ? '<div class="stack" style="gap:4px">' + d.top.map(function (r, i) {
+        var me = r.id === P.id;
+        return '<div class="row small' + (me ? ' gold' : '') + '" style="gap:8px"><span class="num faint" style="width:18px;text-align:right">' + (i + 1) + '</span><button class="cn ell" style="flex:1;min-width:0;text-align:left' + (me ? '' : ';color:inherit') + '" data-act="prof" data-a="' + esc(r.id) + '">' + esc(r.name) + '</button>' + (i === 0 ? '<span class="ttl live">' + esc(R.HOUSE[d.house].name) + ' 공헌 1위</span>' : '') + '<span class="tiny faint">' + (r.grade >= 8 ? '마스터' : r.grade + '학년') + '</span><b class="num" style="min-width:56px;text-align:right">' + fmt(r.cup) + '</b></div>';
+      }).join('') + '</div>' : '<p class="small muted">이번 주 점수를 쌓은 학생이 아직 없습니다.</p>';
+      if (d.me) h += '<div class="row small" style="gap:8px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line2)"><span class="muted">내 순위</span><span class="spacer"></span><b class="num">' + (d.me.rank ? d.me.rank + '위' : '—') + '</b><span class="num faint">' + fmt(d.me.cup) + '점</span></div>';
+    }
+    return h + '</div><p class="tiny faint" style="margin-top:8px">각 기숙사 1위는 1위를 유지하는 동안 실시간 칭호 「○○관 공헌 1위」를 장착할 수 있습니다. 순위는 몇 분 간격으로 갱신됩니다.</p></div>';
+  }
+  function loadHrank(hs) {
+    if (S.hrankBusy === hs) return; S.hrankBusy = hs;
+    API.houseRank(hs).then(function (j) { S.hrankBusy = null; S.hrank = S.hrank || {}; S.hrank[hs] = Object.assign({ at: Date.now() }, j); if (S.view === 'hcup') render(); }, function () { S.hrankBusy = null; });
+  }
+  ACT.hrankh = function (h) { S.hrankH = h; render(); };
   /* ── 랭킹 (기록 그룹): 전투력 · 레벨 · 월드 보스 피해 · 무한의 탑 · 동아리 ── */
   V.rank = function () {
     var P = S.P, W = S.W || {}, MR = myRanks();
@@ -5983,7 +6007,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102346;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102347;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

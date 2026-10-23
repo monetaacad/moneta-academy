@@ -1277,13 +1277,23 @@
     if (a === '으로') return w + (jong && jong !== 8 ? '으로' : '로');   // ㄹ 받침은 「로」
     return w + (jong ? a : b);
   };
-  R.titleName = function (P, id) { var t = D.TITLES.find(function (x) { return x.id === id; }); if (!t || t.op && opLv(P) < t.op) return ''; return t.house ? D.HOUSE_TITLE[P.house] || '' : t.name; };
+  R.titleName = function (P, id) { var t = D.TITLES.find(function (x) { return x.id === id; }); if (!t || t.op && opLv(P) < t.op) return ''; if (t.live) return liveName(P, t) || t.name; return t.house ? D.HOUSE_TITLE[P.house] || '' : t.name; };
+  // 실시간 칭호 이름: 지금 1위(2위)인 과목 · 내 기숙사 (P.live = 서버가 정한 { h: [과목], s: [과목], c: 1 })
+  function liveName(P, t) {
+    var L = P && P.live || {};
+    if (t.live === 'h' && L.h && L.h.length && SUBJ[L.h[0]]) return SUBJ[L.h[0]].name + ' 수석';
+    if (t.live === 's' && L.s && L.s.length && SUBJ[L.s[0]]) return SUBJ[L.s[0]].name + ' 차석';
+    if (t.live === 'c' && L.c && R.HOUSE[P.house]) return R.HOUSE[P.house].name + ' 공헌 1위';
+    return '';
+  }
   R.titleList = function (P) { return D.TITLES.filter(function (t) { return !t.op || opLv(P) >= t.op; }); };
   R.OP_TITLES = {}; D.TITLES.forEach(function (t) { if (t.op) R.OP_TITLES[t.name] = t.op; });
-  R.opTitleCls = function (name) { var v = R.OP_TITLES[name]; return v ? ' op ' + (v >= 2 ? 'chief' : 'council') : ''; };   // 칭호 이름 → 배지 모양
+  R.LIVE_TITLES = {}; D.SUBJECTS.forEach(function (sj) { R.LIVE_TITLES[sj.name + ' 수석'] = 1; R.LIVE_TITLES[sj.name + ' 차석'] = 1; }); D.HOUSES.forEach(function (h) { R.LIVE_TITLES[h.name + ' 공헌 1위'] = 1; });
+  R.opTitleCls = function (name) { var v = R.OP_TITLES[name]; return v ? ' op ' + (v >= 2 ? 'chief' : 'council') : R.LIVE_TITLES[name] ? ' live' : ''; };   // 칭호 이름 → 배지 모양 (실시간 칭호는 금빛)   // 칭호 이름 → 배지 모양
   R.titleOk = function (P, id) {
     var t = D.TITLES.find(function (x) { return x.id === id; }); if (!t) return false;
     if (t.op) return opLv(P) >= t.op;
+    if (t.live) return !!liveName(P, t);
     if (t.grade) return P.grade >= t.grade || (P.st.maxGrade || 1) >= t.grade;
     if (t.stat) return (P.st[t.stat] || 0) >= t.n;
     if (t.legacy) return (P.legacy || []).indexOf(t.legacy) >= 0;   // 시즌 기념 칭호 (예: 1기 학생)
