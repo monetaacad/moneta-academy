@@ -2179,8 +2179,9 @@
     var i = int(a.i, 0, R.GEARSET_N - 1), op = str(a.op), sets = P.gearSets || (P.gearSets = []);
     // 저장(덮어쓰기)해도 프리셋 이름은 그대로 둔다 (비우기를 해야 이름도 지워진다)
     if (op === 'save') { var old = sets[i], eq = {}; for (var s in P.eq) if (P.eq[s]) eq[s] = P.eq[s].u; var bw = R.badgeWorn(P); if (!Object.keys(eq).length && !bw) err('장착한 장비가 없습니다'); sets[i] = { eq: eq, badge: bw ? bw.u : '', at: now }; if (old && old.name) sets[i].name = old.name; return { saved: i }; }   // 달고 있는 휘장도 함께
-    if (op === 'clear') { sets[i] = null; return { cleared: i }; }
-    if (op === 'name') { if (!sets[i]) err('저장된 프리셋이 없습니다'); var nm = R.cleanName(a.name).slice(0, 10); if (nm) sets[i].name = nm; else delete sets[i].name; return { named: i, name: nm }; }   // 프리셋 이름 (최대 10자, 비우면 번호만)
+    if (op === 'clear') { sets[i] = null; if (P.gearMain === i) delete P.gearMain; return { cleared: i }; }
+    if (op === 'name') { if (!sets[i]) err('저장된 프리셋이 없습니다'); var nm = R.cleanName(a.name).slice(0, 10); if (nm) sets[i].name = nm; else delete sets[i].name; return { named: i, name: nm }; }
+    if (op === 'main') { if (P.gearMain === i) { delete P.gearMain; return { main: -1 }; } if (!sets[i]) err('저장된 프리셋이 없습니다'); P.gearMain = i; return { main: i }; }   // 대표 프리셋: 정보창 · 랭킹 전투력에 보이는 장비 (다시 누르면 해제)   // 프리셋 이름 (최대 10자, 비우면 번호만)
     if (op !== 'load') err('잘못된 요청');
     var st = sets[i]; if (!st) err('저장된 프리셋이 없습니다');
     var moved = 0, miss = 0, low = 0;
@@ -2192,6 +2193,14 @@
     });
     if (st.badge && st.badge !== P.badgeOn) { if (R.badgeFind(P, st.badge)) { P.badgeOn = st.badge; moved++; } else miss++; }   // 휘장 (예전에 저장한 프리셋 · 휘장 없이 저장한 프리셋은 지금 휘장을 그대로 둔다)
     return { moved: moved, miss: miss, low: low };
+  };
+  // 대표 프리셋을 장착했다고 보고 만든 사본 (정보창 · 랭킹용). 가방에 없거나 레벨이 모자라는 장비 칸은 빈칸, 대표가 없으면 P 그대로
+  R.showP = function (P) {
+    var st = P && P.gearMain != null && (P.gearSets || [])[P.gearMain]; if (!st || !st.eq) return P;
+    var eq = {}, o = {}; D.SLOTS.forEach(function (sl) { var u = st.eq[sl.id], it = u && R.findItem(P, u); eq[sl.id] = it && R.canWear(P, it) ? it : null; });
+    for (var k in P) o[k] = P[k]; o.eq = eq;
+    if (st.badge != null) o.badgeOn = st.badge && R.badgeFind(P, st.badge) ? st.badge : '';   // 휘장 없이 저장한 프리셋은 휘장도 빈칸 (예전 프리셋은 지금 휘장)
+    return o;
   };
   A.unequip = function (P, W, now, a) {
     var s = str(a.slot); if (!SLOT[s] || !P.eq[s]) err('장착한 장비가 없습니다');
@@ -2702,9 +2711,10 @@
 
   /* ───────── 서버 보조: 랭킹·보스 체력 추정 ───────── */
   // power = 랭킹 · 학생 카드 · 파티에 보이는 전투력: 물약 · 의식 같은 시간제 효과(P.buffs)는 빼고 계산한다 (공정한 순위)
-  R.summary = function (P, W, now) {
-    var c = calc(P, W, now), bf = P.buffs, base;
-    P.buffs = {}; try { base = calc(P, W, now); } finally { P.buffs = bf; }
+  // show: 전투력을 대표 장비 프리셋 기준으로 (랭킹 · 정보창). 함께 원정 같은 실제 전투에는 쓰지 않는다
+  R.summary = function (P, W, now, show) {
+    var c = calc(P, W, now), SP = show ? R.showP(P) : P, bf = SP.buffs, base;
+    SP.buffs = {}; try { base = calc(SP, W, now); } finally { SP.buffs = bf; }
     return { power: base.power, lvl: P.lvl, grade: P.grade, maxStage: P.maxStage, wbDps: Math.floor(c.totalDps * 30) };
   };
 
