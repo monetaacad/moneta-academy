@@ -1212,9 +1212,10 @@
   R.spiritNext = function (P) { return P.spirit.n >= R.jarMax(P) ? null : P.spirit.at + K.SPIRIT_EVERY; };
   // 양조·부화는 즉시. 효율 보너스는 비용을 줄인다.
   R.brewMana = function (P, W, now, id) { return Math.ceil(POT[id].mana / calc(P, W, now).brewSpd); };
-  // 마나로 바로 깨우기 값: 부화 효율로 나누고, 내 마나 생산 R.EGG_RUSH_H시간분을 넘지 않게 (저장 한도 안이라 늘 사용할 수 있게)
+  // 마나로 바로 깨우기 값: 부화 효율로 나누고, 내 마나 생산(장비 제외) R.EGG_RUSH_H시간분을 넘지 않게 (저장 한도 안이라 늘 사용할 수 있게)
   R.EGG_RUSH_H = 6;
-  R.eggPrice = function (P, W, now) { var c = calc(P, W, now); return Math.ceil(Math.min(R.eggCost(P) / c.hatchSpd, c.mana * R.EGG_RUSH_H * 3600)); };
+  // 마나 생산 상한은 장비를 뺀 마나 재생으로 계산한다 (장비를 바꿔 끼워 부화 값을 낮추지 못하게)
+  R.eggPrice = function (P, W, now) { var c = calc(P, W, now), bare = calc(Object.assign({}, P, { eq: {} }), W, now); return Math.ceil(Math.min(R.eggCost(P) / c.hatchSpd, bare.mana * R.EGG_RUSH_H * 3600)); };
 
   /* ───────── 주간 · 일일 ───────── */
   R.ensureWeek = function (P, W, now) {
