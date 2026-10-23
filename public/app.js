@@ -1480,7 +1480,7 @@
   // 과목 카드: 다음에 열리는 것 (주문 · 물약 · 시험 기준 · 학기 이야기 목표)
   // 강의계획서: 잠긴 과목도 미리 본다 (능력치 · 레벨당 효과 · 레벨별 보상 · 교수 과제 · 기말시험)
   // 레벨당 효과는 rules.js 계산식과 같은 값을 적어 둔 것 (syntax · alch · beast · rune)
-  var SUBJ_PASSIVE = { syntax: '주문 위력 +2%', alch: '물약 조제 속도 +1%', beast: '사역마 효과 +3% · 파견 보상 +2% · 부화 속도 +1%', rune: '장비 강화 성공 확률 +0.4%' };
+  var SUBJ_PASSIVE = { syntax: '주문 위력 +2%', alch: '양조 효율 +1%', beast: '사역마 효과 +3% · 파견 보상 +2% · 부화 속도 +1%', rune: '장비 강화 성공 확률 +0.4%' };
   function syllabusBody(sid) {
     var P = S.P, S2 = R.SUBJ[sid], sj = P.subj[sid] || { lv: 0 }, lv = sj.lv, cls = P.cls || 'mage', open = S2.unlock <= Math.min(P.grade, 7);
     var st = function (c) { var x = R.subjStats({ cls: c }, S2); return D.STAT_NAMES[x[0]] + ' +1.2 · ' + D.STAT_NAMES[x[1]] + ' +0.6'; };
@@ -5981,7 +5981,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102344;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102345;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

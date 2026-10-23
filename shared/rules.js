@@ -141,7 +141,7 @@
     { id: 'clear', name: '맑음', eff: {}, text: '효과 없음', desc: '구름 한 점 없는 하늘입니다.' },
     { id: 'cloud', name: '흐림', eff: { manaPct: 0.05 }, text: '마나 재생 +5%', desc: '두꺼운 구름이 햇빛을 가려, 마나가 조용히 고입니다.' },
     { id: 'fog', name: '안개', eff: { dispPct: 0.05 }, text: '사역마 파견 보상 +5%', desc: '안개 속에서 사역마들이 평소보다 많은 것을 찾아옵니다.' },
-    { id: 'rain', name: '비', eff: { brewSpd: 0.1 }, text: '조제 속도 +10%', desc: '빗소리를 들으며 솥을 젓는 날입니다.' },
+    { id: 'rain', name: '비', eff: { brewSpd: 0.1 }, text: '양조 비용 -9%', desc: '빗소리를 들으며 솥을 젓는 날입니다.' },
     { id: 'storm', name: '뇌우', eff: { goldPct: 0.05 }, text: CUR + ' +5%', desc: '천둥이 칠 때마다 몬스터들이 놀라 주머니를 떨어뜨립니다.' },
     { id: 'snow', name: '눈', eff: { lectureSpd: 0.05 }, text: '수업 효율 +5%', desc: '밖에 나가기 어려워 강의실이 붐빕니다.' },
     { id: 'blizzard', name: '함박눈', eff: { lectureSpd: 0.1 }, text: '수업 효율 +10%', desc: '겨울에만 내리는 굵은 눈입니다. 모두가 강의실에 모입니다.' }
@@ -215,7 +215,7 @@
   R.ritualGoal = function (active) { return Math.max(5, Math.ceil((active || 0) * 0.35)); };
   R.ritualCost = function (P, W, now) { return Math.floor(calc(P, W, now).mana * 1800); };   // 마나 30분 분
   // 효과 묶음 → 「경험치 +50%, 수업 효율 +100%」 (버프 · 날씨 설명용)
-  var EFF_NAME = { xpPct: '경험치', goldPct: CUR, knowPct: '지식', lectureSpd: '수업 효율', manaPct: '마나 재생', manaCap: '마나 저장', hpPct: '생명력', atkPct: '공격력', defPct: '방어력', physPct: '물리 공격력', matkPct: '주문 공격력', spellPct: '주문 위력', skillPct: '기술 위력', dropPct: '전리품', dispPct: '파견 보상', hatchSpd: '부화 속도', brewSpd: '조제 속도', enhBonus: '강화 성공률', bossDmg: '보스 피해', critC: '치명타 확률', cdr: '재사용 대기', leech: '흡혈', offlineEff: '꿈길 보상', rarity: '등급 상승', aps: '공격 속도', critD: '치명타 피해' };
+  var EFF_NAME = { xpPct: '경험치', goldPct: CUR, knowPct: '지식', lectureSpd: '수업 효율', manaPct: '마나 재생', manaCap: '마나 저장', hpPct: '생명력', atkPct: '공격력', defPct: '방어력', physPct: '물리 공격력', matkPct: '주문 공격력', spellPct: '주문 위력', skillPct: '기술 위력', dropPct: '전리품', dispPct: '파견 보상', hatchSpd: '부화 속도', brewSpd: '양조 효율', enhBonus: '강화 성공률', bossDmg: '보스 피해', critC: '치명타 확률', cdr: '재사용 대기', leech: '흡혈', offlineEff: '꿈길 보상', rarity: '등급 상승', aps: '공격 속도', critD: '치명타 피해' };
   R.effText = function (eff) {
     var out = []; for (var k in eff || {}) { var v = eff[k]; if (!v || !EFF_NAME[k]) { if (k === 'examBonus' && v) out.push('시험 +' + v + '점'); continue; } out.push(EFF_NAME[k] + ' ' + (v > 0 ? '+' : '−') + (k === 'manaCap' ? Math.round(Math.abs(v) / 3600 * 10) / 10 + '시간' : Math.round(Math.abs(v) * 1000) / 10 + '%')); }
     return out.join(', ');
