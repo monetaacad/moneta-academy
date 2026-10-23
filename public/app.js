@@ -1022,7 +1022,7 @@
   function pcRels(p) {
     if (!p.rels.length) return '<p class="small faint" style="margin-top:10px">맺은 관계가 없습니다.</p>';
     return '<div class="stack" style="gap:6px;margin-top:10px">' + p.rels.map(function (r) {
-      return '<div class="frow"><button class="avbtn" data-act="prof" data-a="' + esc(r.id) + '">' + avatarHtml(r, 32) + '</button><div style="flex:1;min-width:0"><button class="cn" style="color:' + (R.HOUSE[r.house] ? R.HOUSE[r.house].color : 'inherit') + '" data-act="prof" data-a="' + esc(r.id) + '">' + esc(r.name) + '</button><div class="tiny faint">' + esc(r.nick || p.name) + '의 ' + esc(r.theirs) + '</div></div><span class="tag br">' + esc(r.theirs) + '</span></div>';
+      return '<div class="frow"><button class="avbtn" data-act="prof" data-a="' + esc(r.id) + '">' + avatarHtml(r, 32) + '</button><div style="flex:1;min-width:0"><button class="cn" style="color:' + (R.HOUSE[r.house] ? R.HOUSE[r.house].color : 'inherit') + '" data-act="prof" data-a="' + esc(r.id) + '">' + esc(r.name) + '</button> <span class="tag br rtag-in">' + esc(r.theirs) + '</span><div class="tiny faint">' + esc(r.nick || p.name) + '의 ' + esc(r.theirs) + '</div></div><span class="tag br rtag-out">' + esc(r.theirs) + '</span></div>';   // 좁은 화면: 관계 태그를 이름 옆(윗줄)으로
     }).join('') + '</div>';
   }
   // 관계 신청: 예시를 고르거나 직접 입력 (나 · 상대 이름표)
@@ -5967,7 +5967,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102335;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102336;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
