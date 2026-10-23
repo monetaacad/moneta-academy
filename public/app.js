@@ -2858,7 +2858,9 @@
   }
   var TW_KIND = { real: '실전', party: '파티 연습', solo: '혼자 연습' };
   // 보호막: 체력 바 위에 하늘색 칸 (체력 끝에 이어 붙이고, 넘치면 오른쪽 끝에 맞춘다). hp · sh는 최대 생명력 대비 %
-  function shSeg(hp, sh, id) { sh = Math.max(0, Math.min(100, sh || 0)); return '<i class="shl"' + (id ? ' id="' + id + '"' : '') + ' style="left:' + Math.max(0, Math.min(hp, 100 - sh)).toFixed(1) + '%;width:' + sh.toFixed(1) + '%"></i>'; }
+  // left · right로 잡아 오른쪽 끝에 붙을 때 반올림 틈(체력 바가 살짝 비쳐 보이는 것)이 생기지 않게
+  function shPos(hp, sh) { sh = Math.max(0, Math.min(100, sh || 0)); var l = Math.max(0, Math.min(hp, 100 - sh)); return { l: l.toFixed(1) + '%', r: sh <= 0 ? '100%' : (l + sh >= 99.95 ? '0%' : (100 - l - sh).toFixed(1) + '%') }; }
+  function shSeg(hp, sh, id) { var q = shPos(hp, sh); return '<i class="shl"' + (id ? ' id="' + id + '"' : '') + ' style="left:' + q.l + ';right:' + q.r + '"></i>'; }
   function twBar(p, cls, sh) { return '<div class="bar ' + (cls || '') + '" style="height:7px"><b style="width:' + Math.max(0, Math.min(100, p)).toFixed(1) + '%"></b>' + (sh >= 1 ? shSeg(Math.max(0, Math.min(100, p)), sh) : '') + '</div>'; }
   // 위쪽(적 · 파티원 체력): 0.25초마다 통째로 다시 그린다
   function twStageTop(r) {
@@ -4270,7 +4272,7 @@
         if (box) { box.innerHTML = L.slice(0, n).map(function (x) { return '<div class="el k' + x[2] + '"><span class="et num">' + x[0].toFixed(1) + '초</span><span>' + esc(x[1]) + '</span></div>'; }).join('') + (n < L.length ? '<div class="el faint twdots"><span class="et"></span><span>…</span></div>' : ''); box.scrollTop = box.scrollHeight; }
         var hp = hpAt(gt), pb = $('#rp-p'), mb = $('#rp-m'), dd = $('#rp-d');
         if (pb) pb.style.width = (hp[1] * 100).toFixed(1) + '%';
-        var sb = $('#rp-s'); if (sb) { var sp2 = Math.min(100, hp[2] * 100); sb.style.width = sp2.toFixed(1) + '%'; sb.style.left = Math.max(0, Math.min(hp[1] * 100, 100 - sp2)).toFixed(1) + '%'; }
+        var sb = $('#rp-s'); if (sb) { var q = shPos(hp[1] * 100, hp[2] * 100); sb.style.left = q.l; sb.style.right = q.r; }
         if (mb) mb.style.width = (opts.cc && gt >= total ? 0 : Math.max(0, 1 - hp[0] / mhp) * 100).toFixed(1) + '%';
         if (dd) dd.textContent = '피해 ' + fmt(hp[0]);
       }
@@ -5981,7 +5983,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102345;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102346;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
