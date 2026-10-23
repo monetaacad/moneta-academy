@@ -1558,7 +1558,7 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 .mqck { width: 16px; height: 16px; border-radius: 4px; border: 1px solid var(--line); display: inline-grid; place-items: center; font-size: 11px; flex: none; color: var(--verd); }
 .mqg.ok .mqck { border-color: var(--verd); background: rgba(116, 191, 169, .15); }
 .mqg.ok .small { color: var(--muted); text-decoration: line-through; text-decoration-color: rgba(116, 191, 169, .6); }
-.mqg .num { margin-left: auto; }
+.mqg .num { margin-left: auto; flex: none; white-space: nowrap; }   /* 「0 / 3」이 세로로 꺾이지 않게 */
 .mqtext { color: var(--ink2); line-height: 1.75; white-space: pre-line; }
 .mqwho { display: block; font-size: 11.5px; color: var(--brass); letter-spacing: .08em; margin-bottom: 2px; }
 .rready { display: flex; flex-direction: column; gap: 8px; }
