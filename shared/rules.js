@@ -970,8 +970,9 @@
     else if (it.r === 3) log(P, t, '영웅 장비 획득: ' + it.name, 'epic');
     if (P.opt.autoEquip && R.canWear(P, it)) {
       var cur = P.eq[it.slot];
-      if (!cur || (!cur.lock && R.powerWith(P, it) > calc(P, null).power * 1.0001)) {
-        if (cur) storeOrSell(P, cur, true);
+      // 쓰던 장비를 둘 곳(가방 · 우편함)이 없으면 바꿔 끼지 않는다 (예전에는 가방이 가득 차면 쓰던 장비를 판매해 버렸다)
+      if (!cur || (!cur.lock && hasRoom(P) && R.powerWith(P, it) > calc(P, null).power * 1.0001)) {
+        if (cur) { var where = storeOrSell(P, cur, true); log(P, t, it.name + ' 자동 장착 · 쓰던 ' + R.josa(cur.name + (cur.enh ? ' +' + cur.enh : ''), '은', '는') + (where === 'mail' ? ' 가방이 가득 차 우편함으로 보냈습니다' : ' 가방에 넣었습니다'), 'news'); }
         P.eq[it.slot] = it; return 'equip';
       }
     }
@@ -992,10 +993,11 @@
     var last = L[0]; if (last && last.a === act && act.indexOf('자동') === 0 && last.x === o.x && now - last.t < 3600) { last.n += o.n; last.t = now; for (var i = 0; i < 5; i++) last.rc[i] += rc[i]; if (top > last.lv) last.lv = top; delete last.it; if (keep.length) last.keep = (last.keep || []).concat(keep).slice(-10); return; }   // 자동 처분은 1시간 안이면 한 줄로 묶는다
     L.unshift(o); if (L.length > 80) L.length = 80;
   }
+  function hasRoom(P) { return P.inv.length < calc(P, null).bag || (!R.noMailQ && (P.mailQ || []).length < R.MAILQ_MAX); }   // 가방이나 우편함에 장비 하나를 둘 자리
   function storeOrSell(P, it, wasEq) {
     var bag = calc(P, null).bag;
     if (!wasEq && P.rs.sorter && P.autoSell >= 0 && it.r <= P.autoSell && !it.lock) { var setx = D.RARITY[P.autoSell].name + ' 이하'; if (P.autoDis) { dismantleGive(P, it); dlog(P, '자동 분해', [it], setx); return 'dis'; } addGold(P, R.sellPrice(it)); dlog(P, '자동 판매', [it], setx); return 'sold'; }
-    if (P.inv.length >= bag) { if (!wasEq && !R.noMailQ && (P.mailQ || (P.mailQ = [])).length < R.MAILQ_MAX) { P.mailQ.push(it); return 'mail'; } addGold(P, R.sellPrice(it)); return 'sold'; }   // 가방이 가득 차면 우편으로 (서버가 P.mailQ를 우편으로 보낸다)
+    if (P.inv.length >= bag) { if (!R.noMailQ && (P.mailQ || (P.mailQ = [])).length < R.MAILQ_MAX) { P.mailQ.push(it); return 'mail'; } addGold(P, R.sellPrice(it)); dlog(P, '가방 가득 · 자동 판매', [it]); return 'sold'; }   // 가방이 가득 차면 우편으로 (서버가 P.mailQ를 우편으로 보낸다) · 쓰던 장비도 판매하지 않고 우편으로
     P.inv.push(it); return 'bag';
   }
   // it을 장착했을 때 전투력. 화면에서 지금 전투력(W · 지금 시각)과 빼서 보이므로 같은 W · 시각으로 계산해야 한다 (기숙사 · 달 축복 · 물약이 한쪽에만 들어가 차이가 틀어지던 문제)
