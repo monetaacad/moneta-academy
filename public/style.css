@@ -555,6 +555,9 @@ img.av { background: transparent; }   /* 배경 투명 두상은 뒤의 화면�
 .frow .btn { flex: none; }
 .lockt { flex: none; }
 .lockt.on { color: var(--brass); border-color: var(--brass); }   /* 잠금 버튼: 장비 · 휘장 우측 상단 */
+.hrrow, .hrme { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; white-space: nowrap; }   /* 기숙사 공헌도 순위: 좁은 화면에서도 한 줄 */
+.hrrow .hrn { width: 18px; flex: none; text-align: right; } .hrrow .ttl { flex: none; max-width: 42%; overflow: hidden; text-overflow: ellipsis; margin-right: 0; }
+.hrme { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line2); } .hrme > .muted { flex: 1; }
 .rtag-in { display: none; }
 @media (max-width: 640px) { .rtag-in { display: inline-block; vertical-align: middle; max-width: 100%; overflow: hidden; text-overflow: ellipsis; } .rtag-out { display: none; } }   /* 정보창 관계 탭: 좁은 화면은 이름 옆에 관계 태그, 설명은 아랫줄 전체 폭 */
 .brow .bbtns { display: flex; gap: 6px; flex: none; margin-left: auto; }
