@@ -984,7 +984,8 @@ button.mkn:hover { text-decoration: underline; }
 .tk-tag { flex: none; font-size: 11px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--brass2); white-space: nowrap; }
 .tk-tag.news { color: var(--verd); border-color: rgba(116, 191, 169, .45); }
 /* 전광판 (모바일 · 학교 전체 소식): 상단 막대 아래 한 줄. 넘치는 글은 옆으로 흘러가고, 움직임 줄이기 설정이면 멈춘 채 두 줄까지 */
-.bcast { position: fixed; z-index: 211; left: 50%; transform: translateX(-50%); top: calc(max(var(--toph, 0px), env(safe-area-inset-top, 0px)) + 8px); width: min(420px, calc(100vw - 24px));
+.bcast { position: fixed; z-index: 211; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top, 0px) + var(--sysh, 0px) + 6px);   /* 모바일 소식 · 공지: 화면 맨 위 (창이 열려 있어도 가운데를 가리지 않게) */
+ width: min(420px, calc(100vw - 24px));
   display: flex; align-items: center; gap: 8px; padding: 6px 10px 6px 7px; border: 1px solid var(--line); border-radius: 999px; background: var(--toastbg); color: var(--ink); font: inherit; text-align: left;
   box-shadow: 0 6px 18px var(--shadow, rgba(0,0,0,.3)); cursor: pointer; animation: bcin .25s ease-out; -webkit-tap-highlight-color: transparent; }
 .bcast.notice { border-color: color-mix(in srgb, var(--brass) 55%, var(--line)); }
