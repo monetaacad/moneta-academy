@@ -2618,7 +2618,7 @@
     }
     if (pv.att > 0) {
       out.shard += 10; out.wbKilled = !!r.killed;
-      if (r.killed) { var kn = Math.max(1, r.kills || 1), un = Math.max(0, kn - (r.paidKills || 0)); P.st.wbKills += kn; out.kills = kn; if (un) { out.shard += R.WB_KILL_RW.shard * un; P.fam.eggs += R.WB_KILL_RW.egg * un; out.egg = un; } }   // 토벌 보상은 잡은 순간 우편으로(paidKills). 그때 못 낸 것만 여기서
+      if (r.killed) { var kn = Math.max(1, r.kills || 1), un = Math.max(0, kn - (r.paidKills || 0)), counted = P.wbkc && P.wbkc.week === pv.id ? P.wbkc.n : 0; P.st.wbKills += Math.max(0, kn - counted); out.kills = kn; if (un) { out.shard += R.WB_KILL_RW.shard * un; P.fam.eggs += R.WB_KILL_RW.egg * un; out.egg = un; } }   // 토벌 보상은 잡은 순간 우편으로(paidKills). 그때 못 낸 것만 여기서
       var t = r.tiers || [], tier = pv.dmg >= (t[0] || Infinity) ? 1 : pv.dmg >= (t[1] || Infinity) ? 2 : pv.dmg >= (t[2] || Infinity) ? 3 : 4;
       out.tier = tier; out.shard += [0, 40, 20, 8, 0][tier];
       if (tier <= 2) { var it2 = makeItem(P, pick(P, D.SLOTS).id, R.rewardIlvl(P, 3), tier === 1 && rnd(P) < 0.25 ? 4 : 3, 3); out.items.push({ name: it2.name, r: it2.r, res: gainItem(P, it2, now, '월드보스 ' + tier + '구간 보상') }); }

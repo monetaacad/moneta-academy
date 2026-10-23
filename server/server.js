@@ -154,7 +154,11 @@ world.payKillTo = (boss, killer) => {
   const ids = new Set(dbx.db.prepare('SELECT pid FROM weekly WHERE week = ? AND att > 0').all(boss.week).map((r) => r.pid)); if (killer) ids.add(killer);
   const exp = Math.floor(Date.now() / 1000) + 14 * 86400, title = '월드 보스 토벌 보상: ' + boss.name;
   const body = R.josa(boss.name, '을', '를') + ' 쓰러뜨렸습니다.\n이번 주에 함께 도전한 모든 학생에게 보내는 토벌 보상입니다. 피해 순위 보상은 다음 주 월요일에 받을 수 있습니다.';
-  ids.forEach((pid) => { try { sendMail(pid, '월드 보스', title, body, R.WB_KILL_RW, exp, true); } catch (e) { log('토벌 보상 우편 실패', pid, e); } });
+  ids.forEach((pid) => {
+    try { sendMail(pid, '월드 보스', title, body, R.WB_KILL_RW, exp, true); } catch (e) { log('토벌 보상 우편 실패', pid, e); }
+    // 토벌 참여 수(칭호 「토벌대원」 등)는 잡은 순간에 올린다. 주간 정산은 여기서 센 만큼(P.wbkc)을 빼고 더한다
+    try { const P = store.get(pid); if (P) { P.st.wbKills = (P.st.wbKills || 0) + 1; if (!P.wbkc || P.wbkc.week !== boss.week) P.wbkc = { week: boss.week, n: 0 }; P.wbkc.n++; store.markDirty(pid); } } catch (e) { log('토벌 참여 수 갱신 실패', pid, e); }
+  });
   log(`토벌 보상 우편: ${boss.name} → ${ids.size}명`);
 };
 
