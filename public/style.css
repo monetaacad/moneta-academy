@@ -683,6 +683,8 @@ input::placeholder, textarea::placeholder { color: var(--faint); }
 .avc-ring { position: absolute; inset: 0; pointer-events: none; border-radius: 50%; box-shadow: 0 0 0 999px rgba(10, 12, 24, .55); outline: 2px solid rgba(255, 255, 255, .85); outline-offset: -2px; }
 .ttl { display: inline-block; font-size: 10.5px; color: var(--brass2); border: 1px solid var(--line); border-radius: 5px; padding: 0 5px; margin-right: 5px; vertical-align: 1px; white-space: nowrap; }
 .ttl.off { color: var(--faint); border-color: var(--line2); }
+.ttl.hc-lanterna { color: #e8c36a; border-color: rgba(232, 195, 106, .55); } .ttl.hc-clepsydra { color: #6fb5c9; border-color: rgba(111, 181, 201, .55); } .ttl.hc-corona { color: #d9736b; border-color: rgba(217, 115, 107, .55); } .ttl.hc-speculum { color: #b99be6; border-color: rgba(185, 155, 230, .55); }   /* 기숙사 공헌 1위 칭호: 기숙사 색 */
+:root[data-paper="on"] .ttl[class*="hc-"] { filter: brightness(.72) saturate(1.3); }   /* 밝은 종이 배경에서 읽히게 */
 .ttl.op { color: #7a3448; background: linear-gradient(135deg, #ffc6d9, #ffd9c2 50%, #fff0b3); border-color: rgba(214, 120, 150, .45); font-weight: 700; }   /* 운영진 전용 칭호 */
 .pttl { font-size: 12px; color: var(--brass2); margin-bottom: 1px; }
 .tag.npc { color: var(--verd); border-color: rgba(116, 191, 169, .4); font-size: 10px; padding: 0 5px; }

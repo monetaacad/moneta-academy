@@ -897,7 +897,7 @@ var DATA = (function () {
     { id: 'ctm250', name: '무한 서고의 탑주', stat: 'twM', n: 250, how: '마법사의 탑 250층 돌파' },
     { id: 'ctm300', name: '마탑주', stat: 'twM', n: 300, how: '마법사의 탑 300층 돌파' },
     { id: 'ctm400', name: '별의 끝에 선 현자', stat: 'twM', n: 400, how: '마법사의 탑 400층 돌파' },
-    // 실시간 칭호: 순위를 유지하는 동안에만 장착할 수 있다 (서버가 확인한 P.live). 이름은 지금 순위에 따라 「○○학 수석」 · 「○○관 공헌 1위」
+    // 실시간 칭호: 순위를 유지하는 동안에만 장착할 수 있다 (서버가 확인한 P.live). 이름은 지금 순위에 따라 「○○학 수석」 · 기숙사 공헌 1위는 기숙사마다 다른 이름(D.HOUSE_TOP_TITLE)
     { id: 'live_head', name: '과목 수석', live: 'h', how: '과목 순위 1위를 유지하는 동안 (실시간)' },
     { id: 'live_second', name: '과목 차석', live: 's', how: '과목 순위 2위를 유지하는 동안 (실시간)' },
     { id: 'live_house', name: '기숙사 공헌 1위', live: 'c', how: '이번 주 내 기숙사 대항전 개인 점수 1위를 유지하는 동안 (실시간)' },
@@ -906,6 +906,7 @@ var DATA = (function () {
     { id: 'op_clerk', name: '서기관', op: 1, how: '운영진 전용' },
     { id: 'op_chief', name: '학생회장', op: 2, how: '운영진 전용' }
   ];
+  D.HOUSE_TOP_TITLE = { lanterna: '등불관의 길잡이', clepsydra: '물시계의 파수꾼', corona: '가시왕관의 주인', speculum: '거울 뒤편의 주인' };   // 기숙사 공헌 1위 실시간 칭호 (기숙사 색으로 표시)
   D.HOUSE_TITLE = { lanterna: '등불관의 별', clepsydra: '물시계관의 물방울', corona: '가시왕관관의 칼날', speculum: '거울관의 그림자' };
 
   // 강의실이 붐빈 날 교수님 한마디 (그날 같은 과목을 들은 학생이 많으면 공지에 한 줄, 수업 보고서에도)
