@@ -2633,13 +2633,16 @@
   };
 
   /* 고서 열람실: 지식으로 3시간 버프. 한 번에 한 권 (다른 책은 한 번 더 눌러 바꿔 펼침), 같은 책은 이어 읽기 최대 9시간 */
+  ACT.bkcat = function (c) { PREF.bkCat = c; savePref(); render(); };
   function bookCard() {
     var P = S.P, t = now(), cur = P.buffs.book && P.buffs.book.end > t ? P.buffs.book : null, cost = R.bookCost(P), lock = P.grade < R.BOOK_GRADE;
     var h = '<p class="tiny faint" style="margin:0 0 10px">지식을 사용해 고서를 열람하면 ' + R.BOOK_DUR / 3600 + '시간 동안 효과가 적용됩니다. 한 번에 한 권만 펼칠 수 있으며, 같은 책을 다시 열람하면 효과 시간이 이어집니다(최대 ' + R.BOOK_MAX / 3600 + '시간). 열람 비용 <b class="num gold">지식 ' + fmt(cost) + '</b> · 보유 <b class="num">' + fmt(P.res.know) + '</b></p>';
     if (lock) h += '<span class="tag">' + R.BOOK_GRADE + '학년부터</span>';
     else {
       if (cur) h += '<div class="row small" style="margin-bottom:8px;gap:6px"><i class="bdot" style="background:' + esc(cur.color || '#e8c36a') + '"></i><span>열람 중: <b>' + esc(cur.name) + '</b> · ' + esc(R.BOOK[cur.id] ? R.BOOK[cur.id].desc : R.effText(cur.eff)) + '</span><span class="spacer"></span><span class="num faint" data-l="left:' + cur.end + '"></span></div>';
-      h += '<div class="booklist">' + D.BOOKS.map(function (b) {
+      var bc = PREF.bkCat && D.BOOK_CATS.some(function (x) { return x[0] === PREF.bkCat; }) ? PREF.bkCat : 'all';   // 분야 필터 (이 기기에 기억)
+      h += '<div class="filters" style="margin-bottom:8px">' + [['all', '전체']].concat(D.BOOK_CATS).map(function (x) { return '<button class="btn sm' + (x[0] === bc ? ' on' : ' ghost') + '" data-act="bkcat" data-a="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div>';
+      h += '<div class="booklist">' + D.BOOKS.filter(function (b) { return bc === 'all' || b.cat === bc || (cur && cur.id === b.id); }).map(function (b) {
         var same = cur && cur.id === b.id, full = same && cur.end - t > R.BOOK_MAX - R.BOOK_DUR, swap = cur && !same, armed = S.confirm['bk' + b.id] > Date.now();
         var ok = P.res.know >= cost && !full, label = full ? '최대 시간' : armed ? '한 번 더 누르면 바꿔 펼칩니다' : same ? '이어 읽기' : swap ? '바꿔 펼치기' : '열람하기';
         return '<div class="bookrow' + (same ? ' on' : '') + '"><i class="bdot" style="background:' + b.color + '"></i><span class="bkname"><b>' + b.name + '</b> <span class="small muted">' + b.desc + '</span></span>' +
@@ -6069,7 +6072,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102360;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102361;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
