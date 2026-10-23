@@ -2262,24 +2262,24 @@
     if (!list.length) return wrap('<p class="small muted" style="margin-top:6px">2학년 기말시험을 통과해 3학년이 되면 아카데미가 휘장을 수여합니다. 매점 「휘장 원석」, 보스 전리품, 거래소에서도 얻을 수 있습니다.</p>');
     if (b) {
       var g = R.GEM[b.gem], full = b.lv >= R.BADGE_MAX, need = R.badgeNeed(b.lv), pc = R.badgePolishCost(P, b), can = (P.res.dust || 0) >= pc.dust && P.res.gold >= pc.gold;
-      h += '<div class="bdgmain"><div style="flex:1;min-width:0"><div class="nm">' + esc(b.name) + ' ' + badgeSvg(b, 26) + '</div><div class="tiny faint">' + g.feel + '의 보석 · 품질 ' + (Math.round((b.q || 1) * 1000) / 10) + '% · ' + esc(g.desc) + '</div>' +
+      h += '<div class="bdgmain"><div style="flex:1;min-width:0"><div class="row" style="gap:6px;align-items:flex-start"><div class="nm" style="flex:1;min-width:0">' + esc(b.name) + ' ' + badgeSvg(b, 26) + '</div>' + lockBtn(b) + '</div><div class="tiny faint">' + g.feel + '의 보석 · 품질 ' + (Math.round((b.q || 1) * 1000) / 10) + '% · ' + esc(g.desc) + '</div>' +
         '<div class="row small" style="margin-top:8px;gap:6px"><b class="num">Lv ' + b.lv + '</b><span class="tiny faint">/ ' + R.BADGE_MAX + '</span><span class="spacer"></span><span class="tiny faint num">' + (full ? '완성된 휘장' : gterm('별빛') + ' ' + fmt(b.xp) + ' / ' + fmt(need)) + '</span></div>' +
         '<div class="bar brass" style="height:6px;margin-top:3px"><b style="width:' + (full ? 100 : Math.min(100, b.xp / need * 100)).toFixed(1) + '%"></b></div>' +
         '<div style="margin-top:8px">' + badgeLines(b) + '</div>' +
-        badgeUps(b, full, pc, can) + '<div class="row" style="margin-top:8px"><button class="btn sm ghost" data-act="bwear" data-a="">해제</button>' + (list.some(function (y) { return y !== b && y.lv < b.lv; }) ? '<button class="btn sm ghost"' + why('장착 중인 휘장은 재료로 사용할 수 없습니다. 먼저 해제 필요') + '>계승</button>' : '') + lockBtn(b) + '</div></div></div>';
+        badgeUps(b, full, pc, can) + '<div class="row" style="margin-top:8px"><button class="btn sm ghost" data-act="bwear" data-a="">해제</button>' + (list.some(function (y) { return y !== b && y.lv < b.lv; }) ? '<button class="btn sm ghost"' + why('장착 중인 휘장은 재료로 사용할 수 없습니다. 먼저 해제 필요') + '>계승</button>' : '') + '</div></div></div>';
     } else h += '<p class="small muted" style="margin-top:6px">달고 있는 휘장이 없습니다. 아래에서 하나를 달면 효과가 붙고 별빛을 모으기 시작합니다.</p>';
     var rest = list.filter(function (x) { return x !== b; });
     var allOpen = !!PREF.bdgAll, opn = S.bdgOpen || (S.bdgOpen = {});   // 보관 중인 휘장 옵션(대표 · 세공) 펼치기: 한 개씩 또는 모두 (모두는 이 기기에 기억)
     if (rest.length) h += '<div class="row between" style="margin-top:12px"><div class="section-t" style="font-size:13px">보관 중인 휘장</div><button class="btn sm ghost" data-act="bdgall">' + (allOpen ? '옵션 모두 접기' : '옵션 모두 보기') + '</button></div><div class="bdglist">' + rest.map(function (x) {
       var g2 = R.GEM[x.gem], armed = S.confirm['bb' + x.u] > Date.now();
-      return '<div class="bdgrow"><div style="flex:1;min-width:0"><div class="small ell">' + esc(x.name) + ' ' + badgeSvg(x) + ' <span class="num faint">Lv ' + x.lv + '</span></div><div class="tiny faint ell">' + badgeBrief(x) + '</div>' + (allOpen || opn[x.u] ? '<div class="bdgopt" style="margin-top:4px">' + badgeLines(x) + '</div>' : '') + '</div>' +
-        '<span class="frbtns">' + (allOpen ? '' : '<button class="btn sm ghost" data-act="bdgopt" data-a="' + x.u + '" aria-expanded="' + !!opn[x.u] + '">' + (opn[x.u] ? '옵션 숨기기' : '옵션 보기') + '</button>') + '<button class="btn sm" data-act="bwear" data-a="' + x.u + '">장착</button>' + (x.lock ? '' : '<button class="btn sm ghost" data-act="mksellbadge" data-a="' + x.u + '">거래소</button>' + (list.some(function (y) { return y !== x && y.lv < x.lv; }) ? '<button class="btn sm ghost" data-act="binherit" data-a="' + x.u + '" title="이 휘장을 재료로 별빛 ' + Math.round(R.BADGE_INHERIT * 100) + '%를 레벨이 더 낮은 휘장에 옮깁니다">계승</button>' : '') + '<button class="btn sm ' + (armed ? 'danger' : 'ghost') + '" data-act="bbreak" data-a="' + x.u + '">' + (armed ? '한 번 더 누르면 깨뜨립니다' : '깨뜨리기') + ' <span class="cost">+' + R.badgeBreakDust(x) + ' 마석가루</span></button>') + lockBtn(x) + '</span></div>';
+      return '<div class="bdgrow"><div style="flex:1;min-width:0"><div class="row" style="gap:6px;align-items:center"><div class="small ell" style="flex:1;min-width:0">' + esc(x.name) + ' ' + badgeSvg(x) + ' <span class="num faint">Lv ' + x.lv + '</span></div>' + lockBtn(x) + '</div><div class="tiny faint ell">' + badgeBrief(x) + '</div>' + (allOpen || opn[x.u] ? '<div class="bdgopt" style="margin-top:4px">' + badgeLines(x) + '</div>' : '') + '</div>' +
+        '<span class="frbtns">' + (allOpen ? '' : '<button class="btn sm ghost" data-act="bdgopt" data-a="' + x.u + '" aria-expanded="' + !!opn[x.u] + '">' + (opn[x.u] ? '옵션 숨기기' : '옵션 보기') + '</button>') + '<button class="btn sm" data-act="bwear" data-a="' + x.u + '">장착</button>' + (x.lock ? '' : '<button class="btn sm ghost" data-act="mksellbadge" data-a="' + x.u + '">거래소</button>' + (list.some(function (y) { return y !== x && y.lv < x.lv; }) ? '<button class="btn sm ghost" data-act="binherit" data-a="' + x.u + '" title="이 휘장을 재료로 별빛 ' + Math.round(R.BADGE_INHERIT * 100) + '%를 레벨이 더 낮은 휘장에 옮깁니다">계승</button>' : '') + '<button class="btn sm ' + (armed ? 'danger' : 'ghost') + '" data-act="bbreak" data-a="' + x.u + '">' + (armed ? '한 번 더 누르면 깨뜨립니다' : '깨뜨리기') + ' <span class="cost">+' + R.badgeBreakDust(x) + ' 마석가루</span></button>') + '</span></div>';
     }).join('') + '</div>';
     return wrap(h + '<p class="tiny faint" style="margin-top:10px">달고 있는 휘장 하나만 효과가 있고 별빛을 모읍니다 · 원정 1시간 +' + R.BADGE_XP.expH + ', 수업 1시간 +' + R.BADGE_XP.lecH + ', 보스 · 결투 · 월드 보스 한 번 +' + R.BADGE_XP.fight + '(이기면 두 배) · ' + D.BADGE_FACET_LV.join(' · ') + '레벨에 세공이 한 줄씩 늘어납니다 · 거래소에서 사고팔 수 있습니다</p>');
   }
   ACT.bdgopt = function (u) { var o = S.bdgOpen || (S.bdgOpen = {}); o[u] = !o[u]; render(); };
   ACT.bdgall = function () { PREF.bdgAll = !PREF.bdgAll; savePref(); render(); };
-  function lockBtn(b) { return '<button class="btn sm ghost" data-act="block" data-a="' + b.u + '" title="잠그면 닦기 · 광내기 · 세공 · 깨뜨리기 · 거래소가 막힙니다 (장착 · 해제는 가능)">' + (b.lock ? '잠금 해제' : '잠금') + '</button>'; }
+  function lockBtn(b) { return '<button class="btn sm ghost lockt' + (b.lock ? ' on' : '') + '" data-act="block" data-a="' + b.u + '" title="잠그면 닦기 · 광내기 · 세공 · 깨뜨리기 · 거래소가 막힙니다 (장착 · 해제는 가능)">' + (b.lock ? '잠금 해제' : '잠금') + '</button>'; }
   ACT.block = function (u) { act('badgeLock', { u: u }).then(function (r) { if (r) toast(r.lock ? '휘장을 잠갔습니다' : '휘장 잠금을 풀었습니다', '', 1400); render(); }); };
   // 휘장 강화 세 갈래: 닦기(가루 · 레벨) · 광내기(별조각 · 품질) · 세공 다시 새기기(별조각 · 옵션)
   function badgeUps(b, full, pc, can) {
@@ -2368,7 +2368,7 @@
     var P = S.P, it = S.sel && R.findItem(P, S.sel);
     if (!it) return '<div class="card detail"><h3>장비 살펴보기</h3><p class="small muted">장착 칸이나 가방의 장비를 누르면 능력치와 강화 정보를 볼 수 있습니다. 초록 ▲는 지금보다 전투력이 오르는 장비입니다.</p></div>';
     var eqd = P.eq[it.slot] && P.eq[it.slot].u === it.u, c = C(), cost = R.enhCost(P, it), ch = R.enhChance(P, it), delta = eqd ? 0 : R.powerWith(P, it, wctx(), now()) - c.power;
-    var h = '<div class="card detail hl ' + (eqd ? 'eqsel' : 'bagsel') + '"><button class="btn sm ghost" data-act="sel" data-a="' + it.u + '" title="살펴보기 닫기" style="float:right;margin:-4px -4px 0 8px">닫기</button><div class="tiny" style="color:' + rcol(it.r) + '">' + D.RARITY[it.r].name + ' ' + R.slotName(it) + ' · Lv ' + it.ilvl + (eqd ? ' · 장착 중' : '') + '</div><div class="nm" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</div><div style="margin-top:8px">' + statLines(it) + '</div>';
+    var h = '<div class="card detail hl ' + (eqd ? 'eqsel' : 'bagsel') + '"><button class="btn sm ghost" data-act="sel" data-a="' + it.u + '" title="살펴보기 닫기" style="float:right;margin:-4px -4px 0 8px">닫기</button><button class="btn sm ghost lockt' + (it.lock ? ' on' : '') + '" data-act="do" data-a="lock" data-b="' + it.u + '" title="잠그면 강화 · 판매 같은 실수를 막을 수 있습니다 (장착 · 해제는 가능)" style="float:right;margin:-4px 0 0 8px">' + (it.lock ? '잠금 해제' : '잠금') + '</button><div class="tiny" style="color:' + rcol(it.r) + '">' + D.RARITY[it.r].name + ' ' + R.slotName(it) + ' · Lv ' + it.ilvl + (eqd ? ' · 장착 중' : '') + '</div><div class="nm" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</div><div style="margin-top:8px">' + statLines(it) + '</div>';
     if (!eqd) h += '<div class="small" style="margin-top:8px">장착 시 전투력 <b class="num ' + (delta >= 0 ? 'good' : 'bad') + '">' + (delta >= 0 ? '+' : '') + fmt(delta) + '</b></div>' + cmpLine(it, P.eq[it.slot]);
     h += '<hr class="sep"><div class="row small"><span class="muted">강화 +' + it.enh + ' → +' + (it.enh + 1) + '</span><span class="spacer"></span>' + (it.enh >= R.ENH_MAX ? '<span class="tag br">최대 강화</span>' : '<span>성공 확률 <b class="num">' + Math.round(ch * 100) + '%</b></span>') + '</div>' + enhPreview(it, eqd) + ownLine(P) + '<div class="row" style="margin-top:10px">';
     h += eqd ? '<button class="btn sm" data-act="do" data-a="unequip" data-b="' + it.slot + '">해제</button>' : R.canWear(P, it) ? '<button class="btn sm primary" data-act="do" data-a="equip" data-b="' + it.u + '">장착</button>' : '<button class="btn sm" disabled title="내 레벨 이하 장비만 장착할 수 있습니다">레벨 ' + it.ilvl + '부터 장착 가능</button>';
@@ -2376,7 +2376,6 @@
       var okc = P.res.gold >= cost.gold && P.res.stone >= cost.stone;
       h += '<button class="btn sm" data-act="enh" data-a="' + it.u + '"' + (okc ? '' : why(P.res.gold < cost.gold ? CUR + '가 부족합니다' : '마석이 부족합니다')) + '>강화 <span class="cost">' + fmt(cost.gold) + ' ' + CUR + ' · ' + cost.stone + ' 마석</span></button><button class="btn sm ghost" data-act="enh" data-a="' + it.u + '" data-b="until"' + (okc ? '' : why(P.res.gold < cost.gold ? CUR + '가 부족합니다' : '마석이 부족합니다')) + '>성공할 때까지</button>';
     }
-    h += '<button class="btn sm ghost" data-act="do" data-a="lock" data-b="' + it.u + '">' + (it.lock ? '잠금 해제' : '잠금') + '</button>';
     if (D.RARITY[it.r].affix && !it.lock) { var rf = R.reforgeCost(it); h += '<button class="btn sm" data-act="reforge" data-a="' + it.u + '"' + ((P.res.dust || 0) >= rf ? '' : ' disabled') + ' title="잠그지 않은 옵션을 새로 굴립니다 (등급·레벨·강화는 그대로)">재련 <span class="cost">' + fmt(rf) + ' 마석가루~</span></button>'; }
     // 영웅 이상 · 강화한 장비는 분해 · 판매 전에 경고 창 (실수 방지)
     var risky = it.r >= 3 || it.enh > 0;
@@ -5967,7 +5966,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102336;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102337;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
