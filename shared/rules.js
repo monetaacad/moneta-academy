@@ -1350,10 +1350,12 @@
   R.CROSS_COUNTER = 0.005;   // 남은 체력이 이 비율 이하(화면 0%)면 동시에 쓰러진 것으로 보고 학생 승리
   function fight(P, c, enemy, limit, untilDead) {
     var dt = 0.1, t = 0, mh = enemy.hp, ph = c.hp, sh = 0, pT = 0, mT = 0, fT = 0, cd = {}, stun = 0, haste = 0, amp = 0, dealt = 0, evs = [];
-    var ns = R.spellSlots(P), fam = P.fam.act && P.fam.own[P.fam.act] ? c.atk * famAtkMult(P) : 0;
+    var ns = R.spellSlots(P), fam = P.fam.act && P.fam.own[P.fam.act] ? c.atk * famAtkMult(P) : 0, lAcc = 0, rAcc = 0, lT = 0;
+    // 생명력 흡수 · 자연 회복: 1초마다 모아서 ['l', 흡수, 회복]으로 남긴다 (전투 일지의 체력 바 · 문장용)
+    function flush() { if ((lAcc >= 1 || rAcc >= 1) && evs.length < 400) evs.push([Math.round(t * 10) / 10, 'l', Math.round(lAcc), Math.round(rAcc)]); lAcc = 0; rAcc = 0; lT = t; }
     function hit(d, kind, cr) {
       if (amp > 0) d *= 2; if (enemy.boss) d *= c.bossDmg;
-      mh -= d; dealt += d; if (c.leech) ph = Math.min(c.hp, ph + d * c.leech);
+      mh -= d; dealt += d; if (c.leech) { var lg = Math.max(0, Math.min(c.hp - ph, d * c.leech)); ph += lg; lAcc += lg; }
       if (evs.length < 400) evs.push([Math.round(t * 10) / 10, 'h', Math.round(d), kind, cr ? 1 : 0]);
     }
     while (t < limit) {
@@ -1376,21 +1378,24 @@
         else if (sp.type === 'haste') haste = sp.dur;
         else if (sp.type === 'amp') { amp = sp.dur; stun = sp.dur; }
       }
-      if (untilDead && mh <= 0) return { win: true, t: t, dealt: dealt, ev: evs, pHp: ph / c.hp, mHp: 0 };
+      if (untilDead && mh <= 0) { flush(); return { win: true, t: t, dealt: dealt, ev: evs, pHp: ph / c.hp, mHp: 0 }; }
       if (stun > 0) stun -= dt;
       else {
         mT += dt * (enemy.boss ? 0.85 : 1);
         while (mT >= 1) {
-          mT -= 1; var d = dmgTaken(enemy.atk, c.def);
-          if (sh > 0) { var ab = Math.min(sh, d); sh -= ab; d -= ab; }
-          ph -= d; if (evs.length < 400) evs.push([Math.round(t * 10) / 10, 'x', Math.round(d)]);
+          mT -= 1; var d = dmgTaken(enemy.atk, c.def), ab = 0;
+          if (sh > 0) { ab = Math.min(sh, d); sh -= ab; d -= ab; }
+          ph -= d; if (evs.length < 400) evs.push(ab >= 1 ? [Math.round(t * 10) / 10, 'x', Math.round(d), Math.round(ab)] : [Math.round(t * 10) / 10, 'x', Math.round(d)]);   // 4번째: 보호막이 막은 양
         }
       }
-      ph = Math.min(c.hp, ph + c.hp * c.regen * dt);
+      var rg = Math.min(c.hp - ph, c.hp * c.regen * dt); ph += rg; if (rg > 0) rAcc += rg;
+      if (t - lT >= 1) flush();
       // 크로스카운터: 쓰러지는 순간 적도 (화면에 0%로 보일 만큼) 거의 쓰러졌다면 학생의 승리로 본다
+      if (ph <= 0) flush();
       if (ph <= 0 && untilDead && mh <= enemy.hp * R.CROSS_COUNTER) return { win: true, cc: true, t: t, dealt: dealt, ev: evs, pHp: 0, mHp: 0 };
       if (ph <= 0) return { win: false, dead: true, t: t, dealt: dealt, ev: evs, pHp: 0, mHp: Math.max(0, mh / enemy.hp) };
     }
+    flush();
     return { win: !untilDead, t: t, dealt: dealt, ev: evs, pHp: ph / c.hp, mHp: Math.max(0, mh / enemy.hp), timeout: true };
   }
   R.fight = fight;
