@@ -1283,13 +1283,13 @@
   function liveName(P, t) {
     var L = P && P.live || {};
     if ((t.live === 'h' || t.live === 's') && L[t.live] && L[t.live].length) { var sj = R.liveSubj(P, t.live); if (SUBJ[sj]) return SUBJ[sj].name + (t.live === 'h' ? ' 수석' : ' 차석'); }
-    if (t.live === 'c' && L.c && R.HOUSE[P.house]) return R.HOUSE[P.house].name + ' 공헌 1위';
+    if (t.live === 'c' && L.c && D.HOUSE_TOP_TITLE[P.house]) return D.HOUSE_TOP_TITLE[P.house];
     return '';
   }
   R.titleList = function (P) { return D.TITLES.filter(function (t) { return !t.op || opLv(P) >= t.op; }); };
   R.OP_TITLES = {}; D.TITLES.forEach(function (t) { if (t.op) R.OP_TITLES[t.name] = t.op; });
-  R.LIVE_TITLES = {}; D.SUBJECTS.forEach(function (sj) { R.LIVE_TITLES[sj.name + ' 수석'] = 1; R.LIVE_TITLES[sj.name + ' 차석'] = 1; }); D.HOUSES.forEach(function (h) { R.LIVE_TITLES[h.name + ' 공헌 1위'] = 1; });
-  R.opTitleCls = function (name) { var v = R.OP_TITLES[name]; return v ? ' op ' + (v >= 2 ? 'chief' : 'council') : ''; };   // 칭호 이름 → 배지 모양 (실시간 칭호는 다른 칭호와 같은 모양)   // 칭호 이름 → 배지 모양
+  R.LIVE_TITLES = {}; D.SUBJECTS.forEach(function (sj) { R.LIVE_TITLES[sj.name + ' 수석'] = 1; R.LIVE_TITLES[sj.name + ' 차석'] = 1; }); R.HOUSE_TOP_OF = {}; D.HOUSES.forEach(function (h) { R.LIVE_TITLES[D.HOUSE_TOP_TITLE[h.id]] = 1; R.HOUSE_TOP_OF[D.HOUSE_TOP_TITLE[h.id]] = h.id; });
+  R.opTitleCls = function (name) { var v = R.OP_TITLES[name]; return v ? ' op ' + (v >= 2 ? 'chief' : 'council') : R.HOUSE_TOP_OF[name] ? ' hc-' + R.HOUSE_TOP_OF[name] : ''; };   // 기숙사 공헌 1위 칭호는 기숙사 색   // 칭호 이름 → 배지 모양 (실시간 칭호는 다른 칭호와 같은 모양)   // 칭호 이름 → 배지 모양
   R.titleOk = function (P, id) {
     var t = D.TITLES.find(function (x) { return x.id === id; }); if (!t) return false;
     if (t.op) return opLv(P) >= t.op;

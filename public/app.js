@@ -2131,7 +2131,7 @@
     h += '</div>';
     return h;
   };
-  // 기숙사 공헌도 순위: 이번 주 대항전 개인 점수 상위 10명 + 내 순위. 기숙사마다 1위는 실시간 칭호 「○○관 공헌 1위」
+  // 기숙사 공헌도 순위: 이번 주 대항전 개인 점수 상위 10명 + 내 순위. 기숙사마다 1위는 실시간 칭호(D.HOUSE_TOP_TITLE)
   function hrankCard(P) {
     var hs = S.hrankH || P.house, d = (S.hrank || {})[hs];
     if (!d || Date.now() - d.at > 30000) loadHrank(hs);
@@ -2143,11 +2143,11 @@
     else {
       h += d.top.length ? '<div class="stack" style="gap:4px">' + d.top.map(function (r, i) {
         var me = r.id === P.id;
-        return '<div class="row small' + (me ? ' gold' : '') + '" style="gap:8px"><span class="num faint" style="width:18px;text-align:right">' + (i + 1) + '</span><button class="cn ell" style="flex:1;min-width:0;text-align:left' + (me ? '' : ';color:inherit') + '" data-act="prof" data-a="' + esc(r.id) + '">' + esc(r.name) + '</button>' + (i === 0 ? '<span class="ttl">' + esc(R.HOUSE[d.house].name) + ' 공헌 1위</span>' : '') + '<span class="tiny faint">' + (r.grade >= 8 ? '마스터' : r.grade + '학년') + '</span><b class="num" style="min-width:56px;text-align:right">' + fmt(r.cup) + '</b></div>';
+        return '<div class="row small' + (me ? ' gold' : '') + '" style="gap:8px"><span class="num faint" style="width:18px;text-align:right">' + (i + 1) + '</span><button class="cn ell" style="flex:1;min-width:0;text-align:left' + (me ? '' : ';color:inherit') + '" data-act="prof" data-a="' + esc(r.id) + '">' + esc(r.name) + '</button>' + (i === 0 ? '<span class="ttl hc-' + d.house + '">' + esc(D.HOUSE_TOP_TITLE[d.house]) + '</span>' : '') + '<span class="tiny faint">' + (r.grade >= 8 ? '마스터' : r.grade + '학년') + '</span><b class="num" style="min-width:56px;text-align:right">' + fmt(r.cup) + '</b></div>';
       }).join('') + '</div>' : '<p class="small muted">이번 주 점수를 쌓은 학생이 아직 없습니다.</p>';
       if (d.me) h += '<div class="row small" style="gap:8px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line2)"><span class="muted">내 순위</span><span class="spacer"></span><b class="num">' + (d.me.rank ? d.me.rank + '위' : '—') + '</b><span class="num faint">' + fmt(d.me.cup) + '점</span></div>';
     }
-    return h + '</div><p class="tiny faint" style="margin-top:8px">각 기숙사 1위는 1위를 유지하는 동안 실시간 칭호 「○○관 공헌 1위」를 장착할 수 있습니다. 순위는 몇 분 간격으로 갱신됩니다.</p></div>';
+    return h + '</div><p class="tiny faint" style="margin-top:8px">각 기숙사 1위는 1위를 유지하는 동안 기숙사마다 다른 실시간 칭호(' + D.HOUSES.map(function (hh) { return '「' + D.HOUSE_TOP_TITLE[hh.id] + '」'; }).join(' · ') + ')를 장착할 수 있습니다. 순위는 몇 분 간격으로 갱신됩니다.</p></div>';
   }
   function loadHrank(hs) {
     if (S.hrankBusy === hs) return; S.hrankBusy = hs;
@@ -6014,7 +6014,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102350;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102351;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
