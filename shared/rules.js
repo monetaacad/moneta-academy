@@ -300,6 +300,7 @@
     if (P.wb && P.wb.extra == null) { P.wb.extra = Math.max(0, (P.wb.tickets || 0) - K.WB_TICKET_MAX); P.wb.tickets = Math.min(P.wb.tickets || 0, K.WB_TICKET_MAX); P.wb.bought = 0; P.wb.buyWk = -1; P.wb.exUsed = 0; P.wb.exWk = -1; delete P.wb.buyDay; }
     if (P.famGift == null && P.fam && P.grade >= 3) P.famGift = 1;   // 사역마 해금이 레벨로 바뀌기 전(3학년)에 이미 첫 알을 받은 학생
     if (P.econC == null) P.econC = P.created && P.created < R.ECON_C_AT ? 1 : 2;
+    if (P.st && (P.clsN || 0) > (P.st.clsChanges || 0)) P.st.clsChanges = P.clsN;   // 전과 업적 · 칭호: 예전에 전과한 횟수도 센다
     if (P.tfV == null && P.subj) { P.tfV = 1; if (P.created && P.created < R.EXAM_OPT_AT) { var tkf = P.tok || (P.tok = {}); tkf.transfer = (tkf.transfer || 0) + R.TRANSFER_GIVE; if (P.log) log(P, P.at || P.created, '선택 과목 도입 전에 입학한 학생에게 학점 이전 증서 ' + R.TRANSFER_GIVE + '장이 지급되었습니다. 소지품에서 사용할 수 있습니다', 'story'); } }
     if (!P.badges) P.badges = [];
     if (P.grade >= 3 && !P.badgeGot && P.res && P.log) { P.badgeGot = 1; gainBadge(P, makeBadge(P), P.at || 0, '아카데미 휘장 수여'); }
@@ -2062,7 +2063,7 @@
     var fee = R.clsExamFee(P); if (P.res.gold < fee) err('응시료가 모자랍니다 (' + fee + ' ' + R.CUR + ')');
     P.res.gold -= fee;
     var old = P.cls; P.cls = id; var c = calc(P, W, now), e = R.clsExamFoe(P, W), f = fight(P, c, e, 40, true); P.cls = old;
-    var cs = null; if (f.win) { cs = clsSet(P, id, now, '전과시험 합격'); P.clsN = (P.clsN || 0) + 1; P.clsCd = now + R.CLS_REDO; delete P.stance; } else { P.clsCd = now + R.CLS_EXAM_CD; log(P, now, R.CLS[id].name + ' 전과시험 불합격', 'bad'); }
+    var cs = null; if (f.win) { cs = clsSet(P, id, now, '전과시험 합격'); P.clsN = (P.clsN || 0) + 1; P.st.clsChanges = Math.max(P.st.clsChanges || 0, P.clsN); P.clsCd = now + R.CLS_REDO; delete P.stance; } else { P.clsCd = now + R.CLS_EXAM_CD; log(P, now, R.CLS[id].name + ' 전과시험 불합격', 'bad'); }
     return { win: !!f.win, cc: !!f.cc, ev: f.ev, maxHp: e.hp, mHp: f.mHp, cls: id, fee: fee, off: cs ? cs.off : [], restored: cs ? cs.restored : false, pts: cs ? cs.pts : 0 };
   };
   A.expStart = function (P, W, now, a) {

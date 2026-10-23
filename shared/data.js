@@ -952,6 +952,8 @@ var DATA = (function () {
     { id: 'duel5', name: '결투제 본선 진출자', stat: 'duelBest', n: 5, how: '결투제 상대 5명 이기기' },
     { id: 'duel10', name: '결투제 4강', stat: 'duelBest', n: 10, how: '결투제 상대 10명 이기기' },
     { id: 'duel', name: '결투제 우승자', stat: 'duelBest', n: 15, how: '결투제 우승' },
+    { id: 'cls1', name: '길을 바꾼 자', stat: 'clsChanges', n: 1, how: '전과시험 합격' },
+    { id: 'cls3', name: '검과 지팡이를 모두 쥔 자', stat: 'clsChanges', n: 3, how: '전과시험 세 번 합격' },
     { id: 'raid', name: '토벌대원', stat: 'wbKills', n: 1, how: '월드 보스 토벌 참여' },
     { id: 'cup', name: '대항전의 영웅', stat: 'cupWins', n: 1, how: '기숙사 대항전 1위' },
     { id: 'cum', name: '우등생', stat: 'aGrades', n: 3, how: '기말시험 A 이상 세 번' },
@@ -1297,6 +1299,8 @@ var DATA = (function () {
     { id: 'duel5', name: '결투제 본선', desc: '결투제 상대 5명 이기기', stat: 'duelBest', n: 5, r: 10 },
     { id: 'duel10', name: '결투제 4강', desc: '결투제 상대 10명 이기기', stat: 'duelBest', n: 10, r: 25 },
     { id: 'duel15', name: '결투제 우승', desc: '이름 없는 사서를 이기기', stat: 'duelBest', n: 15, r: 60 },
+    { id: 'cls1', name: '새로운 길', desc: '전과시험에 합격해 학과 옮기기', stat: 'clsChanges', n: 1, r: 10 },
+    { id: 'cls3', name: '두 갈래 길의 학생', desc: '전과시험에 세 번 합격하기', stat: 'clsChanges', n: 3, r: 25 },
     { id: 'task8', name: '교수님의 신뢰', desc: '교수님의 과제 8개 완료', stat: 'tasksDone', n: 8, r: 10 },
     { id: 'task24', name: '모든 교수의 제자', desc: '교수님의 과제 30개 모두 완료', stat: 'tasksDone', n: 30, r: 50 }
   ];
