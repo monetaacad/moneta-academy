@@ -42,7 +42,7 @@
   LocalApi.prototype._view = function (now) {
     var W = this.d.W, P = this.d.P, b = W.boss;
     var cup = D2().HOUSES.map(function (h) { return { id: h.id, score: Math.floor(W.cup[h.id] || 0), members: 0 }; }).sort(function (a, c) { return c.score - a.score; });
-    var me = P ? [{ id: P.id, name: P.name, house: P.house, power: Rules.summary(P, W, now).power, lvl: P.lvl, grade: P.grade, stage: P.maxStage }] : [];
+    var me = P ? [{ id: P.id, name: P.name, house: P.house, power: Rules.summary(P, W, now, true).power, lvl: P.lvl, grade: P.grade, stage: P.maxStage }] : [];
     return { demo: true, epoch: W.epoch, now: now, week: Rules.weekId(now), weekEnd: Rules.weekStart(Rules.weekId(now) + 1),
       boss: { id: b.id, name: b.name, maxHp: b.maxHp, hp: b.hp, killedAt: b.killedAt, participants: P && P.wk.att ? 1 : 0 },
       cup: cup, hpts: W.hpts, hfull: W.hfull, topPower: me, topStage: me, topLvl: me, topTwK: P && P.st.twK ? [{ id: P.id, name: P.name, house: P.house, f: P.st.twK }] : [], topTwM: P && P.st.twM ? [{ id: P.id, name: P.name, house: P.house, f: P.st.twM }] : [], topDmg: P && P.wk.dmg ? [{ id: P.id, name: P.name, house: P.house, dmg: P.wk.dmg }] : [],
@@ -148,7 +148,7 @@
   LocalApi.prototype.profile = function (id) {
     var P = this.d && this.d.P; if (!P) return Promise.resolve({ error: '로그인이 필요합니다' });
     if (!id || id === 'local' || id === P.id) {
-      var pr = this.d.prof || {}, now = this._now(), s = Rules.summary(P, this.d.W, now);
+      var pr = this.d.prof || {}, now = this._now(), s = Rules.summary(P, this.d.W, now, true);
       return Promise.resolve({ id: P.id, name: P.name, house: P.house, cls: P.cls, grade: P.grade, lvl: s.lvl, power: s.power, rank: 1, deco: Rules.decoView(P), badge: (function (b) { return b ? { gem: b.gem, lv: b.lv, name: b.name } : null; })(Rules.badgeWorn(P)), created: P.created, av: this.d.av ? 1 : 0,
         status: pr.status || '', bio: pr.bio || '', fav: pr.fav || '', avcredit: pr.avcredit || '', showStats: pr.showStats !== false, visLv: pr.visLv, visStat: pr.visStat, visEq: pr.visEq, visBadge: pr.visBadge, badgeD: Rules.badgeWorn(P), allowFriend: pr.allowFriend !== false, online: true, self: true,
         stats: (function (c) { var st = {}; Rules.STATS.forEach(function (k) { st[k] = Math.round(c.stat[k]); }); return { st: st, dps: Math.round(c.totalDps), hp: Math.round(c.hp), def: Math.round(c.def) }; })(Rules.calc(P, this.d.W, now)), eq: P.eq });

@@ -990,7 +990,7 @@
     var bd = p.badgeD && R.GEM[p.badgeD.gem] ? p.badgeD : null;   // 휘장 공개: 장비 칸 옆 빈자리에
     if (p.eq || bd) {
       var mine = !p.self && S.P, bg = bd && R.GEM[bd.gem];
-      h += '<div class="section-t" style="margin-top:12px">' + (p.eq ? '장비' : '휘장') + ' <span class="tiny faint">칸을 누르면 상세가 펼쳐집니다</span></div><div class="peq' + (p.eq && bd ? ' peq6' : '') + '">' + (p.eq ? D.SLOTS : []).map(function (s) {
+      h += '<div class="section-t" style="margin-top:12px">' + (p.eq ? '장비' : '휘장') + (p.eqMain ? ' <span class="tag br">대표 프리셋</span>' : '') + ' <span class="tiny faint">칸을 누르면 상세가 펼쳐집니다</span></div><div class="peq' + (p.eq && bd ? ' peq6' : '') + '">' + (p.eq ? D.SLOTS : []).map(function (s) {
         var it = p.eq[s.id];
         if (!it) return '<span class="peqt empty"><i>' + s.name + '</i><span class="faint">비어 있음</span></span>';
         return '<button class="peqt rb' + it.r + '" data-act="pceq" data-a="' + s.id + '"><i>' + R.slotName(it) + '</i><span class="pn" style="color:' + rcol(it.r) + '">' + esc(it.name) + '</span>' + (it.enh ? '<b class="pe">+' + it.enh + '</b>' : '') + '</button>';
@@ -2401,11 +2401,11 @@
     var out = '';
     for (var i = 0; i < R.GEARSET_N; i++) {
       var g = gsInfo(i), armed = S.confirm['gs' + i] > Date.now();
-      out += '<div class="gset' + (g.on ? ' on' : '') + '"><div class="gsn"><b>' + (g.nm ? esc(g.nm) + ' <span class="tiny faint">프리셋 ' + (i + 1) + '</span>' : '프리셋 ' + (i + 1)) + '</b>' + (g.st ? ' <button class="btn sm ghost" data-act="gsname" data-a="' + i + '">이름 변경</button>' : '') + (g.on ? ' <span class="tag ok">장착 중</span>' : '') + (g.miss ? ' <span class="tag bad">없는 장비 ' + g.miss + '</span>' : '') +
+      out += '<div class="gset' + (g.on ? ' on' : '') + '"><div class="gsn"><b>' + (g.nm ? esc(g.nm) + ' <span class="tiny faint">프리셋 ' + (i + 1) + '</span>' : '프리셋 ' + (i + 1)) + '</b>' + (g.st ? ' <button class="btn sm ghost" data-act="gsname" data-a="' + i + '">이름 변경</button>' : '') + (g.on ? ' <span class="tag ok">장착 중</span>' : '') + (S.P.gearMain === i ? ' <span class="tag br">대표</span>' : '') + (g.miss ? ' <span class="tag bad">없는 장비 ' + g.miss + '</span>' : '') +
         '<div class="small" style="margin-top:2px">' + (g.st ? g.names.join(' · ') || '<span class="faint">저장된 장비가 모두 사라졌습니다</span>' : '<span class="faint">비어 있음</span>') + '</div></div>' +
-        '<span class="gsb"><button class="btn sm ' + (armed ? 'danger' : 'primary') + '" data-act="gssave" data-a="' + i + '">' + (armed ? '한 번 더 누르면 덮어씁니다' : '현재 장비 저장') + '</button>' + (g.st ? '<button class="btn sm ghost" data-act="gsclear" data-a="' + i + '">비우기</button>' : '') + '</span></div>';
+        '<span class="gsb"><button class="btn sm ' + (armed ? 'danger' : 'primary') + '" data-act="gssave" data-a="' + i + '">' + (armed ? '한 번 더 누르면 덮어씁니다' : '현재 장비 저장') + '</button>' + (g.st ? '<button class="btn sm ghost' + (S.P.gearMain === i ? ' on' : '') + '" data-act="gsmain" data-a="' + i + '" title="정보창 · 랭킹 전투력에 이 프리셋 장비가 표시됩니다">' + (S.P.gearMain === i ? '대표 해제' : '대표로 지정') + '</button><button class="btn sm ghost" data-act="gsclear" data-a="' + i + '">비우기</button>' : '') + '</span></div>';
     }
-    return '<div class="gslist">' + out + '</div>';
+    return '<div class="gslist">' + out + '</div><p class="tiny faint" style="margin-top:8px">대표 프리셋을 지정하면 정보창의 장비 · 능력치와 랭킹 전투력이 지금 장착한 장비 대신 대표 프리셋 장비 기준으로 표시됩니다. 가방에 없는 장비 칸은 빈칸으로 계산됩니다. 랭킹에는 잠시 후 반영됩니다.</p>';
   }
   ACT.gsname = function (i) {
     var st = (S.P.gearSets || [])[+i]; if (!st) return;
@@ -2423,6 +2423,7 @@
     if (st && !(S.confirm[k] > Date.now())) { S.confirm[k] = Date.now() + 4000; gsRedraw(); setTimeout(gsRedraw, 4100); return; }
     S.confirm[k] = 0; act('gearSet', { op: 'save', i: +i }).then(function (r) { if (r) toast(gsLabel(i) + '에 저장했습니다', '', 1600); gsRedraw(); });
   };
+  ACT.gsmain = function (i) { act('gearSet', { op: 'main', i: +i }).then(function (r) { if (r) toast(r.main < 0 ? '대표 프리셋을 해제했습니다' : gsLabel(i) + '을 대표로 지정했습니다', r.main < 0 ? '정보창 · 랭킹에 지금 장착한 장비가 표시됩니다' : '정보창 · 랭킹에 이 프리셋 장비가 표시됩니다', 2000); gsRedraw(); }); };
   ACT.gsclear = function (i) { act('gearSet', { op: 'clear', i: +i }).then(function (r) { if (r) toast('프리셋 ' + (+i + 1) + '을 비웠습니다', '', 1400); gsRedraw(); }); };
   ACT.gsload = function (i) { act('gearSet', { op: 'load', i: +i }).then(function (r) { if (r) toast(gsLabel(i) + ' 장착', r.moved + '칸을 바꿨습니다' + (r.miss ? ' · 가방에 없는 장비 ' + r.miss + '개는 그대로 두었습니다' : '') + (r.low ? ' · 레벨이 모자라는 장비 ' + r.low + '개는 장착하지 않았습니다' : ''), 2400); render(); }); };
   // 일괄 판매 · 분해 확인 (다시 보지 않기 · 설정에서 다시 켤 수 있음)
@@ -5962,7 +5963,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102332;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102333;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

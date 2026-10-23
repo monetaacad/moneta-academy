@@ -382,7 +382,7 @@ store.beforeWrite = drainMailQ;
 function statePayload(P, now) {
   drainMailQ(P);
   let mrow;
-  return { now, scale: cfg.timeScale, P: R.publicState(P), W: world.publicView(now, store.online(120000)), rank: world.rankOf(R.summary(P, world.W, now).power), fr: Number(dbx.q.friendIncomingCount.get(P.id).n), pinv: Number(dbx.q.partyInviteCount.get(P.id).n), party: partyOf.get(P.id) || null, guild: guildOf.get(P.id) || null, mailN: (mrow = mailNewRow(P.id), Number(mrow.n)), mailTop: Number(mrow.top), cls: classView(now), rit: ritView(P, now), auc: aucBrief(now), erInv: exprooms.invN(P.id), noteN: Number(dbx.q.noteUnread.get(P.id).n) };
+  return { now, scale: cfg.timeScale, P: R.publicState(P), W: world.publicView(now, store.online(120000)), rank: world.rankOf(R.summary(P, world.W, now, true).power), fr: Number(dbx.q.friendIncomingCount.get(P.id).n), pinv: Number(dbx.q.partyInviteCount.get(P.id).n), party: partyOf.get(P.id) || null, guild: guildOf.get(P.id) || null, mailN: (mrow = mailNewRow(P.id), Number(mrow.n)), mailTop: Number(mrow.top), cls: classView(now), rit: ritView(P, now), auc: aucBrief(now), erInv: exprooms.invN(P.id), noteN: Number(dbx.q.noteUnread.get(P.id).n) };
 }
 
 /* ───────── API ───────── */
@@ -551,7 +551,7 @@ routes['GET /api/myranks'] = (req, res) => {
   const pid = authed(req); if (!pid) return fail(req, res, 401, '로그인이 필요합니다');
   if (limited('mr:' + pid, 2, 10)) return fail(req, res, 429, '요청이 너무 잦습니다');
   const now = nowSec(), P = loadPlayer(pid, now); if (!P) return fail(req, res, 401, '학생 정보를 찾을 수 없습니다');
-  const ranks = world.myRanks(P, R.summary(P, world.W, now).power, now), party = partyOf.get(pid), tr = party && dbx.q.twRankGet.get(R.weekId(now), party);
+  const ranks = world.myRanks(P, R.summary(P, world.W, now, true).power, now), party = partyOf.get(pid), tr = party && dbx.q.twRankGet.get(R.weekId(now), party);
   let twi = -1, twf = 0; if (tr) { const L = world.twRanked(R.weekId(now)); twi = L.findIndex((x) => x.parties.indexOf(party) >= 0); if (twi >= 0) twf = L[twi].f; }   // 같은 파티원 구성은 한 줄로 합친 순위
   ranks.twp = twi >= 0 ? twi + 1 : null; ranks.twpF = twf;   // 우리 파티의 이번 주 별의 탑 순위
   send(req, res, 200, { ranks });
@@ -729,20 +729,20 @@ routes['GET /api/profile'] = (req, res) => {
   const pr = profileOf(row.profile), self = id === me;
   let lvl = row.lvl, grade = row.grade, power = row.power;
   const LP = self ? store.get(me) : store.peek(id);   // 접속 중인 학생은 메모리의 최신 값으로 (다른 학생은 DB에서 새로 읽어 오지 않음)
-  if (LP) { const s = R.summary(LP, world.W, Math.min(nowSec(), LP.at)); lvl = s.lvl; grade = s.grade; power = s.power; }
+  if (LP) { const s = R.summary(LP, world.W, Math.min(nowSec(), LP.at), true); lvl = s.lvl; grade = s.grade; power = s.power; }
   const out = { id, op: isChatOp(id) || undefined, name: row.name, house: row.house, grade, guest: !!row.guest, created: row.created, av: row.avatar_v && dbx.q.getAvatar.get(id).avatar ? row.avatar_v : 0,
     status: pr.status, bio: pr.bio, fav: pr.fav, avcredit: pr.avcredit || '', online: self || isOnline(id), self, title: LP ? R.titleName(LP, LP.title) : row.title };
-  { const DP = LP || store.get(id); out.deco = R.decoView(DP); if (DP && R.CLS[DP.cls]) out.cls = DP.cls; const bw = DP && R.badgeWorn(DP); if (bw) out.badge = { gem: bw.gem, lv: bw.lv, name: bw.name };
+  { const DP = LP || store.get(id); out.deco = R.decoView(DP); if (DP && R.CLS[DP.cls]) out.cls = DP.cls; const bw = DP && R.badgeWorn(R.showP(DP)); if (bw) out.badge = { gem: bw.gem, lv: bw.lv, name: bw.name };
     const fa = DP && DP.opt && DP.opt.showFam && DP.fam && DP.fam.act, fo = fa && DP.fam.own[fa]; if (fo && R.FAM[fa]) out.fam = { id: fa, lv: fo.lv, nm: fo.nm || '' }; }   // 동행 사역마 (학생이 공개를 켰을 때만)   // 정보 카드 꾸미기
   const fs = self ? null : friendState(me, id), can = (v) => self || v === 'all' || (v === 'friend' && fs === 'ok');
   if (can(pr.visLv)) Object.assign(out, { lvl, power, rank: world.rankOf(power) });
   { const hd = subjHeads(id), h2 = subjHeads(id, 1); if (hd.length) out.heads = hd; if (h2.length) out.seconds = h2; }   // 과목 수석 (순위표에 공개되는 정보라 공개 범위와 관계없이)
-  if (can(pr.visFull)) { const DP = LP || store.get(id); if (DP) try { out.full = R.fullStats(DP, world.ctx(nowSec()), Math.min(nowSec(), DP.at)); } catch (e) { } }   // 전체 능력치 (기본은 나만 보기)
-  if (can(pr.visBadge)) { const DP = LP || store.get(id), bw = DP && R.badgeWorn(DP); if (bw) out.badgeD = { gem: bw.gem, lv: bw.lv, name: bw.name, q: bw.q, aff: bw.aff || [] }; }   // 착용 휘장 상세 (장비 칸 옆에 표시)
+  if (can(pr.visFull)) { const DP = R.showP(LP || store.get(id)); if (DP) try { out.full = R.fullStats(DP, world.ctx(nowSec()), Math.min(nowSec(), DP.at)); } catch (e) { } }   // 전체 능력치 (기본은 나만 보기)
+  if (can(pr.visBadge)) { const DP = R.showP(LP || store.get(id)), bw = DP && R.badgeWorn(DP); if (bw) out.badgeD = { gem: bw.gem, lv: bw.lv, name: bw.name, q: bw.q, aff: bw.aff || [] }; }   // 착용 휘장 상세 (장비 칸 옆에 표시)
   if (can(pr.visStat) || can(pr.visEq)) {
-    const DP = LP || store.get(id);
+    const DP = R.showP(LP || store.get(id));   // 대표 장비 프리셋이 있으면 그 장비 기준
     if (DP && can(pr.visStat)) { const c = R.calc(DP, world.ctx(nowSec()), Math.min(nowSec(), DP.at)), st = {}; R.STATS.forEach((k) => { st[k] = Math.round(c.stat[k]); }); out.stats = { st, dps: Math.round(c.totalDps), hp: Math.round(c.hp), def: Math.round(c.def) }; }
-    if (DP && can(pr.visEq)) { out.eq = {}; for (const s in DP.eq) if (DP.eq[s]) out.eq[s] = pubItem(DP.eq[s]); }
+    if (DP && can(pr.visEq)) { if (DP !== (LP || store.get(id))) out.eqMain = 1; out.eq = {}; for (const s in DP.eq) if (DP.eq[s]) out.eq[s] = pubItem(DP.eq[s]); }
   }
   // 동아리 이름 · 직책
   const tg = guildOf.get(id), tgr = tg && dbx.q.gGet.get(tg);

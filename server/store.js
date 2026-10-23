@@ -29,7 +29,7 @@ function create(dbx, log) {
     if (api.beforeWrite) try { api.beforeWrite(P); } catch (e) { log('저장 전 처리 실패', e); }
     const W = worldRef && worldRef.W;
     const now = Date.now() / 1000;
-    const s = R.summary(P, W, Math.min(now, P.at));
+    const s = R.summary(P, W, Math.min(now, P.at), true);   // 랭킹 전투력은 대표 장비 프리셋 기준
     dbx.q.savePlayer.run(JSON.stringify(P), Math.floor(Date.now() / 1000), s.power, s.lvl, s.grade, s.maxStage, s.wbDps, P.house, R.titleName(P, P.title), P.id);
     if (P.wk && P.wk.id && (P.wk.cup > 0 || P.wk.att > 0)) dbx.q.upsertWeekly.run(P.wk.id, P.id, P.house, P.wk.cup, P.wk.dmg, P.wk.att);
   }
