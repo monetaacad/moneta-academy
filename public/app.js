@@ -1060,7 +1060,7 @@
     API.rels().then(function (j) {
       var box = $('#rlist'); if (!box) return;
       if (j.error) { box.innerHTML = '<p class="small bad">' + esc(j.error) + '</p>'; return; }
-      function row(r, sub, btns) { return '<div class="frow relrow"><button class="avbtn" data-act="prof" data-a="' + esc(r.id) + '">' + avatarHtml(r, 36) + '</button><div style="flex:1;min-width:0"><button class="cn" style="color:' + (R.HOUSE[r.house] ? R.HOUSE[r.house].color : 'inherit') + '" data-act="prof" data-a="' + esc(r.id) + '">' + esc(r.name) + '</button><div class="tiny faint">' + sub + '</div></div><div class="relbtns">' + btns + '</div></div>'; }
+      function row(r, sub, btns) { return '<div class="frow brow"><button class="avbtn" data-act="prof" data-a="' + esc(r.id) + '">' + avatarHtml(r, 36) + '</button><div style="flex:1;min-width:0"><button class="cn" style="color:' + (R.HOUSE[r.house] ? R.HOUSE[r.house].color : 'inherit') + '" data-act="prof" data-a="' + esc(r.id) + '">' + esc(r.name) + '</button><div class="tiny faint">' + sub + '</div></div><div class="bbtns">' + btns + '</div></div>'; }
       var lab = function (r) { return '나는 ' + esc(r.mine) + ' · ' + esc(r.name) + ' 님은 ' + esc(r.theirs); };
       var h = j.demo ? '<p class="small muted">데모에서는 관계를 맺을 수 없습니다. 서버를 열면 학생 정보창에서 신청할 수 있습니다.</p>' : '<p class="small muted">학생 정보창의 「관계 신청」으로 신청하고, 상대가 수락하면 두 학생의 정보창 「관계」 탭에 표시됩니다.</p>';
       if (j.inc.length) h += '<div class="section-t">받은 신청 ' + j.inc.length + '</div>' + j.inc.map(function (r) { return row(r, lab(r), '<button class="btn sm primary" data-act="relop" data-a="accept" data-b="' + r.rid + '">수락</button><button class="btn sm ghost" data-act="relop" data-a="decline" data-b="' + r.rid + '">거절</button>'); }).join('');
@@ -5353,8 +5353,8 @@
   // 접속 중인 친구가 지금 하는 일 (원정 중이면 파티 초대 전에 확인)
   function frAct(f) {
     var x = f.act; if (!x) return '';
-    if (x.k === 'exp') return ' <span class="tag br" title="원정에서 돌아오면 함께 원정에 참여할 수 있습니다">' + (x.pt ? '함께 원정 중' : '원정 중') + ' · ' + x.s + '단계 · <span data-l="left:' + x.end + '"></span></span>';
-    if (x.k === 'room') return ' <span class="tag br">함께 원정 방 대기 중</span>';
+    if (x.k === 'exp') return ' <span class="tag br" title="원정에서 돌아오면 함께 원정에 참여할 수 있습니다">' + '원정 중 · ' + x.s + '단계 · <span data-l="left:' + x.end + '"></span></span>';
+    if (x.k === 'room') return ' <span class="tag br">원정 대기 중</span>';
     if (x.k === 'dream') return ' <span class="tag">꿈길 중</span>';
     return ' <span class="tag ok">출정 가능</span>';
   }
@@ -5362,7 +5362,7 @@
     API.friends().then(function (j) {
       var box = $('#flist'); if (!box) return;
       if (j.error) { box.innerHTML = '<p class="small bad">' + esc(j.error) + '</p>'; return; }
-      function row(f, btns) { return '<div class="frow"><button class="avbtn" data-act="prof" data-a="' + esc(f.id) + '">' + avatarHtml(f, 36) + '</button><div style="flex:1;min-width:0"><button class="cn" style="color:' + (R.HOUSE[f.house] ? R.HOUSE[f.house].color : 'inherit') + '" data-act="prof" data-a="' + esc(f.id) + '">' + esc(f.name) + '</button>' + (f.online ? ' <span class="odot" title="접속 중"></span>' : '') + ' <span class="tiny faint">' + (f.grade >= 8 ? '마스터' : f.grade + '학년') + ' · Lv ' + f.lvl + '</span>' + frAct(f) + (f.status ? '<div class="tiny muted ell">' + esc(f.status) + '</div>' : f.seen && !f.online ? '<div class="tiny faint">마지막 접속 ' + clock(f.seen) + '</div>' : '') + (f.memo != null && !j.demo ? '<div class="fmemo" id="fm-' + esc(f.id) + '">' + fmemoView(f) + '</div>' : '') + '</div>' + btns + '</div>'; }
+      function row(f, btns) { return '<div class="frow brow"><button class="avbtn" data-act="prof" data-a="' + esc(f.id) + '">' + avatarHtml(f, 36) + '</button><div style="flex:1;min-width:0"><button class="cn" style="color:' + (R.HOUSE[f.house] ? R.HOUSE[f.house].color : 'inherit') + '" data-act="prof" data-a="' + esc(f.id) + '">' + esc(f.name) + '</button>' + (f.online ? ' <span class="odot" title="접속 중"></span>' : '') + ' <span class="tiny faint">' + (f.grade >= 8 ? '마스터' : f.grade + '학년') + ' · Lv ' + f.lvl + '</span>' + frAct(f) + (f.status ? '<div class="tiny muted ell">' + esc(f.status) + '</div>' : f.seen && !f.online ? '<div class="tiny faint">마지막 접속 ' + clock(f.seen) + '</div>' : '') + (f.memo != null && !j.demo ? '<div class="fmemo" id="fm-' + esc(f.id) + '">' + fmemoView(f) + '</div>' : '') + '</div><div class="bbtns">' + btns + '</div></div>'; }
       S.frMemo = {}; j.friends.concat(j.out).forEach(function (f) { S.frMemo[f.id] = f.memo || ''; });
       var h = '';
       if (j.demo) h += '<p class="small muted">데모에서는 친구를 맺을 수 없습니다. 서버를 열면 검색하거나 채팅에서 이름을 눌러 친구 신청을 할 수 있습니다.</p>';
@@ -5963,7 +5963,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102333;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102334;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
