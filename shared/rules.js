@@ -971,7 +971,8 @@
     if (P.opt.autoEquip && R.canWear(P, it)) {
       var cur = P.eq[it.slot];
       // 쓰던 장비를 둘 곳(가방 · 우편함)이 없으면 바꿔 끼지 않는다 (예전에는 가방이 가득 차면 쓰던 장비를 판매해 버렸다)
-      if (!cur || (!cur.lock && hasRoom(P) && R.powerWith(P, it) > calc(P, null).power * 1.0001)) {
+      // 잠긴 장비 · 장비 프리셋에 저장된 장비는 자동 장착으로 바꾸지 않는다
+      if (!cur || (!cur.lock && !R.presetUids(P)[cur.u] && hasRoom(P) && R.powerWith(P, it) > calc(P, null).power * 1.0001)) {
         if (cur) { var where = storeOrSell(P, cur, true); log(P, t, it.name + ' 자동 장착 · 쓰던 ' + R.josa(cur.name + (cur.enh ? ' +' + cur.enh : ''), '은', '는') + (where === 'mail' ? ' 가방이 가득 차 우편함으로 보냈습니다' : ' 가방에 넣었습니다'), 'news'); }
         P.eq[it.slot] = it; return 'equip';
       }
@@ -1325,7 +1326,8 @@
     if (rw.mana) addMana(P, rw.mana); if (rw.know) P.res.know += rw.know; if (rw.egg) P.fam.eggs += rw.egg; if (rw.ticket) P.wb.extra = (P.wb.extra || 0) + rw.ticket;
     if (rw.rsDone || rw.gradeUp || rw.respec) { var tk = P.tok || (P.tok = {}); if (rw.rsDone) tk.rsDone = (tk.rsDone || 0) + rw.rsDone; if (rw.gradeUp) tk.gradeUp = (tk.gradeUp || 0) + rw.gradeUp; if (rw.respec) tk.respec = (tk.respec || 0) + rw.respec; }
     for (var i = 0; i < (rw.gear || 0); i++) { var it = makeItem(P, pick(P, D.SLOTS).id, R.rewardIlvl(P), Math.max(2, rollRarity(P, 0.6)), 2); out.items.push({ name: it.name, r: it.r, res: gainItem(P, it, now, '우편 (무작위 장비)', 0.6) }); }
-    (rw.items || []).forEach(function (it0) { var it = JSON.parse(JSON.stringify(it0)); it.u = uid(P); it.lock = false; out.items.push({ name: it.name, r: it.r, res: gainItem(P, it, now, '우편 (지정 장비)') }); });
+    // 장비 고유 번호는 그대로 둔다 (가방이 가득 차 맡겨 둔 장비가 돌아오면 장비 프리셋에 다시 맞물리게). 같은 번호가 이미 있으면(가방 · 장착 · 되사기 목록) 새 번호
+    (rw.items || []).forEach(function (it0) { var it = JSON.parse(JSON.stringify(it0)); if (!it.u || R.findItem(P, it.u) || (P.bb || []).some(function (x) { return x && x.it && x.it.u === it.u; })) it.u = uid(P); it.lock = false; out.items.push({ name: it.name, r: it.r, res: gainItem(P, it, now, '우편 (지정 장비)') }); });
     R.noMailQ = false;
     out.text = R.rewardText(rw); return out;
   };
