@@ -2336,14 +2336,21 @@
       ((b.aff || []).length ? '<div class="bdgup"><div class="bdgut"><b class="small">' + gterm('세공 다시 새기기', '세공') + '</b><span class="tiny faint">별조각으로 선택한 세공 한 줄을 새로 굴립니다 (다른 줄 · 대표 효과와 같은 옵션은 나오지 않음 · 이름의 앞말은 첫 줄을 따릅니다)</span></div><span class="row bdgrc"><select id="brc-line" aria-label="다시 새길 세공">' + b.aff.map(function (a, i) { return '<option value="' + i + '"' + (i === li ? ' selected' : '') + '>' + (i + 1) + '. ' + (D.BONUS_NAMES[a.id] || a.id) + ' +' + pct(a.v) + '</option>'; }).join('') + '</select>' + (lk ? lkTag : '<button class="btn sm' + (armed ? ' primary' : '') + '" data-act="brecut" data-a="' + b.u + '"' + (sh >= rc ? '' : ' disabled') + '>' + (armed ? '한 번 더 누르면 새깁니다' : '새기기') + ' <span class="cost">' + rc + ' 별조각</span></button>') + '</span></div>' : '') +
       '</div>';
   }
-  ACT.bshine = function (u) { act('badgeShine', { u: u }).then(function (r) { if (r) { Snd.play('enh'); toast('광을 냈습니다', r.name + ' · 품질 ' + (Math.round(r.q * 1000) / 10) + '% · 별조각 -' + r.cost, 2200); } render(); }); };
+  // 휘장 닦기 · 광내기 · 재련: 설정 「한 번 더 확인」(기본 켜짐)이면 첫 클릭은 단추를 확인 상태로만 바꾼다 (5초)
+  function askTwice(key, el, text) {
+    if (S.P.opt.upAsk === false || S.confirm[key] > Date.now()) { delete S.confirm[key]; return false; }
+    S.confirm[key] = Date.now() + 5000;
+    if (el) { var old = el.innerHTML; el.innerHTML = text; el.classList.add('danger'); setTimeout(function () { if (el.isConnected && !(S.confirm[key] > Date.now())) { el.innerHTML = old; el.classList.remove('danger'); } }, 5100); }
+    return true;
+  }
+  ACT.bshine = function (u, b, el) { if (askTwice('bsh' + u, el, '한 번 더 누르면 광을 냅니다')) return; act('badgeShine', { u: u }).then(function (r) { if (r) { Snd.play('enh'); toast('광을 냈습니다', r.name + ' · 품질 ' + (Math.round(r.q * 1000) / 10) + '% · 별조각 -' + r.cost, 2200); } render(); }); };
   ACT.brecut = function (u) {
     var sel = $('#brc-line'), i = sel ? +sel.value : 0, k = 'brc' + u; S.pick.brc = i;
     if (!(S.confirm[k] > Date.now())) { S.confirm[k] = Date.now() + 4000; render(); setTimeout(render, 4100); return; }
     S.confirm[k] = 0; act('badgeRecut', { u: u, i: i }).then(function (r) { if (r) { Snd.play('enh'); toast('세공을 다시 새겼습니다', r.was + ' → ' + r.text + ' · 별조각 -' + r.cost, 2800); } render(); });
   };
   ACT.bwear = function (u) { act('badgeWear', { u: u || '' }).then(function (r) { if (r) { var b = u && R.badgeFind(S.P, u); toast(u ? '휘장을 달았습니다' : '휘장을 뗐습니다', b ? b.name : '', 1600); } render(); }); };
-  ACT.bpolish = function (u) { act('badgePolish', { u: u }).then(function (r) { if (!r) return; Snd.play('enh'); toast('휘장을 닦았습니다', '별빛 +' + r.xp + (r.to > r.from ? ' · Lv ' + r.from + '→' + r.to : ''), 2000); render(); }); };
+  ACT.bpolish = function (u, b, el) { if (askTwice('bpo' + u, el, '한 번 더 누르면 닦습니다')) return; act('badgePolish', { u: u }).then(function (r) { if (!r) return; Snd.play('enh'); toast('휘장을 닦았습니다', '별빛 +' + r.xp + (r.to > r.from ? ' · Lv ' + r.from + '→' + r.to : ''), 2000); render(); }); };
   // 휘장 계승: 재료(높은 레벨)를 고르고 → 받을 휘장(낮은 레벨)을 고른다. 한 번 더 누르면 실행
   function binheritBody(u) {
     var P = S.P, src = R.badgeFind(P, u); if (!src) return '<p class="small muted">없는 휘장입니다.</p>';
@@ -4626,7 +4633,8 @@
     modal(mhead('재련', esc(it.name)) + '<div id="rfbody">' + rfBody(u) + '</div>');
   };
   ACT.rfkeep = function (u, i) { var kp = rfKeep(u); if (kp[i]) delete kp[i]; else kp[i] = 1; var b = $('#rfbody'); if (b) b.innerHTML = rfBody(u); };
-  ACT['reforge-go'] = function (u) {
+  ACT['reforge-go'] = function (u, b, el) {
+    if (askTwice('rf' + u, el, '한 번 더 누르면 재련합니다')) return;
     var it0 = R.findItem(S.P, u), kp = rfKeep(u), keep = Object.keys(kp).map(Number), old = it0 ? (it0.aff || []).map(function (a, i) { return '<div class="statline"><span>' + (D.BONUS_NAMES[a.id] || D.STAT_NAMES[a.id] || a.id) + (kp[i] ? ' <span class="tag br">잠금 유지</span>' : '') + '</span><span class="d">' + affVal(a) + '</span></div>'; }).join('') : '';
     act('reforge', { u: u, keep: keep }).then(function (r) {
       if (!r) { closeModal(); render(); return; } Snd.play('enh'); var it = R.findItem(S.P, u); S.rfKeep = null;
@@ -5193,6 +5201,7 @@
       '<label class="tog"><input type="checkbox" id="opt-rf" data-act="opt" data-a="reduceFx"' + (P.opt.reduceFx ? ' checked' : '') + '> 전투 효과 줄이기 (배터리 절약)</label>' +
       '<label class="tog"><input type="checkbox" id="opt-hr" data-act="opt" data-a="hideRank"' + (P.opt.hideRank ? ' checked' : '') + '> 좌측 내 정보에서 전투력 옆 순위 숨기기</label>' +
       '<label class="tog"><input type="checkbox" data-act="opt" data-a="bulkAsk"' + (P.opt.bulkAsk !== false ? ' checked' : '') + '> 장비 일괄 판매 · 분해 전에 확인 창 띄우기</label>' +
+      '<label class="tog"><input type="checkbox" data-act="opt" data-a="upAsk"' + (P.opt.upAsk !== false ? ' checked' : '') + '> 휘장 닦기 · 광내기 · 장비 재련 전에 한 번 더 확인하기</label>' +
       '<label class="tog"><input type="checkbox" data-act="homeleft"' + (PREF.homeLeft ? ' checked' : '') + '> 모바일 하단 안내도에서 광장 버튼을 맨 왼쪽에 두기 <span class="tiny faint">(위로 가기 버튼에 가려질 때)</span></label>' +
       '<label class="tog"><input type="checkbox" data-act="opt" data-a="buffMerge"' + (P.opt.buffMerge ? ' checked' : '') + '> 물약 효과 합치기 <span class="tiny faint">(상단에 하나로 표시 · 누르거나 마우스를 올리면 물약 · 효과 · 남은 시간)</span></label></div>';
     h += '<div class="setsec"' + st('소리') + '><div class="section-t">소리</div>' +
@@ -6089,7 +6098,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102364;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102365;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
