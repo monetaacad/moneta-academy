@@ -163,7 +163,7 @@ var DATA = (function () {
     { id: 'clepsydra', name: '물시계관', latin: 'Clepsydra', color: '#6fb5c9',
       motto: '한 방울씩, 그러나 멈추지 않고',
       desc: '인내와 명상의 기숙사. 탑 꼭대기의 거대한 물시계는 아카데미가 세워진 날부터 단 한 번도 멈춘 적이 없다.',
-      bonus: { dispPct: 0.25, manaPct: 0.10 }, bonusText: '사역마 파견 보상 +25%, 마나 +10%' },
+      bonus: { dispPct: 0.25, manaPct: 0.10 }, bonusText: '사역마 파견 보상 +25%, 마나 재생 +10%' },
     { id: 'corona', name: '가시왕관관', latin: 'Corona Spina', color: '#d9736b',
       motto: '상처 없는 왕관은 없다',
       desc: '결투와 실전 마법을 숭상하는 기숙사. 매년 아카데미 대항 결투제의 우승기는 대부분 이곳에 걸린다.',
