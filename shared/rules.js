@@ -2119,7 +2119,7 @@
   /* 고서 열람실: 지식으로 3시간 버프 (한 번에 한 권 · 같은 책은 이어 읽기 최대 9시간 · 다른 책은 바꿔 펼침) */
   R.BOOK_DUR = 10800; R.BOOK_MAX = 32400; R.BOOK_GRADE = 2;
   // 값: 학년마다 1.62배 (2학년 1,600 · 4학년 4,100 · 6학년 10,800 · 8학년 28,000). 시뮬레이션의 하루 남는 지식 1/6쯤
-  R.bookCost = function (P) { return Math.round(600 * Math.pow(1.62, Math.max(2, P.grade)) / 100) * 100; };
+  R.bookCost = function (P) { return Math.round(600 * Math.pow(1.58, Math.max(2, P.grade)) / 100) * 100; };   // 학년마다 ×1.58 (예전 ×1.62)
   A.bookRead = function (P, W, now, a) {
     var id = str(a.id), b = BOOK[id]; if (!b) err('없는 책입니다');
     if (P.grade < R.BOOK_GRADE) err(R.BOOK_GRADE + '학년부터 열람할 수 있습니다');
