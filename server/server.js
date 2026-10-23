@@ -555,7 +555,7 @@ routes['GET /api/houserank'] = (req, res) => {
   const hq = new URL(req.url, 'http://x').searchParams.get('house'), house = R.HOUSE[hq] ? hq : P.house, week = R.weekId(nowSec());
   const top = dbx.q.houseRank.all(week, house).map((r) => ({ id: r.id, name: r.name, grade: r.grade, house: r.house, av: r.avatar_v, cup: Math.floor(r.cup) }));
   let me = null;
-  if (house === P.house) { const cup = P.wk && P.wk.id === week ? Math.floor(P.wk.cup || 0) : 0; me = { cup, rank: cup > 0 ? Number(dbx.q.houseRankOf.get(week, house, cup).r) : 0 }; }
+  if (house === P.house) { const mine = top.find((r) => r.id === pid), cup = Math.max(P.wk && P.wk.id === week ? P.wk.cup || 0 : 0, mine ? mine.cup : 0); me = { cup: Math.floor(cup), rank: cup > 0 ? Number(dbx.q.houseRankOf.get(week, house, cup, pid).r) : 0 }; }
   send(req, res, 200, { house, top, me });
 };
 routes['GET /api/subjranks'] = (req, res) => {
