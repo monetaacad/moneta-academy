@@ -1289,7 +1289,7 @@
   R.titleList = function (P) { return D.TITLES.filter(function (t) { return !t.op || opLv(P) >= t.op; }); };
   R.OP_TITLES = {}; D.TITLES.forEach(function (t) { if (t.op) R.OP_TITLES[t.name] = t.op; });
   R.LIVE_TITLES = {}; D.SUBJECTS.forEach(function (sj) { R.LIVE_TITLES[sj.name + ' 수석'] = 1; R.LIVE_TITLES[sj.name + ' 차석'] = 1; }); D.HOUSES.forEach(function (h) { R.LIVE_TITLES[h.name + ' 공헌 1위'] = 1; });
-  R.opTitleCls = function (name) { var v = R.OP_TITLES[name]; return v ? ' op ' + (v >= 2 ? 'chief' : 'council') : R.LIVE_TITLES[name] ? ' live' : ''; };   // 칭호 이름 → 배지 모양 (실시간 칭호는 금빛)   // 칭호 이름 → 배지 모양
+  R.opTitleCls = function (name) { var v = R.OP_TITLES[name]; return v ? ' op ' + (v >= 2 ? 'chief' : 'council') : ''; };   // 칭호 이름 → 배지 모양 (실시간 칭호는 다른 칭호와 같은 모양)   // 칭호 이름 → 배지 모양
   R.titleOk = function (P, id) {
     var t = D.TITLES.find(function (x) { return x.id === id; }); if (!t) return false;
     if (t.op) return opLv(P) >= t.op;
