@@ -2697,7 +2697,7 @@
       h += '<div class="grid gauto" style="margin-top:8px">' + tl.filter(function (t) { return !tf || (tf === 'have') === !!R.titleOk(P, t.id); }).map(function (t) {
         var ok = R.titleOk(P, t.id), on = P.title === t.id, nm = R.titleName(P, t.id) || '?';
         var prog = t.stat ? Math.min(P.st[t.stat] || 0, t.n) : t.grade ? Math.min(P.grade, t.grade) : 1, goal = t.stat ? t.n : t.grade || 1;
-        return '<div class="card ttlcard' + (ok ? '' : ' locked') + (on ? ' on' : '') + '"><div class="row between"><span class="ttl' + (ok ? '' : ' off') + '">' + esc(ok ? nm : '???') + '</span>' + (on ? '<span class="tag ok">다는 중</span>' : '') + '</div>' +
+        return '<div class="card ttlcard' + (ok ? '' : ' locked') + (on ? ' on' : '') + '"><div class="row between"><span class="ttl' + (ok ? '' : ' off') + '">' + esc(nm) + '</span>' + (on ? '<span class="tag ok">다는 중</span>' : '') + '</div>' +
           '<p class="small muted" style="margin-top:6px">' + esc(t.how) + '</p>' + liveSubjPick(P, t, ok) +
           (ok ? '<div class="row" style="margin-top:8px">' + (on ? '<button class="btn sm ghost" data-act="titleset" data-a="">해제</button>' : '<button class="btn sm primary" data-act="titleset" data-a="' + t.id + '">장착</button>') + '</div>' : t.live ? '<p class="tiny faint" style="margin-top:8px">순위를 유지하는 동안에만 장착할 수 있습니다.</p>'
             : '<div class="bar brass" style="margin-top:8px;height:5px"><b style="width:' + (prog / goal * 100).toFixed(1) + '%"></b></div><div class="tiny faint num" style="margin-top:2px">' + fmt(prog) + ' / ' + fmt(goal) + (t.grade ? '학년' : '') + '</div>') + '</div>';
@@ -6089,7 +6089,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102363;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102364;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
