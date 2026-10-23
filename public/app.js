@@ -2264,6 +2264,7 @@
     h += badgeCard();
     h += '<div class="grid g2 gearcols" style="margin-top:14px"><div class="stack">' + detailCard() + allocCard() + '</div>';
     if (S.bagTab === 'inv') return h + '<div class="card" data-anchor="bag">' + bagTabs(c) + invBody() + '</div></div>';   // 소지품 (장비 아닌 것)
+    if (S.bagTab === 'bb') return h + '<div class="card" data-anchor="bag">' + bagTabs(c) + bbBody(c) + '</div></div>';   // 되사기 (판매 · 분해한 장비)
     var list = P.inv.filter(function (it) { return S.invF === 'all' || it.slot === S.invF; }).sort(function (a, b) { return b.r - a.r || b.ilvl - a.ilvl; });
     h += '<div class="card" data-anchor="bag">' + bagTabs(c) +
       '<div class="filters" style="margin:8px 0">' + [['all', '전체']].concat(D.SLOTS.map(function (s) { return [s.id, s.name]; })).map(function (f) { return '<button class="btn sm ghost' + (S.invF === f[0] ? ' on' : '') + '" data-act="invf" data-a="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '</div>';
@@ -4471,7 +4472,22 @@
     var d = $('.invdetail') || $('.eqdetail'); if (d && d.offsetParent) d.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); };   // 한 칸일 때 가방 안에 펼친 살펴보기가 보이게
   ACT.invf = function (f) { S.invF = f; render(); };
   /* ── 소지품: 장비가 아닌 것(알 · 도전권 · 물약 · 망각의 차 등)을 한곳에. 칸 제한 없음, 바로 쓰기 · 바로가기 ── */
-  function bagTabs(c) { var nn = invNew().length; return '<div class="tabs bagtabs" role="tablist" style="margin-bottom:8px"><button role="tab" class="' + (S.bagTab !== 'inv' ? 'on' : '') + '" data-act="bagtab" data-a="eq">장비 가방 <span class="num tiny">' + S.P.inv.length + ' / ' + c.bag + '</span></button><button role="tab" class="' + (S.bagTab === 'inv' ? 'on' : '') + '" data-act="bagtab" data-a="inv">소지품' + (nn ? ' <span class="tag br">NEW ' + nn + '</span>' : '') + '</button></div>'; }
+  function bagTabs(c) { var nn = invNew().length, nb = R.bbList(S.P, now()).length; return '<div class="tabs bagtabs" role="tablist" style="margin-bottom:8px"><button role="tab" class="' + (S.bagTab !== 'inv' && S.bagTab !== 'bb' ? 'on' : '') + '" data-act="bagtab" data-a="eq">장비 가방 <span class="num tiny">' + S.P.inv.length + ' / ' + c.bag + '</span></button><button role="tab" class="' + (S.bagTab === 'inv' ? 'on' : '') + '" data-act="bagtab" data-a="inv">소지품' + (nn ? ' <span class="tag br">NEW ' + nn + '</span>' : '') + '</button><button role="tab" class="' + (S.bagTab === 'bb' ? 'on' : '') + '" data-act="bagtab" data-a="bb">되사기' + (nb ? ' <span class="num tiny">' + nb + '</span>' : '') + '</button></div>'; }
+  // 되사기: 최근 24시간 안에 직접 판매 · 분해한 장비 (최대 R.BB_MAX개). 받은 아르크 · 마석 · 마석가루를 그대로 내면 되찾는다
+  function bbBody(c) {
+    var P = S.P, L = R.bbList(P, now()), full = P.inv.length >= c.bag;
+    var h = '<p class="tiny faint" style="margin-bottom:8px">최근 24시간 안에 직접 판매 · 분해한 장비 ' + R.BB_MAX + '개까지, 받은 만큼 그대로 내고 되살 수 있습니다. 분류 마법의 자동 처분은 해당하지 않습니다.' + (full ? ' <span class="bad">가방이 가득 찼습니다.</span>' : '') + '</p>';
+    if (!L.length) return h + '<div class="empty">되살 수 있는 장비가 없습니다.</div>';
+    return h + '<div class="stack" style="gap:6px">' + L.map(function (x) {
+      var it = x.it, cost = [], ok = !full;
+      if (x.gold) { cost.push(fmt(x.gold) + ' ' + CUR); if (P.res.gold < x.gold) ok = false; }
+      if (x.stone) { cost.push('마석 ' + fmt(x.stone)); if (P.res.stone < x.stone) ok = false; }
+      if (x.dust) { cost.push('마석가루 ' + fmt(x.dust)); if ((P.res.dust || 0) < x.dust) ok = false; }
+      return '<div class="frow brow"><div style="flex:1;min-width:0"><div class="small ell"><b style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</b> <span class="tiny faint">' + D.RARITY[it.r].name + ' ' + R.slotName(it) + ' · Lv ' + it.ilvl + '</span></div><div class="tiny faint">' + (x.gold ? '판매' : '분해') + ' · ' + R.fmtTime(Math.max(0, R.BB_TIME - (now() - x.t))) + ' 남음</div></div>' +
+        '<div class="bbtns"><button class="btn sm"' + (ok ? ' data-act="bbuy" data-a="' + esc(it.u) + '"' : ' disabled title="' + (full ? '가방이 가득 찼습니다' : '재화가 부족합니다') + '"') + '>되사기 <span class="cost">' + cost.join(' · ') + '</span></button></div></div>';
+    }).join('') + '</div>';
+  }
+  ACT.bbuy = function (u) { act('buyback', { u: u }).then(function (r) { if (r) toast('되사기', R.josa('「' + r.name + '」', '을', '를') + ' 가방에 돌려놓았습니다', 1800); render(); }); };
   // 소지품의 바로 부화: 마나가 든다는 것을 버튼에 적고, 한 번 더 눌러야 깨운다 (부화기의 「마나로 바로 깨우기」와 같은 동작)
   function invEggBtn(P) {
     var price = R.eggManaCost(P, wctx(), now()), armed = S.confirm.inveg > Date.now(), can = predMana() >= price;
@@ -4525,7 +4541,7 @@
     if (!(S.confirm.tf > Date.now())) { S.confirm.tf = Date.now() + 4000; tfRedraw(); setTimeout(tfRedraw, 4100); return; }
     S.confirm.tf = 0; act('subjTransfer', { from: S.tf.from, to: S.tf.to }).then(function (r) { if (!r) { tfRedraw(); return; } closeModal(); toast('학점 이전 증서', r.from + ' → ' + r.to + ' Lv ' + r.lt + ' → ' + r.lv, 2800); render(); });
   };
-  ACT.bagtab = function (t) { S.bagTab = t === 'inv' ? 'inv' : 'eq'; render(); };
+  ACT.bagtab = function (t) { S.bagTab = t === 'inv' || t === 'bb' ? t : 'eq'; render(); };
   ACT.invjump = function (slot) { S.bagTab = 'bag'; S.invF = slot; ACT.goto('gear', 'bag'); };   // 장비 화면 상단 칸 이름 → 가방에서 그 칸만
   ACT.invgo = function () { S.bagTab = 'inv'; ACT.goto('gear', 'bag'); };
   // 능력치 나누기: + / − 로 나눠 보고 「저장」 → 확인 창에서 한 번 더 확인하면 적용
@@ -6043,7 +6059,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102357;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102358;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

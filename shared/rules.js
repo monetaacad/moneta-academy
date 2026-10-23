@@ -2232,14 +2232,14 @@
   A.sell = function (P, W, now, a) {
     var u = str(a.u), i = P.inv.findIndex(function (x) { return x.u === u; }); if (i < 0) err('가방에 없는 장비입니다');
     if (P.inv[i].lock) err('잠긴 장비입니다');
-    var p = R.sellPrice(P.inv[i]); dlog(P, '판매', [P.inv[i]]); P.inv.splice(i, 1); addGold(P, p); return { gold: p };
+    var p = R.sellPrice(P.inv[i]); dlog(P, '판매', [P.inv[i]]); bbAdd(P, P.inv[i], now, { gold: p }); P.inv.splice(i, 1); addGold(P, p); return { gold: p };
   };
   // 일괄 판매 · 분해 대상: 잠기지 않았고 장비 프리셋에 저장되지 않은 가방 장비 (프리셋 장비가 일괄 처분으로 사라지지 않게)
   R.presetUids = function (P) { var m = {}; (P.gearSets || []).forEach(function (st) { if (st && st.eq) for (var k in st.eq) m[st.eq[k]] = 1; }); return m; };
   R.bulkTargets = function (P, r) { var ps = R.presetUids(P); return P.inv.filter(function (it) { return !it.lock && !ps[it.u] && it.r <= r; }); };
   A.sellBelow = function (P, W, now, a) {
     var r = int(a.r, 0, 4), tot = 0, n = 0;
-    var gone = [], ps = R.presetUids(P); P.inv = P.inv.filter(function (it) { if (!it.lock && !ps[it.u] && it.r <= r) { tot += R.sellPrice(it); n++; gone.push(it); return false; } return true; });
+    var gone = [], ps = R.presetUids(P); P.inv = P.inv.filter(function (it) { if (!it.lock && !ps[it.u] && it.r <= r) { var sp = R.sellPrice(it); tot += sp; n++; gone.push(it); bbAdd(P, it, now, { gold: sp }); return false; } return true; });
     if (gone.length) dlog(P, '일괄 판매', gone, D.RARITY[r].name + ' 이하');
     addGold(P, tot); return { n: n, gold: tot };
   };
@@ -2249,13 +2249,27 @@
   A.dismantle = function (P, W, now, a) {
     var u = str(a.u), i = P.inv.findIndex(function (x) { return x.u === u; }); if (i < 0) err('가방에 없는 장비입니다');
     if (P.inv[i].lock) err('잠긴 장비입니다');
-    var y = dismantleGive(P, P.inv[i]); dlog(P, '분해', [P.inv[i]]); P.inv.splice(i, 1); return y;
+    var y = dismantleGive(P, P.inv[i]); dlog(P, '분해', [P.inv[i]]); bbAdd(P, P.inv[i], now, { stone: y.stone, dust: y.dust }); P.inv.splice(i, 1); return y;
   };
   A.dismantleBelow = function (P, W, now, a) {
     var r = int(a.r, 0, 4), o = { n: 0, stone: 0, dust: 0 };
-    var gone = [], ps = R.presetUids(P); P.inv = P.inv.filter(function (it) { if (!it.lock && !ps[it.u] && it.r <= r) { var y = dismantleGive(P, it); o.n++; o.stone += y.stone; o.dust += y.dust; gone.push(it); return false; } return true; });
+    var gone = [], ps = R.presetUids(P); P.inv = P.inv.filter(function (it) { if (!it.lock && !ps[it.u] && it.r <= r) { var y = dismantleGive(P, it); o.n++; o.stone += y.stone; o.dust += y.dust; gone.push(it); bbAdd(P, it, now, { stone: y.stone, dust: y.dust }); return false; } return true; });
     if (gone.length) dlog(P, '일괄 분해', gone, D.RARITY[r].name + ' 이하');
     return o;
+  };
+  // 되사기: 직접 판매 · 분해한 장비를 받은 만큼(아르크 · 마석 · 마석가루) 그대로 내고 되찾는다. 최근 R.BB_MAX개 · R.BB_TIME 안에서만 (분류 마법 자동 처분은 제외)
+  R.BB_MAX = 20; R.BB_TIME = 86400;
+  function bbAdd(P, it, now, got) { var L = P.bb || (P.bb = []); L.unshift({ it: it, t: now, gold: got.gold || 0, stone: got.stone || 0, dust: got.dust || 0 }); if (L.length > R.BB_MAX) L.length = R.BB_MAX; }
+  R.bbList = function (P, now) { return (P.bb || []).filter(function (x) { return x && x.it && now - x.t < R.BB_TIME; }); };
+  A.buyback = function (P, W, now, a) {
+    var u = str(a.u), L = P.bb || [], i = L.findIndex(function (x) { return x && x.it && x.it.u === u; }); if (i < 0) err('되살 수 있는 장비가 아닙니다');
+    var x = L[i]; if (now - x.t >= R.BB_TIME) { L.splice(i, 1); err('되살 수 있는 시간(24시간)이 지났습니다'); }
+    if (P.inv.length >= calc(P, W, now).bag) err('가방이 가득 찼습니다');
+    if (P.res.gold < x.gold) err(CUR + '가 부족합니다'); if (P.res.stone < x.stone) err('마석이 부족합니다'); if ((P.res.dust || 0) < x.dust) err('마석가루가 부족합니다');
+    P.res.gold -= x.gold; P.st.goldTotal = Math.max(0, (P.st.goldTotal || 0) - x.gold);   // 판매로 쌓인 누적 아르크 · 분해 횟수도 되돌린다 (되팔고 되사기로 업적을 쌓지 못하게)
+    P.res.stone -= x.stone; P.res.dust = (P.res.dust || 0) - x.dust; if (x.stone || x.dust) P.st.dismantled = Math.max(0, (P.st.dismantled || 0) - 1);
+    L.splice(i, 1); P.inv.push(x.it); dlog(P, '되사기', [x.it]); log(P, now, R.josa(x.it.name + (x.it.enh ? ' +' + x.it.enh : ''), '을', '를') + ' 되샀습니다', 'news');
+    return { name: x.it.name };
   };
   // 재련: 등급·레벨·강화는 그대로 두고 옵션만 새로 굴린다 (옵션이 없는 일반 등급은 못 함)
   // 옵션 줄 잠금(keep: 줄 번호): 잠근 줄은 그대로 두고 나머지만 굴린다. 잠근 줄이 많을수록 비용 ×2.5씩, 모든 줄을 잠글 수는 없다
