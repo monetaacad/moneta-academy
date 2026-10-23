@@ -64,6 +64,31 @@ var Snd = (function () {
     for (var i = 0; i < (s.sp || 0); i++) voice([SPARK[Math.floor(Math.random() * SPARK.length)], (s.ss || 0.1) + i * 0.06 + Math.random() * 0.03, 0.4, 'sine', 0.009, 0.003, 'b'], now, send);
   };
   S.set = function (on) { S.on = !!on; if (on) ac(); };
+  /* 날씨 소리 (효과음 볼륨을 따른다 · 설정에서 따로 끌 수 있다): 비는 이어지는 빗소리, 뇌우는 더 굵은 빗소리 + 번개 때 천둥 */
+  S.wxOn = true; var rain = null, nbuf = null;
+  function noise(c) { if (nbuf) return nbuf; var len = c.sampleRate * 4; nbuf = c.createBuffer(2, len, c.sampleRate); for (var ch = 0; ch < 2; ch++) { var d = nbuf.getChannelData(ch), b0 = 0, b1 = 0; for (var i = 0; i < len; i++) { var w = Math.random() * 2 - 1; b0 = 0.97 * b0 + w * 0.15; b1 = 0.6 * b1 + w * 0.4; d[i] = (b0 + b1) * 0.6; } } return nbuf; }   // 부드러운(분홍빛) 잡음
+  S.rain = function (level) {   // 0 없음 · 1 비 · 2 뇌우
+    if (!S.on || !S.wxOn || (S.fgOnly && document.hidden)) level = 0;
+    if (!level) { if (rain) { var r0 = rain; rain = null; try { r0.g.gain.setTargetAtTime(0.0001, r0.c.currentTime, 0.6); setTimeout(function () { try { r0.src.stop(); } catch (e) { } }, 3000); } catch (e) { } } return; }
+    var c = ac(); if (!c) return;
+    if (!rain) {
+      var src = c.createBufferSource(); src.buffer = noise(c); src.loop = true;
+      var hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 420;
+      var lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 3800;
+      var g = c.createGain(); g.gain.value = 0.0001;
+      var lfo = c.createOscillator(), lg = c.createGain(); lfo.frequency.value = 0.11; lg.gain.value = 0.012; lfo.connect(lg); lg.connect(g.gain); lfo.start();   // 빗줄기가 조금씩 굵어졌다 가늘어졌다
+      src.connect(hp); hp.connect(lp); lp.connect(g); g.connect(sfxBus); src.start();
+      rain = { c: c, src: src, g: g, lp: lp, level: 0 };
+    }
+    if (rain.level !== level) { rain.level = level; rain.lp.frequency.setTargetAtTime(level === 2 ? 2800 : 3800, c.currentTime, 0.5); rain.g.gain.setTargetAtTime(level === 2 ? 0.1 : 0.065, c.currentTime, 1.2); }
+  };
+  S.thunder = function () {
+    if (!S.on || !S.wxOn || (S.fgOnly && document.hidden)) return; var c = ac(); if (!c) return;
+    var t = c.currentTime, src = c.createBufferSource(); src.buffer = noise(c); src.playbackRate.value = 0.5 + Math.random() * 0.2;
+    var lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.setValueAtTime(900, t); lp.frequency.exponentialRampToValueAtTime(140, t + 1.2);
+    var g = c.createGain(), pk = 0.35 + Math.random() * 0.2; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(pk, t + 0.06); g.gain.exponentialRampToValueAtTime(pk * 0.5, t + 0.5); g.gain.exponentialRampToValueAtTime(pk * 0.7, t + 0.9); g.gain.exponentialRampToValueAtTime(0.0001, t + 4.5);   // 쾅 · 우르릉
+    src.connect(lp); lp.connect(g); g.connect(sfxBus); src.start(t, Math.random() * 2); src.stop(t + 4.6);
+  };
   // 효과음 이름 (설정 화면용)
   S.KEYS = [['click', '버튼·작업 시작'], ['level', '작업 완료 보고'], ['spirit', '반딧불 정령'], ['enh', '강화·물약 제조'], ['drink', '물약 마시기'], ['ach', '업적·보상'], ['pass', '승리·합격'], ['fail', '패배·실패'], ['boss', '월드 보스'], ['msg', '채팅·1:1 알림']];
   SEQ.msg = { rev: 0.3, n: [[1567.98, 0, 0.25, 'sine', 0.018, 0.004, 'b'], [2093, 0.07, 0.35, 'sine', 0.014, 0.004, 'b']] };
