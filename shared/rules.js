@@ -1490,10 +1490,10 @@
   R.TW_EV_MAX = 20000;
   // cd0: 파티원마다 주문 재사용 대기(층을 넘어 이어진다 · 없으면 모두 준비됨)
   R.twFight = function (ms, foe, hp0, rnd2, f, cd0) {
-    var n = ms.length, dt = 0.1, t = 0, mh = foe.hp, hp = hp0.slice(), mx = ms.map(function (m) { return R.twMaxHp(m, n); }), sh = [], pT = [], fT = [], cd = [], haste = [], amp = [], dealt = [], healAt = [], told = {};
+    var n = ms.length, dt = 0.1, t = 0, mh = foe.hp, hp = hp0.slice(), mx = ms.map(function (m) { return R.twMaxHp(m, n); }), sh = [], pT = [], fT = [], cd = [], haste = [], amp = [], dealt = [], healAt = [], told = {}, lAcc = [], lE = [], lL = [];
     var stun = 0, mT = 0, aT = 0, gT = 0, rage = 1, mark = null, saves = 0, L = [], S = [], E = [], marks = [0.75, 0.5, 0.25], mi = 0, sec = 0, nextTalk = 6 + rnd2() * 6, i;
     var tr = foe.trial ? R.TW_TRIALS.filter(function (x) { return x.id === foe.trial; })[0] : null;
-    for (i = 0; i < n; i++) { sh[i] = 0; pT[i] = 0; fT[i] = 0; cd[i] = cd0 && cd0[i] ? cd0[i] : {}; haste[i] = 0; amp[i] = 0; dealt[i] = 0; healAt[i] = -99; }
+    for (i = 0; i < n; i++) { sh[i] = 0; pT[i] = 0; fT[i] = 0; cd[i] = cd0 && cd0[i] ? cd0[i] : {}; haste[i] = 0; amp[i] = 0; dealt[i] = 0; healAt[i] = -99; lAcc[i] = 0; lE[i] = 0; lL[i] = 0; }
     function P0(m) { return R.EXP_POS[m.pos] || R.EXP_POS.van; }
     function line(text, kind) { L.push([Math.round(t * 10) / 10, text, kind]); }
     // c는 값이 있을 때만 붙인다 (0도 주문 번호라 남긴다 · 치명타 · 막은 양은 없으면 null)
@@ -1544,7 +1544,7 @@
     function dmgTo(j2, atk) { var x = P0(ms[j2]), van = n > 1 && ms[j2].pos === 'van'; return dmgTaken(atk, ms[j2].def * R.TW.DEFX * (n > 1 ? x.def : 1)) * (n > 1 ? x.take : 1) * (van ? R.TW.VAN_TAKE : 1) * (1 - red()); }
     function hit(j, d, cr, k, si) {
       var m = ms[j]; if (amp[j] > 0) d *= 2; d *= m.bossDmg * (n > 1 ? P0(m).dps : 1);
-      ev(k, j, d, si, cr ? 1 : null); mh -= d; dealt[j] += d; if (m.leech && hp[j] > 0) hp[j] = Math.min(mx[j], hp[j] + d * m.leech);
+      ev(k, j, d, si, cr ? 1 : null); mh -= d; dealt[j] += d; if (m.leech && hp[j] > 0) { var lg = Math.max(0, Math.min(mx[j] - hp[j], d * m.leech)); hp[j] += lg; lE[j] += lg; lAcc[j] += lg; }
       if (cr && d > foe.hp * 0.03 && !told['c' + j]) { told['c' + j] = 1; line(m.name + '의 치명타! ' + R.fmt(d) + ' 피해', 'h'); }
     }
     var red = function () { var s = 0; for (var j = 0; j < n; j++) if (hp[j] > 0 && n > 1) s += P0(ms[j]).red; return Math.min(0.3, s); };
@@ -1601,7 +1601,11 @@
       if (!up) { line('파티가 모두 쓰러졌다. ' + foe.name + ' 체력 ' + Math.ceil(mh / foe.hp * 100) + '% 남음', 's'); snap(); return { win: false, why: 'wipe', t: t, hp: hp, S: S, L: L, E: E, dealt: dealt, cd: cd }; }
       if (t >= R.TW.TIME) { line('결판이 나지 않은 채 오랜 시간이 흘렀다. ' + foe.name + ' 체력 ' + Math.ceil(mh / foe.hp * 100) + '% 남음 — 파티가 물러난다', 's'); snap(); return { win: false, why: 'time', t: t, hp: hp, S: S, L: L, E: E, dealt: dealt, cd: cd }; }
       if (t >= nextTalk && n > 1) { nextTalk = t + 8 + rnd2() * 8; line(twSay(TW_BANTER, ms.filter(function (x, j) { return hp[j] > 0; }), rnd2), 't'); }
-      if (Math.floor(t) !== sec) { sec = Math.floor(t); snap(); }
+      if (Math.floor(t) !== sec) {
+        sec = Math.floor(t); snap();
+        // 생명력 흡수: 전체 기록(E)은 5초마다, 요약 대본(L)은 15초마다 한 사람씩 모아서
+        for (var q3 = 0; q3 < n; q3++) { if (sec % 5 === 0 && lE[q3] >= 1) { ev(10, q3, lE[q3]); lE[q3] = 0; } if (t - lL[q3] >= 15 && lAcc[q3] >= 1) { lL[q3] = t; line(ms[q3].name + '의 생명력 흡수 — 생명력 +' + R.fmt(lAcc[q3]), 'p'); lAcc[q3] = 0; } }
+      }
     }
   };
   // 실전 · 연습 한 번: 시작 층부터 파티가 모두 쓰러질 때까지. 시각은 실행 시작 기준 실제 초(전투 시간 × R.TW.PACE)
@@ -1647,6 +1651,7 @@
       case 7: return [foe + '의 광역 공격 — ' + b.name + '에게 ' + v + ' 피해' + ab, 'x'];
       case 8: return [foe + '의 표식 일격 — ' + b.name + '에게 ' + v + ' 피해' + ab, 'x'];
       case 9: return [foe + '의 별빛 재생 — 체력 +' + v, 'x'];
+      case 10: return [a.name + '의 생명력 흡수 — 생명력 +' + v, 'p'];
     }
     return ['', 'h'];
   };
