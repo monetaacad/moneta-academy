@@ -322,9 +322,22 @@ function syncOp(P) {
   if (P.title && !R.titleOk(P, P.title)) { P.title = ''; ch = true; }
   if (ch) store.markDirty(P.id);
 }
+// 기숙사 공헌 1위 (이번 주 대항전 개인 점수, 기숙사마다 · 1분 캐시)
+const hTopC = { at: 0, week: 0, top: {} };
+function houseTop1(house) {
+  const now = nowSec(), week = R.weekId(now);
+  if (Date.now() - hTopC.at > 60000 || hTopC.week !== week) { const top = {}; D.HOUSES.forEach((h) => { const r = dbx.q.houseTop.get(week, h.id); if (r && r.cup > 0) top[h.id] = r.pid; }); hTopC.at = Date.now(); hTopC.week = week; hTopC.top = top; }
+  return hTopC.top[house] || '';
+}
+// 실시간 칭호: 과목 수석 · 차석, 기숙사 공헌 1위. 순위를 잃으면 끼고 있던 칭호도 뗀다
+function syncLive(P) {
+  const L = { h: subjHeads(P.id, 0), s: subjHeads(P.id, 1), c: houseTop1(P.house) === P.id ? 1 : 0 };
+  if (JSON.stringify(L) !== JSON.stringify(P.live || {})) { P.live = L; store.markDirty(P.id); }
+  if (P.title && !R.titleOk(P, P.title)) { P.title = ''; store.markDirty(P.id); }
+}
 function loadPlayer(pid, now) {
   const P = store.get(pid); if (!P) return null;
-  syncOp(P);
+  syncOp(P); try { syncLive(P); } catch (e) { log('실시간 칭호 확인 실패', e); }
   const fp = R.fingerprint(P);
   const pc = setPartyN(P) | setGuildLv(P);
   R.advance(P, world.ctx(now), now); R.questCheck(P, now); questNotes(P);
@@ -534,6 +547,17 @@ function subjTops() {
   return tops;
 }
 function subjHeads(id, n) { const t = subjTops(), out = []; for (const k in t) if (t[k][n || 0] && t[k][n || 0].id === id) out.push(k); return out; }   // 이 학생이 1위(n=0) · 2위(n=1)인 과목들
+// 기숙사 공헌도 순위: 이번 주 대항전 개인 점수 상위 10명 + 내 순위 (내 기숙사일 때)
+routes['GET /api/houserank'] = (req, res) => {
+  const pid = authed(req); if (!pid) return fail(req, res, 401, '로그인이 필요합니다');
+  if (limited('hr:' + pid, 2, 10)) return fail(req, res, 429, '요청이 너무 잦습니다');
+  const P = store.get(pid); if (!P) return fail(req, res, 404, '학생을 찾을 수 없습니다');
+  const hq = new URL(req.url, 'http://x').searchParams.get('house'), house = R.HOUSE[hq] ? hq : P.house, week = R.weekId(nowSec());
+  const top = dbx.q.houseRank.all(week, house).map((r) => ({ id: r.id, name: r.name, grade: r.grade, house: r.house, av: r.avatar_v, cup: Math.floor(r.cup) }));
+  let me = null;
+  if (house === P.house) { const cup = P.wk && P.wk.id === week ? Math.floor(P.wk.cup || 0) : 0; me = { cup, rank: cup > 0 ? Number(dbx.q.houseRankOf.get(week, house, cup).r) : 0 }; }
+  send(req, res, 200, { house, top, me });
+};
 routes['GET /api/subjranks'] = (req, res) => {
   const pid = authed(req); if (!pid) return fail(req, res, 401, '로그인이 필요합니다');
   if (limited('sr:' + pid, 2, 10)) return fail(req, res, 429, '요청이 너무 잦습니다');
@@ -736,7 +760,7 @@ routes['GET /api/profile'] = (req, res) => {
     const fa = DP && DP.opt && DP.opt.showFam && DP.fam && DP.fam.act, fo = fa && DP.fam.own[fa]; if (fo && R.FAM[fa]) out.fam = { id: fa, lv: fo.lv, nm: fo.nm || '' }; }   // 동행 사역마 (학생이 공개를 켰을 때만)   // 정보 카드 꾸미기
   const fs = self ? null : friendState(me, id), can = (v) => self || v === 'all' || (v === 'friend' && fs === 'ok');
   if (can(pr.visLv)) Object.assign(out, { lvl, power, rank: world.rankOf(power) });
-  { const hd = subjHeads(id), h2 = subjHeads(id, 1); if (hd.length) out.heads = hd; if (h2.length) out.seconds = h2; }   // 과목 수석 (순위표에 공개되는 정보라 공개 범위와 관계없이)
+  { const hd = subjHeads(id), h2 = subjHeads(id, 1); if (hd.length) out.heads = hd; if (h2.length) out.seconds = h2; if (houseTop1(row.house) === id) out.htop = row.house; }   // htop: 이번 주 기숙사 공헌 1위   // 과목 수석 (순위표에 공개되는 정보라 공개 범위와 관계없이)
   if (can(pr.visFull)) { const DP = R.showP(LP || store.get(id)); if (DP) try { out.full = R.fullStats(DP, world.ctx(nowSec()), Math.min(nowSec(), DP.at)); } catch (e) { } }   // 전체 능력치 (기본은 나만 보기)
   if (can(pr.visBadge)) { const DP = R.showP(LP || store.get(id)), bw = DP && R.badgeWorn(DP); if (bw) out.badgeD = { gem: bw.gem, lv: bw.lv, name: bw.name, q: bw.q, aff: bw.aff || [] }; }   // 착용 휘장 상세 (장비 칸 옆에 표시)
   if (can(pr.visStat) || can(pr.visEq)) {

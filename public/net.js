@@ -18,6 +18,7 @@ var Net = (function () {
   ServerApi.prototype.world = function () { return this.req('GET', '/api/world'); };
   ServerApi.prototype.myRanks = function () { return this.req('GET', '/api/myranks'); };
   ServerApi.prototype.subjRanks = function () { return this.req('GET', '/api/subjranks'); };
+  ServerApi.prototype.houseRank = function (h) { return this.req('GET', '/api/houserank?house=' + encodeURIComponent(h || '')); };
   ServerApi.prototype.act = function (type, a) { return this.req('POST', '/api/act', { type: type, a: a || {} }); };
   ServerApi.prototype.login = function (login, password) { var s = this; return this.req('POST', '/api/login', { login: login, password: password }).then(function (j) { if (j.token) s.saveToken(j.token); return j; }); };
   ServerApi.prototype.logout = function () { var s = this; return this.req('POST', '/api/logout').then(function (j) { s.saveToken(null); return j; }); };

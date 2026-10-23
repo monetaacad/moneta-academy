@@ -456,6 +456,8 @@ function open(dir) {
     houseCup: db.prepare(`SELECT COALESCE(SUM(cup), 0) AS s, COUNT(*) AS n FROM (SELECT cup FROM weekly WHERE week = ? AND house = ? AND cup > 0 ORDER BY cup DESC LIMIT ?)`),
     houseCount: db.prepare(`SELECT house, COUNT(*) AS n FROM players WHERE banned = 0 AND guest = 0 GROUP BY house`),
     houseTop: db.prepare(`SELECT w.pid, w.cup FROM weekly w JOIN players p ON p.id = w.pid WHERE w.week = ? AND w.house = ? AND p.banned = 0 ORDER BY w.cup DESC LIMIT 1`),
+    houseRank: db.prepare(`SELECT w.pid AS id, p.name, p.grade, p.house, p.avatar_v, w.cup FROM weekly w JOIN players p ON p.id = w.pid WHERE w.week = ? AND w.house = ? AND w.cup > 0 AND p.banned = 0 AND p.deleted = 0 ORDER BY w.cup DESC LIMIT 10`),   // 기숙사 공헌도 순위
+    houseRankOf: db.prepare(`SELECT COUNT(*) + 1 AS r FROM weekly w JOIN players p ON p.id = w.pid WHERE w.week = ? AND w.house = ? AND w.cup > ? AND p.banned = 0 AND p.deleted = 0`),
     houseCups: db.prepare(`SELECT cup FROM weekly WHERE week = ? AND house = ? AND cup > 0`),
     houseMembers: db.prepare(`SELECT COUNT(*) AS n FROM weekly WHERE week = ? AND house = ? AND cup > 0`),
     topDmg: db.prepare(`SELECT w.pid, p.name, p.house, w.dmg FROM weekly w JOIN players p ON p.id = w.pid WHERE w.week = ? AND w.dmg > 0 AND p.banned = 0 ORDER BY w.dmg DESC LIMIT ?`),
