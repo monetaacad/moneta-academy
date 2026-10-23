@@ -5104,7 +5104,7 @@
     // 예전에는 body 전체를 zoom 해서 100vh 기준 높이까지 커져 채팅창 아래·안내도 아래가 화면 밖으로 잘렸다.
     document.body.style.zoom = ''; document.documentElement.style.setProperty('--fz', String(PREF.font || 1));
     document.documentElement.classList.toggle('fzoom', PREF.font !== 1);
-    Snd.vol(PREF.sfxVol); Snd.fgOnly = PREF.sfxBg === false; Snd.off = {}; for (var k in PREF.sfxOff) if (PREF.sfxOff[k]) Snd.setOff(k, true);
+    Snd.vol(PREF.sfxVol); Snd.fgOnly = PREF.sfxBg === false; Snd.wxOn = PREF.wxSnd !== false; Snd.off = {}; for (var k in PREF.sfxOff) if (PREF.sfxOff[k]) Snd.setOff(k, true);
   }
   applyPref();
   /* ── 테마: 색 토큰은 style.css의 :root[data-skin]에, 하늘·기숙사·등급 색은 여기서 ──
@@ -5208,6 +5208,7 @@
       '<label class="tog"><input type="checkbox" id="opt-snd" data-act="opt" data-a="sound"' + (P.opt.sound ? ' checked' : '') + '> 효과음</label>' +
       '<label class="tog"><input type="checkbox" data-act="sfxbg"' + (PREF.sfxBg !== false ? ' checked' : '') + '> 창을 내리거나 다른 탭을 볼 때도 효과음 재생 (채팅 알림 소리 등)</label>' +
       '<div class="row small slider"><span class="muted">효과음 크기</span><input type="range" id="opt-sfxvol" min="0" max="100" step="1" value="' + Math.round(PREF.sfxVol * 100) + '" aria-label="효과음 크기"><span class="num tiny faint" id="opt-sfxvol-v">' + Math.round(PREF.sfxVol * 100) + '%</span><button class="btn sm ghost" data-act="sfxtest">들어 보기</button></div>' +
+      '<label class="tog"><input type="checkbox" data-act="wxsnd"' + (PREF.wxSnd !== false ? ' checked' : '') + '> 날씨 소리 (비 · 뇌우일 때 빗소리, 번개가 칠 때 천둥)</label>' +
       '<div class="sfxlist' + (P.opt.sound ? '' : ' off') + '">' + Snd.KEYS.map(function (k) { return '<label class="tog"><input type="checkbox" data-act="sfxone" data-a="' + k[0] + '"' + (PREF.sfxOff[k[0]] ? '' : ' checked') + '> ' + k[1] + '</label>'; }).join('') + '</div>' +
       '<hr class="sep">' +
       '<label class="tog"><input type="checkbox" id="opt-bgm" data-act="bgm"' + (Bgm.on ? ' checked' : '') + '> 배경음악</label>' +
@@ -5236,6 +5237,7 @@
   ACT.settab = function (t) { S.setTab = t; ACT.settings(); var b = $('.mbox'); if (b) b.scrollTop = 0; };
   ACT.setfont = function (v) { PREF.font = +v; savePref(); applyPref(); ACT.settings(); };
   ACT.sfxtest = function () { Snd.preview(); };
+  ACT.wxsnd = function (a, b, el) { PREF.wxSnd = el.checked; savePref(); applyPref(); if (!el.checked) Snd.rain(0); };
   ACT.sfxbg = function (a, b, el) { PREF.sfxBg = el.checked; savePref(); applyPref(); };
   ACT.sfxone = function (k, b, el) { if (el.checked) delete PREF.sfxOff[k]; else PREF.sfxOff[k] = true; savePref(); applyPref(); if (el.checked && S.P.opt.sound) Snd.play(k); };
   ACT.bgm = function (a, b, el) { Bgm.set(el.checked); bgmScene(); };
@@ -6098,7 +6100,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102366;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102367;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
@@ -6208,10 +6210,18 @@
   function refreshWorld() { API.world().then(function (w) { if (w && !w.error) { S.W = w; S.lastWorld = Date.now(); if ((S.view === 'world' || S.view === 'rank') && !S.modal) softRender(); } }); }
   // 서버 부담 줄이기: 창이 보일 때만, 작업이 끝날 때 + 2분마다 한 번 상태를 받는다.
   // 창을 10분 넘게 숨겨 두면 채팅 연결도 닫고, 다시 보면 이어 붙인다.
+  // 날씨 소리: 비 · 뇌우일 때 빗소리, 뇌우는 화면 번개(9초 주기의 62% 지점 · Date.now 기준으로 화면과 같은 시각)마다 천둥
+  var wxT = 0, wxPh = 0;
+  function wxSound() {
+    var n = Date.now(); if (n - wxT < 250) return; wxT = n;
+    var wid = R.weatherAt(wctx(), now()).id; Snd.rain(wid === 'storm' ? 2 : wid === 'rain' ? 1 : 0);
+    var ph = (n / 1000) % 9; if (wid === 'storm' && wxPh < 5.58 && ph >= 5.58) setTimeout(Snd.thunder, 250 + Math.random() * 500); wxPh = ph;
+  }
   function loop() {
     if (!S.P) return;
     var n = Date.now(), vis = !document.hidden;
     if (!vis) {
+      if (Snd.fgOnly) Snd.rain(0);
       if (!S.hiddenAt) S.hiddenAt = n; else if (n - S.hiddenAt > 600000 && S.chat.conn) { chatDisconnect(); S.chat.paused = true; }
       // 안 보이는 동안에도 작업이 끝나는 때에 한 번만 받아 와서 끝 소리를 낸다 (보고 창이 이미 떠 있어도 소리는 낸다)
       var ev = nextEventTime();
@@ -6227,7 +6237,7 @@
       return;
     }
     S.hiddenAt = 0;
-    updateLive(); bgmScene(); skyFx();
+    updateLive(); bgmScene(); skyFx(); wxSound();
     if (now() >= nextEventTime() + 0.5) sync();
     if (S.auc && now() >= (S.auc.active ? S.auc.end : S.auc.start) + 1 && n - S.lastSync > 5000) sync(true);
     if (n - S.lastSync > 120000) sync();
