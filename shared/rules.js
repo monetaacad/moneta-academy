@@ -2469,6 +2469,13 @@
     log(P, now, R.josa(R.FAM[id].name, '을', '를') + ' 파견에서 일찍 불러들였습니다', 'news');
     return o;
   };
+  // 파견 중인 사역마 모두 불러들이기 (잘못 보냈을 때). 각자 보낸 뒤 지난 시간만큼의 몫만
+  A.dispRecallAll = function (P, W, now) {
+    var ids = Object.keys(P.fam.disp || {}).filter(function (id) { return P.fam.disp[id] && P.fam.disp[id].end > now; }); if (!ids.length) err('파견 중인 사역마가 없습니다');
+    var out = { n: 0, mats: {}, stones: 0, gold: 0, egg: 0, shard: 0 };
+    ids.forEach(function (id) { var o = A.dispRecall(P, W, now, { id: id }); out.n++; out.mats[o.mat] = (out.mats[o.mat] || 0) + (o.mats || 0); out.stones += o.stones || 0; out.gold += o.gold || 0; out.egg += o.egg || 0; out.shard += o.shard || 0; });
+    return out;
+  };
   A.famZone = function (P, W, now, a) {
     var id = str(a.id), z = a.z ? str(a.z) : ''; if (!P.fam.own[id]) err('없는 사역마입니다');
     if (z && !R.dispZones(P).some(function (x) { return x.id === z; })) err('아직 갈 수 없는 지역입니다');
