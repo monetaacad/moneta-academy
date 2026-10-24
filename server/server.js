@@ -3148,6 +3148,20 @@ function cupUnspecAll() {
   oplog('system', '시스템', 'cupNoSpec', '기숙사 특기 배율 제거 · 이번 주 점수 소급: 학생 ' + n + '명 · ' + Math.round(cut) + '점');
 }
 try { cupUnspecAll(); } catch (e) { log('대항전 특기 배율 소급 실패', e); }
+// 서버를 켤 때: 이번 주에 이미 쓰러진 월드 보스의 토벌 참여 수(칭호 「토벌대원」 등)를 도전한 학생에게 바로 맞춘다.
+// 잡은 순간 세는 기능(payKillTo) 이전에 쓰러진 보스 · 세던 중 서버가 꺼진 경우를 채운다. 주간 정산은 여기서 센 만큼(P.wbkc)을 빼므로 두 번 세지 않는다 (여러 번 켜도 같음)
+function wbKillFill() {
+  const b = world.W.boss, wk = R.weekId(nowSec()); if (!b || b.week !== wk) return;
+  const kills = (b.kills || 0) + (b.killedAt ? 1 : 0); if (!kills) return;
+  let n = 0;
+  dbx.db.prepare('SELECT pid FROM weekly WHERE week = ? AND att > 0').all(wk).forEach((r) => {
+    const P = store.get(r.pid); if (!P || !P.st) return;
+    const counted = P.wbkc && P.wbkc.week === wk ? P.wbkc.n : 0; if (counted >= kills) return;
+    P.st.wbKills = (P.st.wbKills || 0) + (kills - counted); P.wbkc = { week: wk, n: kills }; store.markDirty(P.id); n++;
+  });
+  if (n) { store.flushAll(); log(`토벌 참여 수 보정: ${b.week}주 · 쓰러진 보스 ${kills} · 학생 ${n}명`); }
+}
+try { wbKillFill(); } catch (e) { log('토벌 참여 수 보정 실패', e); }
 
 // 한 번만: 물약 점수 상한(한 주 1,000점)을 이번 주에 이미 만든 물약에도 소급 (사용자 요청 2026-10-24). 특기 배율 소급(cupUnspec)이 있으면 그것부터
 function brewCapAll() {
