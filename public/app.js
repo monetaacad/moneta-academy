@@ -418,6 +418,8 @@
     });
     return out;
   }
+  // 보낸 글 입력칸 비우기: 비우지 않으면 다시 그릴 때 위의 「입력하던 값 되돌리기」가 보낸 글을 그대로 다시 채워 넣는다
+  function sentClear(sel) { var t = $(sel); if (t) { t.value = ''; t.defaultValue = ''; } }
   function restoreInputs(kept) {
     var v = $('#view'); if (!v || !kept.length) return;
     var map = {}; kept.forEach(function (x) { map[x[0]] = x[1]; });
@@ -5749,7 +5751,7 @@
   };
   ACT.rpcom = function (id) {
     var b = S.bd, t = $('#rp-com'), txt = t ? t.value.trim() : ''; if (!txt) return; if (S.busy) return; S.busy = true;
-    API.boardOp({ op: 'comment', id: +id, text: txt, parent: b.mrep || 0 }).then(function (j) { S.busy = false; if (j.error) { toast(b.mrep ? '답글' : '댓글', j.error); return; } b.mcx = ''; b.mo = null; b.mrep = null; if (j.post) rpPatch(j.post); render(); }, function () { S.busy = false; });
+    API.boardOp({ op: 'comment', id: +id, text: txt, parent: b.mrep || 0 }).then(function (j) { S.busy = false; if (j.error) { toast(b.mrep ? '답글' : '댓글', j.error); return; } sentClear('#rp-com'); b.mcx = ''; b.mo = null; b.mrep = null; if (j.post) rpPatch(j.post); render(); }, function () { S.busy = false; });
   };
   ACT.rpcdel = function (cid, id) {
     var k = 'bdc' + cid; if (!(S.confirm[k] > Date.now())) { S.confirm[k] = Date.now() + 4000; render(); setTimeout(render, 4100); return; }
@@ -5831,13 +5833,13 @@
   };
   ACT.bdcom = function () {
     var b = S.bd, p = b.post, t = $('#bd-com'), txt = t ? t.value.trim() : ''; if (!p || !txt) return; if (S.busy) return; S.busy = true;
-    API.boardOp({ op: 'comment', id: p.id, text: txt }).then(function (j) { S.busy = false; if (j.error) { toast('댓글', j.error); return; } b.com = ''; b.post = j.post; render(); }, function () { S.busy = false; });
+    API.boardOp({ op: 'comment', id: p.id, text: txt }).then(function (j) { S.busy = false; if (j.error) { toast('댓글', j.error); return; } sentClear('#bd-com'); b.com = ''; b.post = j.post; render(); }, function () { S.busy = false; });
   };
   ACT.bdreplyto = function (cid, root) { S.bd.replyTo = cid ? +(root || cid) : null; S.bd.replyFrom = cid ? +cid : null; S.bd.rep = ''; if (root && +root !== +cid) (S.bd.openRep || (S.bd.openRep = {}))[+root] = true; render(); setTimeout(function () { var t = $('#bd-rep'); if (t) { t.focus(); t.addEventListener('input', function () { S.bd.rep = t.value; }); } }, 0); };
   ACT.bdrepmore = function (cid) { var o = S.bd.openRep || (S.bd.openRep = {}); o[cid] = !o[cid]; render(); };
   ACT.bdrep = function (cid, root) {
     var b = S.bd, p = b.post, t = $('#bd-rep'), txt = t ? t.value.trim() : ''; if (!p || !txt) return; if (S.busy) return; S.busy = true;
-    API.boardOp({ op: 'comment', id: p.id, text: txt, parent: +cid }).then(function (j) { S.busy = false; if (j.error) { toast('답글', j.error); return; } b.rep = ''; b.replyTo = null; b.replyFrom = null; (b.openRep || (b.openRep = {}))[+(root || cid)] = true; b.post = j.post; render(); }, function () { S.busy = false; });
+    API.boardOp({ op: 'comment', id: p.id, text: txt, parent: +cid }).then(function (j) { S.busy = false; if (j.error) { toast('답글', j.error); return; } sentClear('#bd-rep'); b.rep = ''; b.replyTo = null; b.replyFrom = null; (b.openRep || (b.openRep = {}))[+(root || cid)] = true; b.post = j.post; render(); }, function () { S.busy = false; });
   };
   ACT.bdcdel = function (cid) {
     var k = 'bdc' + cid; if (!(S.confirm[k] > Date.now())) { S.confirm[k] = Date.now() + 4000; render(); setTimeout(render, 4100); return; }
@@ -6202,7 +6204,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102415;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102416;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
