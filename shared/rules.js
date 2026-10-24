@@ -944,7 +944,9 @@
   // 파견 지역: 사역마마다 정해 둘 수 있다 (P.fam.zone[fid] = 지역 id, 없으면 갈 수 있는 가장 높은 지역). 출발할 때 정해진 지역으로 다녀온다
   R.dispZones = function (P) { var top = Math.min(P.maxStage, R.stageCap(P)); return D.ZONES.filter(function (z) { return z.from <= top; }); };
   R.dispZoneOf = function (P, fid, zid) { var zs = R.dispZones(P), want = zid || (P.fam.zone && P.fam.zone[fid]); return zs.filter(function (z) { return z.id === want; })[0] || zs[zs.length - 1] || D.ZONES[0]; };
-  function dispatchFinish(P, fid, d, t, early) {   // early: 도중에 불러들임 (보낸 뒤 지난 시간만큼만, 파견 횟수 · 대항전 점수 · 밤샘에는 넣지 않는다)
+  // 대항전 점수: 파견 1시간당 R.CUP_DISP_H점 (보낸 시간에 비례, 8시간 = 예전 귀환 1번 20점). 일찍 불러들이면 보낸 뒤 지난 시간만큼
+  R.CUP_DISP_H = 2.5;
+  function dispatchFinish(P, fid, d, t, early) {   // early: 도중에 불러들임 (보낸 뒤 지난 시간만큼만, 파견 횟수 · 밤샘에는 넣지 않는다)
     var f = FAM[fid], z = R.dispZoneOf(P, fid, d.z), h = d.dur / 3600, out = { k: 'disp', f: fid, t: t };
     out.xp = Math.round(h * R.FAM_DISP_XP); famGainXp(P, fid, out.xp, t);   // 파견 경험치 (시간에 비례, 동행보다 낮게)
     var mult = (1 + f.r * 0.3) * (1 + 0.05 * (P.fam.own[fid].lv - 1)) * (d.bonus || 1);
@@ -955,8 +957,9 @@
     if (rnd(P) < h * 0.04) { var sh = ri(P, 1, 3); P.res.shard += sh; out.shard = sh; }
     // 사역장 「파견 기록」: 최근 40건 (같은 때 돌아온 사역마는 화면에서 한 줄로 묶는다)
     var L = P.fam.dlog || (P.fam.dlog = []); L.unshift({ t: Math.round(t), f: fid, h: Math.round(h * 10) / 10, mat: z.mat, mats: mats, stones: stones, gold: gold, egg: out.egg || 0, shard: out.shard || 0, early: early ? 1 : 0 }); if (L.length > 40) L.length = 40;
+    cupAdd(P, h * R.CUP_DISP_H, 'disp');
     if (early) { out.early = 1; return out; }
-    P.st.dispatches++; cupAdd(P, 20, 'disp');
+    P.st.dispatches++;
     nightJob(P, t);
     return out;
   }
@@ -1105,23 +1108,58 @@
   };
 
   /* ───────── 기숙사 대항전 점수 ─────────
-     기숙사 특기: 자기 기숙사 특기 활동은 점수 ×1.3 (원정 처치 · 기말시험은 모든 기숙사 같음).
+     모든 기숙사가 같은 활동에 같은 점수를 받는다 (예전의 「기숙사 특기 ×1.3」은 2026-10-24에 없앴다 · R.cupUnspec).
      거래 · 경매는 서로 사고팔아 점수를 올릴 수 있어 원래 점수가 없다. */
-  R.CUP_SPEC_MULT = 1.3;
   R.cupAdd = function (P, v, cat) { cupAdd(P, v, cat); };
-  R.CUP_SPEC = {
-    lanterna: { cats: ['lec', 'res', 'task'], text: '수업 · 연구 · 교수 과제' },
-    clepsydra: { cats: ['disp', 'brew', 'dream'], text: '사역마 파견 · 물약 조제 · 꿈길' },
-    corona: { cats: ['boss', 'wb', 'duel'], text: '보스 · 월드 보스 · 결투' },
-    speculum: { cats: ['enh', 'spirit', 'sky', 'shop', 'auc'], text: '장비 강화 · 반딧불 정령 · 하늘 올려다보기 · 매점 구매 · 떠돌이 상인 낙찰' }
+  // 한 번만: 특기 배율을 없애기 전에 이번 주에 쌓인 특기 활동 점수를 1배로 되돌린다 (P.wk.cat에 활동별로 남은 몫 기준)
+  var OLD_SPEC = { lanterna: ['lec', 'res', 'task'], clepsydra: ['disp', 'brew', 'dream'], corona: ['boss', 'wb', 'duel'], speculum: ['enh', 'spirit', 'sky', 'shop', 'auc'] };
+  R.cupUnspec = function (P, week) {
+    var w = P.wk; if (!w || w.id !== week || w.noSpec || !w.cat) return 0;
+    var cats = OLD_SPEC[P.house] || [], cut = 0;
+    cats.forEach(function (k) { var v = w.cat[k]; if (v > 0) { var nv = Math.round(v / 1.3 * 100) / 100; cut += v - nv; w.cat[k] = nv; } });
+    w.cup = Math.max(0, w.cup - cut); w.noSpec = 1; return cut;
+  };
+  R.CUP_BREW = 8; R.CUP_BREW_WEEK = 1000;   // 물약 조제: 1병 8점, 한 주 1,000점(125병)까지 (마나 · 재료만 있으면 한 번에 많이 만들 수 있어서)
+  function brewCup(P, n) { if (!P.wk) return; var sc = Math.min(R.CUP_BREW * n, Math.max(0, R.CUP_BREW_WEEK - (P.wk.brew || 0))); if (sc > 0) { P.wk.brew = (P.wk.brew || 0) + sc; cupAdd(P, sc, 'brew'); } }
+  // 한 번만: 상한을 넣기 전 이번 주에 만든 물약 점수도 1,000점까지로 (P.wk.cat.brew 기준). 특기 배율이 아직 있으면 그 배율을 빼고 센다
+  R.brewCapFix = function (P, week) {
+    var w = P.wk; if (!w || w.id !== week || w.brewFix) return 0; w.brewFix = 1;
+    var sp = R.CUP_SPEC && R.CUP_SPEC[P.house], mul = sp && sp.cats.indexOf('brew') >= 0 && !w.noSpec ? R.CUP_SPEC_MULT : 1;
+    var raw = ((w.cat && w.cat.brew) || 0) / mul, cut = Math.max(0, raw - R.CUP_BREW_WEEK);
+    w.brew = Math.min(R.CUP_BREW_WEEK, Math.max(w.brew || 0, raw));
+    if (cut > 0) { w.cat.brew = Math.round(R.CUP_BREW_WEEK * mul * 100) / 100; w.cup = Math.max(0, w.cup - cut * mul); }
+    return cut * mul;
   };
   R.CUP_SHOP_WEEK = 200;   // 매점 구매 점수는 한 주에 이만큼까지 (아르크로 마석을 거듭 사서 점수를 올리지 못하게)
   R.CUP_AUC = 50;          // 떠돌이 상인 경매 낙찰 1회 (학생끼리 거래인 거래소에는 점수가 없다) · 구간 3개 · 9점이 되며 100 → 50 (방문당 총점 300 → 450)
+  // 점수 규칙 표 (대항전 화면 · 가이드용). k = P.wk.cat의 활동 이름, how = 세는 방식 · 상한. 숫자는 실제 쓰는 상수에서 가져온다
+  R.cupRules = function () {
+    var f = R.fmt, ck = K.KILL_PACK / 40;
+    return [
+      { k: 'lec', name: '수업', pts: '1시간 10점', how: '들은 시간에 비례 · 중간에 그만두면 들은 시간의 ' + Math.round(K.CANCEL_KEEP * 100) + '%만' },
+      { k: 'kill', name: '원정 처치', pts: '몬스터 무리 처치 1번 ' + (Math.round(ck * 10) / 10) + '점', how: '처치 수에 비례 (출정 시간이 길수록 많이)' },
+      { k: 'disp', name: '사역마 파견', pts: '1시간 ' + R.CUP_DISP_H + '점', how: '보낸 시간에 비례 · 일찍 불러들이면 지난 시간만큼' },
+      { k: 'res', name: '연구 완료', pts: '1번 25점', how: '완료 횟수' },
+      { k: 'brew', name: '물약 조제', pts: '1병 ' + R.CUP_BREW + '점', how: '한 주 ' + f(R.CUP_BREW_WEEK) + '점(' + Math.floor(R.CUP_BREW_WEEK / R.CUP_BREW) + '병)까지', cap: R.CUP_BREW_WEEK, used: 'brew' },
+      { k: 'dream', name: '꿈길', pts: '1번 15점', how: '꿈에서 깰 때마다' },
+      { k: 'task', name: '교수 과제', pts: '1개 15점', how: '완료 횟수' },
+      { k: 'boss', name: '원정 보스 처치', pts: '1번 50점', how: '처치 횟수' },
+      { k: 'wb', name: '월드 보스', pts: '도전 1번 30점', how: '도전권만큼' },
+      { k: 'duel', name: '결투제', pts: '승리 1번 40점', how: '승리 횟수 · 대기시간 있음' },
+      { k: 'exam', name: '기말시험', pts: '합격 300점', how: '진급할 때' },
+      { k: 'spirit', name: '반딧불 정령', pts: '1마리 15점', how: '풀어 준 수' },
+      { k: 'sky', name: '하늘 올려다보기', pts: '1번 10점', how: '하늘 이벤트마다 한 번' },
+      { k: 'enh', name: '장비 강화', pts: '시도 1번 2점', how: '성공 · 실패 상관없이' },
+      { k: 'shop', name: '매점 구매', pts: '별조각 물건은 쓴 별조각만큼 · ' + CUR + ' · 마석 물건은 1번 5점', how: '한 주 ' + f(R.CUP_SHOP_WEEK) + '점까지', cap: R.CUP_SHOP_WEEK, used: 'shop' },
+      { k: 'auc', name: '떠돌이 상인 낙찰', pts: '1번 ' + R.CUP_AUC + '점', how: '낙찰 횟수' },
+      { k: '', name: '거래소', pts: '없음', how: '학생끼리 사고팔아 점수를 만들 수 있어 제외' }
+    ];
+  };
   // 이번 주 점수는 활동별로도 나눠 둔다 (P.wk.cat: 운영실 분포 통계에서 기숙사별 점수 출처를 보려고)
   function cupAdd(P, v, cat) {
     if (cat !== 'shop' && cat !== 'auc') famActivity(P, v); if (!P.wk) return;
-    var sp = R.CUP_SPEC[P.house], add = cat && sp && sp.cats.indexOf(cat) >= 0 ? v * R.CUP_SPEC_MULT : v, c = P.wk.cat || (P.wk.cat = {}), k = cat || 'etc';
-    P.wk.cup += add; c[k] = Math.round(((c[k] || 0) + add) * 100) / 100;
+    var c = P.wk.cat || (P.wk.cat = {}), k = cat || 'etc';
+    P.wk.cup += v; c[k] = Math.round(((c[k] || 0) + v) * 100) / 100;
   }
   // 대항전 순위 점수: 이번 주 점수가 CUP_ACTIVE 이상인 학생을 「활동 학생」으로 보고, 그 평균(1인 반영은 중간 점수의 3배까지, 최소 5명으로 나눔).
   // 인원이 많은 기숙사가 합계로 앞서지 않게 한다. cups = 그 기숙사 학생들의 이번 주 점수 목록
@@ -1174,7 +1212,7 @@
     P.brew.forEach(function (b) {
       for (var n = b.done; n < b.n; n++) {
         var end = b.start + (n + 1) * b.each; if (end > now) break;
-        (function (end) { ev.push({ t: end, f: function () { P.shelf[b.id] = (P.shelf[b.id] || 0) + 1; b.done++; P.st.brews++; cupAdd(P, 8, 'brew'); } }); })(end);
+        (function (end) { ev.push({ t: end, f: function () { P.shelf[b.id] = (P.shelf[b.id] || 0) + 1; b.done++; P.st.brews++; brewCup(P, 1); } }); })(end);
       }
     });
     if (P.fam.egg && P.fam.egg.end <= now) ev.push({ t: P.fam.egg.end, f: function () { var o = hatch(P, P.fam.egg.end); o.k = 'hatch'; o.t = now; inbox(P, o); } });
@@ -2175,7 +2213,7 @@
     if (P.res.mana < mana * n) err('마나가 부족합니다');
     for (var m in p.mats) if ((P.mats[m] || 0) < p.mats[m] * n) err('재료가 부족합니다');
     P.res.mana -= mana * n; for (var m2 in p.mats) P.mats[m2] -= p.mats[m2] * n;
-    P.shelf[id] = (P.shelf[id] || 0) + n; P.st.brews += n; cupAdd(P, 8 * n, 'brew');
+    P.shelf[id] = (P.shelf[id] || 0) + n; P.st.brews += n; brewCup(P, n);
     return { id: id, n: n, mana: mana * n };
   };
   A.brewCancel = function (P, W, now, a) {
