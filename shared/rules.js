@@ -1366,6 +1366,8 @@
     var ns = R.spellSlots(P), fam = P.fam.act && P.fam.own[P.fam.act] ? c.atk * famAtkMult(P) : 0, lAcc = 0, rAcc = 0, lT = 0;
     // 생명력 흡수 · 자연 회복: 1초마다 모아서 ['l', 흡수, 회복]으로 남긴다 (전투 일지의 체력 바 · 문장용)
     function flush() { if ((lAcc >= 1 || rAcc >= 1) && evs.length < 400) evs.push([Math.round(t * 10) / 10, 'l', Math.round(lAcc), Math.round(rAcc)]); lAcc = 0; rAcc = 0; lT = t; }
+    // 끝: 일지가 400건에서 잘려도(생명력 흡수가 1초마다 한 줄씩 더한다) 화면이 실제 끝난 시각 · 남은 체력까지 그리도록 언제나 마지막에 남긴다
+    function fin(o) { evs.push([Math.round(t * 10) / 10, 'e', Math.round(Math.max(0, o.pHp) * 1000) / 1000, Math.round(Math.max(0, o.mHp) * 1000) / 1000]); return o; }
     function hit(d, kind, cr) {
       if (amp > 0) d *= 2; if (enemy.boss) d *= c.bossDmg;
       mh -= d; dealt += d; if (c.leech) { var lg = Math.max(0, Math.min(c.hp - ph, d * c.leech)); ph += lg; lAcc += lg; }
@@ -1391,7 +1393,7 @@
         else if (sp.type === 'haste') haste = sp.dur;
         else if (sp.type === 'amp') { amp = sp.dur; stun = sp.dur; }
       }
-      if (untilDead && mh <= 0) { flush(); return { win: true, t: t, dealt: dealt, ev: evs, pHp: ph / c.hp, mHp: 0 }; }
+      if (untilDead && mh <= 0) { flush(); return fin({ win: true, t: t, dealt: dealt, ev: evs, pHp: ph / c.hp, mHp: 0 }); }
       if (stun > 0) stun -= dt;
       else {
         mT += dt * (enemy.boss ? 0.85 : 1);
@@ -1405,11 +1407,11 @@
       if (t - lT >= 1) flush();
       // 크로스카운터: 쓰러지는 순간 적도 (화면에 0%로 보일 만큼) 거의 쓰러졌다면 학생의 승리로 본다
       if (ph <= 0) flush();
-      if (ph <= 0 && untilDead && mh <= enemy.hp * R.CROSS_COUNTER) return { win: true, cc: true, t: t, dealt: dealt, ev: evs, pHp: 0, mHp: 0 };
-      if (ph <= 0) return { win: false, dead: true, t: t, dealt: dealt, ev: evs, pHp: 0, mHp: Math.max(0, mh / enemy.hp) };
+      if (ph <= 0 && untilDead && mh <= enemy.hp * R.CROSS_COUNTER) return fin({ win: true, cc: true, t: t, dealt: dealt, ev: evs, pHp: 0, mHp: 0 });
+      if (ph <= 0) return fin({ win: false, dead: true, t: t, dealt: dealt, ev: evs, pHp: 0, mHp: Math.max(0, mh / enemy.hp) });
     }
     flush();
-    return { win: !untilDead, t: t, dealt: dealt, ev: evs, pHp: ph / c.hp, mHp: Math.max(0, mh / enemy.hp), timeout: true };
+    return fin({ win: !untilDead, t: t, dealt: dealt, ev: evs, pHp: ph / c.hp, mHp: Math.max(0, mh / enemy.hp), timeout: true });
   }
   R.fight = fight;
 
