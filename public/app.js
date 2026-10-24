@@ -4351,6 +4351,7 @@
         }
         else if (e[1] === 'x') { d.x += e[2]; d.ab += e[3] || 0; php = Math.max(0, php - e[2] / pHpMax); }
         else if (e[1] === 'l') { d.l += e[2] || 0; php = Math.min(1, php + ((e[2] || 0) + (e[3] || 0)) / pHpMax); }   // 생명력 흡수 · 자연 회복
+        else if (e[1] === 'e') { php = e[2]; if (mhp && !opts.infinite) dealt = Math.max(dealt, (1 - e[3]) * mhp); }   // 실제 끝: 남은 체력(쓰러졌으면 0) · 적에게 입힌 몫 (일지가 잘려도 맞게)
       }
       var t = Math.min(total, end), txt = '', kind = '';
       if (d.sp.length) {
@@ -4380,7 +4381,7 @@
       '<div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn ghost" data-act="rp-skip" id="rp-skip">건너뛰기</button></div>', true, true);
     var ev = opts.ev || [], pHpMax = C().hp, mhp = opts.maxHp || 1;
     function hpAt(gt) { var dl = 0, ph = 1, sh = 0; for (var i = 0; i < ev.length && ev[i][0] <= gt; i++) { var sx = ev[i][1] === 's' && R.SPELL[ev[i][2]]; if (sx && (sx.type === 'shield' || sx.type === 'pshield') && ev[i][3]) sh = ev[i][3] / pHpMax; else if (sx && ev[i][4]) sh = Math.max(sh, ev[i][4] / pHpMax); if (ev[i][1] === 'x' && ev[i][3]) sh = Math.max(0, sh - ev[i][3] / pHpMax);   // 보호막 남은 양
-      if (ev[i][1] === 'h') dl += ev[i][2]; else if (ev[i][1] === 'x') ph = Math.max(0, ph - ev[i][2] / pHpMax); else if (ev[i][1] === 's' && ev[i][3] && R.SPELL[ev[i][2]] && R.SPELL[ev[i][2]].type === 'heal') ph = Math.min(1, ph + ev[i][3] / pHpMax); else if (ev[i][1] === 'l') ph = Math.min(1, ph + ((ev[i][2] || 0) + (ev[i][3] || 0)) / pHpMax); } return [dl, ph, ph > 0 ? sh : 0]; }
+      if (ev[i][1] === 'h') dl += ev[i][2]; else if (ev[i][1] === 'x') ph = Math.max(0, ph - ev[i][2] / pHpMax); else if (ev[i][1] === 's' && ev[i][3] && R.SPELL[ev[i][2]] && R.SPELL[ev[i][2]].type === 'heal') ph = Math.min(1, ph + ev[i][3] / pHpMax); else if (ev[i][1] === 'l') ph = Math.min(1, ph + ((ev[i][2] || 0) + (ev[i][3] || 0)) / pHpMax); else if (ev[i][1] === 'e') { ph = ev[i][2]; if (!opts.infinite) dl = Math.max(dl, (1 - ev[i][3]) * mhp); } } return [dl, ph, ph > 0 ? sh : 0]; }   // e: 실제 끝 (남은 체력 비율 · 적 남은 체력 비율)
     S.replay = { skip: function () { t0 = -1e9; } };
     function frame(ts) {
       if (!S.replay) return;
@@ -6202,7 +6203,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102415;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102419;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
