@@ -67,7 +67,7 @@
   function rname(r) { return '<b style="color:' + rcol(r) + '">' + D.RARITY[r].name + '</b>'; }   // 장비 등급 이름을 등급 색으로
   function cupRuleBox(P) {
     var tier = R.CUP_TIERS.filter(function (x) { return P.wk.cup >= x[0]; })[0];
-    return '<div class="gnotice" style="margin-top:10px"><b class="tiny gold">대항전 규칙이 바뀌었습니다</b><ul class="tiny" style="margin:4px 0 0;padding-left:16px;line-height:1.7">' +
+    return '<div class="gnotice" style="margin-top:10px"><b class="tiny gold">대항전 규칙</b><ul class="tiny" style="margin:4px 0 0;padding-left:16px;line-height:1.7">' +
       '<li><b>인원 보정</b> · 기숙사 점수는 이번 주 ' + R.CUP_ACTIVE + '점 이상 활동한 학생의 <b>평균</b>입니다. 인원이 많은 기숙사가 유리하지 않습니다. (한 학생의 점수는 활동 학생 중간 점수의 ' + R.CUP_CAP_X + '배까지만 반영, 활동 학생이 ' + R.CUP_MIN_DIV + '명보다 적으면 ' + R.CUP_MIN_DIV + '명으로 나눕니다)</li>' +
       '<li><b>모든 기숙사 같은 점수</b> · 같은 활동이면 어느 기숙사든 같은 점수를 받습니다 (기숙사 특기 배율 없음).</li>' +
       '<li><b>보상</b><ul style="margin:2px 0 0;padding-left:14px">' +
@@ -76,6 +76,15 @@
         '<li>2~4위 기숙사 장비 · 기숙사 안 개인 1위 ' + rname(3) + '</li>' +
         '<li>개인 점수 보상 (별조각, 순위와 별개) · ' + R.CUP_TIERS.slice().reverse().map(function (x) { return fmt(x[0]) + '점 이상 +' + x[1]; }).join(' · ') + '</li></ul></li></ul>' +
       '<p class="tiny faint" style="margin-top:4px">내 이번 주 점수 <b class="num">' + fmt(P.wk.cup) + '</b>' + (tier ? ' · 개인 보상 구간 ' + fmt(tier[0]) + '점 달성' : '') + '. 수업 시간, 처치, 보스, 시험, 결투, 정령, 양조, 파견, 연구, 강화, 과제가 모두 점수가 됩니다.</p></div>';
+  }
+  // 점수 규칙 표 + 이번 주 내 활동별 점수 (상한이 있는 것은 쓴 만큼 / 상한)
+  function cupPointsCard(P) {
+    var cat = (P.wk && P.wk.cat) || {};
+    return '<div class="card" style="margin-top:14px" data-anchor="cuprules"><div class="row between"><h3>대항전 점수 규칙</h3><span class="tiny faint">모든 기숙사 같은 점수</span></div>' +
+      '<div class="cuprules" style="margin-top:8px">' + R.cupRules().map(function (r) {
+        var mine = r.k && cat[r.k] ? Math.round(cat[r.k]) : 0, cap = r.cap ? ' <span class="tiny ' + ((P.wk[r.used] || 0) >= r.cap ? 'bad' : 'faint') + '">(이번 주 ' + fmt(Math.round(P.wk[r.used] || 0)) + ' / ' + fmt(r.cap) + ')</span>' : '';
+        return '<div class="cuprow"><b class="small">' + esc(r.name) + '</b><span class="small">' + esc(r.pts) + cap + '</span><span class="tiny faint">' + esc(r.how) + '</span><span class="num small' + (mine ? ' gold' : ' faint') + '">' + (r.k ? fmt(mine) : '—') + '</span></div>';
+      }).join('') + '</div><p class="tiny faint" style="margin-top:6px">오른쪽 숫자는 이번 주에 내가 그 활동으로 얻은 점수입니다. 기숙사 순위는 이번 주 ' + R.CUP_ACTIVE + '점 이상 활동한 학생 점수의 평균이며, 한 학생 점수는 활동 학생 중간 점수의 ' + R.CUP_CAP_X + '배까지만 반영됩니다.</p></div>';
   }
   function houseGrow(hid, Wl) {
     var p = R.housePct(Wl, hid), g = Math.round((p - R.HOUSE_BASE) / (1 - R.HOUSE_BASE) * 100), hh = R.HOUSE[hid];
@@ -2168,7 +2177,7 @@
       return '<div><div class="row small">' + houseDot(hh.id, 18) + '<span style="color:' + hh.color + '">' + hh.name + '</span>' + (hh.id === P.house ? '<span class="tag br">내 기숙사</span>' : '') + '</div><div class="hgrowrow">' + houseGrow(hh.id, W) + '</div></div>';
     }).join('') + '</div></div>';
     h += hrankCard(P);
-    h += '</div>';
+    h += '</div>' + cupPointsCard(P);
     return h;
   };
   // 기숙사 공헌도 순위: 이번 주 대항전 개인 점수 상위 10명 + 내 순위. 기숙사마다 1위는 실시간 칭호(D.HOUSE_TOP_TITLE)
@@ -6223,7 +6232,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102422;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102425;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

@@ -1132,6 +1132,29 @@
   };
   R.CUP_SHOP_WEEK = 200;   // 매점 구매 점수는 한 주에 이만큼까지 (아르크로 마석을 거듭 사서 점수를 올리지 못하게)
   R.CUP_AUC = 50;          // 떠돌이 상인 경매 낙찰 1회 (학생끼리 거래인 거래소에는 점수가 없다) · 구간 3개 · 9점이 되며 100 → 50 (방문당 총점 300 → 450)
+  // 점수 규칙 표 (대항전 화면 · 가이드용). k = P.wk.cat의 활동 이름, how = 세는 방식 · 상한. 숫자는 실제 쓰는 상수에서 가져온다
+  R.cupRules = function () {
+    var f = R.fmt, ck = K.KILL_PACK / 40;
+    return [
+      { k: 'lec', name: '수업', pts: '1시간 10점', how: '들은 시간에 비례 · 중간에 그만두면 들은 시간의 ' + Math.round(K.CANCEL_KEEP * 100) + '%만' },
+      { k: 'kill', name: '원정 처치', pts: '몬스터 무리 처치 1번 ' + (Math.round(ck * 10) / 10) + '점', how: '처치 수에 비례 (출정 시간이 길수록 많이)' },
+      { k: 'disp', name: '사역마 파견', pts: '1시간 ' + R.CUP_DISP_H + '점', how: '보낸 시간에 비례 · 일찍 불러들이면 지난 시간만큼' },
+      { k: 'res', name: '연구 완료', pts: '1번 25점', how: '완료 횟수' },
+      { k: 'brew', name: '물약 조제', pts: '1병 ' + R.CUP_BREW + '점', how: '한 주 ' + f(R.CUP_BREW_WEEK) + '점(' + Math.floor(R.CUP_BREW_WEEK / R.CUP_BREW) + '병)까지', cap: R.CUP_BREW_WEEK, used: 'brew' },
+      { k: 'dream', name: '꿈길', pts: '1번 15점', how: '꿈에서 깰 때마다' },
+      { k: 'task', name: '교수 과제', pts: '1개 15점', how: '완료 횟수' },
+      { k: 'boss', name: '원정 보스 처치', pts: '1번 50점', how: '처치 횟수' },
+      { k: 'wb', name: '월드 보스', pts: '도전 1번 30점', how: '도전권만큼' },
+      { k: 'duel', name: '결투제', pts: '승리 1번 40점', how: '승리 횟수 · 대기시간 있음' },
+      { k: 'exam', name: '기말시험', pts: '합격 300점', how: '진급할 때' },
+      { k: 'spirit', name: '반딧불 정령', pts: '1마리 15점', how: '풀어 준 수' },
+      { k: 'sky', name: '하늘 올려다보기', pts: '1번 10점', how: '하늘 이벤트마다 한 번' },
+      { k: 'enh', name: '장비 강화', pts: '시도 1번 2점', how: '성공 · 실패 상관없이' },
+      { k: 'shop', name: '매점 구매', pts: '별조각 물건은 쓴 별조각만큼 · ' + CUR + ' · 마석 물건은 1번 5점', how: '한 주 ' + f(R.CUP_SHOP_WEEK) + '점까지', cap: R.CUP_SHOP_WEEK, used: 'shop' },
+      { k: 'auc', name: '떠돌이 상인 낙찰', pts: '1번 ' + R.CUP_AUC + '점', how: '낙찰 횟수' },
+      { k: '', name: '거래소', pts: '없음', how: '학생끼리 사고팔아 점수를 만들 수 있어 제외' }
+    ];
+  };
   // 이번 주 점수는 활동별로도 나눠 둔다 (P.wk.cat: 운영실 분포 통계에서 기숙사별 점수 출처를 보려고)
   function cupAdd(P, v, cat) {
     if (cat !== 'shop' && cat !== 'auc') famActivity(P, v); if (!P.wk) return;

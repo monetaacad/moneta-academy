@@ -2013,3 +2013,9 @@ table.sjtop .sjmeta { white-space: nowrap; }
 /* 학생 카드: 학과 이름(「마법사」)이 줄 끝에서 둘로 잘리지 않게 */
 .pcls { white-space: nowrap; }
 .chatdesc .chatmeta:empty { display: none; }
+
+/* 대항전 점수 규칙 표: 활동 · 점수 · 방식(상한) · 이번 주 내 점수 */
+.cuprules { display: flex; flex-direction: column; }
+.cuprow { display: grid; grid-template-columns: 7.5em minmax(0, 1fr) minmax(0, 1.2fr) 4em; gap: 4px 10px; align-items: baseline; padding: 5px 2px; border-bottom: 1px dashed var(--line2); }
+.cuprow .num { text-align: right; }
+@media (max-width: 640px) { .cuprow { grid-template-columns: 6.5em minmax(0, 1fr) 3.5em; } .cuprow > .tiny { grid-column: 2 / 3; grid-row: 2; } .cuprow > .num { grid-row: 1; grid-column: 3; } }
