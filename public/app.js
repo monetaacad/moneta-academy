@@ -3757,7 +3757,7 @@
         (items.length ? items.slice(0, 40).map(function (it) {
           var k = pKey({ slot: it.slot, r: it.r, ilvl: it.ilvl });
           var so = (m.sopen || {})[it.u];   // 누르면 능력치 펼침
-          return '<div class="mksell' + (m.focus === it.u ? ' focus' : '') + '" data-anchor="mks-' + it.u + '"><div class="mksl"><button class="mksbtn" data-act="mksopen" data-a="' + it.u + '" aria-expanded="' + !!so + '" title="능력치 보기"><span class="small ell" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</span><span class="mkchev tiny faint">' + (so ? '접기 ▴' : '능력치 ▾') + '</span></button><div class="tiny faint ell">' + R.slotName(it) + ' Lv ' + it.ilvl + ' · ' + itemBrief(it) + ' · 상점 ' + fmt(R.sellPrice(it)) + ' ' + CUR + '' + presetTag(it.u) + '</div>' + (so ? '<div class="mkst">' + statLines(it) + '</div>' : '') + priceLine(k) + '</div>' +
+          return '<div class="mksell' + (m.focus === it.u ? ' focus' : '') + '" data-anchor="mks-' + it.u + '"><div class="mksl"><button class="mksbtn" data-act="mksopen" data-a="' + it.u + '" aria-expanded="' + !!so + '" title="능력치 보기"><span class="small ell" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</span><span class="mkchev tiny faint">' + (so ? '접기 ▴' : '능력치 ▾') + '</span></button><div class="mkinfo"><span class="tiny faint ell">' + R.slotName(it) + ' Lv ' + it.ilvl + ' · ' + itemBrief(it) + ' · 상점 ' + fmt(R.sellPrice(it)) + ' ' + CUR + '</span>' + presetTag(it.u) + '</div>' + (so ? '<div class="mkst">' + statLines(it) + '</div>' : '') + priceLine(k) + '</div>' +
             '<div class="mksr"><input type="number" min="1" step="1" inputmode="numeric" class="mkprice" id="mkp-' + it.u + '" data-key="' + k + '" placeholder="가격" data-fmt="1"><span class="tiny faint mkfmt"></span><button class="btn sm" data-act="mklist" data-a="item" data-b="' + it.u + '">올리기</button>' + aucToggle(it.u) + '</div><div class="mkwarn tiny"></div>' + ((m.aopen || {})[it.u] ? aucForm('item', it.u, R.sellPrice(it)) : '') + '</div>';
         }).join('') : '<div class="empty">올릴 수 있는 장비가 없습니다.</div>') + '</div></div>';
       var mats = [['stone', P.res.stone]].concat(Object.keys(D.MATS).map(function (k) { return [k, P.mats[k] || 0]; })).filter(function (x) { return x[1] > 0; });
@@ -6223,7 +6223,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102421;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102423;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
