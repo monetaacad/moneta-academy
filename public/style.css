@@ -309,6 +309,13 @@ main { min-width: 0; container-type: inline-size; container-name: page; }
 .cauldron canvas { width: 54px; height: 54px; flex: none; }
 .recipe { display: flex; flex-direction: column; gap: 6px; }
 .recipe .mats { display: flex; gap: 6px; flex-wrap: wrap; font-size: 12px; }
+.potrow { flex-wrap: nowrap; gap: 6px; }   /* 물약 선반: 이름 · 남은 시간 · 버튼을 한 줄로 (좁으면 이름만 줄여 보인다) */
+.potrow > * { flex: none; }
+.potrow .potn { flex: 0 1 auto; min-width: 0; display: flex; gap: 4px; align-items: baseline; white-space: nowrap; }
+.potrow .potn .ell { min-width: 0; }
+.potrow .spacer { flex: 1 1 0; min-width: 0; }
+.potrow .lbl-s { display: none; }
+@container page (max-width: 560px) { .potrow .lbl-l { display: none; } .potrow .lbl-s { display: inline; } }   /* 좁은 화면: 「거래소에서 팔기」 → 「거래소」 (이름 자리 확보) */
 .pot-ic { width: 12px; height: 16px; border-radius: 3px 3px 6px 6px; display: inline-block; flex: none; box-shadow: inset 0 -6px 0 rgba(0,0,0,.25); }
 .famcard { display: flex; gap: 12px; align-items: center; }
 .famcard canvas { width: 56px; height: 56px; flex: none; }
@@ -564,6 +571,8 @@ img.av { background: transparent; }   /* 배경 투명 두상은 뒤의 화면�
 .hrrow, .hrme { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; white-space: nowrap; }   /* 기숙사 공헌도 순위: 좁은 화면에서도 한 줄 */
 .hrrow .hrn { width: 18px; flex: none; text-align: right; } .hrrow .ttl { flex: none; max-width: 42%; overflow: hidden; text-overflow: ellipsis; margin-right: 0; }
 .hrme { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line2); } .hrme > .muted { flex: 1; }
+.ginvd { grid-column: 1 / -1; padding: 8px 10px; border: 1px solid var(--line2); border-radius: 9px; background: var(--sunk); }   /* 동아리 장비 넣기: 고른 장비의 능력치 · 옵션 (칸 줄 전체 폭) */
+.ginvd .mkst { max-width: none; background: none; padding: 0; margin-top: 6px; }
 .itm .iaf { display: block; font-size: 11px; color: var(--brass2); margin-top: 1px; }   /* 가방 부옵션 필터: 고른 옵션 값 */
 .rtag-in { display: none; }
 @media (max-width: 640px) { .rtag-in { display: inline-block; vertical-align: middle; max-width: 100%; overflow: hidden; text-overflow: ellipsis; } .rtag-out { display: none; } }   /* 정보창 관계 탭: 좁은 화면은 이름 옆에 관계 태그, 설명은 아랫줄 전체 폭 */
@@ -921,6 +930,7 @@ button.mkn:hover { text-decoration: underline; }
 .mkaf input { width: 120px; }
 .mkaf select { width: auto; padding: 5px 8px; }
 @media (max-width: 480px) { .mkauc .mkap { margin-left: auto; } .mkab { max-width: none; flex-basis: 100%; } .mkaf label { flex: 1 1 45%; flex-direction: column; align-items: stretch; gap: 2px; min-width: 0; } .mkaf input { width: 100%; min-width: 0; } .mkaf input::placeholder { font-size: 12px; } }   /* 모바일: 이름을 칸 위로 (세로로 잘리던 문제) */
+@container page (max-width: 720px) { .mkauc .mkap { margin-left: auto; } .mkab { max-width: none; flex-basis: 100%; } .mkaf label { flex: 1 1 45%; flex-direction: column; align-items: stretch; gap: 2px; min-width: 0; } .mkaf input { width: 100%; min-width: 0; } .mkaf input::placeholder { font-size: 12px; } }   /* PC 좁은 창(본문 폭 720px 이하)도 모바일처럼: 이름 · 설명을 한 줄 전체로, 가격 · 입찰은 그 아래 */
 .mkst { margin-top: 6px; max-width: 380px; font-size: 12px; padding: 6px 8px; background: var(--sunk); border-radius: 7px; }
 .mkfilt { padding: 10px 12px; }
 .fsep { width: 1px; align-self: stretch; background: var(--line2); margin: 0 4px; }
@@ -940,13 +950,15 @@ button.mkn:hover { text-decoration: underline; }
 .trrow.fresh { animation: trfresh 3s ease-out 1; }
 @keyframes trfresh { 0% { background: rgba(240, 207, 138, .28); } 100% { background: transparent; } }
 @media (max-width: 480px) { .mkrow { flex-wrap: wrap; } .mki { flex-basis: 100%; } .mkpr { margin-left: auto; } }
+@container page (max-width: 720px) { .mkrow { flex-wrap: wrap; } .mki { flex-basis: 100%; } .mkpr { margin-left: auto; } }
 
 /* ── 가방: 촘촘하게 ── */
 .gearcols { align-items: start; }
 /* 한 칸일 때(모바일 · 좁은 본문): 장비 살펴보기 → 가방 → 능력치 순서로, 고른 장비와 가방을 붙여 비교하기 쉽게 */
 /* 가방 장비를 누르면 그 바로 아래에 살펴보기(전투력 변화 · 능력치 · 버튼)를 펼친다 — 한 칸일 때만, 위쪽 살펴보기는 숨김 */
 .invdetail { display: none; grid-column: 1 / -1; }
-.eqdetail { display: none; margin-top: 10px; }
+.eqdetail { margin-top: 10px; }   /* 장착 장비 상세: 화면 폭과 상관없이 장착 칸 바로 아래에 (아래쪽 좌측 칸의 같은 상세는 숨김) */
+.gearcols > .stack > .detail.eqsel { display: none; }
 .cmpline { margin-top: 6px; font-size: 12.5px; line-height: 1.7; }   /* 능력치 비교: 한 줄로 이어 쓰고, 넘치면 자연스럽게 줄바꿈 */
 .cmpline .cl { color: var(--muted); margin-right: 8px; }
 .cmpline .ci { white-space: nowrap; }
@@ -983,8 +995,8 @@ button.mkn:hover { text-decoration: underline; }
 .peqmine { border-left: 1px dashed var(--line2); padding-left: 10px; }
 @media (max-width: 480px) { .pstats, .peq, .peq.peq6 { grid-template-columns: repeat(3, minmax(0, 1fr)); } .peqd.cmp .peqcols { gap: 8px; } .peqd .statline { font-size: 11.5px; } }
 .invdetail .card.detail { margin: 2px 0 4px; }
-@media (max-width: 900px), (pointer: coarse) and (max-width: 1000px) { .gearcols > .stack { display: contents; } .gearcols > .stack > [data-anchor="alloc"] { order: 2; } .invdetail, .eqdetail { display: block; } .gearcols > .stack > .detail.bagsel, .gearcols > .stack > .detail.eqsel { display: none; } }
-@container page (max-width: 720px) { .gearcols > .stack { display: contents; } .gearcols > .stack > [data-anchor="alloc"] { order: 2; } .invdetail, .eqdetail { display: block; } .gearcols > .stack > .detail.bagsel, .gearcols > .stack > .detail.eqsel { display: none; } }
+@media (max-width: 900px), (pointer: coarse) and (max-width: 1000px) { .gearcols > .stack { display: contents; } .gearcols > .stack > [data-anchor="alloc"] { order: 2; } .invdetail { display: block; } .gearcols > .stack > .detail.bagsel, .gearcols > .stack > .detail.eqsel { display: none; } }
+@container page (max-width: 720px) { .gearcols > .stack { display: contents; } .gearcols > .stack > [data-anchor="alloc"] { order: 2; } .invdetail { display: block; } .gearcols > .stack > .detail.bagsel, .gearcols > .stack > .detail.eqsel { display: none; } }
 .inv { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 6px; max-height: 520px; overflow-y: auto; padding-right: 2px; }
 .itm { min-height: 0; padding: 6px 8px; gap: 1px; }
 .itm .in { font-size: 12px; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
