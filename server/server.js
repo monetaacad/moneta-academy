@@ -2881,15 +2881,15 @@ routes['GET /api/admin/dist'] = (req, res) => {
     cup[week] = { now: week === wk, cup: o, wbDmg: pct(rows.filter((r) => r.dmg > 0).map((r) => r.dmg)), wbAttacks: pct(rows.filter((r) => r.att > 0).map((r) => r.att)) };
   });
   // 최근 7일 활동 학생의 세부 전투 능력 (저장된 상태로 다시 계산): 학과별 · 학년별 딜 · 딜 구성 · 생존 · 탑
-  const detail = [], cupCat = {}, curWk = R.weekId(nowSec());   // cupCat: 기숙사별 이번 주 점수 출처 (활동별 합계 · 특기 1.3배로 더 받은 몫)
+  const detail = [], cupCat = {}, curWk = R.weekId(nowSec());   // cupCat: 기숙사별 이번 주 점수 출처 (활동별 합계)
   db.prepare('SELECT id, house, grade, state FROM players WHERE banned = 0 AND guest = 0 AND last_seen >= ? LIMIT 5000').all(now - 7 * 86400).forEach((r) => {
     try {
       const P = store.peek(r.id) || (() => { const x = JSON.parse(r.state); R.fixState(x); return x; })();
       const c = R.calc(P, world.ctx(nowSec()), Math.min(nowSec(), P.at || nowSec())), st = P.st || {};
       if (P.wk && P.wk.id === curWk && P.wk.cup > 0) {
-        const h = cupCat[r.house] || (cupCat[r.house] = { n: 0, sum: {}, specExtra: 0 }), sp = R.CUP_SPEC[r.house], cat = P.wk.cat || {}; h.n++;
+        const h = cupCat[r.house] || (cupCat[r.house] = { n: 0, sum: {} }), cat = P.wk.cat || {}; h.n++;
         const pre = P.wk.cup - Object.keys(cat).reduce((a, k) => a + cat[k], 0); if (pre > 0.5) h.sum.before = Math.round((h.sum.before || 0) + pre);   // 나눠 적기 전에 쌓인 몫
-        for (const k in cat) { const v = cat[k]; h.sum[k] = Math.round((h.sum[k] || 0) + v); if (sp && sp.cats.indexOf(k) >= 0) h.specExtra = Math.round(h.specExtra + v * (1 - 1 / R.CUP_SPEC_MULT)); }
+        for (const k in cat) { const v = cat[k]; h.sum[k] = Math.round((h.sum[k] || 0) + v); }
       }
       detail.push({ cls: P.cls === 'knight' ? 'knight' : 'mage', grade: P.grade, house: r.house, dps: c.totalDps, basic: c.dps, spell: c.spellDps, fam: c.famDps, spellShare: c.totalDps > 0 ? c.spellDps / c.totalDps : 0,
         patk: c.patk, matk: c.matk, hp: c.hp, def: c.def, critC: c.critC, aps: c.aps, power: c.power, lvl: P.lvl, twK: st.twK || 0, twM: st.twM || 0, tw: R.twBest(P, nowSec()),
@@ -3135,6 +3135,16 @@ function twDustBackfill() {
   oplog('system', '시스템', 'twDustFix', '별의 탑 마석가루 소급: 학생 ' + per.size + '명 · 우편 ' + mails + '통 기준 · 마석가루 ' + total);
 }
 try { twDustBackfill(); } catch (e) { log('별의 탑 마석가루 소급 실패', e); }
+// 한 번만: 기숙사 특기 배율(×1.3)을 없애면서 이번 주에 이미 쌓인 특기 활동 점수를 1배로 되돌린다 (사용자 요청 2026-10-24). 지난주까지 확정된 순위 · 보상 · 기숙사 성장은 그대로
+function cupUnspecAll() {
+  if (dbx.kvGet('cupNoSpec', 0)) return;
+  const wk = R.weekId(nowSec()); let n = 0, cut = 0;
+  dbx.db.prepare('SELECT pid FROM weekly WHERE week = ? AND cup > 0').all(wk).forEach((r) => { const P = store.get(r.pid); if (!P) return; const c = R.cupUnspec(P, wk); if (c > 0) { n++; cut += c; store.markDirty(P.id); } });
+  store.flushAll(); world.invalidate(); world.W.hAt = 0;
+  dbx.kvSet('cupNoSpec', { at: Math.floor(Date.now() / 1000), week: wk, students: n, cut: Math.round(cut) });
+  oplog('system', '시스템', 'cupNoSpec', '기숙사 특기 배율 제거 · 이번 주 점수 소급: 학생 ' + n + '명 · ' + Math.round(cut) + '점');
+}
+try { cupUnspecAll(); } catch (e) { log('대항전 특기 배율 소급 실패', e); }
 
 server.listen(cfg.port, cfg.host, () => {
   log(`모네타 서버 시작: http://${cfg.host}:${cfg.port}  (데이터: ${cfg.dataDir}${cfg.timeScale !== 1 ? ', 시간 배속 ×' + cfg.timeScale : ''})`);

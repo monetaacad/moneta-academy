@@ -1105,23 +1105,24 @@
   };
 
   /* ───────── 기숙사 대항전 점수 ─────────
-     기숙사 특기: 자기 기숙사 특기 활동은 점수 ×1.3 (원정 처치 · 기말시험은 모든 기숙사 같음).
+     모든 기숙사가 같은 활동에 같은 점수를 받는다 (예전의 「기숙사 특기 ×1.3」은 2026-10-24에 없앴다 · R.cupUnspec).
      거래 · 경매는 서로 사고팔아 점수를 올릴 수 있어 원래 점수가 없다. */
-  R.CUP_SPEC_MULT = 1.3;
   R.cupAdd = function (P, v, cat) { cupAdd(P, v, cat); };
-  R.CUP_SPEC = {
-    lanterna: { cats: ['lec', 'res', 'task'], text: '수업 · 연구 · 교수 과제' },
-    clepsydra: { cats: ['disp', 'brew', 'dream'], text: '사역마 파견 · 물약 조제 · 꿈길' },
-    corona: { cats: ['boss', 'wb', 'duel'], text: '보스 · 월드 보스 · 결투' },
-    speculum: { cats: ['enh', 'spirit', 'sky', 'shop', 'auc'], text: '장비 강화 · 반딧불 정령 · 하늘 올려다보기 · 매점 구매 · 떠돌이 상인 낙찰' }
+  // 한 번만: 특기 배율을 없애기 전에 이번 주에 쌓인 특기 활동 점수를 1배로 되돌린다 (P.wk.cat에 활동별로 남은 몫 기준)
+  var OLD_SPEC = { lanterna: ['lec', 'res', 'task'], clepsydra: ['disp', 'brew', 'dream'], corona: ['boss', 'wb', 'duel'], speculum: ['enh', 'spirit', 'sky', 'shop', 'auc'] };
+  R.cupUnspec = function (P, week) {
+    var w = P.wk; if (!w || w.id !== week || w.noSpec || !w.cat) return 0;
+    var cats = OLD_SPEC[P.house] || [], cut = 0;
+    cats.forEach(function (k) { var v = w.cat[k]; if (v > 0) { var nv = Math.round(v / 1.3 * 100) / 100; cut += v - nv; w.cat[k] = nv; } });
+    w.cup = Math.max(0, w.cup - cut); w.noSpec = 1; return cut;
   };
   R.CUP_SHOP_WEEK = 200;   // 매점 구매 점수는 한 주에 이만큼까지 (아르크로 마석을 거듭 사서 점수를 올리지 못하게)
   R.CUP_AUC = 50;          // 떠돌이 상인 경매 낙찰 1회 (학생끼리 거래인 거래소에는 점수가 없다) · 구간 3개 · 9점이 되며 100 → 50 (방문당 총점 300 → 450)
   // 이번 주 점수는 활동별로도 나눠 둔다 (P.wk.cat: 운영실 분포 통계에서 기숙사별 점수 출처를 보려고)
   function cupAdd(P, v, cat) {
     if (cat !== 'shop' && cat !== 'auc') famActivity(P, v); if (!P.wk) return;
-    var sp = R.CUP_SPEC[P.house], add = cat && sp && sp.cats.indexOf(cat) >= 0 ? v * R.CUP_SPEC_MULT : v, c = P.wk.cat || (P.wk.cat = {}), k = cat || 'etc';
-    P.wk.cup += add; c[k] = Math.round(((c[k] || 0) + add) * 100) / 100;
+    var c = P.wk.cat || (P.wk.cat = {}), k = cat || 'etc';
+    P.wk.cup += v; c[k] = Math.round(((c[k] || 0) + v) * 100) / 100;
   }
   // 대항전 순위 점수: 이번 주 점수가 CUP_ACTIVE 이상인 학생을 「활동 학생」으로 보고, 그 평균(1인 반영은 중간 점수의 3배까지, 최소 5명으로 나눔).
   // 인원이 많은 기숙사가 합계로 앞서지 않게 한다. cups = 그 기숙사 학생들의 이번 주 점수 목록
