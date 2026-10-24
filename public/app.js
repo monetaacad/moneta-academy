@@ -2778,7 +2778,7 @@
     }
     else if (S.recTab === 'mon') {
       var cn = R.codexTiers(P);
-      h += '<div class="card hl" style="margin-bottom:6px"><div class="row"><div style="flex:1;min-width:200px"><h3>도감 수집 보너스</h3><p class="small muted">일반 몬스터는 1·1,000·10,000마리, 보스는 1·5·20번 처치할 때마다 공격력과 ' + CUR + ' +0.4%.</p></div><div style="text-align:right"><div class="num gold" style="font-size:22px">+' + (cn * R.CODEX_EACH * 100).toFixed(1) + '%</div></div></div></div>';
+      h += '<div class="card hl" style="margin-bottom:6px"><div class="row"><div style="flex:1;min-width:200px"><h3>도감 수집 보너스</h3><p class="small muted">일반 몬스터는 ' + R.CODEX_TIERS.map(fmt).join('·') + '마리, 보스는 ' + R.BOSS_TIERS.join('·') + '번 처치할 때마다 공격력과 ' + CUR + ' +' + (R.CODEX_EACH * 100) + '%. 보스는 보스 관문 바로 앞 단계(9·19·29…단계) 원정을 끝까지 마치면 마지막에 나와 처치 수에 더해집니다.</p></div><div style="text-align:right"><div class="num gold" style="font-size:22px">+' + (cn * R.CODEX_EACH * 100).toFixed(1) + '%</div></div></div></div>';
       D.ZONES.forEach(function (z) {
         h += '<div class="section-t" style="margin-top:10px">' + z.name + '</div><div class="grid gauto">' + z.mons.concat([z.boss]).map(function (m) {
           var k = P.codex[m.id] || 0;
@@ -6235,7 +6235,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102430;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102450;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
