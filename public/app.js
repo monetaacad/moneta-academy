@@ -3753,7 +3753,7 @@
           '<b class="num gold mkpr">' + fmt(x.price) + '</b>' + (bw ? '<span class="tag no" title="최근 30일 시세(판매가 중간값) ' + fmt(bw.avg) + (x.qty > 1 ? ' (개당)' : '') + '">시세의 ' + bw.txt + '</span>' : '') + (x.mine ? '<span class="tag">내 물건</span>' : '<button class="btn sm primary' + (armed ? ' armed' : '') + '" data-act="mkbuy" data-a="' + x.id + '"' + (bw && bw.high ? ' data-warn="' + bw.txt + '"' : '') + (can ? '' : why(low ? '학년이 낮아 살 수 없습니다' : CUR + '가 부족합니다')) + '>' + (armed ? '한 번 더 누르면 구매' : '사기') + '</button>') + '</div>';
       }).join('') + '</div>';
     } else if (m.tab === 'sell') {
-      var items = P.inv.filter(function (it) { return !it.lock; }).sort(function (a, b) { return b.r - a.r || b.ilvl - a.ilvl; });
+      var pstHide = 0, items = P.inv.filter(function (it) { if (it.lock) return false; if (PREF.mkHidePst && it.u !== m.focus && presetNo(it.u).length) { pstHide++; return false; } return true; }).sort(function (a, b) { return b.r - a.r || b.ilvl - a.ilvl; });   // 「프리셋 장비 숨기기」: 프리셋에 들어 있는 장비는 목록에서 뺀다 (다른 화면에서 이 장비를 골라 온 경우는 그대로 보인다)
       if (m.focus) { var fi = items.findIndex(function (it) { return it.u === m.focus; }); if (fi > 0) items.unshift(items.splice(fi, 1)[0]); }
       // 종류 고르기: 장비 · 재료 · 물약 · 소지품 · 휘장 (개수) — 고른 종류만 보이고 「전체」는 모두
       var nMat = [P.res.stone].concat(Object.keys(D.MATS).map(function (k) { return P.mats[k] || 0; })).filter(function (x) { return x > 0; }).length, nPot = D.POTIONS.filter(function (p) { return P.shelf[p.id] > 0; }).length,
@@ -3762,13 +3762,15 @@
       if (m.focus) m.sk = /^pot:/.test(m.focus) ? 'pot' : /^badge:/.test(m.focus) ? 'badge' : 'item';
       var sk = m.sk || (SK.filter(function (x) { return x[2] > 0; })[0] || SK[0])[0];
       h += '<div class="filters" style="margin-bottom:10px">' + SK.map(function (x) { return '<button class="btn sm ghost' + (sk === x[0] ? ' on' : '') + '" data-act="mksk" data-a="' + x[0] + '">' + x[1] + (x[2] >= 0 ? ' <span class="num faint">' + x[2] + '</span>' : '') + '</button>'; }).join('') + '</div>';
-      h += '<div class="mksells' + (sk === 'all' ? ' grid g2' : '') + '" data-sel="' + sk + '" style="align-items:start"><div class="card" data-sk="item"><h3>장비 올리기</h3><p class="tiny faint">장착 중이거나 잠근 장비는 올릴 수 없습니다. 아래 시세는 같은 부위·등급·레벨 ±5의 최근 30일 판매 기록입니다.</p><div class="stack" style="gap:0;margin-top:6px">' +
+      h += '<div class="mksells' + (sk === 'all' ? ' grid g2' : '') + '" data-sel="' + sk + '" style="align-items:start"><div class="card" data-sk="item"><h3>장비 올리기</h3><p class="tiny faint">장착 중이거나 잠근 장비는 올릴 수 없습니다. 아래 시세는 같은 부위·등급·레벨 ±5의 최근 30일 판매 기록입니다.</p>' +
+        '<label class="tog tiny" style="margin-top:6px"><input type="checkbox" data-act="mkhidepst"' + (PREF.mkHidePst ? ' checked' : '') + '> 프리셋 장비 숨기기' + (pstHide ? ' <span class="faint">(' + pstHide + '개 숨김)</span>' : '') + '</label>' +
+        '<div class="stack" style="gap:0;margin-top:6px">' +
         (items.length ? items.slice(0, 40).map(function (it) {
           var k = pKey({ slot: it.slot, r: it.r, ilvl: it.ilvl });
           var so = (m.sopen || {})[it.u];   // 누르면 능력치 펼침
-          return '<div class="mksell' + (m.focus === it.u ? ' focus' : '') + '" data-anchor="mks-' + it.u + '"><div class="mksl"><button class="mksbtn" data-act="mksopen" data-a="' + it.u + '" aria-expanded="' + !!so + '" title="능력치 보기"><span class="small ell" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</span><span class="mkchev tiny faint">' + (so ? '접기 ▴' : '능력치 ▾') + '</span></button><div class="tiny faint ell">' + R.slotName(it) + ' Lv ' + it.ilvl + ' · ' + itemBrief(it) + ' · 상점 ' + fmt(R.sellPrice(it)) + ' ' + CUR + '' + presetTag(it.u) + '</div>' + (so ? '<div class="mkst">' + statLines(it) + '</div>' : '') + priceLine(k) + '</div>' +
+          return '<div class="mksell' + (m.focus === it.u ? ' focus' : '') + '" data-anchor="mks-' + it.u + '"><div class="mksl"><button class="mksbtn" data-act="mksopen" data-a="' + it.u + '" aria-expanded="' + !!so + '" title="능력치 보기"><span class="small ell" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</span><span class="mkchev tiny faint">' + (so ? '접기 ▴' : '능력치 ▾') + '</span></button><div class="mkinfo"><span class="tiny faint ell">' + R.slotName(it) + ' Lv ' + it.ilvl + ' · ' + itemBrief(it) + ' · 상점 ' + fmt(R.sellPrice(it)) + ' ' + CUR + '</span>' + presetTag(it.u) + '</div>' + (so ? '<div class="mkst">' + statLines(it) + '</div>' : '') + priceLine(k) + '</div>' +
             '<div class="mksr"><input type="number" min="1" step="1" inputmode="numeric" class="mkprice" id="mkp-' + it.u + '" data-key="' + k + '" placeholder="가격" data-fmt="1"><span class="tiny faint mkfmt"></span><button class="btn sm" data-act="mklist" data-a="item" data-b="' + it.u + '">올리기</button>' + aucToggle(it.u) + '</div><div class="mkwarn tiny"></div>' + ((m.aopen || {})[it.u] ? aucForm('item', it.u, R.sellPrice(it)) : '') + '</div>';
-        }).join('') : '<div class="empty">올릴 수 있는 장비가 없습니다.</div>') + '</div></div>';
+        }).join('') : '<div class="empty">' + (pstHide ? '프리셋 장비를 제외하면 올릴 수 있는 장비가 없습니다.' : '올릴 수 있는 장비가 없습니다.') + '</div>') + '</div></div>';
       var mats = [['stone', P.res.stone]].concat(Object.keys(D.MATS).map(function (k) { return [k, P.mats[k] || 0]; })).filter(function (x) { return x[1] > 0; });
       h += '<div class="card" data-sk="mat"><h3>재료 올리기</h3><p class="tiny faint">수량과 개당 가격을 정하면 최종가(묶음 전체 가격)가 계산됩니다. 시세는 개당 가격입니다.</p><div class="stack" style="gap:0;margin-top:6px">' + (mats.length ? mats.map(function (x) {
         return '<div class="mksell"><div class="mksl"><div class="small">' + MATN(x[0]) + ' <span class="tiny faint">가진 수 ' + fmt(x[1]) + '</span></div>' + priceLine('mat:' + x[0], true) + '</div><div class="mksr">' + mkQtyInputs(x[0], x[1], 'mat:' + x[0], '') + '<button class="btn sm" data-act="mklist" data-a="mat" data-b="' + x[0] + '">올리기</button></div><div class="mkwarn tiny"></div></div>';
@@ -3926,6 +3928,7 @@
     var u = 'pot:' + id; S.mk.tab = 'sell'; S.mk.focus = u; ACT.nav('market'); loadMarket();
     setTimeout(function () { var el = $('[data-anchor="mks-' + u + '"]'), inp = $('#mkp-pot-' + id); if (el) { el.scrollIntoView({ block: 'center' }); el.classList.add('flash'); } if (inp) inp.focus(); }, 80);
   };
+  ACT.mkhidepst = function (a, b, el) { PREF.mkHidePst = !!el.checked; savePref(); render(); };
   ACT.mktab = function (t) { S.mk.tab = t; if (t !== 'live') S.mk.data = null; if (t !== 'sell') S.mk.focus = null; render(); loadMarket(); };
   // 부옵션 검색: 옵션을 3개까지 골라 모두 가진 장비만 (선택한 옵션은 × 로 뺀다)
   function mkAffRow(m) {
