@@ -58,7 +58,7 @@ var Net = (function () {
         es.addEventListener('note', function (e) { if (h.note) h.note(JSON.parse(e.data)); });
         es.addEventListener('trade', function (e) { if (h.trade) h.trade(JSON.parse(e.data)); });
         es.addEventListener('mail', function (e) { if (h.mail) h.mail(JSON.parse(e.data)); });
-        ['ritual', 'auction', 'outbid', 'ver', 'maint', 'mk'].forEach(function (k) { es.addEventListener(k, function (e) { if (h[k]) h[k](JSON.parse(e.data)); }); });
+        ['ritual', 'auction', 'outbid', 'ver', 'maint', 'mk', 'mkgold'].forEach(function (k) { es.addEventListener(k, function (e) { if (h[k]) h[k](JSON.parse(e.data)); }); });
         // 끊기면 브라우저가 같은 주소로 다시 붙으려 하지만 표는 1회용이므로, 직접 닫고 새 표로 다시 연결
         es.onerror = function () { h.status(false); es.close(); retry(); };
       });
