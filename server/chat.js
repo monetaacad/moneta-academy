@@ -190,7 +190,7 @@ function create(dbx, log, opts) {
   function send(P, meta, ch, text, kind, now, nonce) {
     nonce = cleanNonce(nonce); const dup = seenNonce(P.id, nonce, now); if (dup) return { id: dup, dup: true };
     gap(P, now); slowCheck(P, ch, now);
-    const C = CHANNELS[ch]; if (!C || C.readonly || ch === 'dm') throw new Error('보낼 수 없는 채널입니다');
+    const C = CHANNELS[ch]; if (!C || (C.readonly && !(ch === 'notice' && isOp(P.id))) || ch === 'dm') throw new Error('보낼 수 없는 채널입니다');   // 공지: 운영진(학생회 · 학생회장)만 쓸 수 있다
     const party = GROUP[ch] ? groupOf(ch, P.id) : null;
     if (GROUP[ch] && !party) throw new Error(ch === 'party' ? '파티에 들어가 있지 않습니다' : ch === 'exr' ? '함께 원정 중이 아닙니다' : KIND[ch] === 'guild' ? '동아리에 들어가 있지 않습니다' : KIND[ch] === 'cls' ? '학과 선택 필요' : '보낼 수 없는 채널입니다');
     if (meta.muted_until && meta.muted_until > now) throw new Error('채팅이 금지된 상태입니다 (' + Math.ceil((meta.muted_until - now) / 60) + '분 남음)');

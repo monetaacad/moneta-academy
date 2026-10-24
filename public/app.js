@@ -480,7 +480,7 @@
   /* ── 채팅 (모든 화면에 붙어 있는 창) ──
      모든 채널은 탭을 열지 않아도 실시간으로 받아 둔다. 마지막으로 읽은 곳을 기억해 안 읽은 수와 「여기부터 새 글」 줄을 보여 준다. */
   var CH_INFO = {
-    notice: { name: '공지', desc: '운영진 공지와 아카데미 소식입니다. 이 채널에는 글을 작성할 수 없습니다.' },
+    notice: { name: '공지', desc: '운영진 공지와 아카데미 소식입니다. 운영진만 글을 작성할 수 있습니다.' },
     recruit: { name: '모집', desc: '함께 원정 · 동아리 · 파티 모집 알림입니다. 함께 원정은 방에서, 동아리 홍보는 동아리 화면에서, 파티원 모집은 파티 화면에서 보냅니다. 모집에 관한 일반 대화도 이곳에 입력할 수 있습니다.' },
     rp: { name: 'RP', desc: '캐릭터로서 말하는 곳. *별표 사이*에 작성한 글은 행동 묘사로 표시됩니다. 예: 오늘은 별샘이 밝네. *창밖을 올려다본다*' },
     world: { name: '월드', desc: '모든 학생의 자유 대화방입니다. 이름을 누르면 그 학생의 정보를 볼 수 있습니다.' },
@@ -659,7 +659,7 @@
     if (ch === 'dm') { h += dmBody(); d.innerHTML = h; d.classList.remove('closed'); scrollHints(); dmAfterRender(); updateLive(); return; }
     // 공지 탭: 운영진 공지는 모두, 아카데미 알림 · 떠돌이 상인 같은 자동 알림은 최근 NT_SYS건만 (「이전 알림 보기」로 펼침)
     var src = c.msgs[ch], ntHid = 0;
-    if (ch === 'notice' && !S.ntAll) { var sysN = src.filter(function (m) { return m.kind !== 'staff'; }).length; ntHid = Math.max(0, sysN - NT_SYS); if (ntHid) { var skip = ntHid; src = src.filter(function (m) { if (m.kind === 'staff' || skip <= 0) return true; skip--; return false; }); } }
+    if (ch === 'notice' && !S.ntAll) { var sysN = src.filter(function (m) { return m.kind !== 'staff' && !m.op; }).length; ntHid = Math.max(0, sysN - NT_SYS); if (ntHid) { var skip = ntHid; src = src.filter(function (m) { if (m.kind === 'staff' || m.op || skip <= 0) return true; skip--; return false; }); } }
     var div = S.divider[ch], drew = false, list = (ntHid ? '<button class="btn sm ghost chatmore" data-act="ntall">이전 아카데미 알림 ' + ntHid + '건 보기</button>' : '') + src.map(function (m) {
       var x = ''; if (!drew && div != null && div > 0 && isNum(m.id) && m.id > div && m.pid !== S.P.id) { drew = true; x = '<div class="newline"><span>여기부터 새 글</span></div>'; }
       return x + msgHtml(m);
@@ -670,13 +670,13 @@
       '<div class="chatdesc"><div class="chatmeta tiny">' + (c.loading === ch ? '<span class="faint">새 글 불러오는 중…</span>' : '') + (ch === 'world' && c.slow.world ? '<span class="tag br">슬로우 모드 ' + c.slow.world + '초</span>' : '') + (ch === 'world' && isOp() ? '<button class="btn sm ghost" data-act="slowset" style="padding:0 7px">슬로우 모드 설정</button>' : '') + '</div>' +
       (ch === 'hrp' ? houseRoom(S.chHouse) : '') + '<p class="tiny faint">' + info.desc + (API.mode === 'local' && ch !== 'notice' ? '<br><span class="gold">데모: 같은 페이지를 연 사람끼리만 보이고, 기록은 이 브라우저에만 남습니다.</span>' : '') + '</p></div>' +
       (c.msgs[ch].length ? list : '<div class="empty">' + (ch === 'notice' ? '아직 공지가 없습니다.' : ch === 'recruit' ? '아직 모집 알림이 없습니다. 함께 원정 방 · 동아리 · 파티 화면에서 모집 알림을 보낼 수 있습니다.' : '아직 대화가 없습니다. 첫 인사를 건넬 차례.') + '</div>') + '<button class="chatnew" data-act="chatbottom" hidden></button></div>';
-    if (ch !== 'notice') h += chatInput(ch);
+    if (ch !== 'notice' || isOp()) h += chatInput(ch);   // 공지 탭 입력칸은 운영진에게만
     d.innerHTML = h; d.classList.remove('closed'); scrollHints();
     chatAfterRender(); updateLive();
   }
   function chatInput(ch) {
     var c = S.chat;
-    return '<div class="chatin"><div class="chatrow"><div class="chatbox"><textarea id="chatinput" rows="1" data-max="' + chatMax(ch) + '" placeholder="' + (ch === 'world' ? '메시지 · Enter 보내기, Shift+Enter 줄바꿈' : ch === 'dm' ? '메시지 · Enter 보내기' : ch === 'gooc' ? '오너로서 하는 이야기 · Enter 보내기' : '대사를 입력하고 *행동*은 별표 사이에') + '">' + esc(c.draft[ch === 'dm' ? 'dm:' + S.dm.peer : ch] || '') + '</textarea><span class="chatcnt num" id="chatcount" aria-live="polite"></span></div>' +
+    return '<div class="chatin"><div class="chatrow"><div class="chatbox"><textarea id="chatinput" rows="1" data-max="' + chatMax(ch) + '" placeholder="' + (ch === 'world' ? '메시지 · Enter 보내기, Shift+Enter 줄바꿈' : ch === 'dm' ? '메시지 · Enter 보내기' : ch === 'gooc' ? '오너로서 하는 이야기 · Enter 보내기' : ch === 'notice' ? '운영진 공지 · Enter 보내기 (모든 학생에게 보입니다)' : '대사를 입력하고 *행동*은 별표 사이에') + '">' + esc(c.draft[ch === 'dm' ? 'dm:' + S.dm.peer : ch] || '') + '</textarea><span class="chatcnt num" id="chatcount" aria-live="polite"></span></div>' +
       '<button class="btn sm primary chatsendbtn" data-act="chatsend">보내기</button></div>' +
       '<div class="row chatmeta"><span class="spacer"></span><span class="tiny bad" id="chatmsg"></span></div>' +
       '</div>';   // 가린 학생 목록 · 해제는 설정 → 채팅
@@ -6235,7 +6235,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102430;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102452;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
