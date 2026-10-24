@@ -2486,16 +2486,17 @@
   function statQuick(always) {   // always: 저장한 프리셋이 없어도 보인다 (능력치 칸 · 결투 준비에서 처음 만들 수 있게)
     var P = S.P, sets = P.statSets || [], n = (P.tok && P.tok.respec) || 0, cur = JSON.stringify(P.opt.allocW || {}), b = '';
     if (!always && !sets.some(Boolean)) return '';
-    for (var i = 0; i < R.STATSET_N; i++) { var st = sets[i], on = st && P.statOn === i && JSON.stringify(st.w) === cur; b += '<button class="btn sm' + (on ? ' primary' : '') + '" data-act="stload" data-a="' + i + '"' + (st ? ' title="' + esc(statSetText(st.w)) + (n ? ' · 망각의 차 1개 사용' : ' · 망각의 차가 필요합니다') + '"' : ' disabled title="비어 있음 · 편집에서 저장"') + '>' + (st && st.name ? esc(st.name) : (i + 1)) + '</button>'; }
+    for (var i = 0; i < R.STATSET_N; i++) { var st = sets[i], on = st && P.statOn === i && JSON.stringify(st.w) === cur, arm = S.confirm['st' + i] > Date.now(); b += '<button class="btn sm' + (arm ? ' danger' : on ? ' primary' : '') + '" data-act="stload" data-a="' + i + '"' + (st ? ' title="' + esc(statSetText(st.w)) + (n ? ' · 망각의 차 1개 사용' : ' · 망각의 차가 필요합니다') + '"' : ' disabled title="비어 있음 · 편집에서 저장"') + '>' + (arm ? '망각의 차 1개 소모 · 한 번 더 누르면 적용' : st && st.name ? esc(st.name) : (i + 1)) + '</button>'; }   // 첫 번째 누름: 확인 표시, 4초 안에 한 번 더 누르면 적용
     return '<div class="gsquick stquick"><div class="gsrow"><span class="small muted">스탯 프리셋</span>' + b + '<button class="btn sm ghost" data-act="stedit">편집</button><span class="tiny faint">망각의 차 ' + n + '개</span></div></div>';
   }
   function statSetText(w) { return R.STATS.filter(function (k) { return w[k] > 0; }).sort(function (a, b) { return w[b] - w[a]; }).map(function (k) { return D.STAT_NAMES[k] + ' ' + w[k]; }).join(' · '); }
   ACT.stload = function (i) {
     if (!((S.P.tok && S.P.tok.respec) > 0)) { toast('스탯 프리셋', '망각의 차가 없습니다. 매점에서 구할 수 있습니다', 2600); return; }
-    act('statSet', { i: +i, op: 'apply' }).then(function (r) { if (!r) return; Snd.play('enh'); toast('스탯 프리셋', '「' + (r.name || (+i + 1)) + '」 비율로 능력치 포인트 ' + fmt(r.pts) + '점을 다시 나눴습니다 · 망각의 차 −1', 2800); render(); });
+    var k = 'st' + i; if (!(S.confirm[k] > Date.now())) { S.confirm[k] = Date.now() + 4000; render(); setTimeout(render, 4100); return; }
+    S.confirm[k] = 0; act('statSet', { i: +i, op: 'apply' }).then(function (r) { if (!r) return; Snd.play('enh'); toast('스탯 프리셋', '「' + (r.name || (+i + 1)) + '」 비율로 능력치 포인트 ' + fmt(r.pts) + '점을 다시 나눴습니다 · 망각의 차 −1', 2800); render(); });
   };
   ACT.stedit = function () {
-    var sets = S.P.statSets || [], def = S.P.opt.allocW || {}, h = '<p class="small muted">능력치마다 비율(0~10)을 정하고 이름을 붙여 저장합니다. 프리셋을 누르면 <b>망각의 차 1개</b>를 사용해 분배한 포인트를 모두 돌려받고, 그 비율로 바로 다시 나눕니다.</p><div class="stack" style="gap:8px;margin-top:10px">';
+    var sets = S.P.statSets || [], def = S.P.opt.allocW || {}, h = '<p class="small muted">능력치마다 비율(0~10)을 정하고 이름을 붙여 저장합니다. 프리셋을 누른 뒤 한 번 더 누르면 <b>망각의 차 1개</b>를 사용해 분배한 포인트를 모두 돌려받고, 그 비율로 바로 다시 나눕니다.</p><div class="stack" style="gap:8px;margin-top:10px">';
     for (var i = 0; i < R.STATSET_N; i++) {
       var st = sets[i], w = st ? st.w : def;
       h += '<div class="card inset" style="padding:8px 10px"><div class="row" style="gap:6px;flex-wrap:wrap"><b class="num" style="width:1.5em">' + (i + 1) + '</b><input id="stnm' + i + '" maxlength="10" placeholder="이름 (예: 탑용)" value="' + esc(st && st.name || '') + '" style="width:9em"><span class="spacer"></span><button class="btn sm primary" data-act="stsave" data-a="' + i + '">' + (st ? '덮어쓰기' : '저장') + '</button>' + (st ? '<button class="btn sm ghost" data-act="stclear" data-a="' + i + '">비우기</button>' : '') + '</div>' +
