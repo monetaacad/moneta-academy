@@ -3146,6 +3146,21 @@ function cupUnspecAll() {
 }
 try { cupUnspecAll(); } catch (e) { log('대항전 특기 배율 소급 실패', e); }
 
+// 한 번만: 물약 점수 상한(한 주 1,000점)을 이번 주에 이미 만든 물약에도 소급 (사용자 요청 2026-10-24). 특기 배율 소급(cupUnspec)이 있으면 그것부터
+function brewCapAll() {
+  if (dbx.kvGet('brewCapFix', 0)) return;
+  const wk = R.weekId(nowSec()); let n = 0, cut = 0;
+  dbx.db.prepare('SELECT pid FROM weekly WHERE week = ? AND cup > 0').all(wk).forEach((r) => {
+    const P = store.get(r.pid); if (!P) return;
+    if (typeof R.cupUnspec === 'function') R.cupUnspec(P, wk);
+    const c = R.brewCapFix(P, wk); store.markDirty(P.id); if (c > 0) { n++; cut += c; }
+  });
+  store.flushAll(); world.invalidate(); world.W.hAt = 0;
+  dbx.kvSet('brewCapFix', { at: Math.floor(Date.now() / 1000), week: wk, students: n, cut: Math.round(cut) });
+  oplog('system', '시스템', 'brewCapFix', '물약 대항전 점수 상한 소급: 학생 ' + n + '명 · ' + Math.round(cut) + '점');
+}
+try { brewCapAll(); } catch (e) { log('물약 점수 상한 소급 실패', e); }
+
 server.listen(cfg.port, cfg.host, () => {
   log(`모네타 서버 시작: http://${cfg.host}:${cfg.port}  (데이터: ${cfg.dataDir}${cfg.timeScale !== 1 ? ', 시간 배속 ×' + cfg.timeScale : ''})`);
   if (!cfg.adminToken) log('알림: ADMIN_TOKEN이 없어 관리자 API가 꺼져 있습니다');

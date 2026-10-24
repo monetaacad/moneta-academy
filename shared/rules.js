@@ -1119,6 +1119,17 @@
     cats.forEach(function (k) { var v = w.cat[k]; if (v > 0) { var nv = Math.round(v / 1.3 * 100) / 100; cut += v - nv; w.cat[k] = nv; } });
     w.cup = Math.max(0, w.cup - cut); w.noSpec = 1; return cut;
   };
+  R.CUP_BREW = 8; R.CUP_BREW_WEEK = 1000;   // 물약 조제: 1병 8점, 한 주 1,000점(125병)까지 (마나 · 재료만 있으면 한 번에 많이 만들 수 있어서)
+  function brewCup(P, n) { if (!P.wk) return; var sc = Math.min(R.CUP_BREW * n, Math.max(0, R.CUP_BREW_WEEK - (P.wk.brew || 0))); if (sc > 0) { P.wk.brew = (P.wk.brew || 0) + sc; cupAdd(P, sc, 'brew'); } }
+  // 한 번만: 상한을 넣기 전 이번 주에 만든 물약 점수도 1,000점까지로 (P.wk.cat.brew 기준). 특기 배율이 아직 있으면 그 배율을 빼고 센다
+  R.brewCapFix = function (P, week) {
+    var w = P.wk; if (!w || w.id !== week || w.brewFix) return 0; w.brewFix = 1;
+    var sp = R.CUP_SPEC && R.CUP_SPEC[P.house], mul = sp && sp.cats.indexOf('brew') >= 0 && !w.noSpec ? R.CUP_SPEC_MULT : 1;
+    var raw = ((w.cat && w.cat.brew) || 0) / mul, cut = Math.max(0, raw - R.CUP_BREW_WEEK);
+    w.brew = Math.min(R.CUP_BREW_WEEK, Math.max(w.brew || 0, raw));
+    if (cut > 0) { w.cat.brew = Math.round(R.CUP_BREW_WEEK * mul * 100) / 100; w.cup = Math.max(0, w.cup - cut * mul); }
+    return cut * mul;
+  };
   R.CUP_SHOP_WEEK = 200;   // 매점 구매 점수는 한 주에 이만큼까지 (아르크로 마석을 거듭 사서 점수를 올리지 못하게)
   R.CUP_AUC = 50;          // 떠돌이 상인 경매 낙찰 1회 (학생끼리 거래인 거래소에는 점수가 없다) · 구간 3개 · 9점이 되며 100 → 50 (방문당 총점 300 → 450)
   // 이번 주 점수는 활동별로도 나눠 둔다 (P.wk.cat: 운영실 분포 통계에서 기숙사별 점수 출처를 보려고)
@@ -1178,7 +1189,7 @@
     P.brew.forEach(function (b) {
       for (var n = b.done; n < b.n; n++) {
         var end = b.start + (n + 1) * b.each; if (end > now) break;
-        (function (end) { ev.push({ t: end, f: function () { P.shelf[b.id] = (P.shelf[b.id] || 0) + 1; b.done++; P.st.brews++; cupAdd(P, 8, 'brew'); } }); })(end);
+        (function (end) { ev.push({ t: end, f: function () { P.shelf[b.id] = (P.shelf[b.id] || 0) + 1; b.done++; P.st.brews++; brewCup(P, 1); } }); })(end);
       }
     });
     if (P.fam.egg && P.fam.egg.end <= now) ev.push({ t: P.fam.egg.end, f: function () { var o = hatch(P, P.fam.egg.end); o.k = 'hatch'; o.t = now; inbox(P, o); } });
@@ -2179,7 +2190,7 @@
     if (P.res.mana < mana * n) err('마나가 부족합니다');
     for (var m in p.mats) if ((P.mats[m] || 0) < p.mats[m] * n) err('재료가 부족합니다');
     P.res.mana -= mana * n; for (var m2 in p.mats) P.mats[m2] -= p.mats[m2] * n;
-    P.shelf[id] = (P.shelf[id] || 0) + n; P.st.brews += n; cupAdd(P, 8 * n, 'brew');
+    P.shelf[id] = (P.shelf[id] || 0) + n; P.st.brews += n; brewCup(P, n);
     return { id: id, n: n, mana: mana * n };
   };
   A.brewCancel = function (P, W, now, a) {
