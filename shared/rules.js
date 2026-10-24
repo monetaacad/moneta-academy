@@ -1850,6 +1850,8 @@
   // 복습하는 꿈: 1시간에 강의의 0.4배, 깨어난 뒤 3시간 안에 그 과목 수업을 시작하면 경험치 +20% (복습 효과)
   R.DREAM_STUDY = 0.4; R.REVIEW_BONUS = 0.2; R.REVIEW_TIME = 3 * 3600;
   R.reviewOn = function (P, sid, t) { var r = P.review; return !!r && r.s === sid && t < r.until; };
+  // 같은 과목을 듣고 있는 다른 학생 수: 서버는 W.lecPeerN(과목, 내 id, 시각) — 시간표 · 예약 교시가 저절로 시작될 때도 센다. 미리보기는 W.lecPeers
+  function peersOf(P, W, sid, at) { if (!W) return 0; if (typeof W.lecPeerN === 'function') return W.lecPeerN(sid, P.id, at) | 0; return W.lecPeers ? (W.lecPeers[sid] || 0) : 0; }
   function lecMake(P, W, i, sid, dk, now, peers, ontime) {
     var d = DUR[dk], pv = R.lecPreview(P, W, sid, d.k, now), pb = R.peerBonus(peers || 0), ob = ontime ? R.ONTIME_BONUS : 0, rb = R.reviewOn(P, sid, now) ? R.REVIEW_BONUS : 0;
     P.lec[i] = { s: sid, start: now, end: now + d.s, dur: d.s, eff: d.eff, xp: pv.xp * (1 + pb + ob + rb), know: pv.know, peers: peers || 0, pb: pb, ontime: !!ontime, rb: rb || undefined };
@@ -1866,7 +1868,7 @@
     if (P.lec[i]) err('이미 수업 중인 슬롯입니다');
     if (P.lec.some(function (l) { return l && l.s === sid; })) err('같은 과목을 동시에 들을 수 없습니다');
     if (P.ttRun) P.ttRun = null;   // 직접 수업을 시작하면 기다리던 시간표는 멈춘다
-    var on = R.onTime(P, i, now), j = lecMake(P, W, i, sid, dk, now, W && W.lecPeers ? (W.lecPeers[sid] || 0) : 0, on);
+    var on = R.onTime(P, i, now), j = lecMake(P, W, i, sid, dk, now, peersOf(P, W, sid, now), on);
     P.lecEnd[i] = 0;
     return { ok: true, ontime: on, review: R.reviewOn(P, sid, now) };
   };
@@ -1884,7 +1886,7 @@
     var q = lecQ(P)[i]; if (!q || P.lec[i]) return null; P.lecQ[i] = null;
     if (!SUBJ[q.s] || SUBJ[q.s].unlock > Math.min(P.grade, 7) || !R.subjVisible(P, SUBJ[q.s]) || !DUR[q.d] || i >= calc(P, W, at).lecSlots) return null;
     if (P.lec.some(function (l) { return l && l.s === q.s; })) { log(P, at, '예약한 ' + SUBJ[q.s].name + ' 수업은 다른 슬롯에서 듣고 있어 시작하지 않았습니다', 'bad'); return null; }
-    var j = lecMake(P, W, i, q.s, q.d, at, 0, false); j.auto = true; P.lecEnd[i] = 0;
+    var j = lecMake(P, W, i, q.s, q.d, at, peersOf(P, W, q.s, at), false); j.auto = true; P.lecEnd[i] = 0;
     log(P, at, '예약한 ' + SUBJ[q.s].name + ' 수업이 시작되었습니다', 'news');
     return j;
   }
@@ -1906,7 +1908,7 @@
     if (P.lec[0]) err('이미 듣고 있는 수업이 있어 시간표를 시작할 수 없습니다');
     var p = t.p.filter(function (x) { return ttOk(P, x); }); if (!p.length) err('지금 들을 수 있는 교시가 없습니다');
     lecQ(P); P.lecQ[0] = null;
-    var on = R.onTime(P, 0, now), j = lecMake(P, W, 0, p[0].s, p[0].d, now, W && W.lecPeers ? (W.lecPeers[p[0].s] || 0) : 0, on);
+    var on = R.onTime(P, 0, now), j = lecMake(P, W, 0, p[0].s, p[0].d, now, peersOf(P, W, p[0].s, now), on);
     j.tt = { i: 0, n: p.length }; P.lecEnd[0] = 0;
     P.ttRun = { k: k, name: t.name, p: p, i: 0, at: 0 };
     return { ok: true, name: t.name, n: p.length, skip: t.p.length - p.length, ontime: on };
@@ -1916,7 +1918,7 @@
     var run = P.ttRun; if (!run || P.lec[i]) return null; run.at = 0;
     for (var n = run.i + 1; n < run.p.length; n++) {
       var x = run.p[n]; if (!ttOk(P, x)) continue;
-      var j = lecMake(P, W, i, x.s, x.d, at, 0, false); j.tt = { i: n, n: run.p.length }; j.otUntil = at + R.ONTIME_WIN; run.i = n; P.lecEnd[i] = 0;
+      var j = lecMake(P, W, i, x.s, x.d, at, peersOf(P, W, x.s, at), false); j.tt = { i: n, n: run.p.length }; j.otUntil = at + R.ONTIME_WIN; run.i = n; P.lecEnd[i] = 0;
       log(P, at, '시간표 「' + run.name + '」 ' + (n + 1) + '교시 ' + SUBJ[x.s].name + ' 수업이 시작되었습니다 · 15분 안에 「제때 입실」 가능', 'news');
       return j;
     }
