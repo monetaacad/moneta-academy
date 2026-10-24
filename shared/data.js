@@ -539,7 +539,7 @@ var DATA = (function () {
     { id: 'expedition', gone: true, name: '원정대 편성', desc: '원정 슬롯 +1', eff: { expSlot: 1 }, mana: 250000, know: 8000, g: 1, max: 1, time: 86400, tg: 1, grade: 4 },
     { id: 'abyss', name: '심연 연구', desc: '공격력·생명력 +4% (마스터 과정, 단계 제한 없음)', eff: { atkPct: 0.04, hpPct: 0.04 }, mana: 2000000, know: 100000, g: 1.08, max: 999, time: 86400, tg: 1, grade: 8 },
     { id: 'sorter', name: '분류 마법', desc: '자동 판매 기능 해금', eff: { autosell: 1 }, mana: 2000, know: 50, g: 1, max: 1, time: 1200, tg: 1 },
-    { id: 'runeforge', name: '룬 각인술', desc: '강화 성공률 +3%', eff: { enhBonus: 0.03 }, mana: 40000, know: 1500, g: 1.7, max: 10, time: 14400, tg: 1.4, grade: 4 }
+    { id: 'runeforge', name: '룬 각인술', desc: '강화 성공률 증가 (1단계 +3%, 단계가 오를수록 적게 올라 10단계 합계 +15%)', eff: { enhBonus: 0.03 }, decay: 0.8317, mana: 40000, know: 1500, g: 1.7, max: 10, time: 14400, tg: 1.4, grade: 4 }
   ];
 
   /* ───────── 시험 ───────── */

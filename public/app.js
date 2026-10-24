@@ -2687,7 +2687,7 @@
       var lv = P.rs[r.id] || 0, av = R.resAvailable(P, r.id), max = lv >= r.max, cost = R.resCost(P, r.id), q = R.resQueued(P, r.id);
       var can = av && !max && !q && used < c.resSlots && predMana() >= cost.mana && P.res.know >= cost.know;
       var rwhy = used >= c.resSlots ? '연구 자리가 모두 차 있습니다' : predMana() < cost.mana ? '마나가 부족합니다 (' + fmt(cost.mana) + ' 필요)' : '지식이 부족합니다 (' + fmt(cost.know) + ' 필요)';
-      var hh = '<div class="card"' + (av ? '' : ' style="opacity:.55"') + '><div class="row between"><h4>' + r.name + '</h4><span class="num small ' + (max ? 'gold' : 'muted') + '">' + lv + ' / ' + (r.max >= 999 ? '∞' : r.max) + '</span></div><p class="small muted" style="margin:4px 0 8px"><span class="faint">단계마다</span> ' + r.desc + (lv && resTotal(r, lv) ? '<br><span class="tiny">지금 받는 효과 · ' + resTotal(r, lv) + '</span>' : '') + '</p>';
+      var hh = '<div class="card"' + (av ? '' : ' style="opacity:.55"') + '><div class="row between"><h4>' + r.name + '</h4><span class="num small ' + (max ? 'gold' : 'muted') + '">' + lv + ' / ' + (r.max >= 999 ? '∞' : r.max) + '</span></div><p class="small muted" style="margin:4px 0 8px"><span class="faint">단계마다</span> ' + r.desc + (lv && resTotal(r, lv) ? '<br><span class="tiny">지금 받는 효과 · ' + resTotal(r, lv) + '</span>' : '') + (r.decay && !max ? '<br><span class="tiny faint">다음 단계를 마치면 · ' + resTotal(r, lv + 1) + '</span>' : '') + '</p>';
       if (!av) return hh + '<span class="tag">' + r.grade + '학년부터</span></div>';
       if (max) return hh + '<span class="tag br">연구 완료</span></div>';
       if (q) { var rq = P.rsq.filter(function (x) { return x && x.id === r.id; })[0];   // 진행 막대 · 남은 시간 (화면이 저절로 갱신)
@@ -5940,7 +5940,7 @@
   function resTotal(r, lv) {
     if (!lv) return ''; var out = [], e = r.eff || {}, p1 = function (v) { return Math.round(v * 1000) / 10 + '%'; };
     for (var k in e) {
-      var v = e[k] * lv;
+      var v = e[k] * R.resMult(r, lv);
       if (k === 'brewSpd') out.push('양조 비용 −' + p1(1 - 1 / (1 + v)));
       else if (k === 'hatchSpd') out.push('부화 비용 −' + p1(1 - 1 / (1 + v)));
       else if (k === 'bag') out.push('가방 칸 +' + v);
@@ -6223,7 +6223,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102421;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102424;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
