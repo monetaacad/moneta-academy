@@ -1176,7 +1176,7 @@ const NPCS = R.D.RIVALS.map((r, k) => { const h = Object.keys(NPC_HOUSE).find((x
    장비와 재료를 아르크로 사고판다. 올린 물건은 맡겨 두고(가방에서 빠짐), 팔리면 판매자에게 아르크(수수료 5% 뺀 값)가 바로 들어간다.
    3일 안에 안 팔리면 돌아온다. 1학년부터, 정식 학생만(게스트로 부계정을 만들어 몰아주는 것을 막기 위함).
    판매 등록은 입학 24시간 뒤부터 (새 캐릭터로 시작 보상을 넘기는 것을 막기 위함). */
-const MK = { FEE: 0.05, DAYS: 3, MAX_OPEN: 10, GRADE: +(process.env.MARKET_GRADE || 1), SELL_AFTER: 86400, MAX_PRICE: 1e15 };
+const MK = { FEE: R.MK_FEE, DAYS: 3, MAX_OPEN: 10, GRADE: +(process.env.MARKET_GRADE || 1), SELL_AFTER: 86400, MAX_PRICE: 1e15 };
 // 소지품도 거래 가능: 환수의 알 · 토벌 도전권 · 망각의 차 (별조각으로 산 것을 아르크로 바꾸는 길)
 const MK_TOK = {
   egg: { name: '환수의 알', have: (P) => P.fam.eggs || 0, add: (P, n) => { P.fam.eggs = (P.fam.eggs || 0) + n; } },
@@ -1218,11 +1218,11 @@ function mkRefund(pid, amount, name, why) {
 function mkPaySeller(r, price, buyerName, now, how) {
   if (String(r.seller).startsWith('npc:')) return;
   const SP = store.get(r.seller); if (!SP) return;
-  const got = Math.floor(price * (1 - MK.FEE)), nm = r.name + (r.kind !== 'item' && r.kind !== 'badge' ? ' ' + r.qty + '개' : '');
+  const fee = R.mkFee(SP), got = Math.floor(price * (1 - fee)), nm = r.name + (r.kind !== 'item' && r.kind !== 'badge' ? ' ' + r.qty + '개' : '');
   addNote(r.seller, 'market', '거래소에서 ' + R.josa(nm, '이', '가') + ' ' + (how || '팔렸습니다') + ' · ' + R.fmt(got) + ' ' + CUR + ' (' + buyerName + ' 님)', { view: 'market' });
   R.advance(SP, world.ctx(now), now); SP.res.gold += got; SP.st.goldTotal = (SP.st.goldTotal || 0) + got; SP.st.mkSold = (SP.st.mkSold || 0) + 1;   // 칭호 「거래소 큰손」
   chat.ping(r.seller, 'mkgold', { t: nm + ' 판매 +' + R.fmt(got) + ' ' + CUR });
-  R.log(SP, now, '거래소: ' + nm + ' 판매 +' + R.fmt(got) + ' ' + CUR + ' (수수료 ' + Math.round(MK.FEE * 100) + '%)', 'good'); store.markDirty(r.seller);
+  R.log(SP, now, '거래소: ' + nm + ' 판매 +' + R.fmt(got) + ' ' + CUR + ' (수수료 ' + Math.round(fee * 100) + '%)', 'good'); store.markDirty(r.seller);
 }
 // 마감된 경매 정리: 입찰이 있으면 최고 입찰자에게 넘기고(맡겨 둔 아르크로 값을 치른다), 없으면 판매자에게 돌려준다
 function mkAucSettle(r, now) {
@@ -1260,8 +1260,8 @@ function mkSearch(f, now) {
   if (f.q) { where.push(`m.name LIKE ? ESCAPE '\\'`); args.push('%' + f.q.replace(/[\\%_]/g, (c) => '\\' + c) + '%'); }
   const dir = f.sort === 'high' ? 'DESC' : 'ASC';
   const cur = '(CASE WHEN m.bids > 0 THEN m.bid ELSE m.start_price END)';
-  const order = f.auc ? ({ cur: cur + ' ASC', curhi: cur + ' DESC', buy: 'm.price ASC', buyhi: 'm.price DESC', new: 'm.id DESC', bids: 'm.bids DESC, m.expires ASC' }[f.sort] || 'm.expires ASC')   // 경매 기본: 마감 임박순
-    : f.sort === 'new' ? 'm.id DESC' : f.sort === 'lvl' ? 'm.ilvl DESC, m.price ASC' : f.kind === 'mat' || f.kind === 'pot' || f.kind === 'tok' ? 'm.price / m.qty ' + dir : 'm.price ' + dir;
+  const order = f.auc ? ({ cur: cur + ' ASC', curhi: cur + ' DESC', buy: 'm.price ASC', buyhi: 'm.price DESC', new: 'm.id DESC', bids: 'm.bids DESC, m.expires ASC', lvl: 'm.ilvl DESC, m.expires ASC', lvlo: 'm.ilvl ASC, m.expires ASC' }[f.sort] || 'm.expires ASC')   // 경매 기본: 마감 임박순
+    : f.sort === 'new' ? 'm.id DESC' : f.sort === 'lvl' ? 'm.ilvl DESC, m.price ASC' : f.sort === 'lvlo' ? 'm.ilvl ASC, m.price ASC' : f.kind === 'mat' || f.kind === 'pot' || f.kind === 'tok' ? 'm.price / m.qty ' + dir : 'm.price ' + dir;
   const sql = `SELECT m.id, m.kind, m.data, m.name, m.slot, m.rarity, m.ilvl, m.qty, m.price, m.created, m.expires, m.seller, m.auc, m.start_price, m.bid, m.bids, m.bidder, COALESCE(p.name, m.seller_name) AS seller_name FROM market m LEFT JOIN players p ON p.id = m.seller WHERE ${where.join(' AND ')} ORDER BY ${order} LIMIT 60`;
   let st = mkQueries.get(sql); if (!st) { st = dbx.db.prepare(sql); mkQueries.set(sql, st); }
   if (f.sort !== 'pow' || !f.powP) return st.all(...args);
@@ -1294,7 +1294,7 @@ routes['GET /api/market'] = (req, res) => {
   if (g('wear') === '1') { const P = store.get(me); f.wear = Math.max(1, (P && P.lvl) || 1); }   // 레벨은 서버가 아는 값으로
   if (f.sort === 'pow') { if (limited('mkpow:' + me, 0.5, 4)) return fail(req, res, 429, '잠시 후 다시 시도'); f.powP = loadPlayer(me, nowSec()); }   // 전투력 상승순은 계산이 많아 조금 더 아껴 쓴다
   send(req, res, 200, { list: mkSearch(f, now).map((r) => mkOut(r, me)), mine: dbx.q.mkMine.all(me, Math.floor(now) - 3 * 86400).map((r) => mkOut(Object.assign({ seller_name: '' }, r, { seller: me }), me)), myBids: dbx.q.mkMyBids.all(me).map((r) => mkOut(r, me)),
-    openN: Number(dbx.q.mkMineOpen.get(me).n), fee: MK.FEE, days: MK.DAYS, maxOpen: MK.MAX_OPEN, grade: MK.GRADE, auc: { max: MK_AUC.MAX, hours: MK_AUC.HOURS, up: MK_AUC.MIN_UP, buyoutX: MK_AUC.BUYOUT_X } });
+    openN: Number(dbx.q.mkMineOpen.get(me).n), fee: R.mkFee(store.get(me)), days: MK.DAYS, maxOpen: MK.MAX_OPEN, grade: MK.GRADE, auc: { max: MK_AUC.MAX, hours: MK_AUC.HOURS, up: MK_AUC.MIN_UP, buyoutX: MK_AUC.BUYOUT_X } });
 };
 // 시세: 최근 30일 팔린 기록의 평균과 최근 5건. 장비는 같은 부위·등급·레벨 ±5, 재료는 개당 가격.
 const mkPriceCache = new Map();
@@ -1328,7 +1328,8 @@ routes['GET /api/market/history'] = (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
   if (limited('mkh:' + me, 1, 6)) return fail(req, res, 429, '요청이 너무 잦습니다');
   const since = Math.floor(Date.now() / 1000) - 30 * 86400;
-  send(req, res, 200, { fee: MK.FEE, list: dbx.q.mkHistory.all(me, me, since).map((r) => ({ id: r.id, side: r.seller === me ? 'sell' : 'buy', kind: r.kind, name: r.name, slot: r.slot, wk: r.kind === 'item' ? mkWk(r.data) : undefined, r: r.rarity, ilvl: r.ilvl, qty: r.qty, price: r.price, got: r.seller === me ? Math.floor(r.price * (1 - MK.FEE)) : 0, t: r.done_at, seller: r.seller === me ? '' : r.seller_name, npc: String(r.seller).startsWith('npc:') })) });
+  const myFee = R.mkFee(store.get(me));
+  send(req, res, 200, { fee: myFee, list: dbx.q.mkHistory.all(me, me, since).map((r) => ({ id: r.id, side: r.seller === me ? 'sell' : 'buy', kind: r.kind, name: r.name, slot: r.slot, wk: r.kind === 'item' ? mkWk(r.data) : undefined, r: r.rarity, ilvl: r.ilvl, qty: r.qty, price: r.price, got: r.seller === me ? Math.floor(r.price * (1 - myFee)) : 0, t: r.done_at, seller: r.seller === me ? '' : r.seller_name, npc: String(r.seller).startsWith('npc:') })) });
 };
 routes['GET /api/market/trades'] = (req, res) => {
   const me = authed(req); if (!me) return fail(req, res, 401, '로그인이 필요합니다');
@@ -3149,6 +3150,20 @@ function cupUnspecAll() {
   oplog('system', '시스템', 'cupNoSpec', '기숙사 특기 배율 제거 · 이번 주 점수 소급: 학생 ' + n + '명 · ' + Math.round(cut) + '점');
 }
 try { cupUnspecAll(); } catch (e) { log('대항전 특기 배율 소급 실패', e); }
+// 서버를 켤 때: 이번 주에 이미 쓰러진 월드 보스의 토벌 참여 수(칭호 「토벌대원」 등)를 도전한 학생에게 바로 맞춘다.
+// 잡은 순간 세는 기능(payKillTo) 이전에 쓰러진 보스 · 세던 중 서버가 꺼진 경우를 채운다. 주간 정산은 여기서 센 만큼(P.wbkc)을 빼므로 두 번 세지 않는다 (여러 번 켜도 같음)
+function wbKillFill() {
+  const b = world.W.boss, wk = R.weekId(nowSec()); if (!b || b.week !== wk) return;
+  const kills = (b.kills || 0) + (b.killedAt ? 1 : 0); if (!kills) return;
+  let n = 0;
+  dbx.db.prepare('SELECT pid FROM weekly WHERE week = ? AND att > 0').all(wk).forEach((r) => {
+    const P = store.get(r.pid); if (!P || !P.st) return;
+    const counted = P.wbkc && P.wbkc.week === wk ? P.wbkc.n : 0; if (counted >= kills) return;
+    P.st.wbKills = (P.st.wbKills || 0) + (kills - counted); P.wbkc = { week: wk, n: kills }; store.markDirty(P.id); n++;
+  });
+  if (n) { store.flushAll(); log(`토벌 참여 수 보정: ${b.week}주 · 쓰러진 보스 ${kills} · 학생 ${n}명`); }
+}
+try { wbKillFill(); } catch (e) { log('토벌 참여 수 보정 실패', e); }
 
 // 한 번만: 물약 점수 상한(한 주 1,000점)을 이번 주에 이미 만든 물약에도 소급 (사용자 요청 2026-10-24). 특기 배율 소급(cupUnspec)이 있으면 그것부터
 function brewCapAll() {
