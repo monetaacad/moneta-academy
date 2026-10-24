@@ -656,10 +656,12 @@
     if (!open) { h += '<button class="dock-peek" data-act="dock-toggle" id="dockpeek">' + peekText() + '</button>'; d.innerHTML = h; d.classList.add('closed'); scrollHints(); updateLive(); return; }
     h = '<div class="dgrip gl" data-grip="l" title="끌어서 폭 조절" aria-hidden="true"></div><div class="dgrip gt" data-grip="t" title="끌어서 높이 조절" aria-hidden="true"></div><div class="dgrip gc" data-grip="c" aria-hidden="true"></div>' + h;
     if (GCH[ch]) h += '<div class="gsub" role="tablist">' + GTAB[GCH[ch]].map(function (k) { var n = c.unread[k]; return '<button role="tab" class="' + (ch === k ? 'on' : '') + (n && ch !== k ? ' unread' : '') + '" data-act="chattab" data-a="' + k + '">' + CH_INFO[k].name + '</button>'; }).join('') + '<span class="spacer"></span>' + (GCH[ch] === 'guild' ? '<button class="btn sm ghost" data-act="ginfo">동아리 정보</button>' : '<span class="tiny faint">' + (GCH[ch] === 'house' ? (R.HOUSE[S.chHouse] ? R.HOUSE[S.chHouse].name : '') + ' 학생끼리' : (R.CLS[S.chCls] ? R.CLS[S.chCls].name : '') + ' 학생끼리') + '</span>') + '</div>';
+    if (ch === 'recruit') h += '<div class="gsub" role="tablist">' + REC_F.map(function (f) { return '<button role="tab" aria-selected="' + ((c.recF || '') === f[0]) + '" class="' + ((c.recF || '') === f[0] ? 'on' : '') + '" data-act="recsub" data-a="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '</div>';   // 모집 탭: 전체 · 원정 · 파티 · 동아리로 나눠 보기
     if (ch === 'dm') { h += dmBody(); d.innerHTML = h; d.classList.remove('closed'); scrollHints(); dmAfterRender(); updateLive(); return; }
     // 공지 탭: 운영진 공지는 모두, 아카데미 알림 · 떠돌이 상인 같은 자동 알림은 최근 NT_SYS건만 (「이전 알림 보기」로 펼침)
     var src = c.msgs[ch], ntHid = 0;
     if (ch === 'notice' && !S.ntAll) { var sysN = src.filter(function (m) { return m.kind !== 'staff'; }).length; ntHid = Math.max(0, sysN - NT_SYS); if (ntHid) { var skip = ntHid; src = src.filter(function (m) { if (m.kind === 'staff' || skip <= 0) return true; skip--; return false; }); } }
+    if (ch === 'recruit' && c.recF) src = src.filter(function (m) { return recType(m) === c.recF; });
     var div = S.divider[ch], drew = false, list = (ntHid ? '<button class="btn sm ghost chatmore" data-act="ntall">이전 아카데미 알림 ' + ntHid + '건 보기</button>' : '') + src.map(function (m) {
       var x = ''; if (!drew && div != null && div > 0 && isNum(m.id) && m.id > div && m.pid !== S.P.id) { drew = true; x = '<div class="newline"><span>여기부터 새 글</span></div>'; }
       return x + msgHtml(m);
@@ -669,7 +671,7 @@
       (c.more[ch] && API.mode === 'server' && c.msgs[ch].length >= 80 ? '<button class="btn sm ghost chatmore" data-act="chatmore">이전 대화 더 보기</button>' : '') +
       '<div class="chatdesc"><div class="chatmeta tiny">' + (c.loading === ch ? '<span class="faint">새 글 불러오는 중…</span>' : '') + (ch === 'world' && c.slow.world ? '<span class="tag br">슬로우 모드 ' + c.slow.world + '초</span>' : '') + (ch === 'world' && isOp() ? '<button class="btn sm ghost" data-act="slowset" style="padding:0 7px">슬로우 모드 설정</button>' : '') + '</div>' +
       (ch === 'hrp' ? houseRoom(S.chHouse) : '') + '<p class="tiny faint">' + info.desc + (API.mode === 'local' && ch !== 'notice' ? '<br><span class="gold">데모: 같은 페이지를 연 사람끼리만 보이고, 기록은 이 브라우저에만 남습니다.</span>' : '') + '</p></div>' +
-      (c.msgs[ch].length ? list : '<div class="empty">' + (ch === 'notice' ? '아직 공지가 없습니다.' : ch === 'recruit' ? '아직 모집 알림이 없습니다. 함께 원정 방 · 동아리 · 파티 화면에서 모집 알림을 보낼 수 있습니다.' : '아직 대화가 없습니다. 첫 인사를 건넬 차례.') + '</div>') + '<button class="chatnew" data-act="chatbottom" hidden></button></div>';
+      (src.length ? list : '<div class="empty">' + (ch === 'recruit' && c.recF && c.msgs[ch].length ? '이 종류의 모집 알림이 없습니다.' : ch === 'notice' ? '아직 공지가 없습니다.' : ch === 'recruit' ? '아직 모집 알림이 없습니다. 함께 원정 방 · 동아리 · 파티 화면에서 모집 알림을 보낼 수 있습니다.' : '아직 대화가 없습니다. 첫 인사를 건넬 차례.') + '</div>') + '<button class="chatnew" data-act="chatbottom" hidden></button></div>';
     if (ch !== 'notice') h += chatInput(ch);
     d.innerHTML = h; d.classList.remove('closed'); scrollHints();
     chatAfterRender(); updateLive();
@@ -779,6 +781,10 @@
     if (ph) inp.setAttribute('placeholder', ph);
   }
   // 글자 수 한도 (서버 chat.js CHANNELS와 같게: 월드 · 모집 대화 300자, 나머지 500자)
+  // 모집 탭 나눠 보기: 모집 알림의 종류 (동아리 · 파티 · 함께 원정). 모집 알림이 아닌 글은 「전체」에만 보인다
+  var REC_F = [['', '전체'], ['exp', '원정'], ['party', '파티'], ['guild', '동아리']];
+  function recType(m) { if (m.kind !== 'recruit') return ''; var rc = {}; try { rc = JSON.parse(m.text) || {}; } catch (e) { } return rc.type === 'guild' ? 'guild' : rc.type === 'party' ? 'party' : 'exp'; }
+  ACT.recsub = function (f) { S.chat.recF = f || ''; S.chat.stick = true; renderDock(); };
   function chatMax(ch) { return ch === 'world' || ch === 'recruit' ? 300 : 500; }
   var CHAT_CNT_NEAR = 50;   // 한도까지 이만큼 남으면 입력칸 우측 하단에 글자 수를 겹쳐 보인다 (자리를 차지하지 않아 화면이 밀리지 않는다)
   function chatCount() {
@@ -2141,7 +2147,7 @@
   V.world = function () {
     wbMarkSeen();
     var P = S.P, W = S.W || {}, b = W.boss;
-    var h = pageHead('종소리가 멎기 전에', '월드', (W.demo ? '<span class="tag br">데모</span> ' : '') + '학생 ' + fmt(W.players || 0) + '명 · 지금 접속 ' + fmt(W.online || 0) + '명');
+    var h = pageHead('종소리가 멎기 전에', '월드 보스', W.demo ? '<span class="tag br">데모</span>' : '');
     h += potBar(['atkPct', 'hpPct', 'defPct']) + gsQuick() + spQuick();   // 전투 물약 · 장비 프리셋 · 주문 프리셋
     // 지난주 보상
     if (P.wkPrev && !P.wkPrev.claimed) h += wkPrevCard(P);
@@ -2617,7 +2623,7 @@
     h += '</div></div><div class="stack"><div class="card"><h3>물약 선반</h3>';
     var shelf = D.POTIONS.filter(function (p) { return P.shelf[p.id] > 0; });
     if (!shelf.length) h += '<div class="empty" style="margin-top:8px">완성된 물약이 없습니다.</div>';
-    else h += '<div class="stack" style="gap:8px;margin-top:8px">' + shelf.map(function (p) { var bf = P.buffs['p_' + p.id]; return '<div class="row"><span class="pot-ic" style="background:' + p.color + '"></span><span>' + p.name + ' <span class="num muted">×' + P.shelf[p.id] + '</span></span>' + (bf ? '<span class="tag ok num" data-l="left:' + bf.end + '"></span>' : '') + '<span class="spacer"></span><button class="btn sm primary" data-act="do" data-a="drink" data-b="' + p.id + '">마시기</button><button class="btn sm ghost" data-act="mksellpot" data-a="' + p.id + '">거래소에서 팔기</button></div>'; }).join('') + '</div>';
+    else h += '<div class="stack" style="gap:8px;margin-top:8px">' + shelf.map(function (p) { var bf = P.buffs['p_' + p.id]; return '<div class="row potrow"><span class="pot-ic" style="background:' + p.color + '"></span><span class="potn" title="' + p.name + '"><span class="ell">' + p.name + '</span> <span class="num muted">×' + P.shelf[p.id] + '</span></span>' + (bf ? '<span class="tag ok num" data-l="left:' + bf.end + '"></span>' : '') + '<span class="spacer"></span><button class="btn sm primary" data-act="do" data-a="drink" data-b="' + p.id + '">마시기</button><button class="btn sm ghost" data-act="mksellpot" data-a="' + p.id + '" title="거래소에서 팔기"><span class="lbl-l">거래소에서 팔기</span><span class="lbl-s">거래소</span></button></div>'; }).join('') + '</div>';
     h += '</div><div class="card"><h3>재료 보관함</h3><div class="stack" style="gap:6px;margin-top:8px">' + Object.keys(D.MATS).map(function (m) {
       var z = D.ZONES.find(function (zz) { return zz.mat === m; }); return '<div class="row small"><span>' + D.MATS[m].name + '</span><span class="tiny faint">' + z.name + '</span><span class="spacer"></span><b class="num">' + fmt(P.mats[m] || 0) + '</b></div>';
     }).join('') + '</div></div></div></div>';
@@ -3250,7 +3256,7 @@
       ['기록 · 보상', '마지막으로 넘은 층이 각자의 이번 주 기록이 되며(더 높을 때만), 처음 넘은 층의 보상은 실전이 끝난 뒤 「보상 받기」를 누르면 우편으로 발송됩니다. 파티 기록은 랭킹의 별의 탑 파티 순위에 남습니다.'],
       ['회복', '층 사이에 최대 생명력의 ' + Math.round(R.TW.HEAL * 100) + '%를 회복하고(쓰러진 파티원도 일어납니다), ' + R.TW.REST + '층마다 휴식층에서 모두 회복합니다.'],
       ['전투', '적은 선봉 한 명을 집중해서 노리며 공격을 여러 번으로 나눠 치고, 주기적으로 파티 전체를 공격합니다(선봉이 살아 있으면 다른 파티원은 선봉이 몬스터를 끄는 만큼 덜 맞습니다). 탑에서는 방어력의 효과가 크고, 선봉에게는 포지션 기본 효과(방어 +25%)에 더해 생명력 +' + Math.round(R.TW.VAN_HP * 100) + '% · 받는 피해 −' + Math.round((1 - R.TW.VAN_TAKE) * 100) + '%가 추가로 적용됩니다.'],
-      ['치유 · 보호막', '지원 포지션은 치유 · 보호막 주문을 가장 위태로운 동료에게 사용합니다. 보호막량은 시전자의 공격력(주문 · 물리 중 높은 쪽) × 2와 시전자의 최대 생명력 중 큰 값에 비례합니다. 2명 이상 파티에서 지원 포지션이 사용하면 재사용 대기가 짧아집니다. 동료가 쓰러질 공격을 맞기 직전에 준비돼 있으면 먼저 끼어듭니다.'],
+      ['치유 · 보호막', '지원 포지션은 치유 · 보호막 주문을 가장 위태로운 동료에게 사용합니다. 보호막량은 시전자의 공격력(마법사는 주문 공격력 × 주문 위력, 기사는 물리 공격력 × 기술 위력) × 2와 시전자의 최대 생명력 중 큰 값에 비례합니다. 2명 이상 파티에서 지원 포지션이 사용하면 재사용 대기가 짧아집니다. 보호막은 재사용 대기마다 사용하며 여러 번 건 보호막은 쌓입니다. 동료가 쓰러질 공격을 맞기 직전에는 보호막 · 치유 주문이 먼저 끼어들며, 끼어들기는 주문마다 30초에 한 번으로 일반 재사용 대기와 따로 계산합니다.'],
       ['시련의 층', R.TW.TRIAL + '층마다 특수한 기믹이 있는 시련의 층이 나옵니다.'],
       ['연습', '언제든 할 수 있고 기록 · 보상에 반영되지 않습니다. 파티 연습은 파티원 모두가 함께 보고, 혼자 연습은 내 화면에서만 진행됩니다.']
     ];
@@ -3398,7 +3404,11 @@
     var take = g.perms && g.perms.take, P = S.P, bag = P.inv.filter(function (it) { return !it.lock; }).sort(function (a, b) { return b.r - a.r || b.ilvl - a.ilvl; });
     var h = '<div class="grid g2"><div class="card"><div class="row between"><h3>부실 금고</h3><b class="num gold" style="font-size:18px">' + R.fmtN(g.gold) + ' ' + CUR + '</b></div><p class="tiny faint">누구나 넣을 수 있고, 꺼내기는 「창고에서 꺼내기」 권한이 있는 부원만 할 수 있습니다. 모든 출입은 기록에 남습니다.</p>' +
       '<div class="row" style="margin-top:8px"><input id="g-gold" type="number" min="1" step="1" inputmode="numeric" placeholder="' + CUR + '" data-fmt="1" style="width:150px"><span class="tiny faint mkfmt"></span><button class="btn sm" data-act="ggold" data-a="deposit">넣기</button>' + (take ? '<button class="btn sm ghost" data-act="ggold" data-a="withdraw">꺼내기</button>' : '') + '</div></div>' +
-      '<div class="card"><h3>장비 넣기</h3>' + (bag.length ? '<div class="row" style="margin-top:6px"><select id="g-item" style="flex:1;min-width:0">' + bag.slice(0, 60).map(function (it) { var pn = presetNo(it.u); return '<option value="' + it.u + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + ' · ' + D.RARITY[it.r].name + ' Lv ' + it.ilvl + (pn.length ? ' · 프리셋 ' + pn.join('·') : '') + '</option>'; }).join('') + '</select><button class="btn sm" data-act="gitem">넣기</button></div>' : '<p class="small muted">가방에 넣을 장비가 없습니다 (잠근 장비 제외).</p>') + '</div>';
+      '<div class="card"><h3>장비 넣기</h3>' + (bag.length ? '<p class="tiny faint">장비를 누르면 능력치 · 옵션을 확인하고 넣을 수 있습니다.</p><div class="inv ginv" style="margin-top:6px">' + bag.slice(0, 60).map(function (it) {   // 장비 가방과 같은 칸. 누르면 바로 아래에 능력치 · 옵션과 「넣기」
+        var on = S.gSel === it.u;
+        return '<button class="itm rb' + it.r + (on ? ' sel' : '') + '" data-act="gisel" data-a="' + it.u + '" aria-expanded="' + on + '"><span class="in" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</span><span class="il">' + R.slotName(it) + ' · Lv ' + it.ilvl + presetTag(it.u) + '</span></button>' +
+          (on ? '<div class="ginvd"><div class="row between"><span class="small" style="color:' + rcol(it.r) + '">' + D.RARITY[it.r].name + ' ' + R.slotName(it) + ' · Lv ' + it.ilvl + '</span><button class="btn sm primary" data-act="gitem" data-a="' + it.u + '">부실 창고에 넣기</button></div><div class="mkst">' + statLines(it) + '</div></div>' : '');
+      }).join('') + '</div>' : '<p class="small muted">가방에 넣을 장비가 없습니다 (잠근 장비 제외).</p>') + '</div>';
     // 재료 · 물약: 종류마다 1칸, 수량을 정해 넣고 꺼낸다
     var stock = g.stock || [], mine = [];
     Object.keys(D.MATS).forEach(function (id) { if ((P.mats[id] || 0) > 0) mine.push(['m', id, P.mats[id]]); });
@@ -3590,7 +3600,8 @@
     if (!(n >= 1)) { toast('부실 창고', '수량 입력 필요'); return; }
     API.guildOp({ op: dep ? 'deposit' : 'withdraw', k: k, id: id, n: n }).then(function (j) { gDone(j, dep ? '부실 창고에 넣었습니다' : '창고에서 꺼냈습니다'); });
   };
-  ACT.gitem = function () { var u = ($('#g-item') || {}).value; if (!u) return; API.guildOp({ op: 'deposit', u: u }).then(function (j) { gDone(j, '부실 창고에 넣었습니다'); }); };
+  ACT.gisel = function (u) { S.gSel = S.gSel === u ? null : u; render(); };
+  ACT.gitem = function (u) { if (!u) return; API.guildOp({ op: 'deposit', u: u }).then(function (j) { if (!j.error) S.gSel = null; gDone(j, '부실 창고에 넣었습니다'); }); };
   ACT.ginvite = function (name, id) { var o = { op: 'invite' }; if (id) o.id = id; else o.name = name || (($('#g-inv') || {}).value || '').trim(); if (!o.id && !o.name) return; API.guildOp(o).then(function (j) { if (j.error) { toast('동아리 초대', j.error); return; } toast('동아리 초대를 보냈습니다', '', 1800); var i = $('#g-inv'); if (i) i.value = ''; }); };
   ACT.granks = function () {
     var out = { base: null, list: [] };
