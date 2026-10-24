@@ -1199,7 +1199,7 @@ function mkAllowed(P, meta, sell) {
 /* 학생 경매: 장비 · 휘장을 시작가부터 입찰로 판다. 즉시 구매가로 언제든(입찰이 들어온 뒤에도) 바로 살 수 있다.
    입찰하면 아르크를 맡겨 두고, 더 높은 입찰이나 즉시 구매가 나오면 돌려준다. 마감 5분 안 입찰은 마감을 5분 미룬다.
    학생마다 동시에 3개까지(거래소 등록 한도 10개 안에서 센다). 입찰이 들어오기 전까지만 취소할 수 있다. */
-const MK_AUC = { MAX: 3, HOURS: [12, 24, 48], MIN_UP: 0.05, BUYOUT_X: 1.2, SNIPE: 300 };
+const MK_AUC = { MAX: 3, HOURS: [3, 6, 12, 24, 48], MIN_UP: 0.05, BUYOUT_X: 1.2, SNIPE: 300 };
 function mkAucMin(r) { return r.bids > 0 ? Math.max(r.bid + 1, Math.ceil(r.bid * (1 + MK_AUC.MIN_UP))) : r.start_price; }
 // 맡겨 둔 입찰금을 돌려준다
 function mkRefund(pid, amount, name, why) {

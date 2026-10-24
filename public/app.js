@@ -3762,7 +3762,7 @@
   }
   // 팔기: 장비 · 휘장 줄마다 「경매」를 누르면 경매 등록 칸이 펼쳐진다
   function aucForm(kind, u, floor) {
-    var a = (S.mk.data && S.mk.data.auc) || { hours: [12, 24, 48], buyoutX: 1.2, max: 3 };
+    var a = (S.mk.data && S.mk.data.auc) || { hours: [3, 6, 12, 24, 48], buyoutX: 1.2, max: 3 };
     return '<div class="mkaf"><label class="tiny faint">시작가 <input type="number" class="mkastart" min="' + floor + '" step="1" inputmode="numeric" placeholder="' + fmt(floor) + ' 이상"></label><label class="tiny faint">즉시 구매가 <input type="number" class="mkabuy" min="1" step="1" inputmode="numeric" placeholder="시작가의 ' + a.buyoutX + '배 이상"></label>' +
       '<label class="tiny faint">기간 <select class="mkahr">' + a.hours.map(function (x) { return '<option value="' + x + '"' + (x === 24 ? ' selected' : '') + '>' + x + '시간</option>'; }).join('') + '</select></label><button class="btn sm primary" data-act="mkauclist" data-a="' + kind + '" data-b="' + u + '">경매 올리기</button>' +
       '<div class="tiny faint" style="flex-basis:100%">즉시 구매가는 시작가의 ' + a.buyoutX + '배 이상 · 입찰이 들어오기 전까지만 취소 가능 · 경매는 동시에 ' + a.max + '개까지</div></div>';
