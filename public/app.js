@@ -2940,20 +2940,21 @@
       (j.runs || []).forEach(function (r) { if (r.floors) S.twCache[r.id] = r; else if (r.held && S.twCache[r.id]) { r.floors = S.twCache[r.id].floors; delete r.held; } });
       var keep = (j.runs || []).map(function (r) { return r.id; }); Object.keys(S.twCache).forEach(function (k) { if (keep.indexOf(k) < 0) delete S.twCache[k]; });
       S.towerD = j; S.towerAt = Date.now();
+      if (S.twMine) { var fm = (j.runs || []).filter(function (r) { return r.id === S.twMine.id; })[0]; if (fm && fm.floors) S.twMine = fm; }   // 배속 · 철수로 바뀐 끝 시각 · 기록
       // 실전이 진행 중이고 내가 그 파티원이면, 끝날 때 결과 창을 띄운다 (출발은 서버가 자동으로 하므로 누가 눌렀든)
       var r0 = j.runs && j.runs[0]; if (r0 && r0.kind === 'real' && r0.floors && twEnd(r0) > twNow() && r0.ms.some(function (m) { return m.id === S.P.id; }) && S.twMineSeen !== r0.id) { S.twMineSeen = r0.id; S.twMine = r0; S.twWatch = 'party'; }
       if (S.view === 'tower' && !S.modal) render();
     }, function () { S.twLoadP = null; }));
   }
   function twNow() { return Date.now() / 1000 + (S.twOff || 0); }
-  function twEnd(r) { return r.t0 + r.d; }
+  function twEnd(r) { return R.twEndAt(r); }   // 배속을 바꾸면 끝나는 시각도 바뀐다
   function twSkipped(r) { return !!(S.twSkip && S.twSkip[r.id]); }
   function twPartyLive() { var t = S.towerD, r = t && t.runs && t.runs[0]; return r && r.floors && twEnd(r) > twNow() && !twSkipped(r) ? r : null; }
   function twSoloLive() { var r = S.twSolo; return r && !r.closed ? r : null; }
   // 지금 화면에 띄울 실행: 혼자 연습을 보고 있으면 그것, 아니면 파티 실행
   function twViewRun() { var a = twSoloLive(), b = twPartyLive(); return a && (S.twWatch !== 'party' || !b) ? a : b; }
-  function twSoloNow(r) { return r.t0local != null ? Date.now() / 1000 - r.t0local : twNow() - r.t0; }
-  function twEl(r) { if (twSkipped(r)) return r.d; return r.kind === 'solo' ? twSoloNow(r) : twNow() - r.t0; }
+  function twSoloNow(r) { var n = Date.now() / 1000; if (r.lsp) return r.lsp[0] + (n - r.lsp[1]) * r.lsp[2]; return r.t0local != null ? n - r.t0local : twNow() - r.t0; }   // lsp: 혼자 연습 배속 [그때 장면 위치, 그때 시각, 배속] (이 화면에서만)
+  function twEl(r) { if (twSkipped(r)) return r.d; return r.kind === 'solo' ? twSoloNow(r) : R.twScene(r, twNow()); }
   // el초 지점의 장면: 층 · 층 안에서의 시각 · 체력 기록 한 줄
   function twAt(r, el) {
     var fs = r.floors || [], i = 0; while (i + 1 < fs.length && fs[i + 1].t <= el) i++;
@@ -2993,18 +2994,18 @@
   }
   function twLinesHtml(r) {
     var el = twEl(r), fs = r.floors || [], out = [], full = S.twFull !== false;
-    for (var i = fs.length - 1; i >= 0 && out.length < 60; i--) { var fl = fs[i]; if (fl.t > el) continue; out = twFloorLines(r, fl, full, el - fl.t, 60 - out.length).map(function (x) { return '<div class="el k' + x[2] + '"><span class="et num">' + twHm(r.t0 + fl.t + x[0]) + '</span><span>' + esc(logDot(x[1])) + '</span></div>'; }).concat(out); }
+    for (var i = fs.length - 1; i >= 0 && out.length < 60; i--) { var fl = fs[i]; if (fl.t > el) continue; out = twFloorLines(r, fl, full, el - fl.t, 60 - out.length).map(function (x) { return '<div class="el k' + x[2] + '"><span class="et num">' + twHm(R.twRealAt(r, fl.t + x[0])) + '</span><span>' + esc(logDot(x[1])) + '</span></div>'; }).concat(out); }
     if (el < r.d) out.push('<div class="el faint twdots"><span class="et"></span><span>…</span></div>');
     return out.join('');
   }
   // 전투 기록 내보내기: 한 실행의 모든 층 · 모든 기록을 글 파일로
   function twExportText(r) {
     var d = new Date(r.t0 * 1000), pad = function (x) { return (x < 10 ? '0' : '') + x; }, ymd = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
-    var out = ['별의 탑 ' + TW_KIND[r.kind] + ' 전투 기록', '파티: ' + (r.pname || '') + ' · 시작: ' + esc0(r.by) + ' · ' + ymd + ' ' + twHm(r.t0), '결과: ' + r.start + '층부터 → ' + (r.stopped ? '중단' : r.cleared >= r.start ? r.cleared + '층까지' : '첫 층에서 물러남') + ' · 총 ' + R.fmtTime(Math.round(r.d)),
+    var out = ['별의 탑 ' + TW_KIND[r.kind] + ' 전투 기록', '파티: ' + (r.pname || '') + ' · 시작: ' + esc0(r.by) + ' · ' + ymd + ' ' + twHm(r.t0), '결과: ' + r.start + '층부터 → ' + (r.retreat ? '철수 · ' + r.cleared + '층까지' : r.stopped ? '중단' : r.cleared >= r.start ? r.cleared + '층까지' : '첫 층에서 물러남') + ' · 총 ' + R.fmtTime(Math.round(r.d)),
       '파티원: ' + r.ms.map(function (m) { var p = R.EXP_POS[m.pos]; return m.name + '(' + (p ? p.name : '') + (m.npc ? ' · NPC' : '') + ' · 생명력 ' + R.fmt(m.hp) + (m.sp && m.sp.length ? ' · ' + m.sp.join('/') : '') + ')'; }).join(', '), ''];
     (r.floors || []).forEach(function (fl) {
       out.push('── ' + fl.f + '층 · ' + (fl.rest ? '별샘의 쉼터 (휴식층)' : fl.foe.name + ' (' + fl.foe.stage + '단계 수준 · 체력 ' + R.fmt(fl.foe.hp) + ')') + ' ──');
-      twFloorLines(r, fl, true, Infinity, 0).forEach(function (x) { out.push('[' + twHm(r.t0 + fl.t + x[0]) + ' +' + x[0].toFixed(1) + '초] ' + x[1]); });
+      twFloorLines(r, fl, true, Infinity, 0).forEach(function (x) { out.push('[' + twHm(R.twRealAt(r, fl.t + x[0])) + ' +' + x[0].toFixed(1) + '초] ' + x[1]); });
       out.push('');
     });
     return out.join('\n');
@@ -3028,18 +3029,34 @@
       (other ? '<div class="row tiny" style="margin-top:4px;gap:6px"><span class="faint">' + (r.kind === 'solo' ? '파티의 ' + (other.kind === 'real' ? '실전' : '연습') + '도 진행 중입니다.' : '혼자 연습도 진행 중입니다.') + '</span><button class="btn sm ghost" data-act="twwatch" data-a="' + (r.kind === 'solo' ? 'party' : 'solo') + '">그쪽 보기</button></div>' : '') +
       '<div id="twstage" data-tw="' + r.id + '" style="margin-top:10px">' + twStageTop(r) + '</div>' +
       '<div class="logw" style="margin-top:10px"><div class="explog twlines" id="twlines" data-tw="' + r.id + '" aria-live="polite">' + twLinesHtml(r) + '</div><button class="lognew" hidden></button></div>' +
+      (twEl(r) < r.d ? twSpeedRow(r) : '') +
       '<div class="row tiny faint" style="margin-top:6px;gap:6px;flex-wrap:wrap"><span>' + (r.kind === 'real' ? '실전은 건너뛸 수 없으며, 결과는 대본이 끝나면 알려 드립니다.' : r.kind === 'party' ? '파티 연습은 건너뛸 수 없으며, 기록 · 보상에 반영되지 않습니다.' : '연습은 기록 · 보상에 반영되지 않습니다.') + '</span><span class="spacer"></span>' +
       '<button class="btn sm ghost" data-act="twfull">' + (S.twFull === false ? '전체 기록 보기' : '요약만 보기') + '</button>' +
-      (r.kind === 'party' ? '<button class="btn sm ghost" data-act="twstop">연습 중단</button>' : '') + (r.kind === 'solo' ? '<button class="btn sm ghost" data-act="twclose">연습 닫기</button>' : '') +
+      (r.kind === 'party' ? '<button class="btn sm ghost" data-act="twstop">연습 중단</button>' : '') + (r.kind === 'real' && twEl(r) < r.d ? '<button class="btn sm ' + (S.confirm.twret > Date.now() ? 'danger' : 'ghost') + '" data-act="twretreat" title="싸우던 층은 패배로, 끝까지 본 층까지만 기록합니다">' + (S.confirm.twret > Date.now() ? '한 번 더 누르면 파티 모두 철수합니다' : '철수') + '</button>' : '') + (r.kind === 'solo' ? '<button class="btn sm ghost" data-act="twclose">연습 닫기</button>' : '') +
       (twEl(r) >= r.d ? '<button class="btn sm ghost" data-act="twexport" data-a="' + r.id + '">기록 내보내기</button>' : r.kind === 'solo' ? twJumpBtns(r) + '<button class="btn sm ghost" data-act="twskip" data-a="' + r.id + '">끝까지 보기</button>' : '') + '</div></div>';   // 실전 · 파티 연습은 건너뛸 수 없다 (파티가 끝까지 함께 본다)
   }
+  // 배속 ×1 · ×2 · ×5 · ×10: 혼자 연습은 이 화면에서만, 실전 · 파티 연습은 파티원 모두에게 같이 (누가 바꿔도)
+  function twSpeedOf(r) { return r.kind === 'solo' ? (r.lsp ? r.lsp[2] : 1) : R.twSpeedOf(r); }
+  function twSpeedRow(r) {
+    var cur = twSpeedOf(r);
+    return '<div class="row tiny" style="margin-top:6px;gap:4px;flex-wrap:wrap;align-items:center"><span class="faint">배속</span>' + R.TW_SPEEDS.map(function (x) { return '<button class="btn sm ' + (x === cur ? 'primary' : 'ghost') + '" data-act="twspeed" data-a="' + r.id + '" data-b="' + x + '"' + (x === cur ? ' aria-pressed="true"' : '') + '>×' + x + '</button>'; }).join('') + '<span class="faint">' + (r.kind === 'solo' ? '내 화면에만 적용' : '파티원 모두에게 같이 적용') + '</span></div>';
+  }
+  ACT.twspeed = function (id, x) {
+    var r = twRunById(id); x = +x; if (!r || R.TW_SPEEDS.indexOf(x) < 0) return;
+    if (r.kind === 'solo') { r.lsp = [twSoloNow(r), Date.now() / 1000, x]; twTick(true); render(); return; }
+    API.towerOp({ mode: 'speed', x: x }).then(function (j) { if (j.error) { toast('별의 탑', j.error); return; } S.towerAt = 0; loadTower(); });
+  };
+  ACT.twretreat = function () {
+    if (!(S.confirm.twret > Date.now())) { S.confirm.twret = Date.now() + 4000; render(); setTimeout(render, 4100); return; }
+    S.confirm.twret = 0; API.towerOp({ mode: 'stop' }).then(function (j) { if (j.error) { toast('별의 탑', j.error); return; } S.towerAt = 0; loadTower(); });
+  };
   // 혼자 연습: 50층 단위로 건너뛰어 그 층부터 보기 (지금 층보다 앞, 실제로 도달한 층까지)
   function twJumpBtns(r) {
     var a = twAt(r, twEl(r)), cur = a ? a.fl.f : 0, fs = r.floors || [], top = fs.length ? fs[fs.length - 1].f : 0, out = '';
     for (var f = Math.floor(cur / 50) * 50 + 50, k = 0; f <= top && k < 4; f += 50, k++) out += '<button class="btn sm ghost" data-act="twjump" data-a="' + r.id + '" data-b="' + f + '">' + f + '층부터</button>';
     return out;
   }
-  ACT.twjump = function (id, f) { var r = twRunById(id); if (!r || r.kind !== 'solo') return; var fl = (r.floors || []).filter(function (x) { return x.f >= +f; })[0]; if (!fl) return; r.t0local = Date.now() / 1000 - fl.t; twTick(true); render(); };
+  ACT.twjump = function (id, f) { var r = twRunById(id); if (!r || r.kind !== 'solo') return; var fl = (r.floors || []).filter(function (x) { return x.f >= +f; })[0]; if (!fl) return; r.t0local = Date.now() / 1000 - fl.t; r.lsp = r.lsp ? [fl.t, Date.now() / 1000, r.lsp[2]] : null; twTick(true); render(); };
   ACT.twwatch = function (w) { S.twWatch = w; render(); };
   ACT.twskip = function (id) { var r = twRunById(id); if (!r || r.kind !== 'solo') return; (S.twSkip || (S.twSkip = {}))[id] = 1; twTick(true); render(); };   // 혼자 연습만
   ACT.twclose = function () { if (S.twSolo) S.twSolo.closed = true; S.twSolo = null; render(); };
@@ -3047,7 +3064,7 @@
   // 0.25초마다: 보고 있는 실행의 장면을 고치고, 끝나는 순간 결과를 알린다
   function twTick(force) {
     var mine = S.twMine;
-    if (mine && (twNow() >= mine.t0 + mine.d || twSkipped(mine))) { S.twMine = null; twResult(mine); }
+    if (mine && (twNow() >= twEnd(mine) || twSkipped(mine))) { S.twMine = null; twResult(mine); }
     var solo = S.twSolo; if (solo && !solo.closed && !solo.doneSaid && twEl(solo) >= solo.d) { solo.doneSaid = true; toast('혼자 연습 종료', solo.cleared >= solo.start ? solo.cleared + '층까지 올랐습니다 (기록 · 보상 없음)' : '첫 층을 넘지 못했습니다 (기록 · 보상 없음)', 3600); if (S.view === 'tower') render(); }
     var lob = S.towerD && S.towerD.lobby, ce = $('#twcount'); if (ce && lob) { var ct = twCountText(lob); if (ce.__h !== ct) { ce.__h = ct; ce.innerHTML = ct; } }
     var pl = S.towerD && S.towerD.runs && S.towerD.runs[0];
@@ -3064,8 +3081,9 @@
     Snd.play(r.cleared >= r.start ? 'pass' : 'fail'); sync(true); S.towerAt = 0;
     var got = r.cleared >= r.start;
     loadTower().then(function () {
+      var fr = twRunById(r.id); if (fr) { r = fr; got = r.cleared >= r.start; }   // 철수했으면 줄어든 기록으로
       var pd = S.towerD && S.towerD.pend, mine = pd && pd.id === r.id && pd.to;
-      modal(mhead('별의 탑 실전 종료', r.start + '층부터 시작') + '<p>' + (got ? '<b class="gold">' + r.cleared + '층</b>까지 올랐습니다.' : '첫 층을 넘지 못했습니다.') + '</p>' +
+      modal(mhead('별의 탑 실전 종료', r.start + '층부터 시작' + (r.retreat ? ' · 철수' : '')) + '<p>' + (got ? '<b class="gold">' + r.cleared + '층</b>까지 올랐습니다.' : '첫 층을 넘지 못했습니다.') + (r.retreat ? ' <span class="small muted">(' + esc(r.stopped || '') + ' 님이 철수 · 싸우던 층은 패배로 처리)</span>' : '') + '</p>' +
         (mine ? '<p class="small" style="margin-top:6px">이번 주 기록이 <b>' + pd.to + '층</b>으로 갱신되었습니다. 처음 넘은 ' + pd.from + '~' + pd.to + '층의 보상: <span class="rwd">' + esc(pd.reward) + '</span></p>' : '<p class="small muted" style="margin-top:6px">이번 주 기록보다 높이 오르지 못해 새 보상은 없습니다.</p>') +
         '<div class="row" style="justify-content:flex-end;margin-top:14px;gap:6px;flex-wrap:wrap"><button class="btn" data-act="twexport" data-a="' + r.id + '">전투 기록 내보내기</button>' + (mine ? '<button class="btn primary" data-act="twclaim" autofocus>보상 받기</button>' : '<button class="btn primary" data-act="modal-close" autofocus>확인</button>') + '</div>');
     });
@@ -3232,7 +3250,7 @@
     var t = S.towerD; if (!t || !t.party || !t.runs.length) return '';
     var rows = t.runs.filter(function (r) { return twEnd(r) <= twNow(); }).slice(0, 4); if (!rows.length) return '';
     return '<div class="card" style="margin-top:14px"><h3>최근 기록</h3><div class="twlog">' + rows.map(function (r) {
-      return '<div class="tiny row" style="gap:6px"><span><span class="faint num">' + clock(r.t0) + '</span> ' + esc(r.by) + ' · ' + TW_KIND[r.kind] + ' ' + r.start + '층부터 → ' + (r.stopped ? '<span class="faint">중단</span>' : r.cleared >= r.start ? '<span class="good">' + r.cleared + '층까지</span>' : '<span class="faint">첫 층에서 물러남</span>') + '</span>' + (r.floors ? '<span class="spacer"></span><button class="btn sm ghost" data-act="twexport" data-a="' + r.id + '">기록 내보내기</button>' : '') + '</div>';
+      return '<div class="tiny row" style="gap:6px"><span><span class="faint num">' + clock(r.t0) + '</span> ' + esc(r.by) + ' · ' + TW_KIND[r.kind] + ' ' + r.start + '층부터 → ' + (r.retreat ? '<span class="faint">철수 · ' + (r.cleared >= r.start ? r.cleared + '층까지' : '넘은 층 없음') + '</span>' : r.stopped ? '<span class="faint">중단</span>' : r.cleared >= r.start ? '<span class="good">' + r.cleared + '층까지</span>' : '<span class="faint">첫 층에서 물러남</span>') + '</span>' + (r.floors ? '<span class="spacer"></span><button class="btn sm ghost" data-act="twexport" data-a="' + r.id + '">기록 내보내기</button>' : '') + '</div>';
     }).join('') + '</div></div>';
   }
   ACT.twready = function (on) { API.towerOp({ mode: 'ready', on: on === '1' }).then(function (j) { if (j.error) { toast('별의 탑', j.error); return; } S.towerAt = 0; loadTower(); }); };
@@ -6202,7 +6220,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102415;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102420;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

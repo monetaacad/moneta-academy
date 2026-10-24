@@ -1649,6 +1649,15 @@
     }
     return { start: start, cleared: cleared, d: Math.round((T + 2) * P * 10) / 10, floors: floors, dealt: dealt.map(Math.round) };
   };
+  /* 배속: run.sp = [[실제 시각, 대본 위치(초), 배속], ...] (없으면 t0부터 1배). 파티원 누구나 바꾸고, 같은 실제 시각이면 모두 같은 장면을 본다.
+     run.d는 대본 길이(초) 그대로이고, 실제로 끝나는 시각은 R.twEndAt */
+  R.TW_SPEEDS = [1, 2, 5, 10]; R.TW_SP_MAX = 40;   // 한 실행에서 배속을 바꿀 수 있는 횟수
+  R.twScene = function (r, real) { var sp = r.sp, s = null; if (sp) for (var i = 0; i < sp.length; i++) if (sp[i][0] <= real) s = sp[i]; return s ? s[1] + (real - s[0]) * s[2] : real - r.t0; };
+  R.twRealAt = function (r, pos) { var sp = r.sp, s = null; if (sp) for (var i = 0; i < sp.length; i++) if (sp[i][1] <= pos) s = sp[i]; return s ? s[0] + (pos - s[1]) / s[2] : r.t0 + pos; };
+  R.twEndAt = function (r) { return R.twRealAt(r, r.d); };
+  R.twSpeedOf = function (r) { var sp = r.sp; return sp && sp.length ? sp[sp.length - 1][2] : 1; };
+  // 철수: 대본 위치 pos까지 끝까지 본 층만 넘은 것으로 (싸우던 층은 패배)
+  R.twCutAt = function (r, pos) { var c = r.start - 1; (r.floors || []).forEach(function (fl) { if ((fl.rest || fl.win) && fl.t + fl.d <= pos) c = Math.max(c, fl.f); }); return Math.min(c, r.cleared); };
   R.twMeta = function (ms) { var n = ms.length; return ms.map(function (m) { return { id: m.id, name: m.name, house: m.house, cls: m.cls, pos: m.pos, npc: !!m.npc, hp: Math.round(R.twMaxHp(m, n)), power: Math.round(m.power), sp: m.sp.map(function (x) { return x.name; }) }; }); };
   // 전투 기록 한 줄을 글로: e = [초, 종류, 누가, 값, 대상, 덧값], ms = R.twMeta, foe = 적 이름. [글, 종류('h' · 'p' · 'x')]
   R.twEvText = function (e, ms, foe) {

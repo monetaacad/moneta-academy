@@ -435,6 +435,9 @@ function open(dir) {
     // 별의 탑 파티 순위 (높은 층, 같으면 먼저 오른 파티)
     // 실전 기록은 대기(pfloor · pt = 끝나는 시각)로 넣고, twRankSettle이 끝난 것만 정식 기록으로 옮긴다 (처음 오른 파티는 floor 0인 줄로 시작)
     twRankPend: db.prepare(`INSERT INTO tower_rank (week, party, name, members, floor, t, pfloor, pt, pname, pmembers) VALUES (?, ?, '', '[]', 0, 0, ?, ?, ?, ?) ON CONFLICT(week, party) DO UPDATE SET pfloor = excluded.pfloor, pt = excluded.pt, pname = excluded.pname, pmembers = excluded.pmembers WHERE excluded.pfloor > MAX(tower_rank.floor, tower_rank.pfloor)`),
+    // 진행 중인 실전의 순위 대기: 배속으로 끝나는 시각이 바뀌면 pt만, 철수하면 오른 층(pfloor)과 pt를 함께 고친다
+    twRankPendMove: db.prepare(`UPDATE tower_rank SET pt = ? WHERE week = ? AND party = ? AND pt > 0`),
+    twRankPendCut: db.prepare(`UPDATE tower_rank SET pfloor = ?, pt = ? WHERE week = ? AND party = ? AND pt > 0`),
     twRankSettle: db.prepare(`UPDATE tower_rank SET floor = CASE WHEN pfloor > floor THEN pfloor ELSE floor END, name = CASE WHEN pfloor > floor THEN pname ELSE name END, members = CASE WHEN pfloor > floor THEN pmembers ELSE members END, t = CASE WHEN pfloor > floor THEN pt ELSE t END, pfloor = 0, pt = 0 WHERE pt > 0 AND pt <= ?`),
     twRankTop: db.prepare(`SELECT party, name, members, floor, t FROM tower_rank WHERE week = ? AND floor > 0 ORDER BY floor DESC, t ASC LIMIT ?`),
     twRankGet: db.prepare(`SELECT floor, t FROM tower_rank WHERE week = ? AND party = ? AND floor > 0`),
