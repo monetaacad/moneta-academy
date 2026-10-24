@@ -2185,6 +2185,20 @@
     if (!R.canWear(P, P.inv[i])) err('레벨 ' + P.inv[i].ilvl + '부터 장착할 수 있습니다');
     var it = P.inv.splice(i, 1)[0], cur = P.eq[it.slot]; P.eq[it.slot] = it; if (cur) P.inv.push(cur); return { ok: true };
   };
+  /* 가방에서 지금보다 전투력이 오르는 장비를 칸마다 골라 낀다 (자동 장착을 켤 때 · 「가장 좋은 장비 장착」).
+     자동 장착과 같은 규칙: 착용 레벨이 되는 장비만, 잠긴 장비 · 장비 프리셋에 저장된 장비를 끼고 있는 칸은 바꾸지 않는다. 빼낸 장비는 가방으로 */
+  R.equipBest = function (P, W, now) {
+    var out = [], pu = R.presetUids(P);
+    for (var round = 0; round < D.SLOTS.length * 2; round++) {
+      var base = calc(P, W, now).power, best = null, bestP = base * 1.0001;
+      P.inv.forEach(function (it) { var cur = P.eq[it.slot]; if (!R.canWear(P, it) || (cur && (cur.lock || pu[cur.u]))) return; var pw = R.powerWith(P, it, W, now); if (pw > bestP) { bestP = pw; best = it; } });
+      if (!best) break;
+      var i = P.inv.indexOf(best), cur = P.eq[best.slot]; P.inv.splice(i, 1); P.eq[best.slot] = best; if (cur) P.inv.push(cur);
+      out = out.filter(function (x) { return x.slot !== best.slot; }); out.push({ slot: best.slot, name: best.name, r: best.r, enh: best.enh || 0 });
+    }
+    return { items: out, power: calc(P, W, now).power };
+  };
+  A.equipBest = function (P, W, now) { return R.equipBest(P, W, now); };
   // 장비 프리셋 5칸: 지금 장착한 장비를 저장해 두었다가 한 번에 바꿔 낀다 (가방에 없으면 그 칸은 그대로)
   R.GEARSET_N = 5;
   // 주문 프리셋 5칸: 지금 장착한 주문 구성을 저장 · 불러오기 (배우지 못했거나 잠긴 칸의 주문은 빈칸)
@@ -2331,7 +2345,9 @@
   };
   A.opt = function (P, W, now, a) {
     var k = str(a.k); if (['autoEquip', 'autoAlloc', 'sound', 'reduceFx', 'hideMyTitle', 'hideOtherTitle', 'dockClosed', 'bulkAsk', 'upAsk', 'showFam', 'hideRank', 'buffMerge'].indexOf(k) < 0) err('잘못된 설정');
-    P.opt[k] = !!a.v; if (k === 'autoAlloc' && P.opt[k]) R.autoAlloc(P); return { ok: true };
+    P.opt[k] = !!a.v; if (k === 'autoAlloc' && P.opt[k]) R.autoAlloc(P);
+    if (k === 'autoEquip' && P.opt[k]) return { ok: true, eq: R.equipBest(P, W, now) };   // 켜는 순간 가방에 있는 더 좋은 장비도 바로 낀다
+    return { ok: true };
   };
   A.spell = function (P, W, now, a) {
     var i = int(a.i, 0, 3), id = a.id ? str(a.id) : null;

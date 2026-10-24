@@ -2274,6 +2274,7 @@
         (it ? '<span class="in" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</span><span class="tiny faint">Lv ' + it.ilvl + ' · ' + D.RARITY[it.r].name + '</span>' : '<span class="in">비어 있음</span>') + '</button>';
     }).join('') + '</div>';
     if (S.sel && R.findItem(P, S.sel) && P.eq[R.findItem(P, S.sel).slot] && P.eq[R.findItem(P, S.sel).slot].u === S.sel) h += '<div class="eqdetail">' + detailCard() + '</div>';   // 한 칸일 때: 장착 칸 바로 아래에
+    h += '<div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap"><button class="btn sm" data-act="eqbest" title="가방에서 전투력이 오르는 장비를 칸마다 장착합니다 (잠긴 장비 · 프리셋 장비를 끼고 있는 칸 제외)">가장 좋은 장비 장착</button><label class="tog"><input type="checkbox" id="opt-ae0" data-act="opt" data-a="autoEquip"' + (P.opt.autoEquip ? ' checked' : '') + '> 더 좋은 장비 자동 장착</label></div>';   // 가방 아래까지 내려가지 않아도
     h += gearSetRow();
     h += badgeCard();
     h += '<div class="grid g2 gearcols" style="margin-top:14px"><div class="stack">' + detailCard() + allocCard() + '</div>';
@@ -4638,7 +4639,9 @@
   ACT.famnamesave = function (id) { var i = $('#fam-nm'); act('famName', { id: id, name: i ? i.value : '' }).then(function (r) { if (!r) return; closeModal(); toast('사역마 이름', r.nm ? R.josa('「' + r.nm + '」', '으로', '로') + ' 지었습니다' : '원래 이름으로 돌아갔습니다'); render(); }); };
   ACT.mobsysoff = function (k, b, el) { PREF.mobSysOff = !!el.checked; savePref(); toast(el.checked ? '모바일에서 시스템 공지 알림을 끕니다' : '모바일에서 시스템 공지 알림을 켭니다', '', 1400); };
   ACT.headoff = function (k, b, el) { PREF.headOff = el.checked ? k : (k === 'all' ? 'welcome' : ''); savePref(); recount(); updateUnread(); renderDock(); ACT.settings(); };
-  ACT.opt = function (k, v, el) { act('opt', { k: k, v: el.checked }).then(function () { if (k === 'sound') { Snd.set(S.P.opt.sound); if ($('#setbox')) ACT.settings(); } if (/Title$/.test(k)) renderDock(); render(); }); };
+  function eqBestToast(r, head) { var n = r && r.items ? r.items.length : 0; toast(head, n ? r.items.map(function (x) { return x.name + (x.enh ? ' +' + x.enh : ''); }).join(' · ') + ' 장착 · 전투력 ' + fmt(r.power) : '가방에 지금보다 좋은 장비가 없습니다', n ? 3000 : 2000); }
+  ACT.eqbest = function () { act('equipBest', {}).then(function (r) { if (r) eqBestToast(r, '가장 좋은 장비 장착'); render(); }); };
+  ACT.opt = function (k, v, el) { act('opt', { k: k, v: el.checked }).then(function (r) { if (r && r.eq && r.eq.items.length) eqBestToast(r.eq, '자동 장착을 켰습니다'); if (k === 'sound') { Snd.set(S.P.opt.sound); if ($('#setbox')) ACT.settings(); } if (/Title$/.test(k)) renderDock(); render(); }); };
   ACT.autosell = function () { act('autoSell', { r: +$('#autosell').value }).then(render); };
   ACT.automode = function () { act('autoMode', { dis: $('#automode').value === 'dis' }).then(render); };
   // 재련: 먼저 지금 옵션이 사라진다는 확인 창 → 재련하면 이전 · 새 옵션을 나란히 보여 준다
@@ -6152,7 +6155,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102409;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102410;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
