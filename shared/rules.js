@@ -2481,6 +2481,7 @@
     var id = str(a.id), o = P.fam.own[id]; if (!o) err('없는 사역마입니다');
     var nm = String(a.name == null ? '' : a.name).slice(0, 100).replace(/[\u0000-\u001F\u007F\u200B-\u200F\u202A-\u202E\u2066-\u2069]/g, '').replace(/\s+/g, ' ').trim();
     if (Array.from(nm).length > R.FAM_NAME_MAX) err('이름은 ' + R.FAM_NAME_MAX + '자까지 입력할 수 있습니다');
+    if (nm && R.badName(nm)) err('사용할 수 없는 단어가 포함된 이름입니다');   // 함께 원정 동료의 원정 일지에도 보인다
     if (nm && nm !== FAM[id].name) o.nm = nm; else delete o.nm;
     return { ok: true, nm: o.nm || '' };
   };

@@ -4296,9 +4296,13 @@
     if (x2 < 0.18) return [josa(m.name, '과', '와') + ' 마주쳤다. 거리를 재며 틈을 노린다.', ''];
     if (x2 < 0.3) return [josa(D.MATS[z.mat].name, '을', '를') + ' 주웠다', '재료'];
     if (x2 < 0.45) return ['잠시 숨을 고른다. 마나가 천천히 차오른다.', ''];
-    if (x2 < 0.5 && S.P.fam.act && R.FAM[S.P.fam.act]) return [R.josa(R.FAM[S.P.fam.act].name, '이', '가') + ' 앞장서서 길을 찾는다', ''];
+    if (x2 < 0.5 && S.P.fam.act && R.FAM[S.P.fam.act]) { var fn = esc(R.famLabel(S.P, S.P.fam.act)), fl0 = FAM_LINES[Math.floor(x2 * 211) % FAM_LINES.length]; return [fl0.replace('{f}이', josa(fn, '이', '가')).replace('{f}', fn).replace('{m}을', josa(m.name, '을', '를')).replace('{m}', m.name), '']; }   // 내 사역마: 지은 이름이 있으면 그 이름
+    var wf = j.pt && (j.pt.with || []).filter(function (w) { return w.fam; });
+    if (wf && wf.length && x2 >= 0.75 && x2 < 0.82) { var ww = wf[Math.floor(y * 389) % wf.length], fl1 = FAM_LINES[Math.floor(x2 * 523) % FAM_LINES.length], fn1 = esc(ww.name) + '의 ' + esc(ww.fam); return [fl1.replace('{f}이', josa(fn1, '이', '가')).replace('{f}', fn1).replace('{m}을', josa(m.name, '을', '를')).replace('{m}', m.name), '']; }   // 함께 원정 동료의 사역마
     var fl = EXP_FLAVOR[z.id] || EXP_FLAVOR.cellar; return [fl[Math.floor(x2 * 97) % fl.length], ''];
   }
+  // 사역마 줄 ({f} = 사역마 이름, 동료의 사역마면 「동료 이름의 사역마 이름」)
+  var FAM_LINES = ['{f}이 앞장서서 길을 찾는다', '{f}이 {m}을 향해 달려들었다', '{f}이 귀를 쫑긋 세우고 주변을 살핀다', '{f}이 주운 것을 물고 돌아왔다'];
   // 함께 원정: 같이 간 사람의 이름 · 포지션이 나오는 줄
   var PT_LINES = {
     van: ['{n}이 방패를 들어 {m}의 공격을 받아 냈다', '{n}이 앞으로 뛰어들어 {m}의 시선을 끌었다', '{n}이 {m}을 벽으로 밀어붙였다'],
@@ -6235,7 +6239,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102430;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102451;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
