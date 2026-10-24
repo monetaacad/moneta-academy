@@ -406,6 +406,8 @@
   };
   // 환수생태학: 레벨마다 사역마 동행 보너스 +3%(곱), 파견 보상 +2%, 부화 속도 +1%
   R.BEAST_FAM = 0.03; R.BEAST_DISP = 0.02;
+  // 사역마 수집 기록: 전체 종 수 · 들판 친구들(fld) 종 수 · 그리핀 보유
+  R.famCount = function (P) { var k = Object.keys(P.fam.own); P.st.famKinds = k.length; P.st.fldKinds = k.filter(function (id) { return FAM[id] && FAM[id].fld; }).length; P.st.griffin = P.fam.own.griffin ? 1 : 0; };
   R.famBonus = function (f, lv, P) { return f.base * (1 + 0.25 * (lv - 1)) * (1 + (P && P.subj && P.subj.beast ? P.subj.beast.lv : 0) * R.BEAST_FAM); };
   R.CODEX_TIERS = [1, 10, 100]; R.BOSS_TIERS = [1, 5, 20]; R.CODEX_EACH = 0.004;
   R.tiersFor = function (id) { return BOSS_IDS[id] ? R.BOSS_TIERS : R.CODEX_TIERS; };
@@ -1015,7 +1017,7 @@
     if (!own) { P.fam.own[f.id] = { lv: 1 }; res = { f: f.id, isNew: true }; if (!P.fam.act) P.fam.act = f.id; }
     else if (own.lv < 20) { own.lv++; res = { f: f.id, isNew: false, lv: own.lv }; }
     else { P.res.shard += 10; res = { f: f.id, isNew: false, max: true }; }
-    P.st.famKinds = Object.keys(P.fam.own).length;
+    R.famCount(P);
     log(P, t, '알이 부화했습니다: ' + f.name + (res.isNew ? ' (새로운 사역마!)' : ' (성장)'), 'good');
     if (tixR > 0) res.tix = tixR;
     return res;
@@ -2142,6 +2144,45 @@
     else log(P, now, R.CT_NAME[cls] + ' ' + f + '층 돌파', 'good');
     return out;
   };
+  /* ───────── 수호자의 탑 (개인 · 학과 공통): 버티기 탑 ─────────
+     무한의 탑과 같이 혼자 한 층씩, 도전 횟수 제한 없이 오르고 기록은 줄어들지 않는다. 다만 적을 쓰러뜨리는 탑이 아니라 R.GT_TIME초를 버티는 탑이다.
+     적(공성 마수)은 쓰러뜨릴 수 없고 공격만 강하다 → 화력보다 생명력 · 방어 · 치유 · 보호막 · 흡혈 · 기절이 층을 정한다.
+     수호 · 축복 성향(기말 대련 버티기 성향)은 「수호자의 가호」: 받는 공격 R.GT_GUARD.take배 · 치유 · 보호막 위력 R.GT_GUARD.care배.
+     결투제 · 무한의 탑 · 월드 보스가 화력 위주라 지원 학생이 장비를 자주 바꾸게 되는 문제를 덜려고, 지원 세팅 그대로 오를 수 있는 혼자 콘텐츠로 둔다.
+     층 곡선은 무한의 탑과 같다(R.ctStage · 50층마다 시련의 층)에 층마다 공격 +R.GT_GROW, 처음 20층은 공격을 덜어 막 입학한 학생도 몇 층 오른다. 학과를 바꾸어도 기록(P.st.twG)은 하나다. */
+  R.GT_TIME = 30; R.GT_ATK = 3; R.GT_GROW = 0.01; R.GT_WALL = 1.25; R.GT_LEECH = 0.25; R.GT_GUARD = { take: 0.8, care: 1.4 };
+  R.GT_FOES = [['성문을 두드리는 공성 마수', 'golem', '#a89a7a', '#3a3020'], ['쇠사슬 늑대 무리', 'beast', '#b0b0c0', '#2a2a3a'], ['화살비를 부르는 망령', 'wisp', '#c8d8ff', '#2a3460'], ['돌을 던지는 거인', 'golem', '#b8a088', '#4a3420'],
+    ['불화살 정령', 'wisp', '#ff9a6a', '#5a1a08'], ['성벽을 갉는 그림자', 'blob', '#6a6080', '#1a1428'], ['탑을 무너뜨리려는 자', 'eye', '#d8a0a0', '#4a1a1a']];
+  R.gtGuard = function (P) { return R.stanceOf(P).duel === 'hold'; };
+  R.gtBest = function (P) { return (P.st && P.st.twG) || 0; };
+  R.gtFoe = function (f, P) {
+    var L = R.GT_FOES, s = R.ctStage(f), k = Math.ceil(f / L.length), d = L[(f - 1) % L.length], w = R.ctWall(f), g = P && R.gtGuard(P);
+    return { name: (w ? '탑의 문지기 · ' : '') + d[0] + (k > 1 ? ' ' + toRoman(Math.min(k, 10)) + (k > 10 ? '+' : '') : ''), arch: d[1], c1: d[2], c2: d[3], stage: s, wall: w, guard: !!g,
+      hp: 1e18, atk: R.monAtk(s) * K.BOSS_ATK * R.GT_ATK * Math.min(1, 0.2 + f * 0.04) * (1 + f * R.GT_GROW) * (w ? R.GT_WALL : 1) * (g ? R.GT_GUARD.take : 1), boss: true };
+  };
+  R.gtCalc = function (P, W, now) { var c = calc(P, W, now); return Object.assign({}, c, { leech: (c.leech || 0) * R.GT_LEECH, care: c.care * (R.gtGuard(P) ? R.GT_GUARD.care : 1) }); };   // 쓰러뜨릴 수 없는 적이라 흡혈은 R.GT_LEECH배
+  // 버틸 수 있는지 어림 (화면 · 추천 줄): R.duelPreview와 같은 식으로 버티는 시간만 본다
+  R.gtPreview = function (P, W, f, t) {
+    var c = R.gtCalc(P, W, t || P.at), foe = R.gtFoe(f, P), ed = Math.max(0.001, dmgTaken(foe.atk, c.def) * 0.85 - c.hp * c.regen - c.totalDps * (c.leech || 0)), sh = 0;
+    P.spells.forEach(function (sid) { var sp = SPELL[sid]; if (sp && R.spellUnlocked(P, sid) && (sp.type === 'shield' || sp.type === 'pshield' || sp.type === 'heal')) sh += c.hp * sp.mult * c.care * Math.max(1, R.GT_TIME / (sp.cd * (1 - c.cdr))); });
+    var ttd = (c.hp + sh) / ed; return { ok: ttd >= R.GT_TIME, ttd: ttd };
+  };
+  R.gtReward = function (f) { return R.ctReward(f); };   // 보상은 무한의 탑과 같은 표
+  R.gtTitle = function (f) { return D.TITLES.find(function (t) { return t.stat === 'twG' && t.n === f; }); };
+  A.gtower = function (P, W, now) {
+    var c = R.gtCalc(P, W, now), f = R.gtBest(P) + 1, foe = R.gtFoe(f, P);
+    var r = fight(P, c, { hp: foe.hp, atk: foe.atk, boss: true }, R.GT_TIME, false);
+    var out = { f: f, foe: foe, win: !r.dead, ev: r.ev, t: r.t, dealt: Math.round(r.dealt), hp: Math.round((r.pHp || 0) * 100), rw: {}, titles: [] };
+    if (r.dead) return out;
+    badgeGain(P, R.BADGE_XP.fight, now);
+    P.st.twG = f; var g = R.gtReward(f), rw = out.rw;
+    if (g.gold) { addGold(P, g.gold); rw.gold = g.gold; } if (g.stone) { P.res.stone += g.stone; rw.stone = g.stone; } if (g.shard) { P.res.shard += g.shard; rw.shard = g.shard; }
+    if (g.gear || g.egg) { var gm = R.grantMail(P, W, now, { gear: g.gear, egg: g.egg, legend: g.legend }); if (g.egg) rw.egg = g.egg; out.items = gm.items; }
+    var tt = f % R.CT_MILE === 0 && R.gtTitle(f);
+    if (tt) { out.titles.push(tt.name); log(P, now, '수호자의 탑 ' + f + '층을 버텼습니다! 칭호 「' + tt.name + '」를 얻었습니다', 'legend'); }
+    else log(P, now, '수호자의 탑 ' + f + '층을 버텼습니다', 'good');
+    return out;
+  };
   A.boss = function (P, W, now) {
     if (P.bossCd > now) err('아직 재도전할 수 없습니다');
     if (!R.canChallenge(P)) err(R.bossLockText(P));
@@ -2375,7 +2416,7 @@
     if (!(x[r] > 0)) err('선택권이 없습니다'); if (!f || f.r !== r) err(D.FAM_RARITY[r].name + ' 등급 사역마만 고를 수 있습니다');
     var own = P.fam.own[f.id]; if (own && own.lv >= 20) err('이미 최고 레벨인 사역마입니다');
     x[r]--; if (!own) { P.fam.own[f.id] = { lv: 1 }; if (!P.fam.act) P.fam.act = f.id; } else own.lv++;
-    P.st.famKinds = Object.keys(P.fam.own).length;
+    R.famCount(P);
     log(P, now, D.FAM_RARITY[r].name + ' 선택권으로 ' + R.josa(f.name, '을', '를') + ' 골랐습니다' + (own ? ' (레벨 ' + own.lv + ')' : ' (새 사역마)'), 'good');
     return { f: f.id, isNew: !own, lv: own ? own.lv : 1, left: x[r] };
   };
@@ -2420,6 +2461,7 @@
     var s1 = R.bondStage(o.bond);
     if (s1 > s0) { log(P, now, R.josa(R.famLabel(P, id), '과', '와') + '의 유대가 「' + D.BOND_STAGES[s1].name + '」 단계가 되었습니다.', 'good'); if (s1 >= 3) { o.lk = { s: 1, t: 1 }; } }
     P.st.bondFull = Object.keys(P.fam.own).filter(function (k) { return (P.fam.own[k].bond || 0) >= BOND.max; }).length;
+    P.st.fldBond = Object.keys(P.fam.own).filter(function (k) { return FAM[k] && FAM[k].fld && (P.fam.own[k].bond || 0) >= BOND.max; }).length;   // 들판 친구들과 단짝
     return { gain: g, bond: o.bond, stage: s1, up: s1 > s0 ? s1 : 0 };
   }
   R.bondGain = bondGain;
