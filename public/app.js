@@ -5584,10 +5584,12 @@
     if (d.pages > 1) h += '<div class="row bdpages">' + (d.page > 1 ? '<button class="btn sm ghost" data-act="bdpage" data-a="' + (d.page - 1) + '">이전</button>' : '') + '<span class="tiny faint num">' + d.page + ' / ' + d.pages + '</span>' + (d.page < d.pages ? '<button class="btn sm ghost" data-act="bdpage" data-a="' + (d.page + 1) + '">다음</button>' : '') + '<span class="tiny faint">' + d.total + '개</span></div>';
     return h;
   }
+  // RP 글의 제목이 본문 첫 줄로 만든 것이 아니라 따로 적은 것인지 (메모는 제목 = 본문 첫 줄이라 다시 보이지 않는다)
+  function rpOwnTitle(p) { var t = (p.title || '').replace(/…$/, ''), f = String(p.body || '').split('\n')[0].replace(/\s+/g, ' ').trim(); return !!t && f.indexOf(t) !== 0; }
   function rpWho(aid, name, badge) { return '<button class="cn" data-act="prof" data-a="' + esc(aid) + '">' + esc(name) + '</button>' + (badge && R.OP_TITLES[badge] ? ' <span class="ttl' + R.opTitleCls(badge) + '">' + esc(badge) + '</span>' : ''); }
   function rpMemo(m, op) {
     var b = S.bd, full = (b.full || {})[m.id], coms = full ? full.comments : m.coms || [], hidden = full ? 0 : Math.max(0, m.ncom - coms.length), ed = b.medit && b.medit.id === m.id, armed = S.confirm['bd' + m.id] > Date.now();
-    var titled = m.title && m.body.indexOf(m.title.replace(/…$/, '')) !== 0;   // 예전 RP 글: 제목이 따로 있으면 위에 보인다
+    var titled = rpOwnTitle(m);   // 예전 RP 글: 제목이 따로 있으면 위에 보인다
     var h = '<article class="card rpmemo"><div class="row" style="gap:6px"><b class="small">' + rpWho(m.aid, m.author, m.aop) + '</b><span class="tiny faint">' + bdWhen(m.created) + (m.updated > m.created + 60 ? ' · 고침' : '') + '</span><span class="spacer"></span>' +
       '<button class="linkbtn tiny" data-act="bdopen" data-a="' + m.id + '">글로 보기</button>' +
       (m.mine && m.body.length <= 500 && !ed ? '<button class="linkbtn tiny" data-act="rpedit" data-a="' + m.id + '">수정</button>' : '') +
@@ -5665,7 +5667,7 @@
     var b = S.bd, armed = S.confirm['bd' + p.id] > Date.now();
     var h = '<div class="row" style="margin-bottom:10px"><button class="btn sm ghost" data-act="bdback">← 목록</button><span class="spacer"></span>' +
       (p.canEdit ? '<button class="btn sm ghost" data-act="bdedit">수정</button>' : '') + (p.canDel ? '<button class="btn sm ' + (armed ? 'danger' : 'ghost') + '" data-act="bddel" data-a="' + p.id + '">' + (armed ? '한 번 더 누르면 지웁니다' : '지우기') + '</button>' : '') + '</div>';
-    h += '<article class="card bdpost"><div class="row" style="gap:6px;flex-wrap:wrap">' + bdTag(p.tag) + (p.priv ? '<span class="btag lock">관리자만 보기</span>' : '') + bdSt(p.st) + (p.canStatus ? '<span class="spacer"></span>' + [['review', '검토 중'], ['wip', '확인 중'], ['done', '해결 완료'], ['no', '반영 안 함'], ['norepro', '재현 안 됨'], ['', '표시 없음']].map(function (o) { return '<button class="btn sm' + ((p.st || '') === o[0] ? ' primary' : ' ghost') + '" data-act="bdst" data-a="' + p.id + '" data-b="' + o[0] + '">' + o[1] + '</button>'; }).join('') : '') + (API.mode === 'server' ? '<button class="btn sm ghost bdmute' + (p.muted ? ' on' : '') + '" data-act="bdmute" data-a="' + p.id + '" title="이 글에 달리는 댓글 · 답글 알림을 받지 않습니다">' + (p.muted ? '알림 다시 받기' : '알림 받지 않기') + '</button>' : '') + '</div><h2 class="bdh">' + esc(p.title) + '</h2>' +
+    h += '<article class="card bdpost"><div class="row" style="gap:6px;flex-wrap:wrap">' + bdTag(p.tag) + (p.priv ? '<span class="btag lock">관리자만 보기</span>' : '') + bdSt(p.st) + (p.canStatus ? '<span class="spacer"></span>' + [['review', '검토 중'], ['wip', '확인 중'], ['done', '해결 완료'], ['no', '반영 안 함'], ['norepro', '재현 안 됨'], ['', '표시 없음']].map(function (o) { return '<button class="btn sm' + ((p.st || '') === o[0] ? ' primary' : ' ghost') + '" data-act="bdst" data-a="' + p.id + '" data-b="' + o[0] + '">' + o[1] + '</button>'; }).join('') : '') + (API.mode === 'server' ? '<button class="btn sm ghost bdmute' + (p.muted ? ' on' : '') + '" data-act="bdmute" data-a="' + p.id + '" title="이 글에 달리는 댓글 · 답글 알림을 받지 않습니다">' + (p.muted ? '알림 다시 받기' : '알림 받지 않기') + '</button>' : '') + '</div>' + (p.tag !== 'rp' ? '<h2 class="bdh">' + esc(p.title) + '</h2>' : rpOwnTitle(p) ? '<h2 class="bdh">' + rpText(p.title) + '</h2>' : '') +
       '<div class="tiny faint"><button class="cn" data-act="prof" data-a="' + esc(p.aid) + '">' + esc(p.author) + '</button>' + (p.aop && R.OP_TITLES[p.aop] ? ' <span class="ttl' + R.opTitleCls(p.aop) + '">' + esc(p.aop) + '</span>' : '') + ' · ' + new Date(p.created * 1000).toLocaleString('ko-KR') + (p.updated > p.created + 60 ? ' · 고침' : '') + '</div>' +
       (p.priv ? '<p class="tiny gold" style="margin-top:8px">작성자와 운영진만 볼 수 있는 글입니다. 운영진이 답하면 우편으로 알려 드립니다.</p>' : '') +
       '<div class="bdbody">' + (p.tag === 'rp' ? rpText(p.body) : esc(p.body)) + '</div></article>';
@@ -6100,7 +6102,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102367;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102401;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
