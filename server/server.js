@@ -415,44 +415,52 @@ let houseN = { at: 0, n: {} };
 function houseCounts() { if (Date.now() - houseN.at > 60000) { const n = {}; dbx.q.houseCount.all().forEach((r) => { n[r.house] = Number(r.n) || 0; }); houseN = { at: Date.now(), n }; } return houseN.n; }
 routes['GET /api/meta'] = (req, res) => { const me = authed(req), mv = maintView(me); if (mv && mv.on && !mv.bypass) return send(req, res, 503, { error: '점검 중입니다', maint: mv }); send(req, res, 200, Object.assign({ build: BUILD.build, minBuild: BUILD.minBuild, maint: mv, now: nowSec(), scale: cfg.timeScale, registerOpen: cfg.registerOpen, inviteRequired: cfg.inviteRequired, houses: world.houseView(), houseN: houseCounts() }, me ? { world: world.publicView(nowSec(), store.online(120000)) } : {})); };
 
+// 가입: 아이디 · 비밀번호 · 초대코드만 받는다. 학생 이름 · 기숙사 · 학과는 로그인한 뒤 「새 학생 만들기」(/api/recreate)에서 정한다
+// (시험 도구처럼 name · house · cls를 함께 보내면 바로 입학)
 routes['POST /api/register'] = async (req, res) => {
   if (!cfg.registerOpen) return fail(req, res, 403, '지금은 입학 신청을 받지 않습니다');
   if (!cfg.testMode && limited('reg:' + clientIp(req), 5 / 3600, 5)) return fail(req, res, 429, '입학 신청이 너무 잦습니다. 잠시 후 다시 시도');
   const b = await readJson(req, 2048);
-  const name = R.cleanName(b.name), pw = String(b.password || ''), house = String(b.house || ''), login = String(b.login || '').trim().toLowerCase();
+  const pw = String(b.password || ''), login = String(b.login || '').trim().toLowerCase();
+  const now0 = !!(b.name || b.house || b.cls);   // 이름까지 함께 보낸 요청 → 바로 입학
+  const name = now0 ? R.cleanName(b.name) : '새 학생', house = now0 ? String(b.house || '') : D.HOUSES[0].id, cls = String(b.cls || '');
   if (!LOGIN_RE.test(login)) return fail(req, res, 400, LOGIN_RULE);
-  if (!NAME_RE.test(name)) return fail(req, res, 400, R.NAME_RULE);
-  if (login === nameKey(name)) return fail(req, res, 400, '아이디는 학생 이름과 다르게 정해 주세요');   // 이름은 모두에게 보이므로
-  if (R.badName(name) && !ADMIN_NAMES.has(nameKey(name))) return fail(req, res, 400, '사용할 수 없는 단어가 포함된 이름입니다');   // 운영자로 지정한 이름만 예외
-  { const why = pwProblem(pw, name, login); if (why) return fail(req, res, 400, why); }
-  if (!R.HOUSE[house]) return fail(req, res, 400, '기숙사 선택 필요');
-  const cls = String(b.cls || ''); if (!R.CLS[cls]) return fail(req, res, 400, '학과 선택 필요');
+  if (now0) {
+    if (!NAME_RE.test(name)) return fail(req, res, 400, R.NAME_RULE);
+    if (login === nameKey(name)) return fail(req, res, 400, '아이디는 학생 이름과 다르게 정해 주세요');   // 이름은 모두에게 보이므로
+    if (R.badName(name) && !ADMIN_NAMES.has(nameKey(name))) return fail(req, res, 400, '사용할 수 없는 단어가 포함된 이름입니다');   // 운영자로 지정한 이름만 예외
+    if (!R.HOUSE[house]) return fail(req, res, 400, '기숙사 선택 필요');
+    if (!R.CLS[cls]) return fail(req, res, 400, '학과 선택 필요');
+  }
+  { const why = pwProblem(pw, now0 ? name : '', login); if (why) return fail(req, res, 400, why); }
   if (Number(dbx.q.countPlayers.get().n) >= cfg.maxPlayers) return fail(req, res, 403, '정원이 가득 찼습니다');
-  if (dbx.q.playerByKey.get(nameKey(name))) return fail(req, res, 409, '이미 사용 중인 이름입니다');
+  if (now0 && dbx.q.playerByKey.get(nameKey(name))) return fail(req, res, 409, '이미 사용 중인 이름입니다');
   const lkey = loginKey(login); if (dbx.q.playerByLogin.get(lkey)) return fail(req, res, 409, '이미 사용 중인 아이디입니다');
   const code = cfg.inviteRequired ? normCode(b.invite) : '';
   if (cfg.inviteRequired) { const why = checkInvite(code); if (why) return fail(req, res, 403, why); }
   const opInv = !!(code && (dbx.q.getInvite.get(code) || {}).op);
   const hashed = await hashPass(pw);
-  if (dbx.q.playerByKey.get(nameKey(name))) return fail(req, res, 409, '이미 사용 중인 이름입니다');
+  if (now0 && dbx.q.playerByKey.get(nameKey(name))) return fail(req, res, 409, '이미 사용 중인 이름입니다');
   if (dbx.q.playerByLogin.get(lkey)) return fail(req, res, 409, '이미 사용 중인 아이디입니다');
   const id = crypto.randomUUID(), now = nowSec();
-  const P = R.newPlayer(id, name, house, now, crypto.randomInt(1, 2147483647)); R.clsStart(P, cls);
-  R.advance(P, world.ctx(now), now);
+  const P = R.newPlayer(id, name, house, now, crypto.randomInt(1, 2147483647));
+  if (now0) { R.clsStart(P, cls); R.advance(P, world.ctx(now), now); } else { P.needCreate = 1; P.newJoin = 1; }
   try {
     dbx.tx(() => {
       if (code && !dbx.q.useInvite.run(code).changes) throw Object.assign(new Error('이미 다 쓴 초대코드입니다'), { status: 403 });
-      dbx.q.insertPlayerFull.run(id, name, nameKey(name), house, hashed, Math.floor(now), Math.floor(now), JSON.stringify(P), 0, code, lkey);
+      dbx.q.insertPlayerFull.run(id, name, now0 ? nameKey(name) : '~new:' + id, house, hashed, Math.floor(now), Math.floor(now), JSON.stringify(P), 0, code, lkey);
     });
   } catch (e) { return fail(req, res, e.status || 409, e.status ? e.message : '이미 사용 중인 이름이나 아이디입니다'); }
   try { dbx.db.prepare('UPDATE players SET login_enc = ? WHERE id = ?').run(sec.enc(login), id); } catch (e) { }   // 운영실 확인용 (암호화)
   store.put(P);
-  if (opInv) { dbx.q.setRole.run('admin', id); adminIds.add(id); P.op = 1; oplog('admin', '관리자', 'role', `${name} → admin (운영자 초대코드)`); }
+  if (opInv) { dbx.q.setRole.run('admin', id); adminIds.add(id); P.op = 1; oplog('admin', '관리자', 'role', `${login} → admin (운영자 초대코드)`); }
   const token = newSession(id);
   pevent(id, 'join', code ? '초대코드 ' + code + (opInv ? ' (운영자)' : '') : '', req);
-  log(`입학: ${name} (${house})${code ? ' 초대코드 ' + code : ''}${opInv ? ' · 운영자' : ''}`);
-  world.addNews(P.name + ' 학생이 ' + (R.HOUSE[P.house] ? R.HOUSE[P.house].name : '아카데미') + '에 입학했습니다', now);
-  headWelcome(P);
+  if (now0) {
+    log(`입학: ${name} (${house})${code ? ' 초대코드 ' + code : ''}${opInv ? ' · 운영자' : ''}`);
+    world.addNews(P.name + ' 학생이 ' + (R.HOUSE[P.house] ? R.HOUSE[P.house].name : '아카데미') + '에 입학했습니다', now);
+    headWelcome(P);
+  } else log(`가입: 새 계정${code ? ' 초대코드 ' + code : ''}${opInv ? ' · 운영자' : ''} (학생 만들기 대기)`);
   send(req, res, 200, Object.assign({ token }, statePayload(P, now)), { 'Set-Cookie': cookie(token, cfg.sessionDays * 86400) });
 };
 // 이름 바꾸기: 처음 정한 이름은 한 번 언제든, 바꾼 뒤에는 30일(R.NAME_CD)이 지나야 다시. 같은 이름(대소문자 무시)은 쓸 수 없다.
@@ -2750,9 +2758,10 @@ routes['POST /api/recreate'] = async (req, res) => {
   const P0 = store.get(pid); if (!P0 || !P0.needCreate) return fail(req, res, 400, '이미 입학한 학생입니다');
   const b = await readJson(req, 1024), name = R.cleanName(b.name), house = String(b.house || ''), cls = String(b.cls || '');
   if (!NAME_RE.test(name)) return fail(req, res, 400, R.NAME_RULE);
-  if (R.badName(name)) return fail(req, res, 400, '사용할 수 없는 단어가 포함된 이름입니다');
+  if (R.badName(name) && !ADMIN_NAMES.has(nameKey(name))) return fail(req, res, 400, '사용할 수 없는 단어가 포함된 이름입니다');   // 운영자로 지정한 이름만 예외
   if (!R.HOUSE[house]) return fail(req, res, 400, '기숙사 선택 필요');
   if (!R.CLS[cls]) return fail(req, res, 400, '학과 선택 필요');
+  if (P0.newJoin) { let lg = ''; try { const r = dbx.db.prepare('SELECT login_enc FROM players WHERE id = ?').get(pid); lg = r && r.login_enc ? sec.dec(r.login_enc) : ''; } catch (e) { } if (lg && lg === nameKey(name)) return fail(req, res, 400, '아이디는 학생 이름과 다르게 정해 주세요'); }
   const taken = dbx.q.playerByKey.get(nameKey(name)); if (taken && taken.id !== pid) return fail(req, res, 409, '이미 사용 중인 이름입니다');   // 시즌 초기화 뒤에는 자기 이름을 다시 사용할 수 있다
   const now = nowSec(), P = R.newPlayer(pid, name, house, now, crypto.randomInt(1, 2147483647)); R.clsStart(P, cls);
   if (P0.legacy && P0.legacy.length) P.legacy = P0.legacy.slice();
@@ -2760,7 +2769,7 @@ routes['POST /api/recreate'] = async (req, res) => {
   try { dbx.db.prepare('UPDATE players SET name = ?, name_key = ?, house = ?, created = ?, state = ? WHERE id = ?').run(name, nameKey(name), house, Math.floor(now), JSON.stringify(P), pid); }
   catch (e) { return fail(req, res, 409, '이미 사용 중인 이름입니다'); }
   store.drop(pid); store.put(P); store.markDirty(pid);
-  log(`다시 입학: ${name} (${house})`); pevent(pid, 'rename', (P0.name || '') + ' → ' + name + ' (다시 입학)', req);
+  if (P0.newJoin) log(`입학: ${name} (${house})`); else { log(`다시 입학: ${name} (${house})`); pevent(pid, 'rename', (P0.name || '') + ' → ' + name + ' (다시 입학)', req); }
   world.addNews(P.name + ' 학생이 ' + (R.HOUSE[P.house] ? R.HOUSE[P.house].name : '아카데미') + '에 입학했습니다', now);
   headWelcome(P);
   send(req, res, 200, statePayload(P, now));
