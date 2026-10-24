@@ -1881,6 +1881,9 @@ mark.hl { color: inherit; background: linear-gradient(transparent 38%, color-mix
 .mksell { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 14px; align-items: center; padding: 10px 0; }
 .mksl { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .mksl > .small, .mksl > .tiny { min-width: 0; }
+.mkinfo { display: flex; align-items: center; min-width: 0; }   /* 장비 한 줄 요약: 글은 줄여 보이고(…) 프리셋 표시는 잘리지 않게 우측에 */
+.mkinfo > .ell { flex: 0 1 auto; min-width: 0; }
+.mkinfo > .pst { flex: none; }
 .mksr { display: flex; gap: 6px; align-items: center; flex-wrap: nowrap; justify-content: flex-end; }
 .mksell input.mkprice { width: 120px; } .mksell input.mkqty { width: 72px; }
 .mkpl { display: block; margin-top: 2px; line-height: 1.6; color: var(--muted); }
@@ -1997,14 +2000,14 @@ table.sjtop .sjmeta { white-space: nowrap; }
 .rpcom { width: 100%; display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: baseline; padding: 5px 8px; border-radius: 6px; background: var(--sunk); }
 .rpcom.op { box-shadow: inset 2px 0 0 var(--brass); }
 .rpcw { font-weight: 700; flex: none; }
-.rpct { flex: 1 1 200px; min-width: 0; white-space: pre-wrap; word-break: break-word; }
-.rpcm { margin-left: auto; flex: none; }
+.rpct { order: 3; flex: 1 1 100%; min-width: 0; white-space: pre-wrap; word-break: break-word; }   /* 이름 · 시간은 윗줄, 본문은 아랫줄 (이름 길이와 상관없이 본문 시작 위치를 맞춘다) */
+.rpcm { order: 2; margin-left: auto; flex: none; }
 .rpcform { width: 100%; margin-top: 4px; }
 .rpgo { margin-top: 4px; }
 .rpcom.reply { margin-left: 18px; width: calc(100% - 18px); }
 .rpcform.reply { margin-left: 18px; width: calc(100% - 18px); }
 .rpto { flex: none; }
-.rpcom .cedform { flex: 1 1 100%; }
+.rpcom .cedform { order: 3; flex: 1 1 100%; }
 
 /* 일괄 판매 · 분해 버튼 줄 */
 .bulkbtns { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 4px; }
