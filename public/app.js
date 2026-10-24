@@ -238,7 +238,15 @@
       '<p class="tiny faint" style="margin-top:8px">이미 가진 ' + CUR + ' · 장비 · 레벨은 그대로입니다.</p><div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn primary" data-act="econok" autofocus>확인</button></div>', false, true);
   }
   // 저절로 일어나는 다시 그리기(상태 받기 등)는 글을 쓰는 중이면 입력칸을 벗어날 때까지 미룬다 (커서·입력 중인 값이 날아가지 않게)
+  // 손가락으로 스크롤하는 중(관성 스크롤 포함)에 화면을 다시 그리면 모바일 브라우저가 스크롤을 멈추고 다시 그리기 전 위치로 되돌려
+  // 「위로 올리다 멈칫하며 아래로 내려가는」 일이 생긴다. 저절로 다시 그리는 것(softRender)은 스크롤이 멈출 때까지 미룬다
+  var scrollAt = 0, touchAt = 0, srT = 0;   // touchAt: 손가락을 대고 있는 동안 마지막으로 움직인 때 (떼면 0). 누른 버튼이 다시 그려져 사라지면 touchend가 오지 않을 수 있어 4초가 지나면 손을 뗀 것으로 본다
+  window.addEventListener('scroll', function () { scrollAt = Date.now(); }, { passive: true });
+  ['touchstart', 'touchmove'].forEach(function (k) { window.addEventListener(k, function () { touchAt = Date.now(); }, { passive: true }); });
+  ['touchend', 'touchcancel'].forEach(function (k) { window.addEventListener(k, function () { touchAt = 0; scrollAt = Date.now(); }, { passive: true }); });
+  function scrollBusy() { var n = Date.now(); return (touchAt && n - touchAt < 4000) || n - scrollAt < 500; }
   function softRender() {
+    if (scrollBusy()) { if (!srT) srT = setTimeout(function wait() { if (scrollBusy()) { srT = setTimeout(wait, 300); return; } srT = 0; if (S.P) softRender(); }, 300); return; }
     var a = document.activeElement, v = $('#view');
     if (a && v && v.contains(a) && (a.tagName === 'TEXTAREA' || (a.tagName === 'INPUT' && !/^(checkbox|radio|button|file)$/.test(a.type)))) {
       if (!S.rPend) { S.rPend = 1; a.addEventListener('blur', function () { S.rPend = 0; setTimeout(function () { if (S.P) render(); }, 0); }, { once: true }); }
@@ -6100,7 +6108,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102367;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102378;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
