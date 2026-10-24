@@ -1352,13 +1352,13 @@ routes['POST /api/market'] = async (req, res) => {
       if (Number(dbx.q.mkAucMineOpen.get(me).n) >= MK_AUC.MAX) return fail(req, res, 400, '경매는 한 번에 ' + MK_AUC.MAX + '개까지 열 수 있습니다');
       if (MK_AUC.HOURS.indexOf(hours) < 0) return fail(req, res, 400, '경매 기간 선택 필요');
       if (!isFinite(start) || start < 1) return fail(req, res, 400, '시작가 확인 필요');
-      if (price < Math.ceil(start * MK_AUC.BUYOUT_X)) return fail(req, res, 400, '즉시 구매가는 시작가의 ' + MK_AUC.BUYOUT_X + '배(' + R.fmt(Math.ceil(start * MK_AUC.BUYOUT_X)) + ' ' + CUR + ') 이상이어야 합니다');
+      if (price < Math.ceil(start * MK_AUC.BUYOUT_X)) return fail(req, res, 400, '즉시 구매가는 시작가의 ' + MK_AUC.BUYOUT_X + '배(' + R.fmtN(Math.ceil(start * MK_AUC.BUYOUT_X)) + ' ' + CUR + ') 이상이어야 합니다');
     }
     let row;
     if (b.u) {
       const i = P.inv.findIndex((it) => it.u === String(b.u)); if (i < 0) return fail(req, res, 400, '가방에 없는 장비입니다 (장착 중인 장비는 해제한 뒤 올리세요)');
       const it = P.inv[i]; if (it.lock) return fail(req, res, 400, '잠금한 장비는 올릴 수 없습니다');
-      if (auc && start < R.sellPrice(it)) return fail(req, res, 400, '시작가는 상점 판매가(' + R.fmt(R.sellPrice(it)) + ' ' + CUR + ') 이상이어야 합니다');
+      if (auc && start < R.sellPrice(it)) return fail(req, res, 400, '시작가는 상점 판매가(' + R.fmtN(R.sellPrice(it)) + ' ' + CUR + ') 이상이어야 합니다');
       P.inv.splice(i, 1);
       row = ['item', JSON.stringify(it), it.name + (it.enh ? ' +' + it.enh : ''), it.slot, it.r, it.ilvl, 1];
     } else if (b.badge) {   // 아카데미 휘장 (달고 있는 것은 못 올림)
@@ -1436,8 +1436,8 @@ routes['POST /api/market'] = async (req, res) => {
     if (r.expires <= real) return fail(req, res, 404, '마감된 경매입니다');
     if (r.bidder === me) return fail(req, res, 400, '이미 최고 입찰자입니다');
     const amount = Math.floor(Number(b.amount)), min = mkAucMin(r);
-    if (!isFinite(amount) || amount < min) return fail(req, res, 400, '최소 입찰가는 ' + R.fmt(min) + ' ' + CUR + '입니다');
-    if (amount >= r.price) return fail(req, res, 400, '즉시 구매가(' + R.fmt(r.price) + ' ' + CUR + ') 이상은 즉시 구매로 진행 필요');
+    if (!isFinite(amount) || amount < min) return fail(req, res, 400, '최소 입찰가는 ' + R.fmtN(min) + ' ' + CUR + '입니다');
+    if (amount >= r.price) return fail(req, res, 400, '즉시 구매가(' + R.fmtN(r.price) + ' ' + CUR + ') 이상은 즉시 구매로 진행 필요');
     if (P.res.gold < amount) return fail(req, res, 400, CUR + '가 부족합니다');
     const ends = r.expires - real < MK_AUC.SNIPE ? Math.floor(real + MK_AUC.SNIPE) : r.expires;   // 마감 5분 안 입찰은 마감을 5분 미룬다
     if (!dbx.q.mkAucBid.run(amount, me, P.name, ends, id, r.bid, r.bidder).changes) return fail(req, res, 409, '방금 다른 입찰이 들어왔습니다. 다시 확인 필요');
@@ -1813,7 +1813,7 @@ routes['POST /api/auction'] = async (req, res) => {
   if (row.bidder === me) return fail(req, res, 400, '이미 가장 높은 값을 부른 상태입니다');
   const cap = R.aucCap(row); if (cap && P.maxStage > cap) return fail(req, res, 400, '이 구간은 원정 최고 단계 ' + cap + '단계 이하 학생만 입찰할 수 있습니다');
   const amount = Math.floor(Number(b.amount)), need = R.auctionStep(row.price, row.min);
-  if (!isFinite(amount) || amount < need) return fail(req, res, 400, R.fmt(need) + ' ' + CUR + ' 이상 불러야 합니다');
+  if (!isFinite(amount) || amount < need) return fail(req, res, 400, R.fmtN(need) + ' ' + CUR + ' 이상 불러야 합니다');
   if (amount > 1e15) return fail(req, res, 400, '값 확인 필요');
   if (P.res.gold < amount) return fail(req, res, 400, CUR + '가 모자랍니다');
   P.res.gold -= amount;
@@ -2354,7 +2354,7 @@ routes['POST /api/guild'] = async (req, res) => {
     const unit = R.guildGoldUnit(P), used = meRow.dday === day ? meRow.dpts : 0, room = R.GUILD_DONATE_CAP - used;
     if (room <= 0) return fail(req, res, 400, '오늘 기부 한도(' + R.GUILD_DONATE_CAP + '점)를 다 채웠습니다');
     const pts = Math.min(room, Math.floor(Math.max(0, Number(b.gold) || 0) / unit), Math.floor(P.res.gold / unit));
-    if (pts <= 0) return fail(req, res, 400, '기여도 1점은 ' + CUR + ' ' + R.fmt(unit) + '입니다');
+    if (pts <= 0) return fail(req, res, 400, '기여도 1점은 ' + CUR + ' ' + R.fmtN(unit) + '입니다');
     const cost = pts * unit; P.res.gold -= cost; store.markDirty(me);
     dbx.q.gDonate.run(day, used + pts, pts, me); gXp(mine, pts); gLog(mine, P.name + ' 님 기부 ' + R.fmt(cost) + ' ' + CUR + ' (+' + pts + ')');
     return ok({ got: pts, cost, P: R.publicState(P), now: gnow });
