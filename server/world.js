@@ -176,6 +176,7 @@ function create(store, cfg, log) {
         topStage: q.topStage.all(50).map(pub), topLvl: q.topLvl.all(50).map(pub),
         topTwK: q.topCt.all('$.st.twK', '$.st.twK', 50).map((r) => ({ id: r.id, name: r.name, house: r.house, f: r.f })),
         topTwM: q.topCt.all('$.st.twM', '$.st.twM', 50).map((r) => ({ id: r.id, name: r.name, house: r.house, f: r.f })),
+        topTwG: q.topCt.all('$.st.twG', '$.st.twG', 50).map((r) => ({ id: r.id, name: r.name, house: r.house, f: r.f })),
         topTwP: q.twRankTop.all(week, 50).map((r) => { let ms = []; try { ms = JSON.parse(r.members); } catch (e) { } return { party: r.party, name: r.name, members: ms, f: r.floor }; }),
         topDmg: q.topDmg.all(week, 50).map((r) => ({ id: r.pid, name: r.name, house: r.house, dmg: Math.floor(r.dmg) })),
         wbStats: q.sumDmg.get(week),
@@ -197,7 +198,8 @@ function create(store, cfg, log) {
   function myRanks(P, power, now) {
     const st = P.st || {}, dmg = (P.wk && P.wk.id === R.weekId(now) && P.wk.dmg) || 0;
     return { power: rankOf(power), stage: Number(q.rankStage.get(P.maxStage, P.maxStage, power).r), lvl: Number(q.rankLvl.get(P.lvl, P.lvl, P.maxStage, P.maxStage, power).r), dmg: dmg > 0 ? Number(q.rankDmg.get(R.weekId(now), dmg).r) : null,
-      twK: st.twK > 0 ? Number(q.rankCt.get('$.st.twK', st.twK).r) : null, twM: st.twM > 0 ? Number(q.rankCt.get('$.st.twM', st.twM).r) : null };
+      twK: st.twK > 0 ? Number(q.rankCt.get('$.st.twK', st.twK).r) : null, twM: st.twM > 0 ? Number(q.rankCt.get('$.st.twM', st.twM).r) : null,
+      twG: st.twG > 0 ? Number(q.rankCt.get('$.st.twG', st.twG).r) : null };
   }
 
   // 규칙 엔진에 넘기는 세계 (W.results로 주간 보상 판정)

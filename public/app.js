@@ -86,7 +86,7 @@
   function clsDot(id, size) { var c = R.CLS[id]; return dotImg(id, size, c ? c.name : '', 'cdot'); }
   function icon(k) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IC[k] + '</svg>'; }
   var VIEWS = [
-    { id: 'home', name: '아카데미 광장' }, { id: 'trip', name: '하늘섬 나들이' }, { id: 'fest', name: '축제' }, { id: 'lecture', name: '강의실' }, { id: 'explore', name: '원정' }, { id: 'tower', name: '별의 탑' }, { id: 'ctower', name: '무한의 탑' }, { id: 'exam', name: '시험·결투' },
+    { id: 'home', name: '아카데미 광장' }, { id: 'trip', name: '하늘섬 나들이' }, { id: 'fest', name: '축제' }, { id: 'lecture', name: '강의실' }, { id: 'explore', name: '원정' }, { id: 'tower', name: '별의 탑' }, { id: 'ctower', name: '무한의 탑' }, { id: 'gtower', name: '수호자의 탑' }, { id: 'exam', name: '시험·결투' },
     { id: 'world', name: '월드 보스' }, { id: 'party', name: '파티' }, { id: 'guild', name: '동아리' }, { id: 'friends', name: '친구' }, { id: 'board', name: '게시판' }, { id: 'idea', name: '건의함' }, { id: 'auction', name: '떠돌이 상인' }, { id: 'market', name: '거래소' }, { id: 'gear', name: '장비·능력' }, { id: 'alch', name: '연금 공방', alch: true }, { id: 'fam', name: '환수 사역장', fam: true }, { id: 'famshop', name: '환수 용품점', fam: true }, { id: 'lib', name: '연구' },
     { id: 'shop', name: '매점' }, { id: 'lore', name: '세계관' }, { id: 'rec', name: '기록실' }, { id: 'rank', name: '랭킹' }, { id: 'hcup', name: '기숙사' }, { id: 'lounge', name: '휴게실' }
   ];
@@ -95,13 +95,13 @@
   var GROUPS = [
     { id: 'home', name: '아카데미 광장', short: '광장', icon: 'home', tabs: ['home', 'trip', 'fest'] },
     { id: 'study', name: '수업·연구', short: '수업', icon: 'lecture', tabs: ['lecture', 'lib', 'exam'] },
-    { id: 'adv', name: '원정·전투', short: '원정', icon: 'explore', tabs: ['explore', 'tower', 'ctower', 'world'] },
+    { id: 'adv', name: '원정·전투', short: '원정', icon: 'explore', tabs: ['explore', 'tower', 'ctower', 'gtower', 'world'] },
     { id: 'craft', name: '장비·공방', short: '장비', icon: 'gear', tabs: ['gear', 'alch', 'fam', 'famshop'] },
     { id: 'social', name: '교류', short: '교류', icon: 'party', tabs: ['party', 'guild', 'friends', 'board'] },
     { id: 'store', name: '상점', short: '상점', icon: 'shop', tabs: ['market', 'auction', 'shop'] },
     { id: 'book', name: '기록·랭킹', short: '기록', icon: 'lore', tabs: ['lore', 'rec', 'rank', 'hcup', 'lounge'] }
   ];
-  var TAB_NAMES = { auction: '떠돌이 상인', home: '광장', trip: '하늘섬', fest: '축제', lounge: '휴게실', lecture: '강의실', lib: '연구', explore: '원정', tower: '별의 탑', ctower: '무한의 탑', exam: '시험 · 결투제', world: '월드 보스', rank: '랭킹', hcup: '기숙사', gear: '장비 · 능력치', alch: '연금 공방', fam: '환수 사역장', famshop: '환수 용품점', party: '파티', guild: '동아리', friends: '친구', board: '게시판', market: '거래소', shop: '매점', lore: '세계관', rec: '업적 · 도감' };
+  var TAB_NAMES = { auction: '떠돌이 상인', home: '광장', trip: '하늘섬', fest: '축제', lounge: '휴게실', lecture: '강의실', lib: '연구', explore: '원정', tower: '별의 탑', ctower: '무한의 탑', gtower: '수호자의 탑', exam: '시험 · 결투제', world: '월드 보스', rank: '랭킹', hcup: '기숙사', gear: '장비 · 능력치', alch: '연금 공방', fam: '환수 사역장', famshop: '환수 용품점', party: '파티', guild: '동아리', friends: '친구', board: '게시판', market: '거래소', shop: '매점', lore: '세계관', rec: '업적 · 도감' };
   S.gtab = {};
   var IDEA_GROUP = { id: 'idea', name: '건의함', tabs: ['idea'] };   // 건의함: 안내도 밖(상단 아이콘)에서 연다
   function groupOf(v) { return GROUPS.find(function (g) { return g.tabs.indexOf(v) >= 0; }) || (v === 'idea' ? IDEA_GROUP : GROUPS[0]); }
@@ -1483,6 +1483,7 @@
     if (S.rit && !S.rit.mine) out.push({ t: '별샘 의식에 마나 봉헌', s: '모두 함께 ' + S.rit.n + ' / ' + S.rit.goal + '명 · 채우면 ' + R.RITUAL_BUFF.text, act: 'ritual', btn: '봉헌' });
     if (S.auc && S.auc.active) out.push({ t: '떠돌이 상인이 와 있습니다', s: '구간별 귀한 장비 아홉 점 경매 · ' + left(S.auc.end) + ' 남음', go: 'auction' });
     (function () { var cf = R.ctBest(P) + 1, fo = R.ctFoe(cf, R.ctCls(P)), pv2 = R.duelPreview(P, wctx(), fo.stage, R.K.BOSS_HP * 0.6 * (fo.wall ? 1.8 : 1), R.K.BOSS_ATK * 3 * (fo.wall ? 1.4 : 1)); if (pv2.win && pv2.ttk < R.CT_TIME) out.push({ t: '무한의 탑 ' + cf + '층에 도전할 수 있습니다', s: R.CT_NAME[R.ctCls(P)] + ' · 승산 있음', go: 'ctower' }); })();
+    (function () { var gf = R.gtBest(P) + 1; if (R.gtPreview(P, wctx(), gf).ok) out.push({ t: '수호자의 탑 ' + gf + '층에 도전할 수 있습니다', s: '버티기 탑 · 버틸 수 있을 것으로 보입니다', go: 'gtower' }); })();
     if (P.twPend && Date.now() / 1000 >= P.twPend.end) out.push({ t: '별의 탑 실전 보상을 받을 수 있습니다', s: '끝난 실전의 보상은 「보상 받기」를 눌러야 우편으로 발송됩니다', go: 'tower' });
     if (S.party && !R.twUsed(P, now())) out.push({ t: '별의 탑 실전 가능 (오늘 1회)', s: '파티가 쓰러질 때까지 이어 오르는 실전 · 연습은 언제든 가능', go: 'tower' });
     var idleR = 0; for (var r = 0; r < c.resSlots; r++) if (!P.rsq[r]) idleR++;
@@ -2092,6 +2093,7 @@
     h += '</div><div class="stack">';
     h += '<div class="card">' + rkHead('이번 주 별의 탑 파티 순위', '이번 주(월요일 KST 0시~) 파티가 실전에서 오른 가장 높은 층입니다. 같은 층이면 먼저 오른 파티가 앞섭니다. 기록을 세운 때의 파티 이름과 파티원이 그대로 남으며, 연습 기록은 반영하지 않습니다.', MR.twp, S.party ? '우리 파티 기록 없음' : '') + twRankList(W.topTwP || [], MR) + '</div>';
     ['knight', 'mage'].forEach(function (cl) { var L = cl === 'knight' ? W.topTwK : W.topTwM, mine = R.ctCls(P) === cl, rk = cl === 'knight' ? MR.twK : MR.twM, b = R.ctBest(P, cl); h += '<div class="card">' + rkHead(R.CT_NAME[cl] + ' 순위', R.CLS[cl].name + '가 혼자 오르는 무한의 탑에서 도달한 가장 높은 층입니다.', b > 0 ? rk : null, mine && !b ? '아직 기록 없음' : '') + rankList((L || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: r.f + '층' }; }), 'ct' + cl, b > 0 ? { rank: rk, v: b + '층' } : null) + '</div>'; });
+    (function () { var b = R.gtBest(P); h += '<div class="card">' + rkHead('수호자의 탑 순위', '학과와 관계없이 혼자 버티며 오르는 수호자의 탑에서 도달한 가장 높은 층입니다.', b > 0 ? MR.twG : null, b ? '' : '아직 기록 없음') + rankList((W.topTwG || []).map(function (r) { return { id: r.id, name: r.name, house: r.house, v: r.f + '층' }; }), 'ctg', b > 0 ? { rank: MR.twG, v: b + '층' } : null) + '</div>'; })();
     var gr = gRankData('lv');
     h += '<div class="card"><div class="row between"><h3>동아리 순위</h3><button class="btn sm ghost" data-act="grall">전체 보기</button></div>' + (!gr ? '<div class="empty">불러오는 중…</div>' : gr.list.length ? (gr.mine ? '<p class="small" style="margin-top:4px">우리 동아리 <b class="num gold">' + gr.mine.rank + '위</b></p>' : '') + gRankRows(gr.list.slice(0, 10), true, gr.mine && gr.mine.id, 'lv') : '<div class="empty" style="margin-top:8px">아직 동아리가 없습니다.</div>') + '</div>';
     h += '</div></div>';
@@ -2997,6 +2999,40 @@
     h += '<div class="card" style="margin-top:14px"><div class="row between" style="gap:8px;flex-wrap:wrap"><span class="small"><b>' + nm + ' 칭호</b> <span class="num gold">' + gotN + ' / ' + got.length + '</span>' + (nextT ? ' <span class="tiny faint">· 다음 「' + esc(nextT.name) + '」 ' + nextT.n + '층</span>' : ' <span class="tiny good">· 모두 획득</span>') + '</span><button class="btn sm ghost" data-act="cttitles">칭호 도감</button></div>' +
       '<p class="tiny faint" style="margin-top:8px">보상: 층마다 ' + CUR + ', 2층마다 마석 1, 10층마다 별조각 3, ' + R.CT_MILE + '층마다 칭호와 추가 보상. 시련의 층(50층마다)은 탑의 문지기가 지켜 갑자기 어려워지고, 넘은 뒤 몇 층은 다시 쉬워집니다. 학과를 바꾸면 그 학과의 탑을 따로 오릅니다. 순위는 「기록·랭킹 → 랭킹」에서 볼 수 있습니다.</p></div>';
     return h;
+  };
+  /* ── 수호자의 탑 (개인 · 학과 공통): 쓰러뜨리지 않고 버티는 탑 ── */
+  V.gtower = function () {
+    var P = S.P, best = R.gtBest(P), f = best + 1, foe = R.gtFoe(f, P), pv = R.gtPreview(P, wctx(), f), g = R.gtGuard(P), st = R.stanceOf(P);
+    var nextMile = Math.ceil(f / R.CT_MILE) * R.CT_MILE, mt = R.gtTitle(nextMile), rw = R.gtReward(f);
+    var h = pageHead('수호자의 탑 · 쓰러뜨리지 않고 버티는 탑', '수호자의 탑', '최고 <b class="num gold">' + best + '</b>층');
+    h += potBar(['hpPct', 'defPct']) + gsQuick();
+    h += '<div class="card hl"><div class="row between"><h3>수호자의 탑 <span class="tag br">최고 ' + best + '층</span></h3><span class="tiny faint">도전 횟수 제한 없음</span></div>' +
+      '<p class="tiny faint" style="margin-top:2px">끝없이 몰려오는 공성 마수에게서 ' + R.GT_TIME + '초 동안 탑을 지키면 한 층을 오릅니다. 적은 쓰러뜨릴 수 없으므로 화력보다 생명력 · 방어력 · 치유 · 보호막이 중요합니다(흡혈 효과는 ' + Math.round(R.GT_LEECH * 100) + '%만 적용). 학과와 관계없이 기록은 하나이며, 오른 층은 줄어들지 않습니다.</p>' +
+      '<div class="card inset" style="margin-top:8px"><div class="small"><b' + (g ? ' class="good"' : '') + '>수호자의 가호</b> ' + (g ? '<span class="tag">적용 중 · ' + esc(st.name) + '</span>' : '<span class="tiny faint">미적용</span>') + '</div><div class="tiny faint" style="margin-top:2px">수호 · 축복 성향은 받는 공격 ' + Math.round((1 - R.GT_GUARD.take) * 100) + '% 감소 · 치유 · 보호막 위력 ×' + R.GT_GUARD.care + '. 지원 장비와 주문을 바꾸지 않고 그대로 도전할 수 있습니다.</div></div>' +
+      '<div class="twnext" style="margin-top:10px"><div class="twf num">' + f + '<span>층</span></div><div style="flex:1;min-width:0"><b' + (foe.wall ? ' class="gold"' : '') + '>' + esc(foe.name) + '</b><div class="tiny faint">' + foe.stage + '단계 수준 · ' + R.GT_TIME + '초 버티기' + (foe.wall ? ' · <span class="bad">시련의 층: 탑의 문지기가 공격합니다</span>' : '') + '</div>' +
+      '<div class="small" style="margin-top:4px">' + (pv.ok ? '<span class="good">버틸 수 있을 것으로 보입니다</span>' : '<span class="bad">아직 버겁습니다</span> — 약 ' + pv.ttd.toFixed(1) + '초') + '</div>' +
+      '<div class="tiny" style="margin-top:4px">이 층 보상 <span class="rwd">' + esc(R.rewardText(rw)) + '</span></div></div></div>' +
+      '<div class="row" style="margin-top:12px"><span class="tiny faint">' + (mt ? nextMile + '층 돌파 시 칭호 「' + esc(mt.name) + '」 · ' : nextMile + '층 돌파 시 ') + '별조각 30 · 희귀 이상 장비 상자(전설 50%) · 환수의 알</span><span class="spacer"></span><button class="btn primary" data-act="gtower">' + f + '층 도전</button></div></div>';
+    h += '<div class="card" style="margin-top:14px"><div class="row between"><h3>장착 주문</h3><span class="tiny faint">칸을 누르면 주문을 바꿉니다 · 바꾼 뒤 위의 예상이 다시 계산됩니다</span></div>' + spellBar(P) + '</div>';
+    var got = D.TITLES.filter(function (t) { return t.stat === 'twG'; }), gotN = got.filter(function (t) { return best >= t.n; }).length, nextT = got.filter(function (t) { return best < t.n; }).sort(function (x, y) { return x.n - y.n; })[0];
+    h += '<div class="card" style="margin-top:14px"><div class="row between" style="gap:8px;flex-wrap:wrap"><span class="small"><b>수호자의 탑 칭호</b> <span class="num gold">' + gotN + ' / ' + got.length + '</span>' + (nextT ? ' <span class="tiny faint">· 다음 「' + esc(nextT.name) + '」 ' + nextT.n + '층</span>' : ' <span class="tiny good">· 모두 획득</span>') + '</span><button class="btn sm ghost" data-act="cttitles">칭호 도감</button></div>' +
+      '<p class="tiny faint" style="margin-top:8px">보상: 층마다 ' + CUR + ', 2층마다 마석 1, 10층마다 별조각 3, ' + R.CT_MILE + '층마다 칭호와 추가 보상. 시련의 층(50층마다)은 탑의 문지기가 공격해 갑자기 어려워지고, 넘은 뒤 몇 층은 다시 쉬워집니다. 순위는 「기록·랭킹 → 랭킹」에서 볼 수 있습니다.</p></div>';
+    return h;
+  };
+  ACT.gtower = function () {
+    act('gtower').then(function (r) {
+      if (!r) return; var fo = r.foe, fn = fo.name.replace(/^탑의 문지기 · /, '');
+      replay({ title: '수호자의 탑 ' + r.f + '층', sub: fn !== fo.name ? '탑의 문지기' : '', enemy: { id: 'gt', arch: fo.arch, c1: fo.c1, c2: fo.c2, boss: true, name: fn }, ev: r.ev, maxHp: fo.hp, infinite: true, hold: true, holdT: r.win ? R.GT_TIME : 0, keep: true }, function () {
+        Snd.play(r.win ? 'pass' : 'fail'); var rwT = R.rewardText(r.rw);
+        render();
+        return '<h3 class="' + (r.win ? 'good' : 'bad') + '">' + (r.win ? '버텨 냈습니다' : '이번에는 버티지 못했습니다') + '</h3>' +
+          '<p style="margin-top:4px">' + (r.win ? R.GT_TIME + '초 동안 탑을 지켰습니다. 남은 생명력 ' + r.hp + '%.' : (Math.round(r.t * 10) / 10) + '초 만에 생명력이 바닥났습니다.') + '</p>' +
+          (r.titles.length ? '<p class="gold" style="margin-top:8px">새 칭호: ' + r.titles.map(function (t) { return '「' + esc(t) + '」'; }).join(' ') + '</p>' : '') +
+          (rwT ? '<p class="small" style="margin-top:8px">보상: ' + esc(rwT) + '</p>' : '') + ((r.items || []).length ? '<p class="small">' + r.items.map(function (it) { return '<span style="color:' + rcol(it.r) + '">' + esc(it.name) + '</span>'; }).join(', ') + '</p>' : '') +
+          (!r.win ? '<p class="tiny faint" style="margin-top:6px">생명력 · 방어력을 올리거나 보호막 · 치유 · 기절 주문을 장착하면 더 오래 버틸 수 있습니다. 수호 · 축복 성향은 수호자의 가호를 받습니다.</p>' : '') +
+          '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>';
+      });
+    });
   };
   ACT.ctower = function () {
     act('ctower').then(function (r) {
@@ -4156,8 +4192,9 @@
   var BT_VERB = ['지팡이를 휘둘렀다', '마력탄을 연달아 쏘았다', '빈틈을 파고들었다', '몸을 낮추고 한 번 더 찔렀다', '숨을 고르고 다시 겨눴다', '발밑의 마법진을 밟고 몰아쳤다'];
   function battleScript(opts) {
     var ev = opts.ev || [], total = ev.length ? ev[ev.length - 1][0] : 1, en = opts.enemy.name, me = S.P.name;
+    if (opts.holdT) total = Math.max(total, opts.holdT);   // 수호자의 탑: 버텨 냈으면 제한 시간 끝까지
     var pHpMax = C().hp, mhp = opts.maxHp || 0, fam = S.P.fam.act && R.FAM[S.P.fam.act] ? R.famLabel(S.P, S.P.fam.act) : '';
-    var lines = [[0, josa(en, '과', '와') + ' 마주 섰다. ' + (opts.infinite ? '30초 동안 할 수 있는 만큼 퍼붓는다.' : '주문서를 펼친다.'), 's']];
+    var lines = [[0, josa(en, '과', '와') + ' 마주 섰다. ' + (opts.hold ? R.GT_TIME + '초 동안 성문을 지켜야 한다.' : opts.infinite ? '30초 동안 할 수 있는 만큼 퍼붓는다.' : '주문서를 펼친다.'), 's']];
     var N = 14, win = total / N, dealt = 0, php = 1, k = 0, marks = opts.infinite ? [0.25, 0.5, 0.75] : [0.25, 0.5, 0.75], mk = 0, lowSaid = false, dead = false, best = 0;
     for (var w = 0; w < N && k < ev.length; w++) {
       var end = (w + 1) * win + 1e-6, d = { n: 0, p: 0, f: 0, crit: 0, x: 0, r: 0, g: 0, sp: [] };
@@ -4181,7 +4218,7 @@
       if (!lowSaid && php < 0.3 && php > 0) { lowSaid = true; lines.push([t, '숨이 가쁘다. 생명력이 ' + Math.round(php * 100) + '% 남았다.', 'x']); }
       if (!dead && php <= 0) { dead = true; lines.push([t, opts.cc ? '마지막 순간, 서로의 일격이 교차한다!' : me + ' 학생이 쓰러졌다…', opts.cc ? 's' : 'x']); }
     }
-    var tail = opts.infinite ? '시간이 다 됐다. 모두 ' + fmt(dealt) + ' 피해를 입혔다.' : (opts.cc ? '크로스카운터! ' + josa(en, '이', '가') + ' 먼저 무너졌다.' : mhp && dealt >= mhp ? josa(en, '이', '가') + ' 쓰러졌다!' : dead ? '더 버티지 못하고 물러났다.' : '시간이 다 됐다. ' + josa(en, '은', '는') + ' 아직 서 있다.');
+    var tail = opts.hold ? (dead ? '더 버티지 못하고 물러났다.' : '마지막 공세를 막아 냈다. 성문은 무너지지 않았다.') : opts.infinite ? '시간이 다 됐다. 모두 ' + fmt(dealt) + ' 피해를 입혔다.' : (opts.cc ? '크로스카운터! ' + josa(en, '이', '가') + ' 먼저 무너졌다.' : mhp && dealt >= mhp ? josa(en, '이', '가') + ' 쓰러졌다!' : dead ? '더 버티지 못하고 물러났다.' : '시간이 다 됐다. ' + josa(en, '은', '는') + ' 아직 서 있다.');
     lines.push([total, tail, 't']);
     return { lines: lines, total: total, dealt: dealt };
   }
@@ -5817,7 +5854,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102311;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102412;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
