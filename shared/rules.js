@@ -1125,9 +1125,9 @@
     cats.forEach(function (k) { var v = w.cat[k]; if (v > 0) { var nv = Math.round(v / 1.3 * 100) / 100; cut += v - nv; w.cat[k] = nv; } });
     w.cup = Math.max(0, w.cup - cut); w.noSpec = 1; return cut;
   };
-  R.CUP_BREW = 8; R.CUP_BREW_WEEK = 1000;   // 물약 조제: 1병 8점, 한 주 1,000점(125병)까지 (마나 · 재료만 있으면 한 번에 많이 만들 수 있어서)
+  R.CUP_BREW = 8; R.CUP_BREW_WEEK = 2000;   // 물약 조제: 1병 8점, 한 주 2,000점(250병)까지 (마나 · 재료만 있으면 한 번에 많이 만들 수 있어서 · 처음 1,000점에서 2026-10-24 2,000점으로)
   function brewCup(P, n) { if (!P.wk) return; var sc = Math.min(R.CUP_BREW * n, Math.max(0, R.CUP_BREW_WEEK - (P.wk.brew || 0))); if (sc > 0) { P.wk.brew = (P.wk.brew || 0) + sc; cupAdd(P, sc, 'brew'); } }
-  // 한 번만: 상한을 넣기 전 이번 주에 만든 물약 점수도 1,000점까지로 (P.wk.cat.brew 기준). 특기 배율이 아직 있으면 그 배율을 빼고 센다
+  // 한 번만: 상한을 넣기 전 이번 주에 만든 물약 점수도 상한까지로 (P.wk.cat.brew 기준). 특기 배율이 아직 있으면 그 배율을 빼고 센다
   R.brewCapFix = function (P, week) {
     var w = P.wk; if (!w || w.id !== week || w.brewFix) return 0; w.brewFix = 1;
     var sp = R.CUP_SPEC && R.CUP_SPEC[P.house], mul = sp && sp.cats.indexOf('brew') >= 0 && !w.noSpec ? R.CUP_SPEC_MULT : 1;
@@ -1135,6 +1135,14 @@
     w.brew = Math.min(R.CUP_BREW_WEEK, Math.max(w.brew || 0, raw));
     if (cut > 0) { w.cat.brew = Math.round(R.CUP_BREW_WEEK * mul * 100) / 100; w.cup = Math.max(0, w.cup - cut * mul); }
     return cut * mul;
+  };
+  // 상한을 1,000점 → 2,000점으로 올리면서, 1,000점 상한 소급으로 깎인 몫을 되돌린다: 이번 주 실제로 만든 병 수(bottles)로 새 상한까지 채운다 (줄이지는 않는다)
+  R.brewRestore = function (P, week, bottles) {
+    var w = P.wk; if (!w || w.id !== week || w.brew2k || !(bottles > 0)) return 0; w.brew2k = 1;
+    var c = w.cat || (w.cat = {}), target = Math.min(R.CUP_BREW_WEEK, bottles * R.CUP_BREW), add = Math.max(0, target - (c.brew || 0));
+    if (add > 0) { c.brew = Math.round(((c.brew || 0) + add) * 100) / 100; w.cup += add; }
+    w.brew = Math.min(R.CUP_BREW_WEEK, Math.max(w.brew || 0, target));
+    return add;
   };
   R.CUP_SHOP_WEEK = 200;   // 매점 구매 점수는 한 주에 이만큼까지 (아르크로 마석을 거듭 사서 점수를 올리지 못하게)
   R.CUP_AUC = 50;          // 떠돌이 상인 경매 낙찰 1회 (학생끼리 거래인 거래소에는 점수가 없다) · 구간 3개 · 9점이 되며 100 → 50 (방문당 총점 300 → 450)

@@ -3162,6 +3162,27 @@ function brewCapAll() {
   oplog('system', '시스템', 'brewCapFix', '물약 대항전 점수 상한 소급: 학생 ' + n + '명 · ' + Math.round(cut) + '점');
 }
 try { brewCapAll(); } catch (e) { log('물약 점수 상한 소급 실패', e); }
+// 한 번만: 물약 상한을 2,000점으로 올리면서 1,000점 상한 소급(brewCapFix)으로 깎인 몫을 되돌린다 (사용자 요청 2026-10-24)
+// 이번 주에 만든 병 수 = 지금 누적(st.brews) − 이번 주 첫 성장 기록(월요일 KST 0시 이후 처음)의 누적. 기록이 없고 이번 주에 입학했으면 0부터
+function brew2kRestore() {
+  if (dbx.kvGet('brew2kFix', 0)) return;
+  const wk = R.weekId(nowSec()), ws = R.weekStart(wk), slot = growthSlot(ws);
+  const first = dbx.db.prepare('SELECT data FROM growth WHERE pid = ? AND (CASE WHEN day < 1000000000 THEN day * 100 ELSE day END) >= ? ORDER BY (CASE WHEN day < 1000000000 THEN day * 100 ELSE day END) LIMIT 1');
+  const created = dbx.db.prepare('SELECT created FROM players WHERE id = ?');
+  let n = 0, add = 0, miss = 0;
+  dbx.db.prepare('SELECT pid FROM weekly WHERE week = ? AND cup > 0').all(wk).forEach((r) => {
+    const P = store.get(r.pid); if (!P || !P.wk || P.wk.id !== wk) return;
+    const row = first.get(r.pid, slot); let base = null;
+    if (row) { try { base = Number(JSON.parse(row.data).brews) || 0; } catch (e) { } }
+    else { const c = created.get(r.pid); if (c && c.created >= ws) base = 0; }
+    if (base == null) { miss++; return; }
+    const a = R.brewRestore(P, wk, Math.max(0, ((P.st && P.st.brews) || 0) - base)); store.markDirty(P.id); if (a > 0) { n++; add += a; }
+  });
+  store.flushAll(); world.invalidate(); world.W.hAt = 0;
+  dbx.kvSet('brew2kFix', { at: Math.floor(Date.now() / 1000), week: wk, students: n, add: Math.round(add), noBase: miss });
+  oplog('system', '시스템', 'brew2kFix', '물약 점수 상한 2,000점 · 깎인 몫 되돌림: 학생 ' + n + '명 · ' + Math.round(add) + '점' + (miss ? ' (이번 주 첫 기록이 없어 건너뜀 ' + miss + '명)' : ''));
+}
+try { brew2kRestore(); } catch (e) { log('물약 점수 되돌리기 실패', e); }
 
 server.listen(cfg.port, cfg.host, () => {
   log(`모네타 서버 시작: http://${cfg.host}:${cfg.port}  (데이터: ${cfg.dataDir}${cfg.timeScale !== 1 ? ', 시간 배속 ×' + cfg.timeScale : ''})`);
