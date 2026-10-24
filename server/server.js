@@ -1697,7 +1697,6 @@ routes['POST /api/tower'] = async (req, res) => {
     const runs = towerRuns(party), live = towerLive(runs); if (!live) return fail(req, res, 400, '진행 중인 별의 탑이 없습니다');
     if (R.twSpeedOf(live) === x) return send(req, res, 200, towerView(me, now));
     const real = Date.now() / 1000, sp = live.sp || [];
-    if (sp.length >= R.TW_SP_MAX) return fail(req, res, 400, '이번 도전에서는 배속을 더 바꿀 수 없습니다');
     if (sp.length && real - sp[sp.length - 1][0] < 1) return fail(req, res, 429, '잠시 후 다시 시도');
     live.sp = sp.concat([[Math.round(real * 1000) / 1000, Math.round(R.twScene(live, real) * 1000) / 1000, x]]);
     towerSave(party, runs); if (live.kind === 'real') twRealMoved(party, live);

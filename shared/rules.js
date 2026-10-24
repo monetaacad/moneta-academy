@@ -1651,7 +1651,7 @@
   };
   /* 배속: run.sp = [[실제 시각, 대본 위치(초), 배속], ...] (없으면 t0부터 1배). 파티원 누구나 바꾸고, 같은 실제 시각이면 모두 같은 장면을 본다.
      run.d는 대본 길이(초) 그대로이고, 실제로 끝나는 시각은 R.twEndAt */
-  R.TW_SPEEDS = [1, 2, 5, 10]; R.TW_SP_MAX = 40;   // 한 실행에서 배속을 바꿀 수 있는 횟수
+  R.TW_SPEEDS = [1, 2, 5, 10];   // 바꾸는 횟수 제한은 없다 (서버에서 1초에 한 번만)
   R.twScene = function (r, real) { var sp = r.sp, s = null; if (sp) for (var i = 0; i < sp.length; i++) if (sp[i][0] <= real) s = sp[i]; return s ? s[1] + (real - s[0]) * s[2] : real - r.t0; };
   R.twRealAt = function (r, pos) { var sp = r.sp, s = null; if (sp) for (var i = 0; i < sp.length; i++) if (sp[i][1] <= pos) s = sp[i]; return s ? s[0] + (pos - s[1]) / s[2] : r.t0 + pos; };
   R.twEndAt = function (r) { return R.twRealAt(r, r.d); };
