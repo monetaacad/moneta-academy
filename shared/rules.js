@@ -1412,22 +1412,23 @@
 
   /* ───────── 전투 시뮬레이션 (보스 · 대련 · 월드 보스) ─────────
      enemy: {hp, atk, boss, name}. 30초 제한. 로그는 재생용으로 압축. */
-  R.CROSS_COUNTER = 0.005;   // 남은 체력이 이 비율 이하(화면 0%)면 동시에 쓰러진 것으로 보고 학생 승리
+  R.CROSS_COUNTER = 0.005;
+  R.FREEZE_VULN = 0.2; R.FREEZE_VULN_T = 5;   // 빙결(얼음 감옥 · 서리 베기): 맞은 적은 R.FREEZE_VULN_T초 동안 취약 — 받는 피해 +20% (적에게 방어력 값이 없어 받는 피해로 나타낸다)   // 남은 체력이 이 비율 이하(화면 0%)면 동시에 쓰러진 것으로 보고 학생 승리
   function fight(P, c, enemy, limit, untilDead) {
-    var dt = 0.1, t = 0, mh = enemy.hp, ph = c.hp, sh = 0, pT = 0, mT = 0, fT = 0, cd = {}, stun = 0, haste = 0, amp = 0, dealt = 0, evs = [];
+    var dt = 0.1, t = 0, mh = enemy.hp, ph = c.hp, sh = 0, pT = 0, mT = 0, fT = 0, cd = {}, stun = 0, haste = 0, amp = 0, vuln = 0, dealt = 0, evs = [];
     var ns = R.spellSlots(P), fam = P.fam.act && P.fam.own[P.fam.act] ? c.atk * famAtkMult(P) : 0, lAcc = 0, rAcc = 0, lT = 0;
     // 생명력 흡수 · 자연 회복: 1초마다 모아서 ['l', 흡수, 회복]으로 남긴다 (전투 일지의 체력 바 · 문장용)
     function flush() { if ((lAcc >= 1 || rAcc >= 1) && evs.length < 400) evs.push([Math.round(t * 10) / 10, 'l', Math.round(lAcc), Math.round(rAcc)]); lAcc = 0; rAcc = 0; lT = t; }
     // 끝: 일지가 400건에서 잘려도(생명력 흡수가 1초마다 한 줄씩 더한다) 화면이 실제 끝난 시각 · 남은 체력까지 그리도록 언제나 마지막에 남긴다
     function fin(o) { evs.push([Math.round(t * 10) / 10, 'e', Math.round(Math.max(0, o.pHp) * 1000) / 1000, Math.round(Math.max(0, o.mHp) * 1000) / 1000]); return o; }
     function hit(d, kind, cr) {
-      if (amp > 0) d *= 2; if (enemy.boss) d *= c.bossDmg;
+      if (amp > 0) d *= 2; if (enemy.boss) d *= c.bossDmg; if (vuln > 0) d *= 1 + R.FREEZE_VULN;
       mh -= d; dealt += d; if (c.leech) { var lg = Math.max(0, Math.min(c.hp - ph, d * c.leech)); ph += lg; lAcc += lg; }
       if (evs.length < 400) evs.push([Math.round(t * 10) / 10, 'h', Math.round(d), kind, cr ? 1 : 0]);
     }
     while (t < limit) {
       t += dt;
-      if (haste > 0) haste -= dt; if (amp > 0) amp -= dt;
+      if (haste > 0) haste -= dt; if (amp > 0) amp -= dt; if (vuln > 0) vuln -= dt;
       pT += dt * c.aps * (haste > 0 ? 2 : 1);
       while (pT >= 1) { pT -= 1; var cr = rnd(P) < c.critC; hit(c.atk * (cr ? c.critD : 1), 'a', cr); }
       if (fam) { fT += dt; if (fT >= 1.5) { fT -= 1.5; hit(fam, 'f', false); } }
@@ -1439,7 +1440,7 @@
         cd[sid] = sp.cd * (1 - c.cdr);
         var lm = spellLvMult(P, sp);
         var se = evs.length < 400 ? [Math.round(t * 10) / 10, 's', sid] : null; if (se) evs.push(se);
-        if (sp.type === 'dmg' || sp.type === 'stun') { var cr2 = rnd(P) < c.critC; if (sp.type === 'stun' || (sp.stunP && rnd(P) < sp.stunP)) stun = sp.stun; hit(R.spellHit(c, sp) * sp.mult * lm * (cr2 ? c.critD : 1), 'p', cr2); if (sp.selfShield) { sh = Math.max(sh, c.hp * sp.selfShield); if (se) se[4] = Math.round(sh); } }   // se[4]: 주문에 딸린 보호막 (전투 일지 체력 바)
+        if (sp.type === 'dmg' || sp.type === 'stun') { var cr2 = rnd(P) < c.critC; if (sp.type === 'stun' || (sp.stunP && rnd(P) < sp.stunP)) stun = sp.stun; if (sp.freeze) vuln = R.FREEZE_VULN_T; hit(R.spellHit(c, sp) * sp.mult * lm * (cr2 ? c.critD : 1), 'p', cr2); if (sp.selfShield) { sh = Math.max(sh, c.hp * sp.selfShield); if (se) se[4] = Math.round(sh); } }   // se[4]: 주문에 딸린 보호막 (전투 일지 체력 바)
         else if (sp.type === 'shield' || sp.type === 'pshield') { sh = c.hp * sp.mult * Math.min(2, lm); if (se) se[3] = Math.round(sh); }
         else if (sp.type === 'heal') { var hv = Math.min(c.hp - ph, c.hp * sp.mult * Math.min(2, lm)); ph += hv; if (se) se[3] = Math.round(hv); }
         else if (sp.type === 'haste') haste = sp.dur;
@@ -1525,7 +1526,7 @@
     for (var i = 0; i < ns; i++) {
       var s = SPELL[P.spells[i]]; if (!s || !R.spellUnlocked(P, s.id)) continue;
       var lm = spellLvMult(P, s);
-      sp.push({ id: s.id, name: s.name, type: s.type, cd: s.cd * (1 - c.cdr), hit: s.type === 'dmg' || s.type === 'stun' ? R.spellHit(c, s) * s.mult * lm : 0, mult: s.mult * Math.min(2, lm), stun: s.stun || 0, stunP: s.stunP || 0, dur: s.dur || 0, selfShield: s.selfShield || 0 });
+      sp.push({ id: s.id, name: s.name, type: s.type, cd: s.cd * (1 - c.cdr), hit: s.type === 'dmg' || s.type === 'stun' ? R.spellHit(c, s) * s.mult * lm : 0, mult: s.mult * Math.min(2, lm), stun: s.stun || 0, stunP: s.stunP || 0, freeze: s.freeze || 0, dur: s.dur || 0, selfShield: s.selfShield || 0 });
     }
     return { id: P.id, name: P.name, house: P.house, cls: P.cls, pos: pos || R.twPos(P), aggro: R.expAggro(P), hp: c.hp, def: c.def, regen: c.regen, atk: c.atk, aps: c.aps, critC: c.critC, critD: c.critD,
       bossDmg: c.bossDmg, leech: c.leech || 0, spAtk: Math.max(c.patk, c.matk), fam: P.fam.act && P.fam.own[P.fam.act] ? c.atk * famAtkMult(P) : 0, sp: sp, power: c.totalDps };
@@ -1558,7 +1559,7 @@
   // cd0: 파티원마다 주문 재사용 대기(층을 넘어 이어진다 · 없으면 모두 준비됨)
   R.twFight = function (ms, foe, hp0, rnd2, f, cd0) {
     var n = ms.length, dt = 0.1, t = 0, mh = foe.hp, hp = hp0.slice(), mx = ms.map(function (m) { return R.twMaxHp(m, n); }), sh = [], pT = [], fT = [], cd = [], haste = [], amp = [], dealt = [], healAt = [], told = {}, lAcc = [], lE = [], lL = [];
-    var stun = 0, mT = 0, aT = 0, gT = 0, rage = 1, mark = null, saves = 0, L = [], S = [], E = [], marks = [0.75, 0.5, 0.25], mi = 0, sec = 0, nextTalk = 6 + rnd2() * 6, i;
+    var stun = 0, vuln = 0, mT = 0, aT = 0, gT = 0, rage = 1, mark = null, saves = 0, L = [], S = [], E = [], marks = [0.75, 0.5, 0.25], mi = 0, sec = 0, nextTalk = 6 + rnd2() * 6, i;
     var tr = foe.trial ? R.TW_TRIALS.filter(function (x) { return x.id === foe.trial; })[0] : null;
     for (i = 0; i < n; i++) { sh[i] = 0; pT[i] = 0; fT[i] = 0; cd[i] = cd0 && cd0[i] ? cd0[i] : {}; haste[i] = 0; amp[i] = 0; dealt[i] = 0; healAt[i] = -99; lAcc[i] = 0; lE[i] = 0; lL[i] = 0; }
     function P0(m) { return R.EXP_POS[m.pos] || R.EXP_POS.van; }
@@ -1610,7 +1611,7 @@
     }
     function dmgTo(j2, atk) { var x = P0(ms[j2]), van = n > 1 && ms[j2].pos === 'van'; return dmgTaken(atk, ms[j2].def * R.TW.DEFX * (n > 1 ? x.def : 1)) * (n > 1 ? x.take : 1) * (van ? R.TW.VAN_TAKE : 1) * (1 - red()); }
     function hit(j, d, cr, k, si) {
-      var m = ms[j]; if (amp[j] > 0) d *= 2; d *= m.bossDmg * (n > 1 ? P0(m).dps : 1);
+      var m = ms[j]; if (amp[j] > 0) d *= 2; d *= m.bossDmg * (n > 1 ? P0(m).dps : 1); if (vuln > 0) d *= 1 + R.FREEZE_VULN;   // 빙결 취약
       ev(k, j, d, si, cr ? 1 : null); mh -= d; dealt[j] += d; if (m.leech && hp[j] > 0) { var lg = Math.max(0, Math.min(mx[j] - hp[j], d * m.leech)); hp[j] += lg; lE[j] += lg; lAcc[j] += lg; }
       if (cr && d > foe.hp * 0.03 && !told['c' + j]) { told['c' + j] = 1; line(m.name + '의 치명타! ' + R.fmt(d) + ' 피해', 'h'); }
     }
@@ -1619,7 +1620,7 @@
     if (tr) line('시련의 층 · 「' + tr.name + '」 — ' + tr.desc + '.', 'm');
     snap();
     while (true) {
-      t += dt;
+      t += dt; if (vuln > 0) vuln -= dt;   // 빙결 취약 시간
       for (i = 0; i < n; i++) {
         var m = ms[i]; if (hp[i] <= 0) continue;
         if (haste[i] > 0) haste[i] -= dt; if (amp[i] > 0) amp[i] -= dt;
@@ -1635,7 +1636,7 @@
           if (sp.type === 'pshield') { tg = lowest(); if (tg >= 0 && sh[tg] <= mx[tg] * 0.1 && hp[tg] <= mx[tg] * R.TW.SHIELD_AT) care(i, k, tg); continue; }   // 광역 보호막: 가장 위태로운 동료가 기준, 살아 있는 모두에게
           cd[i][sp.id] = sp.cd;
           if (sp.type === 'dmg' || sp.type === 'stun') {
-            var cr2 = rnd2() < m.critC; if (sp.type === 'stun' || (sp.stunP && rnd2() < sp.stunP)) stun = sp.stun;
+            var cr2 = rnd2() < m.critC; if (sp.type === 'stun' || (sp.stunP && rnd2() < sp.stunP)) stun = sp.stun; if (sp.freeze) { vuln = R.FREEZE_VULN_T; if (!told.fz) { told.fz = 1; line(jo(foe.name, '이', '가') + ' 얼어붙어 취약해졌다! (받는 피해 +' + Math.round(R.FREEZE_VULN * 100) + '%)', 'm'); } }
             hit(i, sp.hit * (cr2 ? m.critD : 1), cr2, 2, k);
             if (sp.selfShield && hp[i] > 0 && mx[i] * sp.selfShield > sh[i]) { sh[i] = mx[i] * sp.selfShield; ev(4, i, sh[i], i, k); }   // 적중할 때 자신에게 보호막 (강철 일격)
             if (!told['s' + i + sp.id]) { told['s' + i + sp.id] = 1; line(m.name + '의 「' + sp.name + '」!', 'p'); }
