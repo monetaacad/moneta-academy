@@ -21,7 +21,7 @@
   function dwc() { return { wbAlive: !(S.W && S.W.boss && S.W.boss.killedAt) }; }   // 일일 목표가 지금 할 수 있는지 (월드 보스 토벌 여부)
   function C(t0, t1) { return R.calc(S.P, wctx(), t0 || now(), t1); }
   function rcol(r) { return D.RARITY[r].color; }
-  function pct(v) { return R.fmtPct(v, v < 0.1 ? 1 : 0); }
+  function pct(v) { return R.fmtPct(v, 1); }   // 소수 한 자리까지 (예전에는 10% 이상이면 정수로 반올림해 가방의 10.8%가 능력치에서 11%로 보였다)
   function house(id) { return R.HOUSE[id || S.P.house]; }
   // 일지 · 기록 줄의 시각: 24시간제로 짧게 (오늘은 「23:56」, 다른 날은 「10/21 23:56」)
   function logClock(t) {
@@ -6204,7 +6204,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102418;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102419;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
