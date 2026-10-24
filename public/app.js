@@ -2120,7 +2120,7 @@
     wbMarkSeen();
     var P = S.P, W = S.W || {}, b = W.boss;
     var h = pageHead('종소리가 멎기 전에', '월드', (W.demo ? '<span class="tag br">데모</span> ' : '') + '학생 ' + fmt(W.players || 0) + '명 · 지금 접속 ' + fmt(W.online || 0) + '명');
-    h += potBar(['atkPct', 'hpPct', 'defPct']) + gsQuick();   // 전투 물약 · 장비 프리셋
+    h += potBar(['atkPct', 'hpPct', 'defPct']) + gsQuick() + spQuick();   // 전투 물약 · 장비 프리셋 · 주문 프리셋
     // 지난주 보상
     if (P.wkPrev && !P.wkPrev.claimed) h += wkPrevCard(P);
     h += '<div class="stack">';
@@ -4693,6 +4693,12 @@
   // 장착 주문 칸 (보스 화면 · 무한의 탑에서 함께 사용). 누르면 그 칸의 주문을 고른다
   // 주문 프리셋 5칸: 번호를 누르면 불러오고, 「편집」에서 지금 주문으로 저장 · 비우기
   function spNames(sp) { return (sp || []).filter(Boolean).map(function (id) { return R.SPELL[id] ? R.SPELL[id].name : id; }).join(' · '); }
+  // 월드 보스 화면 상단: 장비 프리셋 줄 아래에 같은 모양의 주문 프리셋 줄
+  function spQuick() {
+    var P = S.P, sets = P.spellSets || [], cur = JSON.stringify(P.spells), b = '';
+    for (var i = 0; i < R.SPSET_N; i++) { var st = sets[i], on = st && JSON.stringify(st.sp) === cur; b += '<button class="btn sm' + (on ? ' primary' : '') + '" data-act="spload" data-a="' + i + '"' + (st ? ' title="' + esc(spNames(st.sp)) + '"' : ' disabled title="비어 있음 · 편집에서 저장"') + '>' + (st && st.name ? esc(st.name) : (i + 1)) + '</button>'; }
+    return '<div class="gsquick spquick"><div class="gsrow"><span class="small muted">주문 프리셋</span>' + b + '<button class="btn sm ghost" data-act="spedit">편집</button></div></div>';
+  }
   function spellSetBar(P) {
     var sets = P.spellSets || [], cur = JSON.stringify(P.spells), b = '<div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap"><span class="tiny faint">주문 프리셋</span>';
     for (var i = 0; i < R.SPSET_N; i++) { var st = sets[i], on = st && JSON.stringify(st.sp) === cur; b += '<button class="btn sm' + (on ? ' primary' : '') + '" data-act="spload" data-a="' + i + '"' + (st ? ' title="' + esc(spNames(st.sp)) + '"' : ' disabled title="비어 있음"') + '>' + (st && st.name ? esc(st.name) : (i + 1)) + '</button>'; }
@@ -6136,7 +6142,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102405;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102406;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

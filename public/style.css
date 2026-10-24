@@ -1784,7 +1784,8 @@ mark.hl { color: inherit; background: linear-gradient(transparent 38%, color-mix
 .gsrow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
 .gsquick { margin: -6px 0 12px; }
 .gsquick .gsrow { margin-top: 0; }
-.gsrow .btn[data-act="gsload"] { min-width: 32px; justify-content: center; }
+.gsrow .btn[data-act="gsload"], .gsrow .btn[data-act="spload"] { min-width: 32px; justify-content: center; }
+.gsquick + .spquick { margin-top: -4px; }
 .gslist { display: flex; flex-direction: column; gap: 8px; }
 .gset { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 9px; background: var(--sunk); border: 1px solid var(--line2); min-width: 0; }
 .gset.on { border-color: var(--brass); }
