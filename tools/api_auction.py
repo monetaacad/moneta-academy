@@ -37,6 +37,7 @@ it = inv[0]; it2 = inv[1]; it3 = inv[2]; it4 = inv[3]
 j = A.op(op='list', auc=1, u=it['u'], start=1, price=10, hours=24); check('상점 판매가' in str(j.get('error')), 'start floor: %s' % j)
 j = A.op(op='list', auc=1, u=it['u'], start=1000, price=1100, hours=24); check('1.2배' in str(j.get('error')), 'buyout floor: %s' % j)
 j = A.op(op='list', auc=1, u=it['u'], start=1000, price=2000, hours=5); check('기간' in str(j.get('error')), 'hours: %s' % j)
+j = A.mk(); check([3, 6] == j.get('auc', {}).get('hours', [])[:2], 'hours 3 · 6: %s' % j.get('auc'))
 j = A.op(op='list', auc=1, mat='stone', qty=1, start=1000, price=2000, hours=24); check('장비와 휘장' in str(j.get('error')), 'kind: %s' % j)
 for x in (it, it2, it3):
     j = A.op(op='list', auc=1, u=x['u'], start=100000, price=200000, hours=24); check(j.get('ok'), 'list ok: %s' % j)
