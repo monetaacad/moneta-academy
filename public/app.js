@@ -21,7 +21,7 @@
   function dwc() { return { wbAlive: !(S.W && S.W.boss && S.W.boss.killedAt) }; }   // 일일 목표가 지금 할 수 있는지 (월드 보스 토벌 여부)
   function C(t0, t1) { return R.calc(S.P, wctx(), t0 || now(), t1); }
   function rcol(r) { return D.RARITY[r].color; }
-  function pct(v) { return R.fmtPct(v, v < 0.1 ? 1 : 0); }
+  function pct(v) { return R.fmtPct(v, 1); }   // 소수 한 자리까지 (예전에는 10% 이상이면 정수로 반올림해 가방의 10.8%가 능력치에서 11%로 보였다)
   function house(id) { return R.HOUSE[id || S.P.house]; }
   // 일지 · 기록 줄의 시각: 24시간제로 짧게 (오늘은 「23:56」, 다른 날은 「10/21 23:56」)
   function logClock(t) {
@@ -418,6 +418,8 @@
     });
     return out;
   }
+  // 보낸 글 입력칸 비우기: 비우지 않으면 다시 그릴 때 위의 「입력하던 값 되돌리기」가 보낸 글을 그대로 다시 채워 넣는다
+  function sentClear(sel) { var t = $(sel); if (t) { t.value = ''; t.defaultValue = ''; } }
   function restoreInputs(kept) {
     var v = $('#view'); if (!v || !kept.length) return;
     var map = {}; kept.forEach(function (x) { map[x[0]] = x[1]; });
@@ -3367,17 +3369,17 @@
   }
   function gStoreTab(g) {
     var take = g.perms && g.perms.take, P = S.P, bag = P.inv.filter(function (it) { return !it.lock; }).sort(function (a, b) { return b.r - a.r || b.ilvl - a.ilvl; });
-    var h = '<div class="grid g2"><div class="card"><div class="row between"><h3>부실 금고</h3><b class="num gold" style="font-size:18px">' + fmt(g.gold) + ' ' + CUR + '</b></div><p class="tiny faint">누구나 넣을 수 있고, 꺼내기는 「창고에서 꺼내기」 권한이 있는 부원만 할 수 있습니다. 모든 출입은 기록에 남습니다.</p>' +
+    var h = '<div class="grid g2"><div class="card"><div class="row between"><h3>부실 금고</h3><b class="num gold" style="font-size:18px">' + R.fmtN(g.gold) + ' ' + CUR + '</b></div><p class="tiny faint">누구나 넣을 수 있고, 꺼내기는 「창고에서 꺼내기」 권한이 있는 부원만 할 수 있습니다. 모든 출입은 기록에 남습니다.</p>' +
       '<div class="row" style="margin-top:8px"><input id="g-gold" type="number" min="1" step="1" inputmode="numeric" placeholder="' + CUR + '" data-fmt="1" style="width:150px"><span class="tiny faint mkfmt"></span><button class="btn sm" data-act="ggold" data-a="deposit">넣기</button>' + (take ? '<button class="btn sm ghost" data-act="ggold" data-a="withdraw">꺼내기</button>' : '') + '</div></div>' +
       '<div class="card"><h3>장비 넣기</h3>' + (bag.length ? '<div class="row" style="margin-top:6px"><select id="g-item" style="flex:1;min-width:0">' + bag.slice(0, 60).map(function (it) { var pn = presetNo(it.u); return '<option value="' + it.u + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + ' · ' + D.RARITY[it.r].name + ' Lv ' + it.ilvl + (pn.length ? ' · 프리셋 ' + pn.join('·') : '') + '</option>'; }).join('') + '</select><button class="btn sm" data-act="gitem">넣기</button></div>' : '<p class="small muted">가방에 넣을 장비가 없습니다 (잠근 장비 제외).</p>') + '</div>';
     // 재료 · 물약: 종류마다 1칸, 수량을 정해 넣고 꺼낸다
     var stock = g.stock || [], mine = [];
     Object.keys(D.MATS).forEach(function (id) { if ((P.mats[id] || 0) > 0) mine.push(['m', id, P.mats[id]]); });
     D.POTIONS.forEach(function (p) { if ((P.shelf[p.id] || 0) > 0) mine.push(['p', p.id, P.shelf[p.id]]); });
-    h += '<div class="card"><h3>재료 · 물약 넣기</h3>' + (mine.length ? '<div class="row" style="margin-top:6px"><select id="g-stk" style="flex:1;min-width:0">' + mine.map(function (x) { return '<option value="' + x[0] + ':' + x[1] + '">' + (x[0] === 'm' ? '재료 · ' : '물약 · ') + esc(R.gStockName(x[0], x[1])) + ' (보유 ' + fmt(x[2]) + ')</option>'; }).join('') + '</select></div><div class="row" style="margin-top:6px"><input id="g-stkn" type="number" min="1" step="1" inputmode="numeric" placeholder="수량" style="width:110px"><button class="btn sm" data-act="gstk" data-a="deposit">넣기</button><button class="btn sm ghost" data-act="gstk" data-a="depositAll">전부 넣기</button></div>' : '<p class="small muted">가방에 넣을 재료 · 물약이 없습니다.</p>') + '<p class="tiny faint" style="margin-top:6px">재료 · 물약은 종류마다 창고 1칸을 사용하며, 같은 종류는 수량만 늘어납니다.</p></div></div>';
+    h += '<div class="card"><h3>재료 · 물약 넣기</h3>' + (mine.length ? '<div class="row" style="margin-top:6px"><select id="g-stk" style="flex:1;min-width:0">' + mine.map(function (x) { return '<option value="' + x[0] + ':' + x[1] + '">' + (x[0] === 'm' ? '재료 · ' : '물약 · ') + esc(R.gStockName(x[0], x[1])) + ' (보유 ' + R.fmtN(x[2]) + ')</option>'; }).join('') + '</select></div><div class="row" style="margin-top:6px"><input id="g-stkn" type="number" min="1" step="1" inputmode="numeric" placeholder="수량" style="width:110px"><button class="btn sm" data-act="gstk" data-a="deposit">넣기</button><button class="btn sm ghost" data-act="gstk" data-a="depositAll">전부 넣기</button></div>' : '<p class="small muted">가방에 넣을 재료 · 물약이 없습니다.</p>') + '<p class="tiny faint" style="margin-top:6px">재료 · 물약은 종류마다 창고 1칸을 사용하며, 같은 종류는 수량만 늘어납니다.</p></div></div>';
     h += '<div class="card" style="margin-top:12px"><div class="row between"><h3>창고</h3><span class="num small muted">' + (g.items.length + stock.length) + ' / ' + g.slots + '칸</span></div>';
     if (stock.length) h += '<h4 class="small muted" style="margin-top:8px">재료 · 물약</h4><div class="filters" style="margin-top:4px">' + stock.map(function (x) { return '<span class="tag">' + (x.k === 'm' ? '재료' : '물약') + ' · ' + esc(R.gStockName(x.k, x.id) || x.id) + ' <b class="num">' + fmt(x.n) + '</b></span>'; }).join('') + '</div>' +
-      (take ? '<div class="row" style="margin-top:6px"><select id="g-stko" style="flex:1;min-width:0">' + stock.map(function (x) { return '<option value="' + x.k + ':' + esc(x.id) + '">' + esc(R.gStockName(x.k, x.id) || x.id) + ' (창고 ' + fmt(x.n) + ')</option>'; }).join('') + '</select><input id="g-stkon" type="number" min="1" step="1" inputmode="numeric" placeholder="수량" style="width:110px"><button class="btn sm ghost" data-act="gstk" data-a="withdraw">꺼내기</button></div>' : '') + '<h4 class="small muted" style="margin-top:10px">장비</h4>';
+      (take ? '<div class="row" style="margin-top:6px"><select id="g-stko" style="flex:1;min-width:0">' + stock.map(function (x) { return '<option value="' + x.k + ':' + esc(x.id) + '">' + esc(R.gStockName(x.k, x.id) || x.id) + ' (창고 ' + R.fmtN(x.n) + ')</option>'; }).join('') + '</select><input id="g-stkon" type="number" min="1" step="1" inputmode="numeric" placeholder="수량" style="width:110px"><button class="btn sm ghost" data-act="gstk" data-a="withdraw">꺼내기</button></div>' : '') + '<h4 class="small muted" style="margin-top:10px">장비</h4>';
     h += g.items.length ? '<div class="inv" style="margin-top:8px">' + g.items.map(function (x) {
       return '<div class="itm rb' + x.r + '" title="' + esc(x.by) + ' 님이 넣음"><span class="in" style="color:' + rcol(x.r) + '">' + esc(x.name) + '</span><span class="il">' + R.slotName(x.item || x) + ' · Lv ' + x.ilvl + ' · ' + esc(x.by) + '</span>' + '<span class="row" style="gap:4px;margin-top:4px"><button class="btn sm ghost" data-act="gitemview" data-a="' + x.id + '">자세히</button>' + (take ? '<button class="btn sm ghost" data-act="gop" data-a="withdraw" data-b="' + x.id + '">꺼내기</button>' : '') + '</span></div>';
     }).join('') + '</div>' : '<div class="empty" style="margin-top:8px">' + (stock.length ? '보관된 장비가 없습니다.' : '창고가 비어 있습니다.') + '</div>';
@@ -3808,7 +3810,7 @@
     var tap = x.kind === 'item' && x.item, st = ended ? (x.won ? '<span class="tag ok">낙찰</span>' : '<span class="tag">종료</span>') : x.mine ? '<span class="tag">내 경매</span>' : x.top ? '<span class="tag ok">최고 입찰 중</span>' : '', act = '';
     if (!ended && !x.mine && left > 0) {
       var armed = S.confirm['mkbo' + x.id] > Date.now(), canBuy = !low && P.res.gold + (x.top ? x.bid : 0) >= x.price;
-      if (!x.top) act += '<input type="number" class="mkbid" id="mkb-' + x.id + '" min="' + x.min + '" step="1" inputmode="numeric" placeholder="' + fmt(x.min) + ' 이상" aria-label="입찰가"><button class="btn sm" data-act="mkbid" data-a="' + x.id + '"' + (low ? why('학년이 낮아 입찰할 수 없습니다') : P.res.gold < x.min ? why(CUR + '가 부족합니다') : '') + '>입찰</button>';
+      if (!x.top) act += '<input type="number" class="mkbid" id="mkb-' + x.id + '" min="' + x.min + '" step="1" inputmode="numeric" placeholder="' + R.fmtN(x.min) + ' 이상" aria-label="입찰가"><button class="btn sm" data-act="mkbid" data-a="' + x.id + '"' + (low ? why('학년이 낮아 입찰할 수 없습니다') : P.res.gold < x.min ? why(CUR + '가 부족합니다') : '') + '>입찰</button>';
       act += '<button class="btn sm primary' + (armed ? ' armed' : '') + '" data-act="mkbuyout" data-a="' + x.id + '"' + (canBuy ? '' : why(low ? '학년이 낮아 살 수 없습니다' : CUR + '가 부족합니다')) + '>' + (armed ? '한 번 더 누르면 구매' : '즉시 구매') + '</button>';
     }
     return '<div class="mkrow mkauc' + (open ? ' open' : '') + '"><div class="mki' + (tap ? ' tap" data-act="mkopen" data-a="' + x.id + '" role="button" tabindex="0" aria-expanded="' + !!open + '"' : '"') + '>' + info +
@@ -3819,7 +3821,7 @@
   // 팔기: 장비 · 휘장 줄마다 「경매」를 누르면 경매 등록 칸이 펼쳐진다
   function aucForm(kind, u, floor) {
     var a = (S.mk.data && S.mk.data.auc) || { hours: [3, 6, 12, 24, 48], buyoutX: 1.2, max: 3 };
-    return '<div class="mkaf"><label class="tiny faint">시작가 <input type="number" class="mkastart" min="' + floor + '" step="1" inputmode="numeric" placeholder="' + fmt(floor) + ' 이상"></label><label class="tiny faint">즉시 구매가 <input type="number" class="mkabuy" min="1" step="1" inputmode="numeric" placeholder="시작가의 ' + a.buyoutX + '배 이상"></label>' +
+    return '<div class="mkaf"><label class="tiny faint">시작가 <input type="number" class="mkastart" min="' + floor + '" step="1" inputmode="numeric" placeholder="' + R.fmtN(floor) + ' 이상"></label><label class="tiny faint">즉시 구매가 <input type="number" class="mkabuy" min="1" step="1" inputmode="numeric" placeholder="시작가의 ' + a.buyoutX + '배 이상"></label>' +
       '<label class="tiny faint">기간 <select class="mkahr">' + a.hours.map(function (x) { return '<option value="' + x + '"' + (x === 24 ? ' selected' : '') + '>' + x + '시간</option>'; }).join('') + '</select></label><button class="btn sm primary" data-act="mkauclist" data-a="' + kind + '" data-b="' + u + '">경매 올리기</button>' +
       '<div class="tiny faint" style="flex-basis:100%">즉시 구매가는 시작가의 ' + a.buyoutX + '배 이상 · 입찰이 들어오기 전까지만 취소 가능 · 경매는 동시에 ' + a.max + '개까지</div></div>';
   }
@@ -3831,7 +3833,7 @@
     var row = el && el.closest('.mkaf'), a = (S.mk.data && S.mk.data.auc) || { buyoutX: 1.2 }; if (!row) return;
     var start = Math.floor(+row.querySelector('.mkastart').value || 0), buy = Math.floor(+row.querySelector('.mkabuy').value || 0), hrs = +row.querySelector('.mkahr').value;
     if (!(start >= 1)) { toast('거래소 경매', '시작가 입력 필요'); return; }
-    if (!(buy >= Math.ceil(start * a.buyoutX))) { toast('거래소 경매', '즉시 구매가는 시작가의 ' + a.buyoutX + '배(' + fmt(Math.ceil(start * a.buyoutX)) + ') 이상이어야 합니다'); return; }
+    if (!(buy >= Math.ceil(start * a.buyoutX))) { toast('거래소 경매', '즉시 구매가는 시작가의 ' + a.buyoutX + '배(' + R.fmtN(Math.ceil(start * a.buyoutX)) + ') 이상이어야 합니다'); return; }
     var o = { op: 'list', auc: 1, price: buy, start: start, hours: hrs }; if (kind === 'badge') o.badge = u; else o.u = u;
     API.marketOp(o).then(function (j) { if (!j.error && S.mk.aopen) delete S.mk.aopen[u]; mkDone(j, '경매 등록이 완료되었습니다'); });
   };
@@ -5750,7 +5752,7 @@
   };
   ACT.rpcom = function (id) {
     var b = S.bd, t = $('#rp-com'), txt = t ? t.value.trim() : ''; if (!txt) return; if (S.busy) return; S.busy = true;
-    API.boardOp({ op: 'comment', id: +id, text: txt, parent: b.mrep || 0 }).then(function (j) { S.busy = false; if (j.error) { toast(b.mrep ? '답글' : '댓글', j.error); return; } b.mcx = ''; b.mo = null; b.mrep = null; if (j.post) rpPatch(j.post); render(); }, function () { S.busy = false; });
+    API.boardOp({ op: 'comment', id: +id, text: txt, parent: b.mrep || 0 }).then(function (j) { S.busy = false; if (j.error) { toast(b.mrep ? '답글' : '댓글', j.error); return; } sentClear('#rp-com'); b.mcx = ''; b.mo = null; b.mrep = null; if (j.post) rpPatch(j.post); render(); }, function () { S.busy = false; });
   };
   ACT.rpcdel = function (cid, id) {
     var k = 'bdc' + cid; if (!(S.confirm[k] > Date.now())) { S.confirm[k] = Date.now() + 4000; render(); setTimeout(render, 4100); return; }
@@ -5832,13 +5834,13 @@
   };
   ACT.bdcom = function () {
     var b = S.bd, p = b.post, t = $('#bd-com'), txt = t ? t.value.trim() : ''; if (!p || !txt) return; if (S.busy) return; S.busy = true;
-    API.boardOp({ op: 'comment', id: p.id, text: txt }).then(function (j) { S.busy = false; if (j.error) { toast('댓글', j.error); return; } b.com = ''; b.post = j.post; render(); }, function () { S.busy = false; });
+    API.boardOp({ op: 'comment', id: p.id, text: txt }).then(function (j) { S.busy = false; if (j.error) { toast('댓글', j.error); return; } sentClear('#bd-com'); b.com = ''; b.post = j.post; render(); }, function () { S.busy = false; });
   };
   ACT.bdreplyto = function (cid, root) { S.bd.replyTo = cid ? +(root || cid) : null; S.bd.replyFrom = cid ? +cid : null; S.bd.rep = ''; if (root && +root !== +cid) (S.bd.openRep || (S.bd.openRep = {}))[+root] = true; render(); setTimeout(function () { var t = $('#bd-rep'); if (t) { t.focus(); t.addEventListener('input', function () { S.bd.rep = t.value; }); } }, 0); };
   ACT.bdrepmore = function (cid) { var o = S.bd.openRep || (S.bd.openRep = {}); o[cid] = !o[cid]; render(); };
   ACT.bdrep = function (cid, root) {
     var b = S.bd, p = b.post, t = $('#bd-rep'), txt = t ? t.value.trim() : ''; if (!p || !txt) return; if (S.busy) return; S.busy = true;
-    API.boardOp({ op: 'comment', id: p.id, text: txt, parent: +cid }).then(function (j) { S.busy = false; if (j.error) { toast('답글', j.error); return; } b.rep = ''; b.replyTo = null; b.replyFrom = null; (b.openRep || (b.openRep = {}))[+(root || cid)] = true; b.post = j.post; render(); }, function () { S.busy = false; });
+    API.boardOp({ op: 'comment', id: p.id, text: txt, parent: +cid }).then(function (j) { S.busy = false; if (j.error) { toast('답글', j.error); return; } sentClear('#bd-rep'); b.rep = ''; b.replyTo = null; b.replyFrom = null; (b.openRep || (b.openRep = {}))[+(root || cid)] = true; b.post = j.post; render(); }, function () { S.busy = false; });
   };
   ACT.bdcdel = function (cid) {
     var k = 'bdc' + cid; if (!(S.confirm[k] > Date.now())) { S.confirm[k] = Date.now() + 4000; render(); setTimeout(render, 4100); return; }

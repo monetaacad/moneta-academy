@@ -2832,9 +2832,11 @@
     var neg = n < 0, s; n = Math.abs(n);
     if (n < 1e4) s = n < 10 && n % 1 ? n.toFixed(1) : Math.floor(n).toLocaleString('ko-KR');
     else if (n >= 1e24) s = n.toExponential(2).replace('e+', 'e');
-    else for (var i = 0; i < UNITS.length; i++) if (n >= UNITS[i][0]) { var v = n / UNITS[i][0]; s = (v >= 100 ? String(Math.floor(v)) : v >= 10 ? v.toFixed(1) : v.toFixed(2)).replace(/\.0+$/, '').replace(/(\.\d)0$/, '$1') + UNITS[i][1]; break; }
+    else for (var i = 0; i < UNITS.length; i++) if (n >= UNITS[i][0]) { var v = n / UNITS[i][0], dg = v >= 100 ? 0 : v >= 10 ? 1 : 2, q = Math.pow(10, dg); v = Math.floor(v * q + 1e-9) / q; s = v.toFixed(dg).replace(/\.0+$/, '').replace(/(\.\d)0$/, '$1') + UNITS[i][1]; break; }   // 반올림하지 않고 내림 (36.25만을 36.3만으로 부풀려 보이지 않게)
     return (neg ? '-' : '') + s;
   };
+  // 정확한 수 (쉼표): 입력해야 하는 최소 금액 · 꺼낼 수 있는 양처럼 그대로 옮겨 적는 수는 줄여 쓰지 않는다 (「36.2만 이상」이라 362000을 넣었는데 모자라던 문제)
+  R.fmtN = function (n) { if (n == null || !isFinite(n)) return '0'; return (n < 0 ? '-' : '') + Math.floor(Math.abs(n)).toLocaleString('ko-KR'); };
   R.fmtPct = function (v, d) { return (v * 100).toFixed(d == null ? 0 : d).replace(/\.0+$/, '') + '%'; };
   R.fmtTime = function (s) {
     s = Math.max(0, Math.floor(s)); var d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60), ss = s % 60;
