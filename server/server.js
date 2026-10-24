@@ -1487,7 +1487,18 @@ mkSweep(); npcMarketTick(true);
    실전 결과(기록 · 보상 우편)는 누른 순간 정하고, 알림은 대본이 끝난 뒤에 보낸다. */
 const TW_RUNS = 4;   // 파티마다 남겨 두는 최근 실행
 function towerRuns(party) { const row = dbx.q.towerGet.get(party); if (!row) return []; try { const x = JSON.parse(row.log); return Array.isArray(x.runs) ? x.runs : []; } catch (e) { return []; } }
-function towerLive(runs) { const real = Date.now() / 1000, r = runs[runs.length - 1]; return r && r.t0 + r.d > real ? r : null; }
+function towerLive(runs) { const real = Date.now() / 1000, r = runs[runs.length - 1]; return r && R.twEndAt(r) > real ? r : null; }
+// 실행이 끝나는 때에 fn(그때의 실행): 배속 · 철수로 끝나는 시각이 바뀌므로 정해진 시간 대신 끝날 때까지 다시 확인한다
+function twAfter(party, id, fn) {
+  const tick = () => { const r = towerRuns(party).find((x) => x.id === id), left = r ? R.twEndAt(r) - Date.now() / 1000 : 0; if (left > 0.05) { setTimeout(tick, Math.min(60000, left * 1000 + 50)).unref(); return; } fn(r); };
+  tick();
+}
+// 실전의 끝나는 시각이 바뀌면(배속 · 철수) 보상 대기 · 파티 순위 대기도 같은 시각으로
+function twRealMoved(party, run) {
+  const end = R.twEndAt(run);
+  Object.keys(run.prev || {}).forEach((id) => { const Q = store.get(id); if (Q && Q.twPend && Q.twPend.id === run.id) { Q.twPend.end = end; store.markDirty(id); } });
+  try { dbx.q.twRankPendMove.run(Math.floor(end), R.weekId(nowSec()), party); } catch (e) { log('별의 탑 순위 대기 시각 고치기 실패', e); }
+}
 function towerSave(party, runs) { if (runs.length > TW_RUNS) runs.splice(0, runs.length - TW_RUNS); dbx.q.towerPut.run(party, R.weekId(nowSec()), 0, JSON.stringify({ runs })); }
 // 파티원 전투 정보: 사람 파티원은 각자 정한 포지션, 동행 친구는 시작한 학생 힘의 30%
 function towerTeam(party, me, now) {
@@ -1579,7 +1590,7 @@ function twStartRun(party, mode, starterId) {
     if (mode === 'real') { const used = ps.filter((Q) => R.twUsed(Q, now)); if (used.length) return { error: '오늘 이미 실전에 도전한 파티원이 있습니다: ' + used.map((Q) => Q.name).join(', ') + ' (매일 KST 자정에 초기화)' }; }
     const start = R.twStart(ps.map((Q) => R.twBest(Q, now)));
     const run = Object.assign(R.twRun(ms, start, crypto.randomInt(1, 2147483647)), { id: crypto.randomBytes(6).toString('base64url'), kind: mode, by: P.name, pname: pa ? pa.name : '', t0: Math.round(Date.now() / 100) / 10, ms: R.twMeta(ms), day: R.dayKST(now) });
-    const after = Math.round(run.d * 1000), later = (fn) => setTimeout(fn, after).unref(), pname = pa ? pa.name : '';
+    const later = (fn) => twAfter(party, run.id, fn), pname = pa ? pa.name : '';
     if (mode === 'real') {
       run.prev = {};
       // 파티 순위는 실전이 끝난 뒤에 (대기 기록으로 넣고, 끝나는 시각에 정식 기록으로)
@@ -1588,13 +1599,14 @@ function twStartRun(party, mode, starterId) {
         R.twUse(Q, now); const old = R.twRecord(Q, now, run.cleared); run.prev[Q.id] = old;
         // 보상은 맡겨 두었다가 실전이 끝난 뒤 「보상 받기」를 누르면 우편으로 보낸다 (진행 중에 결과가 새지 않게, 원정 귀환처럼)
         twPendFlush(Q);
-        if (run.cleared > old) Q.twPend = { id: run.id, end: run.t0 + run.d, from: old + 1, to: run.cleared, pname };
+        if (run.cleared > old) Q.twPend = { id: run.id, end: R.twEndAt(run), from: old + 1, to: run.cleared, pname };
         store.markDirty(Q.id);
       });
-      later(() => {
+      later((r1) => {
+        const fr = r1 || run;   // 철수했으면 줄어든 기록으로
         twRankSettle();
-        chat.system('party', '✦ 별의 탑 실전 종료 — ' + run.start + '층에서 시작해 ' + (run.cleared >= run.start ? run.cleared + '층까지 올랐습니다.' : '첫 층을 넘지 못했습니다.') + ' 각자의 이번 주 기록에 반영되었습니다.', Date.now() / 1000, party);
-        ps.forEach((Q) => { const X = store.get(Q.id); if (X) { R.log(X, nowSec(), '별의 탑 실전: ' + run.cleared + '층까지 기록', 'good'); store.markDirty(Q.id); } });
+        chat.system('party', '✦ 별의 탑 실전 종료 — ' + fr.start + '층에서 시작해 ' + (fr.cleared >= fr.start ? fr.cleared + '층까지 올랐습니다' : '첫 층을 넘지 못했습니다') + (fr.retreat ? ' (철수)' : '') + '. 각자의 이번 주 기록에 반영되었습니다.', Date.now() / 1000, party);
+        ps.forEach((Q) => { const X = store.get(Q.id); if (X) { R.log(X, nowSec(), '별의 탑 실전: ' + fr.cleared + '층까지 기록' + (fr.retreat ? ' (철수)' : ''), 'good'); store.markDirty(Q.id); } });
       });
     }
     runs.slice(0, -1).forEach((r) => { delete r.floors; });   // 대본은 직전 실행과 이번 실행만 남긴다
@@ -1657,11 +1669,38 @@ routes['POST /api/tower'] = async (req, res) => {
     const run = Object.assign(R.twRun(ms, start, crypto.randomInt(1, 2147483647)), { id: crypto.randomBytes(6).toString('base64url'), kind: 'solo', by: P.name, pname: (dbx.q.partyGet.get(party) || {}).name || '', t0: Date.now() / 1000, ms: R.twMeta(ms) });
     return send(req, res, 200, { run });
   }
-  if (mode === 'stop') {
+  if (mode === 'stop') {   // 파티 연습 중단 · 실전 철수
     const runs = towerRuns(party), live = towerLive(runs);
-    if (!live || live.kind !== 'party') return fail(req, res, 400, '중단할 파티 연습이 없습니다');
-    live.d = Math.max(0, Date.now() / 1000 - live.t0); live.stopped = P.name; towerSave(party, runs);
-    chat.system('party', P.name + ' 님이 별의 탑 파티 연습을 중단했습니다.', Date.now() / 1000, party); towerPing(party, { stop: true });
+    if (!live || (live.kind !== 'party' && live.kind !== 'real')) return fail(req, res, 400, '중단할 별의 탑이 없습니다');
+    const real = Date.now() / 1000, pos = Math.max(0, Math.min(live.d, R.twScene(live, real)));
+    if (live.kind === 'party') {
+      live.d = pos; live.stopped = P.name; towerSave(party, runs);
+      chat.system('party', P.name + ' 님이 별의 탑 파티 연습을 중단했습니다.', real, party); towerPing(party, { stop: true });
+      return send(req, res, 200, towerView(me, now));
+    }
+    // 실전 철수: 싸우던 층은 패배, 끝까지 본 층까지만 넘은 것으로. 시작할 때 미리 적어 둔 기록 · 보상 대기 · 순위 대기를 줄인다
+    const cut = R.twCutAt(live, pos), wk = R.weekId(now);
+    live.d = pos; live.cleared = cut; live.stopped = P.name; live.retreat = 1;
+    Object.keys(live.prev || {}).forEach((id) => {
+      const Q = store.get(id); if (!Q) return; const old = live.prev[id];
+      if (Q.tw2 && Q.tw2.week === wk) Q.tw2.best = Math.max(old, cut);
+      if (Q.twPend && Q.twPend.id === live.id) { if (cut > old) Object.assign(Q.twPend, { to: cut, end: real }); else delete Q.twPend; }
+      store.markDirty(id);
+    });
+    try { dbx.q.twRankPendCut.run(cut, Math.floor(real), wk, party); } catch (e) { log('별의 탑 순위 대기 줄이기 실패', e); }
+    towerSave(party, runs);
+    chat.system('party', P.name + ' 님이 별의 탑 실전에서 철수했습니다 · ' + (cut >= live.start ? cut + '층까지 기록' : '넘은 층 없음'), real, party); towerPing(party, { stop: true });
+    return send(req, res, 200, towerView(me, now));
+  }
+  if (mode === 'speed') {   // 배속: 파티원 누구나, 보는 모든 파티원에게 같이 적용
+    const x = Number(b.x); if (R.TW_SPEEDS.indexOf(x) < 0) return fail(req, res, 400, '배속 선택 필요');
+    const runs = towerRuns(party), live = towerLive(runs); if (!live) return fail(req, res, 400, '진행 중인 별의 탑이 없습니다');
+    if (R.twSpeedOf(live) === x) return send(req, res, 200, towerView(me, now));
+    const real = Date.now() / 1000, sp = live.sp || [];
+    if (sp.length && real - sp[sp.length - 1][0] < 1) return fail(req, res, 429, '잠시 후 다시 시도');
+    live.sp = sp.concat([[Math.round(real * 1000) / 1000, Math.round(R.twScene(live, real) * 1000) / 1000, x]]);
+    towerSave(party, runs); if (live.kind === 'real') twRealMoved(party, live);
+    chat.system('party', P.name + ' 님이 별의 탑 배속을 ×' + x + '로 바꿨습니다.', real, party); towerPing(party, { speed: x });
     return send(req, res, 200, towerView(me, now));
   }
   fail(req, res, 400, '알 수 없는 요청입니다');
