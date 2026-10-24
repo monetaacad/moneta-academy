@@ -406,8 +406,8 @@
   };
   // 환수생태학: 레벨마다 사역마 동행 보너스 +3%(곱), 파견 보상 +2%, 부화 속도 +1%
   R.BEAST_FAM = 0.03; R.BEAST_DISP = 0.02;
-  // 사역마 수집 기록: 전체 종 수 · 들판 친구들(fld) 종 수 · 그리핀 보유
-  R.famCount = function (P) { var k = Object.keys(P.fam.own); P.st.famKinds = k.length; P.st.fldKinds = k.filter(function (id) { return FAM[id] && FAM[id].fld; }).length; P.st.griffin = P.fam.own.griffin ? 1 : 0; };
+  // 사역마 수집 기록: 전체 종 수 · 그리핀 보유
+  R.famCount = function (P) { P.st.famKinds = Object.keys(P.fam.own).length; P.st.griffin = P.fam.own.griffin ? 1 : 0; };
   R.famBonus = function (f, lv, P) { return f.base * (1 + 0.25 * (lv - 1)) * (1 + (P && P.subj && P.subj.beast ? P.subj.beast.lv : 0) * R.BEAST_FAM); };
   R.CODEX_TIERS = [1, 10, 100]; R.BOSS_TIERS = [1, 5, 20]; R.CODEX_EACH = 0.004;
   R.tiersFor = function (id) { return BOSS_IDS[id] ? R.BOSS_TIERS : R.CODEX_TIERS; };
@@ -2461,7 +2461,6 @@
     var s1 = R.bondStage(o.bond);
     if (s1 > s0) { log(P, now, R.josa(R.famLabel(P, id), '과', '와') + '의 유대가 「' + D.BOND_STAGES[s1].name + '」 단계가 되었습니다.', 'good'); if (s1 >= 3) { o.lk = { s: 1, t: 1 }; } }
     P.st.bondFull = Object.keys(P.fam.own).filter(function (k) { return (P.fam.own[k].bond || 0) >= BOND.max; }).length;
-    P.st.fldBond = Object.keys(P.fam.own).filter(function (k) { return FAM[k] && FAM[k].fld && (P.fam.own[k].bond || 0) >= BOND.max; }).length;   // 들판 친구들과 단짝
     return { gain: g, bond: o.bond, stage: s1, up: s1 > s0 ? s1 : 0 };
   }
   R.bondGain = bondGain;

@@ -542,13 +542,13 @@ var DATA = (function () {
     { id: 'herbhog', name: '허브고슴도치', r: 2, bonus: 'brewSpd', base: 0.05, desc: '가시마다 말린 허브를 꽂고 다니는 고슴도치. 솥 냄새만 맡아도 무엇이 빠졌는지 안다.', c1: '#8aa860' },
     { id: 'moondeer', name: '달빛사슴', r: 2, bonus: 'bossDmg', base: 0.06, desc: '뿔 끝에 달빛이 고여 은은하게 빛나는 어린 사슴. 큰 적 앞에서도 물러서지 않는다.', c1: '#c8d0f0' },
     { id: 'glowbird', name: '노을불새', r: 3, bonus: 'leech', base: 0.012, desc: '해가 질 무렵에만 깃털이 노을빛으로 타오르는 불새의 새끼. 주인이 다치면 따뜻한 깃털로 상처를 감싼다.', c1: '#ff9a5a' },
-    // 2차 베타: 들판 친구들 여섯 종(fld: 목장 칭호 · 업적에 세는 무리) · 전설 그리핀
-    { id: 'chick', name: '햇병아리', r: 0, bonus: 'xpPct', base: 0.05, fld: 1, desc: '알에서 깬 지 얼마 되지 않은 노란 병아리. 처음 본 학생을 어미로 알고 강의실까지 졸졸 따라온다.', c1: '#f6d860' },
-    { id: 'hamster', name: '쳇바퀴 햄스터', r: 0, bonus: 'manaPct', base: 0.05, fld: 1, desc: '밤새 쳇바퀴를 돌리는 햄스터. 바퀴가 한 바퀴 돌 때마다 작은 마나 방울이 떨어진다.', c1: '#e8b07a' },
-    { id: 'cloudsheep', name: '구름양', r: 1, bonus: 'carePct', base: 0.04, fld: 1, desc: '털이 구름처럼 부풀어 오른 어린 양. 다친 동료를 털 속에 파묻어 따뜻하게 감싸 준다.', c1: '#eef0f6' },
-    { id: 'ferret', name: '굴뚝페럿', r: 1, bonus: 'dropPct', base: 0.04, fld: 1, desc: '좁은 굴뚝과 배수관을 제집처럼 드나드는 페럿. 반짝이는 것을 발견하면 몰래 둥지로 물어 간다.', c1: '#c89a6a' },
-    { id: 'silversnake', name: '은비늘뱀', r: 2, bonus: 'cdr', base: 0.02, fld: 1, desc: '허물을 벗을 때마다 비늘이 한층 밝아지는 작은 뱀. 똬리를 튼 채 가장 알맞은 순간을 기다린다.', c1: '#a8c0b8' },
-    { id: 'skyeagle', name: '하늘독수리', r: 2, bonus: 'critD', base: 0.08, fld: 1, desc: '천문대 첨탑 위에 둥지를 튼 독수리의 새끼. 구름 위에서도 들쥐 한 마리를 놓치지 않는다.', c1: '#8a6a4a' },
+    // 2차 베타: 동물 사역마 여섯 종 · 전설 그리핀
+    { id: 'chick', name: '별샘병아리', r: 0, bonus: 'xpPct', base: 0.05, desc: '별샘 물가에 떨어진 알에서 깨어난 병아리. 솜털 끝이 별빛처럼 반짝이며, 처음 본 학생을 어미로 알고 강의실까지 졸졸 따라온다.', c1: '#f6d860' },
+    { id: 'hamster', name: '마석햄스터', r: 0, bonus: 'manaPct', base: 0.05, desc: '원정길에 흩어진 마석 부스러기를 볼주머니 가득 모으는 햄스터. 밤새 쳇바퀴를 돌리면 모은 부스러기에서 마나 방울이 떨어진다.', c1: '#e8b07a' },
+    { id: 'cloudsheep', name: '구름양', r: 1, bonus: 'carePct', base: 0.04, desc: '털이 구름처럼 부풀어 오른 어린 양. 다친 동료를 털 속에 파묻어 따뜻하게 감싸 준다.', c1: '#eef0f6' },
+    { id: 'ferret', name: '서고페럿', r: 1, bonus: 'dropPct', base: 0.04, desc: '서고의 책장 틈과 환기구를 제집처럼 드나드는 페럿. 반짝이는 것을 발견하면 몰래 둥지로 물어 간다.', c1: '#c89a6a' },
+    { id: 'gloomsnake', name: '그믐뱀', r: 2, bonus: 'cdr', base: 0.02, desc: '그믐밤처럼 검은 비늘을 지닌 작은 뱀. 그림자 속에 똬리를 튼 채 가장 알맞은 순간을 기다린다.', c1: '#2a2a34' },
+    { id: 'skyeagle', name: '첨탑독수리', r: 2, bonus: 'critD', base: 0.08, desc: '천문대 첨탑 꼭대기에 둥지를 튼 독수리의 새끼. 구름 위에서도 들쥐 한 마리를 놓치지 않는다.', c1: '#8a6a4a' },
     { id: 'griffin', name: '그리핀', r: 3, bonus: 'hpPct', base: 0.12, desc: '독수리의 머리와 사자의 몸을 지닌 환수의 새끼. 위험이 닥치면 주인 앞에서 날개를 펼쳐 방패가 된다. 기말시험 시험관 그리핀의 먼 후손이라는 소문이 있다.', c1: '#d8a850' }
   ];
   D.FAM_RARITY = [
@@ -999,10 +999,6 @@ var DATA = (function () {
     { id: 'fam12', name: '환수 도감 편찬자', stat: 'famKinds', n: 12, how: '사역마 열두 종 보유' },
     { id: 'fam18', name: '모든 환수의 벗', stat: 'famKinds', n: 18, how: '사역마 열여덟 종 보유' },
     { id: 'fam25', name: '환수 도감의 완성자', stat: 'famKinds', n: 25, how: '사역마 스물다섯 종 모두 보유' },
-    // 들판 친구들(햇병아리 · 쳇바퀴 햄스터 · 구름양 · 굴뚝페럿 · 은비늘뱀 · 하늘독수리) · 그리핀
-    { id: 'fld3', name: '들판의 꼬마 목동', stat: 'fldKinds', n: 3, how: '들판 친구들 세 종 보유' },
-    { id: 'fld6', name: '작은 목장의 주인', stat: 'fldKinds', n: 6, how: '들판 친구들 여섯 종 모두 보유' },
-    { id: 'fldbond', name: '들판의 지휘자', stat: 'fldBond', n: 6, how: '들판 친구들 여섯 종 모두와 유대 「단짝」 달성' },
     { id: 'griffin', name: '그리핀의 기수', stat: 'griffin', n: 1, how: '전설 사역마 그리핀 보유' },
     { id: 'disp1k', name: '먼 길의 동반자', stat: 'dispatches', n: 1000, how: '사역마 파견 1,000번' },
     { id: 'res200', name: '서고의 주인', stat: 'researchDone', n: 200, how: '연구 200단계 완료' },
@@ -1049,7 +1045,7 @@ var DATA = (function () {
     { id: 'ctg50', name: '성문을 지킨 자', stat: 'twG', n: 50, how: '수호자의 탑 50층 돌파' },
     { id: 'ctg100', name: '무너지지 않는 방벽', stat: 'twG', n: 100, how: '수호자의 탑 100층 돌파' },
     { id: 'ctg150', name: '수호자의 맹세', stat: 'twG', n: 150, how: '수호자의 탑 150층 돌파' },
-    { id: 'ctg200', name: '꺼지지 않는 등불', stat: 'twG', n: 200, how: '수호자의 탑 200층 돌파' },
+    { id: 'ctg200', name: '꺼지지 않는 생명', stat: 'twG', n: 200, how: '수호자의 탑 200층 돌파' },
     { id: 'ctg250', name: '천 번의 밤을 버틴 자', stat: 'twG', n: 250, how: '수호자의 탑 250층 돌파' },
     { id: 'ctg300', name: '불멸의 수호자', stat: 'twG', n: 300, how: '수호자의 탑 300층 돌파' },
     { id: 'ctg400', name: '탑을 떠받치는 자', stat: 'twG', n: 400, how: '수호자의 탑 400층 돌파' },
@@ -1304,9 +1300,6 @@ var DATA = (function () {
     { id: 'fam12', name: '환수 수집가', desc: '사역마 12종 보유', stat: 'famKinds', n: 12, r: 40 },
     { id: 'fam18', name: '모든 생명의 친구', desc: '사역마 18종 보유', stat: 'famKinds', n: 18, r: 80 },
     { id: 'fam25', name: '환수 도감 완성', desc: '사역마 25종 모두 보유', stat: 'famKinds', n: 25, r: 100 },
-    { id: 'fld1', name: '들판에서 온 손님', desc: '들판 친구들(햇병아리 · 쳇바퀴 햄스터 · 구름양 · 굴뚝페럿 · 은비늘뱀 · 하늘독수리) 한 종 보유', stat: 'fldKinds', n: 1, r: 5 },
-    { id: 'fld6', name: '작은 목장', desc: '들판 친구들 여섯 종 모두 보유', stat: 'fldKinds', n: 6, r: 40 },
-    { id: 'fldbond', name: '들판의 단짝들', desc: '들판 친구들 여섯 종 모두와 유대 「단짝」 달성', stat: 'fldBond', n: 6, r: 60 },
     { id: 'griffin', name: '날개 달린 방패', desc: '전설 사역마 그리핀 보유', stat: 'griffin', n: 1, r: 30 },
     { id: 'disp20', name: '심부름의 달인', desc: '사역마 파견 20번', stat: 'dispatches', n: 20, r: 10 },
     { id: 'spirit20', name: '정령 채집가', desc: '반딧불 정령 20마리 풀어 주기', stat: 'spirits', n: 20, r: 8 },
@@ -1862,7 +1855,7 @@ var DATA = (function () {
     crysowl: ['biscuit', 'mirror'], zapweasel: ['candy', 'yarn'], ashfox: ['fish', 'kite'], dreammoth: ['candy', 'music'],
     clockcat: ['fish', 'yarn'], shadowcrow: ['biscuit', 'mirror'], starwhale: ['candy', 'bubble'], starwyrm: ['apple', 'kite'],
     acornmouse: ['seed', 'bell'], lotusfrog: ['jelly', 'bubble'], snowpup: ['biscuit', 'yarn'], herbhog: ['apple', 'music'], moondeer: ['seed', 'kite'], glowbird: ['candy', 'feather'],
-    chick: ['seed', 'bell'], hamster: ['seed', 'yarn'], cloudsheep: ['apple', 'music'], ferret: ['fish', 'mirror'], silversnake: ['jelly', 'music'], skyeagle: ['fish', 'kite'], griffin: ['apple', 'feather']
+    chick: ['seed', 'bell'], hamster: ['seed', 'yarn'], cloudsheep: ['apple', 'music'], ferret: ['fish', 'mirror'], gloomsnake: ['jelly', 'music'], skyeagle: ['fish', 'kite'], griffin: ['apple', 'feather']
   };
   // 유대 단계별 지문 (사역마 카드 · 광장 동행 사역마)
   D.BOND_LINES = [
@@ -1893,7 +1886,7 @@ var DATA = (function () {
     clockcat: '세 시 십 분의 약속', shadowcrow: '그림자의 속삭임을 듣는 자', starwhale: '구름바다의 항해사', starwyrm: '성룡을 품은 손',
     acornmouse: '도토리 주머니의 주인', lotusfrog: '연못 합창단장', snowpup: '눈송이가 기다리는 사람', herbhog: '가시 속 허브 정원사',
     moondeer: '달빛 숲의 길잡이', glowbird: '노을을 함께 보는 자',
-    chick: '병아리가 믿는 어미', hamster: '쳇바퀴 곁의 밤샘 동무', cloudsheep: '구름 이불을 덮는 자', ferret: '반짝이 도둑의 공범', silversnake: '허물을 지켜본 자', skyeagle: '첨탑 둥지의 벗', griffin: '그리핀과 하늘을 나눈 자'
+    chick: '병아리가 믿는 어미', hamster: '볼주머니 마석의 관리인', cloudsheep: '구름 이불을 덮는 자', ferret: '서고 반짝이 도둑의 공범', gloomsnake: '그믐밤을 함께 지새운 자', skyeagle: '첨탑 둥지의 벗', griffin: '그리핀과 하늘을 나눈 자'
   };
   D.FAMILIARS.forEach(function (f) { var nm = D.FAM_BOND_TITLES[f.id]; if (nm) D.TITLES.push({ id: 'bf_' + f.id, name: nm, bondFam: f.id, how: f.name + (((f.name.charCodeAt(f.name.length - 1) - 0xAC00) % 28) ? '과' : '와') + ' 유대 「단짝」 달성' }); });
 
