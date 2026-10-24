@@ -939,6 +939,7 @@
     else { P.res.shard += 10; res = { f: f.id, isNew: false, max: true }; }
     P.st.famKinds = Object.keys(P.fam.own).length;
     log(P, t, '알이 부화했습니다: ' + f.name + (res.isNew ? ' (새로운 사역마!)' : ' (성장)'), 'good');
+    if (f.r === D.FAM_RARITY.length - 1) { var nq = P.newsQ || (P.newsQ = []); if (nq.length < 5) nq.push(P.name + ' 학생이 전설 사역마 ' + R.josa('「' + f.name + '」', '을', '를') + ' 깨웠습니다'); }   // 아카데미 소식 (서버가 옮긴다)
     return res;
   }
   // 파견 지역: 사역마마다 정해 둘 수 있다 (P.fam.zone[fid] = 지역 id, 없으면 갈 수 있는 가장 높은 지역). 출발할 때 정해진 지역으로 다녀온다

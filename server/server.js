@@ -122,7 +122,9 @@ const Board = require('./board.js');
 // 알림 기록: 우편과 따로, 일어난 일을 모아 보여 준다 (최근 100개, 30일)
 function pname(pid) { const w = dbx.q.getProfile.get(pid); return w ? w.name : '학생'; }
 // 할 일 달성(학기 이야기 · 일일 목표 · 교수님 과제): 규칙이 P.noteQ에 넣은 것을 알림으로 옮긴다
-function questNotes(P) { if (!P || !P.noteQ || !P.noteQ.length) return; const q = P.noteQ; P.noteQ = []; q.forEach((x) => addNote(P.id, 'quest', x[0], x[1])); store.markDirty(P.id); }
+function questNotes(P) {
+  if (P && P.newsQ && P.newsQ.length) { const q = P.newsQ; P.newsQ = []; q.forEach((t) => world.addNews(t, nowSec())); store.markDirty(P.id); }   // 아카데미 소식: 전설 사역마 부화 등 (규칙이 P.newsQ에 넣는다)
+  if (!P || !P.noteQ || !P.noteQ.length) return; const q = P.noteQ; P.noteQ = []; q.forEach((x) => addNote(P.id, 'quest', x[0], x[1])); store.markDirty(P.id); }
 function addNote(pid, kind, text, link) {
   if (!pid || String(pid).startsWith('npc:') || pid === 'staff') return;
   try { dbx.q.noteInsert.run(pid, Math.floor(Date.now() / 1000), kind, sec.enc(String(text).slice(0, 300)), link ? JSON.stringify(link) : ''); chat.ping(pid, 'note', { n: Number(dbx.q.noteUnread.get(pid).n) }); } catch (e) { log('알림 저장 실패', e); }
