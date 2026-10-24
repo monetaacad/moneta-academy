@@ -641,7 +641,7 @@
      - 품는 알: 활동 점수 × 부화 효율만큼 진행도. 다 차면 마나 없이 부화, 마나로 바로 깨우면 남은 진행도만큼만 마나 */
   R.FAM_XP_BASE = 300; R.FAM_XP_G = 1.2; R.FAM_DISP_XP = 10; R.FAM_MAX_LV = 20;
   R.famXpNeed = function (f, lv) { return Math.floor(R.FAM_XP_BASE * (1 + 0.5 * (f ? f.r : 0)) * Math.pow(R.FAM_XP_G, lv - 1)); };
-  R.EGG_INC_BASE = 1500; R.EGG_INC_STEP = 0.25;
+  R.EGG_INC_BASE = 1200; R.EGG_INC_STEP = 0.03;   // 하루 종일 접속하는 학생(깨어 있는 동안 작업마다 접속)이 하루 1~2마리, 2시간마다 접속하면 하루 1마리 안팎 (tools/sim.js active · steady 기준. 예전 1500 · 0.25)
   R.eggNeed = function (P) { return Math.floor(R.EGG_INC_BASE * (1 + R.EGG_INC_STEP * Math.min((P.fam && P.fam.hatched) || 0, 40))); };
   function famGainXp(P, id, x, t) {
     var o = P.fam.own[id], f = FAM[id]; if (!o || !f || !(x > 0)) return 0;
@@ -657,7 +657,8 @@
   function famActivity(P, v) {
     if (!(v > 0) || !P.fam || !R.famOpen(P)) return;
     if (P.fam.act && P.fam.own[P.fam.act]) famGainXp(P, P.fam.act, v);
-    var inc = P.fam.inc; if (inc && inc.prog < inc.need) { inc.prog = Math.min(inc.need, inc.prog + v * calc(P, null).hatchSpd); if (inc.prog >= inc.need) log(P, P.at, '품고 있던 알이 깨어날 준비가 되었습니다', 'good'); }
+    var inc = P.fam.inc; if (inc && inc.need > R.eggNeed(P)) inc.need = R.eggNeed(P);   // 예전 기준으로 품기 시작한 알도 새 필요량으로
+    if (inc && inc.prog < inc.need) { inc.prog = Math.min(inc.need, inc.prog + v * calc(P, null).hatchSpd); if (inc.prog >= inc.need) log(P, P.at, '품고 있던 알이 깨어날 준비가 되었습니다', 'good'); }
   }
   R.famGift = function (P, t) { if (P.famGift || !R.famOpen(P)) return; P.famGift = 1; if (!Object.keys(P.fam.own).length) { P.fam.eggs++; log(P, t, '사역마를 키울 수 있게 되었습니다! 고드릭 펜 교수가 첫 환수의 알을 주었습니다.', 'story'); } };
   R.xpNeed = function (lv) { return Math.floor(K.XP_A * Math.pow(K.XP_G, lv - 1) + lv * K.XP_L); };
