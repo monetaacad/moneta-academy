@@ -2238,11 +2238,14 @@
   };
   // 일괄 판매 · 분해 대상: 잠기지 않았고 장비 프리셋에 저장되지 않은 가방 장비 (프리셋 장비가 일괄 처분으로 사라지지 않게)
   R.presetUids = function (P) { var m = {}; (P.gearSets || []).forEach(function (st) { if (st && st.eq) for (var k in st.eq) m[st.eq[k]] = 1; }); return m; };
-  R.bulkTargets = function (P, r) { var ps = R.presetUids(P); return P.inv.filter(function (it) { return !it.lock && !ps[it.u] && it.r <= r; }); };
+  // lv: 장비 레벨이 이 값 미만인 것만 (0 · 없음 = 레벨 상관없이)
+  R.bulkTargets = function (P, r, lv) { var ps = R.presetUids(P); lv = lv || 0; return P.inv.filter(function (it) { return !it.lock && !ps[it.u] && it.r <= r && (!lv || (it.ilvl || 1) < lv); }); };
+  function bulkLv(a) { return a.lv == null || a.lv === '' ? 0 : int(a.lv, 0, 100000); }
+  function bulkTxt(r, lv) { return D.RARITY[r].name + ' 이하' + (lv ? ' · Lv ' + lv + ' 미만' : ''); }
   A.sellBelow = function (P, W, now, a) {
-    var r = int(a.r, 0, 4), tot = 0, n = 0;
-    var gone = [], ps = R.presetUids(P); P.inv = P.inv.filter(function (it) { if (!it.lock && !ps[it.u] && it.r <= r) { var sp = R.sellPrice(it); tot += sp; n++; gone.push(it); bbAdd(P, it, now, { gold: sp }); return false; } return true; });
-    if (gone.length) dlog(P, '일괄 판매', gone, D.RARITY[r].name + ' 이하');
+    var r = int(a.r, 0, 4), lv = bulkLv(a), tot = 0, n = 0;
+    var gone = [], ps = R.presetUids(P); P.inv = P.inv.filter(function (it) { if (!it.lock && !ps[it.u] && it.r <= r && (!lv || (it.ilvl || 1) < lv)) { var sp = R.sellPrice(it); tot += sp; n++; gone.push(it); bbAdd(P, it, now, { gold: sp }); return false; } return true; });
+    if (gone.length) dlog(P, '일괄 판매', gone, bulkTxt(r, lv));
     addGold(P, tot); return { n: n, gold: tot };
   };
   // 분해: 장비를 마석과 마석가루로. 마석가루는 재련(옵션 다시 굴리기)에 쓴다
@@ -2254,10 +2257,25 @@
     var y = dismantleGive(P, P.inv[i]); dlog(P, '분해', [P.inv[i]]); bbAdd(P, P.inv[i], now, { stone: y.stone, dust: y.dust }); P.inv.splice(i, 1); return y;
   };
   A.dismantleBelow = function (P, W, now, a) {
-    var r = int(a.r, 0, 4), o = { n: 0, stone: 0, dust: 0 };
-    var gone = [], ps = R.presetUids(P); P.inv = P.inv.filter(function (it) { if (!it.lock && !ps[it.u] && it.r <= r) { var y = dismantleGive(P, it); o.n++; o.stone += y.stone; o.dust += y.dust; gone.push(it); bbAdd(P, it, now, { stone: y.stone, dust: y.dust }); return false; } return true; });
-    if (gone.length) dlog(P, '일괄 분해', gone, D.RARITY[r].name + ' 이하');
+    var r = int(a.r, 0, 4), lv = bulkLv(a), o = { n: 0, stone: 0, dust: 0 };
+    var gone = [], ps = R.presetUids(P); P.inv = P.inv.filter(function (it) { if (!it.lock && !ps[it.u] && it.r <= r && (!lv || (it.ilvl || 1) < lv)) { var y = dismantleGive(P, it); o.n++; o.stone += y.stone; o.dust += y.dust; gone.push(it); bbAdd(P, it, now, { stone: y.stone, dust: y.dust }); return false; } return true; });
+    if (gone.length) dlog(P, '일괄 분해', gone, bulkTxt(r, lv));
     return o;
+  };
+  // 골라 둔 장비 여러 개를 한 번에 판매 · 분해 (잠긴 장비는 건너뛴다)
+  function pickMany(P, a) {
+    if (!Array.isArray(a.us) || !a.us.length || a.us.length > 200) err('장비 선택 필요');
+    var want = {}; a.us.forEach(function (u) { if (typeof u === 'string') want[u] = 1; });
+    var its = P.inv.filter(function (it) { return want[it.u] && !it.lock; }); if (!its.length) err('처분할 장비가 없습니다 (잠긴 장비 제외)');
+    return its;
+  }
+  A.sellMany = function (P, W, now, a) {
+    var its = pickMany(P, a), tot = 0; its.forEach(function (it) { var sp = R.sellPrice(it); tot += sp; bbAdd(P, it, now, { gold: sp }); });
+    P.inv = P.inv.filter(function (it) { return its.indexOf(it) < 0; }); dlog(P, '선택 판매', its); addGold(P, tot); return { n: its.length, gold: tot };
+  };
+  A.dismantleMany = function (P, W, now, a) {
+    var its = pickMany(P, a), o = { n: its.length, stone: 0, dust: 0 }; its.forEach(function (it) { var y = dismantleGive(P, it); o.stone += y.stone; o.dust += y.dust; bbAdd(P, it, now, { stone: y.stone, dust: y.dust }); });
+    P.inv = P.inv.filter(function (it) { return its.indexOf(it) < 0; }); dlog(P, '선택 분해', its); return o;
   };
   // 되사기: 직접 판매 · 분해한 장비를 받은 만큼(아르크 · 마석 · 마석가루) 그대로 내고 되찾는다. 최근 R.BB_MAX개 · R.BB_TIME 안에서만 (분류 마법 자동 처분은 제외)
   R.BB_MAX = 20; R.BB_TIME = 86400;

@@ -2269,15 +2269,17 @@
     var list = P.inv.filter(function (it) { return (S.invF === 'all' || it.slot === S.invF) && (!fa || affOf(it, fa) > 0); }).sort(function (a, b) { return fa ? affOf(b, fa) - affOf(a, fa) : b.r - a.r || b.ilvl - a.ilvl; });
     h += '<div class="card" data-anchor="bag">' + bagTabs(c) +
       '<div class="filters" style="margin:8px 0">' + [['all', '전체']].concat(D.SLOTS.map(function (s) { return [s.id, s.name]; })).map(function (f) { return '<button class="btn sm ghost' + (S.invF === f[0] ? ' on' : '') + '" data-act="invf" data-a="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '</div>' + invAffRow(P, fa);
+    h += mselBar(P, list);
     if (!list.length) h += '<div class="empty">' + (fa ? '이 부옵션이 있는 장비가 없습니다.' : '가방이 비어 있습니다. 원정에서 장비를 가져옵니다.') + '</div>';
     else h += '<div class="inv">' + list.map(function (it) {
       var wr = R.canWear(P, it), up = wr ? R.powerWith(P, it, wctx(), now()) - c.power : 0;
-      return '<button class="itm rb' + it.r + (wr ? '' : ' nowear') + (S.sel === it.u ? ' sel' : '') + '" data-act="sel" data-a="' + it.u + '"><span class="in" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</span><span class="il">' + R.slotName(it) + ' · Lv ' + it.ilvl + presetTag(it.u) + '</span>' + (fa ? '<span class="iaf num">' + R.AFF[fa].name + ' ' + affFmt(fa, affOf(it, fa)) + '</span>' : '') + (up > 0 ? '<span class="up">▲</span>' : '') + (wr ? '' : '<span class="nw" title="레벨 ' + it.ilvl + '부터 장착할 수 있습니다">Lv ' + it.ilvl + ' 필요</span>') + (it.lock ? '<span class="lk">잠금</span>' : '') + '</button>' + (S.sel === it.u ? '<div class="invdetail">' + detailCard() + '</div>' : '');
+      var ms = S.msel && S.msel[it.u];
+      return '<button class="itm rb' + it.r + (wr ? '' : ' nowear') + (S.sel === it.u && !S.msel ? ' sel' : '') + (ms ? ' msel' : '') + '" data-act="sel" data-a="' + it.u + '"' + (S.msel ? ' aria-pressed="' + !!ms + '"' : '') + '>' + (S.msel ? '<span class="mck" aria-hidden="true">' + (ms ? '✓' : '') + '</span>' : '') + '<span class="in" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</span><span class="il">' + R.slotName(it) + ' · Lv ' + it.ilvl + presetTag(it.u) + '</span>' + (fa ? '<span class="iaf num">' + R.AFF[fa].name + ' ' + affFmt(fa, affOf(it, fa)) + '</span>' : '') + (up > 0 ? '<span class="up">▲</span>' : '') + (wr ? '' : '<span class="nw" title="레벨 ' + it.ilvl + '부터 장착할 수 있습니다">Lv ' + it.ilvl + ' 필요</span>') + (it.lock ? '<span class="lk">잠금</span>' : '') + '</button>' + (S.sel === it.u && !S.msel ? '<div class="invdetail">' + detailCard() + '</div>' : '');
     }).join('') + '</div>';
     // 일괄 판매 · 분해: 제목은 한 줄, 버튼 네 개는 아래 줄에 같은 너비로 (두 줄이 세로로 맞게)
     var bulkRow = function (title, a2, top) { return '<div class="bulkrow"' + (top ? ' style="margin-top:8px"' : '') + '><div class="small muted">' + title + '</div><div class="bulkbtns">' + D.RARITY.slice(0, 4).map(function (r) { return '<button class="btn sm ghost rk rk' + r.id + '" data-act="bulkask" data-a="' + a2 + '" data-b="' + r.id + '">' + r.name + ' 이하</button>'; }).join('') + '</div></div>'; };
     h += '<hr class="sep">' + bulkRow('일괄 판매(잠금 · 프리셋 제외)', 'sellBelow') +
-      bulkRow('일괄 분해(잠금 · 프리셋 제외)', 'dismantleBelow', true) + '<p class="tiny faint" style="margin-top:4px">마석 <b class="num">' + fmt(P.res.stone) + '</b> · ' + dotImg('dust', 14) + ' 마석가루 <b class="num">' + fmt(P.res.dust || 0) + '</b> — 분해하면 ' + CUR + ' 대신 마석과 마석가루를 얻고, 가루는 재련에 사용합니다.</p>';
+      bulkRow('일괄 분해(잠금 · 프리셋 제외)', 'dismantleBelow', true) + '<div class="row small" style="margin-top:8px;gap:6px"><label class="muted" for="bulklv">장비 레벨</label><input id="bulklv" type="number" inputmode="numeric" min="1" placeholder="전체" style="width:80px"><span class="muted">미만만 일괄 처분</span><span class="tiny faint">(비우면 레벨 상관없이)</span></div><p class="tiny faint" style="margin-top:4px">마석 <b class="num">' + fmt(P.res.stone) + '</b> · ' + dotImg('dust', 14) + ' 마석가루 <b class="num">' + fmt(P.res.dust || 0) + '</b> — 분해하면 ' + CUR + ' 대신 마석과 마석가루를 얻고, 가루는 재련에 사용합니다.</p>';
     if (P.rs.sorter) h += '<div class="row small" style="margin-top:8px"><label class="muted" for="autosell">자동 판매</label><select id="autosell" data-act="autosell" style="width:auto">' + [[-1, '사용 안 함']].concat(D.RARITY.slice(0, 4).map(function (r) { return [r.id, r.name + ' 이하']; })).map(function (o) { return '<option value="' + o[0] + '"' + (P.autoSell === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select><select id="automode" data-act="automode" style="width:auto" aria-label="자동 처리 방식"><option value="sell"' + (P.autoDis ? '' : ' selected') + '>판매 (' + CUR + ')</option><option value="dis"' + (P.autoDis ? ' selected' : '') + '>분해 (마석·가루)</option></select></div>';
     else h += '<p class="tiny faint" style="margin-top:8px">서고의 「분류 마법」을 연구하면 자동 판매를 사용할 수 있습니다.</p>';
     h += '<label class="tog" style="margin-top:8px"><input type="checkbox" id="opt-ae" data-act="opt" data-a="autoEquip"' + (P.opt.autoEquip ? ' checked' : '') + '> 더 좋은 장비 자동 장착</label></div></div>';
@@ -2484,18 +2486,48 @@
   // 일괄 판매 · 분해 확인 (다시 보지 않기 · 설정에서 다시 켤 수 있음)
   // 일괄 판매 · 분해 확인: 「다시 보지 않기」를 켜 두어도 영웅 이상 · 강화한 장비가 들어 있으면 반드시 한 번 더 확인한다
   ACT.bulkask = function (type, r) {
-    var P = S.P, rr = +r, its = R.bulkTargets(P, rr), sell = type === 'sellBelow';
+    var P = S.P, rr = +r, lvEl = $('#bulklv'), lv = Math.max(0, Math.floor(+(lvEl && lvEl.value) || 0)), its = R.bulkTargets(P, rr, lv), sell = type === 'sellBelow', cond = D.RARITY[rr].name + ' 이하' + (lv ? ' · Lv ' + lv + ' 미만' : ''), arg = rr + ':' + lv;
     var hi = its.filter(function (it) { return it.r >= 3; }).length, en = its.filter(function (it) { return it.enh > 0; }).length, risky = hi + en > 0;
-    if (S.P.opt.bulkAsk === false && !risky && its.length) { ACT['do'](type, r); return; }
-    if (!its.length) { toast(sell ? '일괄 판매' : '일괄 분해', D.RARITY[rr].name + ' 이하 장비가 없습니다 (잠금 · 프리셋 제외)'); return; }
+    if (S.P.opt.bulkAsk === false && !risky && its.length) { ACT['do'](type, arg); return; }
+    if (!its.length) { toast(sell ? '일괄 판매' : '일괄 분해', cond + ' 장비가 없습니다 (잠금 · 프리셋 제외)'); return; }
     var gain = sell ? fmt(its.reduce(function (a, it) { return a + R.sellPrice(it); }, 0)) + ' ' + CUR : (function () { var s = 0, d = 0; its.forEach(function (it) { var y = R.dismantleYield(it); s += y.stone; d += y.dust; }); return fmt(s) + ' 마석 · ' + fmt(d) + ' 마석가루'; })();
     var best = its.slice().sort(function (a, b) { return b.r - a.r || b.ilvl - a.ilvl; }).slice(0, 3).map(function (it) { return '<b style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</b>'; }).join(', ');
-    modal(mhead(sell ? '일괄 판매' : '일괄 분해', D.RARITY[rr].name + ' 이하 · 잠금 · 프리셋 제외') +
+    modal(mhead(sell ? '일괄 판매' : '일괄 분해', cond + ' · 잠금 · 프리셋 제외') +
       '<p>가방의 장비 <b class="num">' + its.length + '</b>개를 ' + (sell ? '판매' : '분해') + '합니다. 받는 것: <b class="gold">' + gain + '</b></p>' +
       (risky ? '<p class="small bad" style="margin-top:6px"><b>주의</b> · ' + [hi ? '영웅 이상 장비 ' + hi + '개' : '', en ? '강화한 장비 ' + en + '개' : ''].filter(Boolean).join(' · ') + '가 포함되어 있습니다. ' + (sell ? '판매' : '분해') + '하면 되돌릴 수 없습니다.</p>' : '') +
       '<p class="small muted" style="margin-top:6px">포함: ' + best + (its.length > 3 ? ' 외 ' + (its.length - 3) + '개' : '') + '</p>' +
       (risky ? '<p class="tiny faint" style="margin-top:8px">영웅 이상 · 강화한 장비가 포함되면 「다시 보지 않기」를 켜 두어도 이 확인 창이 표시됩니다. 남기고 싶은 장비는 잠가 두면 제외됩니다.</p>' : '<label class="tog small" style="margin-top:12px"><input type="checkbox" id="bulk-never"> 다시 보지 않기 (설정 → 화면에서 다시 켤 수 있습니다)</label>') +
-      '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn ghost" data-act="modal-close">취소</button><button class="btn ' + (sell ? 'danger' : 'primary') + '" data-act="bulkgo" data-a="' + type + '" data-b="' + rr + '">' + (sell ? '판매' : '분해') + '</button></div>');
+      '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn ghost" data-act="modal-close">취소</button><button class="btn ' + (sell ? 'danger' : 'primary') + '" data-act="bulkgo" data-a="' + type + '" data-b="' + arg + '">' + (sell ? '판매' : '분해') + '</button></div>');
+  };
+  // 여러 개 골라 판매 · 분해: 「여러 개 선택」을 켜면 장비를 누를 때마다 고르고, 고른 것만 한 번에 처분 (잠긴 장비는 고를 수 없다)
+  function mselBar(P, list) {
+    if (!S.msel) return '<div class="row" style="justify-content:flex-end;margin:-2px 0 8px"><button class="btn sm ghost" data-act="mselon">여러 개 선택</button></div>';
+    var have = {}; P.inv.forEach(function (it) { have[it.u] = it; }); Object.keys(S.msel).forEach(function (u) { if (!have[u] || have[u].lock) delete S.msel[u]; });
+    var its = Object.keys(S.msel).map(function (u) { return have[u]; }), n = its.length, gold = its.reduce(function (a, it) { return a + R.sellPrice(it); }, 0), st = 0, du = 0; its.forEach(function (it) { var y = R.dismantleYield(it); st += y.stone; du += y.dust; });
+    var allOn = list.filter(function (it) { return !it.lock; }).every(function (it) { return S.msel[it.u]; });
+    return '<div class="mselbar"><div class="row" style="gap:6px;flex-wrap:wrap"><b class="small">' + n + '개 선택</b><span class="tiny faint">장비를 누르면 고르거나 뺍니다 · 잠긴 장비 제외</span><span class="spacer"></span><button class="btn sm ghost" data-act="mselall">' + (allOn && list.length ? '보이는 장비 모두 빼기' : '보이는 장비 모두 고르기') + '</button><button class="btn sm ghost" data-act="mseloff">선택 끝내기</button></div>' +
+      '<div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap"><button class="btn sm danger" data-act="mselgo" data-a="sell"' + (n ? '' : ' disabled') + '>판매 <span class="cost">+' + fmt(gold) + ' ' + CUR + '</span></button><button class="btn sm primary" data-act="mselgo" data-a="dis"' + (n ? '' : ' disabled') + '>분해 <span class="cost">마석 ' + fmt(st) + ' · 가루 ' + fmt(du) + '</span></button></div></div>';
+  }
+  ACT.mselon = function () { S.msel = {}; S.sel = null; render(); };
+  ACT.mseloff = function () { S.msel = null; render(); };
+  ACT.mselall = function () {
+    var P = S.P, fa = PREF.invAff && R.AFF[PREF.invAff] ? PREF.invAff : '', list = P.inv.filter(function (it) { return !it.lock && (S.invF === 'all' || it.slot === S.invF) && (!fa || affOf(it, fa) > 0); });
+    var allOn = list.every(function (it) { return S.msel[it.u]; }); list.forEach(function (it) { if (allOn) delete S.msel[it.u]; else S.msel[it.u] = 1; }); render();
+  };
+  ACT.mselgo = function (k) {
+    var P = S.P, sell = k === 'sell', its = P.inv.filter(function (it) { return S.msel && S.msel[it.u] && !it.lock; }); if (!its.length) return;
+    var hi = its.filter(function (it) { return it.r >= 3; }).length, en = its.filter(function (it) { return it.enh > 0; }).length, ps = R.presetUids(P), pn = its.filter(function (it) { return ps[it.u]; }).length;
+    var gain = sell ? fmt(its.reduce(function (a, it) { return a + R.sellPrice(it); }, 0)) + ' ' + CUR : (function () { var s = 0, d = 0; its.forEach(function (it) { var y = R.dismantleYield(it); s += y.stone; d += y.dust; }); return fmt(s) + ' 마석 · ' + fmt(d) + ' 마석가루'; })();
+    var best = its.slice().sort(function (a, b) { return b.r - a.r || b.ilvl - a.ilvl; }).slice(0, 3).map(function (it) { return '<b style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</b>'; }).join(', ');
+    modal(mhead(sell ? '선택 판매' : '선택 분해', '고른 장비 ' + its.length + '개') +
+      '<p>고른 장비 <b class="num">' + its.length + '</b>개를 ' + (sell ? '판매' : '분해') + '합니다. 받는 것: <b class="gold">' + gain + '</b></p>' +
+      (hi + en + pn ? '<p class="small bad" style="margin-top:6px"><b>주의</b> · ' + [hi ? '영웅 이상 장비 ' + hi + '개' : '', en ? '강화한 장비 ' + en + '개' : '', pn ? '장비 프리셋에 저장된 장비 ' + pn + '개' : ''].filter(Boolean).join(' · ') + '가 포함되어 있습니다.</p>' : '') +
+      '<p class="small muted" style="margin-top:6px">포함: ' + best + (its.length > 3 ? ' 외 ' + (its.length - 3) + '개' : '') + '</p><p class="tiny faint" style="margin-top:6px">24시간 안에는 「되사기」에서 받은 만큼 내고 되찾을 수 있습니다.</p>' +
+      '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn ghost" data-act="modal-close">취소</button><button class="btn ' + (sell ? 'danger' : 'primary') + '" data-act="mseldo" data-a="' + k + '">' + (sell ? '판매' : '분해') + '</button></div>');
+  };
+  ACT.mseldo = function (k) {
+    var us = S.P.inv.filter(function (it) { return S.msel && S.msel[it.u] && !it.lock; }).map(function (it) { return it.u; }); closeModal(); if (!us.length) return;
+    act(k === 'sell' ? 'sellMany' : 'dismantleMany', { us: us }).then(function (r) { if (r) { S.msel = {}; toast(k === 'sell' ? '선택 판매' : '선택 분해', r.n + '개 · ' + (k === 'sell' ? '+' + fmt(r.gold) + ' ' + CUR : '마석 +' + fmt(r.stone) + ' · 마석가루 +' + fmt(r.dust)), 2400); } render(); });
   };
   ACT.bulkgo = function (type, r) {
     var nv = $('#bulk-never'); closeModal();
@@ -4449,8 +4481,8 @@
   };
   // 단순 행동: data-a = 행동 이름, data-b = 인자 하나
   var SIMPLE = {
-    login: function () { return {}; }, daily: function (b) { return { i: +b }; }, task: function (b) { return { s: b }; }, sellBelow: function (b) { return { r: +b }; },
-    unequip: function (b) { return { slot: b }; }, equip: function (b) { return { u: b }; }, lock: function (b) { return { u: b }; }, sell: function (b) { return { u: b }; }, dismantle: function (b) { return { u: b }; }, dismantleBelow: function (b) { return { r: +b }; },
+    login: function () { return {}; }, daily: function (b) { return { i: +b }; }, task: function (b) { return { s: b }; }, sellBelow: function (b) { var p = String(b).split(':'); return { r: +p[0], lv: +p[1] || 0 }; },
+    unequip: function (b) { return { slot: b }; }, equip: function (b) { return { u: b }; }, lock: function (b) { return { u: b }; }, sell: function (b) { return { u: b }; }, dismantle: function (b) { return { u: b }; }, dismantleBelow: function (b) { var p = String(b).split(':'); return { r: +p[0], lv: +p[1] || 0 }; },
     drink: function (b) { return { id: b }; }, egg: function () { return {}; }, eggInc: function () { return {}; }, eggRush: function () { return {}; }, eggHatch: function () { return {}; }, eggCancel: function () { return {}; }, feed: function (b) { var p = String(b).split(':'); return p[1] ? { id: p[0], by: p[1] } : { id: b }; },
     famAct: function (b) { return { id: b }; }, resStart: function (b) { return { id: b }; }, buy: function (b) { var p = String(b).split(':'); return p[1] ? { id: p[0], n: +p[1] } : { id: b }; }
   };
@@ -4489,7 +4521,9 @@
     S.sel = R.findItem(S.P, u) ? u : null; ACT.nav('gear');
     setTimeout(function () { var d = $('.eqdetail') || $('.detail.eqsel'); if (d && d.offsetParent) d.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, 60);
   };
-  ACT.sel = function (u) { S.sel = u && u !== S.sel ? u : null; render();   // 펼친 장비를 다시 누르면 살펴보기를 닫는다
+  ACT.sel = function (u) {
+    if (S.msel && u && S.P.inv.some(function (it) { return it.u === u; })) { if (S.msel[u]) delete S.msel[u]; else S.msel[u] = 1; render(); return; }   // 여러 개 선택 중: 누르면 고르기 · 빼기
+    S.sel = u && u !== S.sel ? u : null; render();   // 펼친 장비를 다시 누르면 살펴보기를 닫는다
     var d = $('.invdetail') || $('.eqdetail'); if (d && d.offsetParent) d.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); };   // 한 칸일 때 가방 안에 펼친 살펴보기가 보이게
   ACT.invf = function (f) { S.invF = f; render(); };
   // 가방 부옵션 필터: 가방에 있는 부옵션만 고를 수 있고, 장착 중인 장비의 같은 옵션 값도 함께 보여 비교한다 (선택은 이 기기에 기억)
@@ -6100,7 +6134,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102367;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102374;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
