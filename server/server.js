@@ -620,9 +620,11 @@ routes['POST /api/act'] = async (req, res) => {
     if (type === 'exam' && r && r.pass) {
       if (r.letter === 'S') {   // S등급 진급: 학년 소식을 돋보이게 + 공지 채팅 알림. 1 · 3 · 5 · 7번째 S면 받은 칭호도 함께
         const sn = P.st.sGrades || 0, tt = R.D.TITLES.find((t) => t.stat === 'sGrades' && t.n === sn), grad = P.grade >= 8;
-        const tag = sn >= 7 ? '[전 학년 수석]' : grad ? '[수석 졸업]' : '[수석 진급]', head = r.grade + '학년 기말시험을 S등급(' + r.total + '점)으로 통과하고 ' + (grad ? '마스터 과정이 되었습니다' : P.grade + '학년으로 진급했습니다');
-        world.addNews(tag + ' ' + P.name + ' 학생이 ' + head + '.' + (tt ? ' 칭호 ' + R.josa('「' + tt.name + '」', '을', '를') + ' 받았습니다.' : ''), now);
-        chat.system('notice', tag + ' ' + P.name + ' · ' + (sn >= 7 ? '일곱 기말시험 모두 S등급' : grad ? '졸업 시험 S등급' : r.grade + '학년 S등급'), Date.now() / 1000);
+        // 100점 만점: 처음이면 칭호 「수석 중의 수석」(stat exam100)도 함께 알린다
+        const perfect = r.total >= 100, t100 = perfect ? R.D.TITLES.find((t) => t.stat === 'exam100' && t.n === (P.st.exam100 || 0)) : null, got = [tt, t100].filter(Boolean).map((t) => '「' + t.name + '」');
+        const tag = sn >= 7 ? '[전 학년 수석]' : grad ? '[수석 졸업]' : '[수석 진급]', head = r.grade + '학년 기말시험을 ' + (perfect ? 'S등급 만점(' + r.total + '점)' : 'S등급(' + r.total + '점)') + '으로 통과하고 ' + (grad ? '마스터 과정이 되었습니다' : P.grade + '학년으로 진급했습니다');
+        world.addNews(tag + ' ' + P.name + ' 학생이 ' + head + '.' + (got.length ? ' 칭호 ' + R.josa(got.join(' · '), '을', '를') + ' 받았습니다.' : ''), now);
+        chat.system('notice', tag + ' ' + P.name + ' · ' + (sn >= 7 ? '일곱 기말시험 모두 S등급' : grad ? '졸업 시험 S등급' : r.grade + '학년 S등급') + (perfect ? ' · 만점(' + r.total + '점)' + (t100 ? ' · 칭호 「' + t100.name + '」' : '') : ''), Date.now() / 1000);
       } else world.addNews(P.name + ' 학생이 ' + (P.grade >= 8 ? '졸업 시험을 통과해 마스터 과정이 되었습니다' : P.grade + '학년으로 진급했습니다'), now);
     }
     if ((type === 'clsExam' || type === 'setCls') && r) setImmediate(() => { try { chat.clsChanged(pid); } catch (e) { } });
