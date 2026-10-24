@@ -1603,8 +1603,10 @@
     var P = S.P, c = C(), rows = [], idleS = [], t = now(), dz = R.dreaming(P, t), ot = false;
     // 진행 중인 것만 한 줄씩. 비어 있는 자리는 맨 아래 한 줄로 모은다
     for (var i = 0; i < c.lecSlots; i++) { var l = P.lec[i], q = P.lecQ && P.lecQ[i]; if (l) rows.push(tline('수업', R.SUBJ[l.s].name + ' 수업' + (q ? ' <span class="tiny faint">→ 다음 ' + R.SUBJ[q.s].name + '</span>' : ''), l, 'lecture')); else { idleS.push('lecture'); if (R.onTime(P, i, t)) ot = true; } }
-    for (var k = 0; k < c.expSlots; k++) { var e = P.exp[k]; if (e && expDone(e)) rows.push('<div class="tl"><span class="tli">원정</span><div class="tlb"><div class="small">' + e.s + '단계 ' + R.zoneOf(e.s).name + '</div><div class="tiny gold">' + (e.done < e.end ? '쓰러져 돌아옴' : '원정 끝') + ' · 완료 대기</div></div><button class="btn sm primary" data-act="exp-claim" data-a="' + k + '">원정 완료</button></div>'); else if (e) rows.push(tline('원정', e.s + '단계 ' + R.zoneOf(e.s).name, e, 'explore')); else idleS.push('explore'); }
+    var doneRows = [];   // 끝나서 완료를 기다리는 원정은 맨 아래(빈 슬롯 줄 바로 위)로: 완료를 누른 뒤에도 같은 자리에서 원정 화면으로 갈 수 있게
+    for (var k = 0; k < c.expSlots; k++) { var e = P.exp[k]; if (e && expDone(e)) doneRows.push('<div class="tl"><span class="tli">원정</span><div class="tlb"><div class="small">' + e.s + '단계 ' + R.zoneOf(e.s).name + '</div><div class="tiny gold">' + (e.done < e.end ? '쓰러져 돌아옴' : '원정 끝') + ' · 완료 대기</div></div><button class="btn sm primary" data-act="exp-claim" data-a="' + k + '">원정 완료</button></div>'); else if (e) rows.push(tline('원정', e.s + '단계 ' + R.zoneOf(e.s).name, e, 'explore')); else idleS.push('explore'); }
     for (var r = 0; r < c.resSlots; r++) { var rq = P.rsq[r]; if (rq) rows.push(tline('연구', R.RES[rq.id].name + ' ' + ((P.rs[rq.id] || 0) + 1) + '단계', rq, 'lib')); else idleS.push('lib'); }
+    rows = rows.concat(doneRows);
     if (idleS.length) {
       var nm = { lecture: '수업', explore: '원정', lib: '연구' }, cnt = {}; idleS.forEach(function (x) { cnt[x] = (cnt[x] || 0) + 1; });
       var btns = Object.keys(cnt).map(function (x) { var blocked = dz && x !== 'lib'; return '<button class="btn sm' + (blocked ? ' ghost' : ' primary') + '" data-act="nav" data-a="' + x + '"' + (blocked ? ' disabled title="꿈길 중에는 시작할 수 없습니다"' : '') + '>' + nm[x] + (cnt[x] > 1 ? ' ' + cnt[x] : '') + '</button>'; }).join('');
@@ -4410,7 +4412,7 @@
     act('expClaim', { slot: +i }).then(function (o) {
       if (!o) return; Snd.play('level');
       modal(mhead('원정 결과', o.s + '단계') + '<ul class="report">' + expReportLine(o) + '</ul><p class="small muted" style="margin-top:6px">경험치 +' + fmt(o.xp) + (o.mats ? ' · ' + D.MATS[o.mat].name + ' ' + o.mats : '') + (o.stones ? ' · 마석 ' + o.stones : '') + '</p>' +
-        '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>');
+        '<div class="row" style="justify-content:flex-end;margin-top:14px;gap:8px">' + (S.view === 'explore' ? '<button class="btn primary" data-act="modal-close" autofocus>확인</button>' : '<button class="btn ghost" data-act="modal-close">확인</button><button class="btn primary" data-act="goto" data-a="explore" autofocus>확인하고 원정으로</button>') + '</div>');   // 수업 보고처럼 바로 원정 화면으로
       render();
     });
   };
@@ -6150,7 +6152,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102408;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102409;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
