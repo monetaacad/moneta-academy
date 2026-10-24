@@ -1196,7 +1196,7 @@ var DATA = (function () {
     { id: 'egg', name: '환수의 알', desc: '사역마 알 1개 (지니고 있으면 알 품기 · 경험치 +3%, 경험치 보너스는 3개까지)', cur: 'shard', price: 25 },
     { id: 'manavial', name: '압축 마나병', desc: '마나 4시간 생산분을 즉시 획득 (저장 한도 무시)', cur: 'shard', price: 12, day: 3 },
     { id: 'ticket', name: '토벌 도전권', desc: '월드 보스 추가 도전권 +1 (한 주에 2번까지 · 월요일 KST 0시 초기화)', cur: 'shard', price: 10 },
-    { id: 'bagslot', name: '마법 가방 확장', desc: '가방 칸 +5 (영구, 졸업 후에도 유지)', cur: 'shard', price: 'bag' },
+    { id: 'bagslot', name: '마법 가방 확장', desc: '가방 칸 +5', cur: 'shard', price: 'bag' },
     { id: 'badgebox', name: '휘장 원석', desc: '무작위 보석이 박힌 아카데미 휘장 1개 (Lv 1)', cur: 'shard', price: 40, grade: 3 },
     { id: 'matbox', name: '연금 재료 상자', desc: '해금된 지역 재료 무작위 12개', cur: 'shard', price: 8, grade: 2, day: 3 },
     { id: 'respec', name: '망각의 차', desc: '능력치 포인트 초기화 · 소지품에 보관했다가 원할 때 마십니다 (마시면 자동 분배가 꺼집니다)', cur: 'shard', price: 5 }
