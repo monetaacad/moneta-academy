@@ -1701,6 +1701,7 @@
         '<p class="small muted">' + S2.desc + '</p><blockquote>' + S2.line + '</blockquote>' + subjMiles(S2.id) + taskBox(S2.id) +
         '<div class="row" style="margin-top:8px">' + (on ? '<span class="tag ok">수강 중</span>' : '<button class="btn sm primary"' + (lecFull ? why('이미 듣고 있는 수업이 있습니다. 수업이 끝나면 들을 수 있습니다') : ' data-act="lecpick" data-a="' + S2.id + '"') + '>수업 듣기</button>') + '</div></div>';
     }).join('') + '</div>';
+    h += '<div class="card" style="margin-top:14px" data-anchor="clsx"><h3>학과 · 전과시험</h3>' + clsRow('lec') + '</div>';   // 프로필 편집 말고 수업 화면에서도 전과시험을 본다
     return h;
   };
   ACT.lecsort = function (k) { PREF.lecSort = k; savePref(); render(); };
@@ -6032,27 +6033,30 @@
   var NAME_RULE_SIGNUP = '입학한 뒤 이름은 한 번 언제든 바꿀 수 있고, 바꾼 뒤에는 30일이 지나야 다시 바꿀 수 있습니다.';
   function nameInfo() { var P = S.P, lf = R.renameLeft(P, now()); return { free: !P.nameAt, left: lf, at: P.nameAt ? P.nameAt + R.NAME_CD : 0 }; }
   // 학과(기사 · 마법사 · 마검사): 한 번 바꿀 수 있다. 바꾸기는 두 번 눌러야 된다
-  function clsRow() {
+  function clsRow(src) {   // src 'lec': 수업 화면에 그린 줄 (버튼을 눌러도 프로필 창을 열지 않고 수업 화면을 다시 그린다)
+    var sb = src ? ' data-b="' + src + '"' : '';
     var P = S.P, cur = R.clsOf(P), free = R.clsCanChange(P), cd = (P.clsCd || 0) - now();
     var h = '<div class="row" style="margin-top:12px;flex-wrap:wrap;gap:6px"><span class="small muted">학과</span>' + clsDot(cur.id, 20) + '<b>' + cur.name + '</b><span class="tiny faint">' + cur.bonusText + '</span><span class="spacer"></span>';
-    if (free) h += D.CLASSES.filter(function (x) { return x.id !== cur.id; }).map(function (x) { var arm = S.clsArm === x.id && S.clsArmT > Date.now(); return '<button class="btn sm' + (arm ? ' primary' : '') + '" data-act="clsset" data-a="' + x.id + '" data-tip="' + esc(x.bonusText) + '">' + (arm ? '한 번 더 누르면 ' + R.josa(x.name, '으로', '로') + ' 바꿉니다' : R.josa(x.name, '으로', '로') + ' 바꾸기') + '</button>'; }).join('');
+    if (free) h += D.CLASSES.filter(function (x) { return x.id !== cur.id; }).map(function (x) { var arm = S.clsArm === x.id && S.clsArmT > Date.now(); return '<button class="btn sm' + (arm ? ' primary' : '') + '" data-act="clsset" data-a="' + x.id + '"' + sb + ' data-tip="' + esc(x.bonusText) + '">' + (arm ? '한 번 더 누르면 ' + R.josa(x.name, '으로', '로') + ' 바꿉니다' : R.josa(x.name, '으로', '로') + ' 바꾸기') + '</button>'; }).join('');
     h += '</div>';
     if (free) return h + '<p class="tiny faint" style="margin-top:2px">예전에 입학해 학과를 선택한 적이 없어 지금은 시험 없이 한 번 선택할 수 있습니다(지금은 마법사). 그 뒤로는 전과시험을 봐야 합니다.</p>';
     var fee = R.clsExamFee(P);
     return h + '<div class="clsexam"><div class="tiny muted">전과시험 · 옮길 학과의 몸으로 시험관과 대련해 이기면 옮깁니다 · 응시료 ' + MONEY(fee) + '(이기든 지든) · 지면 하루 뒤 다시</div>' +
       (cd > 0 ? '<p class="tiny gold" style="margin-top:4px">다음 응시까지 ' + R.fmtTime(cd) + '</p>' : '<div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap">' + D.CLASSES.filter(function (x) { return x.id !== cur.id; }).map(function (x) {
         var pv = R.clsExamPreview(P, wctx(), x.id, now()), arm = S.clsArm === x.id && S.clsArmT > Date.now();
-        return '<button class="btn sm' + (arm ? ' primary' : '') + '" data-act="clsexam" data-a="' + x.id + '" data-tip="' + esc(x.bonusText) + '">' + (arm ? '한 번 더 누르면 응시합니다' : x.name + ' 전과시험') + ' <span class="tiny ' + (pv.win ? 'good' : 'bad') + '">' + (pv.win ? '승산 있음' : '버거움 · ' + Math.round(pv.frac * 100) + '%') + '</span></button>';
+        return '<button class="btn sm' + (arm ? ' primary' : '') + '" data-act="clsexam" data-a="' + x.id + '"' + sb + ' data-tip="' + esc(x.bonusText) + '">' + (arm ? '한 번 더 누르면 응시합니다' : x.name + ' 전과시험') + ' <span class="tiny ' + (pv.win ? 'good' : 'bad') + '">' + (pv.win ? '승산 있음' : '버거움 · ' + Math.round(pv.frac * 100) + '%') + '</span></button>';
       }).join('') + '</div>') + '</div>';
   }
-  ACT.clsset = function (id) {
-    if (S.clsArm !== id || !(S.clsArmT > Date.now())) { S.clsArm = id; S.clsArmT = Date.now() + 4000; ACT.me('profile'); return; }
-    S.clsArm = null; act('setCls', { cls: id }).then(function (j) { if (j && !j.error) toast('학과', R.CLS[id].name + ' 학과로 옮겼습니다'); ACT.me('profile'); });
+  function clsRedraw(src) { if (src === 'lec') { render(); setTimeout(render, 4100); } else ACT.me('profile'); }
+  ACT.clsset = function (id, src) {
+    if (S.clsArm !== id || !(S.clsArmT > Date.now())) { S.clsArm = id; S.clsArmT = Date.now() + 4000; clsRedraw(src); return; }
+    S.clsArm = null; act('setCls', { cls: id }).then(function (j) { if (j && !j.error) toast('학과', R.CLS[id].name + ' 학과로 옮겼습니다'); clsRedraw(src); });
   };
-  ACT.clsexam = function (id) {
-    if (S.clsArm !== id || !(S.clsArmT > Date.now())) { S.clsArm = id; S.clsArmT = Date.now() + 4000; ACT.me('profile'); return; }
+  ACT.clsexam = function (id, src) {
+    if (S.clsArm !== id || !(S.clsArmT > Date.now())) { S.clsArm = id; S.clsArmT = Date.now() + 4000; clsRedraw(src); return; }
     S.clsArm = null; act('clsExam', { cls: id }).then(function (r) {
-      if (!r || r.error) { ACT.me('profile'); return; }
+      if (!r || r.error) { clsRedraw(src); return; }
+      if (src === 'lec') render();
       Snd.play(r.win ? 'pass' : 'fail');
       modal(mhead(r.win ? '전과시험 합격' : '전과시험 불합격', R.CLS[id].name + ' 학과') +
         '<p class="small">' + (r.win ? '시험관을 쓰러뜨렸습니다. 이제부터 <b class="gold">' + R.CLS[id].name + '</b>입니다.' : '시험관 체력을 ' + Math.round((1 - (r.mHp || 0)) * 100) + '%까지 깎았지만 이기지 못했습니다. 하루 뒤 다시 볼 수 있습니다.') + '</p>' +
@@ -6100,7 +6104,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102367;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102370;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
