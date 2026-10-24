@@ -5563,7 +5563,7 @@
     return h;
   };
   /* ───────── 교류 › RP 게시판 ─────────
-     RP 말머리 글을 메모 형식으로: 제목 없이 본문(500자)만 남기고, 목록에서 바로 댓글로 이어 쓴다. 최근 댓글 3개만 보이고 「이전 댓글 더 보기」로 펼친다 */
+     RP 말머리 글을 메모 형식으로: 제목 없이 본문(500자)만 남기고, 목록에서 바로 댓글로 이어 쓴다. 최근 댓글 3개만 보이고 「댓글 N개」(총 댓글 수)를 누르면 펼친다 */
   function rpBoardView() {
     var b = S.bd, d = b.data, op = d && d.op;
     var h = pageHead('짧게 남기고 이어 쓰는 역극', 'RP 게시판', '메모 500자 · 댓글로 이어 쓰기 · 대사 *행동*');
@@ -5594,7 +5594,8 @@
       (m.canDel ? '<button class="linkbad tiny" data-act="bddel" data-a="' + m.id + '">' + (armed ? '한 번 더 누르면 지웁니다' : '지우기') + '</button>' : '') + '</div>';
     if (ed) h += '<div class="rpedit"><textarea id="rp-ed" maxlength="500" rows="3">' + esc(b.medit.body) + '</textarea><div class="row" style="gap:6px;margin-top:6px"><span class="spacer"></span><button class="btn sm ghost" data-act="rpedit" data-a="">취소</button><button class="btn sm primary" data-act="rpsave" data-a="' + m.id + '">저장</button></div></div>';
     else h += (titled ? '<div class="rptitle">' + esc(m.title) + '</div>' : '') + '<div class="rpbody">' + rpText(m.body) + '</div>';
-    h += '<div class="rpcoms">' + (hidden ? '<button class="linkbtn tiny" data-act="rpmore" data-a="' + m.id + '">이전 댓글 ' + hidden + '개 더 보기 ▾</button>' : full && full.comments.length > 3 ? '<button class="linkbtn tiny" data-act="rpmore" data-a="' + m.id + '">이전 댓글 접기 ▴</button>' : '') +
+    var total = full ? full.comments.length : m.ncom;   // 총 댓글 수: 접혀 있으면 눌러서 모두 펼친다
+    h += '<div class="rpcoms">' + (hidden ? '<button class="linkbtn tiny" data-act="rpmore" data-a="' + m.id + '" title="이전 댓글 ' + hidden + '개를 함께 봅니다">댓글 ' + total + '개 ▾</button>' : full && total > 3 ? '<button class="linkbtn tiny" data-act="rpmore" data-a="' + m.id + '">댓글 ' + total + '개 · 접기 ▴</button>' : total ? '<span class="tiny faint">댓글 ' + total + '개</span>' : '') +
       rpThread(coms).map(function (c) {
         var ca = S.confirm['bdc' + c.id] > Date.now(), rp = c.parent && coms.some(function (x) { return x.id === c.parent; });
         return '<div class="rpcom' + (c.op ? ' op' : '') + (c.parent ? ' reply' : '') + '">' + (c.parent ? '<span class="tiny faint rpto">↳' + (rp || !c.pa ? '' : ' ' + esc(c.pa)) + '</span>' : '') + '<span class="small rpcw">' + (c.aid === 'staff' ? '운영진' + opBadge() : rpWho(c.aid, c.author, c.badge)) + '</span>' + (cedOn(c) ? cedBox(m.id) : '<span class="small rpct">' + rpText(c.body) + '</span>') + '<span class="tiny faint rpcm">' + bdWhen(c.created) + (c.edited ? ' · 고침' : '') +
@@ -5604,7 +5605,7 @@
           (b.mo === m.id && b.mrep === c.id ? rpForm(m.id, c.author) : '');
       }).join('') +
       (b.mo === m.id && !b.mrep ? rpForm(m.id)
-        : '<button class="btn sm ghost rpgo" data-act="rpco" data-a="' + m.id + '">이어 쓰기' + (m.ncom ? ' <span class="faint num">' + m.ncom + '</span>' : '') + '</button>') + '</div></article>';
+        : '<button class="btn sm ghost rpgo" data-act="rpco" data-a="' + m.id + '">이어 쓰기</button>') + '</div></article>';
     return h;
   }
   // 댓글을 줄기로: 원래 댓글 바로 밑에 답글 (원래 댓글이 접혀 있으면 그 자리에 「↳ 이름」으로)
@@ -6100,7 +6101,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102367;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102403;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
