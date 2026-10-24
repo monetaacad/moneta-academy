@@ -1319,13 +1319,12 @@
     for (var i = 0; i < R.REW_ILVL.length; i++) { x -= R.REW_ILVL[i][1]; if (x < 0) { add = R.REW_ILVL[i][0]; break; } }
     return Math.max(1, Math.min(Math.max(0, P.maxStage - 9) + add + extra, Math.min(P.maxStage, R.stageCap(P)) + extra));
   };
-  R.mailNeedSlots = function (rw) { rw = rw || {}; return (Array.isArray(rw.items) ? rw.items.length : 0) + (Math.floor(Number(rw.gear) || 0)); };
+  R.mailNeedSlots = function (rw) { rw = rw || {}; return Array.isArray(rw.items) ? rw.items.length : 0; };   // 희귀 장비 상자는 소지품으로 들어가므로 가방 칸이 필요 없다
   R.grantMail = function (P, W, now, rw) {
     rw = R.cleanRewards(rw); var out = { items: [] }; R.noMailQ = true;   // 우편에서 받는 장비는 다시 우편으로 돌리지 않는다 (받기 전에 가방 칸을 확인)
     if (rw.shard) P.res.shard += rw.shard; if (rw.gold) addGold(P, rw.gold); if (rw.stone) P.res.stone += rw.stone; if (rw.dust) P.res.dust = (P.res.dust || 0) + rw.dust;
     if (rw.mana) addMana(P, rw.mana); if (rw.know) P.res.know += rw.know; if (rw.egg) P.fam.eggs += rw.egg; if (rw.ticket) P.wb.extra = (P.wb.extra || 0) + rw.ticket;
-    if (rw.rsDone || rw.gradeUp || rw.respec) { var tk = P.tok || (P.tok = {}); if (rw.rsDone) tk.rsDone = (tk.rsDone || 0) + rw.rsDone; if (rw.gradeUp) tk.gradeUp = (tk.gradeUp || 0) + rw.gradeUp; if (rw.respec) tk.respec = (tk.respec || 0) + rw.respec; }
-    for (var i = 0; i < (rw.gear || 0); i++) { var it = makeItem(P, pick(P, D.SLOTS).id, R.rewardIlvl(P), Math.max(2, rollRarity(P, 0.6)), 2); out.items.push({ name: it.name, r: it.r, res: gainItem(P, it, now, '우편 (무작위 장비)', 0.6) }); }
+    if (rw.rsDone || rw.gradeUp || rw.respec || rw.gear) { var tk = P.tok || (P.tok = {}); if (rw.rsDone) tk.rsDone = (tk.rsDone || 0) + rw.rsDone; if (rw.gradeUp) tk.gradeUp = (tk.gradeUp || 0) + rw.gradeUp; if (rw.respec) tk.respec = (tk.respec || 0) + rw.respec; if (rw.gear) tk.rarebox = (tk.rarebox || 0) + rw.gear; }   // 희귀 장비 상자는 소지품으로 (열 때 장비가 나온다)
     // 장비 고유 번호는 그대로 둔다 (가방이 가득 차 맡겨 둔 장비가 돌아오면 장비 프리셋에 다시 맞물리게). 같은 번호가 이미 있으면(가방 · 장착 · 되사기 목록) 새 번호
     (rw.items || []).forEach(function (it0) { var it = JSON.parse(JSON.stringify(it0)); if (!it.u || R.findItem(P, it.u) || (P.bb || []).some(function (x) { return x && x.it && x.it.u === it.u; })) it.u = uid(P); it.lock = false; out.items.push({ name: it.name, r: it.r, res: gainItem(P, it, now, '우편 (지정 장비)') }); });
     R.noMailQ = false;
@@ -2074,7 +2073,7 @@
     badgeGain(P, R.BADGE_XP.fight, now);
     P.st[key] = f; if (foe.wall) P.st.bosses++; var g = R.ctReward(f), rw = out.rw;
     if (g.gold) { addGold(P, g.gold); rw.gold = g.gold; } if (g.stone) { P.res.stone += g.stone; rw.stone = g.stone; } if (g.shard) { P.res.shard += g.shard; rw.shard = g.shard; }
-    if (g.gear || g.egg) { var gm = R.grantMail(P, W, now, { gear: g.gear, egg: g.egg }); if (g.egg) rw.egg = g.egg; out.items = gm.items; }
+    if (g.gear || g.egg) { R.grantMail(P, W, now, { gear: g.gear, egg: g.egg }); if (g.egg) rw.egg = g.egg; if (g.gear) rw.gear = g.gear; }   // 희귀 장비 상자는 소지품으로
     if (f % R.CT_MILE === 0) { var tt = R.ctTitle(cls, f); if (tt) { out.titles.push(tt.name); log(P, now, R.CT_NAME[cls] + ' ' + f + '층 돌파! 칭호 「' + tt.name + '」를 얻었습니다', 'legend'); } }
     else log(P, now, R.CT_NAME[cls] + ' ' + f + '층 돌파', 'good');
     return out;
@@ -2544,17 +2543,35 @@
     if (s.day) { var dk = R.dayKST(now); if (!P.shopD || P.shopD.d !== dk) P.shopD = { d: dk, n: {} }; P.shopD.n[id] = (P.shopD.n[id] || 0) + 1; }
     if (id === 'stone10') P.res.stone += 10;
     else if (id === 'dust10') { var dg = s.give.dust * n; P.res.dust = (P.res.dust || 0) + dg; out.dust = dg; }
-    else if (id === 'gearbox') { var gb = calc(P, W, now).rarity + 0.4, it = makeItem(P, pick(P, D.SLOTS).id, R.rewardIlvl(P), Math.max(1, rollRarity(P, gb)), 1); out.item = { name: it.name, r: it.r, res: gainItem(P, it, now, '장비 상자', gb) }; }
+    else if (id === 'gearbox' || id === 'matbox') { var tb = P.tok || (P.tok = {}); tb[id] = (tb[id] || 0) + 1; out.tok = id; }   // 상자는 소지품으로 (「소지품」에서 연다)
     else if (id === 'egg') P.fam.eggs++;
     else if (id === 'shardbag') { P.sbDay = R.dayKST(now); P.res.shard += s.give.shard; out.shard = s.give.shard; }   // 하루 1번
     else if (id === 'badgebox') { var nb = makeBadge(P); gainBadge(P, nb, now, '매점 휘장 원석'); out.badge = { name: nb.name, gem: nb.gem }; }
     else if (id === 'manavial') { var m = calc(P, W, now).mana * 14400; addMana(P, m); out.mana = m; }
     else if (id === 'ticket') { R.wbBuyLeft(P, now); P.wb.extra++; P.wb.bought++; }
     else if (id === 'bagslot') P.bagExtra += 5;
-    else if (id === 'matbox') { var zs = D.ZONES.filter(function (z) { return z.from <= P.maxStage; }); out.mats = {}; for (var i = 0; i < 12; i++) { var z = pick(P, zs); P.mats[z.mat] = (P.mats[z.mat] || 0) + 1; out.mats[z.mat] = (out.mats[z.mat] || 0) + 1; } }
     else if (id === 'respec') { var tk = P.tok || (P.tok = {}); tk.respec = (tk.respec || 0) + 1; out.tok = 'respec'; }   // 소지품으로 (마실 때 「소지품」에서 사용)
     // 대항전 점수: 별조각 물건은 쓴 별조각만큼, 아르크 · 마석 물건은 1회 5점. 한 주 CUP_SHOP_WEEK점까지
     var sc = Math.min(cur === 'shard' ? price : 5 * n, Math.max(0, R.CUP_SHOP_WEEK - (P.wk.shop || 0))); if (sc > 0) { P.wk.shop = (P.wk.shop || 0) + sc; cupAdd(P, sc, 'shop'); }
+    return out;
+  };
+  /* 상자 (소지품 P.tok에 모아 두었다가 연다). 장비 상자는 여는 순간의 행운으로 굴린다
+     gearbox: 매점 부엉이 보급 상자 · matbox: 매점 연금 재료 상자 · rarebox: 희귀 장비 상자 (우편 · 별의 탑 · 무한의 탑 보상) */
+  R.BOXES = { gearbox: { name: '부엉이 보급 상자', gear: true }, rarebox: { name: '희귀 장비 상자', gear: true }, matbox: { name: '연금 재료 상자' } };
+  R.BOX_OPEN_MAX = 50;
+  function boxOpen(P, W, now, id, out) {
+    if (id === 'gearbox') { var gb = calc(P, W, now).rarity + 0.4, it = makeItem(P, pick(P, D.SLOTS).id, R.rewardIlvl(P), Math.max(1, rollRarity(P, gb)), 1); out.items.push({ name: it.name, r: it.r, ilvl: it.ilvl, res: gainItem(P, it, now, '장비 상자', gb) }); }
+    else if (id === 'rarebox') { var it2 = makeItem(P, pick(P, D.SLOTS).id, R.rewardIlvl(P), Math.max(2, rollRarity(P, 0.6)), 2); out.items.push({ name: it2.name, r: it2.r, ilvl: it2.ilvl, res: gainItem(P, it2, now, '희귀 장비 상자', 0.6) }); }
+    else if (id === 'matbox') { var zs = D.ZONES.filter(function (z) { return z.from <= P.maxStage; }); for (var i = 0; i < 12; i++) { var z = pick(P, zs); P.mats[z.mat] = (P.mats[z.mat] || 0) + 1; out.mats[z.mat] = (out.mats[z.mat] || 0) + 1; } }
+  }
+  A.openBox = function (P, W, now, a) {
+    var id = str(a.id), b = Object.prototype.hasOwnProperty.call(R.BOXES, id) ? R.BOXES[id] : null, tk = P.tok || (P.tok = {}), have = tk[id] || 0; if (!b) err('없는 상자입니다'); if (have <= 0) err(b.name + '가 없습니다');
+    var n = int(a.n == null ? 1 : a.n, 1, Math.min(have, R.BOX_OPEN_MAX));
+    if (b.gear) { var room = calc(P, W, now).bag - P.inv.length; if (room <= 0) err('장비 가방이 가득 찼습니다. 가방을 비운 뒤 다시 열어야 합니다'); n = Math.min(n, room); }   // 나온 장비가 판매 · 우편으로 빠지지 않게 가방 빈칸만큼만
+    var out = { id: id, name: b.name, n: n, items: [], mats: {} }; R.noMailQ = true;
+    try { for (var i = 0; i < n; i++) boxOpen(P, W, now, id, out); } finally { R.noMailQ = false; }
+    tk[id] = have - n; out.left = tk[id];
+    log(P, now, b.name + ' ' + n + '개를 열었습니다', 'news');
     return out;
   };
   // 망각의 차: 분배한 능력치 포인트를 모두 돌려받는다. 다시 직접 나눌 수 있게 자동 분배는 끈다 (켜 두면 곧바로 같은 대로 다시 나뉘므로)
