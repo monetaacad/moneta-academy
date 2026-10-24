@@ -1258,8 +1258,8 @@ function mkSearch(f, now) {
   if (f.q) { where.push(`m.name LIKE ? ESCAPE '\\'`); args.push('%' + f.q.replace(/[\\%_]/g, (c) => '\\' + c) + '%'); }
   const dir = f.sort === 'high' ? 'DESC' : 'ASC';
   const cur = '(CASE WHEN m.bids > 0 THEN m.bid ELSE m.start_price END)';
-  const order = f.auc ? ({ cur: cur + ' ASC', curhi: cur + ' DESC', buy: 'm.price ASC', buyhi: 'm.price DESC', new: 'm.id DESC', bids: 'm.bids DESC, m.expires ASC' }[f.sort] || 'm.expires ASC')   // 경매 기본: 마감 임박순
-    : f.sort === 'new' ? 'm.id DESC' : f.sort === 'lvl' ? 'm.ilvl DESC, m.price ASC' : f.kind === 'mat' || f.kind === 'pot' || f.kind === 'tok' ? 'm.price / m.qty ' + dir : 'm.price ' + dir;
+  const order = f.auc ? ({ cur: cur + ' ASC', curhi: cur + ' DESC', buy: 'm.price ASC', buyhi: 'm.price DESC', new: 'm.id DESC', bids: 'm.bids DESC, m.expires ASC', lvl: 'm.ilvl DESC, m.expires ASC', lvlo: 'm.ilvl ASC, m.expires ASC' }[f.sort] || 'm.expires ASC')   // 경매 기본: 마감 임박순
+    : f.sort === 'new' ? 'm.id DESC' : f.sort === 'lvl' ? 'm.ilvl DESC, m.price ASC' : f.sort === 'lvlo' ? 'm.ilvl ASC, m.price ASC' : f.kind === 'mat' || f.kind === 'pot' || f.kind === 'tok' ? 'm.price / m.qty ' + dir : 'm.price ' + dir;
   const sql = `SELECT m.id, m.kind, m.data, m.name, m.slot, m.rarity, m.ilvl, m.qty, m.price, m.created, m.expires, m.seller, m.auc, m.start_price, m.bid, m.bids, m.bidder, COALESCE(p.name, m.seller_name) AS seller_name FROM market m LEFT JOIN players p ON p.id = m.seller WHERE ${where.join(' AND ')} ORDER BY ${order} LIMIT 60`;
   let st = mkQueries.get(sql); if (!st) { st = dbx.db.prepare(sql); mkQueries.set(sql, st); }
   if (f.sort !== 'pow' || !f.powP) return st.all(...args);
