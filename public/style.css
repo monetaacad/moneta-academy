@@ -564,6 +564,8 @@ img.av { background: transparent; }   /* 배경 투명 두상은 뒤의 화면�
 .hrrow, .hrme { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; white-space: nowrap; }   /* 기숙사 공헌도 순위: 좁은 화면에서도 한 줄 */
 .hrrow .hrn { width: 18px; flex: none; text-align: right; } .hrrow .ttl { flex: none; max-width: 42%; overflow: hidden; text-overflow: ellipsis; margin-right: 0; }
 .hrme { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line2); } .hrme > .muted { flex: 1; }
+.ginvd { grid-column: 1 / -1; padding: 8px 10px; border: 1px solid var(--line2); border-radius: 9px; background: var(--sunk); }   /* 동아리 장비 넣기: 고른 장비의 능력치 · 옵션 (칸 줄 전체 폭) */
+.ginvd .mkst { max-width: none; background: none; padding: 0; margin-top: 6px; }
 .itm .iaf { display: block; font-size: 11px; color: var(--brass2); margin-top: 1px; }   /* 가방 부옵션 필터: 고른 옵션 값 */
 .rtag-in { display: none; }
 @media (max-width: 640px) { .rtag-in { display: inline-block; vertical-align: middle; max-width: 100%; overflow: hidden; text-overflow: ellipsis; } .rtag-out { display: none; } }   /* 정보창 관계 탭: 좁은 화면은 이름 옆에 관계 태그, 설명은 아랫줄 전체 폭 */
