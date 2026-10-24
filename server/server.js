@@ -1491,8 +1491,9 @@ const TW_RUNS = 4;   // 파티마다 남겨 두는 최근 실행
 function towerRuns(party) { const row = dbx.q.towerGet.get(party); if (!row) return []; try { const x = JSON.parse(row.log); return Array.isArray(x.runs) ? x.runs : []; } catch (e) { return []; } }
 function towerLive(runs) { const real = Date.now() / 1000, r = runs[runs.length - 1]; return r && R.twEndAt(r) > real ? r : null; }
 // 실행이 끝나는 때에 fn(그때의 실행): 배속 · 철수로 끝나는 시각이 바뀌므로 정해진 시간 대신 끝날 때까지 다시 확인한다
-function twAfter(party, id, fn) {
-  const tick = () => { const r = towerRuns(party).find((x) => x.id === id), left = r ? R.twEndAt(r) - Date.now() / 1000 : 0; if (left > 0.05) { setTimeout(tick, Math.min(60000, left * 1000 + 50)).unref(); return; } fn(r); };
+// fb: 아직 저장 전인 이번 실행 (시작 직후 등록할 때 저장된 기록이 없어 곧바로 끝난 것으로 보던 문제 — 실전 종료 채팅이 재생 전에 결과를 알렸다)
+function twAfter(party, id, fn, fb) {
+  const tick = () => { const r = towerRuns(party).find((x) => x.id === id) || fb, left = r ? R.twEndAt(r) - Date.now() / 1000 : 0; if (left > 0.05) { setTimeout(tick, Math.min(60000, left * 1000 + 50)).unref(); return; } fn(r); };
   tick();
 }
 // 실전의 끝나는 시각이 바뀌면(배속 · 철수) 보상 대기 · 파티 순위 대기도 같은 시각으로
@@ -1592,7 +1593,7 @@ function twStartRun(party, mode, starterId) {
     if (mode === 'real') { const used = ps.filter((Q) => R.twUsed(Q, now)); if (used.length) return { error: '오늘 이미 실전에 도전한 파티원이 있습니다: ' + used.map((Q) => Q.name).join(', ') + ' (매일 KST 자정에 초기화)' }; }
     const start = R.twStart(ps.map((Q) => R.twBest(Q, now)));
     const run = Object.assign(R.twRun(ms, start, crypto.randomInt(1, 2147483647)), { id: crypto.randomBytes(6).toString('base64url'), kind: mode, by: P.name, pname: pa ? pa.name : '', t0: Math.round(Date.now() / 100) / 10, ms: R.twMeta(ms), day: R.dayKST(now) });
-    const later = (fn) => twAfter(party, run.id, fn), pname = pa ? pa.name : '';
+    const later = (fn) => twAfter(party, run.id, fn, run), pname = pa ? pa.name : '';
     if (mode === 'real') {
       run.prev = {};
       // 파티 순위는 실전이 끝난 뒤에 (대기 기록으로 넣고, 끝나는 시각에 정식 기록으로)
