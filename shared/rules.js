@@ -558,7 +558,10 @@
   R.sellPrice = function (it) { return Math.floor(K.KILL_GOLD * 3 * Math.pow(1.10, it.ilvl - 1) * Math.pow(it.r + 1, 2) * (1 + it.enh * 0.3)); };
   R.ENH_MAX = 20;
   R.enhCost = function (P, it) { return { gold: Math.floor(60 * Math.pow(1.10, it.ilvl - 1) * Math.pow(1.5, it.enh)), stone: 1 + Math.floor(it.enh * 1.2) }; };
-  R.enhChance = function (P, it) { var b = bonuses(P, null, 0, 0); return clamp(1 - it.enh * 0.065 + (b.enhBonus || 0) + P.subj.rune.lv * 0.004, it.enh >= 15 ? 0.1 : 0.2, 1); };
+  // 강화 성공률 = 기본(단계마다 −6.5%, 하한 +15강부터 10% · 그 아래 20%) + 보너스(룬 각인술 연구 · 룬 문자학). 하한은 기본에만 걸고 보너스는 그 위에 더한다
+  // (예전에는 하한을 맨 마지막에 걸어 +13강 이상에서 연구 보너스가 하한에 묻혀 보이지 않고 효과도 없었다)
+  R.enhChanceParts = function (P, it) { var b = bonuses(P, null, 0, 0), base = Math.max(1 - it.enh * 0.065, it.enh >= 15 ? 0.1 : 0.2), bonus = (b.enhBonus || 0) + P.subj.rune.lv * 0.004; return { base: Math.min(1, base), bonus: bonus, total: clamp(base + bonus, 0, 1) }; };
+  R.enhChance = function (P, it) { return R.enhChanceParts(P, it).total; };
 
   /* ───────── 능력치 ───────── */
   // 능력치 1점당 효과 (calc의 식과 같은 값. 능력치 화면에 합계로 보여 준다)

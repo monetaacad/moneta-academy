@@ -2458,7 +2458,7 @@
     var eqd = P.eq[it.slot] && P.eq[it.slot].u === it.u, c = C(), cost = R.enhCost(P, it), ch = R.enhChance(P, it), delta = eqd ? 0 : R.powerWith(P, it, wctx(), now()) - c.power;
     var h = '<div class="card detail hl ' + (eqd ? 'eqsel' : 'bagsel') + '"><button class="btn sm ghost" data-act="sel" data-a="' + it.u + '" title="살펴보기 닫기" style="float:right;margin:-4px -4px 0 8px">닫기</button><button class="btn sm ghost lockt' + (it.lock ? ' on' : '') + '" data-act="do" data-a="lock" data-b="' + it.u + '" title="잠그면 강화 · 판매 같은 실수를 막을 수 있습니다 (장착 · 해제는 가능)" style="float:right;margin:-4px 0 0 8px">' + (it.lock ? '잠금 해제' : '잠금') + '</button><div class="tiny" style="color:' + rcol(it.r) + '">' + D.RARITY[it.r].name + ' ' + R.slotName(it) + ' · Lv ' + it.ilvl + (eqd ? ' · 장착 중' : '') + '</div><div class="nm" style="color:' + rcol(it.r) + '">' + esc(it.name) + (it.enh ? ' +' + it.enh : '') + '</div><div style="margin-top:8px">' + statLines(it) + '</div>';
     if (!eqd) h += '<div class="small" style="margin-top:8px">장착 시 전투력 <b class="num ' + (delta >= 0 ? 'good' : 'bad') + '">' + (delta >= 0 ? '+' : '') + fmt(delta) + '</b></div>' + cmpLine(it, P.eq[it.slot]);
-    h += '<hr class="sep"><div class="row small"><span class="muted">강화 +' + it.enh + ' → +' + (it.enh + 1) + '</span><span class="spacer"></span>' + (it.enh >= R.ENH_MAX ? '<span class="tag br">최대 강화</span>' : '<span>성공 확률 <b class="num">' + Math.round(ch * 100) + '%</b></span>') + '</div>' + enhPreview(it, eqd) + ownLine(P) + '<div class="row" style="margin-top:10px">';
+    h += '<hr class="sep"><div class="row small"><span class="muted">강화 +' + it.enh + ' → +' + (it.enh + 1) + '</span><span class="spacer"></span>' + (it.enh >= R.ENH_MAX ? '<span class="tag br">최대 강화</span>' : '<span>성공 확률 <b class="num">' + Math.round(ch * 1000) / 10 + '%</b>' + (function () { var cp = R.enhChanceParts(P, it); return cp.bonus > 0.0005 && cp.base < 1 ? ' <span class="tiny faint">(기본 ' + Math.round(cp.base * 1000) / 10 + '% + 연구 · 룬 문자학 ' + Math.round(Math.min(cp.bonus, 1 - cp.base) * 1000) / 10 + '%)</span>' : ''; })() + '</span>') + '</div>' + enhPreview(it, eqd) + ownLine(P) + '<div class="row" style="margin-top:10px">';
     h += eqd ? '<button class="btn sm" data-act="do" data-a="unequip" data-b="' + it.slot + '">해제</button>' : R.canWear(P, it) ? '<button class="btn sm primary" data-act="do" data-a="equip" data-b="' + it.u + '">장착</button>' : '<button class="btn sm" disabled title="내 레벨 이하 장비만 장착할 수 있습니다">레벨 ' + it.ilvl + '부터 장착 가능</button>';
     if (it.enh < R.ENH_MAX && !it.lock) {
       var okc = P.res.gold >= cost.gold && P.res.stone >= cost.stone;
@@ -6235,7 +6235,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102427;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102428;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
