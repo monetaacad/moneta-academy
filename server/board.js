@@ -50,8 +50,14 @@ function create(dbx, sec, opts) {
     const total = arr.length, pages = Math.max(1, Math.ceil(total / LIM.PAGE)), page = Math.min(pages, Math.max(1, Number(f.page) | 0 || 1));
     const privN = op ? [...posts.values()].filter((p) => p.priv).length : 0;
     const memo = f.sp === 'rp';   // RP 게시판: 목록에서 바로 읽도록 본문과 최근 댓글을 함께 보낸다
-    const out = (p) => memo ? Object.assign(brief(p, me), { body: p.body, canDel: p.pid === me || op, coms: dbx.q.bdComLast.all(p.id, LIM.MEMO_COMS).map((c) => comOut(c, me)) }) : brief(p, me);
+    const out = (p) => memo ? Object.assign(brief(p, me), { body: p.body, canDel: p.pid === me || op, coms: memoComs(p.id).map((c) => comOut(c, me)) }) : brief(p, me);
     return { list: arr.slice((page - 1) * LIM.PAGE, page * LIM.PAGE).map(out), total, page, pages, op, privN };
+  }
+  // RP 메모 목록의 접힌 댓글: 최근 댓글 3개 + 그중 답글의 원래 댓글. 원래 댓글이 빠지면 답글이 앞의 다른 댓글 밑에 붙어 그 사람에게 단 답글처럼 보인다
+  function memoComs(id) {
+    const last = dbx.q.bdComLast.all(id, LIM.MEMO_COMS), have = new Set(last.map((c) => c.id)), add = [];
+    last.forEach((c) => { if (!c.parent || have.has(c.parent)) return; const pc = dbx.q.bdComGet.get(c.parent); if (pc && !pc.deleted && pc.post === id) { have.add(pc.id); add.push(pc); } });
+    return add.length ? last.concat(add).sort((a, b) => a.id - b.id) : last;
   }
   function comOut(c, me) { return { id: c.id, author: nameOf(c.pid), aid: c.pid, op: !!c.op, badge: c.pid === 'staff' ? '' : (opts.badgeOf || (() => ''))(c.pid), mine: c.pid === me, body: sec.dec(c.body), created: c.created, edited: c.edited || 0, parent: c.parent || 0, pa: c.parent ? paOf(c.parent) : '' }; }
   function paOf(id) { const pc = dbx.q.bdComGet.get(id); return !pc ? '' : pc.pid === 'staff' ? '운영진' : nameOf(pc.pid); }   // 답글이 달린 원래 댓글의 작성자 (RP 게시판에서 「↳ 이름」으로 보인다)

@@ -1501,7 +1501,8 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 /* ── 게시판 답글 · 모집 카드 · 방 살펴보기 ── */
 .linkbtn { background: none; border: 0; padding: 4px 0; color: var(--brass2); font: inherit; font-size: 12.5px; cursor: pointer; }
 .linkbtn:hover { text-decoration: underline; }
-.bdreps { margin: 2px 0 6px 18px; border-left: 2px solid var(--line2); padding-left: 10px; }
+.bdreps { margin: 0 0 2px 18px; border-left: 2px solid var(--line2); padding-left: 10px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }   /* 답글 박스끼리 붙지 않게 */
+.bdreps > .bdcom { align-self: stretch; }
 .bdcom.reply { padding-top: 6px; padding-bottom: 6px; }
 .bdmore { margin: 2px 0 4px; }
 .bdcform.reply { margin: 6px 0 4px; }

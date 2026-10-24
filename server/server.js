@@ -344,7 +344,7 @@ function loadPlayer(pid, now) {
   syncOp(P); try { syncLive(P); } catch (e) { log('실시간 칭호 확인 실패', e); }
   const fp = R.fingerprint(P);
   const pc = setPartyN(P) | setGuildLv(P);
-  R.advance(P, world.ctx(now), now); R.questCheck(P, now); questNotes(P);
+  R.advance(P, world.ctx(now), now); R.questCheck(P, now); questNotes(P); lecSync(P);   // 시간표 · 예약 교시가 저절로 시작됐으면 다른 학생도 함께 듣는 것으로 센다
   expRecallLeft(P, now);   // 귀환 투표가 통과했는데 남아 있던 함께 원정
   if (pc) store.markDirty(pid);
   if (R.fingerprint(P) !== fp) store.markDirty(pid); else store.touch(pid);
@@ -359,6 +359,8 @@ function lecSync(P) {
   (P.lec || []).forEach((j) => { if (j && j.end > P.at) { if (!lecIdx.has(j.s)) lecIdx.set(j.s, new Map()); lecIdx.get(j.s).set(P.id, j.end); } });
 }
 (function () { const since = Math.floor(Date.now() / 1000) - 3 * 86400; let n = 0; dbx.db.prepare('SELECT state FROM players WHERE last_seen > ?').all(since).forEach((r) => { try { lecSync(JSON.parse(r.state)); n++; } catch (e) { } }); })();
+// 함께 듣는 수업 보너스: 나를 뺀 같은 과목 수강생 수 (직접 시작 · 시간표 · 예약 교시 모두 R이 이것으로 센다)
+world.W.lecPeerN = (sid, pid, at) => { const m = lecIdx.get(sid); let c = 0; if (m) m.forEach((end, id) => { if (id !== pid && end > at) c++; }); return c; };
 function lecCounts(now) { const o = {}; lecIdx.forEach((m, s) => { let c = 0; m.forEach((end, pid) => { if (end > now) c++; else m.delete(pid); }); if (c) o[s] = c; }); return o; }
 let activeCache = { at: 0, n: 0 };
 function active24() { if (Date.now() - activeCache.at > 600000) activeCache = { at: Date.now(), n: Number(dbx.db.prepare('SELECT COUNT(*) AS n FROM players WHERE last_seen > ?').get(Math.floor(Date.now() / 1000) - 86400).n) }; return activeCache.n; }
@@ -611,9 +613,8 @@ routes['POST /api/act'] = async (req, res) => {
   try {
     const before = P.wk.dmg;
     setPartyN(P); setGuildLv(P);
-    const W0 = world.ctx(now); W0.lecPeers = type === 'lecStart' || type === 'ttApply' ? lecCounts(now) : null;
-    r = R.act(P, W0, now, type, a); W0.lecPeers = null; questNotes(P);
-    if (type === 'lecStart' || type === 'lecCancel' || type === 'ttApply') { lecSync(P); if (type === 'lecStart' || type === 'ttApply') { const j = P.lec[type === 'ttApply' ? 0 : Number(a.slot)]; if (j) lecStarted(P, j.s, now); } }
+    r = R.act(P, world.ctx(now), now, type, a); questNotes(P); lecSync(P);
+    if (type === 'lecStart' || type === 'lecCancel' || type === 'ttApply') { if (type === 'lecStart' || type === 'ttApply') { const j = P.lec[type === 'ttApply' ? 0 : Number(a.slot)]; if (j) lecStarted(P, j.s, now); } }
     if (type === 'exam' && r && r.pass) {
       if (r.letter === 'S') {   // S등급 진급: 학년 소식을 돋보이게 + 공지 채팅 알림. 1 · 3 · 5 · 7번째 S면 받은 칭호도 함께
         const sn = P.st.sGrades || 0, tt = R.D.TITLES.find((t) => t.stat === 'sGrades' && t.n === sn), grad = P.grade >= 8;
@@ -1199,7 +1200,7 @@ function mkAllowed(P, meta, sell) {
 /* 학생 경매: 장비 · 휘장을 시작가부터 입찰로 판다. 즉시 구매가로 언제든(입찰이 들어온 뒤에도) 바로 살 수 있다.
    입찰하면 아르크를 맡겨 두고, 더 높은 입찰이나 즉시 구매가 나오면 돌려준다. 마감 5분 안 입찰은 마감을 5분 미룬다.
    학생마다 동시에 3개까지(거래소 등록 한도 10개 안에서 센다). 입찰이 들어오기 전까지만 취소할 수 있다. */
-const MK_AUC = { MAX: 3, HOURS: [12, 24, 48], MIN_UP: 0.05, BUYOUT_X: 1.2, SNIPE: 300 };
+const MK_AUC = { MAX: 3, HOURS: [3, 6, 12, 24, 48], MIN_UP: 0.05, BUYOUT_X: 1.2, SNIPE: 300 };
 function mkAucMin(r) { return r.bids > 0 ? Math.max(r.bid + 1, Math.ceil(r.bid * (1 + MK_AUC.MIN_UP))) : r.start_price; }
 // 맡겨 둔 입찰금을 돌려준다
 function mkRefund(pid, amount, name, why) {

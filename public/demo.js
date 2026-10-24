@@ -736,7 +736,7 @@
     if (type === 'expStart' && this._erS && this._erS.mine) { var c0 = Rules.calc(P, W, now), fr = 0; for (var ei = 0; ei < c0.expSlots; ei++) if (!P.exp[ei]) fr++; if (fr <= 1) return Promise.resolve({ error: '함께 원정 방에서 출발을 기다리는 중입니다. 혼자 출정하려면 먼저 방 나가기 필요', _status: 400 }); }
     try {
       var before = P.wk.dmg;
-      W.lecPeers = type === 'lecStart' ? this._cls(now).n : null; r = Rules.act(P, W, now, type, a || {}); W.lecPeers = null;
+      W.lecPeers = type === 'lecStart' || type === 'ttApply' ? this._cls(now).n : null; r = Rules.act(P, W, now, type, a || {}); W.lecPeers = null;
       if (type === 'exam' && r && r.pass) { var nw = this.d.news || (this.d.news = []); nw.unshift({ t: now, text: P.name + ' 학생이 ' + (P.grade >= 8 ? '졸업 시험을 통과해 마스터 과정이 되었습니다' : P.grade + '학년으로 진급했습니다') }); if (nw.length > 50) nw.length = 50; }
       if ((type === 'clsExam' || type === 'setCls') && r && this._chat && this._chat.h && this._chat.h.cls) { var so3 = this._soc(); this._chat.h.cls({ cls: P.cls || null, crp: so3.chat.crp = [], cooc: so3.chat.cooc = [] }); }
       if ((type === 'exam' && r && r.pass) || (type === 'useGradeUp' && r && r.grade)) this._note('grade', (P.grade >= 8 ? '졸업 시험을 통과해 마스터 과정이 되었습니다' : P.grade + '학년으로 진급했습니다') + ' · 새로 열린 것 보기', { grade: P.grade });
