@@ -899,21 +899,32 @@
   }
   function loadMe() { if (!API.profile) return Promise.resolve(); return API.profile().then(function (p) { if (p && !p.error) { S.me = p; updateMeBadge(); var el = $('#mecard-av'); if (el && S.view === 'home') render(); } }); }
   // 알림 기록: 게시판 댓글·답글, 거래소 판매, 파티·동아리·함께 원정 초대, 친구 신청 (우편과 따로, 기록용)
-  var NOTE_ICON = { quest: '달성', grade: '진급', board: '게시판', market: '거래소', party: '파티', friend: '친구', rel: '관계', exp: '함께 원정', guild: '동아리' };
+  var NOTE_ICON = { quest: '달성', grade: '진급', board: '게시판', rp: 'RP', market: '거래소', party: '파티', friend: '친구', rel: '관계', exp: '함께 원정', guild: '동아리' };
+  // 알림 탭: 종류별로 나누어 본다 (여기에 없는 종류는 「기타」)
+  var NOTE_TABS = [['', '전체'], ['rp', 'RP 게시판', ['rp']], ['board', '게시판', ['board']], ['market', '거래소', ['market']], ['social', '교류', ['party', 'friend', 'rel', 'guild', 'exp']], ['etc', '기타']];
+  function noteIn(t, x) { if (!t[0]) return true; if (t[2]) return t[2].indexOf(x.kind) >= 0; return !NOTE_TABS.some(function (o) { return o[2] && o[2].indexOf(x.kind) >= 0; }); }
   function updateNoteBadge() { var b = $('#notebadge'); if (!b) return; var n = S.noteN || 0; b.hidden = !n; b.textContent = n > 9 ? '9+' : n; }
+  function noteModal() {
+    var list = S.noteList || [], cur = NOTE_TABS.filter(function (t) { return t[0] === (S.noteTab || ''); })[0] || NOTE_TABS[0], shown = list.filter(function (x) { return noteIn(cur, x); });
+    var tabs = '<div class="filters notetabs" role="tablist" aria-label="알림 종류">' + NOTE_TABS.map(function (t) {
+      var n = list.filter(function (x) { return !x.read && noteIn(t, x); }).length;
+      return '<button class="btn sm ghost' + (t === cur ? ' on' : '') + '" role="tab" aria-selected="' + (t === cur) + '" data-act="notetab" data-a="' + t[0] + '">' + t[1] + (n ? ' <span class="num gold">' + n + '</span>' : '') + '</button>';
+    }).join('') + '</div>';
+    modal(mhead('알림', '할 일 달성 · 게시판 · 거래소 · 파티 · 친구 · 동아리 · 함께 원정 소식 (최근 100개, 30일)') + tabs + (shown.length ? '<div class="notelist">' + shown.map(function (x) {
+      return '<div class="noterow' + (x.read ? '' : ' new') + '"><span class="tag">' + (NOTE_ICON[x.kind] || '알림') + '</span><div style="flex:1;min-width:0"><div class="small">' + esc(x.text) + '</div><div class="tiny faint">' + new Date(x.t * 1000).toLocaleString('ko-KR') + '</div></div>' + (x.link ? '<button class="btn sm ghost" data-act="notego" data-a="' + x.id + '">보기</button>' : '') + '</div>';
+    }).join('') + '</div>' : '<div class="empty">' + (cur[0] ? '이 종류의 알림이 없습니다.' : '아직 알림이 없습니다.') + '</div>'));
+  }
   ACT.notes = function () {
     S.notesOpen = true;
     if (!API.notes) return;
     API.notes().then(function (j) {
       if (j.error) { toast('알림', j.error); return; }
-      var list = j.notes || [];
-      modal(mhead('알림', '할 일 달성 · 게시판 · 거래소 · 파티 · 친구 · 동아리 · 함께 원정 소식 (최근 100개, 30일)') + (list.length ? '<div class="notelist">' + list.map(function (x) {
-        return '<div class="noterow' + (x.read ? '' : ' new') + '"><span class="tag">' + (NOTE_ICON[x.kind] || '알림') + '</span><div style="flex:1;min-width:0"><div class="small">' + esc(x.text) + '</div><div class="tiny faint">' + new Date(x.t * 1000).toLocaleString('ko-KR') + '</div></div>' + (x.link ? '<button class="btn sm ghost" data-act="notego" data-a="' + x.id + '">보기</button>' : '') + '</div>';
-      }).join('') + '</div>' : '<div class="empty">아직 알림이 없습니다.</div>'));
-      S.noteList = list;
+      S.noteList = j.notes || [];
+      noteModal();
       if (j.n && API.notesRead) API.notesRead().then(function () { S.noteN = 0; updateNoteBadge(); });
     });
   };
+  ACT.notetab = function (t) { S.noteTab = t || ''; noteModal(); };
   ACT.econok = function () { act('ackEcon').then(function () { closeModal(); }); };
   ACT.notego = function (id) {
     var x = (S.noteList || []).filter(function (n) { return String(n.id) === String(id); })[0]; if (!x || !x.link) return; var L = x.link;
@@ -6125,7 +6136,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102404;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102405;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

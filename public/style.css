@@ -1529,6 +1529,7 @@ details.fold:not([open]) > summary h3 { white-space: nowrap; }
 .erm .cn, .erprow .cn { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; }
 .erm .cn:hover, .erprow .cn:hover { text-decoration: underline; }
 /* ── 알림 기록 ── */
+.notetabs { margin-bottom: 8px; }
 .notelist { display: flex; flex-direction: column; max-height: 62vh; overflow-y: auto; }
 .noterow { display: flex; gap: 10px; align-items: center; padding: 8px 2px; border-bottom: 1px dashed var(--line2); }
 .noterow.new .small { font-weight: 600; }
