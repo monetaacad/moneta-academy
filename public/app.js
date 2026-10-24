@@ -855,6 +855,7 @@
       mk: function () { if (S.view !== 'market' || !S.mk) return; var ae = document.activeElement; if (S.modal || (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName))) { S.mk.at = 0; return; } loadMarket(); },   // 거래소 목록이 바뀜 (입력 중이면 다음 확인 때)
       auction: function () { if (S.view === 'auction' && !S.modal && Date.now() - (S.aucAt || 0) > 1500) loadAuction(); },
       aucsoon: function (d) { toast('떠돌이 상인 · 마감 5분 전', (d.name || '') + (d.top ? ' — 지금 가장 높은 값을 부른 상태입니다. 막판에 밀리지 않는지 확인하세요' : ' — 지금 가장 높은 값은 ' + fmt(d.price || 0) + ' ' + CUR + '입니다. 다시 값을 부를 수 있습니다'), 6000); if (S.view === 'auction') loadAuction(); },
+      mkgold: function (d) { toast('거래소', d && d.t || '', 4000); sync(true); if (S.view === 'market' && S.mk) { S.mk.data = null; loadMarket(); } },   // 거래소 경매 환불 · 판매 대금: 아르크를 바로 다시 받아 온다
       outbid: function (d) { toast('떠돌이 상인', (d.name || '') + ' — 더 높은 입찰이 나와 맡겨 둔 ' + CUR + '를 돌려받았습니다', 4000); sync(true); if (S.view === 'auction') loadAuction(); },
       mail: function (d) { if (S.mbox) { loadMailbox(); return; } if (d && d.id && d.id <= (S.mailTop || 0)) return; if (d && d.id) S.mailTop = d.id; S.mailN = (S.mailN || 0) + 1; updateMailBadge(); toast('새 우편이 도착했습니다', '우측 상단 우편함에서 확인', 3500); Snd.play('msg'); },
       slow: function (d) {
@@ -6268,7 +6269,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102453;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102454;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

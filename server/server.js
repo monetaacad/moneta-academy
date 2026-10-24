@@ -1211,6 +1211,7 @@ function mkRefund(pid, amount, name, why) {
   const now = nowSec(); R.advance(Q, world.ctx(now), now);
   Q.res.gold += amount; R.log(Q, now, '거래소 경매: ' + name + ' — ' + why + ' 맡겨 둔 ' + R.fmt(amount) + ' ' + CUR + '를 돌려받았습니다', 'news'); store.markDirty(pid);
   addNote(pid, 'market', '경매 ' + R.josa(name, '은', '는') + ' ' + why + ' 맡겨 둔 ' + R.fmt(amount) + ' ' + CUR + '를 돌려받았습니다', { view: 'market' });
+  chat.ping(pid, 'mkgold', { t: name + ' — ' + why + ' 맡겨 둔 ' + R.fmt(amount) + ' ' + CUR + '를 돌려받았습니다' });   // 접속 중이면 화면이 바로 아르크를 다시 받아 온다 (다음 정기 동기화를 기다리지 않게)
   try { push.direct(pid, 'mkbid', '거래소 경매', name + ' — ' + why + ' 맡겨 둔 ' + R.fmt(amount) + ' ' + CUR + '를 돌려받았습니다. 다시 입찰할 수 있습니다.', 'mkbid-' + name); } catch (e) { }
 }
 // 팔린 값(수수료를 뺀 것)을 판매자에게
@@ -1220,6 +1221,7 @@ function mkPaySeller(r, price, buyerName, now, how) {
   const fee = R.mkFee(SP), got = Math.floor(price * (1 - fee)), nm = r.name + (r.kind !== 'item' && r.kind !== 'badge' ? ' ' + r.qty + '개' : '');
   addNote(r.seller, 'market', '거래소에서 ' + R.josa(nm, '이', '가') + ' ' + (how || '팔렸습니다') + ' · ' + R.fmt(got) + ' ' + CUR + ' (' + buyerName + ' 님)', { view: 'market' });
   R.advance(SP, world.ctx(now), now); SP.res.gold += got; SP.st.goldTotal = (SP.st.goldTotal || 0) + got; SP.st.mkSold = (SP.st.mkSold || 0) + 1;   // 칭호 「거래소 큰손」
+  chat.ping(r.seller, 'mkgold', { t: nm + ' 판매 +' + R.fmt(got) + ' ' + CUR });
   R.log(SP, now, '거래소: ' + nm + ' 판매 +' + R.fmt(got) + ' ' + CUR + ' (수수료 ' + Math.round(fee * 100) + '%)', 'good'); store.markDirty(r.seller);
 }
 // 마감된 경매 정리: 입찰이 있으면 최고 입찰자에게 넘기고(맡겨 둔 아르크로 값을 치른다), 없으면 판매자에게 돌려준다
