@@ -1566,7 +1566,7 @@
     a.sort(function (x, y) { return x[0] - y[0]; });
     return a.length ? '<div class="tiny gold submile">다음 · ' + a.slice(0, 2).map(function (x) { return 'Lv ' + x[0] + ' ' + x[1]; }).join(' · ') + '</div>' : '';
   }
-  // 기말시험 준비도: 필기 · 실기 · 대련 세 칸 (점수 공식은 숨기고, 무엇을 하면 차는지만)
+  // 기말시험 준비도: 이론(예전 필기 30 + 실기 40 = 70) · 대련 두 줄 (점수 공식은 숨기고, 무엇을 하면 차는지만)
   // 선택 과목 고르기: 「자동(가장 높은 과목)」 또는 직접 고른 과목. 학년마다 저장
   function examPickHtml(P, ex, cur) {
     var o = (ex.opt || []).filter(function (k) { return R.subjVisible(P, R.SUBJ[k]); }), mine = P.examPick && P.examPick[ex.grade];
@@ -1580,9 +1580,8 @@
     var chips = xs.map(function (s) { var lv = P.subj[s].lv; return '<span class="tag ' + (lv >= ex.req ? 'ok' : 'br') + '"' + (s === xo ? ' title="선택 과목: ' + esc(R.examSubjText(P, ex).split(' + ')[1] || '') + ' (가장 레벨이 높은 과목이 반영됩니다)"' : '') + '>' + R.SUBJ[s].name + (s === xo ? '(선택)' : '') + ' ' + lv + '/' + ex.req + '</span>'; }).join(' ');
     var okN = xs.filter(function (s) { return P.subj[s].lv >= ex.req; }).length;
     return '<div class="rready">' +
-      '<div class="small" style="padding-bottom:8px;border-bottom:1px solid var(--line)"><b>시험 과목</b> ' + chips + (xo ? examPickHtml(P, ex, xo) : '') + '<span class="faint tiny">필기 · 실기 모두 이 과목들의 레벨로 채점합니다.</span></div>' +
-      row('필기', dots(th, 30), '시험 과목 평균 Lv <b class="num">' + avg.toFixed(1) + '</b> <span class="faint">· 기준보다 3 높으면 만점</span>', th < 29.5 ? '<button class="btn sm ghost" data-act="nav" data-a="lecture">수업 가기</button>' : '') +
-      row('실기', dots(pr, 40), '기준 Lv ' + ex.req + ' 달성 <b class="num">' + okN + '/' + xs.length + '</b> <span class="faint">· 모두 채우면 절반 이상, 평균이 기준 +4면 만점</span>', pr < 39.5 ? '<button class="btn sm ghost" data-act="nav" data-a="lecture">수업 가기</button>' : '') +
+      '<div class="small" style="padding-bottom:8px;border-bottom:1px solid var(--line)"><b>시험 과목</b> ' + chips + (xo ? examPickHtml(P, ex, xo) : '') + '<span class="faint tiny">이론은 이 과목들의 레벨로 채점합니다.</span></div>' +
+      row('이론', dots(th + pr, 70), '시험 과목 평균 Lv <b class="num">' + avg.toFixed(1) + '</b> / 기준 Lv ' + ex.req + ' · 기준 달성 <b class="num">' + okN + '/' + xs.length + '</b> <span class="faint">· 모두 기준 이상이면 응시 가능, 평균이 기준 +4면 만점</span>', th + pr < 69.5 ? '<button class="btn sm ghost" data-act="nav" data-a="lecture">수업 가기</button>' : '') +
       row('대련', dots(du.win ? 30 : 30 * du.frac * 0.85, 30), (du.win ? '<span class="good">승산 있음</span> · 약 ' + du.ttk.toFixed(1) + '초' : '<span class="bad">버거움</span> · 시험관 체력의 약 ' + Math.round(du.frac * 100) + '%까지') + ' <span class="faint">· ' + esc(ex.examiner) + '</span>', du.win ? '' : '<button class="btn sm ghost" data-act="nav" data-a="gear">장비 가기</button>') +
       '</div>';
   }
@@ -2072,7 +2071,7 @@
     if (P.grade >= 8 || !ex) h += '<div class="card hl"><h3>모든 시험을 통과했습니다</h3><p class="muted">마스터 과정 연구생입니다. 심연과 월드 보스, 결투제에 도전할 수 있습니다.</p></div>';
     else {
       var pr = R.examPractical(P, ex), du = R.duelPreview(P, wctx(), ex.duel), elig = R.examEligible(P, ex);
-      h += '<div class="grid g2"><div class="card hl"><div class="eyebrow tiny gold">' + P.grade + '학년</div><h3>' + ex.title + '</h3><p class="small muted">실기 대련 상대: ' + ex.examiner + ' (원정 ' + ex.duel + '단계 보스급)</p>' +
+      h += '<div class="grid g2"><div class="card hl"><div class="eyebrow tiny gold">' + P.grade + '학년</div><h3>' + ex.title + '</h3><p class="small muted">대련 상대: ' + ex.examiner + ' (원정 ' + ex.duel + '단계 보스급)</p>' +
         '<p class="small ' + (elig ? 'good' : 'gold') + '" style="margin-top:8px">응시 자격: 시험 과목 모두 Lv ' + ex.req + ' 이상' + (elig ? ' — 충족' : '') + '</p>' +
         '<hr class="sep"><div class="section-t">준비도 <span class="tiny faint">세 칸이 차면 높은 등급</span></div>' + examReady(P, ex) +
         examCast(P, elig) +
@@ -2120,7 +2119,7 @@
   function examPlanHtml(P) {
     var pl = R.examPlan(P, wctx(), now()); if (!pl) return '';
     var nm = function (k) { return R.SUBJ[k].name; }, low = pl.subj.slice().sort(function (a, b) { return Math.max(P.subj[a].lv, pl.req) - Math.max(P.subj[b].lv, pl.req); })[0];
-    var h = '<hr class="sep"><div class="section-t">더 필요한 것 <span class="tiny faint">필기 · 실기는 시험 과목 평균 레벨로만 채점합니다</span></div><div class="stack" style="gap:6px">';
+    var h = '<hr class="sep"><div class="section-t">더 필요한 것 <span class="tiny faint">이론은 시험 과목 평균 레벨로만 채점합니다</span></div><div class="stack" style="gap:6px">';
     h += '<div class="small"><b>응시 자격</b> ' + (pl.lack.length ? pl.lack.map(function (x) { return '<span class="tag br">' + nm(x.sid) + ' Lv ' + x.lv + ' → ' + pl.req + ' (+' + (pl.req - x.lv) + ')</span>'; }).join(' ') : '<span class="good">충족</span> <span class="tiny faint">(모든 시험 과목 Lv ' + pl.req + ' 이상)</span>') + '</div>';
     ['S', 'A', 'B'].forEach(function (k) {
       var nd = pl.need[k], body;
@@ -2133,7 +2132,7 @@
       }
       h += '<div class="row small" style="flex-wrap:nowrap;align-items:flex-start;gap:8px"><b style="width:16px;flex:none">' + k + '</b><div style="flex:1;min-width:0">' + body + '</div></div>';
     });
-    h += '<p class="tiny faint">필기는 평균이 기준 +3, 실기는 기준 +4일 때 만점입니다 (기준 Lv ' + pl.req + '). 그보다 높은 레벨은 점수에 더해지지 않습니다.' + (pl.duelWin ? '' : ' 대련에서 지면 대련 점수가 크게 줄어 필요한 레벨이 늘어납니다.') + '</p></div>';
+    h += '<p class="tiny faint">이론은 평균이 기준 +4일 때 만점입니다 (기준 Lv ' + pl.req + '). 그보다 높은 레벨은 점수에 더해지지 않습니다.' + (pl.duelWin ? '' : ' 대련에서 지면 대련 점수가 크게 줄어 필요한 레벨이 늘어납니다.') + '</p></div>';
     return h;
   }
   function examCast(P, elig) {
@@ -4984,10 +4983,10 @@
   ACT.creport = function (id) { var rs = $('#crp-reason'); API.chatReport(+id || id, rs ? rs.value.trim().slice(0, 200) : '').then(function (j) { closeModal(); toast(j.error ? '신고하지 못했습니다' : '신고가 접수되었습니다', j.error || '관리자가 확인합니다', 2200); }); };
   ACT['rp-skip'] = function () { if (S.replay) S.replay.skip(); };
   ACT.spirit = function () { act('spirit').then(function (r) { if (!r) return; Snd.play('spirit'); var g = []; if (r.mana) g.push('마나 +' + fmt(r.mana)); if (r.know) g.push('지식 +' + fmt(r.know)); if (r.gold) g.push('' + MONEY(r.gold, '+')); if (r.shard) g.push('별조각 +' + r.shard); if (r.stone) g.push('마석 +' + r.stone); toast('정령 ' + r.n + '마리를 풀어 주었습니다', g.join(' · '), 2600); render(); }); };
-  // 기말시험: 문제 풀이 없이 버튼 하나로 채점 (이론 30 · 실기 40 · 대련 30)
+  // 기말시험: 문제 풀이 없이 버튼 하나로 채점 (이론 70 · 대련 30. 이론 = 예전 필기 30 + 실기 40)
   ACT.exam = function () {
     var ex = R.examFor(S.P), th = R.examTheory(S.P, ex), pr = R.examPractical(S.P, ex), pv = R.examPredict(S.P, wctx(), now());
-    modal(mhead(ex.title, '이론·실기는 시험 과목 레벨로, 대련은 시험관과의 전투로 채점합니다.') + '<dl class="kv"><dt>예상 이론</dt><dd>' + th.toFixed(1) + ' / 30</dd><dt>예상 실기</dt><dd>' + pr.toFixed(1) + ' / 40</dd><dt>예상 대련</dt><dd>' + (pv ? pv.duel.toFixed(1) + ' / 30 · ' + (pv.duelWin ? '승리 예상' : '패배 위험') + ' · ' : '') + '시험관 ' + ex.examiner + '</dd>' + (pv && pv.bonus ? '<dt>추가 점수</dt><dd>+' + (Math.round(pv.bonus * 10) / 10) + '</dd>' : '') + (pv ? '<dt>예상 등급</dt><dd><b class="gold">' + pv.letter + '</b> · 약 ' + pv.total + '점</dd>' : '') + '</dl>' +
+    modal(mhead(ex.title, '이론은 시험 과목 레벨로, 대련은 시험관과의 전투로 채점합니다.') + '<dl class="kv"><dt>예상 이론</dt><dd>' + (th + pr).toFixed(1) + ' / 70</dd><dt>예상 대련</dt><dd>' + (pv ? pv.duel.toFixed(1) + ' / 30 · ' + (pv.duelWin ? '승리 예상' : '패배 위험') + ' · ' : '') + '시험관 ' + ex.examiner + '</dd>' + (pv && pv.bonus ? '<dt>추가 점수</dt><dd>+' + (Math.round(pv.bonus * 10) / 10) + '</dd>' : '') + (pv ? '<dt>예상 등급</dt><dd><b class="gold">' + pv.letter + '</b> · 약 ' + pv.total + '점</dd>' : '') + '</dl>' +
       (pv && pv.letter !== 'S' ? '<p class="small" style="margin-top:8px">' + examHint(pv) + '</p><p class="tiny faint">합격하면 이 시험은 다시 볼 수 없습니다. S 보상: ' + R.EXAM_REWARD.S.text + '</p>' : '') +
       '<p class="small muted" style="margin-top:8px">60점 이상이면 진급합니다. 떨어지면 1시간 뒤 다시 볼 수 있습니다.</p><div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn ghost" data-act="modal-close">나중에</button><button class="btn primary" data-act="exam-go" autofocus>응시</button></div>');
   };
@@ -4995,10 +4994,10 @@
     act('exam').then(function (r) {
       if (!r) { closeModal(); return; }
       var ex = D.EXAMS[r.grade - 1];
-      replay({ title: '실기 대련', sub: ex.examiner, enemy: { id: 'ex' + r.grade, arch: 'golem', c1: '#d6ad5f', c2: '#4a3a10', boss: true, name: ex.examiner }, ev: r.ev, maxHp: r.maxHp, cc: r.cc }, function () {
+      replay({ title: '시험 대련', sub: ex.examiner, enemy: { id: 'ex' + r.grade, arch: 'golem', c1: '#d6ad5f', c2: '#4a3a10', boss: true, name: ex.examiner }, ev: r.ev, maxHp: r.maxHp, cc: r.cc }, function () {
         Snd.play(r.pass ? 'pass' : 'fail');
         var h = mhead(r.pass ? '합격!' : '불합격', ex.title);
-        h += '<div class="row" style="gap:20px;align-items:center"><div class="letter ' + (r.pass ? 'gold' : 'bad') + '">' + r.letter + '</div><div class="score-row" style="flex:1"><span>이론</span><b class="num">' + r.written.toFixed(1) + ' / 30</b><span>실기</span><b class="num">' + r.practical.toFixed(1) + ' / 40</b><span>대련 ' + (r.duelWin ? '(승리)' : '(패배)') + '</span><b class="num">' + r.duel.toFixed(1) + ' / 30</b>' + (r.bonus ? '<span>침묵달 가산점</span><b class="num">+' + r.bonus + '</b>' : '') + '<span><b>총점</b></span><b class="num gold">' + r.total + '</b></div></div>';
+        h += '<div class="row" style="gap:20px;align-items:center"><div class="letter ' + (r.pass ? 'gold' : 'bad') + '">' + r.letter + '</div><div class="score-row" style="flex:1"><span>이론</span><b class="num">' + (r.written + r.practical).toFixed(1) + ' / 70</b><span>대련 ' + (r.duelWin ? '(승리)' : '(패배)') + '</span><b class="num">' + r.duel.toFixed(1) + ' / 30</b>' + (r.bonus ? '<span>침묵달 가산점</span><b class="num">+' + r.bonus + '</b>' : '') + '<span><b>총점</b></span><b class="num gold">' + r.total + '</b></div></div>';
         if (r.pass) h += '<hr class="sep"><p class="small">보상: 별조각 +' + r.reward.shard + ', ' + MONEY(r.reward.gold, '+') + ', <span style="color:' + rcol(r.reward.item.r) + '">' + esc(r.reward.item.name) + '</span>' + (r.reward.egg ? ', <span class="gold">환수의 알</span>' : '') + '</p>' + (r.badge ? '<p class="small gold" style="margin-top:6px">2학년을 마친 기념으로 아카데미가 ' + R.josa('「' + esc(r.badge) + '」', '을', '를') + ' 수여했습니다. 장비 · 능력 화면에서 볼 수 있습니다.</p>' : '') + (r.letter === 'S' ? '<p class="tiny gold" style="margin-top:4px">수석 성적! S 보상을 받았습니다.</p>' : '') + '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn" data-act="exampromo">새로 열린 것</button><button class="btn primary" data-act="examstory" data-a="' + (Math.min(S.P.grade, 8) - 1) + '" autofocus>다음 이야기</button></div>';
         else h += '<p class="small muted" style="margin-top:8px">60점 이상이면 합격입니다. 1시간 뒤 다시 응시할 수 있습니다.</p><div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn primary" data-act="modal-close" autofocus>확인</button></div>';
         if (r.pass) { S.examRes = { h: h, g: S.P.grade, seenP: false }; S.afterClose = examResClose; }
@@ -6282,7 +6281,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102461;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102462;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
