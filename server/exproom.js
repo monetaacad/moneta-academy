@@ -182,7 +182,7 @@ function create(o) {
     if (!people(r).length) return { n: 0 };
     if (!r.members.some((m) => m.id === r.host)) r.host = people(r)[0].id;
     const st = stats(r); if (!st.every(Boolean)) return { n: 0 };
-    const pv = R.expPartyPreview(st, r.s, r.d), names = r.members.map((m) => ({ id: m.npc ? undefined : m.id, k: m.npc ? m.k : undefined, name: m.name, pos: m.pos, npc: !!m.npc })), team = R.expTeam(pv, r.members, st);
+    const pv = R.expPartyPreview(st, r.s, r.d), names = r.members.map((m, i) => ({ id: m.npc ? undefined : m.id, k: m.npc ? m.k : undefined, name: m.name, pos: m.pos, npc: !!m.npc, fam: !m.npc && st[i].P && st[i].P.fam && R.FAM[st[i].P.fam.act] ? R.famLabel(st[i].P, st[i].P.fam.act) : undefined, famId: !m.npc && st[i].P && st[i].P.fam && R.FAM[st[i].P.fam.act] ? st[i].P.fam.act : undefined })), team = R.expTeam(pv, r.members, st);   // fam: 데리고 간 사역마 이름(지은 이름 우선 · 원정 일지용)
     if (!r.ck) r.ck = Date.now().toString(36) + '-' + r.id;   // 떠난 뒤에도 원정 채팅이 이어지도록 열쇠를 일정에 남긴다
     r.members.forEach((m, i) => {
       if (m.npc) return;
