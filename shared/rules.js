@@ -944,7 +944,9 @@
   // 파견 지역: 사역마마다 정해 둘 수 있다 (P.fam.zone[fid] = 지역 id, 없으면 갈 수 있는 가장 높은 지역). 출발할 때 정해진 지역으로 다녀온다
   R.dispZones = function (P) { var top = Math.min(P.maxStage, R.stageCap(P)); return D.ZONES.filter(function (z) { return z.from <= top; }); };
   R.dispZoneOf = function (P, fid, zid) { var zs = R.dispZones(P), want = zid || (P.fam.zone && P.fam.zone[fid]); return zs.filter(function (z) { return z.id === want; })[0] || zs[zs.length - 1] || D.ZONES[0]; };
-  function dispatchFinish(P, fid, d, t, early) {   // early: 도중에 불러들임 (보낸 뒤 지난 시간만큼만, 파견 횟수 · 대항전 점수 · 밤샘에는 넣지 않는다)
+  // 대항전 점수: 파견 1시간당 R.CUP_DISP_H점 (보낸 시간에 비례, 8시간 = 예전 귀환 1번 20점). 일찍 불러들이면 보낸 뒤 지난 시간만큼
+  R.CUP_DISP_H = 2.5;
+  function dispatchFinish(P, fid, d, t, early) {   // early: 도중에 불러들임 (보낸 뒤 지난 시간만큼만, 파견 횟수 · 밤샘에는 넣지 않는다)
     var f = FAM[fid], z = R.dispZoneOf(P, fid, d.z), h = d.dur / 3600, out = { k: 'disp', f: fid, t: t };
     out.xp = Math.round(h * R.FAM_DISP_XP); famGainXp(P, fid, out.xp, t);   // 파견 경험치 (시간에 비례, 동행보다 낮게)
     var mult = (1 + f.r * 0.3) * (1 + 0.05 * (P.fam.own[fid].lv - 1)) * (d.bonus || 1);
@@ -955,8 +957,9 @@
     if (rnd(P) < h * 0.04) { var sh = ri(P, 1, 3); P.res.shard += sh; out.shard = sh; }
     // 사역장 「파견 기록」: 최근 40건 (같은 때 돌아온 사역마는 화면에서 한 줄로 묶는다)
     var L = P.fam.dlog || (P.fam.dlog = []); L.unshift({ t: Math.round(t), f: fid, h: Math.round(h * 10) / 10, mat: z.mat, mats: mats, stones: stones, gold: gold, egg: out.egg || 0, shard: out.shard || 0, early: early ? 1 : 0 }); if (L.length > 40) L.length = 40;
+    cupAdd(P, h * R.CUP_DISP_H, 'disp');
     if (early) { out.early = 1; return out; }
-    P.st.dispatches++; cupAdd(P, 20, 'disp');
+    P.st.dispatches++;
     nightJob(P, t);
     return out;
   }
