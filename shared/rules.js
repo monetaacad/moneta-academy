@@ -395,7 +395,7 @@
   // 환수생태학: 레벨마다 사역마 동행 보너스 +3%(곱), 파견 보상 +2%, 부화 속도 +1%
   R.BEAST_FAM = 0.03; R.BEAST_DISP = 0.02;
   R.famBonus = function (f, lv, P) { return f.base * (1 + 0.25 * (lv - 1)) * (1 + (P && P.subj && P.subj.beast ? P.subj.beast.lv : 0) * R.BEAST_FAM); };
-  R.CODEX_TIERS = [1, 10, 100]; R.BOSS_TIERS = [1, 5, 20]; R.CODEX_EACH = 0.004;
+  R.CODEX_TIERS = [1, 10, 100]; R.BOSS_TIERS = [1, 10, 100]; R.CODEX_EACH = 0.004;
   R.tiersFor = function (id) { return BOSS_IDS[id] ? R.BOSS_TIERS : R.CODEX_TIERS; };
   R.codexTiers = function (P) {
     var n = 0; for (var id in P.codex) { var k = P.codex[id], tt = R.tiersFor(id); for (var i = 0; i < tt.length; i++) if (k >= tt[i]) n++; }
@@ -641,7 +641,7 @@
      - 품는 알: 활동 점수 × 부화 효율만큼 진행도. 다 차면 마나 없이 부화, 마나로 바로 깨우면 남은 진행도만큼만 마나 */
   R.FAM_XP_BASE = 300; R.FAM_XP_G = 1.2; R.FAM_DISP_XP = 10; R.FAM_MAX_LV = 20;
   R.famXpNeed = function (f, lv) { return Math.floor(R.FAM_XP_BASE * (1 + 0.5 * (f ? f.r : 0)) * Math.pow(R.FAM_XP_G, lv - 1)); };
-  R.EGG_INC_BASE = 1500; R.EGG_INC_STEP = 0.25;
+  R.EGG_INC_BASE = 1200; R.EGG_INC_STEP = 0.03;   // 하루 종일 접속하는 학생(깨어 있는 동안 작업마다 접속)이 하루 1~2마리, 2시간마다 접속하면 하루 1마리 안팎 (tools/sim.js active · steady 기준. 예전 1500 · 0.25)
   R.eggNeed = function (P) { return Math.floor(R.EGG_INC_BASE * (1 + R.EGG_INC_STEP * Math.min((P.fam && P.fam.hatched) || 0, 40))); };
   function famGainXp(P, id, x, t) {
     var o = P.fam.own[id], f = FAM[id]; if (!o || !f || !(x > 0)) return 0;
@@ -657,7 +657,8 @@
   function famActivity(P, v) {
     if (!(v > 0) || !P.fam || !R.famOpen(P)) return;
     if (P.fam.act && P.fam.own[P.fam.act]) famGainXp(P, P.fam.act, v);
-    var inc = P.fam.inc; if (inc && inc.prog < inc.need) { inc.prog = Math.min(inc.need, inc.prog + v * calc(P, null).hatchSpd); if (inc.prog >= inc.need) log(P, P.at, '품고 있던 알이 깨어날 준비가 되었습니다', 'good'); }
+    var inc = P.fam.inc; if (inc && inc.need > R.eggNeed(P)) inc.need = R.eggNeed(P);   // 예전 기준으로 품기 시작한 알도 새 필요량으로
+    if (inc && inc.prog < inc.need) { inc.prog = Math.min(inc.need, inc.prog + v * calc(P, null).hatchSpd); if (inc.prog >= inc.need) log(P, P.at, '품고 있던 알이 깨어날 준비가 되었습니다', 'good'); }
   }
   R.famGift = function (P, t) { if (P.famGift || !R.famOpen(P)) return; P.famGift = 1; if (!Object.keys(P.fam.own).length) { P.fam.eggs++; log(P, t, '사역마를 키울 수 있게 되었습니다! 고드릭 펜 교수가 첫 환수의 알을 주었습니다.', 'story'); } };
   R.xpNeed = function (lv) { return Math.floor(K.XP_A * Math.pow(K.XP_G, lv - 1) + lv * K.XP_L); };
@@ -844,6 +845,8 @@
     if (j.killMana) addMana(P, kills * j.killMana);
     P.st.kills += kills; cupAdd(P, kills * K.KILL_PACK / 40, 'kill');
     var mons = z.mons; for (var mk = 0; mk < Math.min(kills, 5000); mk++) { var mm = mons[Math.floor(rnd(P) * mons.length)]; P.codex[mm.id] = (P.codex[mm.id] || 0) + 1; }
+    // 보스 관문 바로 앞 단계(9 · 19 · 29…단계)의 원정을 끝까지 마치면 마지막에 그 구역 보스가 나온다 → 도감 보스 처치 1번 (보스 1 · 10 · 100번 보너스용. 대항전 점수 · 관문은 그대로)
+    if (j.s % 10 === 9 && !canceled && z.boss) { P.codex[z.boss.id] = (P.codex[z.boss.id] || 0) + 1; out.boss = z.boss.name; log(P, t, j.s + '단계 원정 끝에 ' + R.josa(z.boss.name, '을', '를') + ' 다시 쓰러뜨렸습니다 (도감 ' + P.codex[z.boss.id] + '번)', 'good'); }
     var mats = Math.floor(kills * K.MAT_RATE * j.drop + rnd(P)); if (mats) { P.mats[z.mat] = (P.mats[z.mat] || 0) + mats; out.mats = mats; out.mat = z.mat; }
     var prev = D.ZONES.filter(function (zz) { return zz.from < z.from; });
     if (prev.length) { var pm = Math.floor(kills * K.MAT_RATE * 0.25 * j.drop + rnd(P)); if (pm) { var pz = pick(P, prev); P.mats[pz.mat] = (P.mats[pz.mat] || 0) + pm; } }
@@ -1144,6 +1147,9 @@
     w.brew = Math.min(R.CUP_BREW_WEEK, Math.max(w.brew || 0, target));
     return add;
   };
+  // 거래소 판매 수수료: 기본 5%, 거울관(교역의 기숙사) 학생은 3% (판매자 기준)
+  R.MK_FEE = 0.05; R.MK_FEE_HOUSE = { speculum: 0.03 };
+  R.mkFee = function (P) { return P && R.MK_FEE_HOUSE[P.house] != null ? R.MK_FEE_HOUSE[P.house] : R.MK_FEE; };
   R.CUP_SHOP_WEEK = 200;   // 매점 구매 점수는 한 주에 이만큼까지 (아르크로 마석을 거듭 사서 점수를 올리지 못하게)
   R.CUP_AUC = 50;          // 떠돌이 상인 경매 낙찰 1회 (학생끼리 거래인 거래소에는 점수가 없다) · 구간 3개 · 9점이 되며 100 → 50 (방문당 총점 300 → 450)
   // 점수 규칙 표 (대항전 화면 · 가이드용). k = P.wk.cat의 활동 이름, how = 세는 방식 · 상한. 숫자는 실제 쓰는 상수에서 가져온다
@@ -1435,12 +1441,11 @@
         var sid = P.spells[i], sp = SPELL[sid]; if (!sp || !R.spellUnlocked(P, sid)) continue;
         cd[sid] = (cd[sid] || 0) - dt; if (cd[sid] > 0) continue;
         if (sp.type === 'heal' && ph > c.hp * 0.6) continue;
-        if ((sp.type === 'shield' || sp.type === 'pshield') && sh > c.hp * 0.1) continue;   // pshield(광역 보호막)는 혼자 싸울 때 자신에게
         cd[sid] = sp.cd * (1 - c.cdr);
         var lm = spellLvMult(P, sp);
         var se = evs.length < 400 ? [Math.round(t * 10) / 10, 's', sid] : null; if (se) evs.push(se);
-        if (sp.type === 'dmg' || sp.type === 'stun') { var cr2 = rnd(P) < c.critC; if (sp.type === 'stun' || (sp.stunP && rnd(P) < sp.stunP)) stun = sp.stun; hit(R.spellHit(c, sp) * sp.mult * lm * (cr2 ? c.critD : 1), 'p', cr2); if (sp.selfShield) { sh = Math.max(sh, c.hp * sp.selfShield); if (se) se[4] = Math.round(sh); } }   // se[4]: 주문에 딸린 보호막 (전투 일지 체력 바)
-        else if (sp.type === 'shield' || sp.type === 'pshield') { sh = c.hp * sp.mult * Math.min(2, lm); if (se) se[3] = Math.round(sh); }
+        if (sp.type === 'dmg' || sp.type === 'stun') { var cr2 = rnd(P) < c.critC; if (sp.type === 'stun' || (sp.stunP && rnd(P) < sp.stunP)) stun = sp.stun; hit(R.spellHit(c, sp) * sp.mult * lm * (cr2 ? c.critD : 1), 'p', cr2); if (sp.selfShield) { sh += c.hp * sp.selfShield; if (se) se[4] = Math.round(sh); } }   // se[4]: 주문에 딸린 보호막 (전투 일지 체력 바)
+        else if (sp.type === 'shield' || sp.type === 'pshield') { sh += c.hp * sp.mult * Math.min(2, lm); if (se) se[3] = Math.round(sh); }   // 보호막은 재사용 대기마다 걸고, 남은 보호막에 쌓인다 (pshield는 혼자 싸울 때 자신에게)
         else if (sp.type === 'heal') { var hv = Math.min(c.hp - ph, c.hp * sp.mult * Math.min(2, lm)); ph += hv; if (se) se[3] = Math.round(hv); }
         else if (sp.type === 'haste') haste = sp.dur;
         else if (sp.type === 'amp') { amp = sp.dur; stun = sp.dur; }
@@ -1474,12 +1479,13 @@
      전투는 파티원마다 따로 계산한다:
      - 적은 선봉 한 명(몬스터를 가장 잘 끄는 선봉)을 집중해서 노리고, 공격을 여러 번(R.TW.HITS)으로 나눠 친다 → 치유 · 보호막이 끼어들 틈이 있다. 8초마다 광역 공격(선봉이 살아 있으면 다른 파티원은 R.TW.GUARD × 선봉 어그로만큼 덜 맞는다).
      - 받는 피해 = 공격² ÷ (공격 + 방어 × R.TW.DEFX): 탑에서는 방어 효과가 크다. 선봉은 생명력 +30% · 받는 피해 −20%(탑 전용 선봉 보정).
-     - 지원은 치유 · 보호막을 가장 위태로운 동료(체력 비율이 가장 낮은 동료)에게, 다른 포지션은 자신에게 건다. 보호막량은 받는 사람이 아니라 시전자 기준: max(시전자 공격력(주문 · 물리 중 높은 쪽) × R.TW.SHIELD_ATK, 시전자 최대 생명력) × 주문 배율. 파티(2명 이상)의 지원이 거는 치유 · 보호막은 재사용 대기가 짧고(×R.TW.CARE_CD),
-       평소에는 아껴 두다가 쓰러질 한 대를 맞기 직전에 준비돼 있으면 바로 끼어든다.
+     - 지원은 치유 · 보호막을 가장 위태로운 동료(체력 비율이 가장 낮은 동료)에게, 다른 포지션은 자신에게 건다. 보호막량은 받는 사람이 아니라 시전자 기준: max(시전자 공격력 × R.TW.SHIELD_ATK, 시전자 최대 생명력) × 주문 배율.
+       시전자 공격력 = 공용 주문과 같은 기준(마법사: 주문 공격력 × 주문 위력, 기사: 물리 공격력 × 기술 위력). 파티(2명 이상)의 지원이 거는 치유 · 보호막은 재사용 대기가 짧다(×R.TW.CARE_CD).
+       보호막은 재사용 대기마다 걸고 쌓인다. 치유는 체력이 R.TW.HEAL_AT 아래일 때 쓴다. 쓰러질 한 대를 맞기 직전에는 준비된 보호막 · 치유가 끼어든다(끼어들기는 주문마다 R.TW.RESCUE_CD초에 한 번, 일반 재사용 대기와 따로).
      - 주문 재사용 대기는 층을 넘어 이어진다. 층 사이에 최대 체력의 30% 회복(쓰러진 동료도 일어남), 5층마다 휴식층. 30층마다 시련의 층(특수 기믹).
      - 전투 시간 제한은 없다(오래 버티며 조금씩 깎는 전략도 인정). 계산이 끝나지 않는 일이 없도록 전투 시간 R.TW.TIME초가 지나면 물러난다.
      적은 무한의 탑 곡선 기준 체력 ×5 · 공격 ×2. 대본은 전투 시간의 R.TW.PACE배로 천천히 흐르고, 층 사이 · 휴식층에는 탑을 둘러보는 대사가 나온다. */
-  R.TW = { TIME: 180, HEAL: 0.3, REST: 5, GAP: 2, REST_D: 5, HPX: 5, ATKX: 2, MAX_F: 500, AOE: 8, AOE_K: 0.5, PACE: 5, HITS: 3, DEFX: 4, VAN_HP: 0.3, VAN_TAKE: 0.8, TRIAL: 30, HEAL_AT: 0.4, SHIELD_AT: 0.7, CARE_CD: 0.4, SHIELD_ATK: 2, GUARD: 0.5, STORM_EVERY: 6, STORM_K: 1.2 };
+  R.TW = { TIME: 180, HEAL: 0.3, REST: 5, GAP: 2, REST_D: 5, HPX: 5, ATKX: 2, MAX_F: 500, AOE: 8, AOE_K: 0.5, PACE: 5, HITS: 3, DEFX: 4, VAN_HP: 0.3, VAN_TAKE: 0.8, TRIAL: 30, HEAL_AT: 0.4, SHIELD_AT: 0.7, CARE_CD: 0.4, SHIELD_ATK: 2, RESCUE_CD: 30, GUARD: 0.5, STORM_EVERY: 6, STORM_K: 1.2 };
   R.TOWER_FOES = [
     { name: '탑의 문지기 석상', arch: 'golem', c1: '#b8a98a', c2: '#4a4236' }, { name: '별빛 갑옷 기사', arch: 'construct', c1: '#cfd8ff', c2: '#3a4470' },
     { name: '거울 속 쌍둥이', arch: 'wisp', c1: '#d8c8ff', c2: '#3a2a6a' }, { name: '시간을 먹는 올빼미', arch: 'beast', c1: '#c9a26b', c2: '#4a3418' },
@@ -1528,7 +1534,7 @@
       sp.push({ id: s.id, name: s.name, type: s.type, cd: s.cd * (1 - c.cdr), hit: s.type === 'dmg' || s.type === 'stun' ? R.spellHit(c, s) * s.mult * lm : 0, mult: s.mult * Math.min(2, lm), stun: s.stun || 0, stunP: s.stunP || 0, dur: s.dur || 0, selfShield: s.selfShield || 0 });
     }
     return { id: P.id, name: P.name, house: P.house, cls: P.cls, pos: pos || R.twPos(P), aggro: R.expAggro(P), hp: c.hp, def: c.def, regen: c.regen, atk: c.atk, aps: c.aps, critC: c.critC, critD: c.critD,
-      bossDmg: c.bossDmg, leech: c.leech || 0, spAtk: Math.max(c.patk, c.matk), fam: P.fam.act && P.fam.own[P.fam.act] ? c.atk * famAtkMult(P) : 0, sp: sp, power: c.totalDps };
+      bossDmg: c.bossDmg, leech: c.leech || 0, spAtk: R.spellHit(c, { main: 1 }), fam: P.fam.act && P.fam.own[P.fam.act] ? c.atk * famAtkMult(P) : 0, sp: sp, power: c.totalDps };
   };
   // 동행 친구(NPC): 기준 학생 힘의 30%, 주문 없이 평타만. 포지션은 선봉 · 후열 (치유 주문이 없어 지원은 안 됨, 기본 후열)
   R.TW_NPC_POS = ['van', 'rear'];
@@ -1581,18 +1587,19 @@
       return others[Math.floor(rnd2() * others.length)];
     }
     // 광역 보호막(pshield)은 살아 있는 모두에게, pmult가 있으면 다른 파티원은 시전자 기준 × pmult (수호의 함성)
-    // 치유 · 보호막 주문 하나를 거는 일 (sp: 주문, i: 거는 사람, tg: 받는 사람). 보호막량은 시전자의 공격력 × 2와 최대 생명력 중 큰 쪽에 비례
+    // 치유 · 보호막 주문 하나를 거는 일 (sp: 주문, i: 거는 사람, tg: 받는 사람). 보호막량은 시전자의 공격력 × 2와 최대 생명력 중 큰 쪽에 비례하고, 남은 보호막에 쌓인다
+    // urgent(끼어들기)는 일반 재사용 대기 대신 끼어들기 대기(cd['!' + 주문], R.TW.RESCUE_CD초)를 쓴다
     function care(i2, k2, tg, urgent) {
-      var m = ms[i2], sp = m.sp[k2]; cd[i2][sp.id] = sp.cd * (n > 1 && m.pos === 'sup' ? R.TW.CARE_CD : 1);   // 재사용 대기 단축은 파티의 지원만
-      if (sp.type === 'shield' || sp.type === 'pshield') { var sv = Math.max((ms[i2].spAtk || ms[i2].atk) * R.TW.SHIELD_ATK, mx[i2]) * sp.mult; if (sp.type === 'pshield') { var so = sp.pmult ? sv / sp.mult * sp.pmult : sv; for (var q2 = 0; q2 < n; q2++) if (hp[q2] > 0) { var a2 = q2 === i2 ? sv : so; sh[q2] = Math.max(sh[q2], a2); ev(4, i2, a2, q2, k2); } } else { sh[tg] = Math.max(sh[tg], sv); ev(4, i2, sv, tg, k2); } if (!urgent && t - healAt[i2] > 6) { healAt[i2] = t; line(m.name + '의 「' + sp.name + '」 — ' + (tg === i2 ? '' : ms[tg].name + '에게 ') + '보호막 ' + R.fmt(sv), 'p'); } }
+      var m = ms[i2], sp = m.sp[k2]; if (urgent) cd[i2]['!' + sp.id] = R.TW.RESCUE_CD; else cd[i2][sp.id] = sp.cd * (n > 1 && m.pos === 'sup' ? R.TW.CARE_CD : 1);   // 재사용 대기 단축은 파티의 지원만
+      if (sp.type === 'shield' || sp.type === 'pshield') { var sv = Math.max((ms[i2].spAtk || ms[i2].atk) * R.TW.SHIELD_ATK, mx[i2]) * sp.mult; if (sp.type === 'pshield') { var so = sp.pmult ? sv / sp.mult * sp.pmult : sv; for (var q2 = 0; q2 < n; q2++) if (hp[q2] > 0) { var a2 = q2 === i2 ? sv : so; sh[q2] += a2; ev(4, i2, a2, q2, k2); } } else { sh[tg] += sv; ev(4, i2, sv, tg, k2); } if (!urgent && t - healAt[i2] > 6) { healAt[i2] = t; line(m.name + '의 「' + sp.name + '」 — ' + (tg === i2 ? '' : ms[tg].name + '에게 ') + '보호막 ' + R.fmt(sv), 'p'); } }
       else { var hv = Math.min(mx[tg] - hp[tg], mx[tg] * sp.mult); hp[tg] += hv; ev(3, i2, hv, tg, k2); if (!urgent && t - healAt[i2] > 6) { healAt[i2] = t; line(m.name + '의 「' + sp.name + '」 — ' + (tg === i2 ? '' : ms[tg].name + ' ') + '생명력 +' + R.fmt(hv), 'p'); } }
     }
-    // 쓰러질 한 대 직전: 지원(또는 맞는 사람 자신)의 준비된 보호막 · 치유가 먼저 끼어든다
+    // 쓰러질 한 대 직전: 지원(또는 맞는 사람 자신)의 보호막 · 치유가 먼저 끼어든다 (끼어들기 대기만 본다 · 일반 재사용 대기와 따로)
     function rescue(j2, d) {
       for (var pass = 0; pass < 2; pass++) for (var i2 = 0; i2 < n; i2++) {
         if (hp[i2] <= 0 || !(i2 === j2 || (ms[i2].pos === 'sup' && n > 1))) continue;
         for (var k2 = 0; k2 < ms[i2].sp.length; k2++) {
-          var sp = ms[i2].sp[k2]; if ((pass === 0 ? sp.type !== 'shield' && sp.type !== 'pshield' : sp.type !== 'heal') || (cd[i2][sp.id] || 0) > 0) continue;
+          var sp = ms[i2].sp[k2]; if ((pass === 0 ? sp.type !== 'shield' && sp.type !== 'pshield' : sp.type !== 'heal') || (cd[i2]['!' + sp.id] || 0) > 0) continue;
           care(i2, k2, j2, true); saves++;
           line('✦ ' + jo(ms[j2].name, '이', '가') + ' 쓰러지기 직전, ' + ms[i2].name + '의 「' + sp.name + '」' + (pass === 0 ? '가 막아선다!' : '가 일으켜 세운다!'), 'm');
           if (d < hp[j2] + sh[j2]) return true;
@@ -1627,17 +1634,18 @@
         while (pT[i] >= 1) { pT[i] -= 1; var cr = rnd2() < m.critC; hit(i, m.atk * (cr ? m.critD : 1), cr, 0); }
         if (m.fam) { fT[i] += dt; if (fT[i] >= 1.5) { fT[i] -= 1.5; hit(i, m.fam, false, 1); } }
         for (var k = 0; k < m.sp.length; k++) {
-          var sp = m.sp[k]; cd[i][sp.id] = (cd[i][sp.id] || 0) - dt; if (cd[i][sp.id] > 0) continue;
+          var sp = m.sp[k]; if (cd[i]['!' + sp.id] > 0) cd[i]['!' + sp.id] -= dt;   // 끼어들기 대기
+          cd[i][sp.id] = (cd[i][sp.id] || 0) - dt; if (cd[i][sp.id] > 0) continue;
           var sup = m.pos === 'sup' && n > 1, tg = i;
-          // 평소에는 아껴 둔다 (치유는 체력 R.TW.HEAL_AT 아래, 보호막은 R.TW.SHIELD_AT 아래) → 쓰러질 한 대가 올 때 끼어들 여유가 남는다
+          // 치유는 체력 R.TW.HEAL_AT 아래일 때만. 보호막은 재사용 대기마다 걸고 쌓인다 (쓰러질 한 대는 끼어들기가 따로 막는다)
           if (sp.type === 'heal') { tg = sup ? lowest() : i; if (tg >= 0 && hp[tg] <= mx[tg] * R.TW.HEAL_AT) care(i, k, tg); continue; }
-          if (sp.type === 'shield') { tg = sup ? lowest() : i; if (tg >= 0 && sh[tg] <= mx[tg] * 0.1 && hp[tg] <= mx[tg] * R.TW.SHIELD_AT) care(i, k, tg); continue; }
-          if (sp.type === 'pshield') { tg = lowest(); if (tg >= 0 && sh[tg] <= mx[tg] * 0.1 && hp[tg] <= mx[tg] * R.TW.SHIELD_AT) care(i, k, tg); continue; }   // 광역 보호막: 가장 위태로운 동료가 기준, 살아 있는 모두에게
+          if (sp.type === 'shield') { tg = sup ? lowest() : i; if (tg >= 0) care(i, k, tg); continue; }
+          if (sp.type === 'pshield') { tg = lowest(); if (tg >= 0) care(i, k, tg); continue; }   // 광역 보호막: 살아 있는 모두에게
           cd[i][sp.id] = sp.cd;
           if (sp.type === 'dmg' || sp.type === 'stun') {
             var cr2 = rnd2() < m.critC; if (sp.type === 'stun' || (sp.stunP && rnd2() < sp.stunP)) stun = sp.stun;
             hit(i, sp.hit * (cr2 ? m.critD : 1), cr2, 2, k);
-            if (sp.selfShield && hp[i] > 0 && mx[i] * sp.selfShield > sh[i]) { sh[i] = mx[i] * sp.selfShield; ev(4, i, sh[i], i, k); }   // 적중할 때 자신에게 보호막 (강철 일격)
+            if (sp.selfShield && hp[i] > 0) { sh[i] += mx[i] * sp.selfShield; ev(4, i, mx[i] * sp.selfShield, i, k); }   // 적중할 때 자신에게 보호막 (강철 일격 · 쌓인다)
             if (!told['s' + i + sp.id]) { told['s' + i + sp.id] = 1; line(m.name + '의 「' + sp.name + '」!', 'p'); }
           } else if (sp.type === 'haste') { haste[i] = sp.dur; ev(5, i, 0, k); }
           else if (sp.type === 'amp') { amp[i] = sp.dur; stun = sp.dur; ev(5, i, 0, k); }
