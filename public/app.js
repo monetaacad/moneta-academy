@@ -954,13 +954,13 @@
     if (j.error) { toast('우편함', j.error); return; } absorb(j);
     var g = j.got || []; if (j.full) setTimeout(function () { toast('우편함', '가방 칸이 모자라 장비 우편 ' + j.full + '통은 그대로 두었습니다', 3500); }, g.length ? 3300 : 0);
     if (g.length) { Snd.play('ach'); toast('우편 보상을 받았습니다', g.map(function (x) { return x.text; }).filter(Boolean).join(' · ').slice(0, 120), 3200); }
-    // 장비 · 환수의 알은 받은 뒤 어디에 있는지 알려 준다 (장비 상자는 받는 순간 열린다)
-    var its = [].concat.apply([], g.map(function (x) { return x.items || []; })), egg = g.some(function (x) { return /환수의 알|토벌 도전권|망각의 차/.test(x.text || ''); });   // 소지품으로 들어가는 것
+    // 장비 · 환수의 알은 받은 뒤 어디에 있는지 알려 준다
+    var its = [].concat.apply([], g.map(function (x) { return x.items || []; })), egg = g.some(function (x) { return /환수의 알|토벌 도전권|망각의 차|장비 상자/.test(x.text || ''); });   // 소지품으로 들어가는 것
     if (its.length || egg) {
       var WHERE = { equip: '바로 장착했습니다', bag: '장비 가방에 넣었습니다', sold: '가방이 가득 차 판매했습니다', dis: '자동 분해했습니다', mail: '가방이 가득 차 우편함으로 보냈습니다' };
       setTimeout(function () {
-        modal(mhead('받은 보상', '우편') + (its.length ? '<div class="section-t">장비 <span class="tiny faint">(장비 상자는 받는 순간 열립니다)</span></div><ul class="report" style="margin-top:4px">' + its.map(function (x) { return '<li><b style="color:' + rcol(x.r || 0) + '">' + esc(x.name) + '</b> — ' + (WHERE[x.res] || '받았습니다') + '</li>'; }).join('') + '</ul>' : '') +
-          (egg ? '<p class="small" style="margin-top:10px">환수의 알 · 토벌 도전권 · 망각의 차는 「장비 → 소지품」에 들어갔습니다. 소지품에서 바로 사용하거나 해당 화면으로 이동할 수 있습니다.</p>' : '') +
+        modal(mhead('받은 보상', '우편') + (its.length ? '<div class="section-t">장비</div><ul class="report" style="margin-top:4px">' + its.map(function (x) { return '<li><b style="color:' + rcol(x.r || 0) + '">' + esc(x.name) + '</b> — ' + (WHERE[x.res] || '받았습니다') + '</li>'; }).join('') + '</ul>' : '') +
+          (egg ? '<p class="small" style="margin-top:10px">환수의 알 · 토벌 도전권 · 망각의 차 · 장비 상자는 「장비 → 소지품」에 들어갔습니다. 소지품에서 바로 사용하거나 해당 화면으로 이동할 수 있습니다.</p>' : '') +
           '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px">' + (egg ? '<button class="btn" data-act="invgo">소지품에서 보기</button>' : '') + (its.length ? '<button class="btn" data-act="goto" data-a="gear">장비 화면으로</button>' : '') + '<button class="btn primary" data-act="modal-close">확인</button></div>');
       }, 200);
     }
@@ -4462,7 +4462,7 @@
   ACT['do'] = function (type, b) {
     var argf = SIMPLE[type]; if (!argf) return;
     if (type === 'sell' || type === 'equip') S.sel = null;   // 판매 · 장착하면 살펴보기를 닫는다 (모바일에서 화면을 덜 차지하게)
-    act(type, argf(b)).then(function (r) { if (r && type === 'buy' && b === 'respec') { modal(mhead('망각의 차', '구매 완료', true) + '<p>망각의 차를 소지품에 넣었습니다. 「장비 → 소지품」에서 원할 때 마실 수 있습니다.</p><div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn ghost" data-act="modal-close">닫기</button><button class="btn primary" data-act="invgo" autofocus>소지품으로 이동</button></div>'); render(); return; } if (r && MSG[type]) { var m = MSG[type](r); toast(m[0], m[1] + (type === 'buy' && (b === 'ticket' || b === 'egg') ? ' · 「장비 → 소지품」에서 확인' : ''), 2200); } if (r && type === 'task') Snd.play('ach'); if (r && type === 'drink') Snd.play('drink'); render(); });
+    act(type, argf(b)).then(function (r) { if (r && type === 'buy' && R.BOXES[r.tok]) { var bn = R.BOXES[r.tok].name; modal(mhead(bn, '구매 완료', true) + '<p>' + R.josa(bn, '을', '를') + ' 소지품에 넣었습니다. 「장비 → 소지품」에서 원할 때 열 수 있습니다.</p><div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn ghost" data-act="invgo">소지품으로 이동</button><button class="btn primary" data-act="boxopen" data-a="' + r.tok + '" data-b="1" autofocus>바로 열기</button></div>'); render(); return; } if (r && type === 'buy' && b === 'respec') { modal(mhead('망각의 차', '구매 완료', true) + '<p>망각의 차를 소지품에 넣었습니다. 「장비 → 소지품」에서 원할 때 마실 수 있습니다.</p><div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn ghost" data-act="modal-close">닫기</button><button class="btn primary" data-act="invgo" autofocus>소지품으로 이동</button></div>'); render(); return; } if (r && MSG[type]) { var m = MSG[type](r); toast(m[0], m[1] + (type === 'buy' && (b === 'ticket' || b === 'egg') ? ' · 「장비 → 소지품」에서 확인' : ''), 2200); } if (r && type === 'task') Snd.play('ach'); if (r && type === 'drink') Snd.play('drink'); render(); });
   };
   // 망각의 차를 마신 뒤: 능력치 칸으로 바로 가서 다시 나누게 한다
   function respecDone(n) { toast('망각의 차', '능력치 포인트 ' + R.josa(fmt(n || 0), '을', '를') + ' 돌려받았습니다 · 자동 분배는 꺼 두었습니다', 3200); Snd.play('enh'); ACT.goto('gear', 'alloc'); }
@@ -4534,6 +4534,10 @@
     function B(act, a, b, label, primary) { return '<button class="btn sm' + (primary ? ' primary' : ' ghost') + '" data-act="' + act + '"' + (a != null ? ' data-a="' + a + '"' : '') + (b != null ? ' data-b="' + b + '"' : '') + '>' + label + '</button>'; }
     if (P.fam.eggs > 0) out.push({ k: 'egg', name: '환수의 알', n: P.fam.eggs, desc: (g3 ? '환수 사역장의 부화기에서 마나로 부화시켜 사역마로 키웁니다.' : R.FAM_OPEN_TEXT + '부터 환수 사역장에서 부화할 수 있습니다. 그때까지 여기에 보관됩니다.') + ' 지니고 있는 동안 알 품기로 경험치 +' + Math.round(R.EGG_HOLD_EACH * 100) + '%(경험치 보너스는 ' + R.EGG_HOLD_MAX + '개까지).', acts: (g3 && !P.fam.egg ? invEggBtn(P) : '') + B('goto', 'work', 'fam', '부화기로') });
     if (P.wb.tickets + (P.wb.extra || 0) > 0) out.push({ k: 'ticket', name: '토벌 도전권', n: P.wb.tickets + (P.wb.extra || 0), desc: '충전 도전권 ' + P.wb.tickets + ' / ' + R.K.WB_TICKET_MAX + (P.wb.extra > 0 ? ' · 추가 도전권 ' + P.wb.extra + '장 (이번 주 ' + R.wbExtraLeft(P, now()) + '번 더 사용 가능)' : '') + '. 월드 보스에 한 번 도전할 때 1장씩 사용합니다. 충전 도전권은 8시간마다 3장까지 차고, 매점 · 우편으로 받은 추가 도전권은 충전 도전권을 다 사용한 뒤 한 주에 ' + R.K.WB_EXTRA_USE + '번까지 사용할 수 있으며 남은 것은 다음 주로 넘어갑니다.', acts: B('goto', 'world', null, '월드 보스로', true) });
+    [['gearbox', '여는 순간 마지막으로 처치한 보스 단계보다 3~7레벨 높은 장비 1개(고급 이상)가 나옵니다. 행운이 높을수록 높은 등급이 나오기 쉽습니다.'], ['rarebox', '여는 순간 희귀 이상 장비 1개가 나옵니다.'], ['matbox', '여는 순간 해금된 지역 재료 12개가 무작위로 나옵니다.']].forEach(function (b) {
+      var n = tk[b[0]] || 0; if (n <= 0) return; var m = Math.min(n, R.BOX_OPEN_MAX);
+      out.push({ k: 'box:' + b[0], name: R.BOXES[b[0]].name, n: n, desc: b[1] + (R.BOXES[b[0]].gear ? ' 장비 가방의 빈칸만큼 한 번에 열 수 있습니다.' : ''), acts: B('boxopen', b[0], 1, '열기', true) + (m > 1 ? B('boxopen', b[0], m, m < n ? m + '개 열기' : '모두 열기') : '') });
+    });
     if (tk.respec > 0) out.push({ k: 'respec', name: '망각의 차', n: tk.respec, desc: '마시면 분배한 능력치 포인트를 모두 돌려받고 자동 분배가 꺼집니다.', acts: B('respecuse', null, null, S.confirm.rsp > Date.now() ? '한 번 더 누르면 마십니다' : '바로 마시기', true) + B('goto', 'gear', 'alloc', '능력치 칸으로') });
     D.POTIONS.forEach(function (p) { if (P.shelf[p.id] > 0) out.push({ k: 'pot:' + p.id, name: p.name, n: P.shelf[p.id], desc: p.desc, dot: p.color, acts: B('do', 'drink', p.id, '바로 마시기', true) + B('goto', 'alch', '', '연금 공방으로') }); });
     if (tk.rsDone > 0) out.push({ k: 'rsDone', name: '연구 즉시 완료 물약', n: tk.rsDone, desc: '진행 중인 연구 하나를 바로 끝냅니다. 서고에서 사용합니다.', acts: B('goto', 'lib', null, '연구로', true) });
@@ -4547,10 +4551,22 @@
   function invBody() {
     var items = invItems(), nw = {}; invNew().forEach(function (x) { nw[x.k] = 1; });
     setTimeout(function () { invMarkSeen(); updateBadges(); }, 1500);   // 보고 나면 「새」 표시를 거둔다
-    if (!items.length) return '<div class="empty">소지품이 없습니다. 환수의 알 · 토벌 도전권 · 물약 · 망각의 차 같은 것을 받으면 여기에 모입니다.</div><p class="tiny faint" style="margin-top:8px">재료는 연금 공방의 재료 보관함, 아카데미 휘장은 휘장 보관함에서 봅니다.</p>';
+    if (!items.length) return '<div class="empty">소지품이 없습니다. 환수의 알 · 토벌 도전권 · 물약 · 망각의 차 · 상자 같은 것을 받으면 여기에 모입니다.</div><p class="tiny faint" style="margin-top:8px">재료는 연금 공방의 재료 보관함, 아카데미 휘장은 휘장 보관함에서 봅니다.</p>';
     return '<div class="invlist">' + items.map(function (x) {
       return '<div class="invrow' + (nw[x.k] ? ' new' : '') + '"><div class="invh">' + (x.dot ? '<span class="pot-ic" style="background:' + x.dot + '"></span>' : '') + '<b>' + esc(x.name) + '</b> <span class="num gold">×' + x.n + '</span>' + (nw[x.k] ? ' <span class="tag br">NEW</span>' : '') + '</div><div class="tiny muted">' + esc(x.desc) + '</div><div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap">' + x.acts + '</div></div>';
-    }).join('') + '</div><p class="tiny faint" style="margin-top:8px">장비 상자 · 휘장 원석 · 재료 상자는 받는 순간 열립니다. 재료는 연금 공방의 재료 보관함, 아카데미 휘장은 휘장 보관함에서 봅니다.</p>';
+    }).join('') + '</div><p class="tiny faint" style="margin-top:8px">상자는 「열기」를 누르면 열리고, 나온 것을 창으로 보여 줍니다. 휘장 원석은 받는 순간 열립니다. 재료는 연금 공방의 재료 보관함, 아카데미 휘장은 휘장 보관함에서 봅니다.</p>';
+  }
+  // 상자 열기: 나온 것을 창으로 보여 준다
+  ACT.boxopen = function (id, n) { act('openBox', { id: id, n: +n || 1 }).then(function (r) { if (r) boxGot(r); render(); }); };
+  function boxGot(r) {
+    Snd.play('ach');
+    var WHERE = { equip: '바로 장착', bag: '장비 가방', sold: '자동 판매', dis: '자동 분해', mail: '우편함' };
+    var its = r.items.slice().sort(function (a, b) { return b.r - a.r || (b.ilvl || 0) - (a.ilvl || 0); }), mats = Object.keys(r.mats || {});
+    modal(mhead(r.name, r.n + '개를 열었습니다', true) +
+      (its.length ? '<ul class="report">' + its.map(function (x) { return '<li><b style="color:' + rcol(x.r || 0) + '">' + esc(x.name) + '</b> <span class="tiny faint">' + D.RARITY[x.r].name + (x.ilvl ? ' · Lv ' + x.ilvl : '') + ' · ' + (WHERE[x.res] || '획득') + '</span></li>'; }).join('') + '</ul>' : '') +
+      (mats.length ? '<ul class="report">' + mats.map(function (m) { return '<li>' + esc(D.MATS[m].name) + ' <b class="num">×' + r.mats[m] + '</b></li>'; }).join('') + '</ul><p class="tiny faint" style="margin-top:6px">재료는 연금 공방의 재료 보관함에 들어갔습니다.</p>' : '') +
+      (r.left > 0 ? '<p class="tiny faint" style="margin-top:6px">남은 ' + esc(r.name) + ' ' + r.left + '개</p>' : '') +
+      '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px">' + (r.left > 0 ? '<button class="btn" data-act="boxopen" data-a="' + r.id + '" data-b="' + Math.min(r.left, R.BOX_OPEN_MAX) + '">' + (r.left > R.BOX_OPEN_MAX ? R.BOX_OPEN_MAX + '개 더 열기' : '남은 ' + r.left + '개 열기') + '</button>' : '') + (its.length ? '<button class="btn" data-act="goto" data-a="gear">장비 화면으로</button>' : '') + '<button class="btn primary" data-act="modal-close" autofocus>확인</button></div>');
   }
   // 학점 이전 증서: 보내는 과목 → 받는 과목을 고르고 미리 본 뒤, 한 번 더 눌러 사용
   function tfBody() {
@@ -6100,7 +6116,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102367;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102368;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

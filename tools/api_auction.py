@@ -30,6 +30,7 @@ A, Bu, Cu = U('판매' + sfx), U('입찰가' + sfx, 'corona'), U('입찰나' + s
 adm('/api/admin/mail', {'to': A.name, 'title': '시험', 'rewards': {'gear': 12, 'gold': 1000}})
 adm('/api/admin/mail', {'to': Bu.name + ',' + Cu.name, 'title': '시험', 'rewards': {'gold': 10000000}})
 for u in (A, Bu, Cu): u.req('POST', '/api/mail', {'op': 'claimAll'})
+j = A.req('POST', '/api/act', {'type': 'openBox', 'a': {'id': 'rarebox', 'n': 12}}); check(j.get('r', j).get('n') == 12 or len(j.get('P', {}).get('inv', [])) >= 12, 'open boxes: %s' % str(j)[:200])   # 희귀 장비 상자는 소지품으로 들어가므로 열어서 장비를 꺼낸다
 print('입학 24시간(시간 배율) 기다리는 중…'); time.sleep(30)
 inv = sorted(A.req('GET', '/api/state')['P']['inv'], key=lambda x: -x['r']); check(len(inv) >= 4 and inv[0]['r'] >= 1, 'seller items %d' % len(inv))   # 등급이 높은 것부터 (상점 판매가가 1보다 커야 시작가 하한을 볼 수 있다)
 it = inv[0]; it2 = inv[1]; it3 = inv[2]; it4 = inv[3]
