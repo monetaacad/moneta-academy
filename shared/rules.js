@@ -395,7 +395,7 @@
   // 환수생태학: 레벨마다 사역마 동행 보너스 +3%(곱), 파견 보상 +2%, 부화 속도 +1%
   R.BEAST_FAM = 0.03; R.BEAST_DISP = 0.02;
   R.famBonus = function (f, lv, P) { return f.base * (1 + 0.25 * (lv - 1)) * (1 + (P && P.subj && P.subj.beast ? P.subj.beast.lv : 0) * R.BEAST_FAM); };
-  R.CODEX_TIERS = [1, 10, 100]; R.BOSS_TIERS = [1, 5, 20]; R.CODEX_EACH = 0.004;
+  R.CODEX_TIERS = [1, 10, 100]; R.BOSS_TIERS = [1, 10, 100]; R.CODEX_EACH = 0.004;
   R.tiersFor = function (id) { return BOSS_IDS[id] ? R.BOSS_TIERS : R.CODEX_TIERS; };
   R.codexTiers = function (P) {
     var n = 0; for (var id in P.codex) { var k = P.codex[id], tt = R.tiersFor(id); for (var i = 0; i < tt.length; i++) if (k >= tt[i]) n++; }
@@ -844,7 +844,7 @@
     if (j.killMana) addMana(P, kills * j.killMana);
     P.st.kills += kills; cupAdd(P, kills * K.KILL_PACK / 40, 'kill');
     var mons = z.mons; for (var mk = 0; mk < Math.min(kills, 5000); mk++) { var mm = mons[Math.floor(rnd(P) * mons.length)]; P.codex[mm.id] = (P.codex[mm.id] || 0) + 1; }
-    // 보스 관문 바로 앞 단계(9 · 19 · 29…단계)의 원정을 끝까지 마치면 마지막에 그 구역 보스가 나온다 → 도감 보스 처치 1번 (보스 1 · 5 · 20번 보너스용. 대항전 점수 · 관문은 그대로)
+    // 보스 관문 바로 앞 단계(9 · 19 · 29…단계)의 원정을 끝까지 마치면 마지막에 그 구역 보스가 나온다 → 도감 보스 처치 1번 (보스 1 · 10 · 100번 보너스용. 대항전 점수 · 관문은 그대로)
     if (j.s % 10 === 9 && !canceled && z.boss) { P.codex[z.boss.id] = (P.codex[z.boss.id] || 0) + 1; out.boss = z.boss.name; log(P, t, j.s + '단계 원정 끝에 ' + R.josa(z.boss.name, '을', '를') + ' 다시 쓰러뜨렸습니다 (도감 ' + P.codex[z.boss.id] + '번)', 'good'); }
     var mats = Math.floor(kills * K.MAT_RATE * j.drop + rnd(P)); if (mats) { P.mats[z.mat] = (P.mats[z.mat] || 0) + mats; out.mats = mats; out.mat = z.mat; }
     var prev = D.ZONES.filter(function (zz) { return zz.from < z.from; });
