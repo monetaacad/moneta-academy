@@ -309,6 +309,13 @@ main { min-width: 0; container-type: inline-size; container-name: page; }
 .cauldron canvas { width: 54px; height: 54px; flex: none; }
 .recipe { display: flex; flex-direction: column; gap: 6px; }
 .recipe .mats { display: flex; gap: 6px; flex-wrap: wrap; font-size: 12px; }
+.potrow { flex-wrap: nowrap; gap: 6px; }   /* 물약 선반: 이름 · 남은 시간 · 버튼을 한 줄로 (좁으면 이름만 줄여 보인다) */
+.potrow > * { flex: none; }
+.potrow .potn { flex: 0 1 auto; min-width: 0; display: flex; gap: 4px; align-items: baseline; white-space: nowrap; }
+.potrow .potn .ell { min-width: 0; }
+.potrow .spacer { flex: 1 1 0; min-width: 0; }
+.potrow .lbl-s { display: none; }
+@container page (max-width: 560px) { .potrow .lbl-l { display: none; } .potrow .lbl-s { display: inline; } }   /* 좁은 화면: 「거래소에서 팔기」 → 「거래소」 (이름 자리 확보) */
 .pot-ic { width: 12px; height: 16px; border-radius: 3px 3px 6px 6px; display: inline-block; flex: none; box-shadow: inset 0 -6px 0 rgba(0,0,0,.25); }
 .famcard { display: flex; gap: 12px; align-items: center; }
 .famcard canvas { width: 56px; height: 56px; flex: none; }
