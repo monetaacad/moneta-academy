@@ -56,7 +56,7 @@ function create(dbx, sec, opts) {
   function comOut(c, me) { return { id: c.id, author: nameOf(c.pid), aid: c.pid, op: !!c.op, badge: c.pid === 'staff' ? '' : (opts.badgeOf || (() => ''))(c.pid), mine: c.pid === me, body: sec.dec(c.body), created: c.created, edited: c.edited || 0, parent: c.parent || 0, pa: c.parent ? paOf(c.parent) : '' }; }
   function paOf(id) { const pc = dbx.q.bdComGet.get(id); return !pc ? '' : pc.pid === 'staff' ? '운영진' : nameOf(pc.pid); }   // 답글이 달린 원래 댓글의 작성자 (RP 게시판에서 「↳ 이름」으로 보인다)
   // 알림: 내 글에 댓글 · 내 댓글에 답글이 달리면 알림 칸에 (우편은 보내지 않는다)
-  function note(to, text, post) { if (!to || to === 'staff' || mutes.has(post + ':' + to)) return; (opts.note || (() => {}))(to, 'board', text, { view: 'board', post: post }); }
+  function note(to, text, post) { if (!to || to === 'staff' || mutes.has(post + ':' + to)) return; const p = posts.get(post); (opts.note || (() => {}))(to, p && p.tag === 'rp' ? 'rp' : 'board', text, { view: 'board', post: post }); }   // RP 게시판 글은 알림 종류 'rp' (알림 창의 RP 게시판 탭)
   function get(me, id) {
     const p = posts.get(Number(id) | 0); if (!p || !canSee(me, p)) return null;
     return Object.assign(brief(p, me), { body: p.body, canEdit: p.pid === me, canDel: p.pid === me || isOp(me), canStatus: stOk(me, p), muted: mutes.has(p.id + ':' + me), comments: dbx.q.bdComs.all(p.id).map((c) => comOut(c, me)) });
