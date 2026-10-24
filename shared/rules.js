@@ -1144,6 +1144,9 @@
     w.brew = Math.min(R.CUP_BREW_WEEK, Math.max(w.brew || 0, target));
     return add;
   };
+  // 거래소 판매 수수료: 기본 5%, 거울관(교역의 기숙사) 학생은 3% (판매자 기준)
+  R.MK_FEE = 0.05; R.MK_FEE_HOUSE = { speculum: 0.03 };
+  R.mkFee = function (P) { return P && R.MK_FEE_HOUSE[P.house] != null ? R.MK_FEE_HOUSE[P.house] : R.MK_FEE; };
   R.CUP_SHOP_WEEK = 200;   // 매점 구매 점수는 한 주에 이만큼까지 (아르크로 마석을 거듭 사서 점수를 올리지 못하게)
   R.CUP_AUC = 50;          // 떠돌이 상인 경매 낙찰 1회 (학생끼리 거래인 거래소에는 점수가 없다) · 구간 3개 · 9점이 되며 100 → 50 (방문당 총점 300 → 450)
   // 점수 규칙 표 (대항전 화면 · 가이드용). k = P.wk.cat의 활동 이름, how = 세는 방식 · 상한. 숫자는 실제 쓰는 상수에서 가져온다
