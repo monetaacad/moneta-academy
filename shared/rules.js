@@ -1065,19 +1065,21 @@
     return ups;
   }
   R.badgeGain = badgeGain;
-  // 휘장 계승: 높은 레벨 휘장(재료)을 없애고 모은 별빛의 60%를 낮은 레벨 휘장에 옮긴다 (보석 · 품질 · 세공은 받는 휘장 것 그대로, 레벨이 오르며 넘은 세공 레벨에서는 새 세공)
+  // 휘장 계승: 재료 휘장을 없애고 그 별빛의 60%를 다른 휘장(레벨이 높든 낮든)에 옮긴다 (보석 · 품질 · 세공은 받는 휘장 것 그대로, 레벨이 오르며 넘은 세공 레벨에서는 새 세공)
+  // 재료 휘장의 별빛 = 모은 별빛 + 휘장 자체 몫(1레벨 필요량). 그래서 1레벨 휘장도 재료로 쓸 수 있다
   R.BADGE_INHERIT = 0.6;
   R.badgeTotalXp = function (b) { var s = b.xp || 0; for (var l = 1; l < b.lv; l++) s += R.badgeNeed(l); return s; };
+  R.badgeInheritXp = function (src) { return Math.floor((R.badgeTotalXp(src) + R.badgeNeed(1)) * R.BADGE_INHERIT); };
   R.badgeInheritCost = function (src) { return 20 + src.lv * 8; };   // 마석가루 (깨뜨릴 때 얻는 양과 비슷하게)
   R.badgeInheritCheck = function (P, src, dst) {
     if (!src || !dst) return '없는 휘장입니다'; if (src === dst) return '같은 휘장입니다';
     if (src.lock) return '잠긴 휘장은 재료로 사용할 수 없습니다'; if (P.badgeOn === src.u) return '달고 있는 휘장은 재료로 사용할 수 없습니다. 먼저 해제 필요';
-    if (dst.lv >= src.lv) return '레벨이 더 낮은 휘장에만 계승할 수 있습니다';
+    if (dst.lv >= R.BADGE_MAX) return '이미 완성된 휘장입니다';
     if ((P.res.dust || 0) < R.badgeInheritCost(src)) return '마석가루가 모자랍니다 (' + R.badgeInheritCost(src) + '개 필요)';
     return '';
   };
   R.badgeInheritPreview = function (src, dst) {
-    var lv = dst.lv, xp = (dst.xp || 0) + Math.floor(R.badgeTotalXp(src) * R.BADGE_INHERIT), fac = 0;
+    var lv = dst.lv, xp = (dst.xp || 0) + R.badgeInheritXp(src), fac = 0;
     while (lv < R.BADGE_MAX && xp >= R.badgeNeed(lv)) { xp -= R.badgeNeed(lv); lv++; if (D.BADGE_FACET_LV.indexOf(lv) >= 0) fac++; }
     return { lv: lv, xp: lv >= R.BADGE_MAX ? 0 : Math.floor(xp), facets: fac, cost: R.badgeInheritCost(src) };
   };
@@ -2789,7 +2791,7 @@
   };
   A.badgeInherit = function (P, W, now, a) {
     var src = R.badgeFind(P, str(a.from)), dst = R.badgeFind(P, str(a.to)), why = R.badgeInheritCheck(P, src, dst); if (why) err(why);
-    var cost = R.badgeInheritCost(src), x = Math.floor(R.badgeTotalXp(src) * R.BADGE_INHERIT), lv0 = dst.lv;
+    var cost = R.badgeInheritCost(src), x = R.badgeInheritXp(src), lv0 = dst.lv;
     P.res.dust -= cost; P.badges = P.badges.filter(function (b) { return b !== src; });
     badgeAddXp(P, dst, x, now);
     log(P, now, src.name + '의 별빛을 ' + dst.name + '에 계승했습니다 (Lv ' + lv0 + ' → ' + dst.lv + ')', 'good');
