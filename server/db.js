@@ -457,7 +457,7 @@ function open(dir) {
     upsertWeekly: db.prepare(`INSERT INTO weekly (week, pid, house, cup, dmg, att) VALUES (?, ?, ?, ?, ?, ?)
       ON CONFLICT(week, pid) DO UPDATE SET house = excluded.house, cup = excluded.cup, dmg = excluded.dmg, att = excluded.att`),
     houseCup: db.prepare(`SELECT COALESCE(SUM(cup), 0) AS s, COUNT(*) AS n FROM (SELECT cup FROM weekly WHERE week = ? AND house = ? AND cup > 0 ORDER BY cup DESC LIMIT ?)`),
-    houseCount: db.prepare(`SELECT house, COUNT(*) AS n FROM players WHERE banned = 0 AND guest = 0 GROUP BY house`),
+    houseCount: db.prepare(`SELECT house, COUNT(*) AS n FROM players WHERE banned = 0 AND guest = 0 AND name_key NOT LIKE '~new:%' GROUP BY house`),   // 학생을 아직 만들지 않은 계정은 빼고 센다
     houseTop: db.prepare(`SELECT w.pid, w.cup FROM weekly w JOIN players p ON p.id = w.pid WHERE w.week = ? AND w.house = ? AND p.banned = 0 ORDER BY w.cup DESC LIMIT 1`),
     houseRank: db.prepare(`SELECT w.pid AS id, p.name, p.grade, p.house, p.avatar_v, w.cup FROM weekly w JOIN players p ON p.id = w.pid WHERE w.week = ? AND w.house = ? AND w.cup > 0 AND p.banned = 0 AND p.deleted = 0 ORDER BY w.cup DESC LIMIT 10`),   // 기숙사 공헌도 순위
     houseRankOf: db.prepare(`SELECT COUNT(*) + 1 AS r FROM weekly w JOIN players p ON p.id = w.pid WHERE w.week = ? AND w.house = ? AND w.cup > ? AND w.pid != ? AND p.banned = 0 AND p.deleted = 0`),   // 나 자신은 빼고 센다 (DB에 저장된 내 점수가 반올림 · 저장 시차로 지금 점수보다 커 보여도 밀리지 않게)

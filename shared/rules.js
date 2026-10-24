@@ -395,7 +395,7 @@
   // 환수생태학: 레벨마다 사역마 동행 보너스 +3%(곱), 파견 보상 +2%, 부화 속도 +1%
   R.BEAST_FAM = 0.03; R.BEAST_DISP = 0.02;
   R.famBonus = function (f, lv, P) { return f.base * (1 + 0.25 * (lv - 1)) * (1 + (P && P.subj && P.subj.beast ? P.subj.beast.lv : 0) * R.BEAST_FAM); };
-  R.CODEX_TIERS = [1, 10, 100]; R.BOSS_TIERS = [1, 5, 20]; R.CODEX_EACH = 0.004;
+  R.CODEX_TIERS = [1, 10, 100]; R.BOSS_TIERS = [1, 10, 100]; R.CODEX_EACH = 0.004;
   R.tiersFor = function (id) { return BOSS_IDS[id] ? R.BOSS_TIERS : R.CODEX_TIERS; };
   R.codexTiers = function (P) {
     var n = 0; for (var id in P.codex) { var k = P.codex[id], tt = R.tiersFor(id); for (var i = 0; i < tt.length; i++) if (k >= tt[i]) n++; }
@@ -641,7 +641,7 @@
      - 품는 알: 활동 점수 × 부화 효율만큼 진행도. 다 차면 마나 없이 부화, 마나로 바로 깨우면 남은 진행도만큼만 마나 */
   R.FAM_XP_BASE = 300; R.FAM_XP_G = 1.2; R.FAM_DISP_XP = 10; R.FAM_MAX_LV = 20;
   R.famXpNeed = function (f, lv) { return Math.floor(R.FAM_XP_BASE * (1 + 0.5 * (f ? f.r : 0)) * Math.pow(R.FAM_XP_G, lv - 1)); };
-  R.EGG_INC_BASE = 1500; R.EGG_INC_STEP = 0.25;
+  R.EGG_INC_BASE = 1200; R.EGG_INC_STEP = 0.03;   // 하루 종일 접속하는 학생(깨어 있는 동안 작업마다 접속)이 하루 1~2마리, 2시간마다 접속하면 하루 1마리 안팎 (tools/sim.js active · steady 기준. 예전 1500 · 0.25)
   R.eggNeed = function (P) { return Math.floor(R.EGG_INC_BASE * (1 + R.EGG_INC_STEP * Math.min((P.fam && P.fam.hatched) || 0, 40))); };
   function famGainXp(P, id, x, t) {
     var o = P.fam.own[id], f = FAM[id]; if (!o || !f || !(x > 0)) return 0;
@@ -657,7 +657,8 @@
   function famActivity(P, v) {
     if (!(v > 0) || !P.fam || !R.famOpen(P)) return;
     if (P.fam.act && P.fam.own[P.fam.act]) famGainXp(P, P.fam.act, v);
-    var inc = P.fam.inc; if (inc && inc.prog < inc.need) { inc.prog = Math.min(inc.need, inc.prog + v * calc(P, null).hatchSpd); if (inc.prog >= inc.need) log(P, P.at, '품고 있던 알이 깨어날 준비가 되었습니다', 'good'); }
+    var inc = P.fam.inc; if (inc && inc.need > R.eggNeed(P)) inc.need = R.eggNeed(P);   // 예전 기준으로 품기 시작한 알도 새 필요량으로
+    if (inc && inc.prog < inc.need) { inc.prog = Math.min(inc.need, inc.prog + v * calc(P, null).hatchSpd); if (inc.prog >= inc.need) log(P, P.at, '품고 있던 알이 깨어날 준비가 되었습니다', 'good'); }
   }
   R.famGift = function (P, t) { if (P.famGift || !R.famOpen(P)) return; P.famGift = 1; if (!Object.keys(P.fam.own).length) { P.fam.eggs++; log(P, t, '사역마를 키울 수 있게 되었습니다! 고드릭 펜 교수가 첫 환수의 알을 주었습니다.', 'story'); } };
   R.xpNeed = function (lv) { return Math.floor(K.XP_A * Math.pow(K.XP_G, lv - 1) + lv * K.XP_L); };
@@ -844,6 +845,8 @@
     if (j.killMana) addMana(P, kills * j.killMana);
     P.st.kills += kills; cupAdd(P, kills * K.KILL_PACK / 40, 'kill');
     var mons = z.mons; for (var mk = 0; mk < Math.min(kills, 5000); mk++) { var mm = mons[Math.floor(rnd(P) * mons.length)]; P.codex[mm.id] = (P.codex[mm.id] || 0) + 1; }
+    // 보스 관문 바로 앞 단계(9 · 19 · 29…단계)의 원정을 끝까지 마치면 마지막에 그 구역 보스가 나온다 → 도감 보스 처치 1번 (보스 1 · 10 · 100번 보너스용. 대항전 점수 · 관문은 그대로)
+    if (j.s % 10 === 9 && !canceled && z.boss) { P.codex[z.boss.id] = (P.codex[z.boss.id] || 0) + 1; out.boss = z.boss.name; log(P, t, j.s + '단계 원정 끝에 ' + R.josa(z.boss.name, '을', '를') + ' 다시 쓰러뜨렸습니다 (도감 ' + P.codex[z.boss.id] + '번)', 'good'); }
     var mats = Math.floor(kills * K.MAT_RATE * j.drop + rnd(P)); if (mats) { P.mats[z.mat] = (P.mats[z.mat] || 0) + mats; out.mats = mats; out.mat = z.mat; }
     var prev = D.ZONES.filter(function (zz) { return zz.from < z.from; });
     if (prev.length) { var pm = Math.floor(kills * K.MAT_RATE * 0.25 * j.drop + rnd(P)); if (pm) { var pz = pick(P, prev); P.mats[pz.mat] = (P.mats[pz.mat] || 0) + pm; } }
@@ -1065,25 +1068,27 @@
     return ups;
   }
   R.badgeGain = badgeGain;
-  // 휘장 계승: 높은 레벨 휘장(재료)을 없애고 모은 별빛의 60%를 낮은 레벨 휘장에 옮긴다 (보석 · 품질 · 세공은 받는 휘장 것 그대로, 레벨이 오르며 넘은 세공 레벨에서는 새 세공)
+  // 휘장 계승: 재료 휘장을 없애고 그 별빛의 60%를 다른 휘장(레벨이 높든 낮든)에 옮긴다 (보석 · 품질 · 세공은 받는 휘장 것 그대로, 레벨이 오르며 넘은 세공 레벨에서는 새 세공)
+  // 재료 휘장의 별빛 = 모은 별빛 + 휘장 자체 몫(1레벨 필요량). 그래서 1레벨 휘장도 재료로 쓸 수 있다
   R.BADGE_INHERIT = 0.6;
   R.badgeTotalXp = function (b) { var s = b.xp || 0; for (var l = 1; l < b.lv; l++) s += R.badgeNeed(l); return s; };
+  R.badgeInheritXp = function (src) { return Math.floor((R.badgeTotalXp(src) + R.badgeNeed(1)) * R.BADGE_INHERIT); };
   R.badgeInheritCost = function (src) { return 20 + src.lv * 8; };   // 마석가루 (깨뜨릴 때 얻는 양과 비슷하게)
   R.badgeInheritCheck = function (P, src, dst) {
     if (!src || !dst) return '없는 휘장입니다'; if (src === dst) return '같은 휘장입니다';
     if (src.lock) return '잠긴 휘장은 재료로 사용할 수 없습니다'; if (P.badgeOn === src.u) return '달고 있는 휘장은 재료로 사용할 수 없습니다. 먼저 해제 필요';
-    if (dst.lv >= src.lv) return '레벨이 더 낮은 휘장에만 계승할 수 있습니다';
+    if (dst.lv >= R.BADGE_MAX) return '이미 완성된 휘장입니다';
     if ((P.res.dust || 0) < R.badgeInheritCost(src)) return '마석가루가 모자랍니다 (' + R.badgeInheritCost(src) + '개 필요)';
     return '';
   };
   R.badgeInheritPreview = function (src, dst) {
-    var lv = dst.lv, xp = (dst.xp || 0) + Math.floor(R.badgeTotalXp(src) * R.BADGE_INHERIT), fac = 0;
+    var lv = dst.lv, xp = (dst.xp || 0) + R.badgeInheritXp(src), fac = 0;
     while (lv < R.BADGE_MAX && xp >= R.badgeNeed(lv)) { xp -= R.badgeNeed(lv); lv++; if (D.BADGE_FACET_LV.indexOf(lv) >= 0) fac++; }
     return { lv: lv, xp: lv >= R.BADGE_MAX ? 0 : Math.floor(xp), facets: fac, cost: R.badgeInheritCost(src) };
   };
   R.badgePolishCost = function (P, b) { return { dust: 10 + b.lv * 4, gold: Math.floor(150 * Math.pow(1.11, Math.max(1, Math.min(P.maxStage, R.stageCap(P))) - 1)) }; };
   R.badgePolishXp = function (b) { return Math.ceil(R.badgeNeed(b.lv) / 4); };
-  R.badgeBreakDust = function (b) { return 15 + b.lv * 8 + (b.aff || []).length * 5; };
+  R.badgeBreakDust = function (b) { return 60 + b.lv * 15 + (b.aff || []).length * 15; };   // 1레벨도 희귀 장비 분해(40레벨 69개)쯤은 되게 (예전 15 + 레벨 × 8 + 세공 × 5)
   // 거래 기준값 (데모 NPC 가격 · 데모 매수 판단용)
   R.badgeValue = function (b) { return Math.floor(2500 * Math.pow(1.35, b.lv - 1) * (1 + (b.aff || []).length * 0.25)); };
   // 휘장 강화는 세 갈래: 닦기(마석가루 + 아르크 → 별빛 · 레벨) · 광내기(별조각 → 보석 품질 q, 대표 효과) · 세공 다시 새기기(별조각 → 옵션 한 줄)
@@ -1144,6 +1149,9 @@
     w.brew = Math.min(R.CUP_BREW_WEEK, Math.max(w.brew || 0, target));
     return add;
   };
+  // 거래소 판매 수수료: 기본 5%, 거울관(교역의 기숙사) 학생은 3% (판매자 기준)
+  R.MK_FEE = 0.05; R.MK_FEE_HOUSE = { speculum: 0.03 };
+  R.mkFee = function (P) { return P && R.MK_FEE_HOUSE[P.house] != null ? R.MK_FEE_HOUSE[P.house] : R.MK_FEE; };
   R.CUP_SHOP_WEEK = 200;   // 매점 구매 점수는 한 주에 이만큼까지 (아르크로 마석을 거듭 사서 점수를 올리지 못하게)
   R.CUP_AUC = 50;          // 떠돌이 상인 경매 낙찰 1회 (학생끼리 거래인 거래소에는 점수가 없다) · 구간 3개 · 9점이 되며 100 → 50 (방문당 총점 300 → 450)
   // 점수 규칙 표 (대항전 화면 · 가이드용). k = P.wk.cat의 활동 이름, how = 세는 방식 · 상한. 숫자는 실제 쓰는 상수에서 가져온다
@@ -1412,22 +1420,23 @@
 
   /* ───────── 전투 시뮬레이션 (보스 · 대련 · 월드 보스) ─────────
      enemy: {hp, atk, boss, name}. 30초 제한. 로그는 재생용으로 압축. */
-  R.CROSS_COUNTER = 0.005;   // 남은 체력이 이 비율 이하(화면 0%)면 동시에 쓰러진 것으로 보고 학생 승리
+  R.CROSS_COUNTER = 0.005;
+  R.FREEZE_VULN = 0.2; R.FREEZE_VULN_T = 5;   // 빙결(얼음 감옥 · 서리 베기): 맞은 적은 R.FREEZE_VULN_T초 동안 취약 — 받는 피해 +20% (적에게 방어력 값이 없어 받는 피해로 나타낸다)   // 남은 체력이 이 비율 이하(화면 0%)면 동시에 쓰러진 것으로 보고 학생 승리
   function fight(P, c, enemy, limit, untilDead) {
-    var dt = 0.1, t = 0, mh = enemy.hp, ph = c.hp, sh = 0, pT = 0, mT = 0, fT = 0, cd = {}, stun = 0, haste = 0, amp = 0, dealt = 0, evs = [];
+    var dt = 0.1, t = 0, mh = enemy.hp, ph = c.hp, sh = 0, pT = 0, mT = 0, fT = 0, cd = {}, stun = 0, haste = 0, amp = 0, vuln = 0, dealt = 0, evs = [];
     var ns = R.spellSlots(P), fam = P.fam.act && P.fam.own[P.fam.act] ? c.atk * famAtkMult(P) : 0, lAcc = 0, rAcc = 0, lT = 0;
     // 생명력 흡수 · 자연 회복: 1초마다 모아서 ['l', 흡수, 회복]으로 남긴다 (전투 일지의 체력 바 · 문장용)
     function flush() { if ((lAcc >= 1 || rAcc >= 1) && evs.length < 400) evs.push([Math.round(t * 10) / 10, 'l', Math.round(lAcc), Math.round(rAcc)]); lAcc = 0; rAcc = 0; lT = t; }
     // 끝: 일지가 400건에서 잘려도(생명력 흡수가 1초마다 한 줄씩 더한다) 화면이 실제 끝난 시각 · 남은 체력까지 그리도록 언제나 마지막에 남긴다
     function fin(o) { evs.push([Math.round(t * 10) / 10, 'e', Math.round(Math.max(0, o.pHp) * 1000) / 1000, Math.round(Math.max(0, o.mHp) * 1000) / 1000]); return o; }
     function hit(d, kind, cr) {
-      if (amp > 0) d *= 2; if (enemy.boss) d *= c.bossDmg;
+      if (amp > 0) d *= 2; if (enemy.boss) d *= c.bossDmg; if (vuln > 0) d *= 1 + R.FREEZE_VULN;
       mh -= d; dealt += d; if (c.leech) { var lg = Math.max(0, Math.min(c.hp - ph, d * c.leech)); ph += lg; lAcc += lg; }
       if (evs.length < 400) evs.push([Math.round(t * 10) / 10, 'h', Math.round(d), kind, cr ? 1 : 0]);
     }
     while (t < limit) {
       t += dt;
-      if (haste > 0) haste -= dt; if (amp > 0) amp -= dt;
+      if (haste > 0) haste -= dt; if (amp > 0) amp -= dt; if (vuln > 0) vuln -= dt;
       pT += dt * c.aps * (haste > 0 ? 2 : 1);
       while (pT >= 1) { pT -= 1; var cr = rnd(P) < c.critC; hit(c.atk * (cr ? c.critD : 1), 'a', cr); }
       if (fam) { fT += dt; if (fT >= 1.5) { fT -= 1.5; hit(fam, 'f', false); } }
@@ -1438,7 +1447,7 @@
         cd[sid] = sp.cd * (1 - c.cdr);
         var lm = spellLvMult(P, sp);
         var se = evs.length < 400 ? [Math.round(t * 10) / 10, 's', sid] : null; if (se) evs.push(se);
-        if (sp.type === 'dmg' || sp.type === 'stun') { var cr2 = rnd(P) < c.critC; if (sp.type === 'stun' || (sp.stunP && rnd(P) < sp.stunP)) stun = sp.stun; hit(R.spellHit(c, sp) * sp.mult * lm * (cr2 ? c.critD : 1), 'p', cr2); if (sp.selfShield) { sh += c.hp * sp.selfShield; if (se) se[4] = Math.round(sh); } }   // se[4]: 주문에 딸린 보호막 (전투 일지 체력 바)
+        if (sp.type === 'dmg' || sp.type === 'stun') { var cr2 = rnd(P) < c.critC; if (sp.type === 'stun' || (sp.stunP && rnd(P) < sp.stunP)) stun = sp.stun; if (sp.freeze) vuln = R.FREEZE_VULN_T; hit(R.spellHit(c, sp) * sp.mult * lm * (cr2 ? c.critD : 1), 'p', cr2); if (sp.selfShield) { sh += c.hp * sp.selfShield; if (se) se[4] = Math.round(sh); } }   // se[4]: 주문에 딸린 보호막 (전투 일지 체력 바)
         else if (sp.type === 'shield' || sp.type === 'pshield') { sh += c.hp * sp.mult * Math.min(2, lm); if (se) se[3] = Math.round(sh); }   // 보호막은 재사용 대기마다 걸고, 남은 보호막에 쌓인다 (pshield는 혼자 싸울 때 자신에게)
         else if (sp.type === 'heal') { var hv = Math.min(c.hp - ph, c.hp * sp.mult * Math.min(2, lm)); ph += hv; if (se) se[3] = Math.round(hv); }
         else if (sp.type === 'haste') haste = sp.dur;
@@ -1525,7 +1534,7 @@
     for (var i = 0; i < ns; i++) {
       var s = SPELL[P.spells[i]]; if (!s || !R.spellUnlocked(P, s.id)) continue;
       var lm = spellLvMult(P, s);
-      sp.push({ id: s.id, name: s.name, type: s.type, cd: s.cd * (1 - c.cdr), hit: s.type === 'dmg' || s.type === 'stun' ? R.spellHit(c, s) * s.mult * lm : 0, mult: s.mult * Math.min(2, lm), stun: s.stun || 0, stunP: s.stunP || 0, dur: s.dur || 0, selfShield: s.selfShield || 0 });
+      sp.push({ id: s.id, name: s.name, type: s.type, cd: s.cd * (1 - c.cdr), hit: s.type === 'dmg' || s.type === 'stun' ? R.spellHit(c, s) * s.mult * lm : 0, mult: s.mult * Math.min(2, lm), stun: s.stun || 0, stunP: s.stunP || 0, freeze: s.freeze || 0, dur: s.dur || 0, selfShield: s.selfShield || 0 });
     }
     return { id: P.id, name: P.name, house: P.house, cls: P.cls, pos: pos || R.twPos(P), aggro: R.expAggro(P), hp: c.hp, def: c.def, regen: c.regen, atk: c.atk, aps: c.aps, critC: c.critC, critD: c.critD,
       bossDmg: c.bossDmg, leech: c.leech || 0, spAtk: R.spellHit(c, { main: 1 }), fam: P.fam.act && P.fam.own[P.fam.act] ? c.atk * famAtkMult(P) : 0, sp: sp, power: c.totalDps };
@@ -1558,7 +1567,7 @@
   // cd0: 파티원마다 주문 재사용 대기(층을 넘어 이어진다 · 없으면 모두 준비됨)
   R.twFight = function (ms, foe, hp0, rnd2, f, cd0) {
     var n = ms.length, dt = 0.1, t = 0, mh = foe.hp, hp = hp0.slice(), mx = ms.map(function (m) { return R.twMaxHp(m, n); }), sh = [], pT = [], fT = [], cd = [], haste = [], amp = [], dealt = [], healAt = [], told = {}, lAcc = [], lE = [], lL = [];
-    var stun = 0, mT = 0, aT = 0, gT = 0, rage = 1, mark = null, saves = 0, L = [], S = [], E = [], marks = [0.75, 0.5, 0.25], mi = 0, sec = 0, nextTalk = 6 + rnd2() * 6, i;
+    var stun = 0, vuln = 0, mT = 0, aT = 0, gT = 0, rage = 1, mark = null, saves = 0, L = [], S = [], E = [], marks = [0.75, 0.5, 0.25], mi = 0, sec = 0, nextTalk = 6 + rnd2() * 6, i;
     var tr = foe.trial ? R.TW_TRIALS.filter(function (x) { return x.id === foe.trial; })[0] : null;
     for (i = 0; i < n; i++) { sh[i] = 0; pT[i] = 0; fT[i] = 0; cd[i] = cd0 && cd0[i] ? cd0[i] : {}; haste[i] = 0; amp[i] = 0; dealt[i] = 0; healAt[i] = -99; lAcc[i] = 0; lE[i] = 0; lL[i] = 0; }
     function P0(m) { return R.EXP_POS[m.pos] || R.EXP_POS.van; }
@@ -1611,7 +1620,7 @@
     }
     function dmgTo(j2, atk) { var x = P0(ms[j2]), van = n > 1 && ms[j2].pos === 'van'; return dmgTaken(atk, ms[j2].def * R.TW.DEFX * (n > 1 ? x.def : 1)) * (n > 1 ? x.take : 1) * (van ? R.TW.VAN_TAKE : 1) * (1 - red()); }
     function hit(j, d, cr, k, si) {
-      var m = ms[j]; if (amp[j] > 0) d *= 2; d *= m.bossDmg * (n > 1 ? P0(m).dps : 1);
+      var m = ms[j]; if (amp[j] > 0) d *= 2; d *= m.bossDmg * (n > 1 ? P0(m).dps : 1); if (vuln > 0) d *= 1 + R.FREEZE_VULN;   // 빙결 취약
       ev(k, j, d, si, cr ? 1 : null); mh -= d; dealt[j] += d; if (m.leech && hp[j] > 0) { var lg = Math.max(0, Math.min(mx[j] - hp[j], d * m.leech)); hp[j] += lg; lE[j] += lg; lAcc[j] += lg; }
       if (cr && d > foe.hp * 0.03 && !told['c' + j]) { told['c' + j] = 1; line(m.name + '의 치명타! ' + R.fmt(d) + ' 피해', 'h'); }
     }
@@ -1620,7 +1629,7 @@
     if (tr) line('시련의 층 · 「' + tr.name + '」 — ' + tr.desc + '.', 'm');
     snap();
     while (true) {
-      t += dt;
+      t += dt; if (vuln > 0) vuln -= dt;   // 빙결 취약 시간
       for (i = 0; i < n; i++) {
         var m = ms[i]; if (hp[i] <= 0) continue;
         if (haste[i] > 0) haste[i] -= dt; if (amp[i] > 0) amp[i] -= dt;
@@ -1637,7 +1646,7 @@
           if (sp.type === 'pshield') { tg = lowest(); if (tg >= 0) care(i, k, tg); continue; }   // 광역 보호막: 살아 있는 모두에게
           cd[i][sp.id] = sp.cd;
           if (sp.type === 'dmg' || sp.type === 'stun') {
-            var cr2 = rnd2() < m.critC; if (sp.type === 'stun' || (sp.stunP && rnd2() < sp.stunP)) stun = sp.stun;
+            var cr2 = rnd2() < m.critC; if (sp.type === 'stun' || (sp.stunP && rnd2() < sp.stunP)) stun = sp.stun; if (sp.freeze) { vuln = R.FREEZE_VULN_T; if (!told.fz) { told.fz = 1; line(jo(foe.name, '이', '가') + ' 얼어붙어 취약해졌다! (받는 피해 +' + Math.round(R.FREEZE_VULN * 100) + '%)', 'm'); } }
             hit(i, sp.hit * (cr2 ? m.critD : 1), cr2, 2, k);
             if (sp.selfShield && hp[i] > 0) { sh[i] += mx[i] * sp.selfShield; ev(4, i, mx[i] * sp.selfShield, i, k); }   // 적중할 때 자신에게 보호막 (강철 일격 · 쌓인다)
             if (!told['s' + i + sp.id]) { told['s' + i + sp.id] = 1; line(m.name + '의 「' + sp.name + '」!', 'p'); }
@@ -2483,6 +2492,7 @@
     var id = str(a.id), o = P.fam.own[id]; if (!o) err('없는 사역마입니다');
     var nm = String(a.name == null ? '' : a.name).slice(0, 100).replace(/[\u0000-\u001F\u007F\u200B-\u200F\u202A-\u202E\u2066-\u2069]/g, '').replace(/\s+/g, ' ').trim();
     if (Array.from(nm).length > R.FAM_NAME_MAX) err('이름은 ' + R.FAM_NAME_MAX + '자까지 입력할 수 있습니다');
+    if (nm && R.badName(nm)) err('사용할 수 없는 단어가 포함된 이름입니다');   // 함께 원정 동료의 원정 일지에도 보인다
     if (nm && nm !== FAM[id].name) o.nm = nm; else delete o.nm;
     return { ok: true, nm: o.nm || '' };
   };
@@ -2684,6 +2694,25 @@
   };
   // 망각의 차: 분배한 능력치 포인트를 모두 돌려받는다. 다시 직접 나눌 수 있게 자동 분배는 끈다 (켜 두면 곧바로 같은 대로 다시 나뉘므로)
   function respecNow(P) { var tot = 0; STATS.forEach(function (k) { tot += P.alloc[k]; P.alloc[k] = 0; }); P.pts += tot; P.opt.autoAlloc = false; return tot; }
+  /* 스탯 프리셋: 능력치 비율(0~10)과 이름을 칸마다 저장해 두고, 누르면 망각의 차 1개를 마셔 분배한 포인트를 모두 돌려받은 뒤
+     그 비율로 바로 다시 나눈다. 이후 레벨업 자동 분배(켜 두었다면)도 이 비율을 따른다 */
+  R.STATSET_N = 5;
+  A.statSet = function (P, W, now, a) {
+    var i = int(a.i, 0, R.STATSET_N - 1), op = str(a.op), sets = P.statSets || (P.statSets = []);
+    if (op === 'save') {
+      var w = a.w || {}, o = {}; STATS.forEach(function (k) { var v = Number(w[k]); o[k] = isFinite(v) ? clamp(Math.round(v * 2) / 2, 0, 10) : 0; });
+      if (!STATS.some(function (k) { return o[k] > 0; })) err('비율을 하나 이상 입력해야 합니다');
+      var nm = R.cleanName(a.name).slice(0, 10); sets[i] = { w: o }; if (nm) sets[i].name = nm; return { saved: i };
+    }
+    if (op === 'clear') { sets[i] = null; if (P.statOn === i) delete P.statOn; return { cleared: i }; }
+    if (op !== 'apply') err('잘못된 요청');
+    var st = sets[i]; if (!st) err('저장된 프리셋이 없습니다');
+    var tk = P.tok || {}; if (!(tk.respec > 0)) err('망각의 차가 없습니다. 매점에서 구할 수 있습니다');
+    var auto = !!P.opt.autoAlloc; tk.respec--; var tot = respecNow(P); P.opt.autoAlloc = auto;   // 자동 분배 설정은 그대로 둔다
+    P.opt.allocW = JSON.parse(JSON.stringify(st.w)); R.autoAlloc(P); P.statOn = i; tot = 0; STATS.forEach(function (k) { tot += P.alloc[k]; });   // tot: 다시 나눈 포인트 전체 (남아 있던 포인트 포함)
+    log(P, now, '망각의 차를 마시고 능력치 포인트 ' + tot + '점을 스탯 프리셋 「' + (st.name || (i + 1)) + '」 비율로 다시 나눴습니다', 'news');
+    return { applied: i, pts: tot, name: st.name || '' };
+  };
   A.useRespec = function (P) { var tk = P.tok || {}; if (!(tk.respec > 0)) err('망각의 차가 없습니다'); tk.respec--; return { respec: respecNow(P) }; };   // 우편으로 받은 망각의 차
   A.login = function (P, W, now) {
     if (!P.daily.login) err('오늘의 출석 보상을 이미 받았습니다');
@@ -2791,7 +2820,7 @@
   };
   A.badgeInherit = function (P, W, now, a) {
     var src = R.badgeFind(P, str(a.from)), dst = R.badgeFind(P, str(a.to)), why = R.badgeInheritCheck(P, src, dst); if (why) err(why);
-    var cost = R.badgeInheritCost(src), x = Math.floor(R.badgeTotalXp(src) * R.BADGE_INHERIT), lv0 = dst.lv;
+    var cost = R.badgeInheritCost(src), x = R.badgeInheritXp(src), lv0 = dst.lv;
     P.res.dust -= cost; P.badges = P.badges.filter(function (b) { return b !== src; });
     badgeAddXp(P, dst, x, now);
     log(P, now, src.name + '의 별빛을 ' + dst.name + '에 계승했습니다 (Lv ' + lv0 + ' → ' + dst.lv + ')', 'good');
