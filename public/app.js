@@ -283,7 +283,7 @@
   // 얻은 장비 이름: 높은 등급부터 3개, 나머지는 「외 N개 +」를 눌러 펼친다
   var RES_TAG = { sold: '판매', dis: '분해', mail: '우편' };
   // 장비 프리셋에 들어 있는 장비: 몇 번 프리셋인지 (가방 · 거래소 · 동아리 창고에서 표시)
-  function presetNo(u) { var o = []; (S.P.gearSets || []).forEach(function (st, i) { if (st && st.eq) for (var k in st.eq) if (st.eq[k] === u) { o.push(i + 1); break; } }); return o; }
+  function presetNo(u) { var o = []; (S.P.gearSets || []).forEach(function (st, i) { if (!st) return; if (st.badge === u) { o.push(i + 1); return; } if (st.eq) for (var k in st.eq) if (st.eq[k] === u) { o.push(i + 1); break; } }); return o; }   // 장비 · 휘장 모두 (프리셋에 저장한 휘장은 st.badge)
   function presetTag(u) { var n = presetNo(u); return n.length ? ' <span class="pst" title="장비 프리셋 ' + n.join(' · ') + '번에 들어 있는 장비">프리셋 ' + n.join('·') + '</span>' : ''; }
   function itemNames(items) {
     var arr = items.map(function (it, i) { return [it, i]; }).sort(function (a, b) { return b[0].r - a[0].r || (b[0].ilvl || 0) - (a[0].ilvl || 0) || a[1] - b[1]; }).map(function (x) { return x[0]; });
@@ -2357,7 +2357,7 @@
     if (!list.length) return wrap('<p class="small muted" style="margin-top:6px">2학년 기말시험을 통과해 3학년이 되면 아카데미가 휘장을 수여합니다. 매점 「휘장 원석」, 보스 전리품, 거래소에서도 얻을 수 있습니다.</p>');
     if (b) {
       var g = R.GEM[b.gem], full = b.lv >= R.BADGE_MAX, need = R.badgeNeed(b.lv), pc = R.badgePolishCost(P, b), can = (P.res.dust || 0) >= pc.dust && P.res.gold >= pc.gold;
-      h += '<div class="bdgmain"><div style="flex:1;min-width:0"><div class="row" style="gap:6px;align-items:flex-start"><div class="nm" style="flex:1;min-width:0">' + esc(b.name) + ' ' + badgeSvg(b, 26) + '</div>' + lockBtn(b) + '</div><div class="tiny faint">' + g.feel + '의 보석 · 품질 ' + (Math.round((b.q || 1) * 1000) / 10) + '% · ' + esc(g.desc) + '</div>' +
+      h += '<div class="bdgmain"><div style="flex:1;min-width:0"><div class="row" style="gap:6px;align-items:flex-start"><div class="nm" style="flex:1;min-width:0">' + esc(b.name) + ' ' + badgeSvg(b, 26) + presetTag(b.u) + '</div>' + lockBtn(b) + '</div><div class="tiny faint">' + g.feel + '의 보석 · 품질 ' + (Math.round((b.q || 1) * 1000) / 10) + '% · ' + esc(g.desc) + '</div>' +
         '<div class="row small" style="margin-top:8px;gap:6px"><b class="num">Lv ' + b.lv + '</b><span class="tiny faint">/ ' + R.BADGE_MAX + '</span><span class="spacer"></span><span class="tiny faint num">' + (full ? '완성된 휘장' : gterm('별빛') + ' ' + fmt(b.xp) + ' / ' + fmt(need)) + '</span></div>' +
         '<div class="bar brass" style="height:6px;margin-top:3px"><b style="width:' + (full ? 100 : Math.min(100, b.xp / need * 100)).toFixed(1) + '%"></b></div>' +
         '<div style="margin-top:8px">' + badgeLines(b) + '</div>' +
@@ -2367,7 +2367,7 @@
     var allOpen = !!PREF.bdgAll, opn = S.bdgOpen || (S.bdgOpen = {});   // 보관 중인 휘장 옵션(대표 · 세공) 펼치기: 한 개씩 또는 모두 (모두는 이 기기에 기억)
     if (rest.length) h += '<div class="row between" style="margin-top:12px"><div class="section-t" style="font-size:13px">보관 중인 휘장</div><button class="btn sm ghost" data-act="bdgall">' + (allOpen ? '옵션 모두 접기' : '옵션 모두 보기') + '</button></div><div class="bdglist">' + rest.map(function (x) {
       var g2 = R.GEM[x.gem], armed = S.confirm['bb' + x.u] > Date.now();
-      return '<div class="bdgrow"><div style="flex:1;min-width:0"><div class="row" style="gap:6px;align-items:center;flex-wrap:nowrap"><div class="small ell" style="min-width:0">' + esc(x.name) + ' ' + badgeSvg(x) + ' <span class="num faint">Lv ' + x.lv + '</span></div>' + lockBtn(x) + '</div><div class="tiny faint ell">' + badgeBrief(x) + '</div>' + (allOpen || opn[x.u] ? '<div class="bdgopt" style="margin-top:4px">' + badgeLines(x) + '</div>' : '') + '</div>' +
+      return '<div class="bdgrow"><div style="flex:1;min-width:0"><div class="row" style="gap:6px;align-items:center;flex-wrap:nowrap"><div class="small ell" style="min-width:0">' + esc(x.name) + ' ' + badgeSvg(x) + ' <span class="num faint">Lv ' + x.lv + '</span>' + presetTag(x.u) + '</div>' + lockBtn(x) + '</div><div class="tiny faint ell">' + badgeBrief(x) + '</div>' + (allOpen || opn[x.u] ? '<div class="bdgopt" style="margin-top:4px">' + badgeLines(x) + '</div>' : '') + '</div>' +
         '<span class="frbtns">' + (allOpen ? '' : '<button class="btn sm ghost" data-act="bdgopt" data-a="' + x.u + '" aria-expanded="' + !!opn[x.u] + '">' + (opn[x.u] ? '옵션 숨기기' : '옵션 보기') + '</button>') + '<button class="btn sm" data-act="bwear" data-a="' + x.u + '">장착</button>' + (x.lock ? '' : '<button class="btn sm ghost" data-act="mksellbadge" data-a="' + x.u + '">거래소</button>' + (list.some(function (y) { return y !== x && y.lv < R.BADGE_MAX; }) ? '<button class="btn sm ghost" data-act="binherit" data-a="' + x.u + '" title="이 휘장을 재료로 별빛 ' + Math.round(R.BADGE_INHERIT * 100) + '%를 다른 휘장에 옮깁니다">계승</button>' : '') + '<button class="btn sm ' + (armed ? 'danger' : 'ghost') + '" data-act="bbreak" data-a="' + x.u + '">' + (armed ? '한 번 더 누르면 깨뜨립니다' : '깨뜨리기') + ' <span class="cost">+' + R.badgeBreakDust(x) + ' 마석가루</span></button>') + '</span></div>';
     }).join('') + '</div>';
     return wrap(h + '<p class="tiny faint" style="margin-top:10px">달고 있는 휘장 하나만 효과가 있고 별빛을 모읍니다 · 원정 1시간 +' + R.BADGE_XP.expH + ', 수업 1시간 +' + R.BADGE_XP.lecH + ', 보스 · 결투 · 월드 보스 한 번 +' + R.BADGE_XP.fight + '(이기면 두 배) · ' + D.BADGE_FACET_LV.join(' · ') + '레벨에 세공이 한 줄씩 늘어납니다 · 거래소에서 사고팔 수 있습니다</p>');
@@ -3776,7 +3776,7 @@
       if (m.focus) { var fi = items.findIndex(function (it) { return it.u === m.focus; }); if (fi > 0) items.unshift(items.splice(fi, 1)[0]); }
       // 종류 고르기: 장비 · 재료 · 물약 · 소지품 · 휘장 (개수) — 고른 종류만 보이고 「전체」는 모두
       var nMat = [P.res.stone].concat(Object.keys(D.MATS).map(function (k) { return P.mats[k] || 0; })).filter(function (x) { return x > 0; }).length, nPot = D.POTIONS.filter(function (p) { return P.shelf[p.id] > 0; }).length,
-        nTok = MK_TOKS.filter(function (t) { return t[2](P) > 0; }).length, nBdg = (P.badges || []).filter(function (b) { return b.u !== P.badgeOn && !b.lock; }).length;
+        nTok = MK_TOKS.filter(function (t) { return t[2](P) > 0; }).length, nBdg = (P.badges || []).filter(function (b) { return b.u !== P.badgeOn && !b.lock && !(PREF.mkHidePst && presetNo(b.u).length); }).length;
       var SK = [['item', '장비', items.length], ['mat', '재료', nMat], ['pot', '물약', nPot], ['tok', '소지품', nTok], ['badge', '휘장', nBdg], ['all', '전체', -1]];
       if (m.focus) m.sk = /^pot:/.test(m.focus) ? 'pot' : /^badge:/.test(m.focus) ? 'badge' : 'item';
       var sk = m.sk || (SK.filter(function (x) { return x[2] > 0; })[0] || SK[0])[0];
@@ -3913,13 +3913,14 @@
     API.marketOp({ op: 'reprice', id: +id, price: price }).then(function (j) { if (!j.error && S.mk.eopen) delete S.mk.eopen[id]; mkDone(j, '가격 수정이 완료되었습니다'); });
   };
   function badgeSellCard() {
-    var P = S.P, m = S.mk, list = (P.badges || []).filter(function (b) { return b.u !== P.badgeOn && !b.lock; });
+    var P = S.P, m = S.mk, pstHide = 0, list = (P.badges || []).filter(function (b) { if (b.u === P.badgeOn || b.lock) return false; if (PREF.mkHidePst && 'badge:' + b.u !== m.focus && presetNo(b.u).length) { pstHide++; return false; } return true; });   // 「프리셋 숨기기」는 장비와 같은 설정
     if (m.focus && /^badge:/.test(m.focus)) { var fi = list.findIndex(function (b) { return 'badge:' + b.u === m.focus; }); if (fi > 0) list.unshift(list.splice(fi, 1)[0]); }
-    return '<div class="card" data-sk="badge"><h3>휘장 올리기</h3><p class="tiny faint">달고 있는 휘장은 올릴 수 없습니다. 시세는 같은 보석 · 레벨 ±2의 최근 30일 판매 기록입니다.</p><div class="stack" style="gap:0;margin-top:6px">' + (list.length ? list.map(function (b) {
+    return '<div class="card" data-sk="badge"><h3>휘장 올리기</h3><p class="tiny faint">달고 있는 휘장은 올릴 수 없습니다. 시세는 같은 보석 · 레벨 ±2의 최근 30일 판매 기록입니다.</p>' +
+      '<label class="tog tiny" style="margin-top:6px"><input type="checkbox" data-act="mkhidepst"' + (PREF.mkHidePst ? ' checked' : '') + '> 프리셋 휘장 숨기기' + (pstHide ? ' <span class="faint">(' + pstHide + '개 숨김)</span>' : '') + '</label><div class="stack" style="gap:0;margin-top:6px">' + (list.length ? list.map(function (b) {
       var k = 'badge:' + b.gem + ':' + b.lv, g = R.GEM[b.gem];
-      return '<div class="mksell' + (m.focus === 'badge:' + b.u ? ' focus' : '') + '" data-anchor="mks-badge:' + b.u + '"><div class="mksl"><div class="small ell">' + esc(b.name) + ' ' + badgeSvg(b) + ' <span class="num faint">Lv ' + b.lv + '</span></div><div class="tiny faint ell">' + badgeBrief(b) + '</div>' + priceLine(k) + '</div>' +
+      return '<div class="mksell' + (m.focus === 'badge:' + b.u ? ' focus' : '') + '" data-anchor="mks-badge:' + b.u + '"><div class="mksl"><div class="small ell">' + esc(b.name) + ' ' + badgeSvg(b) + ' <span class="num faint">Lv ' + b.lv + '</span>' + presetTag(b.u) + '</div><div class="tiny faint ell">' + badgeBrief(b) + '</div>' + priceLine(k) + '</div>' +
         '<div class="mksr"><input type="number" min="1" step="1" inputmode="numeric" class="mkprice" id="mkp-badge-' + b.u + '" data-key="' + k + '" placeholder="가격" data-fmt="1"><span class="tiny faint mkfmt"></span><button class="btn sm" data-act="mklist" data-a="badge" data-b="' + b.u + '">올리기</button>' + aucToggle(b.u) + '</div><div class="mkwarn tiny"></div>' + ((m.aopen || {})[b.u] ? aucForm('badge', b.u, 1) : '') + '</div>';
-    }).join('') : '<div class="empty">올릴 수 있는 휘장이 없습니다.</div>') + '</div></div>';
+    }).join('') : '<div class="empty">' + (pstHide ? '프리셋 휘장을 제외하면 올릴 수 있는 휘장이 없습니다.' : '올릴 수 있는 휘장이 없습니다.') + '</div>') + '</div></div>';
   }
   ACT.mksellbadge = function (u) {
     var d = S.mk.data, g = d && d.grade || 1; if (S.P.grade < g) { toast('거래소', g + '학년부터 팔 수 있습니다'); return; }
@@ -6281,7 +6282,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102459;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102460;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
