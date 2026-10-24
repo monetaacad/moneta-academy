@@ -95,8 +95,8 @@
   function clsDot(id, size) { var c = R.CLS[id]; return dotImg(id, size, c ? c.name : '', 'cdot'); }
   function icon(k) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IC[k] + '</svg>'; }
   var VIEWS = [
-    { id: 'home', name: '아카데미 광장' }, { id: 'lecture', name: '강의실' }, { id: 'explore', name: '원정' }, { id: 'tower', name: '별의 탑' }, { id: 'ctower', name: '무한의 탑' }, { id: 'exam', name: '시험·결투' },
-    { id: 'world', name: '월드 보스' }, { id: 'party', name: '파티' }, { id: 'guild', name: '동아리' }, { id: 'friends', name: '친구' }, { id: 'board', name: '게시판' }, { id: 'rp', name: 'RP 게시판' }, { id: 'idea', name: '건의함' }, { id: 'auction', name: '떠돌이 상인' }, { id: 'market', name: '거래소' }, { id: 'gear', name: '장비·능력' }, { id: 'alch', name: '연금 공방', grade: 2 }, { id: 'fam', name: '환수 사역장', fam: true }, { id: 'lib', name: '연구' },
+    { id: 'home', name: '아카데미 광장' }, { id: 'lecture', name: '강의실' }, { id: 'explore', name: '원정' }, { id: 'tower', name: '별의 탑' }, { id: 'ctower', name: '무한의 탑' }, { id: 'exam', name: '시험' },
+    { id: 'world', name: '월드 보스' }, { id: 'duel', name: '결투제' }, { id: 'party', name: '파티' }, { id: 'guild', name: '동아리' }, { id: 'friends', name: '친구' }, { id: 'board', name: '게시판' }, { id: 'rp', name: 'RP 게시판' }, { id: 'idea', name: '건의함' }, { id: 'auction', name: '떠돌이 상인' }, { id: 'market', name: '거래소' }, { id: 'gear', name: '장비·능력' }, { id: 'alch', name: '연금 공방', grade: 2 }, { id: 'fam', name: '환수 사역장', fam: true }, { id: 'lib', name: '연구' },
     { id: 'shop', name: '매점' }, { id: 'lore', name: '세계관' }, { id: 'rec', name: '기록실' }, { id: 'rank', name: '랭킹' }, { id: 'hcup', name: '기숙사' }
   ];
   function viewOpen(v) { return v.fam ? R.famOpen(S.P) : !v.grade || S.P.grade >= v.grade; }   // 환수 사역장은 사역마가 열리면(레벨)
@@ -104,13 +104,13 @@
   var GROUPS = [
     { id: 'home', name: '아카데미 광장', short: '광장', icon: 'home', tabs: ['home'] },
     { id: 'study', name: '수업·연구', short: '수업', icon: 'lecture', tabs: ['lecture', 'lib', 'exam'] },
-    { id: 'adv', name: '원정·전투', short: '원정', icon: 'explore', tabs: ['explore', 'tower', 'ctower', 'world'] },
+    { id: 'adv', name: '원정·전투', short: '원정', icon: 'explore', tabs: ['explore', 'tower', 'ctower', 'world', 'duel'] },   // 결투제: 시험장에서 옮겨 옴
     { id: 'craft', name: '장비·공방', short: '장비', icon: 'gear', tabs: ['gear', 'alch', 'fam'] },
     { id: 'social', name: '교류', short: '교류', icon: 'party', tabs: ['party', 'guild', 'friends', 'board', 'idea', 'rp'] },   // 건의함: 게시판 옆 (상단 아이콘으로도 연다)
     { id: 'store', name: '상점', short: '상점', icon: 'shop', tabs: ['market', 'auction', 'shop'] },
     { id: 'book', name: '기록·랭킹', short: '기록', icon: 'lore', tabs: ['lore', 'rec', 'rank', 'hcup'] }
   ];
-  var TAB_NAMES = { idea: '건의함', auction: '떠돌이 상인', home: '광장', lecture: '강의실', lib: '연구', explore: '원정', tower: '별의 탑', ctower: '무한의 탑', exam: '시험 · 결투제', world: '월드 보스', rank: '랭킹', hcup: '기숙사', gear: '장비 · 능력치', alch: '연금 공방', fam: '환수 사역장', party: '파티', guild: '동아리', friends: '친구', board: '게시판', rp: 'RP 게시판', market: '거래소', shop: '매점', lore: '세계관', rec: '업적 · 도감' };
+  var TAB_NAMES = { idea: '건의함', auction: '떠돌이 상인', home: '광장', lecture: '강의실', lib: '연구', explore: '원정', tower: '별의 탑', ctower: '무한의 탑', exam: '시험', duel: '결투제', world: '월드 보스', rank: '랭킹', hcup: '기숙사', gear: '장비 · 능력치', alch: '연금 공방', fam: '환수 사역장', party: '파티', guild: '동아리', friends: '친구', board: '게시판', rp: 'RP 게시판', market: '거래소', shop: '매점', lore: '세계관', rec: '업적 · 도감' };
   S.gtab = {};
   var IDEA_GROUP = { id: 'idea', name: '건의함', tabs: ['idea'] };   // (예전) 건의함 단독 묶음 — 지금은 교류 묶음 안에 있다
   function groupOf(v) { return GROUPS.find(function (g) { return g.tabs.indexOf(v) >= 0; }) || (v === 'idea' ? IDEA_GROUP : GROUPS[0]); }
@@ -1263,7 +1263,7 @@
     lecJobs: ['lecture'], lecHours: ['lecture'], tasksDone: ['lecture'], int: ['gear'], wil: ['gear'], agi: ['gear'], vit: ['gear'], luk: ['gear'],
     expJobs: ['explore'], kills: ['explore'], maxStageAll: ['explore'], maxLevel: ['explore'], bosses: ['explore', 'boss'], bossTries: ['explore', 'boss'], legendFound: ['explore'], epicFound: ['explore'],
     brews: ['work', 'alch'], dispatches: ['work', 'fam'], famKinds: ['work', 'fam'], hatches: ['work', 'fam'], spirits: ['home', 'care'], streak: ['home'],
-    enh: ['gear'], maxEnh: ['gear'], wbAttacks: ['world', 'wb'], wbKills: ['world', 'wb'], cupWins: ['hcup'], duelBest: ['exam'], maxGrade: ['exam'], sGrades: ['exam'], aGrades: ['exam'],
+    enh: ['gear'], maxEnh: ['gear'], wbAttacks: ['world', 'wb'], wbKills: ['world', 'wb'], cupWins: ['hcup'], duelBest: ['duel'], maxGrade: ['exam'], sGrades: ['exam'], aGrades: ['exam'],
     researchDone: ['lib'], nightJobs: ['lib']
   };
   function goBtn(k) { var g = GO[k]; if (!g) return ''; var v = VIEWS.find(function (x) { return x.id === g[0]; }); if (v && !viewOpen(v)) return ''; return '<button class="btn sm ghost" data-act="goto" data-a="' + g[0] + '" data-b="' + (g[1] || '') + '">이동</button>'; }
@@ -1742,7 +1742,6 @@
         '<p class="small muted">' + S2.desc + '</p><blockquote>' + S2.line + '</blockquote>' + subjMiles(S2.id) + taskBox(S2.id) +
         '<div class="row" style="margin-top:8px">' + (on ? '<span class="tag ok">수강 중</span>' : '<button class="btn sm primary"' + (lecFull ? why('이미 듣고 있는 수업이 있습니다. 수업이 끝나면 들을 수 있습니다') : ' data-act="lecpick" data-a="' + S2.id + '"') + '>수업 듣기</button>') + '</div></div>';
     }).join('') + '</div>';
-    h += '<div class="card" style="margin-top:14px" data-anchor="clsx"><h3>학과 · 전과시험</h3>' + clsRow('lec') + '</div>';   // 프로필 편집 말고 수업 화면에서도 전과시험을 본다
     return h;
   };
   ACT.lecsort = function (k) { PREF.lecSort = k; savePref(); render(); };
@@ -2068,7 +2067,7 @@
   V.exam = function () {
     var P = S.P, ex = R.examFor(P);
     if (ex && P.grade < 8 && P.examCd <= now() && R.examEligible(P, ex)) examMarkSeen();
-    var h = pageHead('학기말 평가 · 아카데미 결투제', '시험장', '합격선 60점');
+    var h = pageHead('학기말 평가', '시험장', '합격선 60점');
     if (P.tok && P.tok.gradeUp > 0 && P.grade < 8) { var ga = S.confirm.gup > Date.now(); h += '<div class="card hl" style="margin-bottom:14px"><div class="row" style="gap:10px;flex-wrap:wrap"><div style="flex:1;min-width:200px"><h4>학년 진급 물약 <span class="tag br num">' + P.tok.gradeUp + '개</span></h4><p class="small muted">운영진 보상입니다. 마시면 시험 없이 바로 ' + (P.grade + 1 >= 8 ? '마스터 과정' : (P.grade + 1) + '학년') + '이 됩니다 (시험 보상 · 성적표 기록은 없음).</p></div><button class="btn ' + (ga ? 'danger' : 'primary') + '" data-act="gradeup">' + (ga ? '한 번 더 누르면 마십니다' : '물약 마시기') + '</button></div></div>'; }
     if (P.grade >= 8 || !ex) h += '<div class="card hl"><h3>모든 시험을 통과했습니다</h3><p class="muted">마스터 과정 연구생입니다. 심연과 월드 보스, 결투제에 도전할 수 있습니다.</p></div>';
     else {
@@ -2081,9 +2080,15 @@
       h += '<div class="stack"><div class="card"><h3>성적표</h3>' + D.EXAMS.map(function (e) { var sc = P.scores[e.grade]; return '<div class="row small" style="padding:4px 0;border-bottom:1px dashed var(--line2)"><span>' + e.grade + '학년</span><span class="muted" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + e.title.split(': ')[1] + '</span>' + (sc ? '<b class="num gold">' + sc.letter + '</b><span class="num muted">' + sc.total + '</span><button class="btn sm ghost" data-act="promo" data-a="' + (e.grade + 1) + '" title="' + (e.grade >= 7 ? '졸업' : (e.grade + 1) + '학년 진급') + ' 때 열린 것" style="padding:1px 7px">안내</button>' : '<span class="faint">—</span>') + '</div>'; }).join('') + '</div>' +
         '<div class="card inset"><h4>침묵달의 미신</h4><p class="small muted" style="margin-top:4px">아카데미력 아홉째 달(침묵달)에 치르는 시험은 총점 +5점. 학생들의 미신이 사실이었습니다.</p></div></div></div>';
     }
-    // 결투제
-    var r = R.rival(P), n = D.RIVALS.length;
-    h += '<div class="section-t" style="margin-top:20px">아카데미 결투제 <span class="small faint">· 최고 기록 ' + P.st.duelBest + ' / ' + n + '</span></div><div class="grid g2" style="align-items:start">';
+    // 학과 · 전과시험: 시험장 맨 아래 (프로필 편집에서도 본다)
+    h += '<div class="card" style="margin-top:14px" data-anchor="clsx"><h3>학과 · 전과시험</h3>' + clsRow('lec') + '</div>';
+    return h;
+  };
+  // ── 아카데미 결투제 (원정·전투 묶음. 예전에는 시험장 아래) ──
+  V.duel = function () {
+    var P = S.P, r = R.rival(P), n = D.RIVALS.length;
+    var h = pageHead('라이벌과 차례로 겨루는', '아카데미 결투제', '최고 기록 ' + P.st.duelBest + ' / ' + n);
+    h += '<div class="grid g2" style="align-items:start">';
     if (r) {
       var p = R.rivalPreview(P, wctx());
       h += '<div class="card hl"><div class="eyebrow tiny gold">' + (P.duel.rank + 1) + '회전</div><h3>' + r.name + '</h3><p class="small muted">' + r.who + '</p><p style="margin:10px 0;font-style:italic;color:var(--ink2)">“' + r.hello + '”</p>' +
@@ -5093,7 +5098,7 @@
     ['.resbar', '자원', '마나 · ' + CUR + ' · 지식 · 마석 · 별조각입니다. ' + CUR + '는 게임 내 화폐입니다. 마나는 시간이 지나면 자동으로 차오르고, ' + CUR + '는 원정, 지식은 수업에서 얻습니다. 각 자원을 누르면(PC는 마우스를 올리면) 얻는 방법과 현재 획득량이 표시됩니다.'],
     ['[data-anchor="timetable"]', '시간표', '게임의 중심입니다. 수업을 30분~3시간 단위로 듣고, 끝나면 다음 교시를 이어 가세요. 창을 닫아도 서버에서 그대로 진행됩니다.'],
     ['[data-fold="goals"]', '다음 할 일', '지금 하면 좋은 일을 순서대로 알려 줍니다. 「이동」을 누르면 해당 화면으로 바로 이동합니다.'],
-    ['#nav', '안내도', '화면을 이동하는 메뉴입니다. 수업·연구(시험 · 결투제 포함), 원정·전투, 장비·공방, 교류, 상점, 기록이 있으며, 점이 표시된 곳은 지금 할 일이 있다는 뜻입니다. 모바일에서는 하단 가운데가 광장입니다.'],
+    ['#nav', '안내도', '화면을 이동하는 메뉴입니다. 수업·연구(시험 포함), 원정·전투(결투제 포함), 장비·공방, 교류, 상점, 기록이 있으며, 점이 표시된 곳은 지금 할 일이 있다는 뜻입니다. 모바일에서는 하단 가운데가 광장입니다.'],
     ['#sidep', '내 정보 요약', '기숙사 · 전투력 · 능력치 · 착용 장비를 표시합니다. 기숙사에 마우스를 올리면 기숙사 혜택이 표시되며, 「접기」로 숨길 수 있습니다.'],
     ['#chatdock', '채팅', '공지 · RP · 월드 · 기숙사 · 학과 · 1:1 채팅입니다. RP 채널에서는 *별표 사이*에 작성한 글이 행동 묘사로 표시됩니다. 탭을 눌러 열고 닫습니다.'],
     ['.mebtn', '내 이름', '누르면 내 정보(두상 · 소개 · 꾸미기), 친구, 파티, 동아리, 칭호 도감으로 이동합니다.'],
@@ -5125,7 +5130,8 @@
       ['h:지역', '지역', '구역마다 몬스터와 재료가 다릅니다. 시간당 효율은 대체로 조금 낮은 단계가 좋습니다.']
     ],
     lib: [['.page-head', '연구', '마나와 지식으로 연구를 진행합니다. 연구는 한 번에 하나만 진행되며 단계가 오를수록 오래 걸리므로, 잠들기 전에 긴 연구를 시작해 두면 좋습니다.']],
-    exam: [['#view .card', '기말시험', '시험 과목이 모두 기준 레벨에 도달하면 응시할 수 있습니다. 「예상 성적」을 확인한 뒤 응시합니다. 합격하면 다음 학년으로 진급합니다.'], ['h:성적표', '성적표', '학년별 성적이 기록됩니다. 「안내」를 누르면 진급 때 열린 콘텐츠를 다시 볼 수 있습니다.'], ['h:대진표', '결투제', '라이벌과 차례로 겨뤄 별조각과 ' + CUR + '를 받습니다. 지면 1시간 뒤 다시 도전할 수 있습니다.']],
+    exam: [['#view .card', '기말시험', '시험 과목이 모두 기준 레벨에 도달하면 응시할 수 있습니다. 「예상 성적」을 확인한 뒤 응시합니다. 합격하면 다음 학년으로 진급합니다.'], ['h:성적표', '성적표', '학년별 성적이 기록됩니다. 「안내」를 누르면 진급 때 열린 콘텐츠를 다시 볼 수 있습니다.'], ['h:학과 · 전과시험', '전과시험', '옮길 학과의 몸으로 시험관과 대련해 이기면 학과를 옮깁니다. 응시료가 필요하며, 지면 하루 뒤 다시 볼 수 있습니다.']],
+    duel: [['h:대진표', '결투제', '라이벌과 차례로 겨뤄 별조각과 ' + CUR + '를 받습니다. 지면 1시간 뒤 다시 도전할 수 있습니다.']],
     world: [['[data-anchor="wb"]', '월드 보스', '서버의 모든 학생이 함께 체력을 깎는 보스입니다. 도전권은 8시간마다 충전됩니다.']],
     hcup: [['h:기숙사 대항전', '기숙사 대항전', '모든 활동이 기숙사 점수로 쌓이며, 매주 활동 학생 평균 점수 순위에 따라 보상이 지급됩니다.'], ['h:기숙사 성장', '기숙사 성장', '대항전 점수가 쌓일수록 기숙사 혜택이 커집니다.']],
     rank: [['h:전투력 순위', '랭킹', '전투력 · 레벨 · 월드 보스 피해 · 별의 탑 파티 · 무한의 탑 · 동아리 순위를 확인합니다. 순위는 10위까지 보이며 「더보기」로 50위까지 펼칠 수 있습니다.']],
@@ -6208,8 +6214,8 @@
     var fee = R.clsExamFee(P);
     return h + '<div class="clsexam"><div class="tiny muted">전과시험 · 옮길 학과의 몸으로 시험관과 대련해 이기면 옮깁니다 · 응시료 ' + MONEY(fee) + '(이기든 지든) · 지면 하루 뒤 다시</div>' +
       (cd > 0 ? '<p class="tiny gold" style="margin-top:4px">다음 응시까지 ' + R.fmtTime(cd) + '</p>' : '<div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap">' + D.CLASSES.filter(function (x) { return x.id !== cur.id; }).map(function (x) {
-        var pv = R.clsExamPreview(P, wctx(), x.id, now()), arm = S.clsArm === x.id && S.clsArmT > Date.now();
-        return '<button class="btn sm' + (arm ? ' primary' : '') + '" data-act="clsexam" data-a="' + x.id + '"' + sb + ' data-tip="' + esc(x.bonusText) + '">' + (arm ? '한 번 더 누르면 응시합니다' : x.name + ' 전과시험') + ' <span class="tiny ' + (pv.win ? 'good' : 'bad') + '">' + (pv.win ? '승산 있음' : '버거움 · ' + Math.round(pv.frac * 100) + '%') + '</span></button>';
+        var pv = R.clsExamPreview(P, wctx(), x.id, now());
+        return '<button class="btn sm" data-act="clsexam" data-a="' + x.id + '"' + sb + ' data-tip="' + esc(x.bonusText) + '">' + x.name + ' 전과시험 <span class="tiny ' + (pv.win ? 'good' : 'bad') + '">' + (pv.win ? '승산 있음' : '버거움 · ' + Math.round(pv.frac * 100) + '%') + '</span></button>';
       }).join('') + '</div>') + '</div>';
   }
   function clsRedraw(src) { if (src === 'lec') { render(); setTimeout(render, 4100); } else ACT.me('profile'); }
@@ -6217,9 +6223,15 @@
     if (S.clsArm !== id || !(S.clsArmT > Date.now())) { S.clsArm = id; S.clsArmT = Date.now() + 4000; clsRedraw(src); return; }
     S.clsArm = null; act('setCls', { cls: id }).then(function (j) { if (j && !j.error) toast('학과', R.CLS[id].name + ' 학과로 옮겼습니다'); clsRedraw(src); });
   };
+  // 전과시험: 누르면 확인 창 (응시료는 이기든 지든 사용된다)
   ACT.clsexam = function (id, src) {
-    if (S.clsArm !== id || !(S.clsArmT > Date.now())) { S.clsArm = id; S.clsArmT = Date.now() + 4000; clsRedraw(src); return; }
-    S.clsArm = null; act('clsExam', { cls: id }).then(function (r) {
+    var x = R.CLS[id]; if (!x) return; var pv = R.clsExamPreview(S.P, wctx(), id, now());
+    modal(mhead(x.name + ' 전과시험', '옮길 학과의 몸으로 시험관과 대련합니다') + '<p class="small">' + R.josa(x.name, '으로', '로') + ' 학과를 옮기는 시험에 응시합니다. 이기면 바로 학과가 바뀌고, 지면 하루 뒤 다시 볼 수 있습니다.</p>' +
+      '<dl class="kv" style="margin-top:8px"><dt>응시료</dt><dd>' + MONEY(R.clsExamFee(S.P)) + ' (이기든 지든)</dd><dt>예상</dt><dd class="' + (pv.win ? 'good' : 'bad') + '">' + (pv.win ? '승산 있음' : '버거움 · 시험관 체력의 약 ' + Math.round(pv.frac * 100) + '%까지') + '</dd><dt>학과 효과</dt><dd>' + esc(x.bonusText) + '</dd></dl>' +
+      '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:12px">' + (src ? '<button class="btn ghost" data-act="modal-close">취소</button>' : '<button class="btn ghost" data-act="me" data-a="profile">취소</button>') + '<button class="btn primary" data-act="clsexamgo" data-a="' + id + '"' + (src ? ' data-b="' + src + '"' : '') + '>응시</button></div>');
+  };
+  ACT.clsexamgo = function (id, src) {
+    closeModal(); act('clsExam', { cls: id }).then(function (r) {
       if (!r || r.error) { clsRedraw(src); return; }
       if (src === 'lec') render();
       Snd.play(r.win ? 'pass' : 'fail');
@@ -6269,7 +6281,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102454;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102455;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
