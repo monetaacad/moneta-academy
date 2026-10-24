@@ -20,9 +20,12 @@ with sync_playwright() as p:
         pg.screenshot(path=f'{OUT}/{tag}-00-login.png', full_page=True)
         pg.click('[data-act=authtab][data-a=signup]'); pg.wait_for_timeout(200)
         name = ('테스트' + tag + str(int(time.time()) % 10000))[:12]
-        pg.fill('#a-id', 'u' + __import__('hashlib').md5((name).encode()).hexdigest()[:10]); pg.fill('#a-name', name); pg.fill('#a-pw', 'secret123'); pg.fill('#a-pw2', 'secret123'); pg.fill('#a-code', invite())
-        pg.click('[data-act=ihouse][data-a=corona]'); pg.click('[data-act=icls][data-a=mage]')
+        pg.fill('#a-id', 'u' + __import__('hashlib').md5((name).encode()).hexdigest()[:10]); pg.fill('#a-pw', 'secret123'); pg.fill('#a-pw2', 'secret123'); pg.fill('#a-code', invite())
         pg.screenshot(path=f'{OUT}/{tag}-01-register.png', full_page=True)
+        pg.click('[data-act=auth-go]'); pg.wait_for_timeout(800)
+        # 가입 뒤 「학생 만들기」: 이름 · 기숙사 · 학과
+        pg.fill('#a-name', name); pg.click('[data-act=ihouse][data-a=corona]'); pg.click('[data-act=icls][data-a=mage]')
+        pg.screenshot(path=f'{OUT}/{tag}-01b-create.png', full_page=True)
         pg.click('[data-act=auth-go]'); pg.wait_for_timeout(800)
         for _ in range(3): pg.evaluate("()=>document.querySelectorAll('.mbox [data-act=modal-close]').forEach(c=>c.click())"); pg.wait_for_timeout(300)   # 이야기 → 학기 이야기 첫 장면
         pg.screenshot(path=f'{OUT}/{tag}-02-home.png', full_page=True)

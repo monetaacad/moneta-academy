@@ -6115,8 +6115,8 @@
   function authScreen() {
     stopLoop(); chatDisconnect();
     var server = API.mode === 'server', M = S.meta || {};
-    var redo = !!(S.P && S.P.needCreate);   // 운영진이 캐릭터를 초기화한 계정: 이름 · 기숙사 · 학과만 새로 정한다
-    var tabs = redo ? [['recreate', '새 학생 만들기']] : server ? [['login', '로그인'], ['signup', '가입'], ['findid', '아이디 찾기']] : [['guest', '바로 입학']];   // 서버판에는 게스트가 없다. '바로 입학'은 아티팩트 미리보기에서만
+    var redo = !!(S.P && S.P.needCreate);   // 가입만 한 계정 · 시즌 초기화 · 운영진이 캐릭터를 초기화한 계정: 이름 · 기숙사 · 학과를 정한다
+    var tabs = redo ? [['recreate', S.P.newJoin ? '학생 만들기' : '새 학생 만들기']] : server ? [['login', '로그인'], ['signup', '가입'], ['findid', '아이디 찾기']] : [['guest', '바로 입학']];   // 서버판에는 게스트가 없다. '바로 입학'은 아티팩트 미리보기에서만
     var tab = S.authTab && tabs.some(function (t) { return t[0] === S.authTab; }) ? S.authTab : tabs[0][0];
     var h = '<div class="body" style="grid-template-columns:minmax(0,1fr)"><main><div class="intro"><img class="crestbig" src="' + LOGO_URL + '" width="96" height="96" alt=""><h1>모네타 아카데미</h1>' +
       '<p class="lede">별의 종의 울림을 듣는 이들에게만 초대장이 날아드는 곳.<br>오선의 열차를 타고 구름섬 라디아로.<br>모네타 아카데미에 오신 것을 환영합니다.</p>' +
@@ -6126,14 +6126,14 @@
     h += '<form id="authform" class="card stack" style="gap:12px" autocomplete="on">';
     if (tab === 'guest') h += '<p class="small muted">이름과 기숙사만 정하면 바로 시작합니다.</p>';
     if (tab === 'recreate' && S.P.seasonNew && !S.authName) S.authName = S.P.name || '';   // 시즌 초기화: 예전 이름을 그대로 사용할 수 있다
-    if (tab === 'recreate') h += (S.P.seasonNew ? '<p class="small">새 시즌이 시작되었습니다. 아이디와 비밀번호는 그대로이며, 기숙사 · 학과를 새로 선택하여 처음부터 입학합니다. 학생 이름은 예전 이름을 그대로 사용하거나 새로 정할 수 있습니다.</p>' : '<p class="small">운영진이 캐릭터를 초기화했습니다. 아이디와 비밀번호는 그대로이며, 학생 이름 · 기숙사 · 학과를 새로 정해 처음부터 입학합니다.</p>') + nameField();
+    if (tab === 'recreate') h += (S.P.newJoin ? '<p class="small">가입이 완료되었습니다. 학생 이름 · 기숙사 · 학과를 정하면 아카데미에 입학합니다.</p>' : S.P.seasonNew ? '<p class="small">새 시즌이 시작되었습니다. 아이디와 비밀번호는 그대로이며, 기숙사 · 학과를 새로 선택하여 처음부터 입학합니다. 학생 이름은 예전 이름을 그대로 사용하거나 새로 정할 수 있습니다.</p>' : '<p class="small">운영진이 캐릭터를 초기화했습니다. 아이디와 비밀번호는 그대로이며, 학생 이름 · 기숙사 · 학과를 새로 정해 처음부터 입학합니다.</p>') + nameField();
     // 아이디는 가입 · 로그인에만 쓰고 게임 안에는 나오지 않는다. 학생 이름은 따로
     if (tab === 'login' || tab === 'signup') h += '<div class="field"><label for="a-id">아이디</label><input id="a-id" maxlength="20" placeholder="' + (tab === 'login' ? '' : '영문·숫자·밑줄(_) 4~20자') + '" autocomplete="username" autocapitalize="none" spellcheck="false" value="' + esc(S.authId || '') + '">' + (tab === 'signup' ? '<span class="tiny faint">아이디는 로그인에만 쓰이며, 게임 안에서 다른 학생에게 보이지 않습니다. 학생 이름과 다르게 정해 주세요.</span>' : '') + '</div>';
     if (tab === 'login' || tab === 'signup') h += '<div class="field"><label for="a-pw">비밀번호</label><input id="a-pw" type="password" maxlength="72" placeholder="' + (tab === 'login' ? '' : '8자 이상, 글자와 숫자 섞어서') + '" autocomplete="' + (tab === 'login' ? 'current-password' : 'new-password') + '"></div>';
     if (tab === 'signup') {
       h += '<div class="field"><label for="a-pw2">비밀번호 확인</label><input id="a-pw2" type="password" maxlength="72" autocomplete="new-password"></div>';
-      h += nameField();
       if (M.inviteRequired !== false) h += '<div class="field"><label for="a-code">초대코드</label><input id="a-code" maxlength="20" placeholder="ARC-XXXX-XXXX" autocapitalize="characters" spellcheck="false" style="font-family:var(--f-num);letter-spacing:.06em"><span class="tiny faint">초대코드는 아카데미 운영진에게 받을 수 있습니다.</span></div>';
+      h += '<p class="tiny faint">학생 이름 · 기숙사 · 학과는 가입한 뒤 다음 화면에서 정합니다.</p>';
     }
     if (tab === 'guest') h += nameField();
     if (tab === 'findid') {   // 학생 이름 + 비밀번호로 아이디 확인. 기록이 없는 예전 학생은 새 아이디를 정한다
@@ -6144,13 +6144,14 @@
     }
     h += '</form>';
     var HW = M.houses ? { hpts: M.houses.pts, hfull: M.houses.full } : M.world || null;
-    if (tab !== 'login' && tab !== 'findid') h += '<div><div class="section-t">기숙사 선택</div><p class="small muted" style="margin-bottom:10px">기숙사는 바꿀 수 없습니다. 매주 기숙사 대항전에서 함께 겨룹니다. 기숙사 혜택은 처음에 1/10만 받고, 기숙사 학생들이 활동할수록 최대 값까지 커집니다. 혜택은 지금 받는 값 / 최대 값입니다.</p><p class="small gold" style="margin-bottom:10px">기숙사 대항전 점수는 기숙사 인원수에 따라 보정되므로, 인원이 많은 기숙사가 유리하지 않습니다.</p>' + glossCard() + '<div class="housepick">' + D.HOUSES.map(function (hh) {
+    var pickHC = tab === 'recreate' || tab === 'guest';   // 기숙사 · 학과는 학생을 만들 때만 (가입 화면에는 없다)
+    if (pickHC) h += '<div><div class="section-t">기숙사 선택</div><p class="small muted" style="margin-bottom:10px">기숙사는 바꿀 수 없습니다. 매주 기숙사 대항전에서 함께 겨룹니다. 기숙사 혜택은 처음에 1/10만 받고, 기숙사 학생들이 활동할수록 최대 값까지 커집니다. 혜택은 지금 받는 값 / 최대 값입니다.</p><p class="small gold" style="margin-bottom:10px">기숙사 대항전 점수는 기숙사 인원수에 따라 보정되므로, 인원이 많은 기숙사가 유리하지 않습니다.</p>' + glossCard() + '<div class="housepick">' + D.HOUSES.map(function (hh) {
       return '<button data-act="ihouse" data-a="' + hh.id + '" class="' + (S.ihouse === hh.id ? 'on' : '') + '"><span class="hhead">' + dotImg(hh.id + '_big', 72, hh.name + ' 문장', 'hdot hbig') + '<span class="hn" style="color:' + hh.color + '">' + hh.name + ' <span class="faint small">' + hh.latin + '</span></span>' + (M.houseN ? '<span class="tiny muted" style="margin-left:auto">현재 ' + fmt(M.houseN[hh.id] || 0) + '명</span>' : '') + '</span><span class="hm">“' + hh.motto + '”</span><span class="small muted">' + hh.desc + '</span>' + houseGrow(hh.id, HW) + '</button>';
     }).join('') + '</div></div>';
-    if (tab !== 'login' && tab !== 'findid') h += '<div><div class="section-t">학과 선택</div><p class="small muted" style="margin-bottom:10px">싸우는 방식입니다. 입학한 뒤에는 전과시험을 봐서 바꿀 수 있습니다.</p><div class="housepick clspick">' + D.CLASSES.map(function (x) {
+    if (pickHC) h += '<div><div class="section-t">학과 선택</div><p class="small muted" style="margin-bottom:10px">싸우는 방식입니다. 입학한 뒤에는 전과시험을 봐서 바꿀 수 있습니다.</p><div class="housepick clspick">' + D.CLASSES.map(function (x) {
       return '<button data-act="icls" data-a="' + x.id + '" class="' + (S.icls === x.id ? 'on' : '') + '"><span class="hhead">' + clsDot(x.id, 40) + '<span class="hn">' + x.name + '</span></span><span class="small muted">' + x.desc + '</span><span class="hb gold">' + x.bonusText + '</span><span class="tiny faint">잘 맞는 자리: ' + x.pos + ' · 전용 수업: ' + x.subj + ' · 전용 주문: ' + x.spells + '</span></button>';
     }).join('') + '</div></div>';
-    var btn = { login: '로그인', signup: '가입하고 입학하기', guest: '입학하기', recreate: '새 학생으로 입학하기', findid: S.findNew ? '새 아이디 정하기' : '아이디 찾기' }[tab];
+    var btn = { login: '로그인', signup: '가입하기', guest: '입학하기', recreate: S.P && S.P.newJoin ? '입학하기' : '새 학생으로 입학하기', findid: S.findNew ? '새 아이디 정하기' : '아이디 찾기' }[tab];
     h += '<div class="row" style="justify-content:center"><button class="btn primary" data-act="auth-go" data-a="' + tab + '">' + btn + '</button></div><p class="small" id="a-msg" style="text-align:center;min-height:1.4em;color:var(--rose)"></p>';
     h += '</div></main></div>';
     $('#app').innerHTML = h; afterRender();
@@ -6179,17 +6180,16 @@
         $('#a-pw').value = pw; var m = $('#a-msg'); m.style.color = 'var(--ink)'; m.textContent = (j.set ? '새 아이디를 정했습니다: ' : '아이디: ') + j.login + ' · 로그인을 누르면 입장합니다';
       });
     }
-    if (!S.ihouse) { msg.textContent = '기숙사 선택 필요'; return; }
-    if (!S.icls) { msg.textContent = '학과 선택 필요'; return; }
-    if (tab === 'signup') {
+    if (tab === 'signup') {   // 가입은 아이디 · 비밀번호 · 초대코드만. 학생은 다음 화면(recreate)에서 만든다
       if (!/^[A-Za-z0-9_]{4,20}$/.test(id)) { msg.textContent = '아이디는 영문·숫자·밑줄(_) 4~20자'; return; }
       if (pw.length < 8) { msg.textContent = '비밀번호는 8자 이상'; return; }
-      if (!name) { msg.textContent = '학생 이름 입력 필요'; return; }
       if (pw !== $('#a-pw2').value) { msg.textContent = '비밀번호 확인이 맞지 않습니다'; return; }
       var code = $('#a-code') ? $('#a-code').value.trim() : '';
       if ($('#a-code') && !code) { msg.textContent = '초대코드 입력 필요'; return; }
-      msg.textContent = '입학 처리 중…'; return API.register(name, pw, S.ihouse, code, S.icls, id).then(done);
+      msg.textContent = '가입 처리 중…'; return API.register(pw, code, id).then(done);
     }
+    if (!S.ihouse) { msg.textContent = '기숙사 선택 필요'; return; }
+    if (!S.icls) { msg.textContent = '학과 선택 필요'; return; }
     if (tab === 'recreate') {
       if (!name) { msg.textContent = '학생 이름 입력 필요'; return; }
       PREF.tutDone = 0; PREF.tutV = {}; try { savePref(); } catch (e) { }   // 첫 가입처럼 둘러보기부터
@@ -6281,7 +6281,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102462;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102463;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;

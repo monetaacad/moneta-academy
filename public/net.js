@@ -24,7 +24,7 @@ var Net = (function () {
   ServerApi.prototype.logout = function () { var s = this; return this.req('POST', '/api/logout').then(function (j) { s.saveToken(null); return j; }); };
   ServerApi.prototype.password = function (old, pw) { return this.req('POST', '/api/password', { old: old, password: pw }); };
   ServerApi.prototype.findId = function (name, password, newLogin) { return this.req('POST', '/api/findid', { name: name, password: password, newLogin: newLogin || '' }); };
-  ServerApi.prototype.register = function (name, password, house, invite, cls, login) { var s = this; return this.req('POST', '/api/register', { login: login, name: name, password: password, house: house, invite: invite, cls: cls }).then(function (j) { if (j.token) s.saveToken(j.token); return j; }); };
+  ServerApi.prototype.register = function (password, invite, login) { var s = this; return this.req('POST', '/api/register', { login: login, password: password, invite: invite }).then(function (j) { if (j.token) s.saveToken(j.token); return j; }); };
   // 이름 바꾸기 (30일 제한은 서버가 확인한다)
   ServerApi.prototype.rename = function (name) { return this.req('POST', '/api/rename', { name: name }); };
   // 채팅: 서버 이벤트 스트림
