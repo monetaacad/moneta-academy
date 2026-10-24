@@ -79,12 +79,14 @@
   }
   // 점수 규칙 표 + 이번 주 내 활동별 점수 (상한이 있는 것은 쓴 만큼 / 상한)
   function cupPointsCard(P) {
-    var cat = (P.wk && P.wk.cat) || {};
+    var cat = (P.wk && P.wk.cat) || {}, shown = 0; R.cupRules().forEach(function (r) { if (r.k && cat[r.k]) shown += cat[r.k]; });
+    // 활동별로 나뉘지 않은 점수: 활동별 기록(P.wk.cat)을 시작하기 전(2026-10-20)에 얻은 점수 등. 합계(P.wk.cup)에는 들어 있다
+    var rest = Math.round(((P.wk && P.wk.cup) || 0) - shown);
     return '<div class="card" style="margin-top:14px" data-anchor="cuprules"><div class="row between"><h3>대항전 점수 규칙</h3><span class="tiny faint">모든 기숙사 같은 점수</span></div>' +
       '<div class="cuprules" style="margin-top:8px">' + R.cupRules().map(function (r) {
         var mine = r.k && cat[r.k] ? Math.round(cat[r.k]) : 0, cap = r.cap ? ' <span class="tiny ' + ((P.wk[r.used] || 0) >= r.cap ? 'bad' : 'faint') + '">(이번 주 ' + fmt(Math.round(P.wk[r.used] || 0)) + ' / ' + fmt(r.cap) + ')</span>' : '';
         return '<div class="cuprow"><b class="small">' + esc(r.name) + '</b><span class="small">' + esc(r.pts) + cap + '</span><span class="tiny faint">' + esc(r.how) + '</span><span class="num small' + (mine ? ' gold' : ' faint') + '">' + (r.k ? fmt(mine) : '—') + '</span></div>';
-      }).join('') + '</div><p class="tiny faint" style="margin-top:6px">오른쪽 숫자는 이번 주에 내가 그 활동으로 얻은 점수입니다. 기숙사 순위는 이번 주 ' + R.CUP_ACTIVE + '점 이상 활동한 학생 점수의 평균이며, 한 학생 점수는 활동 학생 중간 점수의 ' + R.CUP_CAP_X + '배까지만 반영됩니다.</p></div>';
+      }).join('') + (rest >= 1 ? '<div class="cuprow"><b class="small">활동별 기록 전</b><span class="small">—</span><span class="tiny faint">활동별로 나눠 기록하기 전에 얻은 이번 주 점수 (합계에 포함)</span><span class="num small gold">' + fmt(rest) + '</span></div>' : '') + '</div><p class="tiny faint" style="margin-top:6px">오른쪽 숫자는 이번 주에 내가 그 활동으로 얻은 점수입니다. 원정 단계 · 결투제 순위처럼 지난주부터 이어지는 기록이 아니라, 이번 주(월요일 0시부터)에 처치 · 승리 · 합격한 것만 셉니다. 기숙사 순위는 이번 주 ' + R.CUP_ACTIVE + '점 이상 활동한 학생 점수의 평균이며, 한 학생 점수는 활동 학생 중간 점수의 ' + R.CUP_CAP_X + '배까지만 반영됩니다.</p></div>';
   }
   function houseGrow(hid, Wl) {
     var p = R.housePct(Wl, hid), g = Math.round((p - R.HOUSE_BASE) / (1 - R.HOUSE_BASE) * 100), hh = R.HOUSE[hid];
@@ -6235,7 +6237,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102430;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102449;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
