@@ -2,7 +2,7 @@
    화음 + 잔향(리버브·메아리) + 별가루 반짝임. 음원 파일 없이 코드로 합성한다.
    음표: [주파수, 시작(초), 길이(초), 파형, 볼륨, 어택(초), 모드('b'=종소리, 'p'=화음 패드), 글라이드 배율] */
 var Snd = (function () {
-  var S = { on: false, ctx: null, last: {}, off: {}, sfxVol: 0.7 }, dry = null, conv = null, dly = null, VOL = 3, sfxBus = null;
+  var S = { on: false, ctx: null, last: {}, off: {}, sfxVol: 0.7, wxVol: 0.7 }, dry = null, conv = null, dly = null, VOL = 3, sfxBus = null, wxBus = null;
   function irBuf(c) {
     var len = Math.floor(c.sampleRate * 2.6), b = c.createBuffer(2, len, c.sampleRate);
     for (var ch = 0; ch < 2; ch++) { var d = b.getChannelData(ch); for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3); }
@@ -15,6 +15,7 @@ var Snd = (function () {
         var comp = c.createDynamicsCompressor(); comp.connect(c.destination);
         // 효과음과 배경음은 각자 볼륨 손잡이를 거쳐 나간다
         sfxBus = c.createGain(); sfxBus.gain.value = S.sfxVol; sfxBus.connect(comp);
+        wxBus = c.createGain(); wxBus.gain.value = S.wxVol; wxBus.connect(comp);   // 날씨 소리는 효과음과 따로
         comp = sfxBus;
         dry = c.createGain(); dry.connect(comp);
         conv = c.createConvolver(); conv.buffer = irBuf(c); var wet = c.createGain(); wet.gain.value = 0.9; conv.connect(wet); wet.connect(comp);
@@ -64,11 +65,13 @@ var Snd = (function () {
     for (var i = 0; i < (s.sp || 0); i++) voice([SPARK[Math.floor(Math.random() * SPARK.length)], (s.ss || 0.1) + i * 0.06 + Math.random() * 0.03, 0.4, 'sine', 0.009, 0.003, 'b'], now, send);
   };
   S.set = function (on) { S.on = !!on; if (on) ac(); };
-  /* 날씨 소리 (효과음 볼륨을 따른다 · 설정에서 따로 끌 수 있다): 비는 이어지는 빗소리, 뇌우는 더 굵은 빗소리 + 번개 때 천둥 */
-  S.wxOn = true; var rain = null, nbuf = null;
+  /* 날씨 소리 (효과음과 따로 켜고 끄며 볼륨도 따로): 비는 이어지는 빗소리, 뇌우는 더 굵은 빗소리 + 번개 때 천둥
+     wxFg: 창을 내리거나 다른 탭을 볼 때는 날씨 소리를 멈춘다 */
+  S.wxOn = true; S.wxFg = false; var rain = null, nbuf = null;
+  function wxOff() { return !S.wxOn || (S.wxFg && document.hidden); }
   function noise(c) { if (nbuf) return nbuf; var len = c.sampleRate * 4; nbuf = c.createBuffer(2, len, c.sampleRate); for (var ch = 0; ch < 2; ch++) { var d = nbuf.getChannelData(ch), b0 = 0, b1 = 0; for (var i = 0; i < len; i++) { var w = Math.random() * 2 - 1; b0 = 0.97 * b0 + w * 0.15; b1 = 0.6 * b1 + w * 0.4; d[i] = (b0 + b1) * 0.6; } } return nbuf; }   // 부드러운(분홍빛) 잡음
   S.rain = function (level) {   // 0 없음 · 1 비 · 2 뇌우
-    if (!S.on || !S.wxOn || (S.fgOnly && document.hidden)) level = 0;
+    if (wxOff()) level = 0;
     if (!level) { if (rain) { var r0 = rain; rain = null; try { r0.g.gain.setTargetAtTime(0.0001, r0.c.currentTime, 0.6); setTimeout(function () { try { r0.src.stop(); } catch (e) { } }, 3000); } catch (e) { } } return; }
     var c = ac(); if (!c) return;
     if (!rain) {
@@ -77,17 +80,17 @@ var Snd = (function () {
       var lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 3800;
       var g = c.createGain(); g.gain.value = 0.0001;
       var lfo = c.createOscillator(), lg = c.createGain(); lfo.frequency.value = 0.11; lg.gain.value = 0.012; lfo.connect(lg); lg.connect(g.gain); lfo.start();   // 빗줄기가 조금씩 굵어졌다 가늘어졌다
-      src.connect(hp); hp.connect(lp); lp.connect(g); g.connect(sfxBus); src.start();
+      src.connect(hp); hp.connect(lp); lp.connect(g); g.connect(wxBus); src.start();
       rain = { c: c, src: src, g: g, lp: lp, level: 0 };
     }
     if (rain.level !== level) { rain.level = level; rain.lp.frequency.setTargetAtTime(level === 2 ? 2800 : 3800, c.currentTime, 0.5); rain.g.gain.setTargetAtTime(level === 2 ? 0.1 : 0.065, c.currentTime, 1.2); }
   };
   S.thunder = function () {
-    if (!S.on || !S.wxOn || (S.fgOnly && document.hidden)) return; var c = ac(); if (!c) return;
+    if (wxOff()) return; var c = ac(); if (!c) return;
     var t = c.currentTime, src = c.createBufferSource(); src.buffer = noise(c); src.playbackRate.value = 0.5 + Math.random() * 0.2;
     var lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.setValueAtTime(900, t); lp.frequency.exponentialRampToValueAtTime(140, t + 1.2);
     var g = c.createGain(), pk = 0.35 + Math.random() * 0.2; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(pk, t + 0.06); g.gain.exponentialRampToValueAtTime(pk * 0.5, t + 0.5); g.gain.exponentialRampToValueAtTime(pk * 0.7, t + 0.9); g.gain.exponentialRampToValueAtTime(0.0001, t + 4.5);   // 쾅 · 우르릉
-    src.connect(lp); lp.connect(g); g.connect(sfxBus); src.start(t, Math.random() * 2); src.stop(t + 4.6);
+    src.connect(lp); lp.connect(g); g.connect(wxBus); src.start(t, Math.random() * 2); src.stop(t + 4.6);
   };
   // 효과음 이름 (설정 화면용)
   S.KEYS = [['click', '버튼·작업 시작'], ['level', '작업 완료 보고'], ['spirit', '반딧불 정령'], ['enh', '강화·물약 제조'], ['drink', '물약 마시기'], ['ach', '업적·보상'], ['pass', '승리·합격'], ['fail', '패배·실패'], ['boss', '월드 보스'], ['msg', '채팅·1:1 알림']];
@@ -97,6 +100,7 @@ var Snd = (function () {
   S.KEYS.splice(2, 0, ['bell', '수업 종소리']);
   S.setOff = function (k, off) { if (off) S.off[k] = true; else delete S.off[k]; };
   S.vol = function (v) { S.sfxVol = Math.max(0, Math.min(1, v)); if (S.ctx && sfxBus) sfxBus.gain.setTargetAtTime(S.sfxVol, S.ctx.currentTime, 0.05); };
+  S.wxVolSet = function (v) { S.wxVol = Math.max(0, Math.min(1, v)); if (S.ctx && wxBus) wxBus.gain.setTargetAtTime(S.wxVol, S.ctx.currentTime, 0.05); };
   S.preview = function () { var was = S.on; S.on = true; S.play('level'); S.on = was; };
   return S;
 })();
