@@ -30,6 +30,7 @@ A, Bu, Cu = U('판매' + sfx), U('입찰가' + sfx, 'corona'), U('입찰나' + s
 adm('/api/admin/mail', {'to': A.name, 'title': '시험', 'rewards': {'gear': 12, 'gold': 1000}})
 adm('/api/admin/mail', {'to': Bu.name + ',' + Cu.name, 'title': '시험', 'rewards': {'gold': 10000000}})
 for u in (A, Bu, Cu): u.req('POST', '/api/mail', {'op': 'claimAll'})
+j = A.req('POST', '/api/act', {'type': 'openBox', 'a': {'id': 'rarebox', 'n': 12}}); check(j.get('r', j).get('n') == 12 or len(j.get('P', {}).get('inv', [])) >= 12, 'open boxes: %s' % str(j)[:200])   # 희귀 장비 상자는 소지품으로 들어가므로 열어서 장비를 꺼낸다
 print('입학 24시간(시간 배율) 기다리는 중…'); time.sleep(30)
 inv = sorted(A.req('GET', '/api/state')['P']['inv'], key=lambda x: -x['r']); check(len(inv) >= 4 and inv[0]['r'] >= 1, 'seller items %d' % len(inv))   # 등급이 높은 것부터 (상점 판매가가 1보다 커야 시작가 하한을 볼 수 있다)
 it = inv[0]; it2 = inv[1]; it3 = inv[2]; it4 = inv[3]
@@ -37,6 +38,7 @@ it = inv[0]; it2 = inv[1]; it3 = inv[2]; it4 = inv[3]
 j = A.op(op='list', auc=1, u=it['u'], start=1, price=10, hours=24); check('상점 판매가' in str(j.get('error')), 'start floor: %s' % j)
 j = A.op(op='list', auc=1, u=it['u'], start=1000, price=1100, hours=24); check('1.2배' in str(j.get('error')), 'buyout floor: %s' % j)
 j = A.op(op='list', auc=1, u=it['u'], start=1000, price=2000, hours=5); check('기간' in str(j.get('error')), 'hours: %s' % j)
+j = A.mk(); check([3, 6] == j.get('auc', {}).get('hours', [])[:2], 'hours 3 · 6: %s' % j.get('auc'))
 j = A.op(op='list', auc=1, mat='stone', qty=1, start=1000, price=2000, hours=24); check('장비와 휘장' in str(j.get('error')), 'kind: %s' % j)
 for x in (it, it2, it3):
     j = A.op(op='list', auc=1, u=x['u'], start=100000, price=200000, hours=24); check(j.get('ok'), 'list ok: %s' % j)

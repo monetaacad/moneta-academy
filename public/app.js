@@ -954,13 +954,13 @@
     if (j.error) { toast('우편함', j.error); return; } absorb(j);
     var g = j.got || []; if (j.full) setTimeout(function () { toast('우편함', '가방 칸이 모자라 장비 우편 ' + j.full + '통은 그대로 두었습니다', 3500); }, g.length ? 3300 : 0);
     if (g.length) { Snd.play('ach'); toast('우편 보상을 받았습니다', g.map(function (x) { return x.text; }).filter(Boolean).join(' · ').slice(0, 120), 3200); }
-    // 장비 · 환수의 알은 받은 뒤 어디에 있는지 알려 준다 (장비 상자는 받는 순간 열린다)
-    var its = [].concat.apply([], g.map(function (x) { return x.items || []; })), egg = g.some(function (x) { return /환수의 알|토벌 도전권|망각의 차/.test(x.text || ''); });   // 소지품으로 들어가는 것
+    // 장비 · 환수의 알은 받은 뒤 어디에 있는지 알려 준다
+    var its = [].concat.apply([], g.map(function (x) { return x.items || []; })), egg = g.some(function (x) { return /환수의 알|토벌 도전권|망각의 차|장비 상자/.test(x.text || ''); });   // 소지품으로 들어가는 것
     if (its.length || egg) {
       var WHERE = { equip: '바로 장착했습니다', bag: '장비 가방에 넣었습니다', sold: '가방이 가득 차 판매했습니다', dis: '자동 분해했습니다', mail: '가방이 가득 차 우편함으로 보냈습니다' };
       setTimeout(function () {
-        modal(mhead('받은 보상', '우편') + (its.length ? '<div class="section-t">장비 <span class="tiny faint">(장비 상자는 받는 순간 열립니다)</span></div><ul class="report" style="margin-top:4px">' + its.map(function (x) { return '<li><b style="color:' + rcol(x.r || 0) + '">' + esc(x.name) + '</b> — ' + (WHERE[x.res] || '받았습니다') + '</li>'; }).join('') + '</ul>' : '') +
-          (egg ? '<p class="small" style="margin-top:10px">환수의 알 · 토벌 도전권 · 망각의 차는 「장비 → 소지품」에 들어갔습니다. 소지품에서 바로 사용하거나 해당 화면으로 이동할 수 있습니다.</p>' : '') +
+        modal(mhead('받은 보상', '우편') + (its.length ? '<div class="section-t">장비</div><ul class="report" style="margin-top:4px">' + its.map(function (x) { return '<li><b style="color:' + rcol(x.r || 0) + '">' + esc(x.name) + '</b> — ' + (WHERE[x.res] || '받았습니다') + '</li>'; }).join('') + '</ul>' : '') +
+          (egg ? '<p class="small" style="margin-top:10px">환수의 알 · 토벌 도전권 · 망각의 차 · 장비 상자는 「장비 → 소지품」에 들어갔습니다. 소지품에서 바로 사용하거나 해당 화면으로 이동할 수 있습니다.</p>' : '') +
           '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px">' + (egg ? '<button class="btn" data-act="invgo">소지품에서 보기</button>' : '') + (its.length ? '<button class="btn" data-act="goto" data-a="gear">장비 화면으로</button>' : '') + '<button class="btn primary" data-act="modal-close">확인</button></div>');
       }, 200);
     }
@@ -3762,7 +3762,7 @@
   }
   // 팔기: 장비 · 휘장 줄마다 「경매」를 누르면 경매 등록 칸이 펼쳐진다
   function aucForm(kind, u, floor) {
-    var a = (S.mk.data && S.mk.data.auc) || { hours: [12, 24, 48], buyoutX: 1.2, max: 3 };
+    var a = (S.mk.data && S.mk.data.auc) || { hours: [3, 6, 12, 24, 48], buyoutX: 1.2, max: 3 };
     return '<div class="mkaf"><label class="tiny faint">시작가 <input type="number" class="mkastart" min="' + floor + '" step="1" inputmode="numeric" placeholder="' + fmt(floor) + ' 이상"></label><label class="tiny faint">즉시 구매가 <input type="number" class="mkabuy" min="1" step="1" inputmode="numeric" placeholder="시작가의 ' + a.buyoutX + '배 이상"></label>' +
       '<label class="tiny faint">기간 <select class="mkahr">' + a.hours.map(function (x) { return '<option value="' + x + '"' + (x === 24 ? ' selected' : '') + '>' + x + '시간</option>'; }).join('') + '</select></label><button class="btn sm primary" data-act="mkauclist" data-a="' + kind + '" data-b="' + u + '">경매 올리기</button>' +
       '<div class="tiny faint" style="flex-basis:100%">즉시 구매가는 시작가의 ' + a.buyoutX + '배 이상 · 입찰이 들어오기 전까지만 취소 가능 · 경매는 동시에 ' + a.max + '개까지</div></div>';
@@ -4462,7 +4462,7 @@
   ACT['do'] = function (type, b) {
     var argf = SIMPLE[type]; if (!argf) return;
     if (type === 'sell' || type === 'equip') S.sel = null;   // 판매 · 장착하면 살펴보기를 닫는다 (모바일에서 화면을 덜 차지하게)
-    act(type, argf(b)).then(function (r) { if (r && type === 'buy' && b === 'respec') { modal(mhead('망각의 차', '구매 완료', true) + '<p>망각의 차를 소지품에 넣었습니다. 「장비 → 소지품」에서 원할 때 마실 수 있습니다.</p><div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn ghost" data-act="modal-close">닫기</button><button class="btn primary" data-act="invgo" autofocus>소지품으로 이동</button></div>'); render(); return; } if (r && MSG[type]) { var m = MSG[type](r); toast(m[0], m[1] + (type === 'buy' && (b === 'ticket' || b === 'egg') ? ' · 「장비 → 소지품」에서 확인' : ''), 2200); } if (r && type === 'task') Snd.play('ach'); if (r && type === 'drink') Snd.play('drink'); render(); });
+    act(type, argf(b)).then(function (r) { if (r && type === 'buy' && R.BOXES[r.tok]) { var bn = R.BOXES[r.tok].name; modal(mhead(bn, '구매 완료', true) + '<p>' + R.josa(bn, '을', '를') + ' 소지품에 넣었습니다. 「장비 → 소지품」에서 원할 때 열 수 있습니다.</p><div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn ghost" data-act="invgo">소지품으로 이동</button><button class="btn primary" data-act="boxopen" data-a="' + r.tok + '" data-b="1" autofocus>바로 열기</button></div>'); render(); return; } if (r && type === 'buy' && b === 'respec') { modal(mhead('망각의 차', '구매 완료', true) + '<p>망각의 차를 소지품에 넣었습니다. 「장비 → 소지품」에서 원할 때 마실 수 있습니다.</p><div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn ghost" data-act="modal-close">닫기</button><button class="btn primary" data-act="invgo" autofocus>소지품으로 이동</button></div>'); render(); return; } if (r && MSG[type]) { var m = MSG[type](r); toast(m[0], m[1] + (type === 'buy' && (b === 'ticket' || b === 'egg') ? ' · 「장비 → 소지품」에서 확인' : ''), 2200); } if (r && type === 'task') Snd.play('ach'); if (r && type === 'drink') Snd.play('drink'); render(); });
   };
   // 망각의 차를 마신 뒤: 능력치 칸으로 바로 가서 다시 나누게 한다
   function respecDone(n) { toast('망각의 차', '능력치 포인트 ' + R.josa(fmt(n || 0), '을', '를') + ' 돌려받았습니다 · 자동 분배는 꺼 두었습니다', 3200); Snd.play('enh'); ACT.goto('gear', 'alloc'); }
@@ -4534,6 +4534,10 @@
     function B(act, a, b, label, primary) { return '<button class="btn sm' + (primary ? ' primary' : ' ghost') + '" data-act="' + act + '"' + (a != null ? ' data-a="' + a + '"' : '') + (b != null ? ' data-b="' + b + '"' : '') + '>' + label + '</button>'; }
     if (P.fam.eggs > 0) out.push({ k: 'egg', name: '환수의 알', n: P.fam.eggs, desc: (g3 ? '환수 사역장의 부화기에서 마나로 부화시켜 사역마로 키웁니다.' : R.FAM_OPEN_TEXT + '부터 환수 사역장에서 부화할 수 있습니다. 그때까지 여기에 보관됩니다.') + ' 지니고 있는 동안 알 품기로 경험치 +' + Math.round(R.EGG_HOLD_EACH * 100) + '%(경험치 보너스는 ' + R.EGG_HOLD_MAX + '개까지).', acts: (g3 && !P.fam.egg ? invEggBtn(P) : '') + B('goto', 'work', 'fam', '부화기로') });
     if (P.wb.tickets + (P.wb.extra || 0) > 0) out.push({ k: 'ticket', name: '토벌 도전권', n: P.wb.tickets + (P.wb.extra || 0), desc: '충전 도전권 ' + P.wb.tickets + ' / ' + R.K.WB_TICKET_MAX + (P.wb.extra > 0 ? ' · 추가 도전권 ' + P.wb.extra + '장 (이번 주 ' + R.wbExtraLeft(P, now()) + '번 더 사용 가능)' : '') + '. 월드 보스에 한 번 도전할 때 1장씩 사용합니다. 충전 도전권은 8시간마다 3장까지 차고, 매점 · 우편으로 받은 추가 도전권은 충전 도전권을 다 사용한 뒤 한 주에 ' + R.K.WB_EXTRA_USE + '번까지 사용할 수 있으며 남은 것은 다음 주로 넘어갑니다.', acts: B('goto', 'world', null, '월드 보스로', true) });
+    [['gearbox', '여는 순간 마지막으로 처치한 보스 단계보다 3~7레벨 높은 장비 1개(고급 이상)가 나옵니다. 행운이 높을수록 높은 등급이 나오기 쉽습니다.'], ['rarebox', '여는 순간 희귀 이상 장비 1개가 나옵니다.'], ['matbox', '여는 순간 해금된 지역 재료 12개가 무작위로 나옵니다.']].forEach(function (b) {
+      var n = tk[b[0]] || 0; if (n <= 0) return; var m = Math.min(n, R.BOX_OPEN_MAX);
+      out.push({ k: 'box:' + b[0], name: R.BOXES[b[0]].name, n: n, desc: b[1] + (R.BOXES[b[0]].gear ? ' 장비 가방의 빈칸만큼 한 번에 열 수 있습니다.' : ''), acts: B('boxopen', b[0], 1, '열기', true) + (m > 1 ? B('boxopen', b[0], m, m < n ? m + '개 열기' : '모두 열기') : '') });
+    });
     if (tk.respec > 0) out.push({ k: 'respec', name: '망각의 차', n: tk.respec, desc: '마시면 분배한 능력치 포인트를 모두 돌려받고 자동 분배가 꺼집니다.', acts: B('respecuse', null, null, S.confirm.rsp > Date.now() ? '한 번 더 누르면 마십니다' : '바로 마시기', true) + B('goto', 'gear', 'alloc', '능력치 칸으로') });
     D.POTIONS.forEach(function (p) { if (P.shelf[p.id] > 0) out.push({ k: 'pot:' + p.id, name: p.name, n: P.shelf[p.id], desc: p.desc, dot: p.color, acts: B('do', 'drink', p.id, '바로 마시기', true) + B('goto', 'alch', '', '연금 공방으로') }); });
     if (tk.rsDone > 0) out.push({ k: 'rsDone', name: '연구 즉시 완료 물약', n: tk.rsDone, desc: '진행 중인 연구 하나를 바로 끝냅니다. 서고에서 사용합니다.', acts: B('goto', 'lib', null, '연구로', true) });
@@ -4547,10 +4551,22 @@
   function invBody() {
     var items = invItems(), nw = {}; invNew().forEach(function (x) { nw[x.k] = 1; });
     setTimeout(function () { invMarkSeen(); updateBadges(); }, 1500);   // 보고 나면 「새」 표시를 거둔다
-    if (!items.length) return '<div class="empty">소지품이 없습니다. 환수의 알 · 토벌 도전권 · 물약 · 망각의 차 같은 것을 받으면 여기에 모입니다.</div><p class="tiny faint" style="margin-top:8px">재료는 연금 공방의 재료 보관함, 아카데미 휘장은 휘장 보관함에서 봅니다.</p>';
+    if (!items.length) return '<div class="empty">소지품이 없습니다. 환수의 알 · 토벌 도전권 · 물약 · 망각의 차 · 상자 같은 것을 받으면 여기에 모입니다.</div><p class="tiny faint" style="margin-top:8px">재료는 연금 공방의 재료 보관함, 아카데미 휘장은 휘장 보관함에서 봅니다.</p>';
     return '<div class="invlist">' + items.map(function (x) {
       return '<div class="invrow' + (nw[x.k] ? ' new' : '') + '"><div class="invh">' + (x.dot ? '<span class="pot-ic" style="background:' + x.dot + '"></span>' : '') + '<b>' + esc(x.name) + '</b> <span class="num gold">×' + x.n + '</span>' + (nw[x.k] ? ' <span class="tag br">NEW</span>' : '') + '</div><div class="tiny muted">' + esc(x.desc) + '</div><div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap">' + x.acts + '</div></div>';
-    }).join('') + '</div><p class="tiny faint" style="margin-top:8px">장비 상자 · 휘장 원석 · 재료 상자는 받는 순간 열립니다. 재료는 연금 공방의 재료 보관함, 아카데미 휘장은 휘장 보관함에서 봅니다.</p>';
+    }).join('') + '</div><p class="tiny faint" style="margin-top:8px">상자는 「열기」를 누르면 열리고, 나온 것을 창으로 보여 줍니다. 휘장 원석은 받는 순간 열립니다. 재료는 연금 공방의 재료 보관함, 아카데미 휘장은 휘장 보관함에서 봅니다.</p>';
+  }
+  // 상자 열기: 나온 것을 창으로 보여 준다
+  ACT.boxopen = function (id, n) { act('openBox', { id: id, n: +n || 1 }).then(function (r) { if (r) boxGot(r); render(); }); };
+  function boxGot(r) {
+    Snd.play('ach');
+    var WHERE = { equip: '바로 장착', bag: '장비 가방', sold: '자동 판매', dis: '자동 분해', mail: '우편함' };
+    var its = r.items.slice().sort(function (a, b) { return b.r - a.r || (b.ilvl || 0) - (a.ilvl || 0); }), mats = Object.keys(r.mats || {});
+    modal(mhead(r.name, r.n + '개를 열었습니다', true) +
+      (its.length ? '<ul class="report">' + its.map(function (x) { return '<li><b style="color:' + rcol(x.r || 0) + '">' + esc(x.name) + '</b> <span class="tiny faint">' + D.RARITY[x.r].name + (x.ilvl ? ' · Lv ' + x.ilvl : '') + ' · ' + (WHERE[x.res] || '획득') + '</span></li>'; }).join('') + '</ul>' : '') +
+      (mats.length ? '<ul class="report">' + mats.map(function (m) { return '<li>' + esc(D.MATS[m].name) + ' <b class="num">×' + r.mats[m] + '</b></li>'; }).join('') + '</ul><p class="tiny faint" style="margin-top:6px">재료는 연금 공방의 재료 보관함에 들어갔습니다.</p>' : '') +
+      (r.left > 0 ? '<p class="tiny faint" style="margin-top:6px">남은 ' + esc(r.name) + ' ' + r.left + '개</p>' : '') +
+      '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px">' + (r.left > 0 ? '<button class="btn" data-act="boxopen" data-a="' + r.id + '" data-b="' + Math.min(r.left, R.BOX_OPEN_MAX) + '">' + (r.left > R.BOX_OPEN_MAX ? R.BOX_OPEN_MAX + '개 더 열기' : '남은 ' + r.left + '개 열기') + '</button>' : '') + (its.length ? '<button class="btn" data-act="goto" data-a="gear">장비 화면으로</button>' : '') + '<button class="btn primary" data-act="modal-close" autofocus>확인</button></div>');
   }
   // 학점 이전 증서: 보내는 과목 → 받는 과목을 고르고 미리 본 뒤, 한 번 더 눌러 사용
   function tfBody() {
@@ -5584,10 +5600,12 @@
     if (d.pages > 1) h += '<div class="row bdpages">' + (d.page > 1 ? '<button class="btn sm ghost" data-act="bdpage" data-a="' + (d.page - 1) + '">이전</button>' : '') + '<span class="tiny faint num">' + d.page + ' / ' + d.pages + '</span>' + (d.page < d.pages ? '<button class="btn sm ghost" data-act="bdpage" data-a="' + (d.page + 1) + '">다음</button>' : '') + '<span class="tiny faint">' + d.total + '개</span></div>';
     return h;
   }
+  // RP 글의 제목이 본문 첫 줄로 만든 것이 아니라 따로 적은 것인지 (메모는 제목 = 본문 첫 줄이라 다시 보이지 않는다)
+  function rpOwnTitle(p) { var t = (p.title || '').replace(/…$/, ''), f = String(p.body || '').split('\n')[0].replace(/\s+/g, ' ').trim(); return !!t && f.indexOf(t) !== 0; }
   function rpWho(aid, name, badge) { return '<button class="cn" data-act="prof" data-a="' + esc(aid) + '">' + esc(name) + '</button>' + (badge && R.OP_TITLES[badge] ? ' <span class="ttl' + R.opTitleCls(badge) + '">' + esc(badge) + '</span>' : ''); }
   function rpMemo(m, op) {
     var b = S.bd, full = (b.full || {})[m.id], coms = full ? full.comments : m.coms || [], hidden = full ? 0 : Math.max(0, m.ncom - coms.length), ed = b.medit && b.medit.id === m.id, armed = S.confirm['bd' + m.id] > Date.now();
-    var titled = m.title && m.body.indexOf(m.title.replace(/…$/, '')) !== 0;   // 예전 RP 글: 제목이 따로 있으면 위에 보인다
+    var titled = rpOwnTitle(m);   // 예전 RP 글: 제목이 따로 있으면 위에 보인다
     var h = '<article class="card rpmemo"><div class="row" style="gap:6px"><b class="small">' + rpWho(m.aid, m.author, m.aop) + '</b><span class="tiny faint">' + bdWhen(m.created) + (m.updated > m.created + 60 ? ' · 고침' : '') + '</span><span class="spacer"></span>' +
       '<button class="linkbtn tiny" data-act="bdopen" data-a="' + m.id + '">글로 보기</button>' +
       (m.mine && m.body.length <= 500 && !ed ? '<button class="linkbtn tiny" data-act="rpedit" data-a="' + m.id + '">수정</button>' : '') +
@@ -5665,7 +5683,7 @@
     var b = S.bd, armed = S.confirm['bd' + p.id] > Date.now();
     var h = '<div class="row" style="margin-bottom:10px"><button class="btn sm ghost" data-act="bdback">← 목록</button><span class="spacer"></span>' +
       (p.canEdit ? '<button class="btn sm ghost" data-act="bdedit">수정</button>' : '') + (p.canDel ? '<button class="btn sm ' + (armed ? 'danger' : 'ghost') + '" data-act="bddel" data-a="' + p.id + '">' + (armed ? '한 번 더 누르면 지웁니다' : '지우기') + '</button>' : '') + '</div>';
-    h += '<article class="card bdpost"><div class="row" style="gap:6px;flex-wrap:wrap">' + bdTag(p.tag) + (p.priv ? '<span class="btag lock">관리자만 보기</span>' : '') + bdSt(p.st) + (p.canStatus ? '<span class="spacer"></span>' + [['review', '검토 중'], ['wip', '확인 중'], ['done', '해결 완료'], ['no', '반영 안 함'], ['norepro', '재현 안 됨'], ['', '표시 없음']].map(function (o) { return '<button class="btn sm' + ((p.st || '') === o[0] ? ' primary' : ' ghost') + '" data-act="bdst" data-a="' + p.id + '" data-b="' + o[0] + '">' + o[1] + '</button>'; }).join('') : '') + (API.mode === 'server' ? '<button class="btn sm ghost bdmute' + (p.muted ? ' on' : '') + '" data-act="bdmute" data-a="' + p.id + '" title="이 글에 달리는 댓글 · 답글 알림을 받지 않습니다">' + (p.muted ? '알림 다시 받기' : '알림 받지 않기') + '</button>' : '') + '</div><h2 class="bdh">' + esc(p.title) + '</h2>' +
+    h += '<article class="card bdpost"><div class="row" style="gap:6px;flex-wrap:wrap">' + bdTag(p.tag) + (p.priv ? '<span class="btag lock">관리자만 보기</span>' : '') + bdSt(p.st) + (p.canStatus ? '<span class="spacer"></span>' + [['review', '검토 중'], ['wip', '확인 중'], ['done', '해결 완료'], ['no', '반영 안 함'], ['norepro', '재현 안 됨'], ['', '표시 없음']].map(function (o) { return '<button class="btn sm' + ((p.st || '') === o[0] ? ' primary' : ' ghost') + '" data-act="bdst" data-a="' + p.id + '" data-b="' + o[0] + '">' + o[1] + '</button>'; }).join('') : '') + (API.mode === 'server' ? '<button class="btn sm ghost bdmute' + (p.muted ? ' on' : '') + '" data-act="bdmute" data-a="' + p.id + '" title="이 글에 달리는 댓글 · 답글 알림을 받지 않습니다">' + (p.muted ? '알림 다시 받기' : '알림 받지 않기') + '</button>' : '') + '</div>' + (p.tag !== 'rp' ? '<h2 class="bdh">' + esc(p.title) + '</h2>' : rpOwnTitle(p) ? '<h2 class="bdh">' + rpText(p.title) + '</h2>' : '') +
       '<div class="tiny faint"><button class="cn" data-act="prof" data-a="' + esc(p.aid) + '">' + esc(p.author) + '</button>' + (p.aop && R.OP_TITLES[p.aop] ? ' <span class="ttl' + R.opTitleCls(p.aop) + '">' + esc(p.aop) + '</span>' : '') + ' · ' + new Date(p.created * 1000).toLocaleString('ko-KR') + (p.updated > p.created + 60 ? ' · 고침' : '') + '</div>' +
       (p.priv ? '<p class="tiny gold" style="margin-top:8px">작성자와 운영진만 볼 수 있는 글입니다. 운영진이 답하면 우편으로 알려 드립니다.</p>' : '') +
       '<div class="bdbody">' + (p.tag === 'rp' ? rpText(p.body) : esc(p.body)) + '</div></article>';
