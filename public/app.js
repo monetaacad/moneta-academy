@@ -4309,9 +4309,29 @@
     if (x2 < 0.18) return [josa(m.name, '과', '와') + ' 마주쳤다. 거리를 재며 틈을 노린다.', ''];
     if (x2 < 0.3) return [josa(D.MATS[z.mat].name, '을', '를') + ' 주웠다', '재료'];
     if (x2 < 0.45) return ['잠시 숨을 고른다. 마나가 천천히 차오른다.', ''];
-    if (x2 < 0.5 && S.P.fam.act && R.FAM[S.P.fam.act]) return [R.josa(R.FAM[S.P.fam.act].name, '이', '가') + ' 앞장서서 길을 찾는다', ''];
+    if (x2 < 0.5 && S.P.fam.act && R.FAM[S.P.fam.act]) { var fn = esc(R.famLabel(S.P, S.P.fam.act)), fz0 = famLines(S.P.fam.act), fl0 = fz0[Math.floor(x2 * 211) % fz0.length]; return [fl0.replace('{f}이', josa(fn, '이', '가')).replace('{f}', fn).replace('{m}을', josa(m.name, '을', '를')).replace('{m}이', josa(m.name, '이', '가')).replace('{m}', m.name), '']; }   // 내 사역마: 지은 이름이 있으면 그 이름
+    var wf = j.pt && (j.pt.with || []).filter(function (w) { return w.fam; });
+    if (wf && wf.length && x2 >= 0.75 && x2 < 0.82) { var ww = wf[Math.floor(y * 389) % wf.length], fz1 = famLines(ww.famId), fl1 = fz1[Math.floor(x2 * 523) % fz1.length], fn1 = esc(ww.name) + '의 ' + esc(ww.fam); return [fl1.replace('{f}이', josa(fn1, '이', '가')).replace('{f}', fn1).replace('{m}을', josa(m.name, '을', '를')).replace('{m}이', josa(m.name, '이', '가')).replace('{m}', m.name), '']; }   // 함께 원정 동료의 사역마
     var fl = EXP_FLAVOR[z.id] || EXP_FLAVOR.cellar; return [fl[Math.floor(x2 * 97) % fl.length], ''];
   }
+  // 사역마 줄 ({f} = 사역마 이름, 동료의 사역마면 「동료 이름의 사역마 이름」)
+  var FAM_LINES = ['{f}이 앞장서서 길을 찾는다', '{f}이 {m}을 향해 달려들었다', '{f}이 귀를 쫑긋 세우고 주변을 살핀다', '{f}이 주운 것을 물고 돌아왔다'];
+  // 사역마마다 다른 줄 (공통 줄과 섞어서 고른다 · 종류를 모르는 예전 기록은 공통 줄만)
+  var FAM_SAY = {
+    inkbat: ['{f}이 떨어진 동전을 물어 와 주머니에 넣는다', '{f}이 잉크를 뿌려 {m}의 눈을 가렸다'],
+    candlelizard: ['{f}의 꼬리 불빛이 어두운 길을 밝힌다', '{f}이 {m}에게 불꽃을 뱉었다'],
+    mossturtle: ['{f}의 등에 핀 꽃이 바람에 흔들린다', '{f}이 등껍질로 {m}의 공격을 받아 냈다'],
+    moonrabbit: ['{f}이 오늘 본 것을 노트에 적는다', '{f}이 달빛 쪽으로 뛰어 길을 안내한다'],
+    crysowl: ['{f}이 수정 눈으로 {m}의 움직임을 읽는다', '{f}이 벽의 글귀를 한참 바라본다'],
+    zapweasel: ['{f}이 번개처럼 {m}의 다리 사이를 빠져나갔다', '{f}의 털에서 정전기가 튀었다'],
+    ashfox: ['{f}이 코를 킁킁대더니 바닥을 파기 시작한다', '{f}이 숨겨진 상자 냄새를 맡았다'],
+    dreammoth: ['{f}이 어깨에 앉아 꾸벅꾸벅 존다', '{f}의 날갯가루에 {m}이 잠시 졸았다'],
+    clockcat: ['{f}이 정확히 세 시 십 분에 하품했다', '{f}이 한 치의 오차도 없이 {m}의 급소를 할퀴었다'],
+    shadowcrow: ['{f}이 그림자 속에서 {m}의 약점을 속삭인다', '{f}이 어깨 위에서 낮게 울었다'],
+    starwhale: ['{f}이 숨을 내쉬자 마나가 반짝이며 흩날린다', '{f}이 공중을 유유히 헤엄쳐 앞장선다'],
+    starwyrm: ['{f}이 작은 날개를 펴고 {m}에게 불씨를 뿜었다', '{f}이 자기보다 큰 {m}을 노려본다']
+  };
+  function famLines(id) { return (FAM_SAY[id] || []).concat(FAM_LINES); }
   // 함께 원정: 같이 간 사람의 이름 · 포지션이 나오는 줄
   var PT_LINES = {
     van: ['{n}이 방패를 들어 {m}의 공격을 받아 냈다', '{n}이 앞으로 뛰어들어 {m}의 시선을 끌었다', '{n}이 {m}을 벽으로 밀어붙였다'],
@@ -6248,7 +6268,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102450;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102451;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
