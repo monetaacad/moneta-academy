@@ -1088,7 +1088,7 @@
   };
   R.badgePolishCost = function (P, b) { return { dust: 10 + b.lv * 4, gold: Math.floor(150 * Math.pow(1.11, Math.max(1, Math.min(P.maxStage, R.stageCap(P))) - 1)) }; };
   R.badgePolishXp = function (b) { return Math.ceil(R.badgeNeed(b.lv) / 4); };
-  R.badgeBreakDust = function (b) { return 15 + b.lv * 8 + (b.aff || []).length * 5; };
+  R.badgeBreakDust = function (b) { return 60 + b.lv * 15 + (b.aff || []).length * 15; };   // 1레벨도 희귀 장비 분해(40레벨 69개)쯤은 되게 (예전 15 + 레벨 × 8 + 세공 × 5)
   // 거래 기준값 (데모 NPC 가격 · 데모 매수 판단용)
   R.badgeValue = function (b) { return Math.floor(2500 * Math.pow(1.35, b.lv - 1) * (1 + (b.aff || []).length * 0.25)); };
   // 휘장 강화는 세 갈래: 닦기(마석가루 + 아르크 → 별빛 · 레벨) · 광내기(별조각 → 보석 품질 q, 대표 효과) · 세공 다시 새기기(별조각 → 옵션 한 줄)
