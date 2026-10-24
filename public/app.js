@@ -5104,7 +5104,7 @@
     // 예전에는 body 전체를 zoom 해서 100vh 기준 높이까지 커져 채팅창 아래·안내도 아래가 화면 밖으로 잘렸다.
     document.body.style.zoom = ''; document.documentElement.style.setProperty('--fz', String(PREF.font || 1));
     document.documentElement.classList.toggle('fzoom', PREF.font !== 1);
-    Snd.vol(PREF.sfxVol); Snd.fgOnly = PREF.sfxBg === false; Snd.wxOn = PREF.wxSnd !== false; Snd.off = {}; for (var k in PREF.sfxOff) if (PREF.sfxOff[k]) Snd.setOff(k, true);
+    Snd.vol(PREF.sfxVol); Snd.fgOnly = PREF.sfxBg === false; Snd.wxOn = PREF.wxSnd !== false; Snd.wxFg = PREF.wxBg === false; Snd.wxVolSet(PREF.wxVol == null ? 0.7 : PREF.wxVol); Snd.off = {}; for (var k in PREF.sfxOff) if (PREF.sfxOff[k]) Snd.setOff(k, true);
   }
   applyPref();
   /* ── 테마: 색 토큰은 style.css의 :root[data-skin]에, 하늘·기숙사·등급 색은 여기서 ──
@@ -5208,8 +5208,11 @@
       '<label class="tog"><input type="checkbox" id="opt-snd" data-act="opt" data-a="sound"' + (P.opt.sound ? ' checked' : '') + '> 효과음</label>' +
       '<label class="tog"><input type="checkbox" data-act="sfxbg"' + (PREF.sfxBg !== false ? ' checked' : '') + '> 창을 내리거나 다른 탭을 볼 때도 효과음 재생 (채팅 알림 소리 등)</label>' +
       '<div class="row small slider"><span class="muted">효과음 크기</span><input type="range" id="opt-sfxvol" min="0" max="100" step="1" value="' + Math.round(PREF.sfxVol * 100) + '" aria-label="효과음 크기"><span class="num tiny faint" id="opt-sfxvol-v">' + Math.round(PREF.sfxVol * 100) + '%</span><button class="btn sm ghost" data-act="sfxtest">들어 보기</button></div>' +
-      '<label class="tog"><input type="checkbox" data-act="wxsnd"' + (PREF.wxSnd !== false ? ' checked' : '') + '> 날씨 소리 (비 · 뇌우일 때 빗소리, 번개가 칠 때 천둥)</label>' +
       '<div class="sfxlist' + (P.opt.sound ? '' : ' off') + '">' + Snd.KEYS.map(function (k) { return '<label class="tog"><input type="checkbox" data-act="sfxone" data-a="' + k[0] + '"' + (PREF.sfxOff[k[0]] ? '' : ' checked') + '> ' + k[1] + '</label>'; }).join('') + '</div>' +
+      '<hr class="sep">' +   // 날씨 소리는 효과음과 따로 (효과음을 꺼도 들을 수 있고 볼륨도 따로)
+      '<label class="tog"><input type="checkbox" data-act="wxsnd"' + (PREF.wxSnd !== false ? ' checked' : '') + '> 날씨 소리 (비 · 뇌우일 때 빗소리, 번개가 칠 때 천둥)</label>' +
+      '<div class="row small slider"><span class="muted">날씨 소리 크기</span><input type="range" id="opt-wxvol" min="0" max="100" step="1" value="' + Math.round((PREF.wxVol == null ? 0.7 : PREF.wxVol) * 100) + '" aria-label="날씨 소리 크기"><span class="num tiny faint" id="opt-wxvol-v">' + Math.round((PREF.wxVol == null ? 0.7 : PREF.wxVol) * 100) + '%</span></div>' +
+      '<label class="tog"><input type="checkbox" data-act="wxbg"' + (PREF.wxBg !== false ? ' checked' : '') + '> 창을 내리거나 다른 탭을 볼 때도 날씨 소리 재생</label>' +
       '<hr class="sep">' +
       '<label class="tog"><input type="checkbox" id="opt-bgm" data-act="bgm"' + (Bgm.on ? ' checked' : '') + '> 배경음악</label>' +
       '<div class="row small slider"><span class="muted">배경음악 크기</span><input type="range" id="opt-bgmvol" min="0" max="100" step="1" value="' + Math.round(Bgm.vol * 100) + '" aria-label="배경음악 크기"><span class="num tiny faint" id="opt-bgmvol-v">' + Math.round(Bgm.vol * 100) + '%</span></div>' +
@@ -5238,6 +5241,7 @@
   ACT.setfont = function (v) { PREF.font = +v; savePref(); applyPref(); ACT.settings(); };
   ACT.sfxtest = function () { Snd.preview(); };
   ACT.wxsnd = function (a, b, el) { PREF.wxSnd = el.checked; savePref(); applyPref(); if (!el.checked) Snd.rain(0); };
+  ACT.wxbg = function (a, b, el) { PREF.wxBg = el.checked; savePref(); applyPref(); };
   ACT.sfxbg = function (a, b, el) { PREF.sfxBg = el.checked; savePref(); applyPref(); };
   ACT.sfxone = function (k, b, el) { if (el.checked) delete PREF.sfxOff[k]; else PREF.sfxOff[k] = true; savePref(); applyPref(); if (el.checked && S.P.opt.sound) Snd.play(k); };
   ACT.bgm = function (a, b, el) { Bgm.set(el.checked); bgmScene(); };
@@ -6100,7 +6104,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102367;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102376;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
@@ -6221,7 +6225,7 @@
     if (!S.P) return;
     var n = Date.now(), vis = !document.hidden;
     if (!vis) {
-      if (Snd.fgOnly) Snd.rain(0);
+      if (Snd.wxFg) Snd.rain(0); else wxSound();   // 날씨 소리를 뒤에서도 틀면 날씨가 바뀌는 것도 따라간다
       if (!S.hiddenAt) S.hiddenAt = n; else if (n - S.hiddenAt > 600000 && S.chat.conn) { chatDisconnect(); S.chat.paused = true; }
       // 안 보이는 동안에도 작업이 끝나는 때에 한 번만 받아 와서 끝 소리를 낸다 (보고 창이 이미 떠 있어도 소리는 낸다)
       var ev = nextEventTime();
@@ -6274,6 +6278,7 @@
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && S.tut) { ACT['tut-skip'](); return; } if (e.key === 'Escape' && S.modal && !S.modalLocked) { if ($('#mconfirm')) ACT['mc-no'](); else tryClose(); } if (e.key === 'Enter' && e.target.id === 'mk-q') ACT.mkq(); if ((e.key === 'Enter' || e.key === ' ') && e.target.getAttribute && e.target.getAttribute('role') === 'button' && e.target.dataset.act && e.target.tagName !== 'BUTTON') { e.preventDefault(); e.target.click(); } });
   document.addEventListener('input', function (e) { var el = e.target;
     if (el.id === 'opt-bgmvol') { Bgm.setVol(+el.value / 100); var lv = $('#opt-bgmvol-v'); if (lv) lv.textContent = el.value + '%'; return; }
+    if (el.id === 'opt-wxvol') { PREF.wxVol = +el.value / 100; savePref(); Snd.wxVolSet(PREF.wxVol); var wv = $('#opt-wxvol-v'); if (wv) wv.textContent = el.value + '%'; return; }
     if (el.id === 'opt-sfxvol') { PREF.sfxVol = +el.value / 100; savePref(); applyPref(); var sv = $('#opt-sfxvol-v'); if (sv) sv.textContent = el.value + '%'; return; }
     if (el.dataset && el.dataset.fmt) { var sp = el.nextElementSibling; if (sp && sp.classList.contains('mkfmt')) sp.textContent = +el.value >= 10000 ? '= ' + fmt(+el.value) : ''; }
     var mrow = el.closest && el.closest('.mksell'); if (mrow) mkRowUpdate(mrow); });
