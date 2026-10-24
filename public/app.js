@@ -5651,10 +5651,16 @@
     var c = $('#rp-com'); if (c && !c.__k) { c.__k = 1; c.addEventListener('input', function () { S.bd.mcx = c.value; }); }
     var e = $('#rp-ed'); if (e && !e.__k) { e.__k = 1; e.addEventListener('input', function () { if (S.bd.medit) S.bd.medit.body = e.value; }); }
   }
+  // 접힌 댓글: 최근 3개 + 그중 답글의 원래 댓글 (서버 board.js memoComs와 같게. 답글이 다른 사람의 댓글 밑에 붙어 보이지 않도록)
+  function rpLast(all) {
+    var last = all.slice(-3), ids = {}; last.forEach(function (c) { ids[c.id] = 1; });
+    last.forEach(function (c) { if (c.parent && !ids[c.parent]) all.forEach(function (x) { if (x.id === c.parent) ids[x.id] = 1; }); });
+    return all.filter(function (c) { return ids[c.id]; });
+  }
   // 메모 하나를 서버가 돌려준 글로 맞춘다 (댓글 수 · 최근 댓글 3개 · 펼친 댓글)
   function rpPatch(post) {
     var b = S.bd, l = b.data && b.data.list || [];
-    l.forEach(function (m) { if (m.id === post.id) { m.body = post.body; m.title = post.title; m.updated = post.updated; m.ncom = post.comments.length; m.coms = post.comments.slice(-3); } });
+    l.forEach(function (m) { if (m.id === post.id) { m.body = post.body; m.title = post.title; m.updated = post.updated; m.ncom = post.comments.length; m.coms = rpLast(post.comments); } });
     if (b.full && b.full[post.id]) b.full[post.id] = post;
   }
   ACT.rpnew = function () {
@@ -6119,7 +6125,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102403;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102404;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
