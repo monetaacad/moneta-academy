@@ -2694,6 +2694,25 @@
   };
   // 망각의 차: 분배한 능력치 포인트를 모두 돌려받는다. 다시 직접 나눌 수 있게 자동 분배는 끈다 (켜 두면 곧바로 같은 대로 다시 나뉘므로)
   function respecNow(P) { var tot = 0; STATS.forEach(function (k) { tot += P.alloc[k]; P.alloc[k] = 0; }); P.pts += tot; P.opt.autoAlloc = false; return tot; }
+  /* 스탯 프리셋: 능력치 비율(0~10)과 이름을 칸마다 저장해 두고, 누르면 망각의 차 1개를 마셔 분배한 포인트를 모두 돌려받은 뒤
+     그 비율로 바로 다시 나눈다. 이후 레벨업 자동 분배(켜 두었다면)도 이 비율을 따른다 */
+  R.STATSET_N = 5;
+  A.statSet = function (P, W, now, a) {
+    var i = int(a.i, 0, R.STATSET_N - 1), op = str(a.op), sets = P.statSets || (P.statSets = []);
+    if (op === 'save') {
+      var w = a.w || {}, o = {}; STATS.forEach(function (k) { var v = Number(w[k]); o[k] = isFinite(v) ? clamp(Math.round(v * 2) / 2, 0, 10) : 0; });
+      if (!STATS.some(function (k) { return o[k] > 0; })) err('비율을 하나 이상 입력해야 합니다');
+      var nm = R.cleanName(a.name).slice(0, 10); sets[i] = { w: o }; if (nm) sets[i].name = nm; return { saved: i };
+    }
+    if (op === 'clear') { sets[i] = null; if (P.statOn === i) delete P.statOn; return { cleared: i }; }
+    if (op !== 'apply') err('잘못된 요청');
+    var st = sets[i]; if (!st) err('저장된 프리셋이 없습니다');
+    var tk = P.tok || {}; if (!(tk.respec > 0)) err('망각의 차가 없습니다. 매점에서 구할 수 있습니다');
+    var auto = !!P.opt.autoAlloc; tk.respec--; var tot = respecNow(P); P.opt.autoAlloc = auto;   // 자동 분배 설정은 그대로 둔다
+    P.opt.allocW = JSON.parse(JSON.stringify(st.w)); R.autoAlloc(P); P.statOn = i; tot = 0; STATS.forEach(function (k) { tot += P.alloc[k]; });   // tot: 다시 나눈 포인트 전체 (남아 있던 포인트 포함)
+    log(P, now, '망각의 차를 마시고 능력치 포인트 ' + tot + '점을 스탯 프리셋 「' + (st.name || (i + 1)) + '」 비율로 다시 나눴습니다', 'news');
+    return { applied: i, pts: tot, name: st.name || '' };
+  };
   A.useRespec = function (P) { var tk = P.tok || {}; if (!(tk.respec > 0)) err('망각의 차가 없습니다'); tk.respec--; return { respec: respecNow(P) }; };   // 우편으로 받은 망각의 차
   A.login = function (P, W, now) {
     if (!P.daily.login) err('오늘의 출석 보상을 이미 받았습니다');

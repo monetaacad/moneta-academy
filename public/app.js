@@ -1700,7 +1700,7 @@
   V.lecture = function () {
     var P = S.P, c = C(), ex = R.examFor(P);
     var h = pageHead('일곱 과목, 일곱 해', '강의실', '수업 효율 <b class="num gold">×' + c.lecSpd.toFixed(2) + '</b> <span class="muted">경험치 · 지식 획득량</span>');
-    h += potBar(['lectureSpd', 'knowPct', 'xpPct', 'offlineEff']) + gsQuick();
+    h += potBar(['lectureSpd', 'knowPct', 'xpPct', 'offlineEff']) + gsQuick() + statQuick();
     R.lecQ(P); h += ttCard(c);
     var nL = 0; for (var i0 = 0; i0 < 3; i0++) { if (i0 >= c.lecSlots && !P.lec[i0]) break; nL++; }
     h += '<div class="grid gauto' + (nL === 1 ? ' one' : '') + '" style="margin-bottom:16px">';   // 한 자리면 가로로 넓게
@@ -1998,7 +1998,7 @@
     var P = S.P, c = C(), cap = Math.min(P.maxStage, R.stageCap(P));
     var shown = P.exp.find(Boolean), z = R.zoneOf(shown ? shown.s : (S.pick.es0 || R.bestStage(P, wctx())));
     var gcap = R.gradeCap(P), h = pageHead(z.name, '원정', '열린 단계 <b class="num gold">1–' + cap + '</b>' + (cap > gcap ? ' <span class="tag br" title="학년 상한 ' + gcap + '단계 너머를 레벨로 열었습니다">레벨로 +' + (cap - gcap) + '</span>' : ''));
-    h += potBar(null) + gsQuick();   // 원정 화면은 물약 전부
+    h += potBar(null) + gsQuick() + statQuick();   // 원정 화면은 물약 전부
     var running = P.exp.map(function (j, i) { return j ? i : -1; }).filter(function (i) { return i >= 0; });
     h += '<div class="grid ' + (running.length > 1 ? 'g2' : '') + '">' + (running.length ? running.map(function (i) { var j = P.exp[i]; return '<div class="card explogcard"><div class="row between"><h3>원정 일지 <span class="small muted">' + j.s + '단계 · ' + R.zoneOf(j.s).name + '</span></h3><span class="tiny faint num" data-l="left:' + j.end + '"></span></div><div class="row tiny muted" style="margin-top:2px;gap:12px"><span>처치 약 <b class="num" data-l="expk:' + i + '"></b></span><span>' + CUR + ' 약 <b class="num gold" data-l="expg:' + i + '"></b></span></div><div class="logw"><div class="explog" data-explog="' + i + '" aria-live="off"></div><button class="lognew" hidden></button></div></div>'; }).join('')
       : '<div class="card inset"><p class="small muted">출정하면 이곳에 원정 일지가 몇십 초마다 한 줄씩 적힙니다. 창을 닫아 두어도 원정은 그대로 진행됩니다.</p></div>') + '</div>';
@@ -2099,7 +2099,7 @@
     }).join('') + '</div></div></div>';
     // 결투 준비: 무한의 탑처럼 같은 화면에서 전투 물약 · 장비 프리셋 · 장착 주문을 바꾼다
     if (r) h += '<div class="card" style="margin-top:14px"><div class="row between"><h3>결투 준비</h3><span class="tiny faint">바꾼 뒤 위의 승산이 다시 계산됩니다</span></div>' +
-      '<div style="margin-top:8px">' + gearSetRow() + '</div>' +
+      '<div style="margin-top:8px">' + gearSetRow() + '</div>' + statQuick(true) +
       '<div class="small" style="margin-top:12px">장착 주문 <span class="tiny faint">· 칸을 누르면 주문을 바꿉니다</span></div>' + spellBar(P) + spellSetBar(P) +
       '<div class="small" style="margin-top:12px">전투 물약</div><div style="margin-top:6px">' + potBar(['atkPct', 'hpPct', 'defPct']) + '</div></div>';
     return h;
@@ -2155,7 +2155,7 @@
     wbMarkSeen();
     var P = S.P, W = S.W || {}, b = W.boss;
     var h = pageHead('종소리가 멎기 전에', '월드 보스', W.demo ? '<span class="tag br">데모</span>' : '');
-    h += potBar(['atkPct', 'hpPct', 'defPct']) + gsQuick() + spQuick();   // 전투 물약 · 장비 프리셋 · 주문 프리셋
+    h += potBar(['atkPct', 'hpPct', 'defPct']) + gsQuick() + spQuick() + statQuick();   // 전투 물약 · 장비 프리셋 · 주문 프리셋 · 스탯 프리셋
     // 지난주 보상
     if (P.wkPrev && !P.wkPrev.claimed) h += wkPrevCard(P);
     h += '<div class="stack">';
@@ -2495,6 +2495,33 @@
     return { st: st, on: on, miss: miss, n: keys.length, names: names, nm: st.name || '' };
   }
   // 다른 화면(수업 · 원정 · 월드 보스)에서 쓰는 장비 프리셋 줄: 저장한 프리셋이 하나라도 있을 때만
+  /* 스탯 프리셋: 누르면 망각의 차 1개로 분배한 포인트를 모두 돌려받고 그 비율로 다시 나눈다 (수업 · 원정 · 전투 화면, 능력치 칸) */
+  function statQuick(always) {   // always: 저장한 프리셋이 없어도 보인다 (능력치 칸 · 결투 준비에서 처음 만들 수 있게)
+    var P = S.P, sets = P.statSets || [], n = (P.tok && P.tok.respec) || 0, cur = JSON.stringify(P.opt.allocW || {}), b = '';
+    if (!always && !sets.some(Boolean)) return '';
+    for (var i = 0; i < R.STATSET_N; i++) { var st = sets[i], on = st && P.statOn === i && JSON.stringify(st.w) === cur, arm = S.confirm['st' + i] > Date.now(); b += '<button class="btn sm' + (arm ? ' danger' : on ? ' primary' : '') + '" data-act="stload" data-a="' + i + '"' + (st ? ' title="' + esc(statSetText(st.w)) + (n ? ' · 망각의 차 1개 사용' : ' · 망각의 차가 필요합니다') + '"' : ' disabled title="비어 있음 · 편집에서 저장"') + '>' + (arm ? '망각의 차 1개 소모 · 한 번 더 누르면 적용' : st && st.name ? esc(st.name) : (i + 1)) + '</button>'; }   // 첫 번째 누름: 확인 표시, 4초 안에 한 번 더 누르면 적용
+    return '<div class="gsquick stquick"><div class="gsrow"><span class="small muted">스탯 프리셋</span>' + b + '<button class="btn sm ghost" data-act="stedit">편집</button><span class="tiny faint">망각의 차 ' + n + '개</span></div></div>';
+  }
+  function statSetText(w) { return R.STATS.filter(function (k) { return w[k] > 0; }).sort(function (a, b) { return w[b] - w[a]; }).map(function (k) { return D.STAT_NAMES[k] + ' ' + w[k]; }).join(' · '); }
+  ACT.stload = function (i) {
+    if (!((S.P.tok && S.P.tok.respec) > 0)) { toast('스탯 프리셋', '망각의 차가 없습니다. 매점에서 구할 수 있습니다', 2600); return; }
+    var k = 'st' + i; if (!(S.confirm[k] > Date.now())) { S.confirm[k] = Date.now() + 4000; render(); setTimeout(render, 4100); return; }
+    S.confirm[k] = 0; act('statSet', { i: +i, op: 'apply' }).then(function (r) { if (!r) return; Snd.play('enh'); toast('스탯 프리셋', '「' + (r.name || (+i + 1)) + '」 비율로 능력치 포인트 ' + fmt(r.pts) + '점을 다시 나눴습니다 · 망각의 차 −1', 2800); render(); });
+  };
+  ACT.stedit = function () {
+    var sets = S.P.statSets || [], def = S.P.opt.allocW || {}, h = '<p class="small muted">능력치마다 비율(0~10)을 정하고 이름을 붙여 저장합니다. 프리셋을 누른 뒤 한 번 더 누르면 <b>망각의 차 1개</b>를 사용해 분배한 포인트를 모두 돌려받고, 그 비율로 바로 다시 나눕니다.</p><div class="stack" style="gap:8px;margin-top:10px">';
+    for (var i = 0; i < R.STATSET_N; i++) {
+      var st = sets[i], w = st ? st.w : def;
+      h += '<div class="card inset" style="padding:8px 10px"><div class="row" style="gap:6px;flex-wrap:wrap"><b class="num" style="width:1.5em">' + (i + 1) + '</b><input id="stnm' + i + '" maxlength="10" placeholder="이름 (예: 탑용)" value="' + esc(st && st.name || '') + '" style="width:9em"><span class="spacer"></span><button class="btn sm primary" data-act="stsave" data-a="' + i + '">' + (st ? '덮어쓰기' : '저장') + '</button>' + (st ? '<button class="btn sm ghost" data-act="stclear" data-a="' + i + '">비우기</button>' : '') + '</div>' +
+        '<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:6px">' + R.STATS.map(function (k) { return '<label class="row tiny" style="gap:4px">' + D.STAT_NAMES[k] + '<input type="number" class="stw' + i + '" data-k="' + k + '" min="0" max="10" step="0.5" value="' + (+w[k] || 0) + '" style="width:64px"></label>'; }).join('') + '</div></div>';
+    }
+    modal(mhead('스탯 프리셋', '최대 ' + R.STATSET_N + '칸 · 숫자가 클수록 그 능력치에 포인트가 많이 갑니다') + h + '</div>');
+  };
+  ACT.stsave = function (i) {
+    var w = {}, nm = $('#stnm' + i); $$('.stw' + i).forEach(function (x) { var v = parseFloat(x.value); w[x.dataset.k] = isFinite(v) ? Math.max(0, Math.min(10, v)) : 0; });
+    act('statSet', { i: +i, op: 'save', w: w, name: nm ? nm.value : '' }).then(function (r) { if (r) { toast('스탯 프리셋 ' + (+i + 1), '저장했습니다', 1400); ACT.stedit(); } });
+  };
+  ACT.stclear = function (i) { act('statSet', { i: +i, op: 'clear' }).then(function (r) { if (r) ACT.stedit(); }); };
   function gsQuick() { return (S.P.gearSets || []).some(Boolean) ? '<div class="gsquick">' + gearSetRow() + '</div>' : ''; }
   function gearSetRow() {
     var b = '';
@@ -2605,7 +2632,7 @@
     if (dsum) h += '</div><div class="row allocsave" style="margin-top:8px;gap:6px"><span class="small gold">' + R.STATS.filter(function (k) { return dr[k]; }).map(function (k) { return D.STAT_NAMES[k] + ' +' + dr[k]; }).join(' · ') + '</span><span class="spacer"></span><button class="btn sm ghost" data-act="alloc-reset">되돌리기</button><button class="btn sm primary" data-act="alloc-save">저장</button><div class="alloc" style="display:none">';
     var why = PWHY[P.cls === 'knight' ? 'knight' : 'mage'], tot = 0, W0 = cur ? PRESETS[cur] : null; if (W0) R.STATS.forEach(function (k) { tot += W0[k] || 0; });
     var info = W0 ? '<p class="tiny muted" style="margin-top:6px"><b>' + PNAMES[cur] + '</b> · ' + R.STATS.filter(function (k) { return W0[k]; }).sort(function (a, b) { return W0[b] - W0[a]; }).map(function (k) { return D.STAT_NAMES[k] + ' ' + Math.round(W0[k] / tot * 100) + '%'; }).join(' · ') + '<br>' + (why[cur] || '직접 정한 개인 프리셋입니다.') + '</p>' : '<p class="tiny faint" style="margin-top:6px">직접 정한 비율입니다. 프리셋을 누르면 해당 비율로 바뀝니다.</p>';
-    return h + '</div><hr class="sep"><label class="tog"><input type="checkbox" id="opt-aa" data-act="opt" data-a="autoAlloc"' + (P.opt.autoAlloc ? ' checked' : '') + '> 레벨업 시 자동 분배</label>' +
+    return h + '</div>' + statQuick(true) + '<hr class="sep"><label class="tog"><input type="checkbox" id="opt-aa" data-act="opt" data-a="autoAlloc"' + (P.opt.autoAlloc ? ' checked' : '') + '> 레벨업 시 자동 분배</label>' +
       (P.opt.autoAlloc ? '<p class="tiny gold" style="margin-top:4px">선택한 프리셋' + (cur ? ' 「' + PNAMES[cur] + '」' : '') + '대로 능력치가 분배됩니다.</p>' : '<p class="tiny faint" style="margin-top:4px">꺼져 있으면 레벨업 포인트를 직접 분배합니다.</p>') +
       '<div class="filters" style="margin-top:8px">' + Object.keys(PRESETS).map(function (k) { return '<button class="btn sm ghost' + (cur === k ? ' on' : '') + '" data-act="preset" data-a="' + k + '">' + PNAMES[k] + '</button>'; }).join('') + '<button class="btn sm ghost" data-act="allocmy">' + (my ? '개인 프리셋 편집' : '+ 개인 프리셋') + '</button></div>' + info + '<p class="tiny faint" style="margin-top:6px">레벨마다 2포인트. 매점의 「망각의 차」로 초기화할 수 있습니다.</p></div>';
   }
@@ -3130,7 +3157,7 @@
     var P = S.P, cl = R.ctCls(P), nm = R.CT_NAME[cl], best = R.ctBest(P, cl), f = best + 1, foe = R.ctFoe(f, cl), left = Infinity;
     var pv = R.duelPreview(P, wctx(), foe.stage, R.K.BOSS_HP * 0.6 * (foe.wall ? 1.8 : 1), R.K.BOSS_ATK * 3 * (foe.wall ? 1.4 : 1)), nextMile = Math.ceil(f / R.CT_MILE) * R.CT_MILE, mt = R.ctTitle(cl, nextMile), rw = R.ctReward(f);
     var h = pageHead('무한의 탑 · 혼자 오르는 ' + R.CLS[cl].name + ' 전용 탑', '<span class="phimg">' + clsDot(cl, 36) + nm + '</span>', '최고 <b class="num gold">' + best + '</b>층');
-    h += potBar(['atkPct', 'hpPct', 'defPct']) + gsQuick();   // 전투 물약 · 장비 프리셋
+    h += potBar(['atkPct', 'hpPct', 'defPct']) + gsQuick() + statQuick();   // 전투 물약 · 장비 프리셋 · 스탯 프리셋
     h += '<div class="card hl"><div class="row between"><h3>' + nm + ' <span class="tag br">최고 ' + best + '층</span></h3><span class="tiny faint">도전 횟수 제한 없음</span></div>' +
       '<p class="tiny faint" style="margin-top:2px">끝없이 이어지는 ' + R.CLS[cl].name + ' 전용 탑입니다. 도전 횟수 제한 없이 한 층씩 싸우며, 전투력이 되는 만큼 오를 수 있습니다. 오른 층은 줄어들지 않습니다. 탑의 적은 공격이 매우 강해 화력만큼 생명력과 회복도 중요합니다(' + R.CT_TIME + '초 제한).</p>' +
       '<div class="twnext" style="margin-top:10px"><div class="twf num">' + f + '<span>층</span></div><div style="flex:1;min-width:0"><b' + (foe.wall ? ' class="gold"' : '') + '>' + esc(foe.name) + '</b><div class="tiny faint">' + foe.stage + '단계 수준 · 체력 ' + fmt(foe.hp) + (foe.wall ? ' · <span class="bad">시련의 층: 탑의 문지기가 지킵니다</span>' : '') + '</div>' +
@@ -6281,7 +6308,7 @@
      서버가 알려 주는 build(지금 배포된 화면 번호)가 이 화면보다 크면 맨 위에 띠를 띄운다. 새로고침하지 않아도 계속 놀 수 있다.
      minBuild(이보다 낮은 화면은 쓰면 안 됨)가 이 화면보다 크면 10초 뒤 저절로 새로고침한다. 쓰던 채팅 글은 남겨 둔다.
      점검: maint {on, start, until, msg, bypass}. start만 있으면 예고 띠, on이면 점검 화면(운영자는 bypass로 통과). */
-  var BUILD = 2026102462;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
+  var BUILD = 2026102463;   // 이 화면의 빌드 번호. 배포할 때마다 올리고 서버 build 값과 맞춘다
   window.__BUILD = BUILD;
   var SB = { ver: 0, hideVer: 0, force: 0, stuck: false, notice: null };
   S.maintOn = false; S.maintInfo = null; S.maintWait = false; S.verAt = 0;
