@@ -948,7 +948,8 @@ button.mkn:hover { text-decoration: underline; }
 /* 한 칸일 때(모바일 · 좁은 본문): 장비 살펴보기 → 가방 → 능력치 순서로, 고른 장비와 가방을 붙여 비교하기 쉽게 */
 /* 가방 장비를 누르면 그 바로 아래에 살펴보기(전투력 변화 · 능력치 · 버튼)를 펼친다 — 한 칸일 때만, 위쪽 살펴보기는 숨김 */
 .invdetail { display: none; grid-column: 1 / -1; }
-.eqdetail { display: none; margin-top: 10px; }
+.eqdetail { margin-top: 10px; }   /* 장착 장비 상세: 화면 폭과 상관없이 장착 칸 바로 아래에 (아래쪽 좌측 칸의 같은 상세는 숨김) */
+.gearcols > .stack > .detail.eqsel { display: none; }
 .cmpline { margin-top: 6px; font-size: 12.5px; line-height: 1.7; }   /* 능력치 비교: 한 줄로 이어 쓰고, 넘치면 자연스럽게 줄바꿈 */
 .cmpline .cl { color: var(--muted); margin-right: 8px; }
 .cmpline .ci { white-space: nowrap; }
@@ -985,8 +986,8 @@ button.mkn:hover { text-decoration: underline; }
 .peqmine { border-left: 1px dashed var(--line2); padding-left: 10px; }
 @media (max-width: 480px) { .pstats, .peq, .peq.peq6 { grid-template-columns: repeat(3, minmax(0, 1fr)); } .peqd.cmp .peqcols { gap: 8px; } .peqd .statline { font-size: 11.5px; } }
 .invdetail .card.detail { margin: 2px 0 4px; }
-@media (max-width: 900px), (pointer: coarse) and (max-width: 1000px) { .gearcols > .stack { display: contents; } .gearcols > .stack > [data-anchor="alloc"] { order: 2; } .invdetail, .eqdetail { display: block; } .gearcols > .stack > .detail.bagsel, .gearcols > .stack > .detail.eqsel { display: none; } }
-@container page (max-width: 720px) { .gearcols > .stack { display: contents; } .gearcols > .stack > [data-anchor="alloc"] { order: 2; } .invdetail, .eqdetail { display: block; } .gearcols > .stack > .detail.bagsel, .gearcols > .stack > .detail.eqsel { display: none; } }
+@media (max-width: 900px), (pointer: coarse) and (max-width: 1000px) { .gearcols > .stack { display: contents; } .gearcols > .stack > [data-anchor="alloc"] { order: 2; } .invdetail { display: block; } .gearcols > .stack > .detail.bagsel, .gearcols > .stack > .detail.eqsel { display: none; } }
+@container page (max-width: 720px) { .gearcols > .stack { display: contents; } .gearcols > .stack > [data-anchor="alloc"] { order: 2; } .invdetail { display: block; } .gearcols > .stack > .detail.bagsel, .gearcols > .stack > .detail.eqsel { display: none; } }
 .inv { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 6px; max-height: 520px; overflow-y: auto; padding-right: 2px; }
 .itm { min-height: 0; padding: 6px 8px; gap: 1px; }
 .itm .in { font-size: 12px; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
