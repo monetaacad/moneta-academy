@@ -1242,7 +1242,8 @@ function mkSearch(f, now) {
   if (f.auc) { where.push(`m.auc = 1`, `m.kind IN ('item', 'badge')`); if (f.nobid) where.push('m.bids = 0'); } else where.push('m.auc = 0');   // 경매는 「경매」 탭에서만
   if (f.kind === 'item' || f.kind === 'mat' || f.kind === 'pot' || f.kind === 'badge' || f.kind === 'tok') { where.push('m.kind = ?'); args.push(f.kind); }
   if (f.kind === 'badge' && f.gem && R.GEM[f.gem]) { where.push('m.slot = ?'); args.push(f.gem); }
-  if (f.kind !== 'badge' && f.slot === 'sword') { where.push(`m.slot = 'staff' AND m.data LIKE '%"wk":"sword"%'`); }   // 무기 중 검
+  if (f.kind !== 'badge' && f.slot === 'weapon') { where.push(`m.slot = 'staff'`); }   // 무기 전체 (지팡이 · 검)
+  else if (f.kind !== 'badge' && f.slot === 'sword') { where.push(`m.slot = 'staff' AND m.data LIKE '%"wk":"sword"%'`); }   // 무기 중 검
   else if (f.kind !== 'badge' && f.slot === 'staff') { where.push(`m.slot = 'staff' AND m.data NOT LIKE '%"wk":"sword"%'`); }   // 무기 중 지팡이
   else if (f.kind !== 'badge' && f.slot === 'manual') { where.push(`m.slot = 'tome' AND m.data LIKE '%"wk":"manual"%'`); }   // 마도서 칸 중 전술서
   else if (f.kind !== 'badge' && f.slot === 'helm') { where.push(`m.slot = 'hat' AND m.data LIKE '%"wk":"helm"%'`); }   // 모자 칸 중 투구
