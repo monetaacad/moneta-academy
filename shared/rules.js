@@ -411,7 +411,7 @@
     var cl = R.CLS[P.cls || 'mage']; if (cl) addEff(b, cl.bonus); mark('학과');   // 학과
     if (P.guildLv > 0) { var gb = R.guildBonus(P.guildLv); b.goldPct = (b.goldPct || 0) + gb; b.xpPct = (b.xpPct || 0) + gb; } mark('동아리');   // 동아리 레벨 보너스
     if (P.partyN > 1) { var pn = Math.min(P.partyN, 4) - 1; b.goldPct = (b.goldPct || 0) + R.PARTY_GOLD * pn; b.xpPct = (b.xpPct || 0) + R.PARTY_XP * pn; } mark('파티');   // 파티 보너스 (솔로와 성장 격차를 줄이려 경험치는 작게)
-    for (var id in P.rs) if (RES[id]) addEff(b, RES[id].eff, P.rs[id]); mark('연구');
+    for (var id in P.rs) if (RES[id]) addEff(b, RES[id].eff, R.resMult(RES[id], P.rs[id])); mark('연구');
     var eh = R.eggHold(P); if (eh) b.xpPct = (b.xpPct || 0) + eh * R.EGG_HOLD_EACH; mark('알 품기');   // 알 품기
     for (var fid in P.fam.own) { var f = FAM[fid]; if (f) b[f.bonus] = (b[f.bonus] || 0) + R.famBonus(f, P.fam.own[fid].lv, P); } mark('사역마');
     var span = Math.max(1e-6, t1 - t0);
@@ -920,6 +920,8 @@
     return { mana: Math.floor(r.mana * Math.pow(r.g, lv)), know: Math.floor(r.know * Math.pow(Math.max(1, r.g * 0.92), lv)),
       time: Math.min(172800, Math.floor(r.time * Math.pow(r.tg, lv))) };
   };
+  // 연구 효과 배수: 보통은 단계 수 그대로, decay가 있으면 단계마다 효과가 decay배씩 줄어든다 (룬 각인술: 3% → 2.5% → … 10단계 합계 약 15%)
+  R.resMult = function (r, lv) { lv = lv || 0; return r && r.decay ? (1 - Math.pow(r.decay, lv)) / (1 - r.decay) : lv; };
   R.resAvailable = function (P, id) { var r = RES[id]; return !!r && !r.gone && (!r.grade || P.grade >= r.grade); };
   R.resQueued = function (P, id) { return P.rsq.some(function (q) { return q && q.id === id; }); };
 
